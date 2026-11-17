@@ -95,6 +95,14 @@ QUERY_LABEL = "query TestCarLabel($id: ID!) { TestCar(ids: [$id]) { edges { node
 # No root filter, so any number of cars can answer it.
 QUERY_UNPINNED = "query TestCarAll { TestCar { edges { node { name { value } } } } }"
 
+# Filters the car on its owner at the root, and the owner's cars on their seat count through a
+# relationship read, without selecting the seat count.
+QUERY_FILTERED = (
+    "query TestCarFiltered($id: ID!) "
+    '{ TestCar(ids: [$id], owner__name__value: "owner01") { edges { node { name { value } '
+    "owner { node { cars(nbr_seats__value: 4) { edges { node { id } } } } } } } } }"
+)
+
 
 def _schema_with_an_owner_reading_transform() -> SchemaRoot:
     """The car/person Python schema, with the second attribute fed by the owner-reading transform.
@@ -740,6 +748,77 @@ class TestCoalescedRecomputePythonUnpinnedQuery(CoalescedPythonTestBase):
             NAME_ATTRIBUTE: sorted(unpinned_dataset.car_ids),
             OWNER_ATTRIBUTE: WHOLE_KIND,
         }
+
+
+class TestCoalescedRecomputePythonFilteredQuery(CoalescedPythonTestBase):
+    """A field the transform query filters on selects the attribute like a field it reads."""
+
+    @pytest.fixture(scope="class")
+    async def filtered_dataset(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        client: InfrahubClient,
+        admin_account: CoreAccount,
+    ) -> PythonRecomputeDataset:
+        return await _seed(
+            db=db,
+            branch=default_branch,
+            schema=_schema_with_an_owner_reading_transform(),
+            owner_query=QUERY_FILTERED,
+        )
+
+    async def test_a_change_to_a_relationship_filter_field_widens(
+        self,
+        filtered_dataset: PythonRecomputeDataset,
+        db: InfrahubDatabase,
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+    ) -> None:
+        """The car can enter the result of every car of its owner, and none of them holds it as a member yet."""
+        submissions = await self._run_pass(
+            db=db,
+            recorder=workflow_recorder,
+            default_branch=default_branch,
+            admin_account=admin_account,
+            changes=[
+                MergeChange(
+                    node_id=filtered_dataset.car_ids[0],
+                    kind=CAR_KIND,
+                    action="updated",
+                    changed_fields=frozenset({"nbr_seats"}),
+                )
+            ],
+        )
+
+        assert submissions == {OWNER_ATTRIBUTE: WHOLE_KIND}
+
+    async def test_a_change_to_a_root_filter_field_of_the_target_kind_narrows(
+        self,
+        filtered_dataset: PythonRecomputeDataset,
+        db: InfrahubDatabase,
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+    ) -> None:
+        """The root filter decides only the car's own value, so the readers come from the query group."""
+        submissions = await self._run_pass(
+            db=db,
+            recorder=workflow_recorder,
+            default_branch=default_branch,
+            admin_account=admin_account,
+            changes=[
+                MergeChange(
+                    node_id=filtered_dataset.car_ids[0],
+                    kind=CAR_KIND,
+                    action="updated",
+                    changed_fields=frozenset({"owner"}),
+                )
+            ],
+        )
+
+        assert submissions == {OWNER_ATTRIBUTE: sorted(filtered_dataset.car_ids)}
 
 
 class TestCoalescedRecomputePythonRebase(CoalescedPythonTestBase):

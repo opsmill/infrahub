@@ -47,7 +47,7 @@ from infrahub.graphql.resolvers.peer_filters import build_peer_filters
 from infrahub.graphql.utils import extract_schema_models
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterable, Iterator
 
     from infrahub.core.branch import Branch
     from infrahub.core.schema import MainSchemaTypes, SchemaAttributePath
@@ -524,6 +524,29 @@ class ReachedPathResolver:
         return None
 
 
+def _filtered_fields_by_kind(query_models: Iterable[GraphQLQueryModel]) -> dict[str, set[str]]:
+    """Return, per kind, the fields the filter arguments of ``query_models`` select on."""
+    filtered: dict[str, set[str]] = {}
+    for query_model in query_models:
+        attribute_names = set(query_model.model.attribute_names)
+        field_names = attribute_names | set(query_model.model.relationship_names) | {"display_label"}
+        for argument in query_model.arguments:
+            field_name, separator, _ = argument.name.partition("__")
+            if argument.name == "hfid":
+                selected = {"human_friendly_id"}
+            elif not separator:
+                continue
+            elif field_name == "any":
+                selected = attribute_names
+            elif field_name in field_names:
+                selected = {field_name}
+            else:
+                continue
+            filtered.setdefault(query_model.model.kind, set()).update(selected)
+
+    return filtered
+
+
 @dataclass
 class GraphQLQueryReport:
     queries: list[GraphQLQueryNode]
@@ -562,26 +585,22 @@ class GraphQLQueryReport:
         matches every attribute of the kind and ``hfid`` selects on ``human_friendly_id``. Other
         arguments, such as ``ids`` or pagination, select on no field and are left out.
         """
-        filtered: dict[str, set[str]] = {}
-        for query in self.queries:
-            for query_model in query.get_models():
-                attribute_names = set(query_model.model.attribute_names)
-                field_names = attribute_names | set(query_model.model.relationship_names) | {"display_label"}
-                for argument in query_model.arguments:
-                    field_name, separator, _ = argument.name.partition("__")
-                    if argument.name == "hfid":
-                        selected = {"human_friendly_id"}
-                    elif not separator:
-                        continue
-                    elif field_name == "any":
-                        selected = attribute_names
-                    elif field_name in field_names:
-                        selected = {field_name}
-                    else:
-                        continue
-                    filtered.setdefault(query_model.model.kind, set()).update(selected)
+        return _filtered_fields_by_kind(query_model for query in self.queries for query_model in query.get_models())
 
-        return filtered
+    @cached_property
+    def relationship_filtered_fields_by_kind(self) -> dict[str, set[str]]:
+        """Return, per kind, the fields the filter arguments of a relationship read select on."""
+        return _filtered_fields_by_kind(
+            query_model for query in self.queries for query_model in query.get_models() if not query_model.root
+        )
+
+    @cached_property
+    def selected_or_filtered_fields_by_kind(self) -> dict[str, set[str]]:
+        """Return, per kind the query reaches, the fields whose change can move what the query returns."""
+        fields = {kind: set(access.fields) for kind, access in self.requested_read.items()}
+        for kind, filtered in self.filtered_fields_by_kind.items():
+            fields.setdefault(kind, set()).update(filtered)
+        return fields
 
     @cached_property
     def traversed_kinds(self) -> set[str]:
@@ -619,12 +638,7 @@ class GraphQLQueryReport:
         return self._reached_path_resolver.relationship_reads()
 
     def fields_by_kind(self, kind: str) -> list[str]:
-        fields: list[str] = []
-        if access := self.requested_read.get(kind):
-            fields.extend(list(access.attributes))
-            fields.extend(list(access.relationships))
-
-        return fields
+        return sorted(self.selected_or_filtered_fields_by_kind.get(kind, set()))
 
     @cached_property
     def variables(self) -> list[GraphQLVariable]:

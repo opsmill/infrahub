@@ -61,12 +61,16 @@ class TransformReadSet:
     ``depends_on_everything`` is set when nothing about the query could be mapped.
     ``imprecise_kinds`` holds the kinds read through a derived field, where any change to the
     kind can move the value because the fields behind it cannot be named.
+    ``filter_fields`` holds the fields the query filters on, and ``relationship_filter_fields``
+    the ones among them filtered on a relationship read.
     """
 
     read_kinds: frozenset[str] = frozenset()
     read_fields: dict[str, frozenset[str]] = field(default_factory=dict)
     imprecise_kinds: frozenset[str] = frozenset()
     depends_on_everything: bool = False
+    filter_fields: dict[str, frozenset[str]] = field(default_factory=dict)
+    relationship_filter_fields: dict[str, frozenset[str]] = field(default_factory=dict)
 
     @classmethod
     def imprecise(cls) -> TransformReadSet:
@@ -78,6 +82,8 @@ class TransformReadSet:
         read_fields_by_kind: Mapping[str, Iterable[str]],
         *,
         scopable_derived_kinds: Container[str] = frozenset(),
+        filter_fields_by_kind: Mapping[str, Iterable[str]] | None = None,
+        relationship_filter_fields_by_kind: Mapping[str, Iterable[str]] | None = None,
     ) -> TransformReadSet:
         """Build the read set from a kind to read-field-names mapping.
 
@@ -115,6 +121,10 @@ class TransformReadSet:
             read_kinds=frozenset(read_kinds),
             read_fields=read_fields,
             imprecise_kinds=frozenset(imprecise_kinds),
+            filter_fields={kind: frozenset(names) for kind, names in (filter_fields_by_kind or {}).items()},
+            relationship_filter_fields={
+                kind: frozenset(names) for kind, names in (relationship_filter_fields_by_kind or {}).items()
+            },
         )
 
 

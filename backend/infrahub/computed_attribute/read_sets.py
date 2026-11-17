@@ -19,8 +19,8 @@ if TYPE_CHECKING:
 def transform_read_set_from_query_report(
     *, report: GraphQLQueryReport, schema_branch: SchemaBranch
 ) -> TransformReadSet:
-    """Map an analyzed GraphQL query report into the kinds and fields it reads."""
-    read_fields_by_kind = {kind: access.fields for kind, access in report.requested_read.items()}
+    """Map an analyzed GraphQL query report into the kinds and fields it reads or filters on."""
+    read_fields_by_kind = report.selected_or_filtered_fields_by_kind
 
     # Only a kind with a derived read is a candidate; the walrus keeps that read set for the check.
     scopable_derived_kinds = {
@@ -30,7 +30,12 @@ def transform_read_set_from_query_report(
         and derived_reads_are_scopable(schema_branch=schema_branch, kind=kind, derived_reads=derived_reads)
     }
 
-    return TransformReadSet.from_read_fields(read_fields_by_kind, scopable_derived_kinds=scopable_derived_kinds)
+    return TransformReadSet.from_read_fields(
+        read_fields_by_kind,
+        scopable_derived_kinds=scopable_derived_kinds,
+        filter_fields_by_kind=report.filtered_fields_by_kind,
+        relationship_filter_fields_by_kind=report.relationship_filtered_fields_by_kind,
+    )
 
 
 def derived_reads_are_scopable(*, schema_branch: SchemaBranch, kind: str, derived_reads: frozenset[str]) -> bool:

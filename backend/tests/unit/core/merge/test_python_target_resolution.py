@@ -71,6 +71,40 @@ UNPINNED = PythonAttributeReadSet(
     read_set=TransformReadSet(read_kinds=frozenset({DEVICE}), read_fields={DEVICE: frozenset({"name"})}),
     pinned=False,
 )
+# Reads the device name and keeps only the spine devices of the sites in one region: ``role`` is
+# filtered at the root, ``region`` on the site relationship.
+SPINE_UPLINKS = PythonAttributeReadSet(
+    kind=DEVICE,
+    attribute_name="uplinks",
+    read_set=TransformReadSet(
+        read_kinds=frozenset({DEVICE, SITE}),
+        read_fields={DEVICE: frozenset({"name", "role"}), SITE: frozenset({"region"})},
+        filter_fields={DEVICE: frozenset({"role"}), SITE: frozenset({"region"})},
+        relationship_filter_fields={SITE: frozenset({"region"})},
+    ),
+)
+# Reads the device name and keeps only the sites with one display label, which no field names.
+SITE_LABEL_FILTER = PythonAttributeReadSet(
+    kind=DEVICE,
+    attribute_name="site_label",
+    read_set=TransformReadSet(
+        read_kinds=frozenset({DEVICE, SITE}),
+        read_fields={DEVICE: frozenset({"name"})},
+        imprecise_kinds=frozenset({SITE}),
+        filter_fields={SITE: frozenset({"display_label"})},
+        relationship_filter_fields={SITE: frozenset({"display_label"})},
+    ),
+)
+# A router attribute whose query root is a device filtered on its role.
+SPINE_PEERS = PythonAttributeReadSet(
+    kind=ROUTER,
+    attribute_name="spine_peers",
+    read_set=TransformReadSet(
+        read_kinds=frozenset({DEVICE}),
+        read_fields={DEVICE: frozenset({"name", "role"})},
+        filter_fields={DEVICE: frozenset({"role"})},
+    ),
+)
 
 
 def _resolver(
@@ -443,11 +477,7 @@ async def test_a_created_node_widens_an_undeterminable_read_set() -> None:
 
 
 async def test_an_unpinned_query_widens_on_a_field_it_reads_without_selecting() -> None:
-    """A filter argument never reaches the read set, so an unread field can still move members.
-
-    An unpinned query filtering on one field and selecting another takes a node into or out of its
-    result when that filter field changes, and no field filter here can see it.
-    """
+    """An unpinned query widens on any field of a kind it reads, whether it selects that field or not."""
     subscribers = RecordingSubscriberSource(subscribers={})
     resolver = _resolver(read_sets=[UNPINNED], subscriber_source=subscribers)
 
@@ -514,4 +544,64 @@ async def test_an_unpinned_query_ignores_an_update_to_a_kind_it_never_reads(case
     )
 
     assert targets == []
+    assert subscribers.calls == []
+
+
+async def test_a_change_to_a_root_filter_field_of_the_target_kind_recomputes_the_node_itself() -> None:
+    """The transform runs with the node's own id, so the root filter decides only the node's own value."""
+    subscribers = RecordingSubscriberSource(subscribers={})
+    resolver = _resolver(read_sets=[SPINE_UPLINKS], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(
+        branch=BRANCH,
+        changes=[MergeChange(node_id="d1", kind=DEVICE, action="updated", changed_fields=frozenset({"role"}))],
+    )
+
+    assert _identities(targets) == [(DEVICE, "uplinks")]
+    assert targets[0].whole_kind is False
+    assert _ids(targets[0]) == frozenset({"d1"})
+
+
+@dataclass
+class FilterWideningCase:
+    name: str
+    attribute: PythonAttributeReadSet
+    change: MergeChange
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        FilterWideningCase(
+            name="a_relationship_filter_field",
+            attribute=SPINE_UPLINKS,
+            change=MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset({"region"})),
+        ),
+        FilterWideningCase(
+            name="a_root_filter_field_of_another_kind",
+            attribute=SPINE_PEERS,
+            change=MergeChange(node_id="d1", kind=DEVICE, action="updated", changed_fields=frozenset({"role"})),
+        ),
+        FilterWideningCase(
+            name="any_field_behind_a_derived_relationship_filter",
+            attribute=SITE_LABEL_FILTER,
+            change=MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset({"name"})),
+        ),
+        FilterWideningCase(
+            name="a_change_that_names_no_field",
+            attribute=SPINE_UPLINKS,
+            change=MergeChange(node_id="s1", kind=SITE, action="updated"),
+        ),
+    ],
+    ids=lambda case: case.name,
+)
+async def test_a_change_to_a_filter_field_that_can_add_a_node_to_a_result_widens(case: FilterWideningCase) -> None:
+    """A node that a filter newly lets through is in no query group yet, so the lookup cannot name its readers."""
+    subscribers = RecordingSubscriberSource(subscribers={})
+    resolver = _resolver(read_sets=[case.attribute], subscriber_source=subscribers)
+
+    targets = await resolver.resolve(branch=BRANCH, changes=[case.change])
+
+    assert _identities(targets) == [(case.attribute.kind, case.attribute.attribute_name)]
+    assert targets[0].whole_kind is True
     assert subscribers.calls == []

@@ -431,6 +431,75 @@ async def test_filtered_fields_by_kind(
     assert analyzer.query_report.filtered_fields_by_kind == case.expected_fields_by_kind
 
 
+async def test_selected_or_filtered_fields_by_kind(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot
+) -> None:
+    """Report, per kind, the fields the query selects together with the fields it filters on."""
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    analyzer = InfrahubGraphQLQueryAnalyzer(
+        query="""
+        query {
+            TestPerson(height__value: 180) {
+                edges {
+                    node {
+                        name { value }
+                        cars(color__value: "red") { edges { node { id } } }
+                    }
+                }
+            }
+        }
+        """,
+        schema=gql_params.schema,
+        branch=default_branch,
+        schema_branch=schema_branch,
+    )
+
+    assert analyzer.query_report.selected_or_filtered_fields_by_kind == {
+        "TestPerson": {"name", "height", "cars"},
+        "TestCar": {"color"},
+        "TestElectricCar": {"color"},
+        "TestGazCar": {"color"},
+    }
+    assert analyzer.query_report.fields_by_kind(kind="TestPerson") == ["cars", "height", "name"]
+
+
+async def test_relationship_filtered_fields_by_kind_leaves_out_the_root_filters(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot
+) -> None:
+    """Report only the filters of a relationship read, since a root filter applies to the queried object itself."""
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    analyzer = InfrahubGraphQLQueryAnalyzer(
+        query="""
+        query {
+            TestPerson(name__value: "John") {
+                edges {
+                    node {
+                        cars(color__value: "red") {
+                            edges { node { name { value } } }
+                        }
+                    }
+                }
+            }
+        }
+        """,
+        schema=gql_params.schema,
+        branch=default_branch,
+        schema_branch=schema_branch,
+    )
+
+    assert analyzer.query_report.relationship_filtered_fields_by_kind == {
+        "TestCar": {"color"},
+        "TestElectricCar": {"color"},
+        "TestGazCar": {"color"},
+    }
+
+
 async def test_filtered_fields_by_kind_reports_the_hfid_filter(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
 ) -> None:

@@ -126,6 +126,7 @@ Besides the transform-lifecycle triggers, two families of data-path automations 
 
 - **Owner automations** are keyed on `(key_name, transform)` and match the attribute's own kind. The action names the attribute it submits, so each attribute needs a definition of its own.
 - **Query automations** are keyed on the transform, with one definition per kind its query reads. The action names no attribute and the flow behind it resolves them, so one definition covers every attribute the transform feeds. A definition per attribute would start the same flow once per attribute for one change, with no difference in what gets recomputed.
+- **Field filter.** Both families match the fields the query selects or filters on, per kind. A kind with neither gets no query automation, because a trigger with no field to match fires on every update of that kind. A node that a relationship filter newly lets through is in no query group yet, so this path does not reach its readers.
 - **Ownership.** A branch owns both families or neither — see [Branch scoping of automations](events.md#branch-scoping-of-automations).
 - **Backfill.** `computed_attribute_setup_python` builds its recompute candidates from the owner automations scoped to the event's branch, so a `SchemaUpdatedEvent` backfills attributes only on a branch that owns its automations.
 

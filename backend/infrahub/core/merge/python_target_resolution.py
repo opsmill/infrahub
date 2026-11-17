@@ -14,6 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol
 
+from infrahub.core.schema.schema_branch_computed.python_transform import IMPRECISE_READ_FIELDS
 from infrahub.log import get_logger
 
 from .recompute_coalescing import (
@@ -345,6 +346,18 @@ def _select_reader(*, signature: ChangeSignature, read_set: TransformReadSet, ta
         return _Narrow(self_ids=False, reader_lookup=True, precise=True)
 
     self_ids = signature.kind == target_kind
+
+    # The transform runs with the target's own id, so only a root filter on the target kind is the target's alone.
+    widening_fields = read_set.relationship_filter_fields.get(signature.kind, frozenset())
+    if not self_ids:
+        widening_fields |= read_set.filter_fields.get(signature.kind, frozenset())
+    if widening_fields and (
+        not signature.changed_fields
+        or signature.changed_fields & widening_fields
+        or widening_fields & IMPRECISE_READ_FIELDS
+    ):
+        # A node that a filter newly lets through is in no query group yet, so no lookup can name its readers.
+        return _Widen()
 
     if not signature.changed_fields or signature.kind in read_set.imprecise_kinds:
         # Nothing to filter on, or a derived read whose backing fields cannot be named.
