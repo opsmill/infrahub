@@ -100,6 +100,24 @@ describe("FieldMetadataPopover", () => {
     expect(sourceLink.element().querySelector("svg.lucide-file-box")).not.toBeNull();
   });
 
+  it("shows the title and the action of the field in its header", async () => {
+    // GIVEN
+    const component = await render(
+      <FieldMetadataPopover
+        metadata={emptyMetadata}
+        title="Name"
+        action={<button type="button">Rename</button>}
+      />
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "View metadata" }).click();
+
+    // THEN
+    await expect.element(component.getByText("Name", { exact: true })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: "Rename" })).toBeVisible();
+  });
+
   it("shows that a protected field is protected", async () => {
     // WHEN
     const component = await openPopover({ ...emptyMetadata, is_protected: true });

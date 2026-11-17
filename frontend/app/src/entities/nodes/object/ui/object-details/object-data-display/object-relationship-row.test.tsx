@@ -124,7 +124,7 @@ describe("ObjectRelationshipRow", () => {
       await component.getByRole("button", { name: "View metadata" }).click();
 
       // THEN
-      const editButton = component.getByTestId("edit-metadata-button");
+      const editButton = component.getByRole("button", { name: "Edit metadata" });
       await expect.element(editButton).toBeVisible();
       await expect.element(editButton).toBeEnabled();
     });
@@ -145,7 +145,7 @@ describe("ObjectRelationshipRow", () => {
       await component.getByRole("button", { name: "View metadata" }).click();
 
       // THEN
-      const editButton = component.getByTestId("edit-metadata-button");
+      const editButton = component.getByRole("button", { name: "Edit metadata" });
       await expect.element(editButton).toBeVisible();
       await expect.element(editButton).toBeDisabled();
     });

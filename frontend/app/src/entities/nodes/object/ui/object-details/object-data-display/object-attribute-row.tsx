@@ -1,10 +1,8 @@
-import { Button, Tooltip } from "@infrahub/ui";
 import { LockIcon } from "lucide-react";
-
-import { Icon } from "@/shared/components/display/icon";
 
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
+import { EditMetadataButton } from "@/entities/nodes/object/ui/metadata/edit-metadata-button";
 import {
   FieldMetadataPopover,
   METADATA_HOVER_AREA,
@@ -30,6 +28,7 @@ export function ObjectAttributeRow({
   permission,
 }: ObjectAttributeRowProps) {
   const attributeLabel = attributeSchema.label ?? attributeSchema.name;
+  const canEditMetadata = !attributeSchema.read_only;
 
   return (
     <ObjectDataRow
@@ -45,28 +44,14 @@ export function ObjectAttributeRow({
           <FieldMetadataPopover
             metadata={attributeData}
             revealOnHover
-            header={
-              !attributeSchema.read_only && (
-                <div className="flex items-center justify-between border-border-strong border-b p-1 pl-2">
-                  <div className="font-semibold text-sm">{attributeLabel}</div>
-                  {onClickMetadata && (
-                    <Tooltip message={permission.update.message}>
-                      <Button
-                        isDisabledAndFocusable={!permission.update.isAllowed}
-                        onPress={() => {
-                          onClickMetadata(attributeSchema);
-                        }}
-                        variant="ghost"
-                        size="xs"
-                        shape="circle"
-                        data-testid="edit-metadata-button"
-                      >
-                        <Icon icon="mdi:pencil" className="text-custom-blue-500" />
-                      </Button>
-                    </Tooltip>
-                  )}
-                </div>
-              )
+            title={canEditMetadata ? attributeLabel : undefined}
+            action={
+              canEditMetadata && onClickMetadata ? (
+                <EditMetadataButton
+                  onPress={() => onClickMetadata(attributeSchema)}
+                  permission={permission.update}
+                />
+              ) : undefined
             }
           />
 

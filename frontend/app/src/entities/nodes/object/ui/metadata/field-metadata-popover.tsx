@@ -21,13 +21,15 @@ export const METADATA_HOVER_AREA = "group/metadata";
 
 interface FieldMetadataPopoverProps {
   metadata: NodeAttributeMetadata | NodeRelationshipMetadata;
-  header?: React.ReactNode;
+  title?: string;
+  action?: React.ReactNode;
   revealOnHover?: boolean;
 }
 
 export function FieldMetadataPopover({
   metadata,
-  header,
+  title,
+  action,
   revealOnHover = false,
 }: FieldMetadataPopoverProps) {
   const { source, owner, updated_at: updatedAt, is_protected: isProtected } = metadata;
@@ -98,10 +100,26 @@ export function FieldMetadataPopover({
       </Button>
 
       <Popover data-testid="metadata-tooltip">
-        {!!header && header}
+        <FieldMetadataHeader title={title} action={action} />
 
         <PropertyList properties={items} valueClassName="text-right" />
       </Popover>
     </PopoverTrigger>
+  );
+}
+
+interface FieldMetadataHeaderProps {
+  title?: string;
+  action?: React.ReactNode;
+}
+
+function FieldMetadataHeader({ title, action }: FieldMetadataHeaderProps) {
+  if (!title && !action) return null;
+
+  return (
+    <div className="flex items-center justify-between border-border-strong border-b p-1 pl-2">
+      <div className="font-semibold text-sm">{title}</div>
+      {action}
+    </div>
   );
 }

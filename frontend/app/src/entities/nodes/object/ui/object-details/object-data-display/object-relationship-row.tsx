@@ -1,8 +1,6 @@
-import { Button, Tooltip } from "@infrahub/ui";
 import { LockIcon } from "lucide-react";
 
 import { Row } from "@/shared/components/container";
-import { Icon } from "@/shared/components/display/icon";
 import { Link } from "@/shared/components/ui/link";
 
 import type {
@@ -11,6 +9,7 @@ import type {
   NodeRelationshipWithMetadata,
 } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { EditMetadataButton } from "@/entities/nodes/object/ui/metadata/edit-metadata-button";
 import {
   FieldMetadataPopover,
   METADATA_HOVER_AREA,
@@ -77,6 +76,7 @@ function RelationshipOneRow({
   const relatedNode = relationshipData.node;
   const relationshipProperties = relationshipData.properties;
   const { schema: peerSchema } = useSchema(relationshipSchema.peer);
+  const relationshipLabel = getRelationshipLabel(relationshipSchema, peerSchema);
 
   return (
     <ObjectDataRow
@@ -101,27 +101,14 @@ function RelationshipOneRow({
               <FieldMetadataPopover
                 metadata={relationshipProperties}
                 revealOnHover
-                header={
-                  onClickMetadata && (
-                    <div className="flex items-center justify-between border-b p-1 pt-0 pl-2">
-                      <div className="font-semibold">
-                        {getRelationshipLabel(relationshipSchema, peerSchema)}
-                      </div>
-
-                      <Tooltip message={permission.update.message ?? undefined}>
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          shape="circle"
-                          isDisabledAndFocusable={!permission.update.isAllowed}
-                          onPress={() => onClickMetadata(relationshipSchema)}
-                          data-testid="edit-metadata-button"
-                        >
-                          <Icon icon="mdi:pencil" className="text-custom-blue-500" />
-                        </Button>
-                      </Tooltip>
-                    </div>
-                  )
+                title={onClickMetadata ? relationshipLabel : undefined}
+                action={
+                  onClickMetadata ? (
+                    <EditMetadataButton
+                      onPress={() => onClickMetadata(relationshipSchema)}
+                      permission={permission.update}
+                    />
+                  ) : undefined
                 }
               />
             </>
