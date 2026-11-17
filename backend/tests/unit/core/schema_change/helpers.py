@@ -12,16 +12,18 @@ from infrahub.core.schema import (
     RelationshipSchema,
     SchemaRoot,
 )
+from infrahub.exceptions import DatabaseError
 from tests.constants import TestKind
 from tests.helpers.schema import DEVICE, INTERFACE, INTERFACE_HOLDER, PHYSICAL_INTERFACE, SFP, TAG, VIRTUAL_INTERFACE
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
 
     from pydantic import JsonValue
 
-    from infrahub.core.models import SchemaUpdateValidationResult
+    from infrahub.core.models import SchemaUpdateMigrationInfo, SchemaUpdateValidationResult
     from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.core.schema_change.constants import SchemaChangeMigrationStatus
     from infrahub.core.schema_change.operations import SchemaOperation
 
 TAG_STATUS_ATTRIBUTE = "status"
@@ -240,3 +242,64 @@ def assert_same_load_result(*, expected: SchemaLoadResult, actual: SchemaLoadRes
     assert actual_summary.constraints == expected_summary.constraints, (
         f"constraints: expected {expected_summary.constraints}, got {actual_summary.constraints}"
     )
+
+
+CREATE_MIGRATION_RECORDS = "create_migration_records"
+SET_MIGRATION_RECORDS_STATUS = "set_migration_records_status"
+FAILING_STORE_ERROR = "Unable to connect to the database"
+
+
+@dataclass(frozen=True)
+class MigrationRecordStoreCall:
+    method: str
+    arguments: dict[str, object]
+
+
+class FailingMigrationRecordStore:
+    """A migration record store that records each call, then raises for the methods named in `failing_methods`.
+
+    A method that does not fail returns the record ID `record-<position>` for each migration.
+    """
+
+    def __init__(
+        self, failing_methods: frozenset[str] = frozenset({CREATE_MIGRATION_RECORDS, SET_MIGRATION_RECORDS_STATUS})
+    ) -> None:
+        self.failing_methods = failing_methods
+        self.calls: list[MigrationRecordStoreCall] = []
+
+    async def create_migration_records(
+        self, *, application_id: str, migrations: Sequence[SchemaUpdateMigrationInfo]
+    ) -> dict[int, str]:
+        self.calls.append(
+            MigrationRecordStoreCall(
+                method=CREATE_MIGRATION_RECORDS,
+                arguments={"application_id": application_id, "migrations": list(migrations)},
+            )
+        )
+        self._raise_if_failing(CREATE_MIGRATION_RECORDS)
+        return {position: f"record-{position}" for position in range(len(migrations))}
+
+    async def set_migration_records_status(
+        self,
+        *,
+        record_ids: Sequence[str],
+        status: SchemaChangeMigrationStatus,
+        nbr_migrations_executed: int | None,
+        errors: Sequence[str],
+    ) -> None:
+        self.calls.append(
+            MigrationRecordStoreCall(
+                method=SET_MIGRATION_RECORDS_STATUS,
+                arguments={
+                    "record_ids": list(record_ids),
+                    "status": status,
+                    "nbr_migrations_executed": nbr_migrations_executed,
+                    "errors": list(errors),
+                },
+            )
+        )
+        self._raise_if_failing(SET_MIGRATION_RECORDS_STATUS)
+
+    def _raise_if_failing(self, method: str) -> None:
+        if method in self.failing_methods:
+            raise DatabaseError(message=FAILING_STORE_ERROR)

@@ -10,7 +10,9 @@
 # Access: a logged-in account. No other permission.
 #
 # A limit below 1 or above the maximum, or an offset below 0, is refused with
-# a validation error.
+# a validation error. The messages, for InfrahubSchemaChange and for
+# operations: "limit must be >= 1", "limit must be <= <maximum>" (50 or 500),
+# "offset must be >= 0".
 
 enum SchemaChangeStatus {
   STAGED

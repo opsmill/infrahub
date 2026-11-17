@@ -361,7 +361,7 @@ a GraphQL query returns the history of a branch in pages.
 
 ### Tests (write first)
 
-- [ ] T023 [US2] Write the seeding function and the component tests of the repository and
+- [X] T023 [US2] Write the seeding function and the component tests of the repository and
       of the history reader, against Neo4j.
 
       In `backend/tests/helpers/schema_change.py`, one async function that creates a history
@@ -388,7 +388,7 @@ a GraphQL query returns the history of a branch in pages.
         `limit`, `offset`, a status filter and the count of all pages;
       - operations for a set of schema changes come in pages with the count for each one;
       - applications for a set of schema changes come with their migration records.
-- [ ] T024 [P] [US2] Write the component tests of the version resolver and of the recorder.
+- [X] T024 [P] [US2] Write the component tests of the version resolver and of the recorder.
       Neither module requests a schema fixture.
 
       In `backend/tests/component/core/schema_change/test_version_resolver.py`, as methods of
@@ -419,7 +419,7 @@ a GraphQL query returns the history of a branch in pages.
         second has the first as its parent;
       - `record_applied` creates an applied schema change and an applied application in one call;
       - `start` and `record_applied` raise when the list of operations is empty (FR-003).
-- [ ] T025 [P] [US2] Write the tests of the migration recorder.
+- [X] T025 [P] [US2] Write the tests of the migration recorder.
 
       In `backend/tests/component/core/schema_change/test_migration_recorder.py`, as function
       tests that request `db` and `empty_database` only, each on one application created with
@@ -438,7 +438,7 @@ a GraphQL query returns the history of a branch in pages.
       records each call and then raises:
       - with that store, `register`, `batch_started` and `migration_ended` do not raise. Assert
         the log record of each failure with `caplog`, and that the store received each call.
-- [ ] T026 [P] [US2] Write the component tests of the query in
+- [X] T026 [P] [US2] Write the component tests of the query in
       `backend/tests/component/graphql/queries/test_schema_change.py`, as methods of one class in
       the style of
       `backend/tests/component/graphql/metadata/test_graphql_query_metadata.py::TestMetadataFilters`.
@@ -534,7 +534,11 @@ a GraphQL query returns the history of a branch in pages.
       - set the status, `nbr_migrations_executed` and `errors` of migration records selected by
         element ID;
       - mark a schema change and its application applied: status, version, `applied_at`, and the
-        `SCHEMA_CHANGE_HAS_PARENT` edge when there is a parent.
+        `SCHEMA_CHANGE_HAS_PARENT` edge when there is a parent;
+      - mark a schema change and its application failed: both statuses, the error on the
+        application, and the migration records of the application that are `applied` set to
+        `rolled_back`, in one query. The seeding function of T023 creates failed schema changes
+        through it, so it is written here and not in phase 5.
 - [ ] T031 [US2] Create the read queries in `backend/infrahub/core/query/schema_change.py`, each
       with a typed result:
       - the highest version of the applied schema changes of a branch, with the ID of that schema
@@ -551,8 +555,10 @@ a GraphQL query returns the history of a branch in pages.
 - [ ] T032 [US2] Create `SchemaChangeRepository` in
       `backend/infrahub/core/schema_change/repository.py` and `SchemaChangeHistoryReader` in
       `backend/infrahub/core/schema_change/history_reader.py`, each with its methods of
-      [data-model.md](data-model.md), "What the repository and the history reader offer", except
-      the repository method that phase 5 adds. Each takes `db` in its constructor and returns
+      [data-model.md](data-model.md), "What the repository and the history reader offer", with
+      the names, signatures and result types of
+      [contracts/internal-interfaces.md](contracts/internal-interfaces.md), including
+      `mark_failed`. Each takes `db` in its constructor and returns
       typed results. The repository converts `SchemaOperation` to `SchemaChangeOperation`, and
 the reader converts it back. Neither has a delete method. Name the two migration record
       methods of the repository `create_migration_records` and `set_migration_records_status`,
@@ -739,11 +745,11 @@ error, and the status of each migration.
 
 ### Implementation
 
-- [ ] T047 [US3] Add the query that marks a schema change and its application failed to
-      `backend/infrahub/core/query/schema_change.py`: it sets both statuses, stores the error on
-      the application, and sets the migration records of the application that are `applied` to
-      `rolled_back`, in one query. Add the repository method in
-      `backend/infrahub/core/schema_change/repository.py`.
+- [ ] T047 [US3] Confirm that the query and the repository method `mark_failed`, which T030 and
+      T032 create because the seeding function of T023 needs them, set both statuses, store the
+      error on the application, and set the migration records of the application that are
+      `applied` to `rolled_back`, in one query. Change
+      `backend/infrahub/core/query/schema_change.py` only if T044 shows a difference.
 - [ ] T048 [US3] Add `fail` to `SchemaChangeRecorder` in
       `backend/infrahub/core/schema_change/recorder.py`. Make T044 pass.
 - [ ] T049 [US3] Add the failure path to `SchemaChangeApplicationRunner.run` in
@@ -903,8 +909,8 @@ methods of one class run in the order they are defined.
   T028 write one class in one file, in that order. T039 can start while T029 to T038 are in
   progress.
 - T044 and T045 in phase 5. T046 adds to the class of T027, after T028.
-- Phases 5, 6 and 7 can run at the same time after phase 4, with one exception: T047 and T053
-  both change `core/query/schema_change.py`.
+- Phases 5, 6 and 7 can run at the same time after phase 4, with one exception: T047, when it
+  must change `core/query/schema_change.py`, and T053 both change that file.
 - T056 to T060 in phase 8.
 
 ## Implementation strategy

@@ -139,6 +139,142 @@ class SchemaCandidateBuilder:
   constraints that the candidate lists. No caller applies operations with `SchemaChangeApplier`
   directly.
 
+## `SchemaChangeRepository`
+
+The writes and the version reads of the records, in `repository.py`. The recorder, the version
+resolver and the migration recorder use it.
+
+```python
+@dataclass(frozen=True)
+class CreatedSchemaChange:
+    schema_change_id: str
+    application_id: str
+
+
+@dataclass(frozen=True)
+class AppliedSchemaChangeVersion:
+    schema_change_id: str
+    version: int
+
+
+class SchemaChangeRepository:
+    def __init__(self, db: InfrahubDatabase) -> None: ...
+
+    async def create_schema_change(
+        self, *, branch: str, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
+    ) -> CreatedSchemaChange: ...
+
+    async def mark_applied(
+        self,
+        *,
+        schema_change_id: str,
+        application_id: str,
+        version: int,
+        parent_id: str | None,
+        applied_at: Timestamp,
+        user_id: str,
+    ) -> None: ...
+
+    async def mark_failed(self, *, schema_change_id: str, application_id: str, error: str, user_id: str) -> None: ...
+
+    async def create_migration_records(
+        self, *, application_id: str, migrations: Sequence[SchemaUpdateMigrationInfo]
+    ) -> dict[int, str]: ...
+
+    async def set_migration_records_status(
+        self,
+        *,
+        record_ids: Sequence[str],
+        status: SchemaChangeMigrationStatus,
+        nbr_migrations_executed: int | None,
+        errors: Sequence[str],
+    ) -> None: ...
+
+    async def get_highest_applied_version(self, *, branch: str) -> AppliedSchemaChangeVersion | None: ...
+
+    async def get_highest_applied_version_at(
+        self, *, branch: str, at: Timestamp
+    ) -> AppliedSchemaChangeVersion | None: ...
+```
+
+- The ID of a schema change and of an application is the `uuid` of its record, as text. The
+  migration record IDs that `create_migration_records` returns, keyed by position, are element
+  IDs, and `set_migration_records_status` selects records by them.
+- `create_schema_change` creates the schema change with the status `running`, no version, the
+  summary of the operations and the format version 1, one operation record for each operation
+  with its index as `position`, and one application with the status `running`, the branch and
+  `at`.
+- `mark_applied` sets the schema change and the application to `applied`, and stores the version,
+  `applied_at` and the `SCHEMA_CHANGE_HAS_PARENT` edge when `parent_id` is set.
+- `mark_failed` sets both to `failed`, stores the error on the application, and sets the migration
+  records of the application that are `applied` to `rolled_back`. It is created with the other
+  writes, not in phase 5, because the seeding function of the tests creates failed schema changes.
+- `get_highest_applied_version_at` counts the applied schema changes of the branch whose
+  `applied_at` is at or before `at`.
+- A schema change with the status `running` or `failed` is never returned by the two version
+  reads.
+
+## `SchemaChangeHistoryReader`
+
+The paged reads of the history query, in `history_reader.py`. Each result holds the records of
+`models.py`, built from the rows of the `Query` classes.
+
+```python
+@dataclass(frozen=True)
+class SchemaChangeHistoryEntry:
+    schema_change: SchemaChange
+    parent: SchemaChange | None
+
+
+@dataclass(frozen=True)
+class SchemaChangeHistoryPage:
+    count: int
+    entries: list[SchemaChangeHistoryEntry]
+
+
+@dataclass(frozen=True)
+class StoredSchemaOperation:
+    position: int
+    operation: SchemaOperation
+
+
+@dataclass(frozen=True)
+class SchemaOperationPage:
+    count: int
+    operations: list[StoredSchemaOperation]
+
+
+@dataclass(frozen=True)
+class SchemaChangeApplicationRecord:
+    application: SchemaChangeApplication
+    migrations: list[SchemaChangeMigration]
+
+
+class SchemaChangeHistoryReader:
+    def __init__(self, db: InfrahubDatabase) -> None: ...
+
+    async def list_schema_changes(
+        self, *, branch: str, limit: int, offset: int, statuses: Sequence[SchemaChangeStatus] | None = None
+    ) -> SchemaChangeHistoryPage: ...
+
+    async def list_operations(
+        self, *, schema_change_ids: Sequence[str], limit: int, offset: int
+    ) -> dict[str, SchemaOperationPage]: ...
+
+    async def list_applications(
+        self, *, schema_change_ids: Sequence[str]
+    ) -> dict[str, list[SchemaChangeApplicationRecord]]: ...
+```
+
+- `list_schema_changes` orders the applied schema changes by version, then the others by
+  `created_at`. `count` is the number of schema changes that match on all pages. `statuses` set to
+  `None` filters nothing.
+- The two other reads return a key for each ID of `schema_change_ids` that names a stored schema
+  change. `list_operations` returns the operations in the order of `position`, and `count` is the
+  number of operations of that schema change. `list_applications` returns the migration records
+  in the order of `position`.
+- The ID keys are the `uuid` of each schema change, as text.
+
 ## `SchemaChangeVersionResolver`
 
 Calculates the version and the parent of the next applied schema change of a branch
@@ -165,6 +301,8 @@ class SchemaChangeVersionResolver:
   base plus 1, and the parent is main's schema change with the base version.
 - Otherwise the version is 1 and there is no parent.
 - A schema change with the status `running` or `failed` never changes the result (FR-032).
+- A branch is main when its name is `default_branch_name`. The resolver reads only the `name` and
+  the `branched_from` of the branch, so a test can give each case a main of its own.
 - The caller holds the schema lock, so the value is still correct when the caller writes it.
 
 ## `SchemaChangeRecorder`
@@ -204,7 +342,8 @@ class SchemaChangeRecorder:
 
 - It has four entry methods because they are the steps of one schema change, and each needs the
   `SchemaChangeRecording` that an earlier one returned.
-- `start` and `record_applied` raise when `operations` is empty.
+- `start` and `record_applied` raise `ValueError` with the message
+  `A schema change needs at least one operation` when `operations` is empty, and store nothing.
 - `complete` and `record_applied` take `branch` because they assign the version, and the
   resolver reads the name and the `branched_from` of the branch. `fail` assigns no version and
   takes no branch.
@@ -349,8 +488,49 @@ class MigrationRecordStore(Protocol):
   kind updates runs one migration at a time, so its records have the status `running` while
   most of them wait.
 - `NoRecordMigrationRecorder`: does nothing. Used when the message has no application ID.
+- The values `ApplicationMigrationRecorder` passes to `set_migration_records_status`:
+  - `batch_started`: the record IDs of the positions given, in that order, the status `running`,
+    `nbr_migrations_executed=None` and no error;
+  - `migration_ended`: the record ID of the position, the status `applied` with no error when the
+    result has no error, or `failed` with the errors of the result, and the
+    `nbr_migrations_executed` of the result in both cases.
 - A failure to write a record does not stop a migration. It is logged, and the record keeps its
-  earlier status.
+  earlier status. The recorder catches at least the `DatabaseError` that the store raises, and
+  logs a warning with `get_logger()` and `exc_info=True`, with these events and fields:
+
+  | Method | Event | Fields |
+  | --- | --- | --- |
+  | `register` | `Could not create the migration records of an application` | `application_id` |
+  | `batch_started` | `Could not set the migration records of a batch to running` | `application_id`, `positions` (a list) |
+  | `migration_ended` | `Could not update the migration record of a migration` | `application_id`, `position` |
+
+## The seeding function of the tests
+
+`backend/tests/helpers/schema_change.py` creates a history through `SchemaChangeRepository`, so no
+test module writes these records by hand. It does not use the version resolver, so the tests of
+the resolver can use it.
+
+```python
+async def seed_schema_change_history(
+    *, db: InfrahubDatabase, branches: Sequence[BranchHistorySeed], user_id: str = SYSTEM_USER_ID
+) -> SeededSchemaChangeHistory: ...
+```
+
+- `BranchHistorySeed(branch, changes, nbr_operations=1, migrations=(), first_version=1, first_parent_id=None)`:
+  `changes` lists the status of each schema change of the branch (`applied`, `failed` or
+  `running`) in the order they are created, so the counts of each status and the order of
+  `created_at` are both set. `migrations` is a list of `MigrationSeed(migration, status,
+  nbr_migrations_executed, errors)`, the migrations of the application of each schema change.
+- An applied schema change gets `first_version`, then the next versions, through `mark_applied`,
+  with `applied_at` equal to the timestamp of its application. The first one gets
+  `first_parent_id` as its parent, the next ones the applied schema change before them. A seed for
+  a branch passes the ID of main's schema change as `first_parent_id`.
+- A failed schema change gets its error through `mark_failed`, after its migration records got
+  their statuses.
+- Each operation sets `label` on the attribute `color` of `TestCar`, with the value
+  `Color <position>`. A schema change with one operation has the summary `testcar_color_update`.
+- The result lists every `SeededSchemaChange` in the order of creation, with the IDs, the
+  version, the parent ID, the timestamp `at`, the operations and the migration record IDs.
 
 ## Where the components are built
 
