@@ -1,5 +1,6 @@
 import { Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { page } from "vitest/browser";
 import { cleanup } from "vitest-browser-react";
 
 import { useGetArtifactFile } from "@/entities/artifacts/ui/queries/get-artifact-file.query";
@@ -16,6 +17,7 @@ import {
 } from "@/entities/proposed-changes/domain/model/proposed-change-thread";
 
 import { render } from "../../../../../tests/components/render";
+import { initPointerTracking } from "../../../../../tests/components/utils";
 
 vi.mock("@/entities/artifacts/ui/queries/get-artifact-file.query", () => ({
   useGetArtifactFile: vi.fn(),
@@ -141,6 +143,8 @@ describe("ArtifactContentDiff", () => {
   });
 
   afterEach(async () => {
+    // The pointer position carries over between tests in browser mode.
+    await initPointerTracking(page.elementLocator(document.body));
     await cleanup();
     window.history.replaceState(null, "", initialPath);
     vi.resetAllMocks();
@@ -179,34 +183,40 @@ describe("ArtifactContentDiff", () => {
     }
   );
 
-  test("creates an artifact thread on the storage id of the commented side", async () => {
-    // GIVEN
-    const { create } = mockMutations();
-    const component = await renderArtifactDiff();
-    await component.getByText("line 0", { exact: true }).hover();
-    await component.getByRole("button", { name: "Add a comment on line 1" }).click();
-    await component.getByRole("textbox").fill("Why this change?");
+  test.each([
+    { side: "new", line: "line 0", storageId: "new-storage" },
+    { side: "old", line: "line 1", storageId: "previous-storage" },
+  ])(
+    "creates an artifact thread on $storageId when commenting on the $side side",
+    async ({ line, storageId }) => {
+      // GIVEN
+      const { create } = mockMutations();
+      const component = await renderArtifactDiff();
+      await component.getByText(line, { exact: true }).first().hover();
+      await component.getByRole("button", { name: "Add a comment on line 1" }).click();
+      await component.getByRole("textbox").fill("Why this change?");
 
-    // WHEN
-    await component.getByRole("button", { name: "Comment", exact: true }).click();
+      // WHEN
+      await component.getByRole("button", { name: "Comment", exact: true }).click();
 
-    // THEN
-    await expect.element(component.getByRole("textbox")).not.toBeInTheDocument();
-    expect(create).toHaveBeenNthCalledWith(
-      1,
-      {
-        objectKind: PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
-        data: {
-          change: { id: "proposed-change-1" },
-          resolved: { value: false },
-          line_number: { value: 1 },
-          storage_id: { value: "new-storage" },
-          artifact_id: { value: "artifact-1" },
+      // THEN
+      await expect.element(component.getByRole("textbox")).not.toBeInTheDocument();
+      expect(create).toHaveBeenNthCalledWith(
+        1,
+        {
+          objectKind: PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
+          data: {
+            change: { id: "proposed-change-1" },
+            resolved: { value: false },
+            line_number: { value: 1 },
+            storage_id: { value: storageId },
+            artifact_id: { value: "artifact-1" },
+          },
         },
-      },
-      expect.anything()
-    );
-  });
+        expect.anything()
+      );
+    }
+  );
 
   test("deletes the artifact thread and shows an error when its first comment fails", async () => {
     // GIVEN

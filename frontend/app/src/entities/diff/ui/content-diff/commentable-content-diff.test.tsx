@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { page } from "vitest/browser";
 
 import { AuthContext } from "@/entities/authentication/ui/auth-provider";
 import { CommentableContentDiff } from "@/entities/diff/ui/content-diff/commentable-content-diff";
@@ -14,6 +15,7 @@ import {
 } from "@/entities/proposed-changes/domain/model/proposed-change-thread";
 
 import { render } from "../../../../../tests/components/render";
+import { initPointerTracking } from "../../../../../tests/components/utils";
 
 vi.mock("@/entities/nodes/object/ui/queries/create-object.mutation", () => ({
   useCreateObjectMutation: vi.fn(),
@@ -129,7 +131,9 @@ describe("CommentableContentDiff", () => {
     } as never);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // The pointer position carries over between tests in browser mode.
+    await initPointerTracking(page.elementLocator(document.body));
     vi.resetAllMocks();
     vi.restoreAllMocks();
   });
