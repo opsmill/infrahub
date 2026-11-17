@@ -73,6 +73,33 @@ def _graph_differences(before: GraphState, after: GraphState) -> list[str]:
     return differences
 
 
+DATA_VERTEX_LABELS = frozenset({"Node", "Attribute", "Relationship"})
+
+
+def changed_vertex_uuids(before: GraphState, after: GraphState) -> set[str]:
+    """Return the uuid of every Node, Attribute or Relationship vertex that changed or has a changed edge."""
+    vertices_by_id = {
+        vertex.db_id: vertex for vertex in [*before.snapshot.node_map.values(), *after.snapshot.node_map.values()]
+    }
+    changed_ids: set[str] = set()
+    for before_map, after_map in (
+        (before.snapshot.node_map, after.snapshot.node_map),
+        (after.snapshot.node_map, before.snapshot.node_map),
+    ):
+        changed_ids.update(before_map[key].db_id for key in before_map.keys() - after_map.keys())
+    for edges, other_edges in (
+        (before.snapshot.edge_map, after.snapshot.edge_map),
+        (after.snapshot.edge_map, before.snapshot.edge_map),
+    ):
+        for key in edges.keys() - other_edges.keys():
+            changed_ids.update((edges[key].from_db_id, edges[key].to_db_id))
+    return {
+        vertices_by_id[db_id].properties["uuid"]
+        for db_id in changed_ids
+        if db_id in vertices_by_id and vertices_by_id[db_id].labels & DATA_VERTEX_LABELS
+    }
+
+
 def assert_graph_unchanged(before: GraphState, after: GraphState) -> None:
     differences = _graph_differences(before=before, after=after)
     assert not differences, "the graph changed:\n" + "\n".join(differences)

@@ -16,6 +16,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, HashableModelState, SchemaPathType
+from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.attribute_kind_update import AttributeKindUpdateMigration
 from infrahub.core.migrations.schema.attribute_name_update import AttributeNameUpdateMigration
 from infrahub.core.migrations.schema.attribute_supports_generated_schema import (
@@ -33,20 +34,28 @@ from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import AttributeSchema, GenericSchema, SchemaRoot
 from infrahub.core.schema.definitions.core.template import core_object_component_template, core_object_template
+from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import GraphValidationError
 from tests.component.core.migrations.schema.second_run_helpers import (
     AGNOSTIC_BRANCH_KINDS,
     BRANCH_KINDS,
+    FIRST_RUN_USER_ID,
+    SECOND_RUN_USER_ID,
     BranchKind,
     assert_graph_unchanged,
     assert_second_run_changes_nothing,
+    changed_vertex_uuids,
     get_migration_branch,
     read_graph_state,
     register_candidate,
+    run_migrations,
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.core.branch import Branch
+    from infrahub.core.migrations.shared import SchemaMigration
     from infrahub.core.schema.node_schema import NodeSchema
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
@@ -147,6 +156,23 @@ async def test_graph_state_detects_changed_property(db: InfrahubDatabase, car_da
     )
     with pytest.raises(AssertionError, match=r"another-user"):
         assert_graph_unchanged(before=before, after=await read_graph_state(db=db))
+
+
+@pytest.mark.parametrize("branch_kind", BRANCH_KINDS)
+async def test_changed_vertex_uuids_names_the_changed_node(
+    db: InfrahubDatabase, default_branch: Branch, car_data: CarData, branch_kind: BranchKind
+) -> None:
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    changed_car, other_car = car_data.cars
+    before = await read_graph_state(db=db)
+    car = await NodeManager.get_one(db=db, id=changed_car.id, branch=branch)
+    assert car is not None
+    seats = car.get_attribute(name="nbr_seats")
+    seats.value = 9
+    await car.save(db=db)
+    changed = changed_vertex_uuids(before=before, after=await read_graph_state(db=db))
+    assert seats.id in changed
+    assert {other_car.id, other_car.get_attribute(name="nbr_seats").id} & changed == set()
 
 
 @pytest.mark.parametrize("branch_kind", BRANCH_KINDS)
@@ -723,3 +749,158 @@ async def test_agnostic_kind_attribute_remove(
         schema_path=attribute_path(kind=BEACON_KIND, name="serial"),
     )
     await assert_second_run_changes_nothing(db=db, branch=branch, migrations=[migration])
+
+
+GENERIC_INHERITING_KINDS = ["TestElectricCar", "TestGazCar"]
+
+
+@pytest.fixture
+async def generic_profiles(
+    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: dict[str, Node]
+) -> list[Node]:
+    profiles = []
+    for index, kind in enumerate(GENERIC_INHERITING_KINDS):
+        profile = await Node.init(db=db, schema=f"Profile{kind}", branch=default_branch)
+        await profile.new(db=db, profile_name=f"profile-{kind}", nbr_seats=index + 2, color=f"#00000{index}")
+        await profile.save(db=db)
+        profiles.append(profile)
+    return profiles
+
+
+async def assert_kind_migrations_skip_nodes_changed_by_generic(
+    db: InfrahubDatabase,
+    branch: Branch,
+    generic_migration: SchemaMigration,
+    kind_migrations: Sequence[SchemaMigration],
+) -> None:
+    """Run the generic's migration, then assert the inheriting kinds' migrations of the same load change none of its nodes.
+
+    The kinds' migrations may still change nodes the generic's migration cannot reach, such as their own profiles.
+    """
+    before = await read_graph_state(db=db)
+    await run_migrations(
+        db=db, branch=branch, migrations=[generic_migration], at=Timestamp(), user_id=FIRST_RUN_USER_ID
+    )
+    after_generic = await read_graph_state(db=db)
+    changed_by_generic = changed_vertex_uuids(before=before, after=after_generic)
+    assert changed_by_generic, "the generic's migration changed nothing"
+    await run_migrations(db=db, branch=branch, migrations=kind_migrations, at=Timestamp(), user_id=SECOND_RUN_USER_ID)
+    changed_by_kinds = changed_vertex_uuids(before=after_generic, after=await read_graph_state(db=db))
+    assert changed_by_generic & changed_by_kinds == set()
+
+
+def generic_candidate(branch: Branch) -> tuple[SchemaBranch, SchemaBranch]:
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    return schema_branch, schema_branch.duplicate()
+
+
+def generic_constraint_migrations(branch: Branch) -> tuple[SchemaBranch, list[SchemaMigration]]:
+    """Add nbr_seats to the generic's uniqueness constraints and build the migration a load creates for each kind."""
+    schema_branch, candidate = generic_candidate(branch=branch)
+    generic = candidate.get_generic(name="TestCar", duplicate=True)
+    generic.uniqueness_constraints = SEATS_IN_CONSTRAINT
+    candidate.set(name="TestCar", schema=generic)
+    candidate.process()
+    migrations: list[SchemaMigration] = [
+        NodeUniquenessConstraintsUpdateMigration(
+            previous_node_schema=schema_branch.get(name=kind, duplicate=True),
+            new_node_schema=candidate.get(name=kind),
+            schema_path=SchemaPath(
+                path_type=SchemaPathType.NODE,
+                schema_kind=kind,
+                field_name="uniqueness_constraints",
+                property_name="uniqueness_constraints",
+            ),
+        )
+        for kind in ["TestCar", *GENERIC_INHERITING_KINDS]
+    ]
+    return candidate, migrations
+
+
+def generic_color_kind_migrations(branch: Branch) -> tuple[SchemaBranch, list[SchemaMigration]]:
+    """Change the generic's color to TextArea and build the migration a load creates for the generic and each kind."""
+    schema_branch, candidate = generic_candidate(branch=branch)
+    generic = candidate.get_generic(name="TestCar", duplicate=True)
+    generic.get_attribute(name="color").kind = "TextArea"
+    candidate.set(name="TestCar", schema=generic)
+    for kind in GENERIC_INHERITING_KINDS:
+        node = candidate.get_node(name=kind, duplicate=True)
+        node.get_attribute(name="color").kind = "TextArea"
+        candidate.set(name=kind, schema=node)
+    candidate.process()
+    migrations: list[SchemaMigration] = [
+        AttributeKindUpdateMigration(
+            previous_node_schema=schema_branch.get(name=kind, duplicate=True),
+            new_node_schema=candidate.get(name=kind),
+            schema_path=attribute_path(kind=kind, name="color"),
+        )
+        for kind in ["TestCar", *GENERIC_INHERITING_KINDS]
+    ]
+    return candidate, migrations
+
+
+@pytest.mark.parametrize("branch_kind", BRANCH_KINDS)
+async def test_attribute_unique_update_on_generic(
+    db: InfrahubDatabase, default_branch: Branch, generic_profiles: list[Node], branch_kind: BranchKind
+) -> None:
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    schema_branch, candidate = generic_candidate(branch=branch)
+    previous = schema_branch.get_generic(name="TestCar", duplicate=True)
+    attribute_id = str(uuid.uuid4())
+    previous.get_attribute(name="nbr_seats").id = attribute_id
+    generic = candidate.get_generic(name="TestCar", duplicate=True)
+    seats = generic.get_attribute(name="nbr_seats")
+    seats.id = attribute_id
+    seats.unique = True
+    candidate.set(name="TestCar", schema=generic)
+    await register_candidate(db=db, branch=branch, candidate=candidate)
+    migration = AttributeSupportsGeneratedSchemaMigration(
+        previous_node_schema=previous,
+        new_node_schema=candidate.get_generic(name="TestCar"),
+        schema_path=attribute_path(kind="TestCar", name="nbr_seats"),
+    )
+    await assert_second_run_changes_nothing(db=db, branch=branch, migrations=[migration])
+
+
+@pytest.mark.parametrize("branch_kind", BRANCH_KINDS)
+async def test_node_uniqueness_constraints_update_on_generic_kind_skips_generic_nodes(
+    db: InfrahubDatabase, default_branch: Branch, generic_profiles: list[Node], branch_kind: BranchKind
+) -> None:
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    candidate, migrations = generic_constraint_migrations(branch=branch)
+    await register_candidate(db=db, branch=branch, candidate=candidate)
+    await assert_kind_migrations_skip_nodes_changed_by_generic(
+        db=db, branch=branch, generic_migration=migrations[0], kind_migrations=migrations[1:]
+    )
+
+
+@pytest.mark.parametrize("branch_kind", BRANCH_KINDS)
+async def test_node_uniqueness_constraints_update_on_generic_twice(
+    db: InfrahubDatabase, default_branch: Branch, generic_profiles: list[Node], branch_kind: BranchKind
+) -> None:
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    candidate, migrations = generic_constraint_migrations(branch=branch)
+    await register_candidate(db=db, branch=branch, candidate=candidate)
+    await assert_second_run_changes_nothing(db=db, branch=branch, migrations=migrations)
+
+
+@pytest.mark.parametrize("branch_kind", BRANCH_KINDS)
+async def test_attribute_kind_update_on_generic_kind_skips_generic_nodes(
+    db: InfrahubDatabase, default_branch: Branch, generic_profiles: list[Node], branch_kind: BranchKind
+) -> None:
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    candidate, migrations = generic_color_kind_migrations(branch=branch)
+    await register_candidate(db=db, branch=branch, candidate=candidate)
+    await assert_kind_migrations_skip_nodes_changed_by_generic(
+        db=db, branch=branch, generic_migration=migrations[0], kind_migrations=migrations[1:]
+    )
+
+
+@pytest.mark.parametrize("branch_kind", BRANCH_KINDS)
+async def test_attribute_kind_update_on_generic_twice(
+    db: InfrahubDatabase, default_branch: Branch, generic_profiles: list[Node], branch_kind: BranchKind
+) -> None:
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
+    candidate, migrations = generic_color_kind_migrations(branch=branch)
+    await register_candidate(db=db, branch=branch, candidate=candidate)
+    await assert_second_run_changes_nothing(db=db, branch=branch, migrations=migrations)
