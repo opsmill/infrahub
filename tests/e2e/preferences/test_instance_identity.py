@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from helpers import select_combobox_option
+from constants import ADMIN_CREDENTIALS, AUTHENTICATED_MENU_TRIGGER
+from helpers import login, select_combobox_option
 from playwright.async_api import expect
 
 pytestmark = pytest.mark.shard_foundation
@@ -16,6 +17,7 @@ if TYPE_CHECKING:
 
 INSTANCE_LABEL = "QA"
 BRANCHES_PAGE_TITLE = "Branches list"
+GLOBAL_PREFERENCES_PAGE_TITLE = "Global preferences"
 APPLICATION_TITLE = "Infrahub"
 
 
@@ -32,10 +34,10 @@ async def _set_instance_identity(client: InfrahubClient, *, label: str | None, c
     await client.execute_graphql(query=SET_INSTANCE_IDENTITY, variables={"label": label, "color": color})
 
 
-async def _expect_identity_on_branches_page(page: Page) -> None:
+async def _expect_identity_on_page(page: Page, page_title: str) -> None:
     await expect(page.get_by_test_id("instance-badge")).to_contain_text(INSTANCE_LABEL)
     await expect(page.get_by_test_id("instance-color-bar")).to_be_visible()
-    await expect(page).to_have_title(f"{INSTANCE_LABEL} · {BRANCHES_PAGE_TITLE}")
+    await expect(page).to_have_title(f"{INSTANCE_LABEL} · {page_title}")
 
 
 class TestInstanceIdentity:
@@ -49,11 +51,22 @@ class TestInstanceIdentity:
         await expect(admin_page.get_by_text("Instance identity updated")).to_be_visible()
 
         await read_only_page.goto("/branches")
-        await _expect_identity_on_branches_page(read_only_page)
+        await _expect_identity_on_page(read_only_page, BRANCHES_PAGE_TITLE)
 
         # The identity comes from the server, so it survives a reload.
         await read_only_page.reload()
-        await _expect_identity_on_branches_page(read_only_page)
+        await _expect_identity_on_page(read_only_page, BRANCHES_PAGE_TITLE)
+
+    async def test_admin_views_the_saved_identity_without_reloading_after_logging_in(self, page: Page) -> None:
+        await login(page, ADMIN_CREDENTIALS["username"], ADMIN_CREDENTIALS["password"])
+        await page.get_by_test_id(AUTHENTICATED_MENU_TRIGGER).click()
+        await page.get_by_role("menuitem", name="Global preferences").click()
+
+        await page.get_by_label("Instance label").fill(INSTANCE_LABEL)
+        await select_combobox_option(page, "Instance color", "Red")
+        await page.get_by_role("button", name="Save instance identity").click()
+
+        await _expect_identity_on_page(page, GLOBAL_PREFERENCES_PAGE_TITLE)
 
     async def test_anonymous_visitor_views_the_identity_on_the_login_page(
         self, infrahub_client: InfrahubClient, page: Page
@@ -61,9 +74,7 @@ class TestInstanceIdentity:
         await _set_instance_identity(infrahub_client, label=INSTANCE_LABEL, color="RED")
 
         await page.goto("/login")
-        await expect(page.get_by_test_id("instance-color-bar")).to_be_visible()
-        await expect(page.get_by_test_id("instance-badge")).to_contain_text(INSTANCE_LABEL)
-        await expect(page).to_have_title(f"{INSTANCE_LABEL} · {APPLICATION_TITLE}")
+        await _expect_identity_on_page(page, APPLICATION_TITLE)
 
     async def test_clearing_the_label_keeps_the_bar(
         self, infrahub_client: InfrahubClient, read_only_page: Page
