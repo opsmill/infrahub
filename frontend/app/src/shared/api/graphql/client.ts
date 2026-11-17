@@ -28,7 +28,7 @@ import { refreshAccessTokenQueryOptions } from "@/entities/authentication/ui/que
 export type { ResultOf, VariablesOf } from "gql.tada";
 export const graphql = initGraphQLTada<{
   introspection: introspection;
-  scalars: { BigInt: number };
+  scalars: { BigInt: number; PositiveInteger: number };
 }>();
 
 // Add `__typename` to every selection set
