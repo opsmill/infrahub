@@ -12,7 +12,8 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import HashableModelState, SchemaPathType
+from infrahub.core.constants import BranchSupportType, HashableModelState, SchemaPathType
+from infrahub.core.migrations.query.attribute_add import AttributeAddQuery
 from infrahub.core.migrations.schema.attribute_name_update import (
     AttributeNameUpdateMigration,
     AttributeNameUpdateMigrationQuery01,
@@ -22,19 +23,24 @@ from infrahub.core.migrations.schema.attribute_supports_generated_schema import 
     ProfilesAttributeRemoveMigrationQuery,
     TemplatesAttributeRemoveMigrationQuery,
 )
+from infrahub.core.migrations.schema.node_attribute_add import (
+    NodeAttributeAddMigration,
+    NodeAttributeAddMigrationQuery01,
+)
 from infrahub.core.migrations.schema.node_attribute_remove import (
     NodeAttributeRemoveMigration,
     NodeAttributeRemoveMigrationQuery01,
 )
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import AttributeSchema, SchemaRoot
 from tests.component.core.migrations.schema.selection_dataset import (
     BEACON_KIND,
     SELECTION_BRANCH_NAME,
     WIDGET_KIND,
     SelectionDataset,
     assert_count_matches_write,
+    build_attribute_add_migration,
     build_attribute_migration,
     get_branch,
     load_selection_dataset,
@@ -245,4 +251,61 @@ async def test_attribute_rename_agnostic_node_leaves_nothing_on_main(
         init_kwargs={"migration": migration},
         branch=default_branch,
         expected={BEACON_KIND: 2},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Attribute addition
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("case", _same_on_both_branches(WIDGET_AND_GENERATED_KINDS), ids=lambda case: case.name)
+async def test_attribute_add_aware(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: CountCase
+) -> None:
+    branch = get_branch(selection_dataset, default_branch, case.branch_name)
+    size = AttributeSchema(name="size", kind="Text", optional=True, branch=BranchSupportType.AWARE)
+    migration = build_attribute_add_migration(NodeAttributeAddMigration, branch, WIDGET_KIND, size)
+    await assert_count_matches_write(
+        db=db,
+        queries=[NodeAttributeAddMigrationQuery01],
+        init_kwargs={"migration": migration},
+        branch=branch,
+        expected=case.expected,
+    )
+
+
+@pytest.mark.parametrize("case", _same_on_both_branches({BEACON_KIND: 2}), ids=lambda case: case.name)
+async def test_attribute_add_local_on_agnostic_node(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: CountCase
+) -> None:
+    branch = get_branch(selection_dataset, default_branch, case.branch_name)
+    note = AttributeSchema(name="note", kind="Text", optional=True, branch=BranchSupportType.LOCAL)
+    migration = build_attribute_add_migration(NodeAttributeAddMigration, branch, BEACON_KIND, note)
+    await assert_count_matches_write(
+        db=db,
+        queries=[NodeAttributeAddMigrationQuery01],
+        init_kwargs={"migration": migration},
+        branch=branch,
+        expected=case.expected,
+    )
+
+
+@pytest.mark.parametrize("case", _same_on_both_branches({WIDGET_KIND: 1}), ids=lambda case: case.name)
+async def test_attribute_add_given_nodes(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: CountCase
+) -> None:
+    branch = get_branch(selection_dataset, default_branch, case.branch_name)
+    await assert_count_matches_write(
+        db=db,
+        queries=[AttributeAddQuery],
+        init_kwargs={
+            "node_kinds": [WIDGET_KIND],
+            "attribute_name": "size",
+            "attribute_kind": "Text",
+            "branch_support": BranchSupportType.AWARE.value,
+            "uuids": [selection_dataset.nodes["w1"].id],
+        },
+        branch=branch,
+        expected=case.expected,
     )
