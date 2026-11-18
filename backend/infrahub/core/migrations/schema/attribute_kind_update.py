@@ -28,6 +28,19 @@ WHERE attr.name = $attr_name
 WITH DISTINCT n, attr
 
 // ------------
+// a branch-agnostic attribute's global edges are visible from nodes that do not exist on this branch
+// ------------
+CALL (n) {
+    MATCH (:Root)<-[r:IS_PART_OF]-(n)
+    WHERE %(branch_filter)s
+    RETURN r
+    ORDER BY r.branch_level DESC, r.from DESC
+    LIMIT 1
+}
+WITH n, attr
+WHERE r.status = "active"
+
+// ------------
 // for each Attribute, find the most recent active edge and AttributeValue vertex that needs to be [un]indexed
 // ------------
 CALL (n, attr) {

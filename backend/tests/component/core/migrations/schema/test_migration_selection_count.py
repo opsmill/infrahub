@@ -421,24 +421,7 @@ async def test_attribute_kind_update_agnostic_node(
     )
 
 
-KIND_UPDATE_SELECTS_NODES_ON_OTHER_BRANCHES = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "the selection does not check the node's IS_PART_OF edge, so on the default branch it selects the "
-        "branch-agnostic attributes of nodes that exist only on another branch"
-    ),
-)
-
-
-@pytest.mark.parametrize(
-    "case",
-    [
-        pytest.param(case, marks=KIND_UPDATE_SELECTS_NODES_ON_OTHER_BRANCHES if case.branch_name == "main" else ())
-        for case in WIDGET_AND_GENERATED_KINDS
-    ],
-    ids=lambda case: case.name,
-)
+@pytest.mark.parametrize("case", WIDGET_AND_GENERATED_KINDS, ids=lambda case: case.name)
 async def test_attribute_kind_update_agnostic_attribute(
     db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: CountCase
 ) -> None:
