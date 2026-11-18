@@ -15,8 +15,8 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import GraphCheck, collect_graph_violations, verify_graph
 from infrahub.exceptions import QueryError
+from tests.helpers.ownership import USER_ID, read_owners
 
-USER_ID = "test-user-id"
 SECONDS_BEFORE_FIRST_COMMIT = 1.0
 
 
@@ -57,11 +57,6 @@ async def _write(db: InfrahubDatabase, branch: Branch, node_id: str, holder: Hol
     )
 
 
-async def _read(db: InfrahubDatabase, branch: Branch, node_id: str, holder: HolderKey) -> tuple[str, ...] | None:
-    stored = await OwnershipRepository(db=db, branch=branch, at=None).read(node_ids=[node_id], attributes=True)
-    return stored[node_id].get(holder).owner_ids
-
-
 async def _count_field_sets(db: InfrahubDatabase, node_id: str) -> int:
     records = await db.execute_query(
         query="MATCH (:Node {uuid: $node_id})-[:HAS_OWNER_SET]->(s:OwnerSet) RETURN count(DISTINCT s) AS sets",
@@ -91,7 +86,7 @@ async def test_two_first_writes_in_open_transactions_create_one_set(
     await asyncio.gather(first_write(), second_write())
 
     assert await _count_field_sets(db=db, node_id=person.id) == 1
-    assert await _read(db=db, branch=default_branch, node_id=person.id, holder=holder) == tuple(group_ids[1:])
+    assert await read_owners(db=db, branch=default_branch, node_id=person.id, holder=holder) == tuple(group_ids[1:])
 
 
 async def test_two_writes_of_one_owner_in_open_transactions_create_one_edge(
@@ -123,7 +118,7 @@ RETURN count(r) AS edges
         params={"branch": branch.name, "owner_id": group_ids[0]},
     )
     assert records[0]["edges"] == 1
-    assert await _read(db=db, branch=branch, node_id=person.id, holder=NODE_HOLDER) == tuple(group_ids[:1])
+    assert await read_owners(db=db, branch=branch, node_id=person.id, holder=NODE_HOLDER) == tuple(group_ids[:1])
 
 
 async def test_write_reuses_a_set_that_has_another_property(
@@ -136,7 +131,7 @@ async def test_write_reuses_a_set_that_has_another_property(
     await _write(db=db, branch=default_branch, node_id=person.id, holder=holder, owner_ids=group_ids[1:])
 
     assert await _count_field_sets(db=db, node_id=person.id) == 1
-    assert await _read(db=db, branch=default_branch, node_id=person.id, holder=holder) == tuple(group_ids[1:])
+    assert await read_owners(db=db, branch=default_branch, node_id=person.id, holder=holder) == tuple(group_ids[1:])
 
 
 async def test_graph_validation_reports_two_sets_with_the_same_key(

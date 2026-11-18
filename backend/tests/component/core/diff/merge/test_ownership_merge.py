@@ -32,23 +32,24 @@ from infrahub.core.ownership.resolution import resolve_field_ownership
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
-
-from ..get_one_node import get_one_diff_node
-from ._ownership import (
+from tests.helpers.ownership import (
     OWNERS_FIELD,
     TARGET_OWNERS_FIELD,
     OwnerDataset,
+    copies,
     count_active_owner_edges,
-    has_owner_change,
     load_owner_dataset,
-    merge,
     owner_edges,
-    owner_property,
     read_owners,
     resolve_owners,
     set_owners,
-    update_diff,
+    site_from,
+    site_template,
+    template_copies,
 )
+
+from ..get_one_node import get_one_diff_node
+from ._ownership import has_owner_change, merge, owner_property, profile_with_device, update_diff
 from .conftest import get_diff_merger
 
 if TYPE_CHECKING:
@@ -395,17 +396,6 @@ async def test_merge_changelog_records_the_owner_change_of_the_changed_node_only
     }
 
 
-async def _profile_with_device(db: InfrahubDatabase, dataset: OwnerDataset) -> tuple[str, str]:
-    """Create a device profile and a device of the rack `rack-a` that uses it, and return their IDs."""
-    profile = await Node.init(db=db, schema="ProfileTestDevice")
-    await profile.new(db=db, profile_name="emea-fabric")
-    await profile.save(db=db)
-    device = await Node.init(db=db, schema="TestDevice")
-    await device.new(db=db, name="device-with-profile", rack=dataset.ids["rack-a"], profiles=[profile])
-    await device.save(db=db)
-    return profile.id, device.id
-
-
 async def _count_active_given_owner_edges(db: InfrahubDatabase, branch: Branch, node_id: str) -> int:
     """Count the open edges of the set of owners that a node gives, with the edge to the set, on one branch."""
     query = """
@@ -428,7 +418,7 @@ async def test_owners_that_a_profile_gives_on_a_branch_are_merged(
     dataset: OwnerDataset,
     test_case: OwnerMergeTestCase,
 ) -> None:
-    profile_id, device_id = await _profile_with_device(db=db, dataset=dataset)
+    profile_id, device_id = await profile_with_device(db=db, dataset=dataset)
     default_branch_owners = dataset.owners(test_case.default_branch_owners)
     branch_owners = dataset.owners(test_case.branch_owners)
     await set_owners(
@@ -532,85 +522,22 @@ async def test_template_changed_on_a_branch_gives_its_new_owners_to_the_nodes_cr
     await verify_graph(db=db)
 
 
-async def _site_template(db: InfrahubDatabase, default_branch: Branch, dataset: OwnerDataset) -> Node:
-    """Create a site template that gives one owner to its sites, to their names and to their children."""
-    schema = registry.schema.get_node_schema(name="TestSite", branch=default_branch)
-    template = await Node.init(db=db, schema="TemplateTestSite")
-    await template.new(db=db, template_name="emea-site")
-    await template.save(db=db)
-    for holder in (
-        NODE_TARGET_HOLDER,
-        field_holder(schema=schema, field_name="name", target=True),
-        field_holder(schema=schema, field_name="children", target=True),
-    ):
-        assert holder is not None
-        await set_owners(
-            db=db, branch=default_branch, node_id=template.id, owner_ids=dataset.owners(("dc-emea",)), holder=holder
-        )
-    return template
-
-
-async def _site_from(db: InfrahubDatabase, branch: Branch, template: Node, name: str) -> str:
-    site = await create_node(
-        data={"name": name, "object_template": {"id": template.id}},
-        db=db,
-        branch=branch,
-        schema=registry.schema.get_node_schema(name="TestSite", branch=branch),
-    )
-    return site.id
-
-
-async def _template_copies(
-    db: InfrahubDatabase, branch: Branch, node_id: str
-) -> dict[HolderKind, tuple[tuple[str, ...] | None, str | None]]:
-    """Return the owners of each holder of the node and the template that they are a copy from, as the branch reads them."""
-    stored = await OwnershipRepository(db=db, branch=branch, at=None).read(node_ids=[node_id], attributes=True)
-    return {holder.kind: (state.owner_ids, state.template_id) for holder, state in stored[node_id].holders.items()}
-
-
-def _copies(owner_ids: tuple[str, ...] | None, template_id: str | None) -> dict[HolderKind, tuple[object, object]]:
-    return dict.fromkeys((HolderKind.NODE, HolderKind.ATTRIBUTE, HolderKind.FIELD_SET), (owner_ids, template_id))
-
-
-async def test_template_deleted_on_the_default_branch_leaves_its_copies_as_own_owners(
-    db: InfrahubDatabase, default_branch: Branch, dataset: OwnerDataset
-) -> None:
-    owner_ids = dataset.owners(("dc-emea",))
-    template = await _site_template(db=db, default_branch=default_branch, dataset=dataset)
-    site_id = await _site_from(db=db, branch=default_branch, template=template, name="site-a")
-    branch = await create_branch(db=db, branch_name="template-kept")
-    assert await _template_copies(db=db, branch=default_branch, node_id=site_id) == _copies(owner_ids, template.id)
-
-    await template.delete(db=db)
-
-    assert await _template_copies(db=db, branch=default_branch, node_id=site_id) == _copies(owner_ids, None)
-    assert await _template_copies(db=db, branch=branch, node_id=site_id) == _copies(owner_ids, template.id)
-    resolved = await resolve_owners(db=db, branch=default_branch, node_id=site_id)
-    assert (resolved.state, resolved.owner_ids, resolved.origin, resolved.origin_node_id) == (
-        OwnerState.OWNERS,
-        owner_ids,
-        OwnerOrigin.SELF,
-        site_id,
-    )
-    await verify_graph(db=db)
-
-
 async def test_template_deleted_on_a_branch_leaves_its_copies_as_own_owners_after_the_merge(
     db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset
 ) -> None:
     owner_ids = dataset.owners(("dc-emea",))
-    template = await _site_template(db=db, default_branch=default_branch, dataset=dataset)
-    site_id = await _site_from(db=db, branch=default_branch, template=template, name="site-before")
+    template = await site_template(db=db, default_branch=default_branch, dataset=dataset)
+    site_id = await site_from(db=db, branch=default_branch, template=template, name="site-before")
     branch = await create_branch(db=db, branch_name="template-deleted")
     # The branch does not read this site, so its delete does not close the marks of the site.
-    later_site_id = await _site_from(db=db, branch=default_branch, template=template, name="site-after")
+    later_site_id = await site_from(db=db, branch=default_branch, template=template, name="site-after")
     branch_template = await NodeManager.get_one(db=db, branch=branch, id=template.id, raise_on_error=True)
 
     await branch_template.delete(db=db)
 
-    assert await _template_copies(db=db, branch=branch, node_id=site_id) == _copies(owner_ids, None)
+    assert await template_copies(db=db, branch=branch, node_id=site_id) == copies(owner_ids, None)
     for node_id in (site_id, later_site_id):
-        assert await _template_copies(db=db, branch=default_branch, node_id=node_id) == _copies(owner_ids, template.id)
+        assert await template_copies(db=db, branch=default_branch, node_id=node_id) == copies(owner_ids, template.id)
     await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
     merger = await get_diff_merger(db=db, branch=branch)
     merge_at = Timestamp()
@@ -618,8 +545,8 @@ async def test_template_deleted_on_a_branch_leaves_its_copies_as_own_owners_afte
     await merger.merge_graph(at=merge_at)
 
     for node_id in (site_id, later_site_id):
-        assert await _template_copies(db=db, branch=default_branch, node_id=node_id) == _copies(owner_ids, None)
-    assert await _template_copies(db=db, branch=branch, node_id=site_id) == _copies(owner_ids, None)
+        assert await template_copies(db=db, branch=default_branch, node_id=node_id) == copies(owner_ids, None)
+    assert await template_copies(db=db, branch=branch, node_id=site_id) == copies(owner_ids, None)
     resolved = await resolve_owners(db=db, branch=default_branch, node_id=site_id)
     assert (resolved.state, resolved.owner_ids, resolved.origin, resolved.origin_node_id) == (
         OwnerState.OWNERS,
@@ -632,7 +559,7 @@ async def test_template_deleted_on_a_branch_leaves_its_copies_as_own_owners_afte
     await merger.rollback(merge_started_at=merge_at)
 
     for node_id in (site_id, later_site_id):
-        assert await _template_copies(db=db, branch=default_branch, node_id=node_id) == _copies(owner_ids, template.id)
+        assert await template_copies(db=db, branch=default_branch, node_id=node_id) == copies(owner_ids, template.id)
 
 
 @pytest.mark.parametrize(
@@ -647,15 +574,15 @@ async def test_branch_that_only_closes_the_template_mark_shows_the_owners_in_the
     deletes_template: bool,
 ) -> None:
     owner_ids = dataset.owners(("dc-emea",))
-    template = await _site_template(db=db, default_branch=default_branch, dataset=dataset)
-    site_id = await _site_from(db=db, branch=default_branch, template=template, name="site-a")
+    template = await site_template(db=db, default_branch=default_branch, dataset=dataset)
+    site_id = await site_from(db=db, branch=default_branch, template=template, name="site-a")
     branch = await create_branch(db=db, branch_name="mark-closed")
     if deletes_template:
         branch_template = await NodeManager.get_one(db=db, branch=branch, id=template.id, raise_on_error=True)
         await branch_template.delete(db=db)
     else:
         await set_owners(db=db, branch=branch, node_id=site_id, owner_ids=owner_ids)
-    assert (await _template_copies(db=db, branch=branch, node_id=site_id))[HolderKind.NODE] == (owner_ids, None)
+    assert (await template_copies(db=db, branch=branch, node_id=site_id))[HolderKind.NODE] == (owner_ids, None)
 
     diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
 
@@ -669,7 +596,7 @@ async def test_branch_that_only_closes_the_template_mark_shows_the_owners_in_the
 
     await merge(db=db, branch=branch)
 
-    assert (await _template_copies(db=db, branch=default_branch, node_id=site_id))[HolderKind.NODE] == (owner_ids, None)
+    assert (await template_copies(db=db, branch=default_branch, node_id=site_id))[HolderKind.NODE] == (owner_ids, None)
 
 
 @pytest.mark.parametrize("mark_closed_on_branch", [pytest.param(True, id="branch"), pytest.param(False, id="default")])
@@ -681,8 +608,8 @@ async def test_closed_template_mark_on_one_branch_does_not_conflict_with_new_own
     mark_closed_on_branch: bool,
 ) -> None:
     new_owner_ids = dataset.owners(("security",))
-    template = await _site_template(db=db, default_branch=default_branch, dataset=dataset)
-    site_id = await _site_from(db=db, branch=default_branch, template=template, name="site-a")
+    template = await site_template(db=db, default_branch=default_branch, dataset=dataset)
+    site_id = await site_from(db=db, branch=default_branch, template=template, name="site-a")
     branch = await create_branch(db=db, branch_name="mark-closed")
     closes_mark, changes_owners = (branch, default_branch) if mark_closed_on_branch else (default_branch, branch)
     await set_owners(db=db, branch=closes_mark, node_id=site_id, owner_ids=dataset.owners(("dc-emea",)))
@@ -694,7 +621,7 @@ async def test_closed_template_mark_on_one_branch_does_not_conflict_with_new_own
 
     await merge(db=db, branch=branch)
 
-    assert (await _template_copies(db=db, branch=default_branch, node_id=site_id))[HolderKind.NODE] == (
+    assert (await template_copies(db=db, branch=default_branch, node_id=site_id))[HolderKind.NODE] == (
         new_owner_ids,
         None,
     )
@@ -715,7 +642,7 @@ async def test_different_owners_given_by_a_profile_on_both_branches_conflict(
     selection: ConflictSelection,
     merged_owners: tuple[str, ...],
 ) -> None:
-    profile_id, device_id = await _profile_with_device(db=db, dataset=dataset)
+    profile_id, device_id = await profile_with_device(db=db, dataset=dataset)
     await set_owners(
         db=db,
         branch=default_branch,
@@ -760,7 +687,7 @@ async def test_different_owners_given_by_a_profile_on_both_branches_conflict(
 async def test_merge_closes_the_owners_that_the_default_branch_gave_through_a_profile_that_the_branch_deleted(
     db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset
 ) -> None:
-    profile_id, device_id = await _profile_with_device(db=db, dataset=dataset)
+    profile_id, device_id = await profile_with_device(db=db, dataset=dataset)
     await set_owners(
         db=db, branch=default_branch, node_id=dataset.ids["tenant-a"], owner_ids=dataset.owners(("network-emea",))
     )
@@ -952,7 +879,7 @@ async def test_two_branches_that_each_set_the_first_owners_of_a_relationship_lea
 async def test_owners_that_a_profile_gives_to_a_field_on_a_branch_are_merged(
     db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset, field: str
 ) -> None:
-    profile_id, device_id = await _profile_with_device(db=db, dataset=dataset)
+    profile_id, device_id = await profile_with_device(db=db, dataset=dataset)
     device_schema = registry.schema.get(name="TestDevice", branch=default_branch, duplicate=False)
     holder = field_holder(schema=device_schema, field_name=field, target=True)
     field_of_device = field_holder(schema=device_schema, field_name=field)

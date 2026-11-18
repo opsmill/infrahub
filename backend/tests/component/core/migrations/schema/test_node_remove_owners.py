@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -10,7 +10,6 @@ from infrahub.core.constants import InfrahubKind, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.migrations.schema.node_remove import NodeRemoveMigration
 from infrahub.core.migrations.shared import MigrationInput
-from infrahub.core.node import Node
 from infrahub.core.ownership.models import (
     NODE_HOLDER,
     NODE_SOURCES_HOLDER,
@@ -25,13 +24,13 @@ from infrahub.core.path import SchemaPath
 from infrahub.core.query import QueryType
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
+from tests.helpers.ownership import USER_ID, add_node
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
-USER_ID = "test-user-id"
 CAR_KIND = "TestCar"
 PERSON_KIND = "TestPerson"
 NO_OWNER: tuple[str, ...] = ()
@@ -45,13 +44,6 @@ class CarsAndPerson:
     car_ids: list[str]
     person_id: str
     group_ids: list[str]
-
-
-async def _create(db: InfrahubDatabase, kind: str, **data: Any) -> Node:
-    node = await Node.init(db=db, schema=kind)
-    await node.new(db=db, **data)
-    await node.save(db=db)
-    return node
 
 
 async def _write(
@@ -131,10 +123,10 @@ async def cars_and_person(
     register_core_models_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
 ) -> CarsAndPerson:
-    groups = [await _create(db=db, kind=InfrahubKind.ACCOUNTGROUP, name=name) for name in ("dc-emea", "security")]
-    person = await _create(db=db, kind=PERSON_KIND, name="John")
+    groups = [await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name=name) for name in ("dc-emea", "security")]
+    person = await add_node(db=db, kind=PERSON_KIND, name="John")
     cars = [
-        await _create(db=db, kind=CAR_KIND, name=name, nbr_seats=5, is_electric=True, owner=person)
+        await add_node(db=db, kind=CAR_KIND, name=name, nbr_seats=5, is_electric=True, owner=person)
         for name in ("accord", "camry")
     ]
     return CarsAndPerson(

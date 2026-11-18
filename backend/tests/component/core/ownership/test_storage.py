@@ -10,26 +10,13 @@ from infrahub.core.node import Node
 from infrahub.core.ownership.constants import NO_OWNER_VERTEX_UUID
 from infrahub.core.ownership.models import NODE_HOLDER, NODE_SOURCES_HOLDER, HolderKey, StoredOwnerState
 from infrahub.core.ownership.repository import OwnershipRepository
-from infrahub.core.ownership.writer import OwnershipWriter
 from infrahub.core.query import QueryType
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
 from infrahub.exceptions import QueryError
-
-USER_ID = "test-user-id"
-GROUP_NAMES = ("dc-emea", "network-emea", "security")
-
-
-async def _create_groups(db: InfrahubDatabase) -> dict[str, str]:
-    group_ids: dict[str, str] = {}
-    for name in GROUP_NAMES:
-        group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
-        await group.new(db=db, name=name)
-        await group.save(db=db)
-        group_ids[name] = group.id
-    return group_ids
+from tests.helpers.ownership import USER_ID, create_groups, set_owners
 
 
 async def _create_person(db: InfrahubDatabase, name: str) -> Node:
@@ -37,25 +24,6 @@ async def _create_person(db: InfrahubDatabase, name: str) -> Node:
     await person.new(db=db, name=name)
     await person.save(db=db)
     return person
-
-
-async def _write(
-    db: InfrahubDatabase,
-    branch: Branch,
-    node_id: str,
-    owner_ids: tuple[str, ...] | None,
-    at: Timestamp | None = None,
-    holder: HolderKey = NODE_HOLDER,
-) -> None:
-    node = await NodeManager.get_one(db=db, branch=branch, id=node_id, raise_on_error=True)
-    writer = OwnershipWriter(repository=OwnershipRepository(db=db, branch=branch, at=None))
-    await writer.apply(
-        node=node,
-        holder=holder,
-        state=StoredOwnerState(owner_ids=owner_ids),
-        at=at or Timestamp(),
-        user_id=USER_ID,
-    )
 
 
 async def _read(
@@ -115,13 +83,13 @@ class TestOwnerStateOnBranch:
         register_core_models_schema_scope_class: SchemaBranch,
         car_person_schema_scope_class: SchemaBranch,
     ) -> BranchWriteDataset:
-        group_ids = await _create_groups(db=db)
+        group_ids = await create_groups(db=db)
         person_ids: dict[str, str] = {}
         for test_case in BRANCH_WRITE_TEST_CASES:
             person = await _create_person(db=db, name=test_case.name)
             person_ids[test_case.name] = person.id
             if test_case.default_branch_owners is not None:
-                await _write(
+                await set_owners(
                     db=db,
                     branch=default_branch_scope_class,
                     node_id=person.id,
@@ -145,7 +113,7 @@ class TestOwnerStateOnBranch:
         after = StoredOwnerState(owner_ids=_owner_ids(group_ids=dataset.group_ids, names=test_case.branch_owners))
         assert await _read(db=db, branch=dataset.branch, node_id=person_id) == before
 
-        await _write(db=db, branch=dataset.branch, node_id=person_id, owner_ids=after.owner_ids)
+        await set_owners(db=db, branch=dataset.branch, node_id=person_id, owner_ids=after.owner_ids)
 
         assert await _read(db=db, branch=dataset.branch, node_id=person_id) == after
         assert await _read(db=db, branch=default_branch_scope_class, node_id=person_id) == before
@@ -160,7 +128,7 @@ async def test_each_state_on_default_branch_at_each_time(
     register_core_models_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
 ) -> None:
-    group_ids = await _create_groups(db=db)
+    group_ids = await create_groups(db=db)
     owners = _owner_ids(group_ids=group_ids, names=("dc-emea", "network-emea"))
     person = await _create_person(db=db, name="John")
     other_person = await _create_person(db=db, name="Jane")
@@ -168,15 +136,15 @@ async def test_each_state_on_default_branch_at_each_time(
     assert (await _read(db=db, branch=default_branch, node_id=person.id)).owner_ids is None
 
     owners_at = Timestamp()
-    await _write(db=db, branch=default_branch, node_id=person.id, owner_ids=owners, at=owners_at)
+    await set_owners(db=db, branch=default_branch, node_id=person.id, owner_ids=owners, at=owners_at)
     assert await _read(db=db, branch=default_branch, node_id=person.id) == StoredOwnerState(owner_ids=owners)
 
     no_owner_at = Timestamp()
-    await _write(db=db, branch=default_branch, node_id=person.id, owner_ids=(), at=no_owner_at)
+    await set_owners(db=db, branch=default_branch, node_id=person.id, owner_ids=(), at=no_owner_at)
     assert await _read(db=db, branch=default_branch, node_id=person.id) == StoredOwnerState(owner_ids=())
 
     inherit_at = Timestamp()
-    await _write(db=db, branch=default_branch, node_id=person.id, owner_ids=None, at=inherit_at)
+    await set_owners(db=db, branch=default_branch, node_id=person.id, owner_ids=None, at=inherit_at)
     assert await _read(db=db, branch=default_branch, node_id=person.id) == StoredOwnerState(owner_ids=None)
 
     assert await _read(db=db, branch=default_branch, node_id=person.id, at=created_at) == StoredOwnerState(
@@ -227,13 +195,13 @@ async def test_node_delete_closes_owner_edges_of_the_node_and_keeps_edges_to_the
     register_core_models_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
 ) -> None:
-    group_ids = await _create_groups(db=db)
+    group_ids = await create_groups(db=db)
     owners = _owner_ids(group_ids=group_ids, names=("dc-emea", "security"))
     person = await _create_person(db=db, name="John")
     other_person = await _create_person(db=db, name="Jane")
-    await _write(db=db, branch=default_branch, node_id=person.id, owner_ids=owners)
-    await _write(db=db, branch=default_branch, node_id=other_person.id, owner_ids=owners)
-    await _write(db=db, branch=default_branch, node_id=group_ids["security"], owner_ids=(group_ids["dc-emea"],))
+    await set_owners(db=db, branch=default_branch, node_id=person.id, owner_ids=owners)
+    await set_owners(db=db, branch=default_branch, node_id=other_person.id, owner_ids=owners)
+    await set_owners(db=db, branch=default_branch, node_id=group_ids["security"], owner_ids=(group_ids["dc-emea"],))
     assert await _owner_edges(db=db, node_id=person.id) == [
         (owner_id, default_branch.name, "active", True) for owner_id in owners
     ]
@@ -259,11 +227,11 @@ async def test_node_delete_on_branch_hides_owner_edges_on_that_branch_only(
     register_core_models_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
 ) -> None:
-    group_ids = await _create_groups(db=db)
+    group_ids = await create_groups(db=db)
     person = await _create_person(db=db, name="John")
     no_owner_person = await _create_person(db=db, name="Jane")
-    await _write(db=db, branch=default_branch, node_id=person.id, owner_ids=(group_ids["security"],))
-    await _write(db=db, branch=default_branch, node_id=no_owner_person.id, owner_ids=())
+    await set_owners(db=db, branch=default_branch, node_id=person.id, owner_ids=(group_ids["security"],))
+    await set_owners(db=db, branch=default_branch, node_id=no_owner_person.id, owner_ids=())
     branch = await create_branch(branch_name="branch2", db=db)
 
     for node_id in (person.id, no_owner_person.id):
@@ -293,9 +261,9 @@ async def test_branch_removes_an_owner_that_the_default_branch_deleted_before_th
     car_person_schema: SchemaBranch,
     holder: HolderKey,
 ) -> None:
-    group_ids = await _create_groups(db=db)
+    group_ids = await create_groups(db=db)
     person = await _create_person(db=db, name="John")
-    await _write(
+    await set_owners(
         db=db,
         branch=default_branch,
         node_id=person.id,
@@ -306,7 +274,7 @@ async def test_branch_removes_an_owner_that_the_default_branch_deleted_before_th
     await group.delete(db=db)
     branch = await create_branch(branch_name="branch2", db=db)
 
-    await _write(db=db, branch=branch, node_id=person.id, owner_ids=(group_ids["dc-emea"],), holder=holder)
+    await set_owners(db=db, branch=branch, node_id=person.id, owner_ids=(group_ids["dc-emea"],), holder=holder)
 
     assert await _read(db=db, branch=branch, node_id=person.id, holder=holder) == StoredOwnerState(
         owner_ids=(group_ids["dc-emea"],)
@@ -320,9 +288,9 @@ async def test_delete_of_a_node_with_a_source_on_an_attribute_closes_the_sources
     register_core_models_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
 ) -> None:
-    group_ids = await _create_groups(db=db)
+    group_ids = await create_groups(db=db)
     person = await _create_person(db=db, name="John")
-    await _write(
+    await set_owners(
         db=db,
         branch=default_branch,
         node_id=person.id,
@@ -353,7 +321,7 @@ async def test_write_on_node_that_is_not_active_raises(
     register_core_models_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
 ) -> None:
-    group_ids = await _create_groups(db=db)
+    group_ids = await create_groups(db=db)
     person = await _create_person(db=db, name="John")
     await person.delete(db=db)
     repository = OwnershipRepository(db=db, branch=default_branch, at=None)
@@ -380,9 +348,9 @@ async def test_owner_edges_win_over_no_owner_edge(
     register_core_models_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
 ) -> None:
-    group_ids = await _create_groups(db=db)
+    group_ids = await create_groups(db=db)
     person = await _create_person(db=db, name="John")
-    await _write(db=db, branch=default_branch, node_id=person.id, owner_ids=(group_ids["security"],))
+    await set_owners(db=db, branch=default_branch, node_id=person.id, owner_ids=(group_ids["security"],))
     await db.execute_query(
         query="""
         MATCH (n:Node {uuid: $node_id})
@@ -410,16 +378,16 @@ async def test_write_on_branch_hides_inherited_edge_to_an_owner_that_the_branch_
     register_core_models_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
 ) -> None:
-    group_ids = await _create_groups(db=db)
+    group_ids = await create_groups(db=db)
     owners = (group_ids["security"],)
     person = await _create_person(db=db, name="John")
     branch = await create_branch(branch_name="branch2", db=db)
-    await _write(db=db, branch=default_branch, node_id=person.id, owner_ids=owners)
-    await _write(db=db, branch=branch, node_id=person.id, owner_ids=owners)
+    await set_owners(db=db, branch=default_branch, node_id=person.id, owner_ids=owners)
+    await set_owners(db=db, branch=branch, node_id=person.id, owner_ids=owners)
     await branch.rebase(db=db)
     assert await _read(db=db, branch=branch, node_id=person.id) == StoredOwnerState(owner_ids=owners)
 
-    await _write(db=db, branch=branch, node_id=person.id, owner_ids=None)
+    await set_owners(db=db, branch=branch, node_id=person.id, owner_ids=None)
 
     assert await _read(db=db, branch=branch, node_id=person.id) == StoredOwnerState(owner_ids=None)
     assert await _read(db=db, branch=default_branch, node_id=person.id) == StoredOwnerState(owner_ids=owners)
@@ -428,11 +396,11 @@ async def test_write_on_branch_hides_inherited_edge_to_an_owner_that_the_branch_
 async def test_write_on_branch_for_node_that_all_branches_share_reads_back_on_default_branch(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
-    group_ids = await _create_groups(db=db)
+    group_ids = await create_groups(db=db)
     owners = (group_ids["security"],)
     branch = await create_branch(branch_name="branch2", db=db)
 
-    await _write(db=db, branch=branch, node_id=group_ids["dc-emea"], owner_ids=owners)
+    await set_owners(db=db, branch=branch, node_id=group_ids["dc-emea"], owner_ids=owners)
 
     assert await _read(db=db, branch=branch, node_id=group_ids["dc-emea"]) == StoredOwnerState(owner_ids=owners)
     assert await _read(db=db, branch=default_branch, node_id=group_ids["dc-emea"]) == StoredOwnerState(owner_ids=owners)
@@ -444,12 +412,12 @@ async def test_write_follows_the_transaction_of_the_caller(
     register_core_models_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
 ) -> None:
-    group_ids = await _create_groups(db=db)
+    group_ids = await create_groups(db=db)
     person = await _create_person(db=db, name="John")
 
     with pytest.raises(RuntimeError, match=r"^roll back$"):
         async with db.start_transaction() as dbt:
-            await _write(db=dbt, branch=default_branch, node_id=person.id, owner_ids=(group_ids["security"],))
+            await set_owners(db=dbt, branch=default_branch, node_id=person.id, owner_ids=(group_ids["security"],))
             assert (await _read(db=dbt, branch=default_branch, node_id=person.id)).owner_ids == (group_ids["security"],)
             raise RuntimeError("roll back")
 

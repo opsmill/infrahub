@@ -10,41 +10,8 @@ from infrahub.core.ownership.report import (
     build_ownership_report,
 )
 from infrahub.core.schema.schema_branch import SchemaBranch
-from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-
-# The owner edges of a repository are written as an earlier release stored them, because a repository is refused
-# as owner from the upgrade.
-ADD_ATTRIBUTE_OWNER = """
-MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(holder:Attribute {name: "color"})
-MATCH (owner:Node {uuid: $owner_id})
-CREATE (holder)-[:HAS_OWNER {branch: $branch, branch_level: $branch_level, status: "active", from: $at}]->(owner)
-"""
-ADD_LINK_OWNER = """
-MATCH (:Node {uuid: $node_id})-[:IS_RELATED]-(holder:Relationship)
-MATCH (owner:Node {uuid: $owner_id})
-CREATE (holder)-[:HAS_OWNER {branch: $branch, branch_level: $branch_level, status: "active", from: $at}]->(owner)
-"""
-
-
-async def _add_owner(db: InfrahubDatabase, query: str, branch: Branch, node_id: str, owner_id: str) -> None:
-    await db.execute_query(
-        query=query,
-        params={
-            "node_id": node_id,
-            "owner_id": owner_id,
-            "branch": branch.name,
-            "branch_level": branch.hierarchy_level,
-            "at": Timestamp().to_string(),
-        },
-    )
-
-
-async def _create(db: InfrahubDatabase, kind: str, **data: str) -> Node:
-    node = await Node.init(db=db, schema=kind)
-    await node.new(db=db, **data)
-    await node.save(db=db)
-    return node
+from tests.helpers.ownership import ADD_ATTRIBUTE_OWNER, ADD_LINK_OWNER, add_node, add_owner_edge
 
 
 async def _create_car(
@@ -75,30 +42,30 @@ async def repository(
     The repository owns the color of two cars on the default branch and of one car on a branch, and one link.
     An account group owns one color and one link. One color is protected. One car has no owner and no protection.
     """
-    repository = await _create(
+    repository = await add_node(
         db=db, kind=InfrahubKind.REPOSITORY, name="repo01", location="git@github.com:user/repo01.git"
     )
-    group = await _create(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="network-team")
-    person = await _create(db=db, kind="TestPerson", name="John")
+    group = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="network-team")
+    person = await add_node(db=db, kind="TestPerson", name="John")
 
     for name in ("repository-car-1", "repository-car-2"):
         car = await _create_car(db=db, name=name, person=person)
-        await _add_owner(
+        await add_owner_edge(
             db=db, query=ADD_ATTRIBUTE_OWNER, branch=default_branch, node_id=car.id, owner_id=repository.id
         )
-    await _add_owner(db=db, query=ADD_LINK_OWNER, branch=default_branch, node_id=car.id, owner_id=repository.id)
+    await add_owner_edge(db=db, query=ADD_LINK_OWNER, branch=default_branch, node_id=car.id, owner_id=repository.id)
     await _create_car(db=db, name="group-car", person=person, color_owner_id=group.id, link_owner_id=group.id)
     await _create_car(db=db, name="protected-car", person=person, is_protected=True)
     branch_car = await _create_car(db=db, name="plain-car", person=person)
     branch = await create_branch(db=db, branch_name="branch1")
-    await _add_owner(db=db, query=ADD_ATTRIBUTE_OWNER, branch=branch, node_id=branch_car.id, owner_id=repository.id)
+    await add_owner_edge(db=db, query=ADD_ATTRIBUTE_OWNER, branch=branch, node_id=branch_car.id, owner_id=repository.id)
     return repository
 
 
 async def test_report_of_a_database_without_any_case_is_empty(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, car_person_schema: None
 ) -> None:
-    person = await _create(db=db, kind="TestPerson", name="John")
+    person = await add_node(db=db, kind="TestPerson", name="John")
     await _create_car(db=db, name="plain-car", person=person)
 
     report = await build_ownership_report(db=db)

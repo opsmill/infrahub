@@ -4,7 +4,6 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node
 from infrahub.core.ownership.constants import SOURCES_IDS_FILTER
 from infrahub.core.ownership.models import INHERIT, NODE_SOURCES_HOLDER, HolderKey, HolderKind, StoredOwnerState
 from infrahub.core.ownership.repository import OwnershipRepository
@@ -12,16 +11,9 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
+from tests.helpers.ownership import USER_ID, add_node
 
-USER_ID = "test-user-id"
 NAME_HOLDER = HolderKey(kind=HolderKind.ATTRIBUTE, attribute="name")
-
-
-async def _create(db: InfrahubDatabase, kind: str, name: str) -> Node:
-    node = await Node.init(db=db, schema=kind)
-    await node.new(db=db, name=name)
-    await node.save(db=db)
-    return node
 
 
 async def _write(
@@ -55,7 +47,7 @@ async def groups(
 ) -> list[str]:
     return sorted(
         [
-            (await _create(db=db, kind=InfrahubKind.ACCOUNTGROUP, name=name)).id
+            (await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name=name)).id
             for name in ("dc-emea", "network-emea", "security")
         ]
     )
@@ -64,7 +56,7 @@ async def groups(
 async def test_attribute_gives_a_single_owner_only_when_it_has_exactly_one_own_owner(
     db: InfrahubDatabase, default_branch: Branch, groups: list[str]
 ) -> None:
-    person = await _create(db=db, kind="TestPerson", name="John")
+    person = await add_node(db=db, kind="TestPerson", name="John")
 
     await _write(db=db, branch=default_branch, node_id=person.id, holder=NAME_HOLDER, owner_ids=tuple(groups[:2]))
     assert await _stored(db, default_branch, person.id, NAME_HOLDER) == StoredOwnerState(owner_ids=tuple(groups[:2]))
@@ -82,7 +74,7 @@ async def test_attribute_gives_a_single_owner_only_when_it_has_exactly_one_own_o
 async def test_write_of_the_single_owner_replaces_all_own_owners_and_a_clear_sets_the_attribute_to_inherit(
     db: InfrahubDatabase, default_branch: Branch, groups: list[str]
 ) -> None:
-    person = await _create(db=db, kind="TestPerson", name="John")
+    person = await add_node(db=db, kind="TestPerson", name="John")
     await _write(db=db, branch=default_branch, node_id=person.id, holder=NAME_HOLDER, owner_ids=tuple(groups[:2]))
 
     person = await NodeManager.get_one(db=db, id=person.id, raise_on_error=True)
@@ -102,7 +94,7 @@ async def test_write_of_the_single_owner_replaces_all_own_owners_and_a_clear_set
 async def test_write_of_the_single_owner_on_a_branch_hides_the_owners_of_the_default_branch_on_that_branch_only(
     db: InfrahubDatabase, default_branch: Branch, groups: list[str]
 ) -> None:
-    person = await _create(db=db, kind="TestPerson", name="John")
+    person = await add_node(db=db, kind="TestPerson", name="John")
     await _write(db=db, branch=default_branch, node_id=person.id, holder=NAME_HOLDER, owner_ids=tuple(groups[:2]))
     branch = await create_branch(branch_name="branch2", db=db)
 
@@ -120,7 +112,7 @@ async def test_write_of_the_single_owner_on_a_branch_hides_the_owners_of_the_def
 async def test_sources_of_a_node_are_stored_and_filter_the_list_before_pagination(
     db: InfrahubDatabase, default_branch: Branch, groups: list[str]
 ) -> None:
-    persons = [await _create(db=db, kind="TestPerson", name=f"person-{index}") for index in range(4)]
+    persons = [await add_node(db=db, kind="TestPerson", name=f"person-{index}") for index in range(4)]
     for person in persons[:3]:
         await _write(
             db=db, branch=default_branch, node_id=person.id, holder=NODE_SOURCES_HOLDER, owner_ids=tuple(groups[:2])

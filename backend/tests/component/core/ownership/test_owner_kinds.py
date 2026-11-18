@@ -7,13 +7,7 @@ from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
-
-
-async def _create(db: InfrahubDatabase, kind: str, **data: str) -> Node:
-    node = await Node.init(db=db, schema=kind)
-    await node.new(db=db, **data)
-    await node.save(db=db)
-    return node
+from tests.helpers.ownership import add_node
 
 
 async def _create_car(
@@ -41,19 +35,19 @@ async def _owner_ids(db: InfrahubDatabase, branch: Branch, car_id: str) -> tuple
 
 @pytest.fixture
 async def person(db: InfrahubDatabase, register_core_models_schema: SchemaBranch, car_person_schema: None) -> Node:
-    return await _create(db=db, kind="TestPerson", name="John")
+    return await add_node(db=db, kind="TestPerson", name="John")
 
 
 @pytest.fixture
 async def repository(db: InfrahubDatabase, register_core_models_schema: SchemaBranch) -> Node:
-    return await _create(db=db, kind=InfrahubKind.REPOSITORY, name="repo01", location="git@github.com:user/repo01.git")
+    return await add_node(db=db, kind=InfrahubKind.REPOSITORY, name="repo01", location="git@github.com:user/repo01.git")
 
 
 async def test_account_and_account_group_are_accepted_as_owner_of_an_attribute_and_of_a_link(
     db: InfrahubDatabase, default_branch: Branch, person: Node
 ) -> None:
-    group = await _create(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="network-team")
-    account = await _create(db=db, kind=InfrahubKind.ACCOUNT, name="jane", password="a-password")
+    group = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="network-team")
+    account = await add_node(db=db, kind=InfrahubKind.ACCOUNT, name="jane", password="a-password")
 
     car = await _create_car(db=db, person=person, color_owner_id=group.id, link_owner_id=account.id)
     assert await _owner_ids(db=db, branch=default_branch, car_id=car.id) == (group.id, account.id)
@@ -79,7 +73,7 @@ async def test_create_with_a_repository_as_owner_is_refused(
 async def test_update_of_an_attribute_owner_to_a_repository_is_refused(
     db: InfrahubDatabase, default_branch: Branch, person: Node, repository: Node
 ) -> None:
-    group = await _create(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="network-team")
+    group = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="network-team")
     car = await _create_car(db=db, person=person, color_owner_id=group.id, link_owner_id=group.id)
 
     car.color.owner = repository
@@ -95,7 +89,7 @@ async def test_update_of_an_attribute_owner_to_a_repository_is_refused(
 async def test_update_of_a_link_owner_to_a_repository_is_refused(
     db: InfrahubDatabase, default_branch: Branch, person: Node, repository: Node
 ) -> None:
-    group = await _create(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="network-team")
+    group = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="network-team")
     car = await _create_car(db=db, person=person, color_owner_id=group.id, link_owner_id=group.id)
 
     await car.owner.update(db=db, data={"id": person.id, "_relation__owner": repository.id})
@@ -112,7 +106,7 @@ async def test_new_link_with_a_repository_as_owner_is_refused_on_an_existing_nod
     db: InfrahubDatabase, default_branch: Branch, person: Node, repository: Node
 ) -> None:
     car = await _create_car(db=db, person=person)
-    other_person = await _create(db=db, kind="TestPerson", name="Jane")
+    other_person = await add_node(db=db, kind="TestPerson", name="Jane")
 
     await car.owner.update(db=db, data={"id": other_person.id, "_relation__owner": repository.id})
     # The save removes the old link before it writes the new one, so the refusal needs the transaction of a mutation.

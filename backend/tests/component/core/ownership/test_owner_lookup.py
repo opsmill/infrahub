@@ -2,20 +2,13 @@ import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.node import Node
 from infrahub.core.ownership.input import OwnerInputParser
 from infrahub.core.ownership.models import NODE_HOLDER, StoredOwnerState
 from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
-
-
-async def _create(db: InfrahubDatabase, kind: str, **kwargs: str) -> Node:
-    node = await Node.init(db=db, schema=kind)
-    await node.new(db=db, **kwargs)
-    await node.save(db=db)
-    return node
+from tests.helpers.ownership import add_node
 
 
 def _parser(db: InfrahubDatabase, branch: Branch, schema_branch: SchemaBranch) -> OwnerInputParser:
@@ -25,9 +18,9 @@ def _parser(db: InfrahubDatabase, branch: Branch, schema_branch: SchemaBranch) -
 async def test_parse_finds_accounts_and_account_groups_in_the_database(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
-    group = await _create(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="dc-emea")
-    other_group = await _create(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="network-emea")
-    account = await _create(db=db, kind=InfrahubKind.ACCOUNT, name="jane", password="a-password")
+    group = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="dc-emea")
+    other_group = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="network-emea")
+    account = await add_node(db=db, kind=InfrahubKind.ACCOUNT, name="jane", password="a-password")
     parser = _parser(db=db, branch=default_branch, schema_branch=register_core_models_schema)
 
     states = await parser.parse(
@@ -48,8 +41,8 @@ async def test_parse_finds_accounts_and_account_groups_in_the_database(
 async def test_parse_refuses_owners_that_the_database_does_not_hold_as_accounts_or_account_groups(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
-    tag = await _create(db=db, kind=InfrahubKind.TAG, name="blue")
-    deleted_group = await _create(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="dc-emea")
+    tag = await add_node(db=db, kind=InfrahubKind.TAG, name="blue")
+    deleted_group = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="dc-emea")
     await deleted_group.delete(db=db)
     parser = _parser(db=db, branch=default_branch, schema_branch=register_core_models_schema)
     schema = register_core_models_schema.get(name=InfrahubKind.TAG, duplicate=False)

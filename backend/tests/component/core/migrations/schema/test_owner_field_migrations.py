@@ -27,6 +27,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import GraphCheck, collect_graph_violations, verify_graph
 from infrahub.dependencies.registry import get_component_registry
 from tests.component.core.diff.merge.conftest import get_diff_coordinator, get_diff_merger
+from tests.helpers.ownership import USER_ID
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -34,7 +35,6 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
-USER_ID = "test-user-id"
 CAR_KIND = "TestCar"
 ATTRIBUTE = "nbr_seats"
 NEW_ATTRIBUTE = "seats"

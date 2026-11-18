@@ -4,9 +4,8 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind, SchemaPathType
+from infrahub.core.constants import SchemaPathType
 from infrahub.core.initialization import create_branch
-from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.migrations.schema.tasks import get_derived_schema_pairs
 from infrahub.core.migrations.shared import MigrationInput
@@ -22,29 +21,16 @@ from infrahub.core.ownership.models import (
     field_holder,
 )
 from infrahub.core.ownership.repository import OwnershipRepository
-from infrahub.core.ownership.writer import OwnershipWriter
 from infrahub.core.path import SchemaPath
 from infrahub.core.query import QueryType
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
-from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
+from tests.helpers.ownership import create_groups, set_owners
 
-USER_ID = "test-user-id"
-GROUP_NAMES = ("dc-emea", "network-emea", "security")
 PREVIOUS_KIND = "TestPerson"
 NEW_KIND = "Test2NewPerson"
-
-
-async def _create_groups(db: InfrahubDatabase) -> dict[str, str]:
-    group_ids: dict[str, str] = {}
-    for name in GROUP_NAMES:
-        group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
-        await group.new(db=db, name=name)
-        await group.save(db=db)
-        group_ids[name] = group.id
-    return group_ids
 
 
 async def _create_person(db: InfrahubDatabase) -> Node:
@@ -52,16 +38,6 @@ async def _create_person(db: InfrahubDatabase) -> Node:
     await person.new(db=db, name="John")
     await person.save(db=db)
     return person
-
-
-async def _write(
-    db: InfrahubDatabase, branch: Branch, node_id: str, owner_ids: tuple[str, ...], holder: HolderKey = NODE_HOLDER
-) -> None:
-    node = await NodeManager.get_one(db=db, branch=branch, id=node_id, raise_on_error=True)
-    writer = OwnershipWriter(repository=OwnershipRepository(db=db, branch=branch, at=None))
-    await writer.apply(
-        node=node, holder=holder, state=StoredOwnerState(owner_ids=owner_ids), at=Timestamp(), user_id=USER_ID
-    )
 
 
 async def _change_kind(db: InfrahubDatabase, branch: Branch) -> None:
@@ -122,17 +98,17 @@ async def test_node_keeps_its_owners_when_its_kind_changes(
     car_person_schema: SchemaBranch,
     test_case: KindChangeTestCase,
 ) -> None:
-    group_ids = await _create_groups(db=db)
+    group_ids = await create_groups(db=db)
     person = await _create_person(db=db)
     default_owner_ids = tuple(group_ids[name] for name in test_case.default_branch_owners)
-    await _write(db=db, branch=default_branch, node_id=person.id, owner_ids=default_owner_ids)
+    await set_owners(db=db, branch=default_branch, node_id=person.id, owner_ids=default_owner_ids)
     branch = default_branch
     owner_ids = default_owner_ids
     if test_case.on_branch:
         branch = await create_branch(branch_name="branch2", db=db)
     if test_case.branch_owners is not None:
         owner_ids = tuple(group_ids[name] for name in test_case.branch_owners)
-        await _write(db=db, branch=branch, node_id=person.id, owner_ids=owner_ids)
+        await set_owners(db=db, branch=branch, node_id=person.id, owner_ids=owner_ids)
     repository = OwnershipRepository(db=db, branch=branch, at=None)
     assert await repository.read(node_ids=[person.id]) == _stored(
         node_id=person.id, kind=PREVIOUS_KIND, owner_ids=owner_ids
@@ -157,11 +133,11 @@ async def test_node_with_the_same_account_group_as_owner_and_as_source_keeps_bot
     car_person_schema: SchemaBranch,
     on_branch: bool,
 ) -> None:
-    group_ids = await _create_groups(db=db)
+    group_ids = await create_groups(db=db)
     person = await _create_person(db=db)
     sources = tuple(sorted([group_ids["security"], group_ids["dc-emea"]]))
-    await _write(db=db, branch=default_branch, node_id=person.id, owner_ids=(group_ids["security"],))
-    await _write(db=db, branch=default_branch, node_id=person.id, owner_ids=sources, holder=NODE_SOURCES_HOLDER)
+    await set_owners(db=db, branch=default_branch, node_id=person.id, owner_ids=(group_ids["security"],))
+    await set_owners(db=db, branch=default_branch, node_id=person.id, owner_ids=sources, holder=NODE_SOURCES_HOLDER)
     holders = {
         NODE_HOLDER: StoredOwnerState(owner_ids=(group_ids["security"],)),
         NODE_SOURCES_HOLDER: StoredOwnerState(owner_ids=sources),
@@ -197,15 +173,15 @@ async def test_owners_of_a_relationship_field_follow_the_node_when_its_kind_chan
     car_person_schema: SchemaBranch,
     on_branch: bool,
 ) -> None:
-    group_ids = await _create_groups(db=db)
+    group_ids = await create_groups(db=db)
     person = await _create_person(db=db)
     cars_holder = field_holder(
         schema=registry.schema.get(name=PREVIOUS_KIND, branch=default_branch, duplicate=False), field_name="cars"
     )
     assert cars_holder is not None
     node_owners = tuple(sorted([group_ids["dc-emea"], group_ids["security"]]))
-    await _write(db=db, branch=default_branch, node_id=person.id, owner_ids=node_owners)
-    await _write(
+    await set_owners(db=db, branch=default_branch, node_id=person.id, owner_ids=node_owners)
+    await set_owners(
         db=db, branch=default_branch, node_id=person.id, owner_ids=(group_ids["network-emea"],), holder=cars_holder
     )
     holders = {
@@ -290,7 +266,7 @@ async def test_profile_template_and_template_copy_keep_their_owners_when_the_kin
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, on_branch: bool
 ) -> None:
     registry.schema.register_schema(schema=SchemaRoot(nodes=[GADGET.duplicate()]), branch=default_branch.name)
-    group_ids = await _create_groups(db=db)
+    group_ids = await create_groups(db=db)
     profile = await Node.init(db=db, schema="ProfileTestingGadget")
     await profile.new(db=db, profile_name="gadget-profile")
     await profile.save(db=db)
@@ -300,7 +276,7 @@ async def test_profile_template_and_template_copy_keep_their_owners_when_the_kin
     profile_owners = (group_ids["dc-emea"],)
     template_owners = tuple(sorted([group_ids["network-emea"], group_ids["security"]]))
     for giver, owner_ids in ((profile, profile_owners), (template, template_owners)):
-        await _write(db=db, branch=default_branch, node_id=giver.id, owner_ids=owner_ids, holder=NODE_TARGET_HOLDER)
+        await set_owners(db=db, branch=default_branch, node_id=giver.id, owner_ids=owner_ids, holder=NODE_TARGET_HOLDER)
     gadget = await create_node(
         data={"name": "gadget-1", "object_template": {"id": template.id}},
         db=db,
@@ -352,12 +328,12 @@ async def test_node_whose_template_is_the_origin_of_its_owners_and_a_source_keep
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, on_branch: bool
 ) -> None:
     registry.schema.register_schema(schema=SchemaRoot(nodes=[GADGET.duplicate()]), branch=default_branch.name)
-    group_ids = await _create_groups(db=db)
+    group_ids = await create_groups(db=db)
     template = await Node.init(db=db, schema="TemplateTestingGadget")
     await template.new(db=db, template_name="gadget-template")
     await template.save(db=db)
     template_owners = (group_ids["dc-emea"],)
-    await _write(
+    await set_owners(
         db=db, branch=default_branch, node_id=template.id, owner_ids=template_owners, holder=NODE_TARGET_HOLDER
     )
     gadget = await create_node(
@@ -367,7 +343,7 @@ async def test_node_whose_template_is_the_origin_of_its_owners_and_a_source_keep
         schema=registry.schema.get_node_schema(name="TestingGadget", branch=default_branch),
     )
     sources = tuple(sorted([template.id, group_ids["security"]]))
-    await _write(db=db, branch=default_branch, node_id=gadget.id, owner_ids=sources, holder=NODE_SOURCES_HOLDER)
+    await set_owners(db=db, branch=default_branch, node_id=gadget.id, owner_ids=sources, holder=NODE_SOURCES_HOLDER)
     holders = {
         NODE_HOLDER: StoredOwnerState(owner_ids=template_owners, template_id=template.id),
         NODE_SOURCES_HOLDER: StoredOwnerState(owner_ids=sources),

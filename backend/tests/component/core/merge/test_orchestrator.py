@@ -37,9 +37,9 @@ from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_component, build_event_service
 from tests.adapters.cache import MemoryCache
 from tests.adapters.event import MemoryInfrahubEvent
-from tests.component.core.diff.merge._ownership import OWNERS_FIELD, load_owner_dataset, set_owners
 from tests.helpers.component import build_worker_component
 from tests.helpers.dependency_override import override_dependency
+from tests.helpers.ownership import OWNERS_FIELD, load_owner_dataset, set_owners
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Sequence

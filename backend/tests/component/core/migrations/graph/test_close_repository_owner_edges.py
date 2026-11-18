@@ -11,19 +11,8 @@ from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from tests.helpers.ownership import ADD_ATTRIBUTE_OWNER, ADD_LINK_OWNER, add_owner_edge, create_car
 
-# The owner edges of a repository are written as an earlier release stored them, because a repository is refused
-# as owner from the upgrade.
-ADD_ATTRIBUTE_OWNER = """
-MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(holder:Attribute {name: "color"})
-MATCH (owner:Node {uuid: $owner_id})
-CREATE (holder)-[:HAS_OWNER {branch: $branch, branch_level: $branch_level, status: "active", from: $at}]->(owner)
-"""
-ADD_LINK_OWNER = """
-MATCH (:Node {uuid: $node_id})-[:IS_RELATED]-(holder:Relationship)
-MATCH (owner:Node {uuid: $owner_id})
-CREATE (holder)-[:HAS_OWNER {branch: $branch, branch_level: $branch_level, status: "active", from: $at}]->(owner)
-"""
 ADD_NAME_OWNER = """
 MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(holder:Attribute {name: "name"})
 MATCH (owner:Node {uuid: $owner_id})
@@ -45,26 +34,6 @@ RETURN labels(holder) AS holder_labels, owner.uuid AS owner_id, r.branch AS bran
     r.from AS from, r.to AS to
 ORDER BY owner_id, branch, from
 """
-
-
-async def _add_owner(db: InfrahubDatabase, query: str, branch: Branch, node_id: str, owner_id: str) -> None:
-    await db.execute_query(
-        query=query,
-        params={
-            "node_id": node_id,
-            "owner_id": owner_id,
-            "branch": branch.name,
-            "branch_level": branch.hierarchy_level,
-            "at": Timestamp().to_string(),
-        },
-    )
-
-
-async def _create_car(db: InfrahubDatabase, name: str, person: Node, owner_id: str | None = None) -> Node:
-    car = await Node.init(db=db, schema="TestCar")
-    await car.new(db=db, name=name, owner=person, color={"value": "#000000", "owner": owner_id})
-    await car.save(db=db)
-    return car
 
 
 async def _color_owner_id(
@@ -105,18 +74,18 @@ async def test_repository_owners_are_closed_and_readable_before_the_upgrade(
     await person.new(db=db, name="John")
     await person.save(db=db)
 
-    repository_car = await _create_car(db=db, name="repository-car", person=person)
-    await _add_owner(
+    repository_car = await create_car(db=db, name="repository-car", person=person)
+    await add_owner_edge(
         db=db, query=ADD_ATTRIBUTE_OWNER, branch=default_branch, node_id=repository_car.id, owner_id=repository.id
     )
-    await _add_owner(
+    await add_owner_edge(
         db=db, query=ADD_LINK_OWNER, branch=default_branch, node_id=repository_car.id, owner_id=repository.id
     )
-    group_car = await _create_car(db=db, name="group-car", person=person, owner_id=group.id)
-    plain_car = await _create_car(db=db, name="plain-car", person=person)
-    branch_car = await _create_car(db=db, name="branch-car", person=person)
+    group_car = await create_car(db=db, name="group-car", person=person, owner_id=group.id)
+    plain_car = await create_car(db=db, name="plain-car", person=person)
+    branch_car = await create_car(db=db, name="branch-car", person=person)
     branch = await create_branch(db=db, branch_name="branch1")
-    await _add_owner(db=db, query=ADD_ATTRIBUTE_OWNER, branch=branch, node_id=branch_car.id, owner_id=repository.id)
+    await add_owner_edge(db=db, query=ADD_ATTRIBUTE_OWNER, branch=branch, node_id=branch_car.id, owner_id=repository.id)
     before_upgrade = Timestamp()
     edges_before = await _owner_edges(db=db)
     assert await _color_owner_id(db=db, branch=default_branch, node_id=repository_car.id) == repository.id
@@ -172,13 +141,13 @@ async def test_branch_made_before_the_upgrade_reads_no_repository_owner_after_th
     await person.save(db=db)
     cars: dict[str, str] = {}
     for name in ("inherited", "replaced-on-branch", "closed-on-default-branch"):
-        cars[name] = (await _create_car(db=db, name=name, person=person)).id
-        await _add_owner(
+        cars[name] = (await create_car(db=db, name=name, person=person)).id
+        await add_owner_edge(
             db=db, query=ADD_ATTRIBUTE_OWNER, branch=default_branch, node_id=cars[name], owner_id=repository.id
         )
     branch = await create_branch(db=db, branch_name="branch1")
     # An owner write of an earlier release on a branch left the owner edge of the default branch open.
-    await _add_owner(
+    await add_owner_edge(
         db=db, query=ADD_ATTRIBUTE_OWNER, branch=branch, node_id=cars["replaced-on-branch"], owner_id=group.id
     )
     await db.execute_query(
@@ -249,7 +218,7 @@ async def test_branch_made_before_the_upgrade_reads_no_global_repository_owner_a
         await group.save(db=db)
         groups[name] = group.id
     for name in ("open-at-upgrade", "replaced-before-upgrade"):
-        await _add_owner(
+        await add_owner_edge(
             db=db, query=ADD_NAME_OWNER, branch=global_branch, node_id=groups[name], owner_id=repository.id
         )
     branch = await create_branch(db=db, branch_name="branch1")
@@ -264,7 +233,7 @@ async def test_branch_made_before_the_upgrade_reads_no_global_repository_owner_a
             "at": replaced_at,
         },
     )
-    await _add_owner(
+    await add_owner_edge(
         db=db,
         query=ADD_NAME_OWNER,
         branch=global_branch,

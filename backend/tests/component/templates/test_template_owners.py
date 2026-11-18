@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
 from infrahub.core.ownership.constants import OWNERS_IDS_FILTER, OWNERS_ISNULL_FILTER
 from infrahub.core.ownership.models import (
@@ -21,21 +21,30 @@ from infrahub.core.ownership.models import (
 from infrahub.core.ownership.queries import NodeOwnerStateReadQuery
 from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.ownership.resolver import OwnershipResolver
-from infrahub.core.ownership.writer import OwnershipWriter
 from infrahub.core.registry import registry
-from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
 from tests.constants import TestKind
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
+from tests.helpers.ownership import (
+    OWNERS_FIELD,
+    OwnerDataset,
+    add_node,
+    copies,
+    load_owner_dataset,
+    resolve_owners,
+    set_owners,
+    site_from,
+    site_template,
+    template_copies,
+)
 from tests.helpers.schema import DEVICE_SCHEMA, load_schema
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.node import Node
     from infrahub.core.ownership.models import HolderKey
     from infrahub.database import InfrahubDatabase
 
-USER_ID = "test-user-id"
-OWNERS_FIELD = "node_metadata__owners"
 DEVICE_TEMPLATE = f"Template{TestKind.DEVICE}"
 INTERFACE_TEMPLATE = f"Template{TestKind.PHYSICAL_INTERFACE}"
 SFP_TEMPLATE = f"Template{TestKind.SFP}"
@@ -57,36 +66,19 @@ async def dataset(db: InfrahubDatabase, default_branch: Branch, register_core_mo
     await load_schema(db=db, schema=DEVICE_SCHEMA, branch_name=default_branch.name)
     groups: dict[str, str] = {}
     for name in ("dc-emea", "dc-security", "network-emea"):
-        groups[name] = (await _create(db=db, kind=InfrahubKind.ACCOUNTGROUP, name=name)).id
+        groups[name] = (await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name=name)).id
     return TemplateDataset(branch=default_branch, groups=groups)
-
-
-async def _create(db: InfrahubDatabase, kind: str, **kwargs: Any) -> Node:
-    node = await Node.init(db=db, schema=kind)
-    await node.new(db=db, **kwargs)
-    await node.save(db=db)
-    return node
-
-
-async def _write(
-    db: InfrahubDatabase, branch: Branch, node_id: str, holder: HolderKey, owner_ids: tuple[str, ...] | None
-) -> None:
-    node = await NodeManager.get_one(db=db, branch=branch, id=node_id, raise_on_error=True)
-    writer = OwnershipWriter(repository=OwnershipRepository(db=db, branch=branch, at=None))
-    await writer.apply(
-        node=node, holder=holder, state=StoredOwnerState(owner_ids=owner_ids), at=Timestamp(), user_id=USER_ID
-    )
 
 
 async def _device_template(
     db: InfrahubDatabase, dataset: TemplateDataset, name: str, owners: tuple[str, ...] | None
 ) -> Node:
     """Create a device template that gives these owners to its devices. None gives nothing."""
-    template = await _create(
+    template = await add_node(
         db=db, kind=DEVICE_TEMPLATE, template_name=name, manufacturer="Acme", weight=1, airflow="Passive"
     )
     if owners is not None:
-        await _write(db=db, branch=dataset.branch, node_id=template.id, holder=NODE_TARGET_HOLDER, owner_ids=owners)
+        await set_owners(db=db, branch=dataset.branch, node_id=template.id, holder=NODE_TARGET_HOLDER, owner_ids=owners)
     return template
 
 
@@ -94,7 +86,7 @@ async def _interface_template(
     db: InfrahubDatabase, dataset: TemplateDataset, template: Node, name: str, owners: tuple[str, ...] | None
 ) -> Node:
     """Add to a device template an interface subtemplate that gives these owners. None gives nothing."""
-    interface = await _create(
+    interface = await add_node(
         db=db,
         kind=INTERFACE_TEMPLATE,
         template_name=f"{template.template_name.value}-{name}",
@@ -103,7 +95,9 @@ async def _interface_template(
         device=template.id,
     )
     if owners is not None:
-        await _write(db=db, branch=dataset.branch, node_id=interface.id, holder=NODE_TARGET_HOLDER, owner_ids=owners)
+        await set_owners(
+            db=db, branch=dataset.branch, node_id=interface.id, holder=NODE_TARGET_HOLDER, owner_ids=owners
+        )
     return interface
 
 
@@ -204,8 +198,8 @@ async def test_profile_replaces_the_owners_that_came_from_a_template(
     template_owners = dataset.owners("dc-emea")
     template = await _device_template(db=db, dataset=dataset, name="emea-leaf", owners=template_owners)
     device = await _create_device(db=db, dataset=dataset, name="leaf-1", template=template)
-    profile = await _create(db=db, kind=DEVICE_PROFILE, profile_name="security-devices")
-    await _write(
+    profile = await add_node(db=db, kind=DEVICE_PROFILE, profile_name="security-devices")
+    await set_owners(
         db=db,
         branch=dataset.branch,
         node_id=profile.id,
@@ -244,7 +238,7 @@ async def test_template_changed_after_the_create_does_not_change_the_node(
     template = await _device_template(db=db, dataset=dataset, name="emea-leaf", owners=first_owners)
     device = await _create_device(db=db, dataset=dataset, name="leaf-1", template=template)
 
-    await _write(
+    await set_owners(
         db=db,
         branch=dataset.branch,
         node_id=template.id,
@@ -272,7 +266,7 @@ async def test_components_get_the_owners_that_their_subtemplates_give(
             ("eth2", ()),
         )
     }
-    sfp_subtemplate = await _create(
+    sfp_subtemplate = await add_node(
         db=db,
         kind=SFP_TEMPLATE,
         template_name="emea-leaf-eth0-sfp",
@@ -280,7 +274,7 @@ async def test_components_get_the_owners_that_their_subtemplates_give(
         serial_number="sn-0",
         interface=subtemplates["eth0"].id,
     )
-    await _write(
+    await set_owners(
         db=db,
         branch=dataset.branch,
         node_id=sfp_subtemplate.id,
@@ -328,7 +322,7 @@ async def test_owners_set_on_the_node_replace_the_copy_from_the_template(
     device = await _create_device(db=db, dataset=dataset, name="leaf-1", template=template)
     owner_ids = dataset.owners(*written) if written is not None else None
 
-    await _write(db=db, branch=dataset.branch, node_id=device.id, holder=NODE_HOLDER, owner_ids=owner_ids)
+    await set_owners(db=db, branch=dataset.branch, node_id=device.id, holder=NODE_HOLDER, owner_ids=owner_ids)
 
     assert await _stored(db, dataset, device.id) == (
         {NODE_HOLDER: StoredOwnerState(owner_ids=owner_ids)} if owner_ids is not None else {}
@@ -374,3 +368,34 @@ async def test_create_reads_the_owners_of_a_template_and_its_subtemplates_one_ti
 
     assert owner_reads == {2: 1, 6: 1}
     assert copies == {2: 2, 6: 6}
+
+
+@pytest.fixture
+async def owner_dataset(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> OwnerDataset:
+    return await load_owner_dataset(db=db, default_branch=default_branch)
+
+
+async def test_template_deleted_on_the_default_branch_leaves_its_copies_as_own_owners(
+    db: InfrahubDatabase, default_branch: Branch, owner_dataset: OwnerDataset
+) -> None:
+    dataset = owner_dataset
+    owner_ids = dataset.owners(("dc-emea",))
+    template = await site_template(db=db, default_branch=default_branch, dataset=dataset)
+    site_id = await site_from(db=db, branch=default_branch, template=template, name="site-a")
+    branch = await create_branch(db=db, branch_name="template-kept")
+    assert await template_copies(db=db, branch=default_branch, node_id=site_id) == copies(owner_ids, template.id)
+
+    await template.delete(db=db)
+
+    assert await template_copies(db=db, branch=default_branch, node_id=site_id) == copies(owner_ids, None)
+    assert await template_copies(db=db, branch=branch, node_id=site_id) == copies(owner_ids, template.id)
+    resolved = await resolve_owners(db=db, branch=default_branch, node_id=site_id)
+    assert (resolved.state, resolved.owner_ids, resolved.origin, resolved.origin_node_id) == (
+        OwnerState.OWNERS,
+        owner_ids,
+        OwnerOrigin.SELF,
+        site_id,
+    )
+    await verify_graph(db=db)
