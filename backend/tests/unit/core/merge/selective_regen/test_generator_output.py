@@ -62,6 +62,7 @@ class _WindowDiffCoordinator(DiffCoordinator):
         to_time: Timestamp,
         node_kinds: list[str] | None = None,
         node_uuids: set[str] | None = None,
+        include_unchanged: bool = False,
     ) -> EnrichedDiffRoot:
         self.requested_node_uuids.append(node_uuids)
         return EnrichedRootFactory.build(

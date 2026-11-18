@@ -348,6 +348,7 @@ class DiffCoordinator:
         to_time: Timestamp,
         node_kinds: list[str] | None = None,
         node_uuids: set[str] | None = None,
+        include_unchanged: bool = False,
     ) -> EnrichedDiffRoot:
         """Calculate and enrich the diff of a time range without storing it.
 
@@ -356,6 +357,8 @@ class DiffCoordinator:
         Args:
             node_kinds: Calculate the changes of the diff branch for nodes of these kinds only.
             node_uuids: Calculate the changes of the diff branch for the nodes with these uuids only.
+            include_unchanged: Keep the nodes and fields changed in the time range that end with the value
+                of the base branch, as unchanged entries.
 
         """
         self.logger.info(f"Calculating unstored diff for {base_branch.name} - {diff_branch.name}")
@@ -367,7 +370,7 @@ class DiffCoordinator:
                 to_time=to_time,
                 tracking_id=NameTrackingId(name=str(uuid4())),
             ),
-            is_incremental_diff=False,
+            is_incremental_diff=include_unchanged,
             node_kinds=node_kinds,
             node_uuids=node_uuids,
         )

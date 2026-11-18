@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
+from infrahub.core.timestamp import Timestamp
 from tests.helpers.diff_factories import (
     EnrichedAttributeFactory,
     EnrichedNodeFactory,
@@ -23,6 +25,7 @@ if TYPE_CHECKING:
 
 SOURCE_BRANCH = "feature"
 TARGET_BRANCH = "main"
+CHANGED_AT = Timestamp("2026-11-16T10:00:00Z")
 
 
 def _node(
@@ -38,6 +41,7 @@ def _node(
         kind=kind,
         label="node-label",
         action=action,
+        changed_at=CHANGED_AT,
         attributes=attributes or set(),
         relationships=relationships or set(),
     )
@@ -60,7 +64,12 @@ def _relationship(
     added: int = 0,
 ) -> EnrichedDiffRelationship:
     return EnrichedRelationshipGroupFactory.build(
-        name=name, action=action, cardinality=cardinality, relationships=peers or set(), num_added=added
+        name=name,
+        action=action,
+        cardinality=cardinality,
+        relationships=peers or set(),
+        num_added=added,
+        changed_at=CHANGED_AT,
     )
 
 
@@ -222,3 +231,87 @@ def test_dump_then_load_round_trips_the_summary() -> None:
     )
     summary = serializer.serialize(root=root, target_branch_name=TARGET_BRANCH)
     assert serializer.load(serializer.dump(summary)) == summary
+
+
+def test_unchanged_entries_are_kept_as_updated_on_request() -> None:
+    node = _node(
+        uuid="n1",
+        kind="TestDevice",
+        action=DiffAction.UNCHANGED,
+        attributes={_attribute(name="color", action=DiffAction.UNCHANGED)},
+        relationships={
+            _relationship(
+                name="tags",
+                action=DiffAction.UNCHANGED,
+                cardinality=RelationshipCardinality.MANY,
+                peers={_peer(peer_id="tag-1", action=DiffAction.UNCHANGED)},
+            )
+        },
+    )
+
+    summary = DiffSummarySerializer().serialize(
+        root=_root({node}), target_branch_name=TARGET_BRANCH, unchanged_as_updated=True
+    )
+
+    assert summary == [
+        {
+            "branch": TARGET_BRANCH,
+            "kind": "TestDevice",
+            "id": "n1",
+            "action": "UPDATED",
+            "display_label": "node-label",
+            "elements": [
+                {
+                    "name": "color",
+                    "element_type": "ATTRIBUTE",
+                    "action": "UPDATED",
+                    "summary": {"added": 0, "updated": 0, "removed": 0},
+                },
+                {
+                    "name": "tags",
+                    "element_type": "RELATIONSHIP_MANY",
+                    "action": "UPDATED",
+                    "summary": {"added": 0, "updated": 0, "removed": 0},
+                    "peers": [{"action": "UPDATED", "summary": {"added": 0, "updated": 0, "removed": 0}}],
+                },
+            ],
+        }
+    ]
+
+
+def test_parent_entries_without_a_change_time_stay_omitted_when_unchanged_entries_are_kept() -> None:
+    interface = _node(
+        uuid="interface-1",
+        kind="TestInterface",
+        action=DiffAction.UPDATED,
+        attributes={_attribute(name="description", action=DiffAction.UPDATED, updated=1)},
+        relationships={
+            replace(
+                _relationship(name="device", action=DiffAction.UNCHANGED, cardinality=RelationshipCardinality.ONE),
+                changed_at=None,
+            )
+        },
+    )
+    device = replace(_node(uuid="device-1", kind="TestDevice", action=DiffAction.UNCHANGED), changed_at=None)
+
+    summary = DiffSummarySerializer().serialize(
+        root=_root({interface, device}), target_branch_name=TARGET_BRANCH, unchanged_as_updated=True
+    )
+
+    assert summary == [
+        {
+            "branch": TARGET_BRANCH,
+            "kind": "TestInterface",
+            "id": "interface-1",
+            "action": "UPDATED",
+            "display_label": "node-label",
+            "elements": [
+                {
+                    "name": "description",
+                    "element_type": "ATTRIBUTE",
+                    "action": "UPDATED",
+                    "summary": {"added": 0, "updated": 1, "removed": 0},
+                }
+            ],
+        }
+    ]
