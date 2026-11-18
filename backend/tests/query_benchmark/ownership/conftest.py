@@ -107,7 +107,6 @@ REFERENCE_SCHEMA = SchemaRoot(
 
 @dataclass(frozen=True)
 class ReferenceDataSet:
-    group_ids: list[str]
     location_ids: dict[str, list[str]]
     """IDs of the locations of each level, from the top level down to the racks."""
 
@@ -129,7 +128,7 @@ async def load_reference_data_set(db: InfrahubDatabase, nb_devices: int = NB_DEV
     await load_schema(db=db, schema=REFERENCE_SCHEMA)
     limit = asyncio.Semaphore(NB_CONCURRENT_WRITES)
 
-    groups = await asyncio.gather(
+    await asyncio.gather(
         *[
             _create(db, limit, InfrahubKind.ACCOUNTGROUP, name=f"owner-group-{index:02d}")
             for index in range(NB_ACCOUNT_GROUPS)
@@ -178,7 +177,6 @@ async def load_reference_data_set(db: InfrahubDatabase, nb_devices: int = NB_DEV
     # Neo4j made its query plans for the empty graph, and the load is faster than its own resampling.
     await refresh_planner_statistics(db=db)
     return ReferenceDataSet(
-        group_ids=[group.get_id() for group in groups],
         location_ids=location_ids,
         device_ids=device_ids,
         nb_interfaces=nb_devices * NB_INTERFACES_PER_DEVICE,
