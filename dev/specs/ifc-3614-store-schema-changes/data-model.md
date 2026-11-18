@@ -1,11 +1,17 @@
 # Data model: stored schema changes
 
-The four records are `StandardNode` subclasses in `backend/infrahub/core/schema_change/models.py`.
-The class name is the Neo4j label. Each record has the `StandardNode` fields `uuid`, `created_at`,
-`created_by`, `updated_at` and `updated_by`, and an `IS_PART_OF` edge to `Root`.
+The four records are frozen dataclasses in `backend/infrahub/core/schema_change/models.py`. The
+class name is the Neo4j label. Each record has a `uuid`, a time-ordered UUID that the repository
+generates and that is the ID of the record, and `created_at`; the schema change and the
+application also have `created_by`, `updated_at` and `updated_by`, the operation `created_by`, and
+the migration record `updated_at`. `record_serializer.py::SchemaChangeRecordSerializer` turns a
+record into the properties that a query writes, and the properties that a query returns back into
+a record ([research.md](research.md), R1).
 
-The records are not versioned by branch. Their edges have no `branch` property
-([research.md](research.md), R2).
+The records are not versioned by branch. Their edges have no `branch` property, and no record has
+an edge to `Root` ([research.md](research.md), R2). Three indexes cover the lookups: `SchemaChange`
+by `uuid` and by `branch`, and `SchemaChangeApplication` by `uuid` ([research.md](research.md),
+R3).
 
 ```text
 (SchemaChange)-[:SCHEMA_CHANGE_HAS_OPERATION]->(SchemaChangeOperation)
@@ -78,9 +84,9 @@ Rules:
   `parameters.number_pool_id` (FR-012, FR-014).
 - `value` and `previous_value` are JSON so that a list, a mapping, a boolean and `null` keep their
   type. `null` as a value is different from a field that is not set.
-- Both fields are always JSON-encoded text when set. `StandardNode` stores `None` as the text
-  `NULL` and reads that text back as `None`, so the JSON value `null` is stored as `null`, a text
-  value as text inside quotes, and a field that is not set as `None`.
+- Both fields are always JSON-encoded text when set. A field that is not set is a property that
+  is not stored, so the JSON value `null` is stored as `null`, a text value as text inside quotes,
+  and the text `NULL` stays text.
 - A dropdown or enum mutation stores one `element_property` operation on `choices` or `enum`,
   with the whole list in `value` and the whole list before the change in `previous_value`. Each
   dropdown choice holds every field of the choice model, including `id`, which is always `null`,
@@ -89,7 +95,8 @@ Rules:
 
 The in-memory form is `SchemaOperation`, a Pydantic model in
 `backend/infrahub/core/schema_change/operations.py`. The builder creates it, the applier reads it,
-the repository converts it to `SchemaChangeOperation`, and the history reader converts it back.
+the serializer converts it to `SchemaChangeOperation` for the repository, and back for the history
+reader.
 
 ## SchemaChangeApplication
 
@@ -120,14 +127,14 @@ One migration that an application ran.
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `position` | `int` | Index of the migration in the list of the migration message of the application. That list follows the order of the schema diff, which can differ between two runs of the same load ([research.md](research.md), R9) |
+| `position` | `int` | Index of the migration in the migrations of the application sorted by schema path, then by migration name, so it is the same each time a load runs ([research.md](research.md), R9) |
 | `migration_name` | `str` | For example `node.attribute.add` |
 | `path_type` | `SchemaPathType` | `node`, `attribute` or `relationship`. The existing enum in `core/constants`, which `core/path.py::SchemaPath.path_type` uses |
 | `schema_kind` | `str` | Kind in the schema path |
 | `field_name` | `str \| None` | Attribute or relationship in the schema path |
 | `property_name` | `str \| None` | Property in the schema path |
-| `status` | `SchemaChangeMigrationStatus` | `waiting`, `running`, `applied`, `failed`, `rolled_back` |
-| `nbr_migrations_executed` | `int \| None` | Result that the migration returned |
+| `status` | `SchemaChangeMigrationStatus` | `waiting`, `running`, `applied`, `failed`, `rolled_back`, `cancelled` |
+| `nbr_migrations_executed` | `int \| None` | Result that the migration returned. Stored, and not returned by the history query |
 | `errors` | `list[str]` | Errors that the migration returned |
 
 - The path is stored as its parts, without `schema_id`, which is a vertex ID. The query also
@@ -140,31 +147,36 @@ Status transitions in this feature:
 
 ```text
 (created) waiting ──► running ──► applied ──► rolled_back   (the load failed later)
-                             └──► failed
+   │                     │   └──► failed
+   │                     └──► failed, with the error of the load   (the load failed while it ran)
+   └──► cancelled   (the load failed before the migration started)
 ```
 
-A record that is `waiting` or `running` when the load fails keeps its status. When a migration
-raises an exception, the flow does not read the results that come after it, so those records keep
-the status `running`.
+`mark_failed` closes the records of a failed load in one statement: `applied` becomes
+`rolled_back`, `waiting` becomes `cancelled`, `running` becomes `failed` with the error of the load
+added to its errors, and `failed` stays.
 
-`running` means that the phase of the migration started. The flow runs the kind updates one at a
-time, so the records of that phase have the status `running` while most of them wait.
+`running` means that the task of the migration started. The records report progress and are best
+effort: a record whose write fails after the retries keeps its earlier status, also when the load
+succeeds.
 
 ## What the repository and the history reader offer
 
-`SchemaChangeRepository(db)` in `backend/infrahub/core/schema_change/repository.py`, for the
-recorder, the version resolver and the migration recorder:
+`SchemaChangeRepository(db, serializer)` in `backend/infrahub/core/schema_change/repository.py`,
+with its `Query` classes, for the recorder, the version resolver, the migration recorder and the
+branch deletion:
 
 | Method | Purpose |
 | --- | --- |
 | Create a schema change with its operations and one application | The start of a load, and a mutation |
 | Create the migration records of an application | The migration flow, in one query |
-| Set the status of migration records by element ID | The migration flow, when a batch starts and when a migration returns |
+| Set the status of the migration records of an application by position | The migration flow, when a migration starts and when it returns |
 | Mark a schema change and its application applied, with version, parent and time | The end of a load |
-| Mark a schema change and its application failed, with the error, and its applied migration records rolled back | The end of a failed load |
+| Mark a schema change and its application failed, with the error, and close its migration records | The end of a failed or cancelled load |
 | Get the highest applied version of a branch, and the highest version of main applied at or before a timestamp, each with the ID of its schema change | `SchemaChangeVersionResolver` ([research.md](research.md), R10) |
+| Delete the schema changes of a branch with all their records | `BranchDataDeleter` ([research.md](research.md), R13) |
 
-`SchemaChangeHistoryReader(db)` in `backend/infrahub/core/schema_change/history_reader.py`, for
+`SchemaChangeHistoryReader(db, serializer)` in `backend/infrahub/core/schema_change/history_reader.py`, for
 the history query:
 
 | Method | Purpose |
@@ -172,13 +184,11 @@ the history query:
 | List the schema changes of a branch in pages, and count them | The page of the query |
 | Count the schema changes of a branch, without reading a page | The query when it selects `count` and not `edges` |
 | List operations in pages for a set of schema changes, with their counts | The operations loader |
-| List applications with their migration records for a set of schema changes | The applications loader |
+| List applications in pages for a set of schema changes, with their counts | The applications loader |
+| List migration records in pages for a set of applications, with their counts | The migrations loader |
 
 Each read returns a typed result built by its `Query` class. No method returns a raw database
-record. Both classes convert `SchemaOperation` to or from `SchemaChangeOperation`.
-
-Neither class deletes records. The query that deletes the records of a branch is run by
-`core/branch/data_deleter.py::BranchDataDeleter` ([research.md](research.md), R13).
+record. Both classes convert records with `SchemaChangeRecordSerializer`.
 
 ## Enumerations and constants
 

@@ -18,7 +18,6 @@ Builds the operations of a schema load. No database access.
 class SchemaOperationBuildResult:
     operations: list[SchemaOperation]
     direct_load_schema: SchemaBranch
-    diff: SchemaDiff
 
 
 class SchemaOperationBuilder:
@@ -33,9 +32,8 @@ class SchemaOperationBuilder:
 
 - `direct_load_schema` is the schema that a direct load builds: the file laid over a copy of the
   branch schema, then processed. The builder calculates it to find the operations. It is
-  returned so that no caller processes the file again.
-- `diff` is the diff from `branch_schema` to `direct_load_schema`, from which the operations are
-  built. It is returned so that no caller calculates it again.
+  returned so that the candidate builder compares it with the schema that the applier builds from
+  the operations.
 - `operations` is empty when the file changes nothing after processing.
 - Never changes `branch_schema`.
 - Each operation follows [data-model.md](../data-model.md), "SchemaChangeOperation".
@@ -66,6 +64,9 @@ class SchemaChangeApplier:
 - Raises `SchemaOperationTargetNotFoundError` when an operation names a kind, attribute or
   relationship that the schema does not have at that step. The message names the operation
   (position and type) and the missing element.
+- Raises `SchemaOperationTargetExistsError` when a `node_add` or an `element_add` adds a kind,
+  attribute or relationship that the schema already has at that step. The message names the
+  operation and the existing element. Skipping such an add is left to the ordered replay task.
 - Given the same target and the same operations, it returns a schema with the same hash each time.
 - The six operation types are a closed set. The applier selects the handling of an operation with
   an exhaustive `match` on `SchemaOperationType` that ends with `typing.assert_never`, so a type
@@ -73,8 +74,8 @@ class SchemaChangeApplier:
 
 ## `SchemaCandidateComparer`
 
-Compares two processed schemas. No database access, and it writes no log. Only the replay check of
-the tests (`SchemaOperationsCheck`, below) uses it.
+Compares two processed schemas. No database access, and it writes no log. The candidate builder
+uses it in `from_schema_root`.
 
 ```python
 class SchemaCandidateComparer:
@@ -93,34 +94,6 @@ class SchemaCandidateComparer:
   raised.
 - Never changes either schema.
 
-## `SchemaOperationsCheck`
-
-Checks that the operations built from a schema file rebuild the processed schema of that file.
-No database access. An ABC in `operations_check.py`, beside `NoSchemaOperationsCheck`.
-
-```python
-class SchemaOperationsCheck(ABC):
-    @abstractmethod
-    def check(
-        self,
-        *,
-        branch_schema: SchemaBranch,
-        operations: Sequence[SchemaOperation],
-        default_branch_schema: SchemaBranch,
-        direct_load_schema: SchemaBranch,
-    ) -> None: ...
-```
-
-- `NoSchemaOperationsCheck` checks nothing. Production uses it, so a load processes the schema
-  once (spec, decision 8).
-- `ReplaySchemaOperationsCheck`, in `backend/tests/helpers/schema_change.py`, takes the applier
-  and the comparer. It applies the operations to `branch_schema` with the applier, and raises
-  `SchemaOperationsRebuildError`, an `AssertionError`, when the applier refuses an operation or
-  when the comparer returns kinds between `direct_load_schema` and the applier's result. The
-  message names the operation or the kinds. A session-scoped autouse fixture of
-  `backend/tests/conftest.py` installs it for every test, through `config.OVERRIDE` (below).
-- Never changes `branch_schema` or `direct_load_schema`.
-
 ## `SchemaCandidateBuilder`
 
 The one way to build a candidate schema from user input.
@@ -138,7 +111,7 @@ class SchemaCandidateBuilder:
         self,
         operation_builder: SchemaOperationBuilder,
         applier: SchemaChangeApplier,
-        operations_check: SchemaOperationsCheck,
+        comparer: SchemaCandidateComparer,
     ) -> None: ...
 
     def from_schema_root(
@@ -150,13 +123,17 @@ class SchemaCandidateBuilder:
     ) -> SchemaCandidate: ...
 ```
 
-- `from_schema_root`: `schema` is the `direct_load_schema` of the operation builder, and
-  `validation.diff` is the `diff` of the operation builder. It calls `operations_check.check` with
-  the branch schema, the operations, the default branch schema and `direct_load_schema`, and then
-  validates. It does not call the applier or `SchemaBranch.diff`, and the schema is processed once,
-  in the operation builder.
+- `from_schema_root`: raises `SchemaNotFoundError` when the file gives a kind of the branch
+  schema an ID that the branch schema does not hold, before it builds any operation. It then
+  builds the operations, applies them to `branch_schema` with the applier, and compares the result
+  with `direct_load_schema` with the comparer. It raises `SchemaOperationsRebuildError` (HTTP 500)
+  when the applier raises `SchemaOperationTargetNotFoundError` or
+  `SchemaOperationTargetExistsError`, or when the comparer returns kinds; the message says that the
+  error is in Infrahub, not in the file, and names the kinds. Otherwise `schema` is the applier's
+  result and `validation.diff` is the diff between `branch_schema` and it. The schema is processed
+  twice: once by the operation builder and once by the applier (spec, decision 8).
 - `from_operations`: `schema` is the applier's result, and `validation.diff` is the diff between
-  `branch_schema` and it. It does not call `operations_check`.
+  `branch_schema` and it. It does not compare, and the errors of the applier reach the caller.
 - `validation.migrations` and `validation.constraints` are calculated from `validation.diff`,
   after processing. Both methods run `validate_node_deletions` on `schema` with that diff.
 - It has two entry methods because a candidate is built from a schema file or from operations,
@@ -176,8 +153,9 @@ class SchemaCandidateBuilder:
 
 ## `SchemaChangeRepository`
 
-The writes and the version reads of the records, in `repository.py`. The recorder, the version
-resolver and the migration recorder use it.
+The writes, the version reads and the deletion of the records, in `repository.py`, with the
+`Query` classes it runs. The recorder, the version resolver, the migration recorder and the branch
+deletion use it.
 
 ```python
 @dataclass(frozen=True)
@@ -193,7 +171,7 @@ class AppliedSchemaChangeVersion:
 
 
 class SchemaChangeRepository:
-    def __init__(self, db: InfrahubDatabase) -> None: ...
+    def __init__(self, db: InfrahubDatabase, serializer: SchemaChangeRecordSerializer) -> None: ...
 
     async def create_schema_change(
         self, *, branch: str, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
@@ -214,12 +192,13 @@ class SchemaChangeRepository:
 
     async def create_migration_records(
         self, *, application_id: str, migrations: Sequence[SchemaUpdateMigrationInfo]
-    ) -> dict[int, str]: ...
+    ) -> None: ...
 
     async def set_migration_records_status(
         self,
         *,
-        record_ids: Sequence[str],
+        application_id: str,
+        positions: Sequence[int],
         status: SchemaChangeMigrationStatus,
         nbr_migrations_executed: int | None,
         errors: Sequence[str],
@@ -230,20 +209,34 @@ class SchemaChangeRepository:
     async def get_highest_applied_version_at(
         self, *, branch: str, at: Timestamp
     ) -> AppliedSchemaChangeVersion | None: ...
+
+    async def delete_branch_schema_changes(self, *, branch: str, batch_size: int) -> int: ...
 ```
 
-- The ID of a schema change and of an application is the `uuid` of its record, as text. The
-  migration record IDs that `create_migration_records` returns, keyed by position, are element
-  IDs, and `set_migration_records_status` selects records by them.
+- The ID of every record is its `uuid`, a time-ordered UUID that the repository generates, as
+  text. No method reads or returns a Neo4j element ID. `set_migration_records_status` selects the
+  records of an application by their positions.
+- The records are frozen dataclasses (`models.py`). `SchemaChangeRecordSerializer`
+  (`record_serializer.py`) turns them into the properties that a query writes; a field that is
+  `None` is a property that is not set.
+- Each write is one statement. Outside a transaction, a write that Neo4j rejects with a transient
+  error runs again, with the retry settings of the database (`retry_db_transaction`). Inside a
+  transaction it runs once, because a failed statement aborts the transaction of the caller.
 - `create_schema_change` creates the schema change with the status `running`, no version, the
   summary of the operations and the format version 1, one operation record for each operation
   with its index as `position`, and one application with the status `running`, the branch and
   `at`.
 - `mark_applied` sets the schema change and the application to `applied`, and stores the version,
   `applied_at` and the `SCHEMA_CHANGE_HAS_PARENT` edge when `parent_id` is set.
-- `mark_failed` sets both to `failed`, stores the error on the application, and sets the migration
-  records of the application that are `applied` to `rolled_back`. It is created with the other
-  writes, not in phase 5, because the seeding function of the tests creates failed schema changes.
+- `mark_failed` sets both to `failed`, stores the error on the application, and closes the
+  migration records of the application in the same statement: an `applied` record becomes
+  `rolled_back`, a `waiting` one `cancelled`, and a `running` one `failed` with the error added to
+  its errors; a `failed` one keeps its status.
+- `create_migration_records` raises `QueryError` when the application is not stored.
+- `delete_branch_schema_changes` deletes the schema changes of the branch with their operations,
+  applications and migration records, and returns the number of schema changes deleted. It runs
+  outside a transaction, because its query commits each batch of `batch_size` records on its own
+  ([research.md](../research.md), R13).
 - `get_highest_applied_version_at` returns the applied schema change with the highest version
   among those of the branch whose `applied_at` is at or before `at`.
 - A schema change with the status `running` or `failed` is never returned by the two version
@@ -280,13 +273,19 @@ class SchemaOperationPage:
 
 
 @dataclass(frozen=True)
-class SchemaChangeApplicationRecord:
-    application: SchemaChangeApplication
+class SchemaChangeApplicationPage:
+    count: int
+    applications: list[SchemaChangeApplication]
+
+
+@dataclass(frozen=True)
+class SchemaChangeMigrationPage:
+    count: int
     migrations: list[SchemaChangeMigration]
 
 
 class SchemaChangeHistoryReader:
-    def __init__(self, db: InfrahubDatabase) -> None: ...
+    def __init__(self, db: InfrahubDatabase, serializer: SchemaChangeRecordSerializer) -> None: ...
 
     async def list_schema_changes(
         self, *, branch: str, limit: int, offset: int, statuses: Sequence[SchemaChangeStatus] | None = None
@@ -301,8 +300,12 @@ class SchemaChangeHistoryReader:
     ) -> dict[str, SchemaOperationPage]: ...
 
     async def list_applications(
-        self, *, schema_change_ids: Sequence[str]
-    ) -> dict[str, list[SchemaChangeApplicationRecord]]: ...
+        self, *, schema_change_ids: Sequence[str], limit: int, offset: int
+    ) -> dict[str, SchemaChangeApplicationPage]: ...
+
+    async def list_migrations(
+        self, *, application_ids: Sequence[str], limit: int, offset: int
+    ) -> dict[str, SchemaChangeMigrationPage]: ...
 ```
 
 - `list_schema_changes` orders the applied schema changes by version, then the others by
@@ -310,17 +313,18 @@ class SchemaChangeHistoryReader:
   `None` filters nothing.
 - `count_schema_changes` returns the same `count` as `list_schema_changes`, without reading a page.
   The query calls it when the request selects `count` and not `edges`.
-- The two other reads return a key for each ID of `schema_change_ids` that names a stored schema
-  change. `list_operations` returns the operations in the order of `position`, and `count` is the
-  number of operations of that schema change. `list_applications` returns the migration records
-  in the order of `position`.
-- The ID keys are the `uuid` of each schema change, as text.
+- The three other reads return one page for each ID of `schema_change_ids` or `application_ids`
+  that names a stored record, with `count`, the number of child records on all pages.
+  `list_operations` returns the operations in the order of `position`, `list_applications` the
+  applications in the order of `at`, then `uuid`, and `list_migrations` the migration records in
+  the order of `position`.
+- The ID keys are the `uuid` of each schema change or application, as text.
 
 ## `SchemaChangeVersionResolver`
 
 Calculates the version and the parent of the next applied schema change of a branch
-([research.md](../research.md), R10). It reads through `SchemaChangeRepository` and writes
-nothing.
+([research.md](../research.md), R10). It reads through the protocol `AppliedVersionReader`, which holds the two version reads of
+`SchemaChangeRepository`, and writes nothing.
 
 ```python
 @dataclass(frozen=True)
@@ -330,7 +334,7 @@ class SchemaChangeVersion:
 
 
 class SchemaChangeVersionResolver:
-    def __init__(self, repository: SchemaChangeRepository, default_branch_name: str) -> None: ...
+    def __init__(self, repository: AppliedVersionReader, default_branch_name: str) -> None: ...
 
     async def resolve_next(self, *, branch: Branch) -> SchemaChangeVersion: ...
 ```
@@ -343,13 +347,15 @@ class SchemaChangeVersionResolver:
 - Otherwise the version is 1 and there is no parent.
 - A schema change with the status `running` or `failed` never changes the result (FR-032).
 - A branch is main when its name is `default_branch_name`. The resolver reads only the `name` and
-  the `branched_from` of the branch, so a test can give each case a main of its own.
+  the `branched_from` of the branch, so a unit test builds a `Branch` without a database and
+  passes a repository adapter that returns the versions of each case.
 - The caller holds the schema lock, so the value is still correct when the caller writes it.
 
 ## `SchemaChangeRecorder`
 
-Owns the statuses of the records. Uses `SchemaChangeRepository` for the writes and
-`SchemaChangeVersionResolver` for the version and the parent.
+Owns the statuses of the records. Writes through the protocol `SchemaChangeRecordStore`, which
+holds `create_schema_change`, `mark_applied` and `mark_failed` of `SchemaChangeRepository`, and
+uses `SchemaChangeVersionResolver` for the version and the parent.
 
 ```python
 @dataclass(frozen=True)
@@ -360,7 +366,7 @@ class SchemaChangeRecording:
 
 
 class SchemaChangeRecorder:
-    def __init__(self, repository: SchemaChangeRepository, version_resolver: SchemaChangeVersionResolver) -> None: ...
+    def __init__(self, repository: SchemaChangeRecordStore, version_resolver: SchemaChangeVersionResolver) -> None: ...
 
     async def start(
         self, *, branch: Branch, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
@@ -379,7 +385,7 @@ class SchemaChangeRecorder:
 | --- | --- | --- | --- |
 | `start` | created, `running`, no version | created, `running` | none yet |
 | `complete` | `applied`, version, parent, `applied_at` | `applied` | unchanged |
-| `fail` | `failed` | `failed`, with the error | `applied` becomes `rolled_back`; the others are unchanged |
+| `fail` | `failed` | `failed`, with the error | `applied` becomes `rolled_back`, `waiting` becomes `cancelled`, `running` becomes `failed` with the error; `failed` is unchanged |
 | `record_applied` | created, `applied`, version, parent, `applied_at` | created, `applied` | none |
 
 - It has four entry methods because they are the steps of one schema change, and each needs the
@@ -404,6 +410,8 @@ class SchemaChangeRecorder:
   transaction.
 - `at` is the timestamp of the graph writes. `complete` and `record_applied` store it as the
   schema change's `applied_at`.
+- The recorder catches no error of the repository: a failed write of `complete` or `fail` reaches
+  the caller.
 
 ## `SchemaChangeApplicationRunner`
 
@@ -435,6 +443,7 @@ class SchemaUpdateExecutor(Protocol):
         limit: list[str],
         user_id: str,
         application_id: str | None,
+        final_step: SchemaUpdateFinalStep | None,
     ) -> str: ...
 
 
@@ -468,26 +477,28 @@ class SchemaChangeApplicationRunner:
   priority `HIGH`, as it passes them to the coordinator today. Without `user_id`, the schema
   vertices, the branch and the migrations of a load would be written as the system account.
 - Returns the new schema hash.
-- Calls `recorder.start`, then `executor.execute` with the application ID, then
-  `recorder.complete`.
+- Calls `recorder.start`, then `executor.execute` with the application ID and a final step that
+  calls `recorder.complete`. The coordinator runs the final step after it saved the schema and the
+  migrations succeeded, and rolls the update back when it raises, so a schema change that cannot be
+  recorded as `applied` fails the load (spec, decision 9). A failure of `recorder.start` reaches
+  the caller before anything is written.
 - When the candidate has no operation, calls only `executor.execute`, with
-  `application_id=None`, and logs the warning
+  `application_id=None` and no final step, and logs the warning
   `Applying a schema change that has no operation, without recording it` with `branch` and
   `diff`. No schema change is stored, and the migrations write no record.
-- When the executor raises, calls `recorder.fail` with the text of the error, then raises the
-  same exception. The caller receives the same error as today.
-- `recorder.complete` runs after the handling of an executor error. When it raises a
-  `DatabaseError`, a `QueryError`, a `QueryTimeoutError` or a `neo4j` `Neo4jError` after the
-  executor saved the schema, the runner logs the event
-  `Could not record the application of a schema change` with `schema_change_id`,
-  `application_id` and the exception, does not call `recorder.fail`, and returns the new hash:
-  the schema change and its application keep the status `running` ([research.md](../research.md),
-  R8). Any other exception that `recorder.complete` raises reaches the caller.
+- When the executor raises an `Exception`, the final step's included, calls `recorder.fail` with
+  the text of the error, then raises the same exception. The caller receives the same error as
+  today.
+- When the load is cancelled (`asyncio.CancelledError`), calls `recorder.fail` with the error
+  `The schema load was cancelled before it completed` inside `asyncio.shield`, then lets the
+  cancellation go on. The coordinator does not roll back a cancelled update
+  ([research.md](../research.md), R8).
 - `run` always creates a new schema change. Applying a schema change that already exists, as the
   staging and replay tasks do, is not in this contract; those tasks extend it.
 - When `recorder.fail` raises a `DatabaseError`, a `QueryError`, a `QueryTimeoutError` or a
-  `neo4j` `Neo4jError`, the failure of the record update is logged and the original exception is
-  still raised. Any other exception that `recorder.fail` raises reaches the caller in place of the
+  `neo4j` `Neo4jError` (`RECORD_WRITE_ERRORS`), the event
+  `Could not record the failure of a schema change` is logged with `schema_change_id` and
+  `application_id`, and the original exception is still raised. Any other exception that `recorder.fail` raises reaches the caller in place of the
   original one.
 
 ## `MigrationRecorder`
@@ -500,7 +511,7 @@ class MigrationRecorder(ABC):
     async def register(self, *, migrations: Sequence[SchemaUpdateMigrationInfo]) -> None: ...
 
     @abstractmethod
-    async def batch_started(self, *, positions: Sequence[int]) -> None: ...
+    async def migration_started(self, *, position: int) -> None: ...
 
     @abstractmethod
     async def migration_ended(self, *, position: int, result: SchemaMigrationPathResponseData) -> None: ...
@@ -509,12 +520,13 @@ class MigrationRecorder(ABC):
 class MigrationRecordStore(Protocol):
     async def create_migration_records(
         self, *, application_id: str, migrations: Sequence[SchemaUpdateMigrationInfo]
-    ) -> dict[int, str]: ...
+    ) -> None: ...
 
     async def set_migration_records_status(
         self,
         *,
-        record_ids: Sequence[str],
+        application_id: str,
+        positions: Sequence[int],
         status: SchemaChangeMigrationStatus,
         nbr_migrations_executed: int | None,
         errors: Sequence[str],
@@ -526,36 +538,40 @@ class MigrationRecordStore(Protocol):
   `application_migration_recorder.py` holds `ApplicationMigrationRecorder` and
   `MigrationRecordStore`. The flow imports the interface; only `factory.py` imports both.
 - `ApplicationMigrationRecorder(store, application_id)`: `register` creates one record for each
-  migration with the status `waiting`, and keeps the ID of each record by its position.
-  `batch_started` sets the records at the positions given to `running`. `migration_ended` sets
+  migration with the status `waiting`, and keeps the positions it created.
+  `migration_started` sets the record at its position to `running`. `migration_ended` sets
   one record to `applied` when the result has no error, or to `failed` with the errors, and
   stores `nbr_migrations_executed`. When `register` could not create the records, the two other
   methods write nothing for the positions that have no record.
 - `MigrationRecordStore` holds the two methods the recorder calls. `SchemaChangeRepository`
-  satisfies it by its signatures. A unit test passes a store that raises on every call.
+  satisfies it by its signatures. The unit tests pass a store that records each call and raises
+  for the methods named.
+- The migrations run concurrently and the database session of the store runs one query at a time,
+  so the recorder makes its writes one after the other behind a lock.
 - The runner and the migration recorder catch the same errors of a record write, the tuple
   `RECORD_WRITE_ERRORS` of `core/schema_change/record_errors.py`.
 - The application ID is a constructor argument, because one recorder serves one application for
   the length of one flow run, and the interface is shared with a recorder that has no
   application.
-- `position` is the index of the migration in the list of the flow message. Every method
-  identifies a migration by its position, because two migrations of one application can have the
-  same name and the same schema path.
-- The flow splits the migrations of the message into two phases and reads results in the order
-  they complete, so it pairs each migration with its position once, from the list of the
-  message, in a `PositionedMigration` (`core/migrations/schema/tasks.py`). Both phases and every
-  result carry that position.
-- `batch_started` receives every position of a phase when the phase starts. The phase of the
-  kind updates runs one migration at a time, so its records have the status `running` while
-  most of them wait.
+- `position` is the index of the migration in the migrations of the flow message sorted by schema
+  path, then by migration name (`core/migrations/schema/tasks.py::position_migrations`). The diff
+  lists the migrations in the order of a set, so the sort keeps the positions the same between two
+  runs of one load. Every method identifies a migration by its position, because two migrations
+  of one application can have the same name and the same schema path.
+- The flow splits the migrations into two phases and reads results in the order they complete, so
+  it pairs each migration with its position once, in a `PositionedMigration`. Both phases and
+  every result carry that position, and `register` receives the sorted list.
+- `migration_started` is called by the task of one migration when it starts
+  (`_migrate_schema_path_at_position`), so a record is `running` only while its migration runs.
 - `NoRecordMigrationRecorder`: does nothing. Used when the message has no application ID.
 - The values `ApplicationMigrationRecorder` passes to `set_migration_records_status`:
-  - `batch_started`: the record IDs of the positions given, in that order, the status `running`,
+  - `migration_started`: the application ID, the position in a list of one, the status `running`,
     `nbr_migrations_executed=None` and no error;
-  - `migration_ended`: the record ID of the position, the status `applied` with no error when the
+  - `migration_ended`: the application ID, the position in a list of one, the status `applied` with no error when the
     result has no error, or `failed` with the errors of the result, and the
     `nbr_migrations_executed` of the result in both cases.
-- A failure to write a record does not stop a migration. It is logged, and the record keeps its
+- A failure to write a record does not stop a migration: the migration records report progress
+  and are best effort. It is logged after the retries of the repository, and the record keeps its
   earlier status. The recorder catches the `DatabaseError`, the `QueryError` (raised when the
   application does not exist), the `QueryTimeoutError` and the `neo4j` `Neo4jError` (which covers
   a transient error such as a deadlock) that the store raises, and logs a warning with `get_logger()` and `exc_info=True`, with these events and fields:
@@ -563,7 +579,7 @@ class MigrationRecordStore(Protocol):
   | Method | Event | Fields |
   | --- | --- | --- |
   | `register` | `Could not create the migration records of an application` | `application_id` |
-  | `batch_started` | `Could not set the migration records of a batch to running` | `application_id`, `positions` (a list) |
+  | `migration_started` | `Could not set the migration record of a migration to running` | `application_id`, `position` |
   | `migration_ended` | `Could not update the migration record of a migration` | `application_id`, `position` |
 
 ## The seeding function of the tests
@@ -592,20 +608,19 @@ async def seed_schema_change_history(
 - Each operation sets `label` on the attribute `color` of `TestCar`, with the value
   `Color <position>`. A schema change with one operation has the summary `testcar_color_update`.
 - The result lists every `SeededSchemaChange` in the order of creation, with the IDs, the
-  version, the parent ID, the timestamp `at`, the operations and the migration record IDs.
+  version, the parent ID, the timestamp `at` and the operations.
 
 ## Where the components are built
 
 `backend/infrahub/core/schema_change/factory.py` holds the functions that build the components.
 Each takes `db` and plain values, and reads no setting and no registry. The entry point passes
-`registry.default_branch` as `default_branch_name`. `build_schema_candidate_builder()` reads one
-process-wide value, `config.OVERRIDE.schema_operations_check`, which only the tests set, as
-`git/state/factory.py::build_repository_git_state_reader` reads
-`config.OVERRIDE.repository_git_state_reader`.
+`registry.default_branch` as `default_branch_name`.
 
 | Function | Returns | Called by |
 | --- | --- | --- |
-| `build_schema_candidate_builder()` | `SchemaCandidateBuilder` with its operation builder, its applier, and `config.OVERRIDE.schema_operations_check` when it is set or `NoSchemaOperationsCheck` otherwise | `api/schema.py::load_schema` and `api/schema.py::check_schema`, each at its top, and `graphql/mutations/schema.py::apply_attribute_property_change` |
+| `build_schema_candidate_builder()` | `SchemaCandidateBuilder` with its operation builder, its applier and its comparer | `api/schema.py::load_schema` and `api/schema.py::check_schema`, each at its top, and `graphql/mutations/schema.py::apply_attribute_property_change` |
+| `build_schema_change_repository(db)` | `SchemaChangeRepository` with its serializer | the branch deletion in `core/branch/tasks.py` and in the graph migrations `m032` and `m075`, and the functions below |
+| `build_schema_change_history_reader(db)` | `SchemaChangeHistoryReader` with its serializer | the history query and its loaders |
 | `build_schema_change_recorder(db, default_branch_name)` | `SchemaChangeRecorder` with its repository and version resolver | `apply_attribute_property_change`, and the function below |
 | `build_schema_change_application_runner(db, executor, default_branch_name)` | `SchemaChangeApplicationRunner` | `load_schema`, at its top and before the schema lock. It builds the `SchemaUpdateCoordinator` there and passes it as `executor` |
 | `build_migration_recorder(db, application_id)` | `ApplicationMigrationRecorder` when `application_id` is set, `NoRecordMigrationRecorder` otherwise | `core/migrations/schema/tasks.py::schema_apply_migrations`, at its top |
@@ -619,14 +634,15 @@ One place builds a component after the work started, and it is deliberate:
 | Component | Change |
 | --- | --- |
 | `core/migrations/schema/models.py::SchemaApplyMigrationData` | New optional field `application_id: str \| None`, default `None`. The hand-written `serialize_model` is replaced by field serializers, because it lists its keys and would drop the new field before the message reaches a task worker |
-| `core/schema/update_coordinator.py::SchemaUpdateCoordinator.execute` | New keyword argument `application_id: str \| None` without a default, passed to the message. The argument `update_registry` and the three overloads are removed, because no caller passes `False`. The callers in `cli/db.py`, `core/branch/tasks.py` and `core/merge/orchestrator.py` pass `application_id=None` |
-| `core/migrations/schema/tasks.py::schema_apply_migrations` | Calls `get_database()` once at its top, builds a `MigrationRecorder` with `build_migration_recorder` on a session started from that database, and pairs each migration with its position in the message. Return value unchanged |
+| `core/schema/update_coordinator.py::SchemaUpdateCoordinator.execute` | New keyword argument `application_id: str \| None` without a default, passed to the message. New keyword argument `final_step: SchemaUpdateFinalStep \| None`, default `None`, which runs after the schema is saved and the migrations succeed; when it raises, the update is rolled back like a failed migration. The argument `update_registry` and the three overloads are removed, because no caller passes `False`. The callers in `cli/db.py`, `core/branch/tasks.py` and `core/merge/orchestrator.py` pass `application_id=None` |
+| `core/migrations/schema/models.py::SchemaMigrationPathResponseData` | `migration_name` and `schema_path` are required |
+| `core/migrations/schema/tasks.py::schema_apply_migrations` | Calls `get_database()` once at its top, builds a `MigrationRecorder` with `build_migration_recorder` on a session started from that database, sorts the migrations by schema path and pairs each one with its position in that order. Return value unchanged |
 | `core/migrations/schema/tasks.py::split_migrations_by_phase` and `::_apply_migration_batch` | Take `PositionedMigration` items. `_apply_migration_batch` takes the recorder and the database |
-| `config.py::Override` | New field `schema_operations_check: SchemaOperationsCheck \| None`, default `None`. Only the tests set it |
 | `api/schema.py::evaluate_candidate_schemas` | Replaced by `build_candidate_from_schemas`. Five calls in three component test modules call the candidate builder directly |
 | `api/schema.py::check_schema` | Calls `_validate_migrations` in place of its own copy of the constraint workflow call |
 | `graphql/mutations/schema.py::update_registry` | Replaced by `apply_attribute_property_change` |
-| `core/branch/data_deleter.py::BranchDataDeleter.delete_branch_data` | Also deletes the schema change records of the branch, at most the deleter's batch size of schema changes for each query, each with all its records. The number of edges it returns does not count the edges of these records |
+| `core/branch/data_deleter.py::BranchDataDeleter` | Takes a `SchemaChangeRecordDeleter`, the protocol of `SchemaChangeRepository.delete_branch_schema_changes`, as a constructor argument. `delete_branch_data` also deletes the schema change records of the branch, in batches of the deleter's batch size. The number of edges it returns does not count the edges of these records |
+| `exceptions.py` | New errors `SchemaOperationTargetNotFoundError` and `SchemaOperationTargetExistsError` (HTTP 422), raised by the applier, and `SchemaOperationsRebuildError` (HTTP 500), raised by `from_schema_root` |
 | `POST /api/schema/load` | Request and response unchanged. Stores a schema change when the schema changed |
 | `POST /api/schema/check` | Request and response unchanged. Stores nothing |
 | `SchemaDropdownAdd`, `SchemaDropdownRemove`, `SchemaEnumAdd`, `SchemaEnumRemove` | Input and payload unchanged. Each stores a schema change when the schema changed |

@@ -1,86 +1,109 @@
-# Contract of the schema change history query.
+# Contract of the schema change history query, as schema/schema.graphql holds it.
 #
 # The query returns the schema changes stored for the branch of the request
 # (the branch in the GraphQL endpoint path).
 #
 # Order of the edges: applied schema changes by version, lowest first, then
 # the schema changes without a version by the time they were created, oldest
-# first.
+# first. The operations of a schema change come by position, its applications
+# by `at`, and the migration records of an application by position.
 #
 # Access: a logged-in account. No other permission.
 #
 # A limit below 1 or above the maximum, or an offset below 0, is refused with
-# a validation error. The messages, for InfrahubSchemaChange and for
-# operations: "limit must be >= 1", "limit must be <= <maximum>" (50 or 500),
-# "offset must be >= 0".
+# a validation error. The messages, for InfrahubSchemaChange, operations,
+# applications and migrations: "limit must be >= 1", "limit must be <= <maximum>"
+# (50, 500, 50 or 500), "offset must be >= 0".
+#
+# The database also holds the format version of a schema change and the
+# number of migrations executed of a migration record; this query returns
+# neither.
 
 # No code of this feature sets STAGED. The staging task of the same epic does.
+"""Status of a schema change of a branch."""
 enum SchemaChangeStatus {
-  STAGED
-  RUNNING
   APPLIED
   FAILED
+  RUNNING
+  STAGED
 }
 
 # No code of this feature sets ROLLED_BACK or SKIPPED on an application. The
 # task that applies schema changes in order at rebase and merge does.
+"""Status of one application of a schema change to a branch."""
 enum SchemaChangeApplicationStatus {
-  RUNNING
   APPLIED
   FAILED
   ROLLED_BACK
+  RUNNING
   SKIPPED
 }
 
-# This feature sets ROLLED_BACK on a migration record that was APPLIED when its
-# schema load failed.
-
+# When a schema load fails, a migration record that was APPLIED becomes
+# ROLLED_BACK, a WAITING one CANCELLED, and a RUNNING one FAILED with the error
+# of the load added to its errors.
+"""
+Status of one migration that an application of a schema change runs on the data of its branch.
+"""
 enum SchemaChangeMigrationStatus {
-  WAITING
-  RUNNING
   APPLIED
+  CANCELLED
   FAILED
   ROLLED_BACK
+  RUNNING
+  WAITING
 }
 
+"""
+Type of a schema operation: add, remove or change a property of a kind, or of an attribute or relationship.
+"""
 enum SchemaOperationType {
-  NODE_ADD
-  NODE_REMOVE
-  NODE_PROPERTY
   ELEMENT_ADD
-  ELEMENT_REMOVE
   ELEMENT_PROPERTY
+  ELEMENT_REMOVE
+  NODE_ADD
+  NODE_PROPERTY
+  NODE_REMOVE
 }
 
+"""Whether a kind that a schema operation adds is a node or a generic."""
 enum SchemaOperationNodeType {
-  NODE
   GENERIC
+  NODE
 }
 
+"""
+Whether the element of a schema operation is an attribute or a relationship.
+"""
 enum SchemaOperationSection {
   ATTRIBUTES
   RELATIONSHIPS
 }
 
+"""Whether a schema path names a kind, an attribute or a relationship."""
 enum SchemaPathType {
-  NODE
   ATTRIBUTE
+  NODE
   RELATIONSHIP
 }
 
 type Query {
+  """
+  Retrieve the schema changes of the branch of the request: the applied ones by version, then the others by the time they were created.
+  """
   InfrahubSchemaChange(
-    # Number of schema changes to return. Default 10, maximum 50, minimum 1.
+    """Number of schema changes to return. Default 10, maximum 50, minimum 1."""
     limit: Int
-    # Number of schema changes to skip. Minimum 0.
+    """Number of schema changes to skip. Minimum 0."""
     offset: Int
-    # Return only the schema changes with one of these statuses.
+    """Return only the schema changes with one of these statuses."""
     status: [SchemaChangeStatus!]
   ): InfrahubSchemaChanges!
 }
 
+"""One page of the schema changes of a branch."""
 type InfrahubSchemaChanges {
-  # Number of schema changes that match, on all pages.
+  """Number of schema changes that match, on all pages."""
   count: Int!
   edges: [InfrahubSchemaChangeEdge!]!
 }
@@ -89,43 +112,54 @@ type InfrahubSchemaChangeEdge {
   node: InfrahubSchemaChangeNode!
 }
 
+"""One change to the schema of a branch, made of one or more operations."""
 type InfrahubSchemaChangeNode {
-  id: ID!
-  # "<version, five digits>_<summary>", or the summary when there is no version.
-  name: String!
-  summary: String!
-  # Null unless the status is APPLIED.
-  version: Int
-  status: SchemaChangeStatus!
-  branch: String!
-  format_version: Int!
-  created_at: DateTime!
-  # Time of the last change of the record.
-  updated_at: DateTime!
-  # Timestamp at which the schema was written to the branch. Null unless the
-  # status is APPLIED.
-  applied_at: DateTime
-  # Null for the first schema change of main, for a branch's first schema
-  # change when main has none, and for a schema change without a version.
-  parent: InfrahubSchemaChangeParent
-  operations(
-    # Number of operations to return. Default 50, maximum 500, minimum 1.
+  applications(
+    """Number of applications to return. Default 10, maximum 50, minimum 1."""
     limit: Int
-    # Number of operations to skip. Minimum 0.
+    """Number of applications to skip. Minimum 0."""
+    offset: Int
+  ): InfrahubSchemaChangeApplications!
+  """
+  Timestamp at which the schema was written to the branch. Null unless the status is APPLIED.
+  """
+  applied_at: DateTime
+  branch: String!
+  created_at: DateTime!
+  id: ID!
+  """
+  "<version, five digits>_<summary>", or the summary when there is no version.
+  """
+  name: String!
+  operations(
+    """Number of operations to return. Default 50, maximum 500, minimum 1."""
+    limit: Int
+    """Number of operations to skip. Minimum 0."""
     offset: Int
   ): InfrahubSchemaChangeOperations!
-  applications: [InfrahubSchemaChangeApplication!]!
+  """
+  The applied schema change that this one follows. Null for the first schema change of main, for a branch's first schema change when main has none, and for a schema change without a version.
+  """
+  parent: InfrahubSchemaChangeParent
+  status: SchemaChangeStatus!
+  summary: String!
+  """Time of the last change of the record."""
+  updated_at: DateTime!
+  """Null unless the status is APPLIED."""
+  version: Int
 }
 
+"""The applied schema change that a schema change follows."""
 type InfrahubSchemaChangeParent {
+  branch: String!
   id: ID!
   name: String!
   version: Int!
-  branch: String!
 }
 
+"""One page of the operations of a schema change."""
 type InfrahubSchemaChangeOperations {
-  # Number of operations of the schema change.
+  """Number of operations of the schema change."""
   count: Int!
   edges: [InfrahubSchemaChangeOperationEdge!]!
 }
@@ -134,59 +168,101 @@ type InfrahubSchemaChangeOperationEdge {
   node: InfrahubSchemaChangeOperation!
 }
 
+"""
+One operation of a schema change; the operations apply in the order of `position`.
+"""
 type InfrahubSchemaChangeOperation {
-  # Order in which the operation applies, from 0.
-  position: Int!
-  operation_type: SchemaOperationType!
-  kind: String!
-  # Set for NODE_ADD.
-  node_type: SchemaOperationNodeType
-  # Set for the three ELEMENT types.
-  section: SchemaOperationSection
-  # Name of the attribute or relationship before the operation.
+  """Name of the attribute or relationship before the operation."""
   element_name: String
-  # Name of the property, dotted when nested. Set for the two PROPERTY types.
-  property_name: String
-  # New value for a PROPERTY type, full definition for an ADD type. An added attribute or
-  # relationship also holds the order_weight that processing gave it when the file sets none.
-  value: GenericScalar
-  # Value before the change. Set for the two PROPERTY types.
-  previous_value: GenericScalar
-}
-
-type InfrahubSchemaChangeApplication {
-  id: ID!
-  status: SchemaChangeApplicationStatus!
-  # Branch the schema change was applied to.
-  branch: String!
-  # Timestamp of the graph writes of this application.
-  at: DateTime!
-  # Set when the status is FAILED.
-  error: String
-  created_at: DateTime!
-  updated_at: DateTime!
-  migrations: [InfrahubSchemaChangeMigration!]!
-}
-
-type InfrahubSchemaChangeMigration {
-  id: ID!
-  # Order in the list of migrations of the application, from 0. The list follows
-  # the order of the schema diff, which can differ between two runs of the same
-  # load.
+  kind: String!
+  """Set for NODE_ADD."""
+  node_type: SchemaOperationNodeType
+  operation_type: SchemaOperationType!
+  """Order in which the operation applies, from 0."""
   position: Int!
-  # For example "node.attribute.add".
+  """Value before the change. Set for the two PROPERTY types."""
+  previous_value: GenericScalar
+  """
+  Name of the property, dotted when nested. Set for the two PROPERTY types.
+  """
+  property_name: String
+  """Set for the three ELEMENT types."""
+  section: SchemaOperationSection
+  """
+  New value for a PROPERTY type, full definition for an ADD type. An added attribute or relationship also holds the order_weight that processing gave it when the file sets none.
+  """
+  value: GenericScalar
+}
+
+"""One page of the applications of a schema change, in the order of `at`."""
+type InfrahubSchemaChangeApplications {
+  """Number of applications of the schema change."""
+  count: Int!
+  edges: [InfrahubSchemaChangeApplicationEdge!]!
+}
+
+type InfrahubSchemaChangeApplicationEdge {
+  node: InfrahubSchemaChangeApplication!
+}
+
+"""One time a schema change was applied to a branch."""
+type InfrahubSchemaChangeApplication {
+  """Timestamp of the graph writes of this application."""
+  at: DateTime!
+  """Branch the schema change was applied to."""
+  branch: String!
+  created_at: DateTime!
+  """Set when the status is FAILED."""
+  error: String
+  id: ID!
+  migrations(
+    """
+    Number of migration records to return. Default 50, maximum 500, minimum 1.
+    """
+    limit: Int
+    """Number of migration records to skip. Minimum 0."""
+    offset: Int
+  ): InfrahubSchemaChangeMigrations!
+  status: SchemaChangeApplicationStatus!
+  updated_at: DateTime!
+}
+
+"""
+One page of the migration records of an application of a schema change, in the order of `position`.
+"""
+type InfrahubSchemaChangeMigrations {
+  """Number of migration records of the application."""
+  count: Int!
+  edges: [InfrahubSchemaChangeMigrationEdge!]!
+}
+
+type InfrahubSchemaChangeMigrationEdge {
+  node: InfrahubSchemaChangeMigration!
+}
+
+# The migrations of an application are sorted by schema path, then by
+# migration name, before they get their positions, so the positions are the
+# same each time a load runs.
+"""
+One migration that an application of a schema change runs on the data of its branch.
+"""
+type InfrahubSchemaChangeMigration {
+  errors: [String!]!
+  field_name: String
+  id: ID!
+  """For example "node.attribute.add"."""
   migration_name: String!
-  # Text form of the schema path, for example "schema/DcimCloudDevice/serial".
+  """
+  Text form of the schema path, for example "schema/DcimCloudDevice/serial".
+  """
   path: String!
   path_type: SchemaPathType!
-  schema_kind: String!
-  field_name: String
+  """Order in the list of migrations of the application, from 0."""
+  position: Int!
   property_name: String
+  schema_kind: String!
   status: SchemaChangeMigrationStatus!
-  # Result that the migration returned. Null until the migration ends.
-  nbr_migrations_executed: Int
-  errors: [String!]!
-  # Time of the last status change.
+  """Time of the last status change."""
   updated_at: DateTime!
 }
 
@@ -205,10 +281,18 @@ type InfrahubSchemaChangeMigration {
 #           count
 #           edges { node { operation_type kind element_name property_name value } }
 #         }
-#         applications {
-#           status
-#           error
-#           migrations { migration_name path status nbr_migrations_executed errors }
+#         applications(limit: 10) {
+#           count
+#           edges {
+#             node {
+#               status
+#               error
+#               migrations(limit: 50) {
+#                 count
+#                 edges { node { migration_name path status errors } }
+#               }
+#             }
+#           }
 #         }
 #       }
 #     }

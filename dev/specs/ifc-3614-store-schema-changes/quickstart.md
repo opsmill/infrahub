@@ -29,6 +29,8 @@ What it must show:
   fails the run, so the marker is removed when the bug is fixed. On this branch all four are
   expected failures.
 - No recorded operation holds an `id` or a `number_pool_id` with a value.
+- The recorder, the version resolver, the migration recorder and the application runner do what
+  their contracts say, with recording and failing adapters of the repository and the coordinator.
 
 This suite must pass before any other task of the feature starts, because the format of the
 operations stays open until it does.
@@ -46,12 +48,14 @@ uv run pytest backend/tests/component/core/test_branch.py
 
 What they must show:
 
-- The repository creates and updates the four records, the history reader reads schema changes
-  and operations in pages, and the migration recorder writes the migration records.
-- The first schema change of a branch gets main's version at `branched_from` plus 1, and has
-  main's schema change at that version as its parent.
+- The repository creates and updates the four records, and a failed load closes each migration
+  record by its status. The history reader reads schema changes, operations, applications and
+  migration records in pages.
+- The highest version of a branch ignores the schema changes that are not applied, and the highest
+  version at a time counts the schema changes applied at or before that time.
 - The history query returns applied schema changes by version and the others by creation time,
-  and the count of all pages. It refuses a limit or an offset out of range.
+  and the count of all pages, and pages the operations, the applications and the migrations. It
+  refuses a limit or an offset out of range.
 - A dropdown or enum mutation stores one schema change with one operation. A refused mutation
   stores none.
 - Deleting a branch's data deletes its records and leaves the records of main and of the other
@@ -75,7 +79,6 @@ What it must show:
 - A load whose migration fails leaves the schema and the data as they were, and the history shows
   the schema change and its application as failed, with the error and the status of each
   migration.
-- A rebase and a merge leave every record unchanged.
 - Deleting the branch deletes its records.
 
 ## 4. Migrations on a separate worker
@@ -124,7 +127,7 @@ query {
         version
         status
         operations(limit: 5) { count edges { node { operation_type kind element_name } } }
-        applications { status migrations { migration_name path status } }
+        applications { edges { node { status migrations { edges { node { migration_name path status } } } } } }
       }
     }
   }

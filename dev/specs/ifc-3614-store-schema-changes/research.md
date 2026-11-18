@@ -28,26 +28,35 @@ The migrations of a load run in the Prefect flow
 strings. The result of each migration (`SchemaMigrationPathResponseData`: migration name, schema
 path, errors, number of migrations executed) is dropped inside `_apply_migration_batch`.
 
-## R1. The records are `StandardNode` vertices, read and written through a repository
+## R1. The records are frozen dataclasses, read and written through a repository
 
-**Decision**: four record types subclass `core/node/standard.py::StandardNode`: a schema change, a
-schema change operation, an application and a migration record. Two classes take `db` in their
-constructor and use the `Query` classes of `core/query/schema_change.py`:
+**Decision**: four record types are frozen dataclasses in `core/schema_change/models.py`: a schema
+change, a schema change operation, an application and a migration record.
+`core/schema_change/record_serializer.py::SchemaChangeRecordSerializer` turns a record into the
+properties that a query writes, and the properties that a query returns back into a record. Two
+classes take `db` and the serializer in their constructor:
 
-- `SchemaChangeRepository` holds the writes and the version read. The recorder and the migration
-  recorder use it.
-- `SchemaChangeHistoryReader` holds the three paged reads. The history query uses it.
+- `SchemaChangeRepository` (`repository.py`) holds the writes, the version reads and the deletion
+  of a branch's records, with the `Query` classes it runs in the same module. The recorder, the
+  migration recorder and the branch deletion use it.
+- `SchemaChangeHistoryReader` (`history_reader.py`) holds the paged reads, with their `Query`
+  classes. The history query uses it.
 
-The deletion of a branch's records is not a method of either class.
-`core/branch/data_deleter.py::BranchDataDeleter` runs that query itself, as it runs its other
-queries (R13). See [data-model.md](data-model.md).
+The ID of each record is its `uuid`, a time-ordered UUID that the repository generates. No query
+reads a Neo4j element ID. See [data-model.md](data-model.md).
 
-**Rationale**: the task asks for `StandardNode` vertices, not a core kind. `core/preferences/` is
-the closest example: a `StandardNode` model, a repository and query classes with typed results.
-The component guideline asks for that shape and says not to add persistence methods to a model.
-The classes are split by consumer, so that the code that records a load does not depend on the
-reads of the GraphQL query, and a change to what the query returns does not change the class that
-the migration flow uses.
+**Rationale**: the component guideline asks for a repository with query classes and says not to
+add persistence methods to a model. A repository and its queries change together, so they are in
+one module. The classes are split by consumer, so that the code that records a load does not depend
+on the reads of the GraphQL query.
+
+The records were first `StandardNode` subclasses, as the design document names them. That gave
+each record two forms, the model and a dataclass that the reads returned, and a new field had to
+be added to the model, the dataclass, its parser, the reader's mapper and the Cypher. `StandardNode`
+also stores `None` as the text `NULL` and reads that text back as `None`, so a kind, an element name
+or an error whose text is `NULL` came back as `None`. With one dataclass and one serializer, a
+field that is `None` is a property that is not set, and any text is kept.
+
 The repository creates operations and migration records in bulk with one query each, because a
 schema change can hold many of them.
 
@@ -55,7 +64,9 @@ schema change can hold many of them.
 
 - A core kind: the task excludes it. A core kind would also be versioned by branch and copied by a
   merge.
-- Calling `StandardNode.save()` for each record: one query for each operation and each migration.
+- `StandardNode` subclasses: the two forms and the text `NULL` above.
+- Neo4j element IDs as record IDs: Neo4j can reuse an element ID after its vertex is deleted, so
+  an ID that the repository generates is the one that stays the same.
 
 ## R2. Records are linked by edges that have no `branch` property
 
@@ -69,7 +80,8 @@ property.
 | `SCHEMA_CHANGE_HAS_PARENT` | schema change | its parent schema change |
 | `SCHEMA_APPLICATION_HAS_MIGRATION` | application | migration record |
 
-Every record also gets the `IS_PART_OF` edge to `Root` that every `StandardNode` gets.
+No record has an edge to `Root`: every query reaches an operation or a migration record through
+its schema change or application, so such an edge would only double the edges written.
 
 **Rationale**: the queries that rebase a branch, roll back a write, calculate a diff and delete a
 branch's data select edges by their `branch` property (`core/query/branch.py::RebaseBranchQuery`,
@@ -85,25 +97,26 @@ linked by their own edge types.
 - Reusing `IS_RELATED` or another existing edge type: those are in
   `core/constants/database.py::DatabaseEdgeType`, and the branch deletion loops over that list.
 
-## R3. No index and no graph migration
+## R3. Three indexes, added by a graph migration
 
-**Decision**: this feature adds no index, no constraint and no graph migration. `GRAPH_VERSION`
-does not change.
+**Decision**: three range indexes in `core/graph/index.py`, chosen from the properties that the
+queries start from. The graph migration `core/migrations/graph/m084_schema_change_indexes.py` adds
+them to an existing database, and `GRAPH_VERSION` is 84.
 
-**Rationale**:
+| Index | Queries that start from it |
+| --- | --- |
+| `SchemaChange(uuid)` | mark applied, mark failed, the parent, the operation and application pages |
+| `SchemaChange(branch)` | the highest version of a branch, the list and the count of the history query, the deletion of a branch's records |
+| `SchemaChangeApplication(uuid)` | creating the migration records, setting their status, the migration pages |
 
-- `Preference` and `TelemetrySnapshot` were added without a migration, an index or a change to
-  `core/graph/schema.py`.
-- The history query selects schema changes by the `branch` property with a label scan. The number
-  of schema changes is the number of schema loads ever made, which is small next to the number of
-  nodes.
-- The migration flow updates the records it created a moment earlier. It selects them by element
-  ID, which needs no index.
-- An existing database needs no change: with no records, main's version is 0.
+**Rationale**: without an index, each of these lookups scans every vertex of the label. Main's
+records are never deleted, so their number grows over the life of an instance. Operations and
+migration records have no index, because every query reaches them through the edge from their
+schema change or application. An existing database with no records needs no other change: main's
+version is 0.
 
-A new index needs approval first (`backend/AGENTS.md`, "Ask First"). An index on the `branch`
-property of schema changes becomes worth asking for if the history query shows up in slow-query
-logs.
+**Alternative rejected**: no index, with a label scan, as `Preference` and `TelemetrySnapshot`
+have. Every load writes and reads these records, so the scan grows with every load.
 
 ## R4. The format of an operation
 
@@ -143,8 +156,8 @@ passes.
 ## R5. How operations are built from a schema load
 
 **Decision**: a `SchemaOperationBuilder` builds the operations in three steps. It returns the
-operations, the processed schema of step 2 and its diff with the branch schema, so that the
-candidate builder validates and saves that schema without processing the file again (R7).
+operations and the processed schema of step 2, which the candidate builder compares with the
+schema that the applier builds from the operations (R7).
 
 1. Lay the file over a copy of the branch schema with `SchemaBranch.load_schema`, as a load does
    today, and keep that schema before processing.
@@ -179,8 +192,10 @@ leaves out (`core/schema/attribute_parameters.py::NumberPoolParameters.update` r
 - A processed diff that is not empty can still give no operation, when every changed path is one
   that the file does not state. The runner then applies the candidate without a record, as a
   merge does, and logs a warning that names the branch: the stored history misses that change.
-  In the tests, the operations check reports it, because the operations do not rebuild the
-  schema.
+  Since every load applies the operations (R7), this happens when processing calculates a value
+  that differs from the stored schema, for example after an upgrade that changed processing: the
+  file changed nothing, but the saved schema changes. A merge loses nothing, because the ordered
+  replay processes the schema of main again.
 
 **Order of the operations** in one schema change:
 
@@ -223,7 +238,7 @@ details:
   extension adds is parsed as the base attribute class, and the applier builds the class of its
   kind, as a load does for an attribute of a node definition. The two schemas then differ in the
   stored hash of that kind until the schema is read again from the database. The comparer that
-  the tests use (R7) does not name the kind, because it compares the content of a kind parsed into the class of each
+  the candidate builder uses (R7) does not name the kind, because it compares the content of a kind parsed into the class of each
   attribute kind. The suite writes that attribute with the class of its kind.
 - A rename of an attribute on a generic, `unique` turned off on an attribute that a calculated
   uniqueness constraint holds, a relationship kind changed to Component without `on_delete`, and
@@ -250,8 +265,12 @@ returns a processed copy of the target.
    names, not IDs.
 4. Run `SchemaBranch.process` with the default branch schema.
 
-An operation on a kind, attribute or relationship that the target does not have raises an error
-that names the operation and the missing element (FR-023).
+An operation on a kind, attribute or relationship that the target does not have raises
+`SchemaOperationTargetNotFoundError`, which names the operation and the missing element (FR-023).
+A `node_add` or an `element_add` whose kind, attribute or relationship the target already has
+raises `SchemaOperationTargetExistsError`, because `set` would replace the kind and a second
+element with the same name would be appended. The ordered replay task decides whether such an add
+is skipped instead.
 
 **Rationale**: these are the three steps of the design document. `apply_schema_path_updates` is
 the method that today's load reaches through `handle_field_renames_and_deletes`.
@@ -267,9 +286,10 @@ new name, so the applier keeps setting the values first.
 **Decision**: a `SchemaCandidateBuilder` returns the operations, the processed candidate schema
 and the `SchemaUpdateValidationResult` (diff, migrations, constraints, errors).
 
-- From a schema file: build the operations (R5), then `validate_node_deletions` and
-  `validate_update` on the processed schema of step 2 of R5, with the diff that the operation
-  builder calculated. The applier does not run, and the schema is processed once.
+- From a schema file: refuse a file that gives a kind of the branch schema an ID that the branch
+  schema does not hold (`SchemaNotFoundError`), build the operations (R5), apply them (R6), and
+  compare the applier's result with the processed schema of step 2 of R5, kind by kind. Then
+  `diff`, `validate_node_deletions` and `validate_update` on the applier's result.
 - From operations: apply them (R6), then `diff`, `validate_node_deletions` and `validate_update`
   on the applier's result.
 
@@ -290,49 +310,44 @@ checks and its own save, and runs none of the migrations or constraints that the
 The diff then runs from the branch schema to the candidate, as a load's does; today's mutation
 calculates it in the other direction.
 
-**The tests check that the operations rebuild the schema** (spec, decision 8): the builder takes
-a `SchemaOperationsCheck` as a required constructor argument, and `from_schema_root` calls it with
-the branch schema, the operations and the processed schema of the file.
+**Every load checks its operations** (spec, decision 8): the builder takes a
+`SchemaCandidateComparer` as a required constructor argument. `from_schema_root` raises
+`SchemaOperationsRebuildError` when the applier refuses an operation
+(`SchemaOperationTargetNotFoundError` or `SchemaOperationTargetExistsError`) or when the comparer
+returns kinds. The error has the HTTP code 500, and its message says that the schema change cannot
+be stored accurately, that the error is in Infrahub and not in the schema file, and names the
+kinds. The load saves nothing, and the check returns the same error.
 
-- In production, `build_schema_candidate_builder()` gives the builder `NoSchemaOperationsCheck`,
-  which checks nothing.
-- In the tests, a session-scoped autouse fixture of `backend/tests/conftest.py` sets
-  `config.OVERRIDE.schema_operations_check` to `ReplaySchemaOperationsCheck`
-  (`backend/tests/helpers/schema_change.py`), and `build_schema_candidate_builder()` uses it. The
-  check applies the operations to the branch schema with the applier, and raises
-  `SchemaOperationsRebuildError`, an `AssertionError`, when the applier refuses an operation or
-  when `SchemaCandidateComparer` returns kinds. The error names the operation or the kinds. It is
-  not a `ValueError`, so the load endpoint does not report it as a refused schema. Every unit,
-  component, functional and integration test that loads a schema file through
-  `build_schema_candidate_builder()` therefore fails on a case where the operations do not
-  rebuild the schema.
-- The check checks nothing when the file gives a kind of the branch schema an ID that the branch
-  schema does not hold. A load replaces that kind whole, without the IDs of its attributes and
-  relationships, which no operation holds, and the load is refused when the coordinator writes
-  that kind to the database. Checking it would raise the check's error in place of that refusal.
+- Every unit, component, functional and integration test that loads a schema file therefore fails
+  on a case where the operations do not rebuild the schema, and so does a server or a task worker
+  in a container. No setting, override or test fixture turns the comparison off.
+- A file that gives a kind of the branch schema an ID that the branch schema does not hold is
+  refused with `SchemaNotFoundError` before the operations are built. Laying it over the branch
+  schema would replace the kind whole, which no operation states, and a direct load refused the
+  same file with the same error when it wrote the kind.
+- A file that gives a new kind an ID fails with `SchemaOperationsRebuildError`, because the
+  `node_add` operation does not hold instance IDs. No test covers it, and whether to refuse it as
+  an error of the file is open.
 - `SchemaCandidateComparer` returns the kinds whose content differs. A kind whose stored hash
   differs is parsed again into the class of each attribute kind, as a schema read from the
   database is, and is returned only when the hash of that content still differs; an attribute
   held in another Python class with the same values is not a difference. A kind that cannot be
   parsed again is returned, and the comparer raises nothing for it.
-- The benchmark below clears the override in a module-scoped autouse fixture of
-  `backend/tests/benchmark/conftest.py`, so it measures the builder of production.
 
-**Cost**: a load and a check process the schema once, to find the operations, as a direct load
-does. The design document measured about 0.16 s to build the internal and core schema in memory,
-and says the time on a schema of customer size is not measured.
+**Cost**: a load and a check process the schema twice: once to find the operations, as a direct
+load does, and once in the applier. The design document measured about 0.16 s to build the internal
+and core schema in memory, and says the time on a schema of customer size is not measured.
 
-Measured (T022, then T065): `SchemaCandidateBuilder.from_schema_root`, built by
-`build_schema_candidate_builder()` with `NoSchemaOperationsCheck`, takes **1.00 times** the
-time of the direct load of the equivalence suite (`build_direct_load_result` in
-`backend/tests/unit/core/schema_change/helpers.py`). The branch schema is the processed internal
-and core schema, with an ID on every element, and the file is `DEVICE_SCHEMA`, the largest schema
-of `backend/tests/helpers/schema/` (two generics and four nodes, all added). Median of 10 rounds:
-270.9 ms against 269.9 ms; minimum 268.1 ms against 268.4 ms. Measured on 2026-11-17, Python
-3.12.13, one AMD EPYC 9R45 core, with no other test run on the machine. Before T065, when the
-builder also applied the operations and processed the schema a second time, the ratio was 2.00
-(median 541.8 ms against 270.3 ms). A schema of customer size is still not measured. Command, from
-the repository root:
+Measured (T022, then T065): `SchemaCandidateBuilder.from_schema_root`, when it applied the
+operations and processed the schema a second time, took **2.00 times** the time of the direct load
+of the equivalence suite (`build_direct_load_result` in
+`backend/tests/unit/core/schema_change/helpers.py`): median 541.8 ms against 270.3 ms. The branch
+schema is the processed internal and core schema, with an ID on every element, and the file is
+`DEVICE_SCHEMA`, the largest schema of `backend/tests/helpers/schema/` (two generics and four
+nodes, all added). Measured on 2026-11-17, Python 3.12.13, one AMD EPYC 9R45 core, with no other
+test run on the machine. The builder that processed the schema once (T065) took 1.00 times. The
+present builder, which also compares the two schemas, is not measured again. A schema of customer
+size is still not measured. Command, from the repository root:
 
 ```bash
 INFRAHUB_LOG_LEVEL=CRITICAL uv run pytest backend/tests/benchmark/test_schema_candidate_builder.py --dist=no -p no:randomly
@@ -341,11 +356,12 @@ INFRAHUB_LOG_LEVEL=CRITICAL uv run pytest backend/tests/benchmark/test_schema_ca
 The two benchmarks share one `pytest-benchmark` group, so the table prints the ratio next to
 each time.
 
-**Alternative rejected**: applying the operations with the applier in every load and saving the
-applier's result, so that a load and a later replay of its operations cannot differ. It processes
-the schema a second time, which doubled the time of `from_schema_root`, to verify information that
-the load already holds. The user chose to process once and accepted the risk that the operations
-miss a change of the load (spec, decision 8); the tests keep the verification.
+**Alternative rejected**: processing the schema once and saving the processed schema of the
+laid-over file, with the operations checked by a replay in the tests only (T065). It halved the
+time of `from_schema_root`, but the production code was shaped to fit the tests: an interface
+whose production implementation checked nothing, an override in `config.py` and a session fixture
+that installed the check. The saved schema could also differ from what the stored operations
+build, which a later replay would expose. The review reverted it on 2026-11-18.
 
 ## R8. A load records its schema change in three steps
 
@@ -355,23 +371,44 @@ miss a change of the load (spec, decision 8); the tests keep the verification.
 
 1. **Start**, after the constraint checks pass and before any write: create the schema change with
    the status `running` and no version, its operations, and one application with the status
-   `running` and the timestamp that the coordinator uses for every write.
+   `running` and the timestamp that the coordinator uses for every write. When this write fails,
+   the load fails before it changes anything.
 2. **Migrations**: the flow creates one migration record for each migration with the status
-   `waiting`, sets a batch to `running` when it starts, and sets each record to `applied` or
-   `failed` when its migration returns (R9).
+   `waiting`, sets a record to `running` when the task of its migration starts, and sets it to
+   `applied` or `failed` when its migration returns (R9).
 3. **End**:
-   - success: assign the version and the parent (R10), set the schema change and the application
-     to `applied`, and store the time;
-   - failure: set the schema change and the application to `failed`, store the error on the
-     application, and set the migration records that were `applied` to `rolled back`.
+   - success: the runner passes `complete` to the coordinator as its final step
+     (`SchemaUpdateFinalStep`). The coordinator runs it after the schema is saved and the
+     migrations succeed. It assigns the version and the parent (R10), sets the schema change and
+     the application to `applied`, and stores the time. When it raises, the coordinator rolls the
+     update back as it does for a failed migration, and the load fails;
+   - failure: the coordinator has already rolled the graph back when it raises, so the runner
+     catches the exception, calls `fail`, and raises the exception again. `fail` sets the schema
+     change and the application to `failed`, stores the error on the application, and closes the
+     migration records: `applied` becomes `rolled_back`, `waiting` becomes `cancelled`, `running`
+     becomes `failed` with the error of the load added to its errors;
+   - cancellation (`asyncio.CancelledError`, which is not an `Exception`): the runner calls `fail`
+     with the error `The schema load was cancelled before it completed` inside `asyncio.shield`,
+     then lets the cancellation go on.
 
-The coordinator has already rolled the graph back when it raises, so the runner catches the
-exception, records the failure and raises it again.
+**Which writes must succeed** (spec, decision 9): the schema change and its application are
+required records, because the ordered replay at rebase and merge reads them. A load whose schema
+change cannot be created or set to `applied` fails and is rolled back. The migration records report
+progress and are best effort: a failed write is logged, and the migrations go on. The ordered
+replay task decides whether the final status of a migration record joins the required records.
+
+**Retries**: each repository write is one Cypher statement, so it is atomic without an explicit
+transaction. Outside a transaction, a write that Neo4j rejects with a transient error runs again,
+with the retry settings of the database (`retry_db_transaction`). Inside a transaction, as in a
+dropdown or enum mutation (R11), it runs once, because a failed statement aborts the transaction
+and only its owner can run it again.
 
 The runner depends on two `Protocol` classes declared beside it, one for the three recorder
 methods it calls and one for `execute`. `SchemaChangeRecorder` and `SchemaUpdateCoordinator`
 satisfy them. The unit tests of the runner pass a recording and a failing implementation of each,
-without a database and without a mock library.
+without a database and without a mock library. The recorder and the version resolver depend in the
+same way on a `Protocol` of the repository methods each one calls, so their unit tests pass a
+recording repository with manufactured records.
 
 **Rationale**: the design document says that a load creates its schema change with the status
 `running` before its migrations run, and that the code that handles a failure updates the records.
@@ -380,20 +417,24 @@ from its operations, creates an application and a record for each migration it r
 their status". The staging task and the replay task apply a schema change that already exists,
 so they extend the runner; this feature does not design for them.
 
-**Known limit**: the write of the last step is not in the same transaction as the load. The
-schema change and its application keep the status `running` in these cases:
+**Known limit**: the schema change and its application keep the status `running` when:
 
-- the worker stops, or the request is cancelled, during the load;
-- the write that sets them to `applied` raises a `DatabaseError`, a `QueryError`, a
-  `QueryTimeoutError` or a `Neo4jError` after the coordinator saved the schema and ran the
-  migrations. The runner calls `complete` after its `try` block, so it does not call `fail` for
-  that error: it logs the error and returns the new hash, the load succeeds, and the records stay
-  `running`;
-- the write that sets them to `failed` raises a `DatabaseError`, a `QueryError`, a
-  `QueryTimeoutError` or a `Neo4jError`. The runner logs it and raises the error of the load.
+- the write that sets them to `failed` raises one of `RECORD_WRITE_ERRORS` (a `DatabaseError`, a
+  `QueryError`, a `QueryTimeoutError` or a `Neo4jError`) after its retries. The runner logs it and
+  raises the error of the load;
+- the process stops before the shielded write of `fail` runs.
+
+The coordinator rolls back only on an `Exception`. A cancelled load therefore records its schema
+change as `failed`, but the schema and the data that the load wrote before the cancellation are not
+rolled back. Rolling back on cancellation is a change to the coordinator, which every schema update
+uses, and is not part of this feature.
 
 Their operations are stored, so a later recovery task can finish or fail them. Recovery after a
 worker stops during a load is out of scope in the design document.
+
+**Alternative rejected**: recording `applied` after the coordinator returned, and logging a failed
+write without failing the load. The load then succeeded with its schema change left `running`,
+which the ordered replay would not apply.
 
 ## R9. The migration flow writes the migration records
 
@@ -418,20 +459,25 @@ Three facts of the existing code shape this:
   at its top, passes the database to the helper, and passes a session started from it to the
   recorder factory. The database that `get_database()` returns serves every flow of the worker
   and keeps the first session a query opens on it, so the recorder writes through a session of
-  its own. The recorder writes one record at a time from the flow, never two at once.
+  its own. The migrations of a phase run concurrently and a session runs one query at a time, so
+  the recorder makes its writes one after the other behind an `asyncio.Lock`.
 
 - With an application ID, the recorder creates the records, and updates one record each time a
   migration returns, from its `SchemaMigrationPathResponseData`.
-- A record is identified by the position of its migration in the list of the message. The flow
-  passes positions when a batch starts and with each result, because two migrations of one
-  application can have the same name and the same schema path.
+- A record is identified by the position of its migration. The task of a migration passes its
+  position when it starts (`_migrate_schema_path_at_position`), and the flow passes it with each
+  result, because two migrations of one application can have the same name and the same schema
+  path.
 - The list of the message follows the order of the schema diff. `SchemaBranch.diff` lists the
   changed kinds that keep their ID in the order of a Python set of IDs, so two runs of the same
-  load can list the migrations in another order. A position is the order of one message, not an
-  order that is the same across runs.
+  load can list the migrations in another order. The flow therefore sorts the migrations by schema
+  kind, field name, property name, path type and migration name before it gives them their
+  positions (`position_migrations`), so the positions are the same each time a load runs and a
+  test compares the records as they are listed.
 - The recorder that writes records depends on a `Protocol` with the two store methods it calls,
   which `SchemaChangeRepository` satisfies. A unit test passes a store that raises, to prove that
-  a failed record write does not stop a migration.
+  a failed record write does not stop a migration. The migration records are best effort (R8): a
+  write that fails after the retries of the repository is logged.
 - The interface is in a module that imports nothing that reaches the database. The recorder that
   writes records is in a second module, and `factory.py` selects the implementation from the
   application ID.
@@ -536,10 +582,15 @@ contract is in [contracts/schema-change-history.graphql](contracts/schema-change
 - The resolver reads a page only when the request selects `edges`; the page read also returns
   `count`. When the request selects `count` without `edges`, the resolver only counts. It opens
   its own read-only database session.
-- `operations` is a nested connection with its own `limit` and `offset`. `applications` is a list,
-  each with its `migrations`.
-- Nested fields are loaded with data loaders (`graphql/loaders/`), one query for the operations of
-  every schema change on the page and one for their applications and migrations.
+- `operations`, `applications` and the `migrations` of an application are nested connections,
+  each with its own `limit`, `offset` and `count`. A load with many migrations is read in pages, as
+  its operations are.
+- Nested fields are loaded with data loaders (`graphql/loaders/`): one loader for each field and
+  page of a request, so one query reads the operations, the applications or the migration records
+  of every parent on the page that asks for the same page.
+- The types do not expose the format version of a schema change, which is internal, or the
+  `nbr_migrations_executed` of a migration record, which is the internal counter of a migration
+  result and not the node counts that the progress task adds. The database keeps both.
 - Access: the query is added to `graphql/schema.py::QUERIES_REQUIRING_AUTHENTICATION`, as the
   `Preference` queries are. It needs a logged-in account and no other permission.
 - A `limit` below 1 or above the maximum, or an `offset` below 0, is refused with a validation
@@ -553,6 +604,10 @@ contract is in [contracts/schema-change-history.graphql](contracts/schema-change
 | Maximum number of schema changes | 50 |
 | Default number of operations | 50 |
 | Maximum number of operations | 500 |
+| Default number of applications | 10 |
+| Maximum number of applications | 50 |
+| Default number of migration records | 50 |
+| Maximum number of migration records | 500 |
 
 The sources give no page size. The maximum bounds the work of the nested loaders. `InfrahubEvent`
 caps its page at 50 in the same way.
@@ -566,29 +621,43 @@ account that ran the load receives it.
 ## R13. Deleting a branch
 
 **Decision**: `core/branch/data_deleter.py::BranchDataDeleter.delete_branch_data` runs one more
-step. A `Query` deletes the schema changes whose `branch` is the deleted branch, with their
-operations, applications and migration records, until a run deletes nothing. Each run takes at
-most the deleter's batch size of schema changes, and deletes each of them with all its operations,
-applications and migration records, so the batch size limits the number of schema changes of a
-run, not the number of records.
+step, `SchemaChangeRepository.delete_branch_schema_changes`, which the deleter receives as a
+constructor argument through the protocol `SchemaChangeRecordDeleter`. Its query,
+`SchemaChangeDeleteByBranchQuery`, selects the schema changes whose `branch` is the deleted branch
+and deletes, in this order, their migration records, their operations, their applications and the
+schema changes. Each group is reached through a fixed pattern from the schema change, and deleted
+in `CALL { ... } IN TRANSACTIONS OF $batch_size ROWS`, with the deleter's batch size.
 
-**Rationale**: `delete_branch_data` is also called for a branch that was left in the status
-`DELETING`, so the records of such a branch are deleted when the deletion is finished. Each query
-there commits on its own, which lets a deletion that failed run again. The deleter builds its
-queries itself, so the new step needs no new constructor argument.
+**Rationale**:
 
-**Alternative rejected**: a trigger on `BranchDeletedEvent`. The deletion would run later, in
-another flow, and a failure there would leave the records with no branch.
+- Each batch commits on its own and holds at most the batch size of records, so the size of a
+  transaction does not depend on the number of operations of one schema change.
+- The order, from the migration records up to the schema changes, means that a deletion that stops
+  part way leaves no record that its schema change does not reach, and running it again deletes
+  the rest.
+- `delete_branch_data` is also called for a branch that was left in the status `DELETING`, so the
+  records of such a branch are deleted when the deletion is finished. The deleter runs its queries
+  outside a transaction, which `IN TRANSACTIONS` needs.
+- The fixed patterns state the structure of the records, where one variable-length pattern over
+  the three edge types would not.
+
+**Alternatives rejected**:
+
+- One run of at most the batch size of schema changes, each with all its records, until a run
+  deletes nothing: the size of a run then depends on the number of operations of a schema change.
+- A trigger on `BranchDeletedEvent`. The deletion would run later, in another flow, and a failure
+  there would leave the records with no branch.
 
 ## R14. Tests
 
 | Tier | Location | Proves |
 | --- | --- | --- |
 | Unit | `backend/tests/unit/core/schema_change/` | The equivalence suite (FR-024, FR-025), the operation builder, the applier's refusals, the summary and the name |
-| Component | `backend/tests/component/core/schema_change/` | The repository, the history reader and the recorder against Neo4j: create, read in pages, order, version and parent, statuses, deletion by branch |
+| Unit | `backend/tests/unit/core/schema_change/` | The recorder, the version resolver, the migration recorder and the runner, with recording and failing adapters of the repository and the coordinator |
+| Component | `backend/tests/component/core/schema_change/` | The repository and the history reader against Neo4j: what each query writes and reads, the pages and their order, the version reads and the "applied at or before" filter, the closing of the migration records of a failed load, deletion by branch |
 | Component | `backend/tests/component/graphql/queries/` | The history query |
 | Component | `backend/tests/component/graphql/mutations/` | A dropdown or enum mutation stores what the spec says |
-| Functional | `backend/tests/functional/schema_change/` | What a load and a check store, several loads with data, a failed migration, a branch deletion, a merge and a rebase that leave the records unchanged |
+| Functional | `backend/tests/functional/schema_change/` | What a load and a check store, several loads with data, a failed migration, a branch deletion |
 | Integration Docker | `backend/tests/integration_docker/test_schema_migration.py` | A load whose migrations run on a separate worker updates the records |
 
 - The equivalence suite is a unit test. It works on `SchemaBranch` objects in memory, as
@@ -597,14 +666,16 @@ another flow, and a failure there would leave the records with no branch.
   `load_schema`, `process`, `diff` and `validate_update`. It does not call
   `SchemaCandidateBuilder` for the reference, so the reference and the result under test do not
   come from the same code.
-- Outside the equivalence suite, every test that loads a schema file through
-  `build_schema_candidate_builder()` applies the operations of the file with the applier and fails
-  when they do not rebuild the processed schema of the file, through the replay check that a
-  session-scoped autouse fixture of `backend/tests/conftest.py` installs (R7). The benchmarks
-  clear it.
-- A component test covers the timing of R10: main loads a schema, a branch is created with a
-  `branched_from` after the timestamp of that load's writes, and the branch's first schema change
-  gets main's version plus 1 and main's schema change as its parent.
+- Outside the equivalence suite, every test that loads a schema file fails when the operations of
+  the file do not rebuild its schema, because every load applies them and compares (R7).
+- The timing of R10 is covered in two tiers: a component test of the repository asserts that the
+  highest version of a branch at a time counts the schema changes applied at or before that time,
+  the boundary included, and the unit tests of the version resolver assert that a branch without
+  a schema change reads main at its `branched_from`.
+- A test whose subject uses the repository, such as the recorder, the version resolver or the
+  migration recorder, is a unit test with a recording or a failing repository adapter
+  (`backend/tests/unit/core/schema_change/helpers.py`). What a query writes or reads in Neo4j is
+  asserted in the component tests of the repository and the history reader.
 - A failed migration is produced as
   `backend/tests/integration/schema_lifecycle/test_schema_load_rollback.py` does it, with a
   migration class that always returns an error.
@@ -622,8 +693,9 @@ another flow, and a failure there would leave the records with no branch.
 - The functional tests share one base class with a class-scoped data set (base schema, nodes,
   branch). One ordered class covers the loads, the check, the history query, the failed load, the
   corrected load and the branch deletion, because each is the next step of one branch's history.
-  The rebase and merge test is a second class, because a merge changes main. A failure in an
-  early method of the ordered class can hide the later ones.
+  A failure in an early method of the ordered class can hide the later ones. A second class that
+  asserted that a rebase and a merge leave the records unchanged was removed, because the ordered
+  replay at rebase and merge changes them before this feature is released.
 - There is no Playwright test, because this feature has no user interface.
 
 **Added to the equivalence list from reading the code**: a file that renames an attribute and

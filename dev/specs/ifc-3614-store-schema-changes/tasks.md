@@ -86,8 +86,12 @@ suite the first task.
       - the page sizes of the history query: default 10 and maximum 50 schema changes, default 50
         and maximum 500 operations.
 
-      Use string enumerations, as `InfrahubStringEnum` does, so that `StandardNode` stores each
-      value as text.
+      Superseded by T072: `SchemaChangeMigrationStatus` also holds `cancelled`. Superseded by T070:
+      the page sizes also cover the applications (default 10, maximum 50) and the migration records
+      (default 50, maximum 500).
+
+      Use string enumerations, as `InfrahubStringEnum` does, so that each value is stored as
+      text.
 
 ---
 
@@ -288,6 +292,9 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
       - in `backend/tests/unit/core/schema_change/test_candidate.py`: both methods give the same
         diff, migrations and constraints for the same change, and a file that changes nothing
         gives an empty diff and no operation.
+
+      Superseded by T066: the builder takes the comparer in place of an operations check, and
+      `from_schema_root` applies the operations and compares in every load.
 - [X] T019 [US1] Replace `api/schema.py::evaluate_candidate_schemas` with one function that the
       load and the check both call:
       `build_candidate_from_schemas(*, candidate_builder, branch_schema, default_branch_schema, schemas) -> SchemaCandidate`.
@@ -348,6 +355,9 @@ results ([quickstart.md](quickstart.md), sections 1 and 5).
       ratio, with the command that reproduces it. T065 measures it again after it removes the
       second processing pass, and updates the figure.
 
+      Superseded by T066: the builder processes the schema twice again; the measure of 2.00 times
+      applies, and the present builder is not measured again.
+
 **Checkpoint**: user story 1 can be delivered alone. Every schema load and check builds its
 operations from the laid-over file, every mutation builds its schema with the applier, and nothing
 is stored.
@@ -366,6 +376,9 @@ a GraphQL query returns the history of a branch in pages.
 
 - [X] T023 [US2] Write the seeding function and the component tests of the repository and
       of the history reader, against Neo4j.
+
+      Superseded by T073: the component tests of the repository also hold the tests of the
+      mark-failed query and of the two highest-version queries.
 
       In `backend/tests/helpers/schema_change.py`, one async function that creates a history
       through `SchemaChangeRepository` and returns a dataclass with the IDs and the timestamps
@@ -393,6 +406,9 @@ a GraphQL query returns the history of a branch in pages.
       - applications for a set of schema changes come with their migration records.
 - [X] T024 [P] [US2] Write the component tests of the version resolver and of the recorder.
       Neither module requests a schema fixture.
+
+      Superseded by T073: the tests of the version resolver and of the recorder are unit tests with
+      a repository adapter.
 
       In `backend/tests/component/core/schema_change/test_version_resolver.py`, as methods of
       one class. The resolver only reads, so one class-scoped fixture on
@@ -423,6 +439,9 @@ a GraphQL query returns the history of a branch in pages.
       - `record_applied` creates an applied schema change and an applied application in one call;
       - `start` and `record_applied` raise when the list of operations is empty (FR-003).
 - [X] T025 [P] [US2] Write the tests of the migration recorder.
+
+      Superseded by T073: the tests of the migration recorder are unit tests with recording and
+      failing stores. Superseded by T072: `migration_started` replaces `batch_started`.
 
       In `backend/tests/component/core/schema_change/test_migration_recorder.py`, as function
       tests that request `db` and `empty_database` only, each on one application created with
@@ -526,6 +545,9 @@ a GraphQL query returns the history of a branch in pages.
         `status: SchemaChangeMigrationStatus`, `nbr_migrations_executed: int | None`,
         `errors: list[str]`.
 
+      Superseded by T068: the records are frozen dataclasses with a serializer, not `StandardNode`
+      subclasses.
+
       The models hold data only. They get no query and no persistence method beyond what
       `StandardNode` gives them. Timestamps are text in the format of `Timestamp.to_string()`.
 - [X] T030 [US2] Create the write queries in `backend/infrahub/core/query/schema_change.py`:
@@ -542,6 +564,11 @@ a GraphQL query returns the history of a branch in pages.
         application, and the migration records of the application that are `applied` set to
         `rolled_back`, in one query. The seeding function of T023 creates failed schema changes
         through it, so it is written here and not in phase 5.
+
+      Superseded by T068: the queries are in `core/schema_change/repository.py`, no record has an
+      edge to `Root`, and the migration records are selected by application and position, not by
+      element ID. Superseded by T072: the mark-failed query also closes the `waiting` and `running`
+      migration records.
 - [X] T031 [US2] Create the read queries in `backend/infrahub/core/query/schema_change.py`, each
       with a typed result:
       - the highest version of the applied schema changes of a branch, with the ID of that schema
@@ -555,6 +582,10 @@ a GraphQL query returns the history of a branch in pages.
       - the operations of a set of schema changes, a page for each one, with the count for each;
       - the applications of a set of schema changes, with their migration records in the order
         of `position`.
+
+      Superseded by T068: the read queries are in `core/schema_change/history_reader.py` and the
+      version reads in `repository.py`. Superseded by T070: the applications and the migration
+      records are read in pages.
 - [X] T032 [US2] Create `SchemaChangeRepository` in
       `backend/infrahub/core/schema_change/repository.py` and `SchemaChangeHistoryReader` in
       `backend/infrahub/core/schema_change/history_reader.py`, each with its methods of
@@ -566,6 +597,9 @@ a GraphQL query returns the history of a branch in pages.
 the reader converts it back. Neither has a delete method. Name the two migration record
       methods of the repository `create_migration_records` and `set_migration_records_status`,
       with the signatures of `MigrationRecordStore` in the contract. Make T023 pass.
+
+      Superseded by T068: the repository takes the serializer, and its writes run again after a
+      transient error outside a transaction.
 - [X] T033 [US2] Create `SchemaChangeVersionResolver` and `SchemaChangeVersion` in
       `backend/infrahub/core/schema_change/version_resolver.py`, following the contract and
       [research.md](research.md), R10. Then create `SchemaChangeRecorder` and
@@ -574,6 +608,8 @@ the reader converts it back. Neither has a delete method. Name the two migration
       repository and the resolver in its constructor. `complete` and `record_applied` ask the
       resolver for the version and the parent, then write them. `applied_at` is the
       application's `at`. Make T024 pass.
+
+      Superseded by T073: the resolver takes the protocol `AppliedVersionReader`.
 
 ### Migration records
 
@@ -638,6 +674,9 @@ the reader converts it back. Neither has a delete method. Name the two migration
         migrations placed between other migrations keep their positions in the message after
         the split.
 
+      Superseded by T072: the migrations are sorted by schema path before they get their positions,
+      and the task of each migration calls `migration_started` in place of `batch_started`.
+
       The return value of the flow is unchanged.
 
 ### The load
@@ -655,6 +694,9 @@ the reader converts it back. Neither has a delete method. Name the two migration
       failure path. Add `build_schema_change_recorder(db, default_branch_name)` and
       `build_schema_change_application_runner(db, executor, default_branch_name)` to
       `factory.py`.
+
+      Superseded by T072: `recorder.complete` runs as the final step of the coordinator, which rolls
+      the update back when it raises.
 - [X] T038 [US2] Change `api/schema.py::load_schema` to build the coordinator and the runner at
       its top, after the permission checks and before the schema lock, next to the candidate
       builder of T019. It builds the runner with `build_schema_change_application_runner`, and
@@ -673,11 +715,17 @@ the reader converts it back. Neither has a delete method. Name the two migration
       enumerations with one-line descriptions, as `backend/infrahub/graphql/types/preferences.py`
       does. Use `GenericScalar` from `backend/infrahub/graphql/scalars.py` for `value` and
       `previous_value`.
+
+      Superseded by T070: the types have no `format_version` and no `nbr_migrations_executed`, and
+      `applications` and `migrations` are paged connections.
 - [X] T040 [US2] Create two data loaders in `backend/infrahub/graphql/loaders/schema_change.py`,
       in the style of `backend/infrahub/graphql/loaders/account.py`: one that loads a page of
       operations for each schema change ID, keyed by `limit` and `offset`, and one that loads the
       applications with their migration records for each schema change ID. Each loader reads
       through `SchemaChangeHistoryReader` and runs one query for all the IDs of a request.
+
+      Superseded by T070: three loaders, for the operations, the applications and the migration
+      records, each keyed by page.
 - [X] T041 [US2] Create the resolver and the field `InfrahubSchemaChange` in
       `backend/infrahub/graphql/queries/schema_change.py`, in the style of
       `graphql/queries/branch.py::infrahub_branch_resolver`. It reads the branch from the GraphQL
@@ -686,6 +734,8 @@ the reader converts it back. Neither has a delete method. Name the two migration
       `SchemaChangeHistoryReader` on it, and reads `edges` and `count` only when the request
       selects them. The `operations` and `applications` fields resolve
       through the loaders of T040.
+
+      Superseded by T070: `applications` and `migrations` also resolve through paged loaders.
 - [X] T042 [US2] Export the field from `backend/infrahub/graphql/queries/__init__.py`, add it to
       `InfrahubBaseQuery` in `backend/infrahub/graphql/schema.py`, and add `InfrahubSchemaChange`
       to `QUERIES_REQUIRING_AUTHENTICATION` in the same file. Make T026 and T028 pass.
@@ -736,6 +786,8 @@ the reader converts it back. Neither has a delete method. Name the two migration
         R7. Update every file of this directory that states the second processing pass or the
         rule of FR-021.
 
+      Superseded by T066: every load applies the operations again, and the test seam is removed.
+
 **Checkpoint**: user stories 1 and 2 work together. A load that succeeds is in the history.
 
 ---
@@ -759,6 +811,10 @@ error, and the status of each migration.
         `failed`, `running` or `waiting` keeps its status (spec, decision 6);
       - the next schema change completed on the branch gets the next version, and its parent is
         the last applied schema change.
+
+      Superseded by T072 and T073: `fail` also sets a `waiting` record to `cancelled` and a
+      `running` one to `failed` with the error; that assertion is in the component tests of the
+      repository, and the other assertions are unit tests.
 - [X] T045 [P] [US3] Write the unit tests of the runner in
       `backend/tests/unit/core/schema_change/test_application_runner.py`. Add to
       `backend/tests/unit/core/schema_change/helpers.py` an `ApplicationRecorder` and a
@@ -795,6 +851,9 @@ error, and the status of each migration.
       error on the application, and set the migration records of the application that are
       `applied` to `rolled_back`, in one query. Change
       `backend/infrahub/core/query/schema_change.py` only if T044 shows a difference.
+
+      Superseded by T072: the query is in `core/schema_change/repository.py` and also closes the
+      `waiting` and `running` migration records.
 - [X] T048 [US3] Add `fail` to `SchemaChangeRecorder` in
       `backend/infrahub/core/schema_change/recorder.py`. Make T044 pass.
 - [X] T049 [US3] Add the failure path to `SchemaChangeApplicationRunner.run` in
@@ -802,6 +861,9 @@ error, and the status of each migration.
       `executor.execute` raises after its rollback, call `recorder.fail`, log a
       failure of `recorder.fail` itself, and raise the original exception. Load
       `dev/guidelines/backend/exceptions.md` first. Make T045 and T046 pass.
+
+      Superseded by T072: a failed write of `complete` fails the load, and a cancelled load records
+      its failure in a shielded write.
 
 **Checkpoint**: a failed load is in the history with its error.
 
@@ -873,11 +935,17 @@ branch, and count the records ([quickstart.md](quickstart.md), sections 2 and 3)
       by their `branch` property, deletes each with its operations, applications and migration
       records, and returns the number of schema changes deleted. Add no repository method: the
       deleter runs the query itself ([research.md](research.md), R1 and R13).
+
+      Superseded by T071: the query is run by the repository method `delete_branch_schema_changes`,
+      and deletes the records in batches with `CALL { ... } IN TRANSACTIONS`.
 - [X] T054 [US5] Add a step to `core/branch/data_deleter.py::BranchDataDeleter.delete_branch_data`
       that runs the query of T053 with the deleter's batch size until a run deletes nothing, in
       the way `_delete_edges` loops. The value that `delete_branch_data` returns stays the number
       of edges its existing steps removed; log the number of schema changes deleted. Make T052
       pass.
+
+      Superseded by T071: the deleter calls the repository method once, through the protocol
+      `SchemaChangeRecordDeleter`.
 - [X] T055 [US5] Add the branch deletion methods to `TestSchemaChangeHistory` in
       `backend/tests/functional/schema_change/test_schema_change_history.py`, as the last
       methods of the class. Read the records of the branch, which include the failed schema
@@ -899,6 +967,9 @@ branch, and count the records ([quickstart.md](quickstart.md), sections 2 and 3)
       branch. Take a snapshot of the records of main and of the branch, then run a rebase of
       the branch and a merge of the branch. After each one, the records, their fields and their
       edges are the same (FR-008, FR-080).
+
+      Superseded by T073: the test was removed, because the ordered replay at rebase and merge
+      changes the records before this feature is released.
 - [X] T057 [P] Add an assertion to `backend/tests/integration_docker/test_schema_migration.py`:
       after a load whose migrations run on a task worker, `InfrahubSchemaChange` returns the
       schema change with the status `applied` and its migration records with the status
@@ -912,6 +983,8 @@ branch, and count the records ([quickstart.md](quickstart.md), sections 2 and 3)
       where the applier runs and where the tests check the operations, when each status is set, and what keeps the status `running`. Load
       `dev/guidelines/documentation.md` first. Add the document to the knowledge list of
       `backend/AGENTS.md`.
+
+      Superseded by T074: the document was rewritten after the review.
 - [X] T061 Run `uv run invoke format`, then `uv run invoke lint`, and fix what they report without
       a new suppression.
 - [X] T062 Run `uv run invoke schema.validate-graphqlschema` and `uv run invoke docs.validate`,
@@ -921,6 +994,58 @@ branch, and count the records ([quickstart.md](quickstart.md), sections 2 and 3)
 - [X] T064 Read the diff against every claim in [spec.md](spec.md), [plan.md](plan.md),
       [research.md](research.md), [data-model.md](data-model.md) and [contracts/](contracts/),
       and correct each file where the code differs.
+
+---
+
+## Phase 9: Changes decided in review (2026-11-18)
+
+**Purpose**: apply the decisions of the review of the implementation. Each task supersedes the
+tasks that name it.
+
+- [X] T066 [US1] `SchemaCandidateBuilder.from_schema_root` applies the operations with the applier
+      in every load and check, compares the result with the processed schema of the laid-over
+      file with `SchemaCandidateComparer`, and raises `SchemaOperationsRebuildError` (HTTP 500)
+      on a difference or a refused operation. A file that gives an existing kind an unknown ID is
+      refused with `SchemaNotFoundError` before the operations are built. The applier raises
+      `SchemaOperationTargetExistsError` for an add whose target exists. `SchemaOperationsCheck`,
+      `NoSchemaOperationsCheck`, `config.Override.schema_operations_check`, the session fixture
+      of `backend/tests/conftest.py` and `ReplaySchemaOperationsCheck` are removed (spec,
+      decision 8).
+- [X] T067 [US4] The dropdown and enum mutations read the list of the attribute, validate the
+      change and build the new list inside the schema lock.
+- [X] T068 [US2] The four records are frozen dataclasses, stored through
+      `SchemaChangeRecordSerializer`, with no edge to `Root`. The ID of every record is its
+      `uuid`; no query reads a Neo4j element ID. The `Query` classes move from
+      `core/query/schema_change.py`, which is deleted, to `core/schema_change/repository.py` and
+      `core/schema_change/history_reader.py`.
+- [X] T069 [US2] Three range indexes, `SchemaChange(uuid)`, `SchemaChange(branch)` and
+      `SchemaChangeApplication(uuid)`, in `core/graph/index.py`, and the graph migration
+      `m084_schema_change_indexes` that adds them ([research.md](research.md), R3).
+- [X] T070 [US2] `applications` of a schema change and `migrations` of an application are paged
+      connections with `limit`, `offset` and `count`, read by loaders keyed by page. The types no
+      longer expose `format_version` and `nbr_migrations_executed`. Regenerate
+      `schema/schema.graphql` and the front-end types.
+- [X] T071 [US5] `SchemaChangeDeleteByBranchQuery` deletes the migration records, the operations,
+      the applications and the schema changes of a branch through fixed patterns, each in
+      `CALL { ... } IN TRANSACTIONS OF $batch_size ROWS`, and is run by
+      `SchemaChangeRepository.delete_branch_schema_changes`.
+- [X] T072 [US3] The schema change and its application are required records (spec, decision 9):
+      `complete` runs as the final step of the coordinator, which rolls the update back when it
+      raises, and every record write runs again after a transient error outside a transaction.
+      `mark_failed` sets a `waiting` migration record to `cancelled` and a `running` one to
+      `failed` with the error of the load (spec, decision 10). A cancelled load records its
+      failure in a shielded write. The task of each migration sets its record to `running`
+      (`migration_started`), and the migrations are sorted by schema path before they get their
+      positions.
+- [X] T073 [US2] `SchemaChangeRecorder` and `SchemaChangeVersionResolver` take a protocol of the
+      repository methods they call. Their tests and the tests of the migration recorder are unit
+      tests with the recording and failing adapters of
+      `backend/tests/unit/core/schema_change/helpers.py`. The component tests of the repository
+      keep what each query writes and reads, including the closing of the migration records of a
+      failed load and the "applied at or before" filter. The functional test that a rebase and a
+      merge leave the records unchanged is removed.
+- [X] T074 Rewrite `dev/knowledge/backend/schema-changes.md`, update every file of this directory
+      that states a reversed decision, and delete the implementation report.
 
 ---
 
@@ -963,6 +1088,7 @@ methods of one class run in the order they are defined.
 2. Phase 4 adds the records and the query for a load that succeeds.
 3. Phases 5 to 7 each add one behaviour to the records.
 4. Phase 8 documents and validates the whole.
+5. Phase 9 applies the decisions of the review of the implementation.
 
 ## Task count
 
@@ -976,4 +1102,5 @@ methods of one class run in the order they are defined.
 | 6. User Story 4 | T050 to T051 | 2 |
 | 7. User Story 5 | T052 to T055 | 4 |
 | 8. Documentation and polish | T056 to T064 | 9 |
-| Total | | 65 |
+| 9. Changes decided in review | T066 to T074 | 9 |
+| Total | | 74 |

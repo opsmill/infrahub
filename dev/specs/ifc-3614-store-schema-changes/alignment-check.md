@@ -1,6 +1,10 @@
 # Alignment check: spec against the Jira task and the design document
 
-Superseded in part: spec decision 8 (2026-11-17) makes the schema load and the schema check save the processed schema of the file without the applier, so the bullet on "its use by the schema load ... and the schema check" no longer holds; only the dropdown and enum mutations and the tests use the applier.
+Superseded in part: spec decision 8 (2026-11-17) made the schema load and the schema check save the processed schema of the file without the applier; the review of 2026-11-18 reversed it (spec, decision 8), so the bullet on "its use by the schema load ... and the schema check" holds again.
+
+Superseded in part: spec decision 10 (2026-11-18) adds the status `cancelled`, so a migration record has six statuses, not five.
+
+Superseded in part: the records are no longer `StandardNode` vertices ([research.md](research.md), R1, 2026-11-18), so neither the plan nor the data model names `StandardNode` as their storage.
 
 **Date**: 2026-11-14
 

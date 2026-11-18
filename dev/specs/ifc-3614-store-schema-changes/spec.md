@@ -24,9 +24,9 @@ change instead.
 
 This feature stores every schema change, every time it is applied, and every migration that the
 application runs. It also changes how a schema is built from user input: every schema load and
-every schema check builds the operations of the file, and one applier builds the schema from
-operations for every dropdown or enum mutation. The tests check that the applier rebuilds the
-schema of each loaded file from its operations (decision 8). Later tasks of the same epic use the
+every schema check builds the operations of the file, and one applier builds the schema from the
+operations for every schema load, schema check and dropdown or enum mutation. A load or a check
+whose operations do not rebuild the schema of its file is refused (decision 8). Later tasks of the same epic use the
 stored records and the applier to report the progress of a load, to stage a schema change, and to
 apply schema changes in order at rebase and merge.
 
@@ -45,8 +45,8 @@ commands for the history are separate work.
 - Q: Should the stored records be read and written through one repository class, or through
   separate classes for the different consumers? → A: Two classes. One holds the writes and the
   version read that record a schema change and its migrations. The other holds the paged reads of
-  the history query. The deletion of a branch's records is a query that the branch deletion runs
-  itself.
+  the history query. The deletion of a branch's records is a method of the first class, which
+  the branch deletion calls.
 - Q: Should the calculation of a schema change's version and parent be its own component, or stay
   inside the component that sets the statuses of the records? → A: Its own component. It takes a
   branch and returns the next version and the parent, and the component that sets the statuses
@@ -54,8 +54,9 @@ commands for the history are separate work.
 - Q: How should the tests that load schema files through the running application share their
   setup? → A: One base class with one data set (base schema, nodes, branch) for each class. One
   ordered class covers the loads, the check, the history query, the failed load, the corrected
-  load and the branch deletion, in that order. The test that a rebase and a merge leave the
-  records unchanged is a second class on the same base.
+  load and the branch deletion, in that order. A second class on the same base asserted that a
+  rebase and a merge leave the records unchanged; it was removed in review on 2026-11-18, because
+  the ordered replay at rebase and merge changes the records before this feature is released.
 - Q: Should the rest of the review's suggestions on component design and test fixtures be applied?
   → A: All of them. They change no requirement of this spec. They are recorded in
   [plan.md](plan.md), [research.md](research.md) (R5, R7, R8, R9 and R14),
@@ -110,8 +111,9 @@ schemas and the lists of migrations.
    the applier applies the recorded operations, **Then** the expected result is the fixed
    behaviour that the bug's ticket describes, not today's result.
 4. **Given** a schema file sent to the schema check, **When** the check ends, **Then** the diff it
-   returns is the diff between the branch schema and the processed schema of the file laid over
-   the branch schema, from which the operations are built, and no schema change is stored.
+   returns is the diff between the branch schema and the schema that the applier builds from the
+   operations of the file, which equals the processed schema of the file laid over the branch
+   schema, and no schema change is stored.
 5. **Given** an operation that names a node, attribute or relationship that the target schema does
    not have, **When** the applier applies it, **Then** the applier refuses the schema change and
    the error names the operation and the missing element.
@@ -123,7 +125,7 @@ schemas and the lists of migrations.
 A schema owner loads several schema changes on a branch. They then query the schema change history
 of the branch. For each schema change they view its name, its version, its status, its time and
 its operations. For each application of the schema change they view its status and the migrations
-it ran, each with its path, status, result and errors.
+it ran, each with its path, status and errors.
 
 **Why this priority**: this is the value the task delivers to the schema owner. The records are
 also what the later tasks of the epic read.
@@ -142,7 +144,7 @@ the migrations with what each load did.
    wrote. They do not view an operation for each kind that inherits `serial`.
 3. **Given** that schema change, **When** the schema owner views its application, **Then** the
    application has the status `applied` and one migration for each kind the load migrated, each
-   with its path, migration name, status, result and time.
+   with its path, migration name, status and time.
 4. **Given** three loads on the branch that each changed the schema, **When** the schema owner
    queries the history, **Then** the three schema changes are returned in order of version, and
    each one after the first has the one before it as its parent.
@@ -154,7 +156,8 @@ the migrations with what each load did.
    receives at most the number of schema changes it asked for and the total number of schema
    changes.
 8. **Given** a schema change with more operations than one page, **When** a client requests its
-   operations, **Then** it receives them in pages, in the order they apply.
+   operations, **Then** it receives them in pages, in the order they apply. The applications of a
+   schema change and the migrations of an application are read in pages in the same way.
 
 ---
 
@@ -178,7 +181,9 @@ the branch schema and data are as they were before the load.
    change has the status `failed` and no version, and its application has the status `failed` and
    holds the error.
 2. **Given** that failed load, **When** the schema owner views the application's migrations,
-   **Then** they view each migration that ran with its status, result and errors.
+   **Then** they view each migration with its status and errors: a migration that finished
+   before the failure is `rolled_back`, one that was running is `failed` with the error of the
+   load, and one that never started is `cancelled`.
 3. **Given** that failed load, **When** the schema owner queries the history, **Then** the applied
    schema changes are listed by version, and the failed schema change is listed by the time it was
    created.
@@ -254,14 +259,19 @@ branch. Count the records of that branch and of main before and after.
   version, not by name, so the order stays correct.
 - **A branch created before this feature is deployed**, or main with no stored schema change:
   main's version is 0, so the branch's first schema change has the version 1.
-- **A worker that stops during a load, a load request that is cancelled, or a write of the end
-  status that fails**: the schema change and its application keep the status `running`. They have
-  no version and are not part of the history that later tasks apply. When the write that sets
-  `applied` fails with a database error after the schema was saved, the load succeeds and the
-  error is logged ([research.md](research.md), R8). Recovery
-  after a worker stops during a schema load is out of scope, as in the source design.
-- **A migration that is waiting when another migration fails**: its record keeps the status
-  `waiting`. The status `failed` of the application tells the reader that it did not run.
+- **A write of the schema change or its application that fails**: the load fails. When the write
+  that creates them fails, nothing is changed; when the write that sets `applied` fails, the load
+  is rolled back and the schema change is set to `failed` (decision 9).
+- **A load request that is cancelled**: the schema change and its application are set to `failed`
+  with the error `The schema load was cancelled before it completed`. The schema and the data that
+  the load wrote before the cancellation are not rolled back, as before this feature
+  ([research.md](research.md), R8).
+- **A worker that stops during a load, or a write of the status `failed` that fails**: the schema
+  change and its application keep the status `running`. They have no version and are not part of
+  the history that later tasks apply. Recovery after a worker stops during a schema load is out of
+  scope, as in the source design.
+- **A migration that is waiting when another migration fails**: its record becomes `cancelled`
+  when the load fails (decision 10).
 - **A load that Infrahub refuses before it writes anything**, for example an invalid file or a
   constraint that existing nodes fail: no schema change is stored. See decision 1.
 - **A query on a branch with no schema change** returns an empty page and a count of 0.
@@ -338,19 +348,22 @@ branch. Count the records of that branch and of main before and after.
   - run processing.
 - **FR-021**: A direct schema load, a dropdown or enum mutation and the schema check MUST each
   build their operations. A load and a check lay the file over the branch schema and process it to
-  find what changed, because the operations are built from that diff. The schema that a load
-  saves, the migrations it runs and the diff that the check returns MUST come from that processed
-  schema and that diff, without applying the operations again (decision 8). A mutation MUST apply
-  its operation with the applier, and the schema it saves and its diff MUST come from the
+  find what changed, because the operations are built from that diff. A load, a check and a
+  mutation MUST then apply the operations with the applier, and the schema that a load or a
+  mutation saves, the migrations it runs and the diff that the check returns MUST come from the
   applier's result. A load, a check and a mutation MUST build their candidate schema through one
-  shared component. The tests MUST fail when the applier, applying the operations of a loaded file
-  to the branch schema, gives a schema that differs from the processed schema of that file.
+  shared component. A load or a check MUST be refused, and save nothing, when the applier refuses
+  an operation of the file or builds a schema that differs from the processed schema of the file
+  laid over the branch schema; the error MUST say that the error is in Infrahub, not in the file
+  (decision 8).
 - **FR-022**: Each application MUST calculate its migrations and its constraint checks after
   processing, from the difference between the target branch's schema before and after the change.
   The changes that processing produces therefore still get their own migrations and checks.
 - **FR-023**: The applier MUST refuse a schema change that holds an operation on a node, attribute
   or relationship that the target schema does not have. The error MUST name the operation and the
-  missing element.
+  missing element. It MUST also refuse an operation that adds a node, attribute or relationship
+  that the target schema already has; the ordered replay task decides whether such an add is
+  skipped instead.
 - **FR-024**: An equivalence test suite MUST exist before any workflow uses the applier. For each
   case, the processed schema and the migrations that the applier builds from the recorded
   operations MUST match those of a direct load. The cases are:
@@ -412,10 +425,12 @@ branch. Count the records of that branch and of main before and after.
   application, for example `node.attribute.add` on `InfraDevice.serial`. The record MUST hold the
   path, the migration name, the status, the result, the errors and the time.
 - **FR-051**: The status of a migration record MUST be one of `waiting`, `running`, `applied`,
-  `failed` and `rolled back`.
+  `failed`, `rolled back` and `cancelled`.
 - **FR-052**: The migration records of an application MUST exist, with the status `waiting`,
-  before its migrations run, and MUST be updated as each migration ends, so that a client can read
-  the state of a running load.
+  before its migrations run, MUST be set to `running` when the task of their migration starts, and
+  MUST be updated as each migration ends, so that a client can read the state of a running load.
+  The position of a migration record MUST be the same each time a load runs. These writes report
+  progress: a write that fails is logged and does not stop the migrations (decision 9).
 - **FR-053**: A migration that finds no nodes MUST be recorded as `applied`, with a count of 0 in
   its result.
 - **FR-054**: Migration records MUST be created each time a schema change is applied, because the
@@ -425,8 +440,13 @@ branch. Count the records of that branch and of main before and after.
 
 - **FR-060**: When a schema load fails after its application started, Infrahub MUST set the schema
   change and its application to `failed`, and the application MUST hold the error and keep its
-  migration records. A migration record that was `applied` becomes `rolled back` (decision 6). A
+  migration records. A migration record that was `applied` becomes `rolled back` (decision 6), one
+  that was `waiting` becomes `cancelled`, and one that was `running` becomes `failed` with the
+  error of the load (decision 10). A cancelled load is recorded as failed in the same way. A
   dropdown or enum mutation whose save fails stores nothing (decision 7).
+- **FR-063**: A schema load MUST fail, and be rolled back, when its schema change or its
+  application cannot be created or set to `applied` (decision 9). Each record write MUST be
+  retried after a transient database error.
 - **FR-061**: The records MUST state the result of the load even though the load rolled back. The
   rollback of the graph does not revert these records, so the code that handles the failure MUST
   update them.
@@ -438,8 +458,11 @@ branch. Count the records of that branch and of main before and after.
   schema change it MUST return:
   - its name, version, status and time;
   - its operations, in pages;
-  - its applications with their status;
-  - each application's migrations with their status, result and errors.
+  - its applications with their status, in pages;
+  - each application's migrations with their status and errors, in pages.
+
+  The query MUST NOT return the format version of a schema change or the internal result counter
+  of a migration record, which the database keeps.
 - **FR-071**: The query MUST return applied schema changes in order of version, and failed schema
   changes, which have no version, in order of the time they were created.
 - **FR-072**: The query MUST return the total number of schema changes that match, and a page MUST
@@ -493,8 +516,8 @@ branch. Count the records of that branch and of main before and after.
   access to the server logs.
 - **SC-005**: After a branch is deleted, no record of that branch remains, and the number of
   records of main and of every other branch is unchanged.
-- **SC-006**: A client reads a history of any length, and the operations of a schema change of any
-  size, page by page. No page holds more than the number of items the client asked for.
+- **SC-006**: A client reads a history of any length, and the operations, the applications and
+  the migration records of a schema change of any size, page by page. No page holds more than the number of items the client asked for.
 
 ## Assumptions
 
@@ -589,16 +612,29 @@ review.
    saved together or not at all, and that a mutation retried after a database error leaves no
    failed schema change in the history.
 
-8. **A schema load and a schema check process the schema once, and the tests verify the
-   operations.** Decided by the user during implementation, on 2026-11-17. A load builds its
-   operations from the diff of the processed schema of the laid-over file, so that processed
-   schema is already in memory: the load saves it, and does not apply the operations with the
-   applier to process the schema a second time. The processed schema is not stored; the
-   operations are stored as before. The user accepted the risk that the operations miss a change
-   of the load, so that the stored operations and the saved schema differ. In the tests only,
-   every load applies the operations with the applier and fails when the result differs from the
-   processed schema of the file ([research.md](research.md), R7). The user also said that the
-   time of a schema load is not critical to them.
+8. **Every schema load and schema check applies its operations, and a load whose operations do
+   not rebuild its schema is refused.** Decided in review on 2026-11-18, in place of the decision
+   of 2026-11-17 to process the schema once and verify the operations in the tests only. A load
+   builds its operations from the diff of the processed schema of the laid-over file, applies
+   them with the applier, and saves the applier's result, as the design document says. When the
+   applier refuses an operation, or its result differs from the processed schema of the file, the
+   load raises an error, saves nothing, and the message says that the error is in Infrahub, not in
+   the file. The check reports the same error. This processes the schema a second time in each
+   load ([research.md](research.md), R7); the user said that the time of a schema load is not
+   critical to them.
+
+9. **The schema change and its application are required records; the migration records are best
+   effort.** Decided in review on 2026-11-18. A merge or a rebase of the same epic reads the schema
+   change and its application, so a load whose schema change cannot be created or set to `applied`
+   fails and is rolled back. Every record write is retried after a transient database error. The
+   migration records report progress, so a failed write of one is logged and the load goes on. The
+   ordered replay task decides whether the final status of a migration record joins the required
+   records ([research.md](research.md), R8).
+
+10. **A migration that never ran gets the status `cancelled`.** Decided in review on 2026-11-18.
+    When a load fails, a migration record that is still `waiting` becomes `cancelled`, and one that
+    is `running` becomes `failed` with the error of the load, in the same write that sets the
+    schema change to `failed`.
 
 ## Sources
 
