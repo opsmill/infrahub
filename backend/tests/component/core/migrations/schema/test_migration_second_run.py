@@ -1,14 +1,15 @@
 """A schema migration that runs a second time on the same branch leaves the graph unchanged.
 
-Each case builds one load's migrations by hand, runs them, reads the whole graph, runs them again on the same
-branch and compares. The comparison covers every vertex and edge, the global branch included, so a second run
-that rewrites an edge, bumps metadata or closes a global edge fails the test.
+Each case changes the schema the way one schema load does, builds the migrations that load creates, runs them,
+reads the whole graph, runs them again on the same branch and compares. The comparison covers every vertex and
+edge, the global branch included, so a second run that rewrites an edge, bumps metadata or closes a global edge
+fails the test.
 """
 
 from __future__ import annotations
 
 import uuid
-from collections.abc import Awaitable, Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol
@@ -47,6 +48,7 @@ from tests.component.core.migrations.schema.second_run_helpers import (
     FIRST_RUN_USER_ID,
     SECOND_RUN_USER_ID,
     BranchKind,
+    SecondRunChangedGraphError,
     assert_graph_unchanged,
     assert_second_run_changes_nothing,
     changed_vertex_uuids,
@@ -67,7 +69,6 @@ if TYPE_CHECKING:
 
 type SchemaChange = Callable[[MainSchemaTypes], None]
 type CandidateChange = Callable[[SchemaBranch], None]
-type MigrationBuilder = Callable[[InfrahubDatabase, Branch], Awaitable[list[SchemaMigration]]]
 
 
 class MigrationClass(Protocol):
@@ -75,7 +76,7 @@ class MigrationClass(Protocol):
         self,
         *,
         previous_node_schema: MainSchemaTypes,
-        new_node_schema: MainSchemaTypes,
+        new_node_schema: MainSchemaTypes | None,
         derived_schemas: list[DerivedSchemaPair],
         schema_path: SchemaPath,
     ) -> SchemaMigration: ...
@@ -84,6 +85,7 @@ class MigrationClass(Protocol):
 SEATS_IN_CONSTRAINT = [["name__value", "nbr_seats__value"]]
 NAME_ONLY_CONSTRAINT = [["name__value"]]
 GENERIC_INHERITING_KINDS = ["TestElectricCar", "TestGazCar"]
+CONSTRAINTS_KEY = ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value
 
 
 # ---------------------------------------------------------------------------
@@ -100,13 +102,13 @@ class CarData:
     template_car: Node
 
 
-def register_car_schema(default_branch: Branch, schema: SchemaRoot) -> SchemaBranch:
+def register_car_schema(default_branch: Branch, schema: SchemaRoot) -> None:
     registry.schema.register_schema(
         schema=SchemaRoot(generics=[core_object_template, core_object_component_template]), branch=default_branch.name
     )
     for node in schema.nodes:
         node.generate_template = True
-    return registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 def car_schema_variant(
@@ -209,16 +211,8 @@ async def car_data_seats_in_constraint(
     return await create_car_data(db=db, default_branch=default_branch, seats_on_profile=False)
 
 
-@dataclass
-class AgnosticData:
-    gadgets: list[Node]
-    widgets: list[Node]
-    widget_profile: Node
-    beacons: list[Node]
-
-
 @pytest.fixture
-async def agnostic_data(db: InfrahubDatabase, default_branch: Branch) -> AgnosticData:
+async def agnostic_data(db: InfrahubDatabase, default_branch: Branch) -> None:
     schema = deepcopy(AGNOSTIC_RETIREMENT_SCHEMA)
     widget = next(node for node in schema.nodes if node.kind == WIDGET_KIND)
     widget.attributes.append(
@@ -227,57 +221,44 @@ async def agnostic_data(db: InfrahubDatabase, default_branch: Branch) -> Agnosti
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
     gadgets = [await create_gadget(db=db, branch=default_branch, name=f"gadget-{index}") for index in range(2)]
-    widgets = [
+    for index, gadget in enumerate(gadgets):
         await create_widget(
             db=db, branch=default_branch, name=f"widget-{index}", serial=index, notes=f"note-{index}", gadget=gadget
         )
-        for index, gadget in enumerate(gadgets)
-    ]
     widget_profile = await Node.init(db=db, schema=f"Profile{WIDGET_KIND}", branch=default_branch)
     await widget_profile.new(db=db, profile_name="widget-profile", serial=10, notes="profile-note")
     await widget_profile.save(db=db)
-    beacons = []
     for index in range(2):
         beacon = await Node.init(db=db, schema=BEACON_KIND, branch=default_branch)
         await beacon.new(db=db, name=f"beacon-{index}", serial=index)
         await beacon.save(db=db)
-        beacons.append(beacon)
-    return AgnosticData(gadgets=gadgets, widgets=widgets, widget_profile=widget_profile, beacons=beacons)
 
 
 @pytest.fixture
-async def generic_profiles(
-    db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: dict[str, Node]
-) -> list[Node]:
-    profiles = []
+async def generic_data(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data: dict[str, Node]) -> None:
     for index, kind in enumerate(GENERIC_INHERITING_KINDS):
         profile = await Node.init(db=db, schema=f"Profile{kind}", branch=default_branch)
         await profile.new(db=db, profile_name=f"profile-{kind}", nbr_seats=index + 2, color=f"#00000{index}")
         await profile.save(db=db)
-        profiles.append(profile)
-    return profiles
 
 
 # ---------------------------------------------------------------------------
-# Schema changes and the migrations a load creates for them
+# Schema edits and the migrations a load creates for them
 # ---------------------------------------------------------------------------
 
 
-def attribute_path(kind: str, name: str) -> SchemaPath:
-    return SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=kind, field_name=name)
+def attribute_path(kind: str, name: str, property_name: str | None = None) -> SchemaPath:
+    return SchemaPath(
+        path_type=SchemaPathType.ATTRIBUTE, schema_kind=kind, field_name=name, property_name=property_name
+    )
 
 
 def relationship_path(kind: str, name: str) -> SchemaPath:
     return SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind=kind, field_name=name)
 
 
-def constraints_path(kind: str) -> SchemaPath:
-    return SchemaPath(
-        path_type=SchemaPathType.NODE,
-        schema_kind=kind,
-        field_name="uniqueness_constraints",
-        property_name="uniqueness_constraints",
-    )
+def node_path(kind: str, name: str | None = None) -> SchemaPath:
+    return SchemaPath(path_type=SchemaPathType.NODE, schema_kind=kind, field_name=name, property_name=name)
 
 
 def add_attribute(attribute: AttributeSchema) -> SchemaChange:
@@ -308,30 +289,26 @@ def rename_attribute(name: str, new_name: str) -> SchemaChange:
     return change
 
 
-def change_attribute_kind(name: str, kind: str) -> SchemaChange:
-    def change(schema: MainSchemaTypes) -> None:
-        schema.get_attribute(name=name).kind = kind
-
-    return change
-
-
 def change_attribute(
     name: str,
+    kind: str | None = None,
     unique: bool | None = None,
     read_only: bool | None = None,
     optional: bool | None = None,
-    uniqueness_constraints: list[list[str]] | None = None,
+    inherited: bool | None = None,
 ) -> SchemaChange:
     def change(schema: MainSchemaTypes) -> None:
         attribute = schema.get_attribute(name=name)
+        if kind is not None:
+            attribute.kind = kind
         if unique is not None:
             attribute.unique = unique
         if read_only is not None:
             attribute.read_only = read_only
         if optional is not None:
             attribute.optional = optional
-        if uniqueness_constraints is not None:
-            schema.uniqueness_constraints = uniqueness_constraints
+        if inherited is not None:
+            attribute.inherited = inherited
 
     return change
 
@@ -348,6 +325,39 @@ def inherit_asset_generic(schema: MainSchemaTypes) -> None:
     schema.inherit_from = [*schema.inherit_from, "TestAsset"]
 
 
+def edit_kind(kind: str, *changes: SchemaChange) -> CandidateChange:
+    def edit(candidate: SchemaBranch) -> None:
+        schema = candidate.get(name=kind, duplicate=True)
+        for change in changes:
+            change(schema)
+        candidate.set(name=kind, schema=schema)
+
+    return edit
+
+
+def edit_kinds(kinds: Sequence[str], *changes: SchemaChange) -> CandidateChange:
+    def edit(candidate: SchemaBranch) -> None:
+        for kind in kinds:
+            edit_kind(kind, *changes)(candidate)
+
+    return edit
+
+
+def combine(*edits: CandidateChange) -> CandidateChange:
+    def edit(candidate: SchemaBranch) -> None:
+        for each in edits:
+            each(candidate)
+
+    return edit
+
+
+def delete_kind(kind: str) -> CandidateChange:
+    def edit(candidate: SchemaBranch) -> None:
+        candidate.delete(name=kind)
+
+    return edit
+
+
 def add_asset_generic(candidate: SchemaBranch) -> None:
     candidate.set(
         name="TestAsset",
@@ -360,104 +370,10 @@ def add_asset_generic(candidate: SchemaBranch) -> None:
     )
 
 
-def remove_person_relationships(*names: str) -> CandidateChange:
-    def change(candidate: SchemaBranch) -> None:
-        person = candidate.get_node(name="TestPerson", duplicate=True)
-        for name in names:
-            person.get_relationship(name=name).state = HashableModelState.ABSENT
-        candidate.set(name="TestPerson", schema=person)
-
-    return change
-
-
-async def change_schema(
-    db: InfrahubDatabase,
-    branch: Branch,
-    kind: str,
-    change: SchemaChange,
-    attribute_with_id: str | None = None,
-    also: CandidateChange | None = None,
-) -> tuple[MainSchemaTypes, MainSchemaTypes, list[DerivedSchemaPair]]:
-    """Change one kind in a candidate schema and store it on the branch.
-
-    Returns the kind before and after, and its profile and template kinds before and after, as a load passes them.
-    """
-    schema_branch = registry.schema.get_schema_branch(name=branch.name)
-    previous = schema_branch.get(name=kind, duplicate=True)
-    candidate = schema_branch.duplicate()
-    changed = candidate.get(name=kind, duplicate=True)
-    if attribute_with_id is not None:
-        # A schema registered in memory has no IDs, and these migrations need one to match the attribute.
-        attribute_id = str(uuid.uuid4())
-        previous.get_attribute(name=attribute_with_id).id = attribute_id
-        changed.get_attribute(name=attribute_with_id).id = attribute_id
-    change(changed)
-    candidate.set(name=kind, schema=changed)
-    if also is not None:
-        also(candidate)
-    await register_candidate(db=db, branch=branch, candidate=candidate)
-    new = candidate.get(name=kind)
-    derived = get_derived_schema_pairs(
-        previous_schema_branch=schema_branch,
-        new_schema_branch=candidate,
-        previous_node_schema=previous,
-        new_node_schema=new,
-    )
-    return previous, new, derived
-
-
-def one_migration(
-    migration_class: MigrationClass,
-    schema_path: SchemaPath,
-    change: SchemaChange,
-    attribute_with_id: str | None = None,
-    also: CandidateChange | None = None,
-) -> MigrationBuilder:
-    async def build(db: InfrahubDatabase, branch: Branch) -> list[SchemaMigration]:
-        previous, new, derived = await change_schema(
-            db=db,
-            branch=branch,
-            kind=schema_path.schema_kind,
-            change=change,
-            attribute_with_id=attribute_with_id,
-            also=also,
-        )
-        return [
-            migration_class(
-                previous_node_schema=previous, new_node_schema=new, derived_schemas=derived, schema_path=schema_path
-            )
-        ]
-
-    return build
-
-
-def node_removal(kind: str, also: CandidateChange | None = None) -> MigrationBuilder:
-    async def build(db: InfrahubDatabase, branch: Branch) -> list[SchemaMigration]:
-        schema_branch = registry.schema.get_schema_branch(name=branch.name)
-        previous = schema_branch.get(name=kind, duplicate=True)
-        candidate = schema_branch.duplicate()
-        candidate.delete(name=kind)
-        if also is not None:
-            also(candidate)
-        await register_candidate(db=db, branch=branch, candidate=candidate)
-        return [
-            NodeRemoveMigration(
-                previous_node_schema=previous,
-                new_node_schema=None,
-                schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind=kind),
-            )
-        ]
-
-    return build
-
-
-def car_kind_rename(namespace: str, name: str, field_name: str) -> MigrationBuilder:
+def rename_car_kind(namespace: str, name: str) -> CandidateChange:
     """Replace TestCar with a kind of the given namespace and name, and point the person's peers at it."""
 
-    async def build(db: InfrahubDatabase, branch: Branch) -> list[SchemaMigration]:
-        schema_branch = registry.schema.get_schema_branch(name=branch.name)
-        previous = schema_branch.get(name="TestCar", duplicate=True)
-        candidate = schema_branch.duplicate()
+    def edit(candidate: SchemaBranch) -> None:
         car = candidate.get_node(name="TestCar", duplicate=True)
         candidate.delete(name="TestCar")
         car.namespace = namespace
@@ -468,10 +384,55 @@ def car_kind_rename(namespace: str, name: str, field_name: str) -> MigrationBuil
             if relationship.peer == "TestCar":
                 relationship.peer = car.kind
         candidate.set(name="TestPerson", schema=person)
-        await register_candidate(db=db, branch=branch, candidate=candidate)
-        new = candidate.get(name=car.kind)
-        return [
-            NodeKindUpdateMigration(
+
+    return edit
+
+
+@dataclass(frozen=True)
+class PlannedMigration:
+    migration_map_key: str
+    migration_class: MigrationClass
+    schema_path: SchemaPath
+    previous_kind: str | None = None
+    """The kind before the load, when the load renames it; defaults to the path's kind."""
+    removes_kind: bool = False
+
+
+@dataclass(frozen=True)
+class SecondRunCase:
+    name: str
+    data: str
+    """The fixture that creates the data on the default branch before the migration branch exists."""
+    edit: CandidateChange
+    migrations: Sequence[PlannedMigration]
+    attribute_ids: Sequence[tuple[str, str]] = ()
+    """(kind, attribute) pairs that get one shared ID before and after the load, as a stored schema has."""
+    branch_kinds: Sequence[BranchKind] = tuple(BRANCH_KINDS)
+    first_run_changes: bool = True
+    expected_failures: Mapping[BranchKind, pytest.MarkDecorator] = field(default_factory=dict)
+
+
+async def build_migrations(db: InfrahubDatabase, branch: Branch, case: SecondRunCase) -> list[SchemaMigration]:
+    """Apply the case's schema edit on the branch and build the migrations with what a load passes them."""
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    candidate = schema_branch.duplicate()
+    previous_schemas = {
+        kind: schema_branch.get(name=kind, duplicate=True)
+        for kind in {planned.previous_kind or planned.schema_path.schema_kind for planned in case.migrations}
+    }
+    for kind, attribute_name in case.attribute_ids:
+        attribute_id = str(uuid.uuid4())
+        previous_schemas[kind].get_attribute(name=attribute_name).id = attribute_id
+        edit_kind(kind, change_attribute_id(name=attribute_name, attribute_id=attribute_id))(candidate)
+    case.edit(candidate)
+    await register_candidate(db=db, branch=branch, candidate=candidate)
+
+    migrations = []
+    for planned in case.migrations:
+        previous = previous_schemas[planned.previous_kind or planned.schema_path.schema_kind]
+        new = None if planned.removes_kind else candidate.get(name=planned.schema_path.schema_kind)
+        migrations.append(
+            planned.migration_class(
                 previous_node_schema=previous,
                 new_node_schema=new,
                 derived_schemas=get_derived_schema_pairs(
@@ -480,51 +441,17 @@ def car_kind_rename(namespace: str, name: str, field_name: str) -> MigrationBuil
                     previous_node_schema=previous,
                     new_node_schema=new,
                 ),
-                schema_path=attribute_path(kind=car.kind, name=field_name),
+                schema_path=planned.schema_path,
             )
-        ]
+        )
+    return migrations
 
-    return build
 
+def change_attribute_id(name: str, attribute_id: str) -> SchemaChange:
+    def change(schema: MainSchemaTypes) -> None:
+        schema.get_attribute(name=name).id = attribute_id
 
-def generic_load(
-    migration_class: MigrationClass,
-    change: SchemaChange,
-    schema_path: Callable[[str], SchemaPath],
-    change_inheriting_kinds: bool,
-) -> MigrationBuilder:
-    """Change the generic TestCar and build the migration a load creates for the generic, then for each kind."""
-
-    async def build(db: InfrahubDatabase, branch: Branch) -> list[SchemaMigration]:
-        schema_branch = registry.schema.get_schema_branch(name=branch.name)
-        candidate = schema_branch.duplicate()
-        kinds = ["TestCar", *GENERIC_INHERITING_KINDS]
-        for kind in kinds if change_inheriting_kinds else kinds[:1]:
-            changed = candidate.get(name=kind, duplicate=True)
-            change(changed)
-            candidate.set(name=kind, schema=changed)
-        await register_candidate(db=db, branch=branch, candidate=candidate)
-        migrations: list[SchemaMigration] = []
-        for kind in kinds:
-            previous = schema_branch.get(name=kind, duplicate=True)
-            new = candidate.get(name=kind)
-            derived = get_derived_schema_pairs(
-                previous_schema_branch=schema_branch,
-                new_schema_branch=candidate,
-                previous_node_schema=previous,
-                new_node_schema=new,
-            )
-            migrations.append(
-                migration_class(
-                    previous_node_schema=previous,
-                    new_node_schema=new,
-                    derived_schemas=derived,
-                    schema_path=schema_path(kind),
-                )
-            )
-        return migrations
-
-    return build
+    return change
 
 
 # ---------------------------------------------------------------------------
@@ -532,21 +459,9 @@ def generic_load(
 # ---------------------------------------------------------------------------
 
 
-@dataclass(frozen=True)
-class SecondRunCase:
-    name: str
-    migration_map_key: str
-    data: str
-    """The fixture that creates the data on the default branch before the migration branch exists."""
-    build: MigrationBuilder
-    branch_kinds: Sequence[BranchKind] = tuple(BRANCH_KINDS)
-    first_run_changes: bool = True
-    expected_failures: Mapping[BranchKind, pytest.MarkDecorator] = field(default_factory=dict)
-
-
 SECOND_RUN_RENAMES_AGAIN = pytest.mark.xfail(
     strict=True,
-    raises=AssertionError,
+    raises=SecondRunChangedGraphError,
     reason="on the default branch, the second run renames the agnostic attribute again and adds new attribute vertices",
 )
 AGNOSTIC_RENAME_EDGES_ON_BRANCH = pytest.mark.xfail(
@@ -560,227 +475,286 @@ AGNOSTIC_KIND_UPDATE_EDGE_ON_BRANCH = pytest.mark.xfail(
     reason="the first run writes the new HAS_VALUE edge of an agnostic attribute on the migration branch, not -global-",
 )
 
-GENERIC_CONSTRAINTS_CASE = SecondRunCase(
-    name="node_uniqueness_constraints_update_on_generic",
-    migration_map_key=ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value,
-    data="generic_profiles",
-    build=generic_load(
+
+def supports_generated_schema(key: str, kind: str, name: str, property_name: str) -> PlannedMigration:
+    return PlannedMigration(
+        migration_map_key=key,
+        migration_class=AttributeSupportsGeneratedSchemaMigration,
+        schema_path=attribute_path(kind=kind, name=name, property_name=property_name),
+    )
+
+
+def constraints_update(kind: str) -> PlannedMigration:
+    return PlannedMigration(
+        migration_map_key=CONSTRAINTS_KEY,
         migration_class=NodeUniquenessConstraintsUpdateMigration,
-        change=set_uniqueness_constraints(SEATS_IN_CONSTRAINT),
-        schema_path=constraints_path,
-        change_inheriting_kinds=False,
-    ),
-)
-GENERIC_KIND_UPDATE_CASE = SecondRunCase(
-    name="attribute_kind_update_on_generic",
-    migration_map_key="attribute.kind.update",
-    data="generic_profiles",
-    build=generic_load(
+        schema_path=node_path(kind=kind, name="uniqueness_constraints"),
+    )
+
+
+def kind_update(kind: str, name: str) -> PlannedMigration:
+    return PlannedMigration(
+        migration_map_key="attribute.kind.update",
         migration_class=AttributeKindUpdateMigration,
-        change=change_attribute_kind(name="color", kind="TextArea"),
-        schema_path=lambda kind: attribute_path(kind=kind, name="color"),
-        change_inheriting_kinds=True,
+        schema_path=attribute_path(kind=kind, name=name, property_name="kind"),
+    )
+
+
+def car_kind_rename_case(name: str, key: str, namespace: str, kind_name: str, field_name: str) -> SecondRunCase:
+    return SecondRunCase(
+        name=name,
+        data="car_data",
+        edit=rename_car_kind(namespace=namespace, name=kind_name),
+        migrations=[
+            PlannedMigration(
+                migration_map_key=key,
+                migration_class=NodeKindUpdateMigration,
+                schema_path=node_path(kind=f"{namespace}{kind_name}", name=field_name),
+                previous_kind="TestCar",
+            )
+        ],
+    )
+
+
+# When the kinds declare the attribute themselves, the load also creates a migration for each kind.
+GENERIC_KIND_UPDATE_DECLARED_CASE = SecondRunCase(
+    name="attribute_kind_update_on_generic_declared_by_kinds",
+    data="generic_data",
+    edit=combine(
+        edit_kind("TestCar", change_attribute(name="color", kind="TextArea")),
+        edit_kinds(GENERIC_INHERITING_KINDS, change_attribute(name="color", kind="TextArea", inherited=False)),
     ),
+    migrations=[kind_update(kind=kind, name="color") for kind in ["TestCar", *GENERIC_INHERITING_KINDS]],
+)
+# Turning on unique creates both migrations on the generic, and both remove the attribute from the same profiles.
+GENERIC_UNIQUE_CASE = SecondRunCase(
+    name="attribute_unique_update_on_generic",
+    data="generic_data",
+    edit=edit_kind("TestCar", change_attribute(name="nbr_seats", unique=True)),
+    migrations=[
+        supports_generated_schema(
+            key="attribute.unique.update", kind="TestCar", name="nbr_seats", property_name="unique"
+        ),
+        constraints_update(kind="TestCar"),
+    ],
+    attribute_ids=[("TestCar", "nbr_seats")],
 )
 
 SECOND_RUN_CASES: list[SecondRunCase] = [
     # A branch-aware node with profile and template nodes
     SecondRunCase(
         name="node_attribute_add",
-        migration_map_key="node.attribute.add",
         data="car_data",
-        build=one_migration(
-            migration_class=NodeAttributeAddMigration,
-            schema_path=attribute_path(kind="TestCar", name="tag"),
-            change=add_attribute(AttributeSchema(name="tag", kind="Text", optional=True, default_value="none")),
+        edit=edit_kind(
+            "TestCar", add_attribute(AttributeSchema(name="tag", kind="Text", optional=True, default_value="none"))
         ),
+        migrations=[
+            PlannedMigration(
+                "node.attribute.add", NodeAttributeAddMigration, attribute_path(kind="TestCar", name="tag")
+            )
+        ],
     ),
     SecondRunCase(
         name="node_attribute_remove",
-        migration_map_key="node.attribute.remove",
         data="car_data",
-        build=one_migration(
-            migration_class=NodeAttributeRemoveMigration,
-            schema_path=attribute_path(kind="TestCar", name="is_electric"),
-            change=remove_attribute("is_electric"),
-        ),
+        edit=edit_kind("TestCar", remove_attribute("is_electric")),
+        migrations=[
+            PlannedMigration(
+                "node.attribute.remove",
+                NodeAttributeRemoveMigration,
+                attribute_path(kind="TestCar", name="is_electric"),
+            )
+        ],
     ),
     SecondRunCase(
         name="attribute_name_update",
-        migration_map_key="attribute.name.update",
         data="car_data",
-        build=one_migration(
-            migration_class=AttributeNameUpdateMigration,
-            schema_path=attribute_path(kind="TestCar", name="electric"),
-            change=rename_attribute(name="is_electric", new_name="electric"),
-            attribute_with_id="is_electric",
-        ),
+        edit=edit_kind("TestCar", rename_attribute(name="is_electric", new_name="electric")),
+        migrations=[
+            PlannedMigration(
+                "attribute.name.update",
+                AttributeNameUpdateMigration,
+                attribute_path(kind="TestCar", name="electric", property_name="name"),
+            )
+        ],
+        attribute_ids=[("TestCar", "is_electric")],
     ),
     SecondRunCase(
         name="attribute_kind_update",
-        migration_map_key="attribute.kind.update",
         data="car_data",
-        build=one_migration(
-            migration_class=AttributeKindUpdateMigration,
-            schema_path=attribute_path(kind="TestCar", name="color"),
-            change=change_attribute_kind(name="color", kind="TextArea"),
-        ),
+        edit=edit_kind("TestCar", change_attribute(name="color", kind="TextArea")),
+        migrations=[kind_update(kind="TestCar", name="color")],
     ),
     SecondRunCase(
         name="node_relationship_remove",
-        migration_map_key="node.relationship.remove",
         data="car_data",
-        build=one_migration(
-            migration_class=NodeRelationshipRemoveMigration,
-            schema_path=relationship_path(kind="TestCar", name="driver"),
-            change=remove_relationship("driver"),
-            also=remove_person_relationships("cars_driven"),
+        edit=combine(
+            edit_kind("TestCar", remove_relationship("driver")),
+            edit_kind("TestPerson", remove_relationship("cars_driven")),
         ),
+        migrations=[
+            PlannedMigration(
+                "node.relationship.remove",
+                NodeRelationshipRemoveMigration,
+                relationship_path(kind="TestCar", name="driver"),
+            )
+        ],
     ),
     SecondRunCase(
         name="node_remove",
-        migration_map_key="node.remove",
         data="car_data",
-        build=node_removal(kind="TestCar", also=remove_person_relationships("cars", "cars_driven")),
+        edit=combine(
+            delete_kind("TestCar"),
+            edit_kind("TestPerson", remove_relationship("cars"), remove_relationship("cars_driven")),
+        ),
+        migrations=[PlannedMigration("node.remove", NodeRemoveMigration, node_path(kind="TestCar"), removes_kind=True)],
     ),
     SecondRunCase(
         name="node_inherit_from_update",
-        migration_map_key="node.inherit_from.update",
         data="car_data",
-        build=one_migration(
-            migration_class=NodeKindUpdateMigration,
-            schema_path=attribute_path(kind="TestCar", name="inherit_from"),
-            change=inherit_asset_generic,
-            also=add_asset_generic,
-        ),
+        edit=combine(add_asset_generic, edit_kind("TestCar", inherit_asset_generic)),
+        migrations=[PlannedMigration("node.inherit_from.update", NodeKindUpdateMigration, node_path(kind="TestCar"))],
     ),
-    SecondRunCase(
-        name="node_name_update",
-        migration_map_key="node.name.update",
-        data="car_data",
-        build=car_kind_rename(namespace="Test", name="Auto", field_name="name"),
+    car_kind_rename_case(
+        name="node_name_update", key="node.name.update", namespace="Test", kind_name="Auto", field_name="name"
     ),
-    SecondRunCase(
+    car_kind_rename_case(
         name="node_namespace_update",
-        migration_map_key="node.namespace.update",
-        data="car_data",
-        build=car_kind_rename(namespace="Test2", name="Car", field_name="namespace"),
+        key="node.namespace.update",
+        namespace="Test2",
+        kind_name="Car",
+        field_name="namespace",
     ),
     SecondRunCase(
         name="attribute_unique_update_on",
-        migration_map_key="attribute.unique.update",
         data="car_data",
-        build=one_migration(
-            migration_class=AttributeSupportsGeneratedSchemaMigration,
-            schema_path=attribute_path(kind="TestCar", name="nbr_seats"),
-            change=change_attribute(name="nbr_seats", unique=True),
-            attribute_with_id="nbr_seats",
-        ),
+        edit=edit_kind("TestCar", change_attribute(name="nbr_seats", unique=True)),
+        migrations=[
+            supports_generated_schema(
+                key="attribute.unique.update", kind="TestCar", name="nbr_seats", property_name="unique"
+            )
+        ],
+        attribute_ids=[("TestCar", "nbr_seats")],
     ),
     SecondRunCase(
         name="attribute_unique_update_off",
-        migration_map_key="attribute.unique.update",
         data="car_data_unique_seats",
-        build=one_migration(
-            migration_class=AttributeSupportsGeneratedSchemaMigration,
-            schema_path=attribute_path(kind="TestCar", name="nbr_seats"),
-            # Processing a unique attribute adds it to the uniqueness constraints, which turning unique off leaves.
-            change=change_attribute(name="nbr_seats", unique=False, uniqueness_constraints=NAME_ONLY_CONSTRAINT),
-            attribute_with_id="nbr_seats",
+        # Processing a unique attribute adds it to the uniqueness constraints, which turning unique off leaves.
+        edit=edit_kind(
+            "TestCar",
+            change_attribute(name="nbr_seats", unique=False),
+            set_uniqueness_constraints(NAME_ONLY_CONSTRAINT),
         ),
+        migrations=[
+            supports_generated_schema(
+                key="attribute.unique.update", kind="TestCar", name="nbr_seats", property_name="unique"
+            )
+        ],
+        attribute_ids=[("TestCar", "nbr_seats")],
     ),
     SecondRunCase(
         name="attribute_read_only_update_on",
-        migration_map_key="attribute.read_only.update",
         data="car_data",
-        build=one_migration(
-            migration_class=AttributeSupportsGeneratedSchemaMigration,
-            schema_path=attribute_path(kind="TestCar", name="nbr_seats"),
-            change=change_attribute(name="nbr_seats", read_only=True),
-            attribute_with_id="nbr_seats",
-        ),
+        edit=edit_kind("TestCar", change_attribute(name="nbr_seats", read_only=True)),
+        migrations=[
+            supports_generated_schema(
+                key="attribute.read_only.update", kind="TestCar", name="nbr_seats", property_name="read_only"
+            )
+        ],
+        attribute_ids=[("TestCar", "nbr_seats")],
     ),
     SecondRunCase(
         name="attribute_read_only_update_off",
-        migration_map_key="attribute.read_only.update",
         data="car_data_read_only_seats",
-        build=one_migration(
-            migration_class=AttributeSupportsGeneratedSchemaMigration,
-            schema_path=attribute_path(kind="TestCar", name="nbr_seats"),
-            change=change_attribute(name="nbr_seats", read_only=False),
-            attribute_with_id="nbr_seats",
-        ),
+        edit=edit_kind("TestCar", change_attribute(name="nbr_seats", read_only=False)),
+        migrations=[
+            supports_generated_schema(
+                key="attribute.read_only.update", kind="TestCar", name="nbr_seats", property_name="read_only"
+            )
+        ],
+        attribute_ids=[("TestCar", "nbr_seats")],
     ),
     SecondRunCase(
         name="attribute_optional_update",
-        migration_map_key="attribute.optional.update",
         data="car_data",
-        build=one_migration(
-            migration_class=AttributeSupportsGeneratedSchemaMigration,
-            schema_path=attribute_path(kind="TestCar", name="nbr_seats"),
-            change=change_attribute(name="nbr_seats", optional=False),
-            attribute_with_id="nbr_seats",
-        ),
+        edit=edit_kind("TestCar", change_attribute(name="nbr_seats", optional=False)),
+        migrations=[
+            supports_generated_schema(
+                key="attribute.optional.update", kind="TestCar", name="nbr_seats", property_name="optional"
+            )
+        ],
+        attribute_ids=[("TestCar", "nbr_seats")],
         # Profile and template support depends on read_only and unique, not on optional.
         first_run_changes=False,
     ),
     SecondRunCase(
         name="node_uniqueness_constraints_update_add",
-        migration_map_key=ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value,
         data="car_data",
-        build=one_migration(
-            migration_class=NodeUniquenessConstraintsUpdateMigration,
-            schema_path=constraints_path("TestCar"),
-            change=set_uniqueness_constraints(SEATS_IN_CONSTRAINT),
-        ),
+        edit=edit_kind("TestCar", set_uniqueness_constraints(SEATS_IN_CONSTRAINT)),
+        migrations=[constraints_update(kind="TestCar")],
     ),
     SecondRunCase(
         name="node_uniqueness_constraints_update_remove",
-        migration_map_key=ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value,
         data="car_data_seats_in_constraint",
-        build=one_migration(
-            migration_class=NodeUniquenessConstraintsUpdateMigration,
-            schema_path=constraints_path("TestCar"),
-            change=set_uniqueness_constraints(NAME_ONLY_CONSTRAINT),
-        ),
+        edit=edit_kind("TestCar", set_uniqueness_constraints(NAME_ONLY_CONSTRAINT)),
+        migrations=[constraints_update(kind="TestCar")],
     ),
     # Branch-agnostic fields on a branch-aware node, and an attribute of a branch-agnostic kind
     SecondRunCase(
         name="agnostic_attribute_add",
-        migration_map_key="node.attribute.add",
         data="agnostic_data",
-        build=one_migration(
-            migration_class=NodeAttributeAddMigration,
-            schema_path=attribute_path(kind=WIDGET_KIND, name="tag"),
-            change=add_attribute(
+        edit=edit_kind(
+            WIDGET_KIND,
+            add_attribute(
                 AttributeSchema(
                     name="tag", kind="Text", optional=True, default_value="none", branch=BranchSupportType.AGNOSTIC
                 )
             ),
         ),
+        migrations=[
+            PlannedMigration(
+                "node.attribute.add", NodeAttributeAddMigration, attribute_path(kind=WIDGET_KIND, name="tag")
+            )
+        ],
+        branch_kinds=AGNOSTIC_BRANCH_KINDS,
+    ),
+    SecondRunCase(
+        name="agnostic_attribute_add_without_default",
+        data="agnostic_data",
+        edit=edit_kind(
+            WIDGET_KIND,
+            add_attribute(AttributeSchema(name="label", kind="Text", optional=True, branch=BranchSupportType.AGNOSTIC)),
+        ),
+        migrations=[
+            PlannedMigration(
+                "node.attribute.add", NodeAttributeAddMigration, attribute_path(kind=WIDGET_KIND, name="label")
+            )
+        ],
         branch_kinds=AGNOSTIC_BRANCH_KINDS,
     ),
     SecondRunCase(
         name="agnostic_attribute_remove",
-        migration_map_key="node.attribute.remove",
         data="agnostic_data",
-        build=one_migration(
-            migration_class=NodeAttributeRemoveMigration,
-            schema_path=attribute_path(kind=WIDGET_KIND, name="serial"),
-            change=remove_attribute("serial"),
-        ),
+        edit=edit_kind(WIDGET_KIND, remove_attribute("serial")),
+        migrations=[
+            PlannedMigration(
+                "node.attribute.remove", NodeAttributeRemoveMigration, attribute_path(kind=WIDGET_KIND, name="serial")
+            )
+        ],
         branch_kinds=AGNOSTIC_BRANCH_KINDS,
     ),
     SecondRunCase(
         name="agnostic_attribute_name_update",
-        migration_map_key="attribute.name.update",
         data="agnostic_data",
-        build=one_migration(
-            migration_class=AttributeNameUpdateMigration,
-            schema_path=attribute_path(kind=WIDGET_KIND, name="serial_number"),
-            change=rename_attribute(name="serial", new_name="serial_number"),
-            attribute_with_id="serial",
-        ),
+        edit=edit_kind(WIDGET_KIND, rename_attribute(name="serial", new_name="serial_number")),
+        migrations=[
+            PlannedMigration(
+                "attribute.name.update",
+                AttributeNameUpdateMigration,
+                attribute_path(kind=WIDGET_KIND, name="serial_number", property_name="name"),
+            )
+        ],
+        attribute_ids=[(WIDGET_KIND, "serial")],
         branch_kinds=AGNOSTIC_BRANCH_KINDS,
         expected_failures={
             BranchKind.DEFAULT: SECOND_RUN_RENAMES_AGAIN,
@@ -790,71 +764,67 @@ SECOND_RUN_CASES: list[SecondRunCase] = [
     ),
     SecondRunCase(
         name="agnostic_attribute_kind_update",
-        migration_map_key="attribute.kind.update",
         data="agnostic_data",
-        build=one_migration(
-            migration_class=AttributeKindUpdateMigration,
-            schema_path=attribute_path(kind=WIDGET_KIND, name="notes"),
-            change=change_attribute_kind(name="notes", kind="TextArea"),
-        ),
+        edit=edit_kind(WIDGET_KIND, change_attribute(name="notes", kind="TextArea")),
+        migrations=[kind_update(kind=WIDGET_KIND, name="notes")],
         branch_kinds=AGNOSTIC_BRANCH_KINDS,
         expected_failures=dict.fromkeys(AGNOSTIC_BRANCH_KINDS, AGNOSTIC_KIND_UPDATE_EDGE_ON_BRANCH),
     ),
     SecondRunCase(
         name="agnostic_attribute_unique_update_on",
-        migration_map_key="attribute.unique.update",
         data="agnostic_data",
-        build=one_migration(
-            migration_class=AttributeSupportsGeneratedSchemaMigration,
-            schema_path=attribute_path(kind=WIDGET_KIND, name="notes"),
-            change=change_attribute(name="notes", unique=True),
-            attribute_with_id="notes",
-        ),
+        edit=edit_kind(WIDGET_KIND, change_attribute(name="notes", unique=True)),
+        migrations=[
+            supports_generated_schema(
+                key="attribute.unique.update", kind=WIDGET_KIND, name="notes", property_name="unique"
+            )
+        ],
+        attribute_ids=[(WIDGET_KIND, "notes")],
         branch_kinds=AGNOSTIC_BRANCH_KINDS,
     ),
     SecondRunCase(
         name="agnostic_relationship_remove",
-        migration_map_key="node.relationship.remove",
         data="agnostic_data",
-        build=one_migration(
-            migration_class=NodeRelationshipRemoveMigration,
-            schema_path=relationship_path(kind=WIDGET_KIND, name="gadget"),
-            change=remove_relationship("gadget"),
-        ),
+        edit=edit_kind(WIDGET_KIND, remove_relationship("gadget")),
+        migrations=[
+            PlannedMigration(
+                "node.relationship.remove",
+                NodeRelationshipRemoveMigration,
+                relationship_path(kind=WIDGET_KIND, name="gadget"),
+            )
+        ],
         branch_kinds=AGNOSTIC_BRANCH_KINDS,
     ),
     SecondRunCase(
         name="node_remove_with_agnostic_fields",
-        migration_map_key="node.remove",
         data="agnostic_data",
-        build=node_removal(kind=WIDGET_KIND),
+        edit=delete_kind(WIDGET_KIND),
+        migrations=[
+            PlannedMigration("node.remove", NodeRemoveMigration, node_path(kind=WIDGET_KIND), removes_kind=True)
+        ],
         branch_kinds=AGNOSTIC_BRANCH_KINDS,
     ),
     SecondRunCase(
         name="agnostic_kind_attribute_remove",
-        migration_map_key="node.attribute.remove",
         data="agnostic_data",
-        build=one_migration(
-            migration_class=NodeAttributeRemoveMigration,
-            schema_path=attribute_path(kind=BEACON_KIND, name="serial"),
-            change=remove_attribute("serial"),
-        ),
+        edit=edit_kind(BEACON_KIND, remove_attribute("serial")),
+        migrations=[
+            PlannedMigration(
+                "node.attribute.remove", NodeAttributeRemoveMigration, attribute_path(kind=BEACON_KIND, name="serial")
+            )
+        ],
         branch_kinds=AGNOSTIC_BRANCH_KINDS,
     ),
     # A generic, whose migrations also reach the nodes of the kinds that inherit it
     SecondRunCase(
-        name="attribute_unique_update_on_generic",
-        migration_map_key="attribute.unique.update",
-        data="generic_profiles",
-        build=one_migration(
-            migration_class=AttributeSupportsGeneratedSchemaMigration,
-            schema_path=attribute_path(kind="TestCar", name="nbr_seats"),
-            change=change_attribute(name="nbr_seats", unique=True),
-            attribute_with_id="nbr_seats",
-        ),
+        name="attribute_kind_update_on_generic",
+        data="generic_data",
+        # The inheriting kinds must follow the generic's kind; as their attribute is inherited, only the generic migrates.
+        edit=edit_kinds(["TestCar", *GENERIC_INHERITING_KINDS], change_attribute(name="color", kind="TextArea")),
+        migrations=[kind_update(kind="TestCar", name="color")],
     ),
-    GENERIC_CONSTRAINTS_CASE,
-    GENERIC_KIND_UPDATE_CASE,
+    GENERIC_KIND_UPDATE_DECLARED_CASE,
+    GENERIC_UNIQUE_CASE,
 ]
 
 
@@ -870,8 +840,15 @@ def case_data(request: pytest.FixtureRequest, case: SecondRunCase) -> None:
 
 
 def test_every_migration_class_has_a_second_run_case() -> None:
-    covered = {case.migration_map_key for case in SECOND_RUN_CASES}
-    assert covered == {key for key, migration_class in MIGRATION_MAP.items() if migration_class is not None}
+    planned = [planned for case in SECOND_RUN_CASES for planned in case.migrations]
+    assert {migration.migration_map_key for migration in planned} == {
+        key for key, migration_class in MIGRATION_MAP.items() if migration_class is not None
+    }
+    assert [
+        migration.migration_map_key
+        for migration in planned
+        if MIGRATION_MAP[migration.migration_map_key] is not migration.migration_class
+    ] == []
 
 
 @pytest.mark.parametrize(
@@ -888,41 +865,39 @@ async def test_second_run_changes_nothing(
     db: InfrahubDatabase, default_branch: Branch, case_data: None, case: SecondRunCase, branch_kind: BranchKind
 ) -> None:
     branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
-    migrations = await case.build(db, branch)
+    migrations = await build_migrations(db=db, branch=branch, case=case)
     await assert_second_run_changes_nothing(
         db=db, branch=branch, migrations=migrations, first_run_changes=case.first_run_changes
     )
 
 
-@pytest.mark.parametrize("case", [GENERIC_CONSTRAINTS_CASE, GENERIC_KIND_UPDATE_CASE], ids=lambda case: case.name)
+@pytest.mark.parametrize("case", [GENERIC_KIND_UPDATE_DECLARED_CASE, GENERIC_UNIQUE_CASE], ids=lambda case: case.name)
 @pytest.mark.parametrize("branch_kind", BRANCH_KINDS)
-async def test_kind_migrations_skip_nodes_changed_by_the_generic_migration(
+async def test_later_migrations_of_a_load_skip_nodes_the_first_changed(
     db: InfrahubDatabase, default_branch: Branch, case_data: None, case: SecondRunCase, branch_kind: BranchKind
 ) -> None:
-    """The inheriting kinds' migrations of one load change none of the generic migration's nodes.
+    """The later migrations of one load change none of the nodes its first migration changed.
 
-    They may still change nodes the generic's migration cannot reach, such as their own profiles.
+    They may still change nodes the first migration cannot reach, such as the profiles of the inheriting kinds.
     """
     branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
-    generic_migration, *kind_migrations = await case.build(db, branch)
+    first_migration, *later_migrations = await build_migrations(db=db, branch=branch, case=case)
 
     before = await read_graph_state(db=db)
-    await run_migrations(
-        db=db, branch=branch, migrations=[generic_migration], at=Timestamp(), user_id=FIRST_RUN_USER_ID
-    )
-    after_generic = await read_graph_state(db=db)
-    changed_by_generic = changed_vertex_uuids(before=before, after=after_generic)
-    assert changed_by_generic, "the generic's migration changed nothing"
-    await run_migrations(db=db, branch=branch, migrations=kind_migrations, at=Timestamp(), user_id=SECOND_RUN_USER_ID)
-    changed_by_kinds = changed_vertex_uuids(before=after_generic, after=await read_graph_state(db=db))
-    assert changed_by_generic & changed_by_kinds == set()
+    await run_migrations(db=db, branch=branch, migrations=[first_migration], at=Timestamp(), user_id=FIRST_RUN_USER_ID)
+    after_first = await read_graph_state(db=db)
+    changed_by_first = changed_vertex_uuids(before=before, after=after_first)
+    assert changed_by_first, "the first migration changed nothing"
+    await run_migrations(db=db, branch=branch, migrations=later_migrations, at=Timestamp(), user_id=SECOND_RUN_USER_ID)
+    changed_by_later = changed_vertex_uuids(before=after_first, after=await read_graph_state(db=db))
+    assert changed_by_first & changed_by_later == set()
 
 
 async def test_graph_state_detects_duplicate_vertex(db: InfrahubDatabase, car_data: CarData) -> None:
+    await db.execute_query(query="CREATE (:AttributeValue {value: 'duplicate', is_default: false})")
     before = await read_graph_state(db=db)
     await db.execute_query(query="CREATE (:AttributeValue {value: 'duplicate', is_default: false})")
-    await db.execute_query(query="CREATE (:AttributeValue {value: 'duplicate', is_default: false})")
-    with pytest.raises(AssertionError, match=r"vertex_count"):
+    with pytest.raises(AssertionError, match=r"vertex 1 -> 2: DbNode\(.*'value': 'duplicate'"):
         assert_graph_unchanged(before=before, after=await read_graph_state(db=db))
 
 
@@ -932,8 +907,26 @@ async def test_graph_state_detects_changed_property(db: InfrahubDatabase, car_da
         query="MATCH (n:Node {uuid: $uuid}) SET n.updated_by = 'another-user'",
         params={"uuid": car_data.cars[0].id},
     )
-    with pytest.raises(AssertionError, match=r"another-user"):
+    with pytest.raises(AssertionError, match=r"vertex 0 -> 1: DbNode\(.*'updated_by': 'another-user'"):
         assert_graph_unchanged(before=before, after=await read_graph_state(db=db))
+
+
+async def test_graph_state_tells_apart_values_with_equal_hashes(db: InfrahubDatabase, car_data: CarData) -> None:
+    await db.execute_query(query="CREATE (:AttributeValue {value: 5, is_default: false})")
+    before = await read_graph_state(db=db)
+    await db.execute_query(
+        query="MATCH (av:AttributeValue {value: 5, is_default: false}) SET av.value = 4, av.is_default = true"
+    )
+    with pytest.raises(AssertionError, match=r"vertex 1 -> 0: DbNode\(.*'value': 5"):
+        assert_graph_unchanged(before=before, after=await read_graph_state(db=db))
+
+
+async def _vertices_attached_to(db: InfrahubDatabase, node_uuid: str) -> set[str]:
+    results = await db.execute_query(
+        query="MATCH (:Node {uuid: $uuid})-[]-(v) WHERE v:Attribute OR v:Relationship RETURN DISTINCT v.uuid AS uuid",
+        params={"uuid": node_uuid},
+    )
+    return {row["uuid"] for row in results}
 
 
 @pytest.mark.parametrize("branch_kind", BRANCH_KINDS)
@@ -941,13 +934,15 @@ async def test_changed_vertex_uuids_names_the_changed_node(
     db: InfrahubDatabase, default_branch: Branch, car_data: CarData, branch_kind: BranchKind
 ) -> None:
     branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=branch_kind)
-    changed_car, other_car = car_data.cars
-    before = await read_graph_state(db=db)
-    car = await NodeManager.get_one(db=db, id=changed_car.id, branch=branch)
+    car = await NodeManager.get_one(db=db, id=car_data.cars[0].id, branch=branch)
     assert car is not None
+    before = await read_graph_state(db=db)
     seats = car.get_attribute(name="nbr_seats")
     seats.value = 9
     await car.save(db=db)
     changed = changed_vertex_uuids(before=before, after=await read_graph_state(db=db))
-    assert seats.id in changed
-    assert {other_car.id, other_car.get_attribute(name="nbr_seats").id} & changed == set()
+    if branch_kind is BranchKind.DEFAULT:
+        # Metadata is stamped on the node only on the default branch, which changes every edge of the node.
+        assert changed == {car.id} | await _vertices_attached_to(db=db, node_uuid=car.id)
+    else:
+        assert changed == {seats.id}
