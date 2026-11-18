@@ -68,11 +68,31 @@ class RenderCase:
     regenerate_all_members: bool
     impacted: list[str]
     expected: bool
+    changes_reach_member: bool = False
 
 
 RENDER_CASES = [
     RenderCase(
-        name="new_instance_always_renders", subscriber_id=None, regenerate_all_members=False, impacted=[], expected=True
+        name="member_without_instance_renders_when_changes_reach_it",
+        subscriber_id=None,
+        regenerate_all_members=False,
+        impacted=[],
+        changes_reach_member=True,
+        expected=True,
+    ),
+    RenderCase(
+        name="member_without_instance_skipped_when_no_change_reaches_it",
+        subscriber_id=None,
+        regenerate_all_members=False,
+        impacted=[],
+        expected=False,
+    ),
+    RenderCase(
+        name="regenerate_all_members_renders_member_without_instance",
+        subscriber_id=None,
+        regenerate_all_members=True,
+        impacted=[],
+        expected=True,
     ),
     RenderCase(
         name="regenerate_all_members_always_renders",
@@ -93,6 +113,7 @@ RENDER_CASES = [
         subscriber_id="i1",
         regenerate_all_members=False,
         impacted=["i2"],
+        changes_reach_member=True,
         expected=False,
     ),
 ]
@@ -101,7 +122,10 @@ RENDER_CASES = [
 @pytest.mark.parametrize("case", RENDER_CASES, ids=lambda case: case.name)
 def test_should_render_instance_contract(case: RenderCase, generator_selector: GeneratorSelector) -> None:
     rendered = generator_selector._should_render(
-        subscriber_id=case.subscriber_id, regenerate_all_members=case.regenerate_all_members, impacted=case.impacted
+        subscriber_id=case.subscriber_id,
+        regenerate_all_members=case.regenerate_all_members,
+        impacted=case.impacted,
+        changes_reach_member=case.changes_reach_member,
     )
 
     assert rendered is case.expected

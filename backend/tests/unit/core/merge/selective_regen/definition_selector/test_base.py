@@ -15,6 +15,7 @@ from infrahub.core.regeneration.members import run_generator
 from infrahub.core.regeneration.models import TargetSelection, Widening, WideningReason
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
 from infrahub.graphql.analyzer import GraphQLQueryReport
+from tests.helpers.diff_summary import node_diff
 
 if TYPE_CHECKING:
     from collections.abc import Collection
@@ -24,13 +25,15 @@ if TYPE_CHECKING:
 TARGET_BRANCH = "main"
 
 
-async def _run_select(selector: _StubSelector) -> list[RequestGeneratorDefinitionRun]:
+async def _run_select(
+    selector: _StubSelector, diff_summary: list[NodeDiff] | None = None
+) -> list[RequestGeneratorDefinitionRun]:
     loaded = await selector.load_definitions(target_branch=TARGET_BRANCH)
     forced = repositories_forcing_full_regeneration(definitions=[entry.definition for entry in loaded])
     return await selector.select(
         loaded_definitions=loaded,
         forced_repositories=forced,
-        diff_summary=[],
+        diff_summary=diff_summary or [],
         target_branch=TARGET_BRANCH,
         modified_kinds=[],
     )
@@ -103,9 +106,12 @@ class _StubGate(DefinitionGate):
 class _StubImpactedResolver(ImpactedSubscriberResolver):
     """A resolver that returns a fixed list of impacted subscriber ids, or every target when it widens."""
 
-    def __init__(self, impacted: list[str], widening: Widening | None = None) -> None:
+    def __init__(
+        self, impacted: list[str], widening: Widening | None = None, change_reaches_query: bool = False
+    ) -> None:
         self.impacted = impacted
         self.widening = widening
+        self.change_reaches_query = change_reaches_query
 
     def analyze(self, *, query_payload: str, query_branch: str) -> GraphQLQueryReport:
         return GraphQLQueryReport(queries=[])
@@ -120,8 +126,8 @@ class _StubImpactedResolver(ImpactedSubscriberResolver):
         every_target: list[str],
     ) -> TargetSelection:
         if self.widening is not None:
-            return TargetSelection(ids=every_target, widening=self.widening)
-        return TargetSelection(ids=self.impacted)
+            return TargetSelection(ids=every_target, widening=self.widening, change_reaches_query=True)
+        return TargetSelection(ids=self.impacted, change_reaches_query=self.change_reaches_query)
 
 
 class _StubSelector(DefinitionSelectorBase[ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun]):
@@ -165,10 +171,20 @@ class _StubSelector(DefinitionSelectorBase[ProposedChangeGeneratorDefinition, Re
     ) -> list[str]:
         return self._member_ids
 
-    def _should_render(self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: list[str]) -> bool:
+    def _should_render(
+        self,
+        *,
+        subscriber_id: str | None,
+        regenerate_all_members: bool,
+        impacted: list[str],
+        changes_reach_member: bool,
+    ) -> bool:
         # Production code behavior
         return run_generator(
-            instance_id=subscriber_id, regenerate_all_members=regenerate_all_members, impacted_instances=impacted
+            instance_id=subscriber_id,
+            regenerate_all_members=regenerate_all_members,
+            impacted_instances=impacted,
+            run_without_instance=changes_reach_member,
         )
 
     def _build_request(
@@ -188,6 +204,8 @@ class SelectCase:
     subscriber_by_member: dict[str, str]
     impacted: list[str]
     expected_target_members: list[list[str]]
+    change_reaches_query: bool = False
+    members_with_changed_membership: tuple[str, ...] = ()
 
 
 SELECT_CASES = [
@@ -210,13 +228,33 @@ SELECT_CASES = [
         expected_target_members=[[]],
     ),
     SelectCase(
-        name="new_members_without_subscribers_render_all",
+        name="members_without_subscribers_render_all_when_a_change_reaches_the_query",
         selected=True,
         regenerate_all_members=False,
         member_ids=["m1", "m2"],
         subscriber_by_member={},
         impacted=[],
+        change_reaches_query=True,
         expected_target_members=[[]],
+    ),
+    SelectCase(
+        name="members_without_subscribers_are_dropped_when_no_change_reaches_them",
+        selected=True,
+        regenerate_all_members=False,
+        member_ids=["m1", "m2"],
+        subscriber_by_member={},
+        impacted=[],
+        expected_target_members=[],
+    ),
+    SelectCase(
+        name="member_without_subscriber_renders_when_its_group_membership_changed",
+        selected=True,
+        regenerate_all_members=False,
+        member_ids=["m1", "m2"],
+        subscriber_by_member={},
+        impacted=[],
+        members_with_changed_membership=("m1",),
+        expected_target_members=[["m1"]],
     ),
     SelectCase(
         name="only_impacted_subscribers_narrow_the_filter",
@@ -250,13 +288,23 @@ async def test_select_narrows_and_drops(case: SelectCase) -> None:
                 )
             }
         ),
-        impacted_resolver=_StubImpactedResolver(case.impacted),
+        impacted_resolver=_StubImpactedResolver(case.impacted, change_reaches_query=case.change_reaches_query),
         definitions=[definition],
         member_ids=case.member_ids,
         subscriber_by_member=case.subscriber_by_member,
     )
+    diff_summary = [
+        node_diff(
+            node_id=member_id,
+            kind="TestMember",
+            branch=TARGET_BRANCH,
+            field_names=["member_of_groups"],
+            element_type="RELATIONSHIP_MANY",
+        )
+        for member_id in case.members_with_changed_membership
+    ]
 
-    requests = await _run_select(selector)
+    requests = await _run_select(selector, diff_summary=diff_summary)
 
     assert [request.target_members for request in requests] == case.expected_target_members
 

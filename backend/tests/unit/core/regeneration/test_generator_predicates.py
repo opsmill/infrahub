@@ -6,10 +6,15 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core.regeneration.members import run_generator
-from infrahub.core.regeneration.predicates import definition_changed, query_changed, transform_changed
+from infrahub.core.regeneration.predicates import (
+    definition_changed,
+    nodes_with_changed_group_membership,
+    query_changed,
+    transform_changed,
+)
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.message_bus.types import ProposedChangeRepository
-from tests.helpers.diff_summary import node_diff
+from tests.helpers.diff_summary import node_diff, node_diff_element
 from tests.unit.core.regeneration.conftest import DiffCase, TransformChangedCase
 
 if TYPE_CHECKING:
@@ -230,13 +235,29 @@ class RunGeneratorCase:
     managed_branch: bool
     impacted_instances: list[str]
     expected: bool
+    run_without_instance: bool = False
 
 
 RUN_GENERATOR_CASES: list[RunGeneratorCase] = [
     RunGeneratorCase(
-        name="new_member_runs_regardless_of_managed_branch",
+        name="target_without_instance_runs_when_the_changes_give_a_reason",
         instance_id=None,
         managed_branch=False,
+        impacted_instances=[],
+        run_without_instance=True,
+        expected=True,
+    ),
+    RunGeneratorCase(
+        name="target_without_instance_is_skipped_when_the_changes_give_no_reason",
+        instance_id=None,
+        managed_branch=False,
+        impacted_instances=[],
+        expected=False,
+    ),
+    RunGeneratorCase(
+        name="closure_changed_managed_branch_runs_target_without_instance",
+        instance_id=None,
+        managed_branch=True,
         impacted_instances=[],
         expected=True,
     ),
@@ -259,6 +280,7 @@ RUN_GENERATOR_CASES: list[RunGeneratorCase] = [
         instance_id="instance-1",
         managed_branch=False,
         impacted_instances=["instance-other"],
+        run_without_instance=True,
         expected=False,
     ),
 ]
@@ -266,20 +288,100 @@ RUN_GENERATOR_CASES: list[RunGeneratorCase] = [
 
 @pytest.mark.parametrize("case", [pytest.param(c, id=c.name) for c in RUN_GENERATOR_CASES])
 def test_run_generator_never_under_runs(case: RunGeneratorCase) -> None:
-    """After the per-member gate swap the three always-run categories are still honored.
+    """A target runs when the changes give a reason to, and only then.
 
-    A new member (no prior instance) and an instance whose data changed both run regardless of the
-    closure-derived ``managed_branch``; a closure/query/definition change sets ``managed_branch`` and
-    runs every existing instance; only an existing instance with nothing relevant changed is skipped.
+    A closure/query/definition change sets ``managed_branch`` and runs every target. Without it, an
+    instance runs when its data changed, and a target that has no instance runs when the caller found
+    a reason in the changes. A target with an instance ignores that reason.
     """
     assert (
         run_generator(
             instance_id=case.instance_id,
             regenerate_all_members=case.managed_branch,
             impacted_instances=case.impacted_instances,
+            run_without_instance=case.run_without_instance,
         )
         is case.expected
     )
+
+
+@dataclass(frozen=True, kw_only=True)
+class GroupMembershipCase:
+    name: str
+    diff: list[NodeDiff]
+    expected: set[str]
+
+
+GROUP_MEMBERSHIP_CASES: list[GroupMembershipCase] = [
+    GroupMembershipCase(name="empty_diff_returns_nothing", diff=[], expected=set()),
+    GroupMembershipCase(
+        name="node_whose_group_membership_changed_is_returned",
+        diff=[
+            node_diff(
+                node_id=OTHER_ID,
+                kind="TestNetworkDevice",
+                field_names=["member_of_groups"],
+                element_type="RELATIONSHIP_MANY",
+            )
+        ],
+        expected={OTHER_ID},
+    ),
+    GroupMembershipCase(
+        name="created_node_is_returned",
+        diff=[node_diff(node_id=OTHER_ID, kind="TestNetworkDevice", action="ADDED", field_names=["name"])],
+        expected={OTHER_ID},
+    ),
+    GroupMembershipCase(
+        name="node_with_another_field_changed_is_not_returned",
+        diff=[node_diff(node_id=OTHER_ID, kind="TestNetworkDevice", field_names=["name", "tags"])],
+        expected=set(),
+    ),
+    GroupMembershipCase(
+        name="unchanged_membership_element_is_not_returned",
+        diff=[
+            node_diff(
+                node_id=OTHER_ID,
+                kind="TestNetworkDevice",
+                elements=[
+                    node_diff_element(name="member_of_groups", action="UNCHANGED", element_type="RELATIONSHIP_MANY"),
+                    node_diff_element(name="name"),
+                ],
+            )
+        ],
+        expected=set(),
+    ),
+    GroupMembershipCase(
+        name="unchanged_node_is_not_returned",
+        diff=[
+            node_diff(
+                node_id=OTHER_ID,
+                kind="TestNetworkDevice",
+                action="UNCHANGED",
+                elements=[node_diff_element(name="member_of_groups", element_type="RELATIONSHIP_MANY")],
+            )
+        ],
+        expected=set(),
+    ),
+    GroupMembershipCase(
+        name="node_of_another_branch_is_not_returned",
+        diff=[
+            node_diff(
+                node_id=OTHER_ID,
+                kind="TestNetworkDevice",
+                branch="other-branch",
+                field_names=["member_of_groups"],
+                element_type="RELATIONSHIP_MANY",
+            )
+        ],
+        expected=set(),
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(c, id=c.name) for c in GROUP_MEMBERSHIP_CASES])
+def test_nodes_with_changed_group_membership(case: GroupMembershipCase) -> None:
+    """A node is returned when the diff created it or changed its group membership on the query branch."""
+    assert nodes_with_changed_group_membership(diff_summary=case.diff, query_branch="main") == case.expected
 
 
 def test_legacy_generator_forces_managed_branch_on_any_file_change() -> None:

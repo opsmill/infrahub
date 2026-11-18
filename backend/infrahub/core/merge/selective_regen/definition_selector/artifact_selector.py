@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from infrahub_sdk.protocols import CoreArtifactDefinition
 
@@ -79,7 +79,15 @@ class ArtifactSelector(DefinitionSelectorBase[ProposedChangeArtifactDefinition, 
         )
         return [relationship.peer.id for relationship in group.members.peers]
 
-    def _should_render(self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: list[str]) -> bool:
+    @override
+    def _should_render(
+        self,
+        *,
+        subscriber_id: str | None,
+        regenerate_all_members: bool,
+        impacted: list[str],
+        changes_reach_member: bool,
+    ) -> bool:
         return should_render_artifact(
             artifact_id=subscriber_id, regenerate_all_members=regenerate_all_members, impacted_artifacts=impacted
         )

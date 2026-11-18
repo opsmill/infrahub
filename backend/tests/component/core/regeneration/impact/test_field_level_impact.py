@@ -191,7 +191,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
                 )
             ],
         )
-        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], change_reaches_query=True)
 
     async def test_display_label_backing_change_selects_subscriber(
         self,
@@ -220,7 +220,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
             subscriber_kind=SUBSCRIBER_KIND,
             every_target=[dataset["subscriber_id"]],
         )
-        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], change_reaches_query=True)
 
     async def test_related_node_change_narrows_to_the_owning_member(
         self,
@@ -249,7 +249,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
                 )
             ],
         )
-        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], change_reaches_query=True)
 
     async def test_unread_related_field_change_selects_nothing(
         self,
@@ -310,6 +310,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
         assert resolved == TargetSelection(
             ids=[dataset["subscriber_id"]],
             widening=Widening(reason=WideningReason.NON_UNIQUE_TARGETS),
+            change_reaches_query=True,
         )
 
     async def test_change_to_an_attribute_matched_by_any_value_selects_every_target(
@@ -341,4 +342,5 @@ class TestFieldLevelImpact(TestInfrahubApp):
         assert resolved == TargetSelection(
             ids=[dataset["subscriber_id"]],
             widening=Widening(reason=WideningReason.NON_UNIQUE_TARGETS),
+            change_reaches_query=True,
         )

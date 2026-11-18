@@ -114,7 +114,14 @@ class ForcingTemplateSelector[DefinitionT: DefinitionModel, RequestT](Definition
     async def _fetch_member_ids(self, *, definition: DefinitionT, target_branch: str) -> list[str]:
         return self._member_ids
 
-    def _should_render(self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: list[str]) -> bool:
+    def _should_render(
+        self,
+        *,
+        subscriber_id: str | None,
+        regenerate_all_members: bool,
+        impacted: list[str],
+        changes_reach_member: bool,
+    ) -> bool:
         return not subscriber_id or regenerate_all_members or subscriber_id in impacted
 
 

@@ -150,7 +150,7 @@ class TestRootAndRelationshipReadImpact(TestInfrahubApp):
             db=db, dataset=dataset, default_branch=default_branch, client=client, car_id=dataset["second_car_id"]
         )
 
-        assert resolved == TargetSelection(ids=[dataset["first_subscriber_id"]])
+        assert resolved == TargetSelection(ids=[dataset["first_subscriber_id"]], change_reaches_query=True)
 
     async def test_change_on_a_car_read_at_the_root_selects_its_own_member(
         self,
@@ -164,7 +164,7 @@ class TestRootAndRelationshipReadImpact(TestInfrahubApp):
             db=db, dataset=dataset, default_branch=default_branch, client=client, car_id=dataset["third_car_id"]
         )
 
-        assert resolved == TargetSelection(ids=[dataset["third_subscriber_id"]])
+        assert resolved == TargetSelection(ids=[dataset["third_subscriber_id"]], change_reaches_query=True)
 
     async def test_change_on_a_car_no_relationship_reaches_back_selects_its_own_member(
         self,
@@ -183,4 +183,4 @@ class TestRootAndRelationshipReadImpact(TestInfrahubApp):
             query=QUERY_CAR_WITH_ITS_PREVIOUS_OWNER_CARS,
         )
 
-        assert resolved == TargetSelection(ids=[dataset["first_subscriber_id"]])
+        assert resolved == TargetSelection(ids=[dataset["first_subscriber_id"]], change_reaches_query=True)

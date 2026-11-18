@@ -131,10 +131,14 @@ class TargetSelection:
     ``ids`` is always the authoritative, complete list, so a caller needs nothing else to act.
     ``widening`` explains only how that list was reached -- it carries no meaning of its own and
     exists so a caller can report the lost precision without re-deriving it.
+
+    ``change_reaches_query`` is true when a change touches data the query reads, whether or not a
+    subscriber was found for it. ``ids`` cannot say so for a target that has no subscriber yet.
     """
 
     ids: list[str]
     widening: Widening | None = None
+    change_reaches_query: bool = False
 
 
 class RegenerationReason(StrEnum):
