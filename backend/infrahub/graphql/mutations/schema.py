@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Self, assert_never
 
 from graphene import Boolean, Field, InputObjectType, Mutation, String
@@ -28,8 +29,6 @@ from infrahub.worker import WORKER_IDENTITY
 from ..types import DropdownFields
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from graphql import GraphQLResolveInfo
     from pydantic import JsonValue
 
@@ -56,6 +55,103 @@ class AttributeListProperty(InfrahubStringEnum):
 
     CHOICES = "choices"
     ENUM = "enum"
+
+
+@dataclass(frozen=True)
+class DropdownChoiceAddition:
+    choice: DropdownChoice
+
+    @property
+    def property_name(self) -> AttributeListProperty:
+        return AttributeListProperty.CHOICES
+
+    def build_list(self, kind: str, attribute: AttributeSchema) -> list[DropdownChoice]:
+        """Return the choices of `attribute` with the choice added.
+
+        Raises:
+            ValidationError: The attribute already has a choice of that name.
+
+        """
+        choices = attribute.choices or []
+        if any(entry.name == self.choice.name for entry in choices):
+            raise ValidationError(
+                f"The dropdown value {self.choice.name} already exists on {kind} in attribute {attribute.name}"
+            )
+        return [*choices, self.choice]
+
+
+@dataclass(frozen=True)
+class DropdownChoiceRemoval:
+    name: str
+
+    @property
+    def property_name(self) -> AttributeListProperty:
+        return AttributeListProperty.CHOICES
+
+    def build_list(self, kind: str, attribute: AttributeSchema) -> list[DropdownChoice]:
+        """Return the choices of `attribute` without the choice of that name.
+
+        Raises:
+            ValidationError: The attribute has no choice of that name, or it is the attribute's last choice.
+
+        """
+        choices = attribute.choices or []
+        if not any(entry.name == self.name for entry in choices):
+            raise ValidationError(
+                f"The dropdown value {self.name} does not exists on {kind} in attribute {attribute.name}"
+            )
+        if len(choices) == 1:
+            raise ValidationError(f"Unable to remove the last dropdown on {kind} in attribute {attribute.name}")
+        return [entry for entry in choices if entry.name != self.name]
+
+
+@dataclass(frozen=True)
+class EnumValueAddition:
+    value: str
+
+    @property
+    def property_name(self) -> AttributeListProperty:
+        return AttributeListProperty.ENUM
+
+    def build_list(self, kind: str, attribute: AttributeSchema) -> list[str]:
+        """Return the enum values of `attribute` with the value added.
+
+        Raises:
+            ValidationError: The attribute already has the value.
+
+        """
+        enum_values = attribute.enum or []
+        if self.value in enum_values:
+            raise ValidationError(f"The enum value {self.value} already exists on {kind} in attribute {attribute.name}")
+        return [*enum_values, self.value]
+
+
+@dataclass(frozen=True)
+class EnumValueRemoval:
+    value: str
+
+    @property
+    def property_name(self) -> AttributeListProperty:
+        return AttributeListProperty.ENUM
+
+    def build_list(self, kind: str, attribute: AttributeSchema) -> list[str]:
+        """Return the enum values of `attribute` without the value.
+
+        Raises:
+            ValidationError: The attribute does not have the value, or it is the attribute's last value.
+
+        """
+        enum_values = attribute.enum or []
+        if self.value not in enum_values:
+            raise ValidationError(
+                f"The enum value {self.value} does not exists on {kind} in attribute {attribute.name}"
+            )
+        if len(enum_values) == 1:
+            raise ValidationError(f"Unable to remove the last enum on {kind} in attribute {attribute.name}")
+        return [entry for entry in enum_values if entry != self.value]
+
+
+type AttributeListChange = DropdownChoiceAddition | DropdownChoiceRemoval | EnumValueAddition | EnumValueRemoval
 
 
 class SchemaEnumInput(InputObjectType):
@@ -104,17 +200,10 @@ class SchemaDropdownAdd(Mutation):
         dropdown = str(data.dropdown)
         choice = DropdownChoice(name=dropdown, color=data.color, label=data.label, description=data.description)
 
-        choices = kind.get_attribute(name=attribute).choices or []
-        if [dropdown_entry for dropdown_entry in choices if dropdown_entry.name == dropdown]:
-            raise ValidationError(
-                f"The dropdown value {dropdown} already exists on {kind.kind} in attribute {attribute}"
-            )
-
         await apply_attribute_property_change(
             kind=kind.kind,
             attribute=attribute,
-            property_name=AttributeListProperty.CHOICES,
-            value=[*choices, choice],
+            change=DropdownChoiceAddition(choice=choice),
             branch=graphql_context.branch,
             db=graphql_context.db,
             account_id=graphql_context.active_account_session.account_id,
@@ -174,19 +263,10 @@ class SchemaDropdownRemove(Mutation):
         if nodes_with_dropdown:
             raise ValidationError(f"There are still {kind.kind} objects using this dropdown")
 
-        choices = kind.get_attribute(name=attribute).choices or []
-        if not [dropdown_entry for dropdown_entry in choices if dropdown_entry.name == dropdown]:
-            raise ValidationError(
-                f"The dropdown value {dropdown} does not exists on {kind.kind} in attribute {attribute}"
-            )
-        if len(choices) == 1:
-            raise ValidationError(f"Unable to remove the last dropdown on {kind.kind} in attribute {attribute}")
-
         await apply_attribute_property_change(
             kind=kind.kind,
             attribute=attribute,
-            property_name=AttributeListProperty.CHOICES,
-            value=[entry for entry in choices if dropdown != entry.name],
+            change=DropdownChoiceRemoval(name=dropdown),
             branch=graphql_context.branch,
             db=graphql_context.db,
             account_id=graphql_context.active_account_session.account_id,
@@ -223,15 +303,10 @@ class SchemaEnumAdd(Mutation):
         enum = str(data.enum)
         validate_kind_enum(kind=kind, attribute=attribute)
 
-        enum_values = kind.get_attribute(name=attribute).enum or []
-        if enum in enum_values:
-            raise ValidationError(f"The enum value {enum} already exists on {kind.kind} in attribute {attribute}")
-
         await apply_attribute_property_change(
             kind=kind.kind,
             attribute=attribute,
-            property_name=AttributeListProperty.ENUM,
-            value=[*enum_values, enum],
+            change=EnumValueAddition(value=enum),
             branch=graphql_context.branch,
             db=graphql_context.db,
             account_id=graphql_context.active_account_session.account_id,
@@ -276,17 +351,10 @@ class SchemaEnumRemove(Mutation):
         if nodes_with_enum:
             raise ValidationError(f"There are still {kind.kind} objects using this enum")
 
-        enum_values = kind.get_attribute(name=attribute).enum or []
-        if enum not in enum_values:
-            raise ValidationError(f"The enum value {enum} does not exists on {kind.kind} in attribute {attribute}")
-        if len(enum_values) == 1:
-            raise ValidationError(f"Unable to remove the last enum on {kind.kind} in attribute {attribute}")
-
         await apply_attribute_property_change(
             kind=kind.kind,
             attribute=attribute,
-            property_name=AttributeListProperty.ENUM,
-            value=[entry for entry in enum_values if entry != enum],
+            change=EnumValueRemoval(value=enum),
             branch=graphql_context.branch,
             db=graphql_context.db,
             account_id=graphql_context.active_account_session.account_id,
@@ -337,31 +405,34 @@ async def apply_attribute_property_change(
     *,
     kind: str,
     attribute: str,
-    property_name: AttributeListProperty,
-    value: Sequence[DropdownChoice] | Sequence[str],
+    change: AttributeListChange,
     db: InfrahubDatabase,
     branch: Branch,
     account_id: str,
     service: InfrahubServices,
     context: InfrahubContext,
 ) -> None:
-    """Set the dropdown choices or the enum values of an attribute of the branch schema to `value`, and save it.
+    """Apply `change` to the dropdown choices or the enum values of an attribute of the branch schema, and save it.
 
-    The schema is saved with an applied schema change that holds the one operation, in the same transaction.
+    The list is read and the change validated under the schema lock, so concurrent changes to one list all apply. The
+    schema is saved with an applied schema change that holds the one operation, in the same transaction.
+
+    Raises:
+        ValidationError: The change does not apply to the attribute's current list.
+
     """
     candidate_builder = build_schema_candidate_builder()
     async with lock.registry.global_schema_lock():
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
-        previous_value = _read_attribute_list(
-            attribute=branch_schema.get(name=kind, duplicate=False).get_attribute(name=attribute),
-            property_name=property_name,
-        )
+        attribute_schema = branch_schema.get(name=kind, duplicate=False).get_attribute(name=attribute)
+        previous_value = _read_attribute_list(attribute=attribute_schema, property_name=change.property_name)
+        value = change.build_list(kind=kind, attribute=attribute_schema)
         operation = SchemaOperation(
             operation_type=SchemaOperationType.ELEMENT_PROPERTY,
             kind=kind,
             section=SchemaOperationSection.ATTRIBUTES,
             element_name=attribute,
-            property_name=property_name.value,
+            property_name=change.property_name.value,
             value=to_jsonable_python(value, serialize_as_any=True),
             previous_value=previous_value,
         )

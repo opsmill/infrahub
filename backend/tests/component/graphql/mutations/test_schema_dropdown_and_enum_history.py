@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -410,3 +411,62 @@ async def _read_stored_list(
     if node is None:
         return None
     return node.get_attribute(name=property_name).value
+
+
+class TestConcurrentEnumAdd:
+    async def test_concurrent_adds_to_one_enum_keep_both_values(
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend_scope_class: None,
+        default_branch_scope_class: Branch,
+        choices_schema_scope_class: None,
+        session_admin_scope_class: AccountSession,
+        service: InfrahubServices,
+    ) -> None:
+        added_values = ["standby", "maintenance"]
+
+        async def _add(session: InfrahubDatabase, value: str) -> ExecutionResult:
+            gql_params = await prepare_graphql_params(
+                db=session,
+                branch=default_branch_scope_class,
+                account_session=session_admin_scope_class,
+                service=service,
+            )
+            return await graphql(
+                schema=gql_params.schema,
+                source=ENUM_ADD,
+                context_value=gql_params.context,
+                root_value=None,
+                variable_values={"enum": value},
+            )
+
+        async with db.start_session() as db_1, db.start_session() as db_2:
+            results = await asyncio.gather(
+                _add(session=db_1, value=added_values[0]), _add(session=db_2, value=added_values[1])
+            )
+
+        assert [result.errors for result in results] == [None, None]
+        history = await _read_history(db=db, branch=default_branch_scope_class.name)
+        operations = [operation for schema_change in history for operation in schema_change.operations]
+        assert len(operations) == 2
+        # The schema lock decides which add runs first, so the order is read from the first stored operation.
+        first_list = operations[0].value
+        assert isinstance(first_list, list)
+        (first_value,) = [value for value in added_values if value in first_list]
+        (second_value,) = [value for value in added_values if value != first_value]
+        assert operations == [
+            _list_change(
+                attribute=ENUM_ATTRIBUTE,
+                property_name="enum",
+                value=["active", "passive", first_value],
+                previous_value=["active", "passive"],
+            ),
+            _list_change(
+                attribute=ENUM_ATTRIBUTE,
+                property_name="enum",
+                value=["active", "passive", first_value, second_value],
+                previous_value=["active", "passive", first_value],
+            ),
+        ]
+        kind_schema = registry.schema.get(name=KIND, branch=default_branch_scope_class.name, duplicate=False)
+        assert kind_schema.get_attribute(name=ENUM_ATTRIBUTE).enum == ["active", "passive", first_value, second_value]

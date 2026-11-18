@@ -20,12 +20,27 @@ from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql
 
 
+@pytest.fixture
+async def service(db: InfrahubDatabase) -> InfrahubServices:
+    cache = MemoryCache()
+    bus = BusRecorder()
+    return await InfrahubServices.new(
+        database=db,
+        message_bus=bus,
+        cache=cache,
+        event=MemoryInfrahubEvent(),
+        component_type=ComponentType.API_SERVER,
+        component=InfrahubComponent(cache=cache, db=db, message_bus=bus, component_type=ComponentType.API_SERVER),
+    )
+
+
 async def test_delete_last_dropdown_option(
     db: InfrahubDatabase,
     default_permission_backend: Generator[None, Any, Any],
     default_branch: Branch,
     choices_schema: None,
     session_admin: AccountSession,
+    service: InfrahubServices,
 ) -> None:
     query = """
     mutation {
@@ -35,7 +50,9 @@ async def test_delete_last_dropdown_option(
     }
     """
     default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch, account_session=session_admin)
+    gql_params = await prepare_graphql_params(
+        db=db, branch=default_branch, account_session=session_admin, service=service
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -54,6 +71,7 @@ async def test_delete_last_enum_option(
     default_branch: Branch,
     choices_schema: None,
     session_admin: AccountSession,
+    service: InfrahubServices,
 ) -> None:
     query = """
     mutation {
@@ -63,7 +81,9 @@ async def test_delete_last_enum_option(
     }
     """
     default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch, account_session=session_admin)
+    gql_params = await prepare_graphql_params(
+        db=db, branch=default_branch, account_session=session_admin, service=service
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -82,6 +102,7 @@ async def test_delete_enum_option_that_does_not_exist(
     default_branch: Branch,
     choices_schema: None,
     session_admin: AccountSession,
+    service: InfrahubServices,
 ) -> None:
     query = """
     mutation {
@@ -91,7 +112,9 @@ async def test_delete_enum_option_that_does_not_exist(
     }
     """
     default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch, account_session=session_admin)
+    gql_params = await prepare_graphql_params(
+        db=db, branch=default_branch, account_session=session_admin, service=service
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -110,6 +133,7 @@ async def test_delete_drop_option_that_does_not_exist(
     default_branch: Branch,
     choices_schema: None,
     session_admin: AccountSession,
+    service: InfrahubServices,
 ) -> None:
     query = """
     mutation {
@@ -119,7 +143,9 @@ async def test_delete_drop_option_that_does_not_exist(
     }
     """
     default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch, account_session=session_admin)
+    gql_params = await prepare_graphql_params(
+        db=db, branch=default_branch, account_session=session_admin, service=service
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -138,6 +164,7 @@ async def test_add_enum_option_that_exist(
     default_branch: Branch,
     choices_schema: None,
     session_admin: AccountSession,
+    service: InfrahubServices,
 ) -> None:
     query = """
     mutation {
@@ -147,7 +174,9 @@ async def test_add_enum_option_that_exist(
     }
     """
     default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch, account_session=session_admin)
+    gql_params = await prepare_graphql_params(
+        db=db, branch=default_branch, account_session=session_admin, service=service
+    )
     result = await graphql(
         schema=gql_params.schema,
         source=query,
