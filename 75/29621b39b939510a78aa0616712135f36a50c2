@@ -1,0 +1,19 @@
+frontend/app/.betterer.results
+  s_3e7908235603b2::t_8bc0cc1bf757e7 175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7529621b39b939510a78aa0616712135f36a50c2",
+  "prompts": {},
+  "sessions": {
+    "s_3e7908235603b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "556de896-5146-4ff1-b6a8-3b85575169e0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
