@@ -25,7 +25,7 @@ from neo4j import (
     TrustCustomCAs,
     TrustSystemCAs,
 )
-from neo4j.exceptions import ClientError, Neo4jError, ServiceUnavailable, TransientError
+from neo4j.exceptions import ClientError, DriverError, Neo4jError, ServiceUnavailable
 from opentelemetry import trace
 
 from infrahub import config, lock
@@ -661,10 +661,13 @@ async def get_db(retry: int = 0) -> AsyncDriver:
 
 def is_retriable_db_error(exc: BaseException) -> bool:
     """Whether a database error can be replayed on a fresh transaction rather than failed."""
-    if isinstance(exc, TransientError):
+    if isinstance(exc, DatabaseError) and exc.__cause__ is not None:
+        # Running a query wraps a lost connection in the domain error, so the driver error it wraps decides.
+        return is_retriable_db_error(exc.__cause__)
+    if isinstance(exc, ClientError) and exc.code == "Neo.ClientError.Statement.EntityNotFound":
         return True
-    if isinstance(exc, ClientError):
-        return exc.code == "Neo.ClientError.Statement.EntityNotFound"
+    if isinstance(exc, Neo4jError | DriverError):
+        return exc.is_retryable()
     return False
 
 
@@ -688,7 +691,7 @@ def retry_db_transaction(
             for attempt in range(1, config.SETTINGS.database.retry_limit + 1):
                 try:
                     return await func(*args, **kwargs)
-                except (TransientError, ClientError) as exc:
+                except (Neo4jError, DriverError, DatabaseError) as exc:
                     if not is_retriable_db_error(exc):
                         raise
                     base_delay = config.SETTINGS.database.retry_base_delay
@@ -700,7 +703,7 @@ def retry_db_transaction(
                         f"Retrying database transaction, attempt {attempt}/{config.SETTINGS.database.retry_limit}",
                         retry_time=retry_time,
                     )
-                    log.debug("Database transaction failed", message=exc.message)
+                    log.debug("Database transaction failed", message=str(exc))
                     TRANSACTION_RETRIES.labels(name).inc()
                     await asyncio.sleep(retry_time)
                     if attempt == config.SETTINGS.database.retry_limit:

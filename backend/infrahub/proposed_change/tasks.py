@@ -71,6 +71,7 @@ from infrahub.core.validators.constraint_merge import build_constraint_info_merg
 from infrahub.core.validators.determiner import build_constraint_validator_determiner
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
+from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events import EventMeta, ProposedChangeMergedEvent
 from infrahub.exceptions import (
@@ -142,6 +143,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
+    from infrahub.core.merge.constraints import ConflictedField
     from infrahub.core.models import SchemaUpdateConstraintInfo
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
@@ -185,10 +187,11 @@ def _build_schema_integrity_validator_recorder(db: InfrahubDatabase) -> ObjectCo
     )
 
 
-async def _record_schema_integrity_failure(
+@retry_db_transaction(name="schema_integrity_record")
+async def _record_schema_integrity_conflicts(
     database: InfrahubDatabase, proposed_change_id: str, schema_conflicts: list[SchemaConflict]
 ) -> None:
-    """Record schema constraint violations found at merge time on the Schema Integrity validator."""
+    """Record the schema constraint violations of a proposed change on its Schema Integrity validator."""
     async with database.start_transaction() as db:
         recorder = _build_schema_integrity_validator_recorder(db=db)
         await recorder.record_conflicts(proposed_change_id=proposed_change_id, conflicts=schema_conflicts)
@@ -215,7 +218,7 @@ async def _merge_branch_for_proposed_change(
         return None
     except MergeConstraintsViolatedError as exc:
         # Record the violation so the Schema Integrity validator reflects the failure.
-        await _record_schema_integrity_failure(
+        await _record_schema_integrity_conflicts(
             database=db, proposed_change_id=proposed_change_id, schema_conflicts=exc.schema_conflicts
         )
         return Failed(message="Unable to merge proposed change containing failing checks")
@@ -402,16 +405,26 @@ async def run_proposed_change_data_integrity_check(model: RequestProposedChangeD
     """Triggers a data integrity validation check on the provided proposed change to start."""
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
 
-    database = await get_database()
-    async with database.start_session() as dbs:
-        destination_branch = await registry.get_branch(db=dbs, branch=model.destination_branch)
-        source_branch = await registry.get_branch(db=dbs, branch=model.source_branch)
-        component_registry = get_component_registry()
+    await _update_proposed_change_diff(
+        database=await get_database(),
+        source_branch_name=model.source_branch,
+        destination_branch_name=model.destination_branch,
+        proposed_change_id=model.proposed_change,
+    )
 
-        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbs, branch=source_branch)
+
+@retry_db_transaction(name="proposed_change_diff_update")
+async def _update_proposed_change_diff(
+    database: InfrahubDatabase, source_branch_name: str, destination_branch_name: str, proposed_change_id: str
+) -> None:
+    """Bring the diff of the proposed change's source branch up to date on a session that each attempt opens anew."""
+    async with database.start_session() as dbs:
+        destination_branch = await registry.get_branch(db=dbs, branch=destination_branch_name)
+        source_branch = await registry.get_branch(db=dbs, branch=source_branch_name)
+        diff_coordinator = await get_component_registry().get_component(DiffCoordinator, db=dbs, branch=source_branch)
         diff_coordinator.set_logger(get_run_logger())
         await diff_coordinator.update_branch_diff(
-            base_branch=destination_branch, diff_branch=source_branch, proposed_change_id=model.proposed_change
+            base_branch=destination_branch, diff_branch=source_branch, proposed_change_id=proposed_change_id
         )
 
 
@@ -550,22 +563,21 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
         parts = error_msg.split(":", 1)
         kind = parts[0].strip() if len(parts) > 1 and parts[0].strip() else "Unknown"
         schema_path = f"schema/{kind}"
-        async with database.start_transaction() as db:
-            object_conflict_validator_recorder = _build_schema_integrity_validator_recorder(db=db)
-            await object_conflict_validator_recorder.record_conflicts(
-                proposed_change_id=model.proposed_change,
-                conflicts=[
-                    SchemaConflict(
-                        name=schema_path,
-                        type="schema.process.validation",
-                        kind=kind,
-                        id=schema_path,
-                        path=schema_path,
-                        value=error_msg,
-                        branch=model.source_branch,
-                    )
-                ],
-            )
+        await _record_schema_integrity_conflicts(
+            database=database,
+            proposed_change_id=model.proposed_change,
+            schema_conflicts=[
+                SchemaConflict(
+                    name=schema_path,
+                    type="schema.process.validation",
+                    kind=kind,
+                    id=schema_path,
+                    path=schema_path,
+                    value=error_msg,
+                    branch=model.source_branch,
+                )
+            ],
+        )
         return
 
     schema_diff = dest_schema.diff(other=candidate_schema)
@@ -592,25 +604,26 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
         )
     )
 
-    component_registry = get_component_registry()
-    async with database.start_session() as db:
-        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=source_branch)
-        conflicted_fields = await gather_conflicted_fields(
-            diff_repository=diff_repository, branch_name=model.source_branch
-        )
+    conflicted_fields = await _get_conflicted_fields(database=database, branch=source_branch)
 
     conflicts = build_merge_constraint_result(
         responses=responses, conflicted_fields=conflicted_fields, branch="placeholder"
     ).schema_conflicts
 
     # TODO we need to report a failure if an error happened during the execution of a validator
-    async with database.start_transaction() as db:
-        object_conflict_validator_recorder = _build_schema_integrity_validator_recorder(db=db)
-        await object_conflict_validator_recorder.record_conflicts(
-            proposed_change_id=model.proposed_change, conflicts=conflicts
-        )
+    await _record_schema_integrity_conflicts(
+        database=database, proposed_change_id=model.proposed_change, schema_conflicts=conflicts
+    )
 
 
+@retry_db_transaction(name="schema_integrity_conflicted_fields")
+async def _get_conflicted_fields(database: InfrahubDatabase, branch: Branch) -> set[ConflictedField]:
+    async with database.start_session() as db:
+        diff_repository = await get_component_registry().get_component(DiffRepository, db=db, branch=branch)
+        return await gather_conflicted_fields(diff_repository=diff_repository, branch_name=branch.name)
+
+
+@retry_db_transaction(name="schema_integrity_constraints")
 async def _get_proposed_change_schema_integrity_constraints(
     db: InfrahubDatabase, schema: SchemaBranch, diff_summary: list[NodeDiff], branch: Branch
 ) -> list[SchemaUpdateConstraintInfo]:
@@ -1242,16 +1255,12 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
     file_diff_populator = RepositoryFileDiffPopulator(differ=GitRepositoryFileDiffer(client=client))
     await file_diff_populator.populate(repositories=repositories)
 
-    database = await get_database()
-    async with database.start_session() as dbs:
-        destination_branch = await registry.get_branch(db=dbs, branch=model.destination_branch)
-        source_branch = await registry.get_branch(db=dbs, branch=model.source_branch)
-        component_registry = get_component_registry()
-        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbs, branch=source_branch)
-        diff_coordinator.set_logger(get_run_logger())
-        await diff_coordinator.update_branch_diff(
-            base_branch=destination_branch, diff_branch=source_branch, proposed_change_id=model.proposed_change
-        )
+    await _update_proposed_change_diff(
+        database=await get_database(),
+        source_branch_name=model.source_branch,
+        destination_branch_name=model.destination_branch,
+        proposed_change_id=model.proposed_change,
+    )
 
     client = get_client()
     client.request_context = context.to_request_context()

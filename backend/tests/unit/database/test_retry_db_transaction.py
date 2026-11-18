@@ -1,15 +1,24 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from neo4j.exceptions import ClientError, TransientError
+from neo4j.exceptions import (
+    ClientError,
+    ConnectionAcquisitionTimeoutError,
+    IncompleteCommit,
+    ServiceUnavailable,
+    SessionExpired,
+    TransientError,
+)
 
 from infrahub import config
-from infrahub.database import retry_db_transaction
+from infrahub.database import is_retriable_db_error, retry_db_transaction
 from infrahub.database.metrics import TRANSACTION_RETRIES
+from infrahub.exceptions import DatabaseError
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -57,6 +66,59 @@ def _make_client_error(
     return exc
 
 
+def _wrap_in_domain_error(cause: BaseException) -> DatabaseError:
+    try:
+        raise DatabaseError(message="Unable to connect to the database") from cause
+    except DatabaseError as exc:
+        return exc
+
+
+@dataclass
+class RetriableErrorCase:
+    name: str
+    error: BaseException
+    expected: bool
+
+
+RETRIABLE_ERROR_CASES = [
+    RetriableErrorCase(name="transient_error", error=_make_transient_error(), expected=True),
+    RetriableErrorCase(name="service_unavailable", error=ServiceUnavailable("connection lost"), expected=True),
+    RetriableErrorCase(name="session_expired", error=SessionExpired("session expired"), expected=True),
+    RetriableErrorCase(
+        name="service_unavailable_wrapped_in_domain_error",
+        error=_wrap_in_domain_error(cause=ServiceUnavailable("connection lost")),
+        expected=True,
+    ),
+    RetriableErrorCase(
+        name="client_error_entity_not_found",
+        error=_make_client_error(code="Neo.ClientError.Statement.EntityNotFound"),
+        expected=True,
+    ),
+    RetriableErrorCase(
+        name="client_error_syntax_error",
+        error=_make_client_error(message="syntax error", code="Neo.ClientError.Statement.SyntaxError"),
+        expected=False,
+    ),
+    RetriableErrorCase(
+        name="connection_acquisition_timeout",
+        error=ConnectionAcquisitionTimeoutError("failed to obtain a connection from the pool within 60.0s (timeout)"),
+        expected=False,
+    ),
+    RetriableErrorCase(name="incomplete_commit", error=IncompleteCommit("commit outcome unknown"), expected=False),
+    RetriableErrorCase(
+        name="domain_error_without_driver_cause",
+        error=DatabaseError(message="The Database is corrupted, more than 1 root node found."),
+        expected=False,
+    ),
+    RetriableErrorCase(name="unrelated_error", error=ValueError("not a database error"), expected=False),
+]
+
+
+@pytest.mark.parametrize("case", RETRIABLE_ERROR_CASES, ids=lambda case: case.name)
+def test_is_retriable_db_error(case: RetriableErrorCase) -> None:
+    assert is_retriable_db_error(case.error) is case.expected
+
+
 @pytest.mark.usefixtures("_set_retry_limit")
 class TestRetryDbTransactionExponentialBackoff:
     async def test_no_error_no_retry(self) -> None:
@@ -87,6 +149,43 @@ class TestRetryDbTransactionExponentialBackoff:
 
         assert result == "ok"
         assert mock_fn.call_count == 2
+
+    async def test_lost_connection_wrapped_in_domain_error_triggers_retry(self) -> None:
+        calls = 0
+
+        async def lose_connection_once() -> str:
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                raise _wrap_in_domain_error(cause=ServiceUnavailable("connection lost"))
+            return "ok"
+
+        decorated = retry_db_transaction(name="test_lost_connection")(lose_connection_once)
+
+        result = await decorated()
+
+        assert result == "ok"
+        assert calls == 2
+
+    async def test_driver_error_not_retryable_raises_immediately(self) -> None:
+        calls = 0
+
+        async def wait_for_exhausted_pool() -> str:
+            nonlocal calls
+            calls += 1
+            raise ConnectionAcquisitionTimeoutError(
+                "failed to obtain a connection from the pool within 60.0s (timeout)"
+            )
+
+        decorated = retry_db_transaction(name="test_pool_exhausted")(wait_for_exhausted_pool)
+
+        with pytest.raises(
+            ConnectionAcquisitionTimeoutError,
+            match=r"^failed to obtain a connection from the pool within 60\.0s \(timeout\)$",
+        ):
+            await decorated()
+
+        assert calls == 1
 
     async def test_client_error_other_code_raises_immediately(self) -> None:
         other_error = _make_client_error(message="syntax error", code="Neo.ClientError.Statement.SyntaxError")
