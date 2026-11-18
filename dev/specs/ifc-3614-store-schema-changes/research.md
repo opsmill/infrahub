@@ -346,8 +346,9 @@ schema is the processed internal and core schema, with an ID on every element, a
 `DEVICE_SCHEMA`, the largest schema of `backend/tests/helpers/schema/` (two generics and four
 nodes, all added). Measured on 2026-11-17, Python 3.12.13, one AMD EPYC 9R45 core, with no other
 test run on the machine. The builder that processed the schema once (T065) took 1.00 times. The
-present builder, which also compares the two schemas, is not measured again. A schema of customer
-size is still not measured. Command, from the repository root:
+present builder, which also compares the two schemas, took 2.00 times on the same benchmark (mean
+540.5 ms against 269.7 ms), measured after the review changes. A schema of customer size is still
+not measured. Command, from the repository root:
 
 ```bash
 INFRAHUB_LOG_LEVEL=CRITICAL uv run pytest backend/tests/benchmark/test_schema_candidate_builder.py --dist=no -p no:randomly
