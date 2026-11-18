@@ -185,15 +185,17 @@ export const RelationshipHierarchicalManyInput = ({
             ))}
           </div>
 
-          <PopoverTrigger ref={ref} asChild {...props}>
-            <button
-              type="button"
-              className="h-3.5 w-3.5 text-subtle-muted outline-hidden"
-              aria-label={`Open ${peer}`}
-            >
-              <Icon icon="mdi:unfold-more-horizontal" />
-            </button>
-          </PopoverTrigger>
+          {/* A plain button, not a second PopoverTrigger: a nested trigger also registers as the
+              popover anchor, and the content would then open at this button's width. */}
+          <button
+            ref={ref}
+            type="button"
+            className="h-3.5 w-3.5 text-subtle-muted outline-hidden"
+            aria-label={`Open ${peer}`}
+            {...props}
+          >
+            <Icon icon="mdi:unfold-more-horizontal" />
+          </button>
         </div>
       </PopoverTrigger>
 
