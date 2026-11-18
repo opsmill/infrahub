@@ -946,3 +946,29 @@ async def test_changed_vertex_uuids_names_the_changed_node(
         assert changed == {car.id} | await _vertices_attached_to(db=db, node_uuid=car.id)
     else:
         assert changed == {seats.id}
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "the rename writes the new attribute's value edge on the migration branch, which outranks the global edge "
+        "that an edit of a branch-agnostic attribute writes"
+    ),
+)
+async def test_an_edit_after_an_agnostic_rename_on_a_user_branch_is_read_on_that_branch(
+    db: InfrahubDatabase, default_branch: Branch, agnostic_data: None
+) -> None:
+    case = next(case for case in SECOND_RUN_CASES if case.name == "agnostic_attribute_name_update")
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=BranchKind.USER)
+    migrations = await build_migrations(db=db, branch=branch, case=case)
+    await run_migrations(db=db, branch=branch, migrations=migrations, at=Timestamp(), user_id=FIRST_RUN_USER_ID)
+
+    widgets = await NodeManager.query(db=db, schema=WIDGET_KIND, filters={"name__value": "widget-0"}, branch=branch)
+    assert len(widgets) == 1
+    widgets[0].get_attribute(name="serial_number").value = 42
+    await widgets[0].save(db=db)
+
+    reloaded = await NodeManager.get_one(db=db, id=widgets[0].id, branch=branch)
+    assert reloaded is not None
+    assert reloaded.get_attribute(name="serial_number").value == 42
