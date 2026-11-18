@@ -18,6 +18,7 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.diff.summary_cache import DiffSummaryCache
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.initialization import create_branch
+from infrahub.core.merge.builder import build_branch_merge_orchestrator
 from infrahub.core.merge.graph_merger import GraphMerger
 from infrahub.core.merge.orchestrator import BranchMergeOrchestrator
 from infrahub.core.merge.post_merge import PostMergeDispatcher
@@ -30,12 +31,20 @@ from infrahub.core.registry import registry
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.update_coordinator import SchemaUpdateCoordinator
 from infrahub.core.timestamp import Timestamp
+from infrahub.events.node_action import NodeMutatedEvent
 from infrahub.git.sync_status import RepositoryBranchSyncStatus, RepositoryBranchSyncStatusReader
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workers.dependencies import build_component, build_event_service
 from tests.adapters.cache import MemoryCache
+from tests.adapters.event import MemoryInfrahubEvent
+from tests.component.core.diff.merge._ownership import OWNERS_FIELD, load_owner_dataset, set_owners
+from tests.helpers.component import build_worker_component
+from tests.helpers.dependency_override import override_dependency
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Sequence
+
+    from fast_depends import Provider
 
     from infrahub.core.branch import Branch
     from infrahub.core.diff.model.path import TrackingId
@@ -333,3 +342,44 @@ class TestMergeChangelogCollection:
         assert await merge_write_blocker.get() is None
         assert harness.steps == []
         assert harness.post_merge_dispatcher.dispatched_node_events == []
+
+
+class TestMergeChangelogOfOwners:
+    """The node events of a merge record only the owner changes that the merge writes on the default branch."""
+
+    @pytest.mark.usefixtures("workflow_recorder", "register_core_models_schema")
+    async def test_events_leave_out_the_owners_that_the_default_branch_already_held(
+        self, db: InfrahubDatabase, default_branch: Branch, dependency_provider: Provider, memory_cache: MemoryCache
+    ) -> None:
+        dataset = await load_owner_dataset(db=db, default_branch=default_branch)
+        tenant_id, rack_id = dataset.ids["tenant-a"], dataset.ids["rack-a"]
+        for node_id in (tenant_id, rack_id):
+            await set_owners(db=db, branch=default_branch, node_id=node_id, owner_ids=dataset.owners(("dc-emea",)))
+        source_branch = await create_branch(db=db, branch_name="owner-events")
+        for write_branch in (default_branch, source_branch):
+            await set_owners(
+                db=db,
+                branch=write_branch,
+                node_id=tenant_id,
+                owner_ids=dataset.owners(("dc-emea", "network-emea")),
+            )
+        await set_owners(db=db, branch=source_branch, node_id=rack_id, owner_ids=dataset.owners(("security",)))
+
+        event_service = MemoryInfrahubEvent()
+        component = await build_worker_component(db=db, cache=memory_cache)
+        with (
+            override_dependency(build_event_service, lambda: event_service, dependency_provider=dependency_provider),
+            override_dependency(build_component, lambda: component, dependency_provider=dependency_provider),
+        ):
+            orchestrator = await build_branch_merge_orchestrator(
+                db=db, source_branch=source_branch, destination_branch=default_branch
+            )
+            await orchestrator.merge(context=_context(default_branch))
+
+        owner_changes = {
+            event.node_id: (attribute.value_previous, attribute.value)
+            for event in event_service.events
+            if isinstance(event, NodeMutatedEvent)
+            and (attribute := event.changelog.attributes.get(OWNERS_FIELD)) is not None
+        }
+        assert owner_changes == {rack_id: (dataset.owner_list(("dc-emea",)), dataset.owner_list(("security",)))}
