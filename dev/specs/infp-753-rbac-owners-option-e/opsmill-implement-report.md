@@ -52,7 +52,7 @@ Points that the subagents reported:
 
 | Task | State | Reason |
 |---|---|---|
-| T144 | Open | This pull request holds `test_plain_cypher.py`, `test_no_owner_overhead.py` and `conftest.py`, and they pass. `test_owner_queries.py` writes owners through the GraphQL owner API, and `test_change_check_overhead.py` needs the change check, so a later pull request adds them. The numbers in measurements.md come from the branch `rbac-owners-option-e-impl-infp-753` and are not measured again. |
+| T144 | Open | This pull request holds `test_no_owner_overhead.py` and `conftest.py`, and they pass. The spike test `test_plain_cypher.py` stays on the branch `rbac-owners-option-e-impl-infp-753`. `test_owner_queries.py` writes owners through the GraphQL owner API, and `test_change_check_overhead.py` needs the change check, so a later pull request adds them. The numbers in measurements.md come from the branch `rbac-owners-option-e-impl-infp-753` and are not measured again. |
 | T053 | Partial, ticked | The code is present. Its only test reads `updated_at` through GraphQL. Pull request 2 adds the test. |
 | T070 | Partial, ticked | All tests are ported. One of them came in chunk 5, with the owner diff. No test is left out. |
 | T071 | Partial, ticked | `test_owners_of_the_create_win_over_the_owners_that_the_template_gives` needs the GraphQL create with owners. Pull request 2 adds it. |
