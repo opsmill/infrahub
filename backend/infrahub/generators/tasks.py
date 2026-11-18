@@ -257,10 +257,11 @@ async def request_generator_definition_run(
 
     tasks: list[Coroutine[Any, Any, Any]] = []
     members: list[tuple[str, str]] = []
+    target_members = set(model.target_members)
     for relationship in group.members.peers:
         member = relationship.peer
 
-        if model.target_members and member.id not in model.target_members:
+        if target_members and member.id not in target_members:
             continue
 
         generator_instance = instance_by_member.get(member.id)
