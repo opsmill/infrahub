@@ -137,13 +137,6 @@ class CoreIPPrefixPool(Node):
             ResourceNotFoundError: When the pool's namespace does not exist on the branch.
             PoolExhaustedError: When no resource exists on the branch, or none has room left.
 
-<<<<<<< HEAD
-        for resource in weighted_resources:
-            resource_prefix = ipaddress.ip_network(resource.prefix.value)
-||||||| b71e735525
-        for resource in weighted_resources:
-            resource_prefix = ipaddress.ip_network(resource.prefix.value)  # type: ignore[attr-defined]
-=======
         """
         branch = branch or self._branch
         ip_namespace = await get_namespace_on_branch(db=db, pool=self, branch=branch)
@@ -157,8 +150,7 @@ class CoreIPPrefixPool(Node):
         allocator = IPAMResourceAllocator(db=db)
 
         for resource in resources:
-            resource_prefix = ipaddress.ip_network(resource.prefix.value)  # type: ignore[attr-defined]
->>>>>>> origin/stable
+            resource_prefix = ipaddress.ip_network(resource.prefix.value)
             next_available = await allocator.get_next_prefix(
                 ip_prefix=resource_prefix,
                 target_prefix_length=prefixlen,
