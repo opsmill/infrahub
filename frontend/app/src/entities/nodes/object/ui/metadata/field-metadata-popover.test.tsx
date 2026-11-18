@@ -1,6 +1,5 @@
-import type { CDPSession } from "@vitest/browser-playwright";
 import { beforeEach, describe, expect, it, onTestFinished } from "vitest";
-import { cdp, userEvent } from "vitest/browser";
+import { userEvent } from "vitest/browser";
 
 import { store } from "@/shared/stores";
 
@@ -173,14 +172,9 @@ describe("FieldMetadataPopover", () => {
       await expect.poll(() => iconOpacity(button.element())).toBe("1");
     });
 
-    it("keeps the icon visible on touch-only devices", async () => {
+    it("keeps the icon visible on devices without hover", async () => {
       // GIVEN
-      const session: CDPSession = cdp();
-      onTestFinished(async () => {
-        await session.send("Emulation.setTouchEmulationEnabled", { enabled: false });
-      });
-      await session.send("Emulation.setTouchEmulationEnabled", { enabled: true });
-      expect(window.matchMedia("(hover: none)").matches).toBe(true);
+      onTestFinished(emulateDeviceWithoutHover());
 
       // WHEN
       const component = await renderInHoverArea();
@@ -191,3 +185,25 @@ describe("FieldMetadataPopover", () => {
     });
   });
 });
+
+function emulateDeviceWithoutHover() {
+  const changedMedia: Array<[MediaList, string]> = [];
+
+  const visit = (rules: CSSRuleList) => {
+    for (const rule of Array.from(rules)) {
+      if (rule instanceof CSSMediaRule) {
+        const hoverValue = rule.media.mediaText.match(/^\(\s*hover\s*:\s*(none|hover)\s*\)$/)?.[1];
+        if (hoverValue) {
+          changedMedia.push([rule.media, rule.media.mediaText]);
+          rule.media.mediaText = hoverValue === "none" ? "all" : "not all";
+        }
+      }
+      if ("cssRules" in rule) visit((rule as CSSGroupingRule).cssRules);
+    }
+  };
+  for (const sheet of Array.from(document.styleSheets)) visit(sheet.cssRules);
+
+  return () => {
+    for (const [media, mediaText] of changedMedia) media.mediaText = mediaText;
+  };
+}
