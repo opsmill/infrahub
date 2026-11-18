@@ -95,8 +95,11 @@ class ObjectConflictValidatorRecorder:
         await self.finalize_validator(validator, is_success)
         return current_checks
 
-    async def clear_failure(self, proposed_change_id: str) -> None:
-        """Record a passing result on the validator when its last recorded result is a failure."""
+    async def clear_failure(self, proposed_change_id: str, recorded_before: Timestamp) -> None:
+        """Record a passing result when the validator's last result is a failure completed before `recorded_before`.
+
+        A failure completed at or after `recorded_before`, or with no completion time, is kept.
+        """
         try:
             proposed_change = await NodeManager.get_one_by_id_or_default_filter(
                 id=proposed_change_id, kind=CoreProposedChange, db=self.db
@@ -105,6 +108,9 @@ class ObjectConflictValidatorRecorder:
             return
         validator = await self.get_validator(proposed_change=proposed_change)
         if validator is None or validator.conclusion.value.value != ValidatorConclusion.FAILURE.value:
+            return
+        completed_at = validator.completed_at.value
+        if not completed_at or Timestamp(completed_at) >= recorded_before:
             return
         await self.record_conflicts(proposed_change_id=proposed_change_id, conflicts=[])
 
