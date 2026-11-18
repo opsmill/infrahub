@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import StrEnum
-from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -10,9 +10,6 @@ from infrahub.core.node import Node  # noqa: TC001
 from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository  # noqa: TC001
 from infrahub.git.writeback.models import PendingMerge  # noqa: TC001
 from infrahub.message_bus.types import ProposedChangeBranchDiff  # noqa: TC001
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
 
 
 class PushRejectionReason(StrEnum):
@@ -30,6 +27,26 @@ class GitRepoNode(BaseModel):
     id: str
     name: str
     location: str
+
+
+@dataclass(frozen=True)
+class MemberFilter:
+    member_ids: frozenset[str]
+    limit_ids: frozenset[str]
+
+    def selects(self, *, member_id: str, artifact_id: str | None) -> bool:
+        """Whether the member should have its artifact (re)generated.
+
+        ``member_ids`` filters on the member node id, so a member with no artifact yet is still
+        selected when its id is listed. ``limit_ids`` filters on the existing artifact id, so it can
+        only ever narrow to members that already have an artifact -- a member whose ``artifact_id``
+        is ``None`` is skipped by a non-empty ``limit_ids``. An empty filter imposes no restriction.
+        """
+        if self.member_ids and member_id not in self.member_ids:
+            return False
+        if self.limit_ids and artifact_id not in self.limit_ids:
+            return False
+        return True
 
 
 class RequestArtifactDefinitionGenerate(BaseModel):
@@ -62,26 +79,10 @@ class RequestArtifactDefinitionGenerate(BaseModel):
         """
         return not self.members and not self.limit
 
-    def member_selector(self) -> Callable[[str, str | None], bool]:
-        """Return a check of whether a member should have its artifact (re)generated under this request's filters.
-
-        ``members`` filters on the member node id, so a member with no artifact yet is still
-        selected when its id is listed. ``limit`` filters on the existing artifact id, so it can
-        only ever narrow to members that already have an artifact -- a member whose ``artifact_id``
-        is ``None`` is skipped by a non-empty ``limit``. An empty filter imposes no restriction.
-        """
+    def get_member_filter(self) -> MemberFilter:
+        """Return the filter that selects the members to (re)generate under this request's filters."""
         # Built per call and not cached on the model, so a copy with other filters never reads stale sets.
-        member_ids = frozenset(self.members)
-        limit_ids = frozenset(self.limit)
-
-        def selects_member(member_id: str, artifact_id: str | None) -> bool:
-            if member_ids and member_id not in member_ids:
-                return False
-            if limit_ids and artifact_id not in limit_ids:
-                return False
-            return True
-
-        return selects_member
+        return MemberFilter(member_ids=frozenset(self.members), limit_ids=frozenset(self.limit))
 
 
 class RequestArtifactGenerate(BaseModel):
