@@ -80,6 +80,7 @@ values left unchanged by mistake, such as toast IDs, log messages and conditions
 original's meaning.
 
 ```tsx
+// Illustrative file and component names
 // ❌ remove-from-groups-action.tsx copied from add-to-groups-action.tsx with a new label and mutation
 // ✅ One component; each caller passes its label, variant and mutation
 <GroupsAction label="Add to groups" variant="outline" mutateMembers={addRelationships} />
