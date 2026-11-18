@@ -297,18 +297,18 @@ class NamespaceLookup(StrEnum):
 
 @dataclass(frozen=True)
 class NamespaceDeleteCase:
+    name: str
     lookup: NamespaceLookup
     on_user_branch: bool
 
-    @property
-    def name(self) -> str:
-        return f"by-{self.lookup}-user-branch" if self.on_user_branch else f"by-{self.lookup}"
-
 
 NAMESPACE_DELETE_CASES: list[NamespaceDeleteCase] = [
-    NamespaceDeleteCase(lookup=lookup, on_user_branch=on_user_branch)
-    for on_user_branch in (False, True)
-    for lookup in NamespaceLookup
+    NamespaceDeleteCase(name="by-id", lookup=NamespaceLookup.ID, on_user_branch=False),
+    NamespaceDeleteCase(name="by-hfid", lookup=NamespaceLookup.HFID, on_user_branch=False),
+    NamespaceDeleteCase(name="by-name-as-id", lookup=NamespaceLookup.NAME_AS_ID, on_user_branch=False),
+    NamespaceDeleteCase(name="by-id-user-branch", lookup=NamespaceLookup.ID, on_user_branch=True),
+    NamespaceDeleteCase(name="by-hfid-user-branch", lookup=NamespaceLookup.HFID, on_user_branch=True),
+    NamespaceDeleteCase(name="by-name-as-id-user-branch", lookup=NamespaceLookup.NAME_AS_ID, on_user_branch=True),
 ]
 
 
