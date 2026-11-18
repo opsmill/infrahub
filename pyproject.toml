@@ -1003,20 +1003,6 @@ allow-dunder-method-names = [
     "UP035",    # `typing.List` is deprecated, use `list` instead
 ]
 
-"backend/tests/component/conftest.py" = [
-    ##################################################################################################
-    # Refactor code and remove the ignore rule
-    ##################################################################################################
-    "RUF100",  # Unused `noqa` directive
-]
-
-"backend/tests/helpers/prefect_diagnostics.py" = [
-    ##################################################################################################
-    # Refactor code and remove the ignore rule
-    ##################################################################################################
-    "RUF100",  # Unused `noqa` directive
-]
-
 "backend/tests/component/core/migrations/schema/test_node_attribute_add.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
