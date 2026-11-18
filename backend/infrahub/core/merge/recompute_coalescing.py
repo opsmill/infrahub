@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal, assert_never
+from dataclasses import dataclass, field, replace
+from typing import TYPE_CHECKING, Any, Literal, Protocol, assert_never
+
+from pydantic import BaseModel, ConfigDict
 
 from infrahub.display_labels.scoping import derive_display_label_targets
 from infrahub.events.limits import get_submission_chunk_size
+from infrahub.git.writeback.models import HeldPythonAttribute, HeldRegeneration
 from infrahub.hfid.scoping import derive_hfid_targets
 from infrahub.log import get_logger
 from infrahub.utilities.chunks import chunked
@@ -19,6 +22,8 @@ from infrahub.workflows.catalogue import (
 )
 from infrahub.workflows.constants import WorkflowTag
 
+from .regeneration_barrier import OwnedRegeneration
+
 log = get_logger()
 
 if TYPE_CHECKING:
@@ -29,6 +34,8 @@ if TYPE_CHECKING:
     from infrahub.events.models import EventContext
     from infrahub.services.adapters.workflow import InfrahubWorkflow
     from infrahub.workflows.models import WorkflowDefinition
+
+    from .regeneration_barrier import RegenerationBarrier
 
 RecomputeFamily = Literal["computed_attribute", "python_computed_attribute", "display_label", "hfid"]
 
@@ -133,6 +140,94 @@ class CoalescedRecompute:
     def fallback_used(self) -> bool:
         return any(not target.precise for target in self.targets)
 
+    def with_targets(self, targets: Iterable[AffectedTarget]) -> CoalescedRecompute:
+        """The same recompute plus more targets, deduplicated against the ones already held."""
+        return CoalescedRecompute(branch=self.branch, targets=self.targets | frozenset(targets))
+
+
+class PythonTargetResolver(Protocol):
+    """The Python transform computed attributes a merge or rebase change set affects, and who owns each."""
+
+    async def resolve(self, *, changes: Iterable[MergeChange], branch: str) -> list[AffectedTarget]: ...
+
+    def owner_of(self, *, kind: str, attribute_name: str, branch: str) -> str | None:
+        """Return the id of the repository whose transform computes the attribute, or None when it is not known.
+
+        It is None until a resolution on the branch has loaded the read sets, and a None holds the target under
+        every pending repository.
+        """
+
+
+class PythonTargetRequest(BaseModel):
+    """One Python computed attribute target, as a model so that the narrowed-hold cache can store it."""
+
+    model_config = ConfigDict(frozen=True)
+
+    target: AffectedTarget
+
+
+def whole_kind_python_target(*, kind: str, attribute_name: str) -> AffectedTarget:
+    """The recompute of the attribute on every node of its kind."""
+    return AffectedTarget(
+        family=PYTHON_COMPUTED_ATTRIBUTE,
+        target_kind=kind,
+        attribute_name=attribute_name,
+        reads_across_relationship=False,
+        reader_lookups=frozenset(),
+        precise=False,
+        whole_kind=True,
+    )
+
+
+def owned_python_target(*, target: AffectedTarget, repository_id: str | None) -> OwnedRegeneration[PythonTargetRequest]:
+    """The barrier candidate of one Python computed attribute target.
+
+    Raises:
+        ValueError: The target names no attribute, so it has no identity to hold.
+
+    """
+    if target.attribute_name is None:
+        raise ValueError(f"Cannot hold a Python target of {target.target_kind} that names no attribute")
+    return OwnedRegeneration(
+        repository_id=repository_id,
+        held=HeldRegeneration(
+            python_attributes=(
+                HeldPythonAttribute(kind=target.target_kind, attribute=target.attribute_name, hold_seq=0),
+            )
+        ),
+        request=PythonTargetRequest(target=target),
+        union=_join_python_requests,
+    )
+
+
+def _join_python_requests(previous: BaseModel, new: BaseModel) -> BaseModel:
+    """Join two holds of one attribute: the whole kind covers any node, otherwise the node ids of both are kept.
+
+    Raises:
+        TypeError: A request is not the request of a Python computed attribute.
+
+    """
+    if not isinstance(previous, PythonTargetRequest) or not isinstance(new, PythonTargetRequest):
+        raise TypeError(f"Cannot join a {type(previous).__name__} and a {type(new).__name__}")
+    if previous.target.whole_kind:
+        return previous
+    if new.target.whole_kind:
+        return new
+    ids_by_lookup: dict[tuple[str, str], set[str]] = {}
+    for lookup in (*previous.target.reader_lookups, *new.target.reader_lookups):
+        ids_by_lookup.setdefault((lookup.source_kind, lookup.filter_key), set()).update(lookup.source_node_ids)
+    return PythonTargetRequest(
+        target=replace(
+            previous.target,
+            reads_across_relationship=previous.target.reads_across_relationship or new.target.reads_across_relationship,
+            reader_lookups=frozenset(
+                ReaderLookup(source_kind=source_kind, filter_key=filter_key, source_node_ids=frozenset(ids))
+                for (source_kind, filter_key), ids in ids_by_lookup.items()
+            ),
+            precise=previous.target.precise and new.target.precise,
+        )
+    )
+
 
 @dataclass
 class _ResolvedTarget:
@@ -199,10 +294,15 @@ class CoalescedSubmission:
 
 
 class CoalescedRecomputeBuilder:
-    """Derive the deduplicated recompute for a merge or rebase change set from one schema branch."""
+    """Derive the deduplicated recompute for a merge or rebase change set from one schema branch.
 
-    def __init__(self, schema_branch: SchemaBranch) -> None:
+    ``refresh_updated_nodes`` also recomputes an updated node's own derived values, for a change set replayed onto
+    a base that moved under the values the node derived when it was saved.
+    """
+
+    def __init__(self, schema_branch: SchemaBranch, refresh_updated_nodes: bool = False) -> None:
         self.schema_branch = schema_branch
+        self.refresh_updated_nodes = refresh_updated_nodes
 
     def build(self, *, changes: Iterable[MergeChange], branch: str) -> CoalescedRecompute:
         """Derive the deduplicated set of derived values to recompute for a merge or rebase.
@@ -267,6 +367,12 @@ class CoalescedRecomputeBuilder:
                 include_cross=True,
                 precise=True,
             )
+            if self.refresh_updated_nodes:
+                # Every value the node derived read the old base, including one that reads no changed field.
+                yield from self._derive_family_targets(
+                    kind=signature.kind, fields=None, include_self=True, include_cross=False, precise=True
+                )
+                return
             # A relationship change that doesn't save the reader (e.g. a peer deleted on another branch)
             # skips the reader's inline recompute, so refresh its own values here.
             relationship_fields = self._changed_relationship_fields(
@@ -461,9 +567,15 @@ class CoalescedRecomputeSubmitter:
                         "computed_attribute_name": submission.attribute_name,
                         "computed_attribute_kind": submission.target_kind,
                         "context": context,
+                        "coalesced": True,
+                        # The one submission the resolution could not narrow.
+                        "widened": True,
+                        "recompute_depth": recompute_depth,
                     }
-                # The transform flow does not take part in the bounded chain yet, so it has no depth.
-                return COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM, parameters | attribute_parameters
+                return (
+                    COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
+                    parameters | attribute_parameters | {"coalesced": True, "recompute_depth": recompute_depth},
+                )
             case "display_label":
                 return DISPLAY_LABELS_PROCESS_JINJA2, parameters | {
                     "target_kind": submission.target_kind,
@@ -512,22 +624,100 @@ class CoalescedRecomputeSubmitter:
         return submitted
 
 
+def _every_python_attribute_widened(schema_branch: SchemaBranch) -> list[AffectedTarget]:
+    """Every Python computed attribute the schema declares, each over its whole kind.
+
+    Never raises, and never reads the database: a worker behind on the schema widens what the
+    schema branch it is given declares.
+    """
+    return [
+        whole_kind_python_target(kind=kind, attribute_name=attribute.name)
+        for kind, attributes in schema_branch.computed_attributes.get_python_attributes_per_node().items()
+        for attribute in attributes
+    ]
+
+
+async def _resolve_python_targets(
+    *,
+    resolver: PythonTargetResolver,
+    barrier: RegenerationBarrier,
+    changes: list[MergeChange],
+    branch: str,
+    schema_branch: SchemaBranch,
+) -> list[AffectedTarget]:
+    """The Python targets that the barrier admits, from the resolution or, when it fails, every declared one over its whole kind.
+
+    Never raises: this is the only family that reads the database, and the four are submitted
+    together. A target whose repository waits for a delivery is held, and a target with no known
+    repository is held under every pending one.
+    """
+    if not changes:
+        # Targets come only from the changes, and the schema half is the backfill's. The read-set
+        # index loads before the changes are read, so resolving would pay the gather for nothing,
+        # and a failure in it would widen every attribute over nothing.
+        return []
+
+    try:
+        targets = await resolver.resolve(changes=changes, branch=branch)
+    except Exception:
+        log.exception(
+            "Widening every Python computed attribute on branch %s to its whole kind: the resolution failed", branch
+        )
+        targets = _every_python_attribute_widened(schema_branch)
+
+    candidates = [
+        owned_python_target(
+            target=target,
+            repository_id=resolver.owner_of(
+                kind=target.target_kind, attribute_name=target.attribute_name, branch=branch
+            ),
+        )
+        for target in targets
+        if target.attribute_name is not None
+    ]
+    admitted = await barrier.admit(branch=branch, candidates=candidates, releasing=None)
+    # A target that names no attribute has no identity to hold, so the barrier never sees it.
+    unnamed = [target for target in targets if target.attribute_name is None]
+    return [*unnamed, *(candidate.request.target for candidate in admitted)]
+
+
 class MergeRecomputeCoordinator:
     """Build the coalesced recompute for a merge or rebase change set and submit it.
 
     Build and submit are always run together, so this holds one of each and hands the builder's
-    output to the submitter.
+    output to the submitter. The Python transform family is derived separately, since it reads the
+    database and the query groups instead of the schema alone, and it passes the barrier.
     """
 
-    def __init__(self, builder: CoalescedRecomputeBuilder, submitter: CoalescedRecomputeSubmitter) -> None:
+    def __init__(
+        self,
+        builder: CoalescedRecomputeBuilder,
+        submitter: CoalescedRecomputeSubmitter,
+        python_resolver: PythonTargetResolver,
+        barrier: RegenerationBarrier,
+    ) -> None:
         self.builder = builder
         self.submitter = submitter
+        self.python_resolver = python_resolver
+        self.barrier = barrier
 
     async def run(
-        self, *, changes: Iterable[MergeChange], branch: str, context: EventContext
+        self,
+        *,
+        changes: Iterable[MergeChange],
+        branch: str,
+        context: EventContext,
     ) -> list[CoalescedSubmission]:
-        coalesced = self.builder.build(changes=changes, branch=branch)
-        return await self.submitter.submit(coalesced=coalesced, context=context)
+        change_list = list(changes)
+        coalesced = self.builder.build(changes=change_list, branch=branch)
+        python_targets = await _resolve_python_targets(
+            resolver=self.python_resolver,
+            barrier=self.barrier,
+            changes=change_list,
+            branch=branch,
+            schema_branch=self.builder.schema_branch,
+        )
+        return await self.submitter.submit(coalesced=coalesced.with_targets(python_targets), context=context)
 
 
 def max_recompute_chain_depth(schema_branch: SchemaBranch) -> int:
@@ -538,6 +728,10 @@ def max_recompute_chain_depth(schema_branch: SchemaBranch) -> int:
     """
     target_count = (
         len(schema_branch.computed_attributes.get_jinja2_target_map())
+        + sum(
+            len(attributes)
+            for attributes in schema_branch.computed_attributes.get_python_attributes_per_node().values()
+        )
         + len(schema_branch.display_labels.get_template_nodes())
         + len(schema_branch.hfids.get_template_nodes())
     )
@@ -547,9 +741,17 @@ def max_recompute_chain_depth(schema_branch: SchemaBranch) -> int:
 class RecomputeChainSubmitter:
     """Dispatch the next recompute level for a set of derived-value writes, as one coalesced pass."""
 
-    def __init__(self, builder: CoalescedRecomputeBuilder, submitter: CoalescedRecomputeSubmitter) -> None:
+    def __init__(
+        self,
+        builder: CoalescedRecomputeBuilder,
+        submitter: CoalescedRecomputeSubmitter,
+        python_resolver: PythonTargetResolver,
+        barrier: RegenerationBarrier,
+    ) -> None:
         self.builder = builder
         self.submitter = submitter
+        self.python_resolver = python_resolver
+        self.barrier = barrier
 
     async def submit(
         self,
@@ -585,4 +787,13 @@ class RecomputeChainSubmitter:
             for node in written
         ]
         coalesced = self.builder.build(changes=changes, branch=branch)
-        return await self.submitter.submit(coalesced=coalesced, context=context, recompute_depth=next_depth)
+        python_targets = await _resolve_python_targets(
+            resolver=self.python_resolver,
+            barrier=self.barrier,
+            changes=changes,
+            branch=branch,
+            schema_branch=self.builder.schema_branch,
+        )
+        return await self.submitter.submit(
+            coalesced=coalesced.with_targets(python_targets), context=context, recompute_depth=next_depth
+        )

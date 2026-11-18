@@ -11,7 +11,7 @@ from infrahub.task_manager.flow_run.prefect_client import PrefectClientAdapter
 from infrahub.task_manager.flow_run.retention import FlowRunRetention
 from infrahub.tasks.dummy import DUMMY_FLOW, DummyInput
 from infrahub.workers.dependencies import build_tls_registry
-from infrahub.workflows.initialization import setup_task_manager
+from infrahub.workflows.initialization import setup_task_manager  # noqa: TID251 - the CLI runs the one-off setup itself
 from infrahub.workflows.models import WorkerPoolDefinition
 
 app = AsyncTyper()
@@ -56,7 +56,7 @@ async def execute(
 
         result = await worker.execute_workflow(
             workflow=DUMMY_FLOW, parameters={"data": DummyInput(firstname="John", lastname="Doe")}
-        )  # type: ignore[var-annotated]
+        )
         print(result)
 
 

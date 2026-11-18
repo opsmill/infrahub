@@ -9,6 +9,10 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import type { BranchDetail } from "@/entities/branches/domain/model/branch";
 import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-navigate-after-branch-removal";
+import {
+  buildGitStatusRefreshNavigationState,
+  useRefreshBranchGitStatusOnTaskEnd,
+} from "@/entities/branches/ui/hooks/use-refresh-branch-git-status-on-task-end";
 import { useGetBranchActionState } from "@/entities/branches/ui/queries/get-branch-action-state.query";
 import { useMergeBranch } from "@/entities/branches/ui/queries/merge-branch.mutation";
 import { useConfig } from "@/entities/config/ui/config-provider";
@@ -31,6 +35,7 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
   });
 
   const mergeMutation = useMergeBranch();
+  useRefreshBranchGitStatusOnTaskEnd(mergeMutation.data?.taskId ?? null);
 
   const hasOngoingTask = (data?.ongoingTaskCount ?? 0) > 0;
   const isDisabled =
@@ -45,7 +50,7 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
     setIsMergeRequested(true);
 
     try {
-      await mergeMutation.mutateAsync({ branchName: branch.name });
+      const { taskId } = await mergeMutation.mutateAsync({ branchName: branch.name });
 
       const deleteBranchAfterMerge = config.main.delete_branch_after_merge;
 
@@ -58,7 +63,10 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
       });
 
       if (deleteBranchAfterMerge) {
-        navigateToPage("/branches", branch.name);
+        // Leaving the page unmounts the refresh above, so the task id travels with the navigation.
+        navigateToPage("/branches", branch.name, {
+          state: taskId ? buildGitStatusRefreshNavigationState(taskId) : undefined,
+        });
       }
       // No manual refetch needed: `useMergeBranch` invalidates
       // `branchesQueryKeys.all`, which covers the action-state query above.

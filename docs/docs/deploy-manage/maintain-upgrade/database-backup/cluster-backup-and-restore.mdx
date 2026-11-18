@@ -120,7 +120,7 @@ Run:
 SHOW SERVERS;
 ```
 
-Note the `serverId` for your target node (example: `d05fce79-e63e-485a-9ce7-1abbf9d18fce`).
+Note the `serverId` of the target node, the node where you restored the backup (example: `d05fce79-e63e-485a-9ce7-1abbf9d18fce`). The other nodes copy the restored data from this node.
 
 <center>
 ![Seed database](../../../media/guides/database_backup_restore_step5.png)
@@ -135,13 +135,11 @@ CREATE DATABASE neo4j
 TOPOLOGY 3 PRIMARIES
 OPTIONS {
   existingData: 'use',
-  existingDataSeedInstance: 'd05fce79-e63e-485a-9ce7-1abbf9d18fce'
+  existingDataSeedServer: 'd05fce79-e63e-485a-9ce7-1abbf9d18fce'
 };
 ```
 
-<center>
-![Choose seed database](../../../media/guides/database_backup_restore_step7.png)
-</center>
+Use `existingDataSeedServer`, not `existingDataSeedInstance`. Neo4j removed `existingDataSeedInstance` from Cypher 25, so a command that uses it fails when Cypher 25 is the default language. `existingDataSeedServer` works with Cypher 5 and Cypher 25. See [Create databases](https://neo4j.com/docs/operations-manual/current/database-administration/standard-databases/create-databases/) in the Neo4j Operations Manual.
 
 ### Step 8: Verify cluster sync
 
@@ -170,7 +168,8 @@ All nodes should eventually show the Neo4j database as online.
 :::tip Troubleshooting
 
 - If nodes show as **dirty** or **offline**, check logs and verify `/data/databases/neo4j/neostore` exists
-- The `CREATE DATABASE ... OPTIONS { existingData: 'use' }` command is required to register restored data with the cluster
+- The `CREATE DATABASE ... OPTIONS { existingData: 'use', existingDataSeedServer: '...' }` command is required to register restored data with the cluster
+- If every node shows the database as **offline** after the `CREATE DATABASE` command, with the message `No store found on any of the seeders`, check that `existingDataSeedServer` is the `serverId` of the node where you restored the backup
 
 :::
 
@@ -216,10 +215,6 @@ cypher-shell -d system -u neo4j
 DROP DATABASE neo4j;
 SHOW SERVERS;
 ```
-
-<center>
-![Choose seed database](../../../media/guides/database_backup_restore_step7.png)
-</center>
 
 ### Step 4: Restore the backup
 

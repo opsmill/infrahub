@@ -46,7 +46,12 @@ class GraphQLExtractor:
             self.node_path[path] = []
 
     async def get_fields(self) -> dict:
-        return await self.extract_fields(selection_set=self.info.field_nodes[0].selection_set) or {}
+        fields: dict = {}
+        for field_node in self.info.field_nodes:
+            extracted = await self.extract_fields(selection_set=field_node.selection_set)
+            if extracted:
+                deep_merge_dict(dicta=fields, dictb=extracted)
+        return fields
 
     def _process_expand_directive(self, path: str, directive: DirectiveNode) -> None:
         excluded_fields = []
@@ -183,39 +188,28 @@ class GraphQLExtractor:
         if not selection_set:
             return None
 
+        fields = await self._collect_fields(selection_set=selection_set, path=path)
+        return self.apply_directives(selection_set=selection_set, fields=fields, path=path)
+
+    async def _collect_fields(self, selection_set: SelectionSetNode, path: str) -> dict[str, dict | None]:
+        """Collect a selection set's fields, reading fragments at the enclosing field's path so that field's directives cover them."""
         fields: dict[str, dict | None] = {}
         for node in selection_set.selections:
-            sub_selection_set = getattr(node, "selection_set", None)
             if isinstance(node, FieldNode):
                 node_path = f"{path}{node.name.value}/"
                 self.process_directives(node=node, path=node_path)
 
-                value = await self.extract_fields(sub_selection_set, path=node_path)
-                if node.name.value not in fields:
-                    fields[node.name.value] = value
-                elif isinstance(fields[node.name.value], dict) and isinstance(value, dict):
-                    fields[node.name.value].update(value)  # type: ignore[union-attr]
+                value = await self.extract_fields(node.selection_set, path=node_path)
+                deep_merge_dict(dicta=fields, dictb={node.name.value: value})
 
             elif isinstance(node, InlineFragmentNode):
-                for sub_node in node.selection_set.selections:
-                    if isinstance(sub_node, FieldNode):
-                        sub_node_path = f"{path}{sub_node.name.value}/"
-                        sub_sub_selection_set = getattr(sub_node, "selection_set", None)
-                        value = await self.extract_fields(sub_sub_selection_set, path=sub_node_path)
-                        if sub_node.name.value not in fields:
-                            fields[sub_node.name.value] = await self.extract_fields(
-                                sub_sub_selection_set, path=sub_node_path
-                            )
-                        elif isinstance(fields[sub_node.name.value], dict) and isinstance(value, dict):
-                            fields[sub_node.name.value].update(value)  # type: ignore[union-attr]
+                deep_merge_dict(dicta=fields, dictb=await self._collect_fields(node.selection_set, path=path))
 
-            elif isinstance(node, FragmentSpreadNode):
-                if node.name.value in self.info.fragments:
-                    fragment_fields = await self.extract_fields(self.info.fragments[node.name.value].selection_set)
-                    if fragment_fields:
-                        fields.update(fragment_fields)
+            elif isinstance(node, FragmentSpreadNode) and node.name.value in self.info.fragments:
+                fragment = self.info.fragments[node.name.value]
+                deep_merge_dict(dicta=fields, dictb=await self._collect_fields(fragment.selection_set, path=path))
 
-        return self.apply_directives(selection_set=selection_set, fields=fields, path=path)
+        return fields
 
 
 def is_child_path(path: str, child: str) -> bool:

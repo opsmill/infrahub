@@ -7,6 +7,7 @@ from infrahub.core import registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.log import get_logger
+from infrahub.utils import log_exception_guard
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
@@ -38,7 +39,10 @@ async def create_branch_registry(db: InfrahubDatabase, branch: Branch) -> None:
 
 
 async def update_branch_registry(db: InfrahubDatabase, branch: Branch) -> None:
-    """Update the registry for a branch if the schema hash has changed or the branch was rebased."""
+    """Update the registry for a branch when it no longer matches the database.
+
+    A changed schema hash reloads the schema; any other field difference only replaces the cached ``Branch``.
+    """
     existing_branch: Branch = registry.branch[branch.name]
 
     if not existing_branch.schema_hash:
@@ -62,7 +66,7 @@ async def update_branch_registry(db: InfrahubDatabase, branch: Branch) -> None:
                 worker=WORKER_IDENTITY,
             )
             registry.branch[branch.name] = branch
-        elif existing_branch.status != branch.status:
+        elif existing_branch.model_dump(exclude={"schema_hash"}) != branch.model_dump(exclude={"schema_hash"}):
             log.info(f"Updating registry branch cache for {branch.name=}")
             registry.branch[branch.name] = branch
         return
@@ -75,6 +79,9 @@ async def update_branch_registry(db: InfrahubDatabase, branch: Branch) -> None:
         worker=WORKER_IDENTITY,
     )
     await registry.schema.load_schema(db=db, branch=branch)
+    if registry.branch.get(branch.name) is not existing_branch:
+        # Writers cache a branch only after saving it, so a copy cached while the schema loaded is kept.
+        return
     registry.branch[branch.name] = branch
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
 
@@ -86,8 +93,12 @@ async def refresh_branches(db: InfrahubDatabase) -> None:
 
     If a branch is already present with a different value for the hash
     We pull the new schema from the database and we update the registry.
+
+    A branch whose cached copy is replaced after the database read keeps that copy: writers replace it only after
+    saving it, and a later change reaches the cache at the next refresh.
     """
     async with lock.registry.local_schema_lock():
+        cached_before_read = dict(registry.branch)
         active_branches = await registry.branch_object.get_list(db=db)
         for active_branch in active_branches:
             if active_branch.name == GLOBAL_BRANCH_NAME:
@@ -95,10 +106,20 @@ async def refresh_branches(db: InfrahubDatabase) -> None:
                 # have an associated schema
                 continue
 
-            if active_branch.name in registry.branch:
-                await update_branch_registry(db=db, branch=active_branch)
-            else:
-                await create_branch_registry(db=db, branch=active_branch)
+            if registry.branch.get(active_branch.name) is not cached_before_read.get(active_branch.name):
+                log.debug(
+                    "Keeping the branch cached after the registry refresh read the database",
+                    branch=active_branch.name,
+                    worker=WORKER_IDENTITY,
+                )
+                continue
+
+            # Absorb a failure on one branch rather than abandoning the sweep
+            with log_exception_guard(log, f"Failed to refresh branch {active_branch.name!r} in the registry"):
+                if active_branch.name in registry.branch:
+                    await update_branch_registry(db=db, branch=active_branch)
+                else:
+                    await create_branch_registry(db=db, branch=active_branch)
 
         purged_branches = await registry.purge_inactive_branches(db=db, active_branches=active_branches)
         purged_branches.update(

@@ -212,7 +212,7 @@ export const ProposedChangeDetails = ({
           <Overview />
         </div>
 
-        <Card className="col-start-3 col-end-4 min-w-[300px]">
+        <Card className="col-start-3 col-end-4 min-w-75">
           <CardHeader className="flex items-center justify-between">
             <div
               onClick={() => navigate(path)}

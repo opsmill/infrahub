@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { store } from "@/shared/stores";
@@ -77,10 +77,6 @@ describe("RelationshipHierarchicalComboboxList", () => {
     store.set(genericSchemasAtom, [hierarchyGenericSchema]);
     store.set(nodeSchemasAtom, [rootSchema, parentSchema, childSchema]);
     vi.mocked(getRelationships).mockResolvedValue([]);
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
   });
 
   it("displays message when schema is not hierarchical", async () => {

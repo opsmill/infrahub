@@ -20,6 +20,9 @@ from infrahub.core.relationship.constraints.template_resource_pool_exclusive imp
 )
 from infrahub.core.schema import RelationshipSchema, SchemaRoot
 from infrahub.exceptions import ValidationError
+from infrahub.pools.number_pool_conflict import NumberPoolConflictFinder
+from infrahub.pools.number_pool_repository import NumberPoolRepository
+from infrahub.pools.number_pool_usage_nodes import NumberHolderNodeReader
 from tests.constants import TestKind
 from tests.helpers.schema.device import DEVICE, INTERFACE, INTERFACE_HOLDER
 
@@ -452,6 +455,9 @@ class TestNodeConstraintRunnerPoolFilterExpansion:
                 message_builder=UniquenessViolationMessageBuilder(
                     schema_branch=registry.schema.get_schema_branch(default_branch_scope_class.name)
                 ),
+                number_pool_conflict_finder=NumberPoolConflictFinder(
+                    pool_name_reader=NumberPoolRepository(db=db), holder_reader=NumberHolderNodeReader(db=db)
+                ),
             ),
             relationship_manager_constraints=[constraint],
         )
@@ -494,6 +500,9 @@ class TestNodeConstraintRunnerPoolFilterExpansion:
                 branch=default_branch_scope_class,
                 message_builder=UniquenessViolationMessageBuilder(
                     schema_branch=registry.schema.get_schema_branch(default_branch_scope_class.name)
+                ),
+                number_pool_conflict_finder=NumberPoolConflictFinder(
+                    pool_name_reader=NumberPoolRepository(db=db), holder_reader=NumberHolderNodeReader(db=db)
                 ),
             ),
             relationship_manager_constraints=[constraint],

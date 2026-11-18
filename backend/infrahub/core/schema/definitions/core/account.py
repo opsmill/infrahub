@@ -3,6 +3,7 @@ from infrahub.core.constants import (
     AccountType,
     BranchSupportType,
     InfrahubKind,
+    RelationshipDeleteBehavior,
 )
 from infrahub.core.constants import RelationshipCardinality as Cardinality
 
@@ -27,6 +28,7 @@ core_account = NodeSchema(
     generate_profile=False,
     branch=BranchSupportType.AGNOSTIC,
     inherit_from=[InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE, InfrahubKind.GENERICACCOUNT],
+    documentation="/deploy-manage/user-management/permissions-roles/manage-accounts-and-permissions/",
 )
 
 core_account_token = NodeSchema(
@@ -40,7 +42,7 @@ core_account_token = NodeSchema(
     generate_profile=False,
     branch=BranchSupportType.AGNOSTIC,
     uniqueness_constraints=[["token__value"]],
-    documentation="/topics/auth",
+    documentation="/deploy-manage/user-management/managing-api-tokens/",
     attributes=[
         Attr(name="name", kind="Text", optional=True),
         Attr(name="token", kind="Text", description="The authentication token value", unique=True),
@@ -66,6 +68,7 @@ core_password_credential = NodeSchema(
     generate_profile=False,
     branch=BranchSupportType.AGNOSTIC,
     inherit_from=[InfrahubKind.CREDENTIAL],
+    documentation="/git-integration/connect-repository/",
     attributes=[
         Attr(name="username", kind="Text", optional=True, branch=BranchSupportType.AGNOSTIC, order_weight=6000),
         Attr(name="password", kind="Password", optional=True, branch=BranchSupportType.AGNOSTIC, order_weight=7000),
@@ -112,7 +115,7 @@ core_credential = GenericSchema(
     human_friendly_id=["name__value"],
     branch=BranchSupportType.AGNOSTIC,
     uniqueness_constraints=[["name__value"]],
-    documentation="/topics/auth",
+    documentation="/git-integration/connect-repository/",
     restricted_namespaces=["Core"],
     attributes=[
         Attr(name="name", kind="Text", unique=True, order_weight=1000),
@@ -133,7 +136,7 @@ core_generic_account = GenericSchema(
     display_label="label__value",
     human_friendly_id=["name__value"],
     branch=BranchSupportType.AGNOSTIC,
-    documentation="/topics/auth",
+    documentation="/deploy-manage/user-management/permissions-roles/manage-accounts-and-permissions/",
     uniqueness_constraints=[["name__value"]],
     restricted_namespaces=["Core"],
     attributes=[
@@ -169,13 +172,29 @@ core_generic_account = GenericSchema(
         ),
     ],
     relationships=[
-        Rel(name="tokens", peer=InfrahubKind.ACCOUNTTOKEN, optional=True, cardinality=Cardinality.MANY),
+        Rel(
+            name="tokens",
+            peer=InfrahubKind.ACCOUNTTOKEN,
+            optional=True,
+            cardinality=Cardinality.MANY,
+            identifier="account__token",
+            on_delete=RelationshipDeleteBehavior.CASCADE,
+        ),
+        Rel(
+            name="refresh_tokens",
+            peer=InfrahubKind.REFRESHTOKEN,
+            optional=True,
+            cardinality=Cardinality.MANY,
+            identifier="account__refreshtoken",
+            on_delete=RelationshipDeleteBehavior.CASCADE,
+        ),
         Rel(
             name="external_identities",
             peer=InfrahubKind.EXTERNALIDENTITY,
             optional=True,
             cardinality=Cardinality.MANY,
             identifier="account__external_identity",
+            on_delete=RelationshipDeleteBehavior.CASCADE,
         ),
     ],
 )

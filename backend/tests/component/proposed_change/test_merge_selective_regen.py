@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 import logging
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import pytest
 from infrahub_sdk import Config, InfrahubClient
 
-from infrahub import config
+from infrahub import config, lock
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
@@ -14,21 +16,26 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.diff.summary_cache import DiffSummaryCache
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.initialization import create_branch
+from infrahub.core.merge.regeneration_barrier import NarrowedHoldCache, RegenerationBarrier
 from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher
 from infrahub.core.merge.selective_regen.generator_output import GeneratorCascadeOutput
 from infrahub.core.merge.selective_regen.orchestrator import build_merge_selective_regeneration
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.git.writeback.constants import NARROWED_HOLD_MAX_BYTES, NARROWED_HOLD_TTL_SECONDS
+from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.server import app
-from infrahub.workers.dependencies import build_client, build_workflow
+from infrahub.workers.dependencies import build_client
 from infrahub.workflows.catalogue import (
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
     REQUEST_GENERATOR_DEFINITION_RUN,
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
 )
 from tests.adapters.workflow import WorkflowRecorder
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.schema import load_schema
-from tests.helpers.test_app import TestInfrahubAppBase
+from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
+from tests.helpers.workflow_override import override_workflow
 
 from .conftest import make_node_diff
 
@@ -43,6 +50,7 @@ if TYPE_CHECKING:
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
+    from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
     from tests.adapters.cache import MemoryCache
     from tests.adapters.message_bus import BusSimulator
     from tests.helpers.test_client import InfrahubTestClient
@@ -93,7 +101,7 @@ query GetDevice($ids: [ID!]!) {
 """
 
 
-class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
+class TestMergeSelectiveRegenSelection(TestInfrahubAppWithoutLocalWorkflow):
     """The post-merge dispatcher selects only the definitions a merge diff touches, against a live graph.
 
     Drives ``PostMergeRegenerationDispatcher.dispatch`` directly with a recording workflow backend and
@@ -107,18 +115,16 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
     @pytest.fixture(scope="class", autouse=True)
     async def workflow_recorder(
         self,
-        prefect: Generator[str, None, None],
+        service: InfrahubServices,
         dependency_provider: Provider,
     ) -> AsyncGenerator[WorkflowRecorder, None]:
-        original = config.OVERRIDE.workflow
-        recorder = WorkflowRecorder()
-        config.OVERRIDE.workflow = recorder
-        with dependency_provider.scope(build_workflow, lambda: recorder):
+        with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:
             yield recorder
-        config.OVERRIDE.workflow = original
 
     @pytest.fixture(scope="class", autouse=True)
-    async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:
+    async def service(
+        self, workflow_local: WorkflowLocalExecution, test_client: InfrahubTestClient
+    ) -> InfrahubServices:
         return app.state.service
 
     @pytest.fixture(scope="class")
@@ -139,9 +145,11 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
         sdk_client = InfrahubClient(config=sdk_config)
         original_client = service._client
         service._client = sdk_client
-        with dependency_provider.scope(build_client, lambda: sdk_client):
-            yield sdk_client
-        service._client = original_client
+        try:
+            with override_dependency(build_client, lambda: sdk_client, dependency_provider=dependency_provider):
+                yield sdk_client
+        finally:
+            service._client = original_client
 
     @pytest.fixture(autouse=True)
     def clear_recorder(self, workflow_recorder: WorkflowRecorder) -> None:
@@ -180,10 +188,8 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
         await repo.new(db=db, name="merge-selective-repo", location="https://github.com/test/merge-selective-repo.git")
         await repo.save(db=db)
 
-        # ``models`` is populated by the GraphQL mutation analyzer in production; nodes created directly
-        # against the database must set it so the data-change (MODIFIED_KINDS) gate has kinds to match.
         query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
-        await query.new(db=db, name="GetDevice", query=DEVICE_QUERY, models=["TestNetworkDevice"])
+        await query.new(db=db, name="GetDevice", query=DEVICE_QUERY)
         await query.save(db=db)
 
         transform = await Node.init(db=db, schema=InfrahubKind.TRANSFORMJINJA2)
@@ -193,7 +199,7 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
             query=query,
             repository=repo,
             template_path="templates/device.j2",
-            dependencies=[".infrahub.yml", "templates/device.j2"],
+            dependencies=["templates/device.j2"],
             dependencies_complete=True,
         )
         await transform.save(db=db)
@@ -227,7 +233,7 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
             convert_query_response=False,
             execute_in_proposed_change=False,
             execute_after_merge=True,
-            dependencies=[".infrahub.yml", "generators/device.py"],
+            dependencies=["generators/device.py"],
             dependencies_complete=True,
         )
         await gendef.save(db=db)
@@ -238,6 +244,7 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
 
     async def test_relevant_kind_change_selects_matching_definitions(
         self,
+        db: InfrahubDatabase,
         dataset: dict[str, Any],
         default_branch: Branch,
         admin_account: CoreAccount,
@@ -264,6 +271,7 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
         dispatcher = PostMergeRegenerationDispatcher(
             workflow=workflow_recorder,
             planner=build_merge_selective_regeneration(
+                db=db,
                 client=client,
                 log=logging.getLogger("test"),
                 generator_output=GeneratorCascadeOutput(capturer=capturer),
@@ -271,12 +279,26 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppBase):
             summary_cache=DiffSummaryCache(
                 cache=memory_cache, serializer=DiffSummarySerializer(), key_namespace="branch_merge"
             ),
+            barrier=RegenerationBarrier(
+                state=WritebackIntentStore(
+                    db=db,
+                    lock_registry=lock.registry,
+                    default_branch=default_branch,
+                    clock=lambda: datetime.now(tz=UTC),
+                ),
+                narrowed=NarrowedHoldCache(
+                    cache=memory_cache, ttl_seconds=NARROWED_HOLD_TTL_SECONDS, max_bytes=NARROWED_HOLD_MAX_BYTES
+                ),
+                default_branch_name=default_branch.name,
+                sleep=asyncio.sleep,
+            ),
             log=logging.getLogger("test"),
         )
         await dispatcher.dispatch(
             context=self._context(admin_account, default_branch),
             target_branch=default_branch.name,
             merge_diff_cache_key=DIFF_CACHE_KEY,
+            releasing=None,
         )
 
         generator_calls = workflow_recorder.get_execute_calls_for(REQUEST_GENERATOR_DEFINITION_RUN)

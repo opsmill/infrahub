@@ -128,7 +128,7 @@ A `MERGE_FAILED` branch removed out-of-band (deleted directly in the DB) leaves 
 |---|---|
 | Merge lock | `lock.registry.get(name="all_branches", namespace="merge")` — one global lock, held for the whole `MERGING` window |
 | Lock token (cache value) | `"{timestamp}::{worker_id}"` |
-| Active-worker set | keys `workers:active:{component}:worker:{worker_id}`, 15 s TTL, refreshed every 10 s; surfaced via `service.component.list_workers(...)` (`worker.active`). A long merge query does **not** starve this heartbeat — the merge flow and the heartbeat share one async event loop and awaited Neo4j calls yield it (verified locally: a 17 s server-side query and a 100 s result-consumption both kept the ~10 s refresh firing). So `worker-inactive` reliably means the worker died, not that it is busy. |
+| Active-worker set | keys `workers:active:{component}:worker:{worker_id}`, 15 s TTL, refreshed every 5 s; surfaced via `service.component.list_workers(...)` (`worker.active`). A long merge does **not** starve this heartbeat: it runs on its own thread with its own event loop and cache connection (`services/heartbeat.py`), independent of the main loop the merge flow runs on. It used to be an asyncio schedule on that loop; awaited Neo4j calls yield the loop, but a CPU-bound stretch does not, and a 93 s pure-Python stall in a large rebase expired the key on 2026-09-10. So `worker-inactive` reliably means the worker died, not that it is busy. |
 | Failed-merge predicate (automatic detector) | `status == MERGING` AND the merge lock is **present** AND its token `worker_id` ∉ active-worker set AND `now − merge_started_at > grace_period` |
 
 The predicate deliberately requires the lock to be **present**. A dead worker cannot release the
@@ -155,7 +155,7 @@ R2).
 
 ### Write-block signal: `merge:protected` cache key (new)
 
-**Source**: the existing distributed cache (`service.cache`, Redis or NATS — `services/adapters/cache/`),
+**Source**: the existing distributed cache (`service.cache`, Redis — `services/adapters/cache/`),
 accessed through the `MergeWriteBlocker` component (`core/merge/write_blocker.py`: `set`/`get`/`delete`).
 
 The immediately-consistent signal every worker reads on the write path (research R11). It is **not**

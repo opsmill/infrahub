@@ -10,5 +10,6 @@ INFO_METRIC = Gauge(
     "infrahub_info",
     "Information about this Infrahub instance",
     labelnames=["version", "worker_id"],
+    multiprocess_mode="liveall",
 )
 INFO_METRIC.labels(version=infrahub_version, worker_id=WORKER_IDENTITY).set(1)

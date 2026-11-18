@@ -100,3 +100,5 @@ async def test_update_computed_attribute_sends_node_updated_event(
     # The display label of the node within the event must include the correct label
     # even if the display label contains a related node
     assert event.changelog.display_label == "Ocean Blue"
+    # The node is loaded with only the updated attribute, so its HFID comes from storage.
+    assert event.changelog.hfid == ["Ocean"]

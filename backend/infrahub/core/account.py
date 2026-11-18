@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
-
-from typing_extensions import Self
+from typing import TYPE_CHECKING, Any, Self
 
 from infrahub.core.constants import NULL_VALUE, InfrahubKind, PermissionDecision
 from infrahub.core.query import Query, QueryType
@@ -154,9 +152,9 @@ class AccountGlobalPermissionQuery(Query):
         for result in self.get_results():
             permissions.append(
                 GlobalPermission(
-                    id=result.get("global_permission").get("uuid"),
-                    action=result.get("global_permission_action").get("value"),
-                    decision=result.get("global_permission_decision").get("value"),
+                    id=result.get_node("global_permission").get("uuid"),
+                    action=result.get_node("global_permission_action").get("value"),
+                    decision=result.get_node("global_permission_decision").get("value"),
                 )
             )
 
@@ -284,11 +282,11 @@ class AccountObjectPermissionQuery(Query):
         for result in self.get_results():
             permissions.append(
                 ObjectPermission(
-                    id=result.get("object_permission").get("uuid"),
-                    namespace=result.get("object_permission_namespace").get("value"),
-                    name=result.get("object_permission_name").get("value"),
-                    action=result.get("object_permission_action").get("value"),
-                    decision=result.get("object_permission_decision").get("value"),
+                    id=result.get_node("object_permission").get("uuid"),
+                    namespace=result.get_node("object_permission_namespace").get("value"),
+                    name=result.get_node("object_permission_name").get("value"),
+                    action=result.get_node("object_permission_action").get("value"),
+                    decision=result.get_node("object_permission_decision").get("value"),
                 )
             )
 
@@ -296,7 +294,8 @@ class AccountObjectPermissionQuery(Query):
 
 
 async def fetch_permissions(account_id: str, db: InfrahubDatabase, branch: Branch) -> AssignedPermissions:
-    query1 = AccountGlobalPermissionQuery(branch=branch, account_id=account_id, branch_agnostic=True)
+    default_branch = await registry.get_branch(db=db, branch=registry.default_branch)
+    query1 = AccountGlobalPermissionQuery(branch=default_branch, account_id=account_id)
     await query1.execute(db=db)
     global_permissions = query1.get_permissions()
 
@@ -384,9 +383,9 @@ class AccountRoleGlobalPermissionQuery(Query):
         for result in self.get_results():
             permissions.append(
                 GlobalPermission(
-                    id=result.get("global_permission").get("uuid"),
-                    action=result.get("global_permission_action").get("value"),
-                    decision=result.get("global_permission_decision").get("value"),
+                    id=result.get_node("global_permission").get("uuid"),
+                    action=result.get_node("global_permission_action").get("value"),
+                    decision=result.get_node("global_permission_decision").get("value"),
                 )
             )
 
@@ -491,11 +490,11 @@ class AccountRoleObjectPermissionQuery(Query):
         for result in self.get_results():
             permissions.append(
                 ObjectPermission(
-                    id=result.get("object_permission").get("uuid"),
-                    namespace=result.get("object_permission_namespace").get("value"),
-                    name=result.get("object_permission_name").get("value"),
-                    action=result.get("object_permission_action").get("value"),
-                    decision=result.get("object_permission_decision").get("value"),
+                    id=result.get_node("object_permission").get("uuid"),
+                    namespace=result.get_node("object_permission_namespace").get("value"),
+                    name=result.get_node("object_permission_name").get("value"),
+                    action=result.get_node("object_permission_action").get("value"),
+                    decision=result.get_node("object_permission_decision").get("value"),
                 )
             )
 
@@ -503,7 +502,8 @@ class AccountRoleObjectPermissionQuery(Query):
 
 
 async def fetch_role_permissions(role_id: str, db: InfrahubDatabase, branch: Branch) -> AssignedPermissions:
-    query1 = await AccountRoleGlobalPermissionQuery.init(db=db, branch=branch, role_id=role_id, branch_agnostic=True)
+    default_branch = await registry.get_branch(db=db, branch=registry.default_branch)
+    query1 = await AccountRoleGlobalPermissionQuery.init(db=db, branch=default_branch, role_id=role_id)
     await query1.execute(db=db)
     global_permissions = query1.get_permissions()
 

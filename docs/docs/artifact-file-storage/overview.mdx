@@ -77,6 +77,10 @@ Content in object storage is immutable. Once a file is stored, it is never modif
 
 This approach avoids the complexity of in-place updates and means the storage layer does not need to understand branches, merge conflicts, or version history. All of that logic lives in the graph database, where Infrahub already has mature support for it.
 
+### Integrity of artifact files
+
+Each artifact records the checksum of its content. When an artifact file is read, from the web interface, the SDK or the REST API, Infrahub compares it with that checksum. A file that no longer matches, for example because it was modified in the storage backend, is not served: the request fails with a `409` error that asks to regenerate the artifact. Regenerating that artifact, with **Re-generate** on its page or with `artifact_generate` in the SDK, stores a correct copy. Regenerating a whole artifact definition does not check stored files. User-uploaded file objects are not checked. The check is on by default; set `INFRAHUB_STORAGE_VERIFY_ARTIFACT_CHECKSUM` to `false` on the API servers to turn it off.
+
 ### Relationship to the graph database
 
 The graph database and object storage serve complementary roles:

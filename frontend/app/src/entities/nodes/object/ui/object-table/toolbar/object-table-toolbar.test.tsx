@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
+import { OBJECT_COLUMN_SURFACE } from "@/entities/nodes/columns/domain/rules/column-surfaces";
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { ObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { PERMISSION_ALLOW_ALL } from "@/entities/permission/domain/model/permission";
@@ -18,10 +19,6 @@ describe("ObjectTableToolbar Component", () => {
 
   const mockOnClose = vi.fn();
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   test("renders correctly with selected rows", async () => {
     // GIVEN
     const component = await render(
@@ -32,6 +29,8 @@ describe("ObjectTableToolbar Component", () => {
           baseSchema: schema,
           selectedSchema: schema,
           permission: PERMISSION_ALLOW_ALL,
+          columnSurface: OBJECT_COLUMN_SURFACE,
+          supportsColumnVisibility: false,
         }}
       >
         <ObjectTableToolbar selectedRows={mockNodeObjects} onClose={mockOnClose} />
@@ -53,6 +52,8 @@ describe("ObjectTableToolbar Component", () => {
           baseSchema: schema,
           selectedSchema: schema,
           permission: PERMISSION_ALLOW_ALL,
+          columnSurface: OBJECT_COLUMN_SURFACE,
+          supportsColumnVisibility: false,
         }}
       >
         <ObjectTableToolbar selectedRows={mockNodeObjects} onClose={mockOnClose} />

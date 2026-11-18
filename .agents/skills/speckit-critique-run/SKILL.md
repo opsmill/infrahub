@@ -1,11 +1,10 @@
 ---
 name: speckit-critique-run
-description: Perform a dual-lens critical review of the specification and plan from
-  both product strategy and engineering risk perspectives before implementation.
+description: Perform a dual-lens critical review of the specification and plan from both product strategy and engineering risk perspectives before implementation.
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: critique:commands/run.md
+  source: critique-opsmill:commands/speckit.critique.run.md
 ---
 
 ## User Input
@@ -175,7 +174,7 @@ Challenge the specification and implementation plan through two distinct expert 
    - 🤔 **Question**: Ambiguity or assumption that needs stakeholder input. Cannot be resolved by the development team alone.
 
 7. **Generate Critique Report**:
-   Ensure the directory `FEATURE_DIR/critiques/` exists (create it if necessary), then create the critique report at `FEATURE_DIR/critiques/critique-{timestamp}.md` using `.specify/templates/critique-template.md` as the required structure. The report must include:
+   Ensure the directory `FEATURE_DIR/critiques/` exists (create it if necessary), then create the critique report at `FEATURE_DIR/critiques/critique-{timestamp}.md` using `.specify/extensions/critique/commands/critique-template.md` as the required structure. The report must include:
 
    - **Executive Summary**: Overall assessment and readiness to proceed
    - **Product Lens Findings**: Organized by subcategory (3a-3e)

@@ -24,6 +24,13 @@ If you genuinely need a new primitive:
 - Add an entry to `shared-components.md` so the next person finds it.
 - Keep entity-specific components in the owning entity's `ui/`, even when several consumers reuse them. Use `shared/components/` for entity-agnostic components and `frontend/packages/ui/` for design-system primitives. Follow the [architecture dependency rules](../../knowledge/frontend/architecture.md).
 
+Reuse stops at the component's contract. If your data cannot satisfy a shared component's prop type —
+your query selects four of `Dropdown`'s twelve fields — do not reshape the shared component's props to
+fit (switching its `Dropdown` prop to `Pick<Dropdown, …>`), and do not fabricate the missing fields to
+squeeze through it. Build a small feature-local component over
+your own row type and leave the shared one to the callers it is named for. (Adding an optional,
+default-preserving prop is fine — weakening the type contract is not.)
+
 ### Anti-patterns
 
 | Anti-pattern | Replacement |
@@ -45,8 +52,8 @@ their behavior must change together. This applies to styling changes as well as 
    interaction classes, and action controls. Check sibling render paths such as attributes,
    single relationships, and relationship list items.
 2. Reuse or compose existing components first. Extract a cohesive responsibility, such as a
-   metadata control with its lock indicator and reveal behavior. Moving only a class string into
-   a constant leaves duplicated markup and interaction logic behind.
+   metadata control with its reveal behavior. Moving only a class string into a constant leaves
+   duplicated markup and interaction logic behind.
 3. Represent supported differences with typed props or slots. Keep field-specific decisions at
    the caller; avoid a general-purpose component with unrelated modes or a growing set of boolean
    flags. Preserve hover boundaries, keyboard access, permissions, and layout at every call site.
@@ -61,8 +68,9 @@ or expand a focused change into a repository-wide refactor.
 
 Before finishing, check the diff for the same requirement implemented in several places. A
 future change to that shared behavior should have one implementation to update. For example,
-`ObjectFieldMetadata` owns the lock, metadata mapping, and reveal styles for attribute and
-relationship rows, while callers supply their edit headers and choose the row or item hover scope.
+`FieldMetadataPopover` owns the metadata mapping and reveal styles for attribute and relationship
+rows, while callers supply the popover title and edit action and mark the element whose hover
+reveals the icon.
 
 ## Early Return Style
 
@@ -112,6 +120,15 @@ For mutation-based components, check states in this order:
 2. `error` - error state
 3. `isSuccess` - success state
 4. Default - initial state
+
+### Inactive states: dim, don't disable
+
+A state that only *looks* inactive (nothing to act on, but the tooltip still explains it) keeps the
+same focusable element as every other state, dimmed with an opacity class (`opacity-60`). Disabling
+removes it from hover/focus, and swapping element types between states (`Button` in one, `LinkButton`
+in another) remounts the subtree, changes the ARIA role mid-session, and breaks role-based selectors
+in e2e tests. Reserve disabling for a control whose action must actually be blocked; when that control
+still needs its tooltip, `Button`'s `isDisabledAndFocusable` keeps it hoverable and focusable.
 
 ## Layout Extraction
 

@@ -1,12 +1,14 @@
-import { Button, Tooltip } from "@infrahub/ui";
-
-import { Icon } from "@/shared/components/display/icon";
+import { LockIcon } from "lucide-react";
 
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/object/domain/model/node";
+import { EditMetadataButton } from "@/entities/nodes/object/ui/metadata/edit-metadata-button";
+import {
+  FieldMetadataPopover,
+  METADATA_HOVER_AREA,
+} from "@/entities/nodes/object/ui/metadata/field-metadata-popover";
 import { ExtraFieldIndicator } from "@/entities/nodes/object/ui/object-details/object-data-display/extra-field-indicator";
 import { ObjectDataRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-row";
-import { ObjectFieldMetadata } from "@/entities/nodes/object/ui/object-details/object-data-display/object-field-metadata";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { AttributeSchema } from "@/entities/schema/domain/model/schema";
 
@@ -26,39 +28,30 @@ export function ObjectAttributeRow({
   permission,
 }: ObjectAttributeRowProps) {
   const attributeLabel = attributeSchema.label ?? attributeSchema.name;
+  const canEditMetadata = !attributeSchema.read_only;
 
   return (
     <ObjectDataRow
+      className={METADATA_HOVER_AREA}
       fieldSchema={attributeSchema}
       objectKind={objectKind}
       value={
         <>
           <ObjectAttributeValue attributeSchema={attributeSchema} attributeData={attributeData} />
 
-          <ObjectFieldMetadata
+          {attributeData.is_protected && <LockIcon className="size-3.5 text-foreground-muted" />}
+
+          <FieldMetadataPopover
             metadata={attributeData}
-            header={
-              !attributeSchema.read_only && (
-                <div className="flex items-center justify-between border-border-strong border-b p-1 pl-2">
-                  <div className="font-semibold text-sm">{attributeLabel}</div>
-                  {onClickMetadata && (
-                    <Tooltip message={permission.update.message}>
-                      <Button
-                        isDisabledAndFocusable={!permission.update.isAllowed}
-                        onPress={() => {
-                          onClickMetadata(attributeSchema);
-                        }}
-                        variant="ghost"
-                        size="xs"
-                        shape="circle"
-                        data-testid="edit-metadata-button"
-                      >
-                        <Icon icon="mdi:pencil" className="text-custom-blue-500" />
-                      </Button>
-                    </Tooltip>
-                  )}
-                </div>
-              )
+            revealOnHover
+            title={canEditMetadata ? attributeLabel : undefined}
+            action={
+              canEditMetadata && onClickMetadata ? (
+                <EditMetadataButton
+                  onPress={() => onClickMetadata(attributeSchema)}
+                  permission={permission.update}
+                />
+              ) : undefined
             }
           />
 

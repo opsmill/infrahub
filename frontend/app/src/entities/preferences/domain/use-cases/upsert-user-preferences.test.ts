@@ -15,7 +15,6 @@ function mockOk(ok: boolean) {
 
 describe("upsertUserPreferences", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     mockOk(true);
   });
 

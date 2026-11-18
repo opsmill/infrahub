@@ -41,7 +41,7 @@ core_standard_webhook = NodeSchema(
 | `name` | `str` | *required* | Relationship name (lowercase, 3-64 chars) |
 | `peer` | `str` | *required* | Kind of the peer object (e.g., `InfrahubKind.KEYVALUE`) |
 | `kind` | `RelationshipKind` | `GENERIC` | Relationship type (see below) |
-| `identifier` | `str \| None` | `None` | Unique identifier; auto-generated if omitted |
+| `identifier` | `str \| None` | `None` | Names the shared relationship edge; auto-generated if omitted. Not unique within a node schema, see Direction |
 | `cardinality` | `RelationshipCardinality` | `MANY` | `ONE` or `MANY` |
 | `optional` | `bool` | `True` | Whether the relationship is mandatory |
 | `order_weight` | `int \| None` | `None` | Frontend display ordering (lower = first) |
@@ -54,7 +54,7 @@ core_standard_webhook = NodeSchema(
 | `on_delete` | `RelationshipDeleteBehavior \| None` | `None` | `None` (no-action) or `cascade` |
 | `allow_override` | `AllowOverrideType` | `ANY` | Whether inheriting nodes can override this relationship |
 | `read_only` | `bool` | `False` | Prevents user modification |
-| `deprecation` | `str \| None` | `None` | Deprecation message shown to users; name the version after which the field is removed (applies to GraphQL `deprecation_reason` too) |
+| `deprecation` | `str \| None` | `None` | Deprecation message shown to users; name the version after which the field is removed (applies to GraphQL `deprecation_reason` too). A deprecated field is always made optional; the server logs a warning each time it processes the schema, except for kinds in the restricted namespaces |
 | `common_parent` | `str \| None` | `None` | Constrains peer's parent to match this object's parent |
 | `common_relatives` | `list[str] \| None` | `None` | Peer relationships that must share the same set of peers |
 
@@ -71,13 +71,26 @@ When wiring a new cascade, inspect every schema for a mandatory relationship tha
 | `GENERIC` | Standard association between nodes |
 | `ATTRIBUTE` | Peer is semantically part of the parent (e.g., headers on a webhook) |
 | `COMPONENT` | Triggers template generation for the peer (see [Object Templates](templates.md)) |
-| `PARENT` | Hierarchical parent-child relationship |
+| `PARENT` | Marks the peer as the owning parent of this node |
 | `GROUP` | Group membership |
+| `HIERARCHY` | The generated `parent` / `children` pair on a hierarchical node |
+| `PROFILE` | Links a node to its profile |
+| `TEMPLATE` | Links an instance to the object template it came from |
 
 ### Direction
 
 - **`BIDIR`** (default) — traversable both ways. Use when peers are different kinds.
 - **`OUTBOUND`** / **`INBOUND`** — needed when the same model appears on both sides (self-referencing relationships).
+
+Both sides of one relationship share a single `identifier`, so it is not unique within a node
+schema. A hierarchical node carries two relationships under the identifier `parent__child`
+(`PARENT_CHILD_IDENTIFIER` in `core/constants/schema.py`): `parent` (`OUTBOUND`, cardinality
+`ONE`) and `children` (`INBOUND`, cardinality `MANY`). Both come from
+`SchemaBranch.add_hierarchy_node()` and `add_hierarchy_generic()`.
+
+`get_relationship_by_identifier()` therefore cannot resolve a hierarchy. It returns whichever side
+is declared first. Use `get_relationships_by_identifier()` instead and select the side whose
+`direction` equals the local relationship's `direction.neighbor_direction`.
 
 ### Branch Support Auto-Determination
 
@@ -143,9 +156,11 @@ each write class:
 
 - a name **in** the table is dropped and reported as a **warning** — a `READ`-level field, the
   `id`/`state` bookkeeping every internal schema model carries on the nested value models
-  (parameters, choices, computed attribute, extensions), or a field belonging to a sibling
-  variant of a discriminated union. These are all names a schema read back from Infrahub can
-  carry, so accepting them is what keeps the read → edit → load round trip working.
+  (parameters, computed attribute, extensions; on a dropdown choice only `id`), or a field
+  belonging to a sibling variant of a discriminated union. These are all names a schema read
+  back from Infrahub can carry, so accepting them is what keeps the read → edit → load round
+  trip working. `state` on a choice is settable, because `state: absent` is how a schema file
+  removes a single choice; only the write variant declares it, so the read shape leaves it out.
 - a name **not** in the table is an **error**, since the only ways to produce one are a typo and
   a field that no longer exists.
 
@@ -184,7 +199,22 @@ shipped inside the published package.
 `validate_schema()` (`python_sdk/infrahub_sdk/schema/validate.py`) from the
 `validate_write_contract` validator on `SchemaLoadAPI` (`backend/infrahub/api/schema.py`).
 The same validator runs offline in the SDK, so a client gets the identical field-level
-verdict before submitting. After changing a field's `visibility` (or adding a field), run
+verdict before submitting. A rejected payload gets a standard 422 request-validation response
+with one `detail` entry per violation: `loc` runs from `["body", "schemas", <index>]` down to
+the offending field, `input` is the value received there and `msg` is the reason on its own.
+The three map one-to-one onto the `loc`, `input` and `reason` of the SDK validator's error
+details, so `infrahubctl` and any other client can name the field without parsing text.
+The mapping requires the SDK error detail to expose `loc`, `input` and `reason`; bump the
+`python_sdk` pointer alongside any change to that shape.
+
+Each entry carries its reason twice, in `msg` and in `ctx.reason`, because it is built from a
+message *template* whose placeholder the reason fills at render time. The template parameter is
+typed as a literal, so passing the runtime reason in its place would need a type-checker
+suppression the repo does not allow. The duplication is the cost of that constraint, not a
+signal that consumers should read `ctx`: `msg` is the rendered reason and stays the field to
+read.
+
+After changing a field's `visibility` (or adding a field), run
 `invoke backend.generate` and commit the regenerated SDK models alongside the backend
 change; CI fails if the generated artifact is stale.
 

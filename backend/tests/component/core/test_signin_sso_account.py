@@ -17,6 +17,14 @@ from infrahub.external_protocols import ExternalAuthProtocol
 
 
 @pytest.fixture
+def sso_account_name_fallback_enabled() -> Iterator[None]:
+    original = config.SETTINGS.security.sso_account_name_fallback
+    config.SETTINGS.security.sso_account_name_fallback = True
+    yield
+    config.SETTINGS.security.sso_account_name_fallback = original
+
+
+@pytest.fixture
 def sso_account_name_fallback_disabled() -> Iterator[None]:
     original = config.SETTINGS.security.sso_account_name_fallback
     config.SETTINGS.security.sso_account_name_fallback = False
@@ -136,7 +144,10 @@ async def test_label_is_updated_when_display_name_changes(
 
 
 async def test_transition_fallback_unclaimed_account_is_linked(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    sso_account_name_fallback_enabled: None,
 ) -> None:
     """Accounts created before this feature was introduced have no identity node.
 
@@ -173,7 +184,10 @@ async def test_transition_fallback_unclaimed_account_is_linked(
 
 
 async def test_transition_fallback_ignores_unrelated_identities(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    sso_account_name_fallback_enabled: None,
 ) -> None:
     """The is-this-account-already-linked check must be scoped to the candidate account.
 
@@ -228,7 +242,10 @@ async def test_transition_fallback_ignores_unrelated_identities(
 
 
 async def test_transition_fallback_claimed_account_uses_email_as_name(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    sso_account_name_fallback_enabled: None,
 ) -> None:
     """If a name-matched account is already linked to a different provider identity it cannot.
 
@@ -473,6 +490,46 @@ async def test_unknown_group_is_silently_ignored(
 
     accounts = await NodeManager.query(db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "Jake Davis"})
     assert len(accounts) == 1
+
+
+async def test_login_after_account_deletion_creates_a_new_account(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Deleting an SSO account must give the provider user a clean slate.
+
+    The delete takes the identity with it, so the next login has none to match and creates a fresh
+    account. The identity is unique on its provider triple, so an identity left behind would fail
+    the login instead of passing this test.
+    """
+    identity = ExternalIdentity(
+        sub="sub-deleted-001",
+        provider_name="provider1",
+        protocol=ExternalAuthProtocol.OIDC,
+        display_name="Paul Novak",
+        email="paul@example.com",
+    )
+
+    first_login = await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
+    account = await NodeManager.get_one(db=db, id=first_login.account_id, raise_on_error=True)
+    await NodeManager.delete(db=db, nodes=[account])
+
+    second_login = await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
+
+    assert second_login.token.access_token
+    assert second_login.account_id != first_login.account_id
+
+    accounts = await NodeManager.query(db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "Paul Novak"})
+    assert len(accounts) == 1
+    assert accounts[0].id == second_login.account_id
+
+    identity_nodes = await NodeManager.query(
+        db=db,
+        schema=InfrahubKind.EXTERNALIDENTITY,
+        filters={"sub__value": "sub-deleted-001", "provider_name__value": "provider1", "protocol__value": "oidc"},
+    )
+    assert len(identity_nodes) == 1
+    linked_account = await identity_nodes[0].account.get_peer(db=db)
+    assert linked_account.id == second_login.account_id
 
 
 async def test_two_different_identities_produce_two_accounts(

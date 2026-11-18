@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING
 
 from infrahub.core.query.ipam import (
     IPAddressData,
@@ -15,6 +15,8 @@ from infrahub.core.query.ipam import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from infrahub.core.branch import Branch
     from infrahub.core.ipam.constants import IPAddressType, IPNetworkType
     from infrahub.core.protocols_base import CoreNode

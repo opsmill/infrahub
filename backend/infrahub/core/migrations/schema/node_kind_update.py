@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence  # noqa: TC003  needed for pydantic
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.path import SchemaPath
@@ -56,7 +57,7 @@ class NodeKindUpdateMigrationQuery01(MigrationQuery, NodeDuplicateQuery):
 
 class NodeKindUpdateMigration(SchemaMigration):
     name: str = "node.kind.update"
-    queries: Sequence[type[MigrationQuery]] = [NodeKindUpdateMigrationQuery01]  # type: ignore[assignment]
+    queries: Sequence[type[MigrationQuery]] = [NodeKindUpdateMigrationQuery01]
 
     async def execute(
         self,

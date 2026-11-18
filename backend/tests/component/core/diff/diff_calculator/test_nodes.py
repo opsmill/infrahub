@@ -4,12 +4,16 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.calculator import DiffCalculator
+from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.query.diff import DiffNodeNodesQuery
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.dependencies.registry import get_component_registry
 
 
 @pytest.mark.parametrize("use_branch", [True, False])
@@ -91,6 +95,100 @@ async def test_node_delete(
     assert len(single_relationship_diff.properties) == 2
     for diff_property in single_relationship_diff.properties:
         assert diff_property.action is DiffAction.REMOVED
+
+
+async def test_node_delete_merged_into_main_time_range(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_accord_main: Node,
+    person_john_main: Node,
+) -> None:
+    """A node deleted on a branch, then merged, is removed in a time range diff of main that covers the merge."""
+    car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+    car_main.nbr_seats.value = 7
+    await car_main.save(db=db)
+    from_time = Timestamp()
+    branch = await create_branch(db=db, branch_name="branch")
+    car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    await car_branch.delete(db=db)
+    component_registry = get_component_registry()
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+    diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch)
+    await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+    await diff_merger.merge_graph(at=Timestamp())
+
+    calculated_diffs = await DiffCalculator(db=db).calculate_diff(
+        base_branch=default_branch,
+        diff_branch=default_branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
+    )
+
+    node_diffs_by_id = {n.uuid: n for n in calculated_diffs.diff_branch_diff.nodes}
+    node_diff = node_diffs_by_id[car_accord_main.id]
+    assert node_diff.action is DiffAction.REMOVED
+    attributes_by_name = {attr.name: attr for attr in node_diff.attributes}
+    assert attributes_by_name.keys() == {
+        "name",
+        "nbr_seats",
+        "color",
+        "display_label",
+        "is_electric",
+        "transmission",
+        "human_friendly_id",
+    }
+    for attribute_diff in attributes_by_name.values():
+        assert attribute_diff.action is DiffAction.REMOVED
+        properties_by_type = {prop.property_type: prop for prop in attribute_diff.properties}
+        value_property = properties_by_type[DatabaseEdgeType.HAS_VALUE]
+        assert value_property.action is DiffAction.REMOVED
+        assert value_property.new_value in (None, "NULL")
+    relationship_diffs_by_name = {rel.name: rel for rel in node_diff.relationships}
+    assert relationship_diffs_by_name["owner"].action is DiffAction.REMOVED
+
+
+async def test_node_delete_merged_into_main_after_update_in_time_range(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_accord_main: Node,
+    person_john_main: Node,
+) -> None:
+    """A node updated on main inside the range, then deleted on a branch and merged, is removed with its new value."""
+    from_time = Timestamp()
+    car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+    car_main.nbr_seats.value = 7
+    await car_main.save(db=db)
+    branch = await create_branch(db=db, branch_name="branch")
+    car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    await car_branch.delete(db=db)
+    component_registry = get_component_registry()
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+    diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch)
+    await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+    await diff_merger.merge_graph(at=Timestamp())
+
+    calculated_diffs = await DiffCalculator(db=db).calculate_diff(
+        base_branch=default_branch,
+        diff_branch=default_branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=True,
+    )
+
+    node_diffs_by_id = {n.uuid: n for n in calculated_diffs.diff_branch_diff.nodes}
+    node_diff = node_diffs_by_id[car_accord_main.id]
+    assert node_diff.action is DiffAction.REMOVED
+    attributes_by_name = {attr.name: attr for attr in node_diff.attributes}
+    nbr_seats_diff = attributes_by_name["nbr_seats"]
+    assert nbr_seats_diff.action is DiffAction.REMOVED
+    properties_by_type = {prop.property_type: prop for prop in nbr_seats_diff.properties}
+    value_property = properties_by_type[DatabaseEdgeType.HAS_VALUE]
+    assert value_property.action is DiffAction.REMOVED
+    assert value_property.previous_value == 5
+    assert value_property.new_value in (None, "NULL")
 
 
 async def test_node_base_delete_branch_update(
@@ -437,3 +535,85 @@ async def test_create_aware_and_agnostic_nodes_on_branch(
     rel_diff = node_diff.relationships.pop()
     assert rel_diff.name == "cars"
     assert rel_diff.action is DiffAction.UPDATED
+
+
+async def test_node_nodes_query_lists_branch_aware_nodes_added_or_removed_on_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_branch_local: SchemaBranch
+) -> None:
+    john_main = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await john_main.new(db=db, name="John", height=180)
+    await john_main.save(db=db)
+    jane_main = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await jane_main.new(db=db, name="Jane", height=170)
+    await jane_main.save(db=db)
+    branch = await create_branch(db=db, branch_name="branch")
+    from_time = Timestamp(branch.created_at)
+    new_person = await Node.init(db=db, schema="TestPerson", branch=branch)
+    await new_person.new(db=db, name="Stokely", height=175)
+    await new_person.save(db=db)
+    john_branch = await NodeManager.get_one(db=db, branch=branch, id=john_main.id)
+    await john_branch.delete(db=db)
+    # an attribute update on the branch is a field-level change, not a node-level one
+    jane_branch = await NodeManager.get_one(db=db, branch=branch, id=jane_main.id)
+    jane_branch.name.value = "Janet"
+    await jane_branch.save(db=db)
+    # TestCar is branch-local, so the paths query never returns its nodes
+    local_car = await Node.init(db=db, schema="TestCar", branch=branch)
+    await local_car.new(db=db, name="camry", owner=new_person.id)
+    await local_car.save(db=db)
+
+    query = await DiffNodeNodesQuery.init(
+        db=db,
+        branch=branch,
+        base_branch=default_branch,
+        diff_branch_from_time=from_time,
+        diff_from=from_time,
+        diff_to=Timestamp(),
+    )
+    await query.execute(db=db)
+
+    node_uuids = query.get_node_uuids()
+    assert len(node_uuids) == 2
+    assert set(node_uuids) == {new_person.id, john_main.id}
+
+
+async def test_node_delete_main_time_range_previous_value(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
+) -> None:
+    """A node deleted on main within a time range reports the field values it had at the start of the range."""
+    car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+    car_main.nbr_seats.value = 7
+    await car_main.owner.update(db=db, data=person_jane_main)
+    await car_main.save(db=db)
+    from_time = Timestamp()
+    car_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+    await car_main.delete(db=db)
+
+    calculated_diffs = await DiffCalculator(db=db).calculate_diff(
+        base_branch=default_branch,
+        diff_branch=default_branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
+    )
+
+    node_diffs_by_id = {n.uuid: n for n in calculated_diffs.diff_branch_diff.nodes}
+    node_diff = node_diffs_by_id[car_accord_main.id]
+    assert node_diff.action is DiffAction.REMOVED
+    attributes_by_name = {attr.name: attr for attr in node_diff.attributes}
+    properties_by_type = {prop.property_type: prop for prop in attributes_by_name["nbr_seats"].properties}
+    value_property = properties_by_type[DatabaseEdgeType.HAS_VALUE]
+    assert value_property.action is DiffAction.REMOVED
+    assert value_property.previous_value == 7
+    assert value_property.new_value in (None, "NULL")
+    assert len(node_diff.relationships) == 1
+    relationship_diff = node_diff.relationships[0]
+    assert relationship_diff.name == "owner"
+    assert relationship_diff.action is DiffAction.REMOVED
+    assert {(r.peer_id, r.action) for r in relationship_diff.relationships} == {
+        (person_jane_main.id, DiffAction.REMOVED)
+    }

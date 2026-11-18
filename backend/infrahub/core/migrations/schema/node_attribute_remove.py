@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Sequence
+from collections.abc import Sequence  # noqa: TC003  needed for pydantic
+from typing import Any
 
 from ..query import AttributeMigrationQuery
 from ..query.attribute_remove import AttributeRemoveQuery
@@ -26,4 +27,4 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery, AttributeRemo
 
 class NodeAttributeRemoveMigration(AttributeSchemaMigration):
     name: str = "node.attribute.remove"
-    queries: Sequence[type[AttributeMigrationQuery]] = [NodeAttributeRemoveMigrationQuery01]  # type: ignore[assignment]
+    queries: Sequence[type[AttributeMigrationQuery]] = [NodeAttributeRemoveMigrationQuery01]

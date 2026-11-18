@@ -2,7 +2,10 @@
 title: Rebase a branch
 ---
 
-Rebasing is a powerful operation that updates a branch with the latest changes from its parent branch. This is essential for maintaining branch health and ensuring smooth integration of changes.
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+A rebase brings a branch up to date with the default branch. Afterwards, a query on the branch returns the default branch's current data together with the branch's own changes. Rebase before you open a Proposed Change, and again after another branch merges into the default branch.
 
 :::note
 
@@ -12,29 +15,143 @@ Rebasing acts on the Infrahub branch in Infrahub's versioned graph database. It 
 
 ## Why rebase
 
-Rebasing serves several important purposes:
+When you query a branch, Infrahub returns the default branch's data as of the branch's `branched_from`, plus the branch's own changes. No status indicates when the default branch has changed, so you rebase to include those changes:
 
-- **Resolving conflicts before merge**: Identify and address conflicts in the development branch before creating a Proposed Change, reducing complexity during the review process.
-- **Incorporating upstream changes**: Ensure your branch includes the latest updates from the main branch, preventing drift and maintaining compatibility with recent changes.
-- **Maintaining a clean merge history**: Produce a cleaner, more linear history that's easier to understand and navigate.
+- **See what other branches merged**: after the rebase, the branch includes every change merged into the default branch since its previous `branched_from`.
+- **Find conflicts before review**: during the rebase, Infrahub compares the branch with the current default branch and stops on any conflict that still needs your input, so you fix it on the branch before a reviewer sees it.
 
-![Branch rebase diagram](../media/branch_rebase_no_conflict.excalidraw.svg)
+The example below follows two attributes. `branch-a` changes `A`, and meanwhile another branch merges a change to `B` into the default branch.
+
+**1. Before the rebase.** `branch-a` was created while `A` and `B` were both `1`. It has since set `A` to `2`, then to `3`. The default branch has since received `B: 2`. Query `branch-a` and you still get `B: 1`, because the branch has not been rebased.
+
+<div style={{zoom: 1.3, textAlign: 'center'}}>
+
+```mermaid
+%%{init: {"gitGraph": {"rotateCommitLabel": false}, "themeVariables": {"fontSize": "14px", "git0": "#2f9e44", "git1": "#3b5bdb", "gitBranchLabel0": "#ffffff", "gitBranchLabel1": "#ffffff", "gitInv0": "#ffffff", "gitInv1": "#ffffff", "tagLabelColor": "#1a1a1a", "tagLabelBackground": "#ffffff", "tagLabelBorder": "#868e96", "tagLabelFontSize": "13px", "commitLabelBackground": "transparent", "commitLabelFontSize": "13px"}}}%%
+gitGraph
+  commit id: " " tag: "A: 1, B: 1, branched_from"
+  branch branch-a
+  checkout branch-a
+  commit id: "A: 2"
+  commit id: "A: 3"
+  checkout main
+  commit id: "B: 2"
+```
+
+</div>
+
+**2. After the rebase.** `branched_from` moves to the latest state of the default branch, so `branch-a` now reads `B: 2`. It keeps its own change, `A: 3`, and drops the history of that change from before the new `branched_from`, so `A: 2` is no longer in the branch's history.
+
+<div style={{zoom: 1.3, textAlign: 'center'}}>
+
+```mermaid
+%%{init: {"gitGraph": {"rotateCommitLabel": false}, "themeVariables": {"fontSize": "14px", "git0": "#2f9e44", "git1": "#3b5bdb", "gitBranchLabel0": "#ffffff", "gitBranchLabel1": "#ffffff", "gitInv0": "#ffffff", "gitInv1": "#ffffff", "tagLabelColor": "#1a1a1a", "tagLabelBackground": "#ffffff", "tagLabelBorder": "#868e96", "tagLabelFontSize": "13px", "commitLabelBackground": "transparent", "commitLabelFontSize": "13px"}}}%%
+gitGraph
+  commit id: "A: 1, B: 1"
+  commit id: " " tag: "B: 2, new branched_from"
+  branch branch-a
+  checkout branch-a
+  commit id: "A: 3, kept"
+```
+
+</div>
 
 ## How rebase works
 
-During the rebase process, Infrahub performs the following steps:
+Infrahub checks the branch before it writes anything, so a refused rebase changes no data on the branch. The diff refreshed in step 1 stays stored. The steps run in this order:
 
-1. The branch's base point (`branched_from`) updates to the current time, establishing a new foundation for the branch.
-2. Changes in the branch are analyzed and replayed on top of the new base, incorporating the latest state from the parent branch.
-3. Conflicts that arise during this process require manual resolution, allowing developers to make informed decisions about how to integrate conflicting changes. See [Resolve conflicts](./resolve-conflicts.mdx).
-4. The branch history resets, preserving only the final state. This simplification makes the branch easier to understand and work with.
+1. Infrahub refreshes the branch's diff against the default branch.
+2. If a conflict needs a resolution or a change to the data, Infrahub refuses the rebase. The error lists each conflict and what it needs. See [Resolve conflicts](./resolve-conflicts.mdx).
+3. Infrahub checks uniqueness and the other schema constraints against the data the branch would hold after the rebase, and refuses the rebase on a violation.
+4. Under the global graph lock, in one database transaction, Infrahub moves `branched_from` to the end time of the diff from step 1 and sets the branch status to `OPEN`. Infrahub keeps the current values of the branch's own changes and drops their history from before the new `branched_from`.
+5. If the branch changed the schema, Infrahub then applies the schema migrations that follow from it.
+
+Rebases and merges both take the global graph lock, so they run one at a time.
+
+```mermaid
+flowchart LR
+  S["Rebase
+requested"] --> G1{"Merge in
+progress?"}
+  G1 -->|no| D["Refresh
+the diff"]
+  D --> G2{"Conflict
+needing
+action?"}
+  G2 -->|no| G3{"Constraints
+pass?"}
+  G3 -->|yes| TX["Lock, move
+branched_from,
+status OPEN"]
+  TX --> MI["Schema
+migrations,
+if any"]
+  G1 -->|yes| X1["Refused,
+nothing changes"]
+  G2 -->|yes| X2["Refused, error
+lists each conflict"]
+  G3 -->|no| X3["Refused,
+constraint violation"]
+```
+
+## What blocks a rebase
+
+Each refusal has its own fix. The message of a refused rebase names the conflicts and what each one needs.
+
+| Blocker | Why | Fix |
+|---|---|---|
+| Branch status `MERGING` or `MERGED` | The branch is being merged, or it is merged and read-only | Wait for the merge to finish. A merged branch cannot change; create a new branch for further work |
+| A merge is running, or a failed merge is waiting to be recovered | Infrahub refuses every rebase, on any branch, until the merge finishes or is recovered. Branches outside the merge stay writable | Retry once the merge finishes. After a failed merge, an administrator runs `infrahub recover merge` |
+| Attribute value conflict | Both branches changed the value. A rebase keeps the branch's side, so it cannot apply a resolution in favor of the default branch | Resolve it in favor of the branch with the picker on the Proposed Change **Data** tab, or with the `ResolveDiffConflict` mutation. Or change the value to match the default branch |
+| Attribute owner or source conflict | Same as an attribute value | Resolve it in favor of the branch with the `ResolveDiffConflict` mutation, using the conflict ID from the `DiffTree` query. The web interface has no picker for it. Or change the data to match |
+| Attribute removed on the default branch | A rebase keeps the branch's side only for an attribute that still exists on the default branch | Update the data so that both branches agree |
+| Relationship conflict | A rebase cannot keep the branch's side of a relationship conflict | Update the data so that both branches agree |
+| Delete versus modify | One branch deleted an object that the other changed. Choosing a side does not clear it | Update the data so that both branches agree, for example by deleting the object on the branch as well |
+| Duplicate unique value | During the rebase, Infrahub checks uniqueness and the other constraints against the data the branch would hold after it | Change the value on one of the branches |
+
+For each conflict type in more detail, see [Resolve conflicts](./resolve-conflicts.mdx).
 
 ## How to rebase
 
-Rebasing can be initiated through the Infrahub user interface or API.
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web interface" default>
+
+The web interface has two **Rebase** buttons, and they show the result differently:
+
+- **On the branch details page**, next to **Merge** and **Validate**. Selecting it starts the rebase as a background task and confirms that the request was sent. To see the outcome, check the `Rebase branch <name>` task under **Tasks** on the same page; it ends as failed when the rebase is refused. The button is disabled on a merged branch.
+- **On the Data tab** of a branch or of its Proposed Change, next to **Refresh diff**. Selecting it makes the web interface wait for the rebase. When the rebase succeeds, the web interface refreshes the diff. When the rebase is refused, it shows the server's message, which lists each conflict and what it needs. The message does not include the error code.
+
+Choose the button on the **Data** tab when you want to see why a rebase was refused.
+
+</TabItem>
+
+  <TabItem value="graphql" label="GraphQL">
+
+Send the `BranchRebase` mutation to `/graphql`, with no branch in the URL. The web interface sends it to the same endpoint.
+
+```graphql title="Rebase a branch"
+mutation RebaseBranch {
+  BranchRebase(data: { name: "add-site-ord1" }) {
+    ok
+    object {
+      name
+      status
+      branched_from
+    }
+  }
+}
+```
+
+The mutation waits for the rebase by default, and returns a GraphQL error with the message when the rebase is refused. Pass `wait_until_completion: false` to start the rebase as a background task instead; the response then includes `task { id }` so you can follow the task.
+
+</TabItem>
+</Tabs>
+
+From the command line, `infrahubctl branch rebase` rebases a branch. See the [`infrahubctl branch` reference]($(base_url)infrahubctl/infrahubctl-branch).
 
 ## Related
 
-- [Branches](./overview.mdx) — branch lifecycle and concepts
-- [Resolve conflicts](./resolve-conflicts.mdx) — when rebase surfaces conflicting changes
-- [Merge a branch](./merge.mdx) — once rebase is complete and the branch is up-to-date
+- [Branches](./overview.mdx): branch lifecycle, statuses and concepts
+- [Resolve conflicts](./resolve-conflicts.mdx): each conflict type and what clears it during a rebase
+- [Merge a branch](./merge.mdx): what the merge checks again, and how writes are blocked while it runs
+- [Parallel branches](./parallel-branches.mdx): Why merging one branch does not change the others, and when to rebase

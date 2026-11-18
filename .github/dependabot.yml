@@ -1,3 +1,6 @@
+# Listing a directory here turns off the repository-level grouping of security updates for it,
+# so every npm and uv entry needs its own security group that matches all packages.
+# /frontend/packages/plugins/template is left out on purpose and keeps the repository-level grouping.
 updates:
 - directory: /
   ignore:
@@ -11,4 +14,89 @@ updates:
     interval: weekly
     time: "09:00"
   target-branch: stable
+# Frontend version updates: production dependencies get patch releases, development dependencies get minor and patch
+# releases, and major releases are never proposed.
+- allow:
+  # The update-types filter version updates only, so security fixes still reach every dependency at any version.
+  - dependency-type: production
+    update-types:
+    - version-update:semver-patch
+  - dependency-type: development
+    update-types:
+    - version-update:semver-minor
+    - version-update:semver-patch
+  # New releases must be this many days old before they are proposed; the cooldown never delays security fixes.
+  cooldown:
+    default-days: 7
+    semver-minor-days: 14
+    semver-major-days: 30
+  directory: /frontend
+  groups:
+    # Every frontend security fix, for production and development dependencies alike, goes in this pull request.
+    frontend-security:
+      applies-to: security-updates
+      patterns:
+      - "*"
+    frontend-production:
+      dependency-type: production
+      patterns:
+      - "*"
+    frontend-development:
+      dependency-type: development
+      patterns:
+      - "*"
+  labels:
+  - type/housekeeping
+  - ci/skip-changelog
+  package-ecosystem: npm
+  schedule:
+    day: monday
+    interval: weekly
+    time: "09:00"
+# Docs: all version updates, major releases included, go in one pull request.
+- cooldown:
+    # New releases must be this many days old before they are proposed; the cooldown never delays security fixes.
+    default-days: 7
+    semver-minor-days: 14
+    semver-major-days: 30
+  directory: /docs
+  groups:
+    # Every docs security fix goes in this pull request.
+    docs-security:
+      applies-to: security-updates
+      patterns:
+      - "*"
+    docs:
+      patterns:
+      - "*"
+  labels:
+  - type/housekeeping
+  - ci/skip-changelog
+  package-ecosystem: npm
+  schedule:
+    day: monday
+    interval: weekly
+    time: "09:00"
+# Python: security updates only, no version updates, for infrahub-server (pyproject.toml and uv.lock at the
+# repository root) and infrahub-testcontainers.
+- directories:
+  - /
+  - /python_testcontainers
+  groups:
+    # OpenTelemetry packages require matching versions of each other, so their security fixes go in their own pull request.
+    opentelemetry-security:
+      applies-to: security-updates
+      patterns:
+      - "opentelemetry-*"
+    # Every other Python security fix goes in this pull request.
+    python-security:
+      applies-to: security-updates
+      patterns:
+      - "*"
+  open-pull-requests-limit: 0 # A limit of 0 turns version updates off; security pull requests have their own limit of 10.
+  package-ecosystem: uv
+  schedule:
+    day: monday
+    interval: weekly
+    time: "09:00"
 version: 2

@@ -12,6 +12,7 @@ from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
@@ -135,7 +136,7 @@ async def _build_child_with_profile(db: InfrahubDatabase, branch: Branch, name: 
     child = await Node.init(db=db, branch=branch, schema=child_node_schema)
     await child.new(db=db, name=name, profiles=[profile.id])
     await child.save(db=db)
-    applier = NodeProfilesApplier(db=db, branch=branch)
+    applier = NodeProfilesApplier(db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch))
     await applier.apply_profiles(node=child)
     await child.save(db=db)
 

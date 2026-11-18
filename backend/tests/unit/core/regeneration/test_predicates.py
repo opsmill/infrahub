@@ -9,7 +9,6 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.regeneration.predicates import (
     definition_changed,
     query_changed,
-    reads_kind,
     repo_diff_or_none,
     transform_changed,
 )
@@ -42,7 +41,6 @@ def _build_definition(
         artifact_name="device-config",
         query_name="GetNetworkDevice",
         query_id=query_id,
-        query_models=["TestNetworkDevice"],
         query_payload="query { TestNetworkDevice { edges { node { id } } } }",
         repository_id="44444444-4444-4444-4444-444444444444",
         transform_kind=InfrahubKind.TRANSFORMJINJA2,
@@ -313,30 +311,44 @@ TRANSFORM_CHANGED_CASES: list[TransformChangedCase] = [
     ),
     TransformChangedCase(
         name="non_empty_closure_no_intersection_is_false",
-        dependencies=["templates/device.j2", ".infrahub.yml"],
+        dependencies=["partials/header.j2", "templates/device.j2"],
         dependencies_complete=True,
         files_changed=["transforms/other/main.py"],
         expected=False,
     ),
     TransformChangedCase(
         name="non_empty_closure_with_intersection_in_added_is_true",
-        dependencies=["templates/device.j2", ".infrahub.yml"],
+        dependencies=["partials/header.j2", "templates/device.j2"],
         dependencies_complete=True,
         files_added=["templates/device.j2"],
         expected=True,
     ),
     TransformChangedCase(
         name="non_empty_closure_with_intersection_in_changed_is_true",
-        dependencies=["templates/device.j2", ".infrahub.yml"],
+        dependencies=["partials/header.j2", "templates/device.j2"],
         dependencies_complete=True,
-        files_changed=[".infrahub.yml"],
+        files_changed=["partials/header.j2"],
         expected=True,
     ),
     TransformChangedCase(
         name="non_empty_closure_with_intersection_in_removed_is_true",
-        dependencies=["templates/device.j2", ".infrahub.yml"],
+        dependencies=["partials/header.j2", "templates/device.j2"],
         dependencies_complete=True,
         files_removed=["templates/device.j2"],
+        expected=True,
+    ),
+    TransformChangedCase(
+        name="manifest_edit_outside_the_closure_is_false",
+        dependencies=["templates/device.j2"],
+        dependencies_complete=True,
+        files_changed=[".infrahub.yml"],
+        expected=False,
+    ),
+    TransformChangedCase(
+        name="manifest_edit_inside_a_declared_closure_is_true",
+        dependencies=[".infrahub.yml", "templates/device.j2"],
+        dependencies_complete=True,
+        files_changed=[".infrahub.yml"],
         expected=True,
     ),
     TransformChangedCase(
@@ -392,10 +404,3 @@ def test_repo_diff_or_none_returns_none_for_absent_repository() -> None:
     """
     branch_diff = ProposedChangeBranchDiff(repositories=[_build_repo_diff()], pipeline_id=uuid.uuid4())
     assert repo_diff_or_none(branch_diff, "00000000-0000-0000-0000-000000000000") is None
-
-
-def test_reads_kind_matches_only_a_kind_the_query_reads() -> None:
-    """reads_kind is true for a kind the definition's query reads, false otherwise."""
-    definition = _build_definition()
-    assert reads_kind(definition, "TestNetworkDevice") is True
-    assert reads_kind(definition, "TestOtherKind") is False

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Sequence
+from collections.abc import Sequence  # noqa: TC003  needed for pydantic
+from typing import Any
 
 from ..query import AttributeMigrationQuery
 from ..query.attribute_rename import AttributeInfo, AttributeRenameQuery
@@ -41,4 +42,4 @@ class AttributeNameUpdateMigrationQuery01(AttributeMigrationQuery, AttributeRena
 
 class AttributeNameUpdateMigration(AttributeSchemaMigration):
     name: str = "attribute.name.update"
-    queries: Sequence[type[AttributeMigrationQuery]] = [AttributeNameUpdateMigrationQuery01]  # type: ignore[assignment]
+    queries: Sequence[type[AttributeMigrationQuery]] = [AttributeNameUpdateMigrationQuery01]

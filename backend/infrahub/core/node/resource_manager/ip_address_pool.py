@@ -16,7 +16,8 @@ from infrahub.exceptions import PoolExhaustedError, ValidationError
 
 from .. import Node
 from ..lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
-from .reservation import validate_reserved_prefix_length
+from .kind_validation import validate_allocated_kind
+from .reservation import validate_reserved_kind, validate_reserved_prefix_length
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -34,9 +35,25 @@ class CoreIPAddressPool(Node):
         data: dict[str, Any] | None = None,
         address_type: str | None = None,
         prefixlen: int | None = None,
+        peer_kind: str | None = None,
         at: Timestamp | None = None,
         user_id: str = SYSTEM_USER_ID,
     ) -> Node:
+        data = data or {}
+        pool_name = str(self.get_attribute("name").value)
+
+        # Only an explicitly requested kind is validated; the pool's own default is left alone.
+        requested_address_type = address_type or data.get("address_type")
+
+        validate_allocated_kind(
+            db=db,
+            branch=branch,
+            pool_kind="IPAddressPool",
+            pool_name=pool_name,
+            requested_kind=requested_address_type,
+            peer_kind=peer_kind,
+        )
+
         async with lock.registry.get(name=self.get_id(), namespace=RESOURCE_POOL_LOCK_NAMESPACE):
             # Check if there is already a resource allocated with this identifier
             # if not, pull all existing prefixes and allocated the next available
@@ -54,16 +71,21 @@ class CoreIPAddressPool(Node):
                     if node:
                         validate_reserved_prefix_length(
                             pool_kind="IPAddressPool",
-                            pool_name=str(self.get_attribute("name").value),
+                            pool_name=pool_name,
                             reserved_value=node.get_attribute("address").value,
                             prefixlen=prefixlen,
                             data=data,
                         )
+                        validate_reserved_kind(
+                            pool_kind="IPAddressPool",
+                            pool_name=pool_name,
+                            reserved_value=node.get_attribute("address").value,
+                            reserved_kind=node.get_kind(),
+                            requested_kind=requested_address_type,
+                        )
                         return node
 
-            data = data or {}
-
-            address_type = address_type or data.get("address_type") or self.default_address_type.value  # type: ignore[attr-defined]
+            address_type = requested_address_type or self.default_address_type.value  # type: ignore[attr-defined]
             if not address_type:
                 raise ValueError(
                     f"IPAddressPool: {self.name.value} | "  # type: ignore[attr-defined]
@@ -105,7 +127,7 @@ class CoreIPAddressPool(Node):
             weighted_resources = list(resources.values())
 
         for resource in weighted_resources:
-            ip_prefix = ipaddress.ip_network(resource.prefix.value)  # type: ignore[attr-defined]
+            ip_prefix = ipaddress.ip_network(resource.prefix.value)
             prefix_length = prefixlen or ip_prefix.prefixlen
 
             if not ip_prefix.prefixlen <= prefix_length <= ip_prefix.max_prefixlen:
@@ -113,7 +135,7 @@ class CoreIPAddressPool(Node):
 
             next_address = await allocator.get_next_address(
                 ip_prefix=ip_prefix,
-                is_pool=resource.is_pool.value,  # type: ignore[attr-defined]
+                is_pool=resource.is_pool.value,
             )
 
             if next_address:

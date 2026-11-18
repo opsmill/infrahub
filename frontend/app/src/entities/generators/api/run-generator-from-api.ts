@@ -1,4 +1,5 @@
 import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
+import type { GraphQLRequestContext } from "@/shared/api/graphql/types";
 import type { BranchContextParams } from "@/shared/api/types";
 
 const generatorRunMutation = graphql(`
@@ -16,13 +17,15 @@ const generatorRunMutation = graphql(`
 
 export interface RunGeneratorFromApiParams
   extends BranchContextParams,
-    VariablesOf<typeof generatorRunMutation> {}
+    VariablesOf<typeof generatorRunMutation>,
+    Pick<GraphQLRequestContext, "processErrorMessage"> {}
 
 export const runGeneratorFromApi = async ({
   branchName,
   generatorId,
   targetNodeIds,
   waitUntilCompletion = false,
+  processErrorMessage,
 }: RunGeneratorFromApiParams) => {
   return graphqlClient.mutate({
     mutation: generatorRunMutation,
@@ -33,6 +36,7 @@ export const runGeneratorFromApi = async ({
     },
     context: {
       branch: branchName,
+      processErrorMessage,
     },
   });
 };

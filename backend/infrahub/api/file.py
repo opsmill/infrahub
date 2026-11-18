@@ -52,6 +52,7 @@ async def get_file(
         raise CommitNotFoundError(identifier=repository_id, commit="", message="No commits found on this repository")
 
     message = GitFileGet(
+        branch_name=branch_params.branch.name,
         repository_id=repo.id,
         repository_name=str(repo.name.value),
         repository_kind=repo.get_kind(),

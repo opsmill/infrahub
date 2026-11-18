@@ -81,4 +81,82 @@ describe("getRelationshipsVisibleInListView", () => {
     expect(result).toHaveLength(1);
     expect(result[0]!.kind).toBe("Attribute");
   });
+
+  it("should keep excluding 'extra' relationships when called without revealed names", () => {
+    // GIVEN
+    const visible = generateRelationshipSchema({
+      name: "site",
+      kind: "Attribute",
+      cardinality: "one",
+      display: "default",
+    });
+    const hidden = generateRelationshipSchema({
+      name: "tags",
+      kind: "Attribute",
+      cardinality: "many",
+      display: "extra",
+    });
+
+    // WHEN
+    const result = getRelationshipsVisibleInListView([visible, hidden]);
+
+    // THEN
+    expect(result).toEqual([visible]);
+  });
+
+  it("should return an 'extra' relationship when its name is revealed", () => {
+    // GIVEN
+    const visible = generateRelationshipSchema({
+      name: "site",
+      kind: "Attribute",
+      cardinality: "one",
+      display: "default",
+    });
+    const revealed = generateRelationshipSchema({
+      name: "tags",
+      kind: "Attribute",
+      cardinality: "many",
+      display: "extra",
+    });
+    const stillHidden = generateRelationshipSchema({
+      name: "owner",
+      kind: "Attribute",
+      cardinality: "one",
+      display: "extra",
+    });
+
+    // WHEN
+    const result = getRelationshipsVisibleInListView(
+      [visible, revealed, stillHidden],
+      new Set(["tags"])
+    );
+
+    // THEN
+    expect(result).toEqual([visible, revealed]);
+  });
+
+  it("should still exclude a generic relationship outside a resource pool even when revealed", () => {
+    // GIVEN a cardinality-one generic relationship, so cardinality cannot be what drops it.
+    const visible = generateRelationshipSchema({
+      name: "site",
+      kind: "Attribute",
+      cardinality: "one",
+      display: "default",
+    });
+    const genericOutsideAPool = generateRelationshipSchema({
+      name: "member",
+      kind: "Generic",
+      cardinality: "one",
+      display: "extra",
+    });
+
+    // WHEN
+    const result = getRelationshipsVisibleInListView(
+      [visible, genericOutsideAPool],
+      new Set(["member"])
+    );
+
+    // THEN
+    expect(result).toEqual([visible]);
+  });
 });

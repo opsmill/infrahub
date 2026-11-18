@@ -54,7 +54,7 @@ async def has_event(client: PrefectClient, event_id: UUID) -> bool:
 
 
 async def query_event(client: PrefectClient, event_id: UUID) -> Event:
-    filters = EventFilter(id=EventIDFilter(id=[event_id]))  # type: ignore[call-arg]
+    filters = EventFilter(id=EventIDFilter(id=[event_id]))
     body = {"filter": filters.model_dump(mode="json", exclude_unset=True)}
 
     response = await client._client.post("/events/filter", json=body)
@@ -71,12 +71,12 @@ async def query_events_by_name(client: PrefectClient, event_name: str, resource_
     # The Prefect server is shared by every test class running in the same xdist worker, so a
     # name-only query can match events emitted by other tests; scope by resource where possible.
     if resource_id:
-        filters = EventFilter(  # type: ignore[call-arg]
-            event=EventNameFilter(name=[event_name]),  # type: ignore[call-arg]
-            resource=EventResourceFilter(id=[resource_id]),  # type: ignore[call-arg]
+        filters = EventFilter(
+            event=EventNameFilter(name=[event_name]),
+            resource=EventResourceFilter(id=[resource_id]),
         )
     else:
-        filters = EventFilter(event=EventNameFilter(name=[event_name]))  # type: ignore[call-arg]
+        filters = EventFilter(event=EventNameFilter(name=[event_name]))
     body = {"filter": filters.model_dump(mode="json", exclude_unset=True)}
 
     response = await client._client.post("/events/filter", json=body)

@@ -72,7 +72,7 @@ class TestProposedChangePipelineRepository(TestInfrahubApp):
         # Generators are dispatched per field the query reads; touch one of John's so he is
         # reselected on this branch rather than skipped as unchanged.
         john_on_branch = await NodeManager.get_one(db=db, id=john.id, branch=branch1.name, raise_on_error=True)
-        john_on_branch.description.value = "The famous Joe Doe, updated on branch1"  # type: ignore[attr-defined]
+        john_on_branch.description.value = "The famous Joe Doe, updated on branch1"
         await john_on_branch.save(db=db)
 
     async def test_create_proposed_change(
@@ -95,7 +95,7 @@ class TestProposedChangePipelineRepository(TestInfrahubApp):
         proposed_change = await NodeManager.get_one(
             db=db, id=proposed_change_create.id, kind=InfrahubKind.PROPOSEDCHANGE, raise_on_error=True
         )
-        peers = await proposed_change.validations.get_peers(db=db)  # type: ignore[attr-defined]
+        peers = await proposed_change.validations.get_peers(db=db)
         assert peers
 
         validators_per_label = {peer.label.value: peer for peer in peers.values()}
@@ -103,6 +103,7 @@ class TestProposedChangePipelineRepository(TestInfrahubApp):
         expected_validators = [
             "Data Integrity",
             "Schema Integrity",
+            "Repository Validator: car-dealership",
             "Check: car_description_check",
             "Check: owner_age_check",
             "Generator Validator: cartags",
@@ -120,5 +121,5 @@ class TestProposedChangePipelineRepository(TestInfrahubApp):
             assert validator.conclusion.value.value == ValidatorConclusion.SUCCESS.value
 
         tags = await client.all(kind=TestKind.TAG, branch="branch1")
-        assert "john-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
-        assert "InfrahubNode-john-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
+        assert "john-jesko" in [tag.name.value for tag in tags]
+        assert "InfrahubNode-john-jesko" in [tag.name.value for tag in tags]

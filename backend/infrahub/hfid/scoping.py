@@ -35,10 +35,11 @@ def derive_hfid_targets(
 ) -> list[HFIDRecomputeTarget]:
     """Map a changed ``kind`` to the human-friendly-id targets it affects.
 
-    ``include_self`` covers the changed node's own id, used for a creation.
-    ``include_cross`` covers other nodes that read this kind across a relationship,
-    used for an update or a deletion; a self-only id contributes nothing here.
-    ``changed_fields`` of ``None`` means every field, which is what a deletion needs.
+    ``include_self`` covers the changed node's own id, for a node whose stored id may
+    not match what it now reads, such as a created node or an update replayed onto a
+    base that moved. ``include_cross`` covers other nodes that read this kind across a
+    relationship, used for an update or a deletion; a self-only id contributes nothing
+    here. ``changed_fields`` of ``None`` means every field, which is what a deletion needs.
     """
     fields = None if changed_fields is None else frozenset(changed_fields)
     targets: dict[tuple[str, str], HFIDRecomputeTarget] = {}

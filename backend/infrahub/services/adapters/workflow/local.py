@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
-
-from typing_extensions import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from infrahub.workers.utils import inject_context_parameter
 from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo

@@ -4,9 +4,11 @@ import pytest
 from infrahub_sdk.exceptions import TimestampFormatError
 from pydantic import ValidationError as PydanticValidationError
 
+from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.branch.filters import BranchListFilters
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
@@ -540,3 +542,40 @@ async def test_get_list_with_offset(db: InfrahubDatabase, default_branch: Branch
     assert len(offset_branches) == total - 3, (
         f"offset=3 should skip 3 branches, expected {total - 3} but got {len(offset_branches)}"
     )
+
+
+async def test_get_list_unpaged_reads_every_branch(
+    db: InfrahubDatabase, default_branch: Branch, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`limit=None` drops the LIMIT, so the read is served in chunks of the query size limit."""
+    monkeypatch.setattr(config.SETTINGS.database, "query_size_limit", 3)
+
+    created_names = {f"unpaged-{index:02d}" for index in range(10)}
+    for name in sorted(created_names):
+        await Branch(name=name, branched_from=Timestamp().to_string()).save(db=db)
+
+    branches = await Branch.get_list(db=db, limit=None)
+    expected_names = created_names | {default_branch.name, GLOBAL_BRANCH_NAME}
+
+    # The count is what makes this "exactly once": a set alone would hide a branch returned twice.
+    assert len(branches) == len(expected_names)
+    assert {branch.name for branch in branches} == expected_names
+
+
+async def test_get_list_filters_on_sync_with_git(db: InfrahubDatabase, default_branch: Branch) -> None:
+    """The filter is what the cross-branch repository status read narrows its row set with."""
+    syncing_names = {"sync-on-1", "sync-on-2"}
+    non_syncing_names = {"sync-off-1"}
+    for name in sorted(syncing_names | non_syncing_names):
+        await Branch(name=name, sync_with_git=name in syncing_names, branched_from=Timestamp().to_string()).save(db=db)
+
+    async def names_for(sync_with_git: bool | None) -> set[str]:
+        branches = await Branch.get_list(
+            db=db, branch_filters=BranchListFilters(sync_with_git=sync_with_git), exclude_global=True
+        )
+        return {branch.name for branch in branches}
+
+    # The default branch syncs with git; the global branch is excluded from all three reads.
+    assert await names_for(True) == syncing_names | {default_branch.name}
+    assert await names_for(False) == non_syncing_names
+    assert await names_for(None) == syncing_names | non_syncing_names | {default_branch.name}

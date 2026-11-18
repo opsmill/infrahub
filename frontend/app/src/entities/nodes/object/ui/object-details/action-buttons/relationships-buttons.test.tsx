@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { store } from "@/shared/stores";
 
@@ -74,10 +74,6 @@ describe("RelationshipsButtons", () => {
 
   beforeEach(() => {
     store.set(genericSchemasAtom, [genericDevice]);
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
   });
 
   test("opens the create form directly when the child's Parent relationship peers a generic the object inherits from", async () => {

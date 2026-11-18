@@ -159,12 +159,15 @@ def test_plan_gives_a_widened_target_one_submission_of_its_own() -> None:
 
 
 async def test_submit_dispatches_the_transform_flow_for_a_python_target() -> None:
+    """The transform flow is told it runs coalesced, so its writes join the bounded chain."""
     recorder = WorkflowRecorder()
     coalesced = CoalescedRecompute(
         branch="main", targets=frozenset({_python_target(whole_kind=False, node_ids=frozenset({"n2", "n1"}))})
     )
 
-    await CoalescedRecomputeSubmitter(workflow=recorder).submit(coalesced=coalesced, context=_event_context())
+    await CoalescedRecomputeSubmitter(workflow=recorder).submit(
+        coalesced=coalesced, context=_event_context(), recompute_depth=2
+    )
 
     calls = recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM)
     assert len(calls) == 1
@@ -175,6 +178,8 @@ async def test_submit_dispatches_the_transform_flow_for_a_python_target() -> Non
         "computed_attribute_name": "digest",
         "computed_attribute_kind": TARGET_KIND,
         "context": _event_context(),
+        "coalesced": True,
+        "recompute_depth": 2,
     }
     assert calls[0]["tags"] == [WorkflowTag.BRANCH.render(identifier="main")]
 
@@ -183,12 +188,15 @@ async def test_submit_sends_a_widened_target_to_the_fan_out_flow() -> None:
     """A widened target has no ids, so the flow that resolves the kind itself has to run instead.
 
     Sending it to the per-id flow would recompute nothing, which is the skip the flag exists to
-    prevent.
+    prevent. It is also the only submission marked ``widened``, which is what licenses the run to
+    skip an attribute nothing can compute; a submission of resolved ids never carries it.
     """
     recorder = WorkflowRecorder()
     coalesced = CoalescedRecompute(branch="main", targets=frozenset({_python_target(whole_kind=True)}))
 
-    await CoalescedRecomputeSubmitter(workflow=recorder).submit(coalesced=coalesced, context=_event_context())
+    await CoalescedRecomputeSubmitter(workflow=recorder).submit(
+        coalesced=coalesced, context=_event_context(), recompute_depth=1
+    )
 
     assert recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM) == []
     calls = recorder.get_submit_calls_for(TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES)
@@ -198,7 +206,11 @@ async def test_submit_sends_a_widened_target_to_the_fan_out_flow() -> None:
         "computed_attribute_name": "digest",
         "computed_attribute_kind": TARGET_KIND,
         "context": _event_context(),
+        "coalesced": True,
+        "widened": True,
+        "recompute_depth": 1,
     }
+    assert calls[0]["tags"] == [WorkflowTag.BRANCH.render(identifier="main")]
 
 
 class _FailFirstWorkflow(WorkflowRecorder):

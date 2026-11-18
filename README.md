@@ -57,7 +57,7 @@ Infrahub is purpose-built for network and infrastructure automation. It combines
 Three ways to try Infrahub:
 
 - **[Sandbox](https://sandbox.infrahub.app/)** — a hosted demo of the Infrahub UI with sample data — explore the interface without installing anything.
-- **[Getting Started Lab](https://opsmill.instruqt.com/pages/labs)** — a guided browser tutorial covering branches, schemas, and unified storage.
+- **[Getting Started Lab](https://docs.infrahub.app/labs)** — a guided browser tutorial covering branches, schemas, and unified storage.
 - **[Quick Start guide](https://docs.infrahub.app/overview/quickstart)** — set up a local Infrahub instance and walk through the basics in your own environment.
 
 For production deployments on Kubernetes, see [`opsmill/infrahub-helm`](https://github.com/opsmill/infrahub-helm) and the [installation guide](https://docs.infrahub.app/guides/installation).
@@ -80,7 +80,7 @@ OpsMill maintains a set of officially supported projects that help teams develop
 |---|---|
 | [`infrahub-sdk-python`](https://github.com/opsmill/infrahub-sdk-python) | Python SDK and the `infrahubctl` CLI — build integrations and manage Infrahub from code |
 | [`infrahub-vscode`](https://github.com/opsmill/infrahub-vscode) | VS Code extension with schema validation, GraphQL query support, and schema visualization |
-| [`schema-library`](https://github.com/opsmill/schema-library) | Reusable schemas for common infrastructure patterns — a starting point for modeling |
+| [Infrahub Marketplace](https://marketplace.infrahub.app) | Curated catalog to scaffold your Infrahub instance — currently schemas and schema collections |
 | [`infrahub-mcp`](https://github.com/opsmill/infrahub-mcp) | MCP server exposing Infrahub data to Claude, Cursor, and other AI agents |
 | [`infrahub-skills`](https://github.com/opsmill/infrahub-skills) | AI skills that give coding assistants knowledge of Infrahub conventions and data models |
 

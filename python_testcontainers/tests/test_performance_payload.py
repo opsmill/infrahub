@@ -2,7 +2,7 @@ import hashlib
 import json
 
 from infrahub_testcontainers.constants import PERFORMANCE_TEST_KIND, PERFORMANCE_TEST_VERSION
-from infrahub_testcontainers.measurements import BRANCH_MERGE_TIME
+from infrahub_testcontainers.measurements import BRANCH_MERGE_TIME, SCRIPT_EXECUTION_TIME
 from infrahub_testcontainers.models import ContextUnit
 from infrahub_testcontainers.performance_test import InfrahubPerformanceTest
 
@@ -22,3 +22,19 @@ def test_request_checksum_covers_the_payload_on_the_wire() -> None:
     assert (
         request["checksum"] == hashlib.sha256(json.dumps(request["data"], separators=(",", ":")).encode()).hexdigest()
     )
+
+
+def test_timed_and_direct_measurements_share_the_same_context_shape() -> None:
+    """Both recording paths must carry their dimensions flat, or the two cannot compare as one series."""
+    performance_test = InfrahubPerformanceTest(results_url="http://localhost")
+    performance_test.initialize(name="test_timed_and_direct_measurements_share_the_same_context_shape")
+
+    with performance_test.start_measurement(SCRIPT_EXECUTION_TIME, name="load", phase="read"):
+        pass
+    performance_test.add_measurement(SCRIPT_EXECUTION_TIME, value=100, name="load", phase="compute")
+
+    timed, direct = performance_test.measurements
+
+    assert timed.context == {"name": "load", "phase": "read"}
+    assert direct.context == {"name": "load", "phase": "compute"}
+    assert timed.context.keys() == direct.context.keys()

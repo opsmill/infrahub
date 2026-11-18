@@ -20,7 +20,7 @@ to suppress emission.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
@@ -31,6 +31,8 @@ from infrahub.exceptions import UniquenessViolationError
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
 
@@ -225,7 +227,7 @@ class AutoCreatedGroupsService:
             log.warning("auth_groups.group_disappeared_after_create", group_id=group.id)
             return False
         members_rel = refreshed.get_relationship(name="members")
-        members = await members_rel.get_peers(db=self._db, branch_agnostic=True, peer_type=CoreAccount)
+        members = await members_rel.get_peers(db=self._db, peer_type=CoreAccount)
         if self._account.id in members:
             return True
         await members_rel.add(db=self._db, data={"id": self._account.id})

@@ -15,6 +15,8 @@ from .node.generate_profile import NodeGenerateProfileChecker
 from .node.hierarchy import NodeHierarchyChecker
 from .node.inherit_from import NodeInheritFromChecker
 from .node.relationship import NodeRelationshipAddChecker
+from .pool.rename import NumberPoolRenameChecker
+from .pool.scope import NumberPoolScopeChecker
 from .relationship.count import RelationshipCountChecker
 from .relationship.optional import RelationshipOptionalChecker
 from .relationship.peer import RelationshipPeerChecker, RelationshipPeerParentChecker
@@ -34,6 +36,7 @@ CONSTRAINT_VALIDATOR_MAP: dict[str, type[ConstraintCheckerInterface] | None] = {
     ConstraintIdentifier.ATTRIBUTE_PARAMETERS_EXCLUDED_VALUES_UPDATE.value: AttributeNumberChecker,
     ConstraintIdentifier.ATTRIBUTE_PARAMETERS_START_RANGE_UPDATE: AttributeNumberPoolChecker,
     ConstraintIdentifier.ATTRIBUTE_PARAMETERS_END_RANGE_UPDATE: AttributeNumberPoolChecker,
+    ConstraintIdentifier.ATTRIBUTE_PARAMETERS_RANGES_UPDATE.value: AttributeNumberPoolChecker,
     "attribute.unique.update": AttributeUniquenessChecker,
     "attribute.optional.update": AttributeOptionalChecker,
     "attribute.choices.update": AttributeChoicesChecker,
@@ -44,10 +47,17 @@ CONSTRAINT_VALIDATOR_MAP: dict[str, type[ConstraintCheckerInterface] | None] = {
     "relationship.max_count.update": RelationshipCountChecker,
     "relationship.common_parent.update": RelationshipPeerParentChecker,
     "node.inherit_from.update": NodeInheritFromChecker,
+    "node.name.update": NumberPoolRenameChecker,
+    "node.namespace.update": NumberPoolRenameChecker,
     ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value: UniquenessChecker,
     "node.parent.update": NodeHierarchyChecker,
     "node.children.update": NodeHierarchyChecker,
     "node.generate_profile.update": NodeGenerateProfileChecker,
     "node.attribute.add": NodeAttributeAddChecker,
     "node.relationship.add": NodeRelationshipAddChecker,
+    "node.attribute.remove": NumberPoolScopeChecker,
+    "node.relationship.remove": NumberPoolScopeChecker,
+    "attribute.name.update": NumberPoolScopeChecker,
+    "relationship.name.update": NumberPoolScopeChecker,
+    ConstraintIdentifier.ATTRIBUTE_PARAMETERS_ALLOCATION_SCOPE_UPDATE.value: NumberPoolScopeChecker,
 }

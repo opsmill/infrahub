@@ -285,6 +285,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         success, response = await client.schema.check(schemas=[schema_01_attr_regex_failure])
 
         assert success is False
+        assert response is not None
         assert "errors" in response
         assert len(response["errors"]) == 1
         err_msg = response["errors"][0]["message"]
@@ -341,6 +342,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
     ) -> None:
         success, response = await client.schema.check(schemas=[schema_03_relationship_cardinality_failure])
         assert success is False
+        assert response is not None
         assert "errors" in response
         assert len(response["errors"]) == 1
         err_msg = response["errors"][0]["message"]
@@ -356,6 +358,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         success, response = await client.schema.check(schemas=[schema_04_relationship_cardinality])
 
         assert success
+        assert response is not None
         assert "diff" in response
         assert "changed" in response["diff"]
         assert "TestingTag" in response["diff"]["changed"]
@@ -400,6 +403,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
         success, response = await client.schema.check(schemas=[schema_05_attribute_unique])
         assert success is False
+        assert response is not None
         assert "errors" in response
         assert len(response["errors"]) == 1
         err_msg = response["errors"][0]["message"]
@@ -420,6 +424,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         success, response = await client.schema.check(schemas=[schema_05_attribute_unique])
 
         assert success
+        assert response is not None
         assert "diff" in response
         assert "changed" in response["diff"]
         assert "TestingCar" in response["diff"]["changed"]

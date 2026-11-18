@@ -21,15 +21,17 @@ class AttributeNumberPoolUpdateValidatorQuery(AttributeSchemaValidatorQuery):
     name: str = "attribute_constraints_numberpool_validator"
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
 
         if not isinstance(self.attribute_schema.parameters, NumberPoolParameters):
             raise ValueError("attribute parameters are not a NumberPoolParameters")
 
         self.params["attr_name"] = self.attribute_schema.name
-        self.params["start_range"] = self.attribute_schema.parameters.start_range
-        self.params["end_range"] = self.attribute_schema.parameters.end_range
+        # A null bound would make none() null and hide every value held outside the ranges, so the bounds are resolved.
+        self.params["ranges"] = [
+            [pool_range.lower, pool_range.upper] for pool_range in self.attribute_schema.parameters.effective_ranges()
+        ]
 
         query = """
         MATCH (n:%(node_kind)s)
@@ -45,10 +47,7 @@ class AttributeNumberPoolUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         }
         WITH full_path, node, attribute_value, value_relationship
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
-        AND (
-            (toInteger($start_range) IS NOT NULL AND attribute_value < toInteger($start_range))
-            OR (toInteger($end_range) IS NOT NULL AND attribute_value > toInteger($end_range))
-        )
+        AND none(pool_range IN $ranges WHERE attribute_value >= pool_range[0] AND attribute_value <= pool_range[1])
         """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
 
         self.add_to_query(query)
@@ -59,7 +58,7 @@ class AttributeNumberPoolUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         for result in self.results:
             grouped_data_paths.add_data_path(
                 DataPath(
-                    branch=str(result.get("value_relationship").get("branch")),
+                    branch=str(result.get_rel("value_relationship").get("branch")),
                     path_type=PathType.ATTRIBUTE,
                     node_id=str(result.get("node.uuid")),
                     field_name=self.attribute_schema.name,
@@ -73,6 +72,8 @@ class AttributeNumberPoolUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 
 class AttributeNumberPoolChecker(ConstraintCheckerInterface):
     query_classes = [AttributeNumberPoolUpdateValidatorQuery]
+    # Writing a node does not check its value against the pool range, so only a change to the range can be refused.
+    triggered_by_data_change = False
 
     def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
         self.db = db
@@ -80,12 +81,13 @@ class AttributeNumberPoolChecker(ConstraintCheckerInterface):
 
     @property
     def name(self) -> str:
-        return "attribute.number.update"
+        return "attribute.number_pool.update"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
         return request.constraint_name in (
             ConstraintIdentifier.ATTRIBUTE_PARAMETERS_START_RANGE_UPDATE.value,
             ConstraintIdentifier.ATTRIBUTE_PARAMETERS_END_RANGE_UPDATE.value,
+            ConstraintIdentifier.ATTRIBUTE_PARAMETERS_RANGES_UPDATE.value,
         )
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:

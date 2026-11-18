@@ -1,11 +1,9 @@
 ---
 name: speckit-opsmill-summary
-description: Produce a flow-level summary of the current Claude Code session — executive
-  summary, chronological timeline, and outcomes — written into the active feature
-  directory next to spec.md / plan.md.
+description: Produce a flow-level summary of the current Claude Code session — executive summary, chronological timeline, and outcomes — written into the active feature directory next to spec.md / plan.md.
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
-  author: github-spec-kit
+  author: opsmill
   source: opsmill:commands/summary.md
 ---
 

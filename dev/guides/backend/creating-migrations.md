@@ -32,6 +32,10 @@ Choose the right base class in `backend/infrahub/core/migrations/shared.py`:
 
 `SchemaMigration` is a separate family under `backend/infrahub/core/migrations/schema/`, registered in `MIGRATION_MAP` and selected by the schema diff rather than by `GRAPH_VERSION`. Steps 1-3 below do not apply to it, but the retry rule does.
 
+## Migrations run at the current timestamp
+
+Each caller supplies `MigrationInput.at` for its operation: the graph upgrade and branch-version runner use a fresh timestamp, while rebases derive it from the diff timestamp and schema-migration batches forward `message.at`. Keep `from <= $at` predicates and historical-`at` tests whenever the migration query is time-scoped.
+
 ## Steps
 
 ### Step 1: Create the Migration File
@@ -170,6 +174,21 @@ uv run pytest backend/tests/unit/core/graph/test_graph_version.py
 ```
 
 This verifies `GRAPH_VERSION` matches the last migration number and that `minimum_version` is set correctly.
+
+## Renumbering a Migration After a Rebase
+
+If the base branch gained a migration with your number, keep the base branch's migration and move
+yours to the next free number. Git often merges the clash without a conflict, because the file
+names differ and an identical `GRAPH_VERSION` bump merges cleanly, so it shows up only as
+`ImportError: Duplicate migration number` when the migrations load.
+
+1. `git mv` the migration (file or package) and its component test to the new number.
+2. Rename the class to `Migration{NNN}`, update the number in its `name`, and set
+   `minimum_version` to the new number minus one.
+3. `git grep` the old number and update every hit: a package's `__init__.py` re-exports the
+   class, and tests and docs name the migration by its number.
+4. Set `GRAPH_VERSION` to the new number and rerun
+   `uv run pytest backend/tests/unit/core/graph/test_graph_version.py`.
 
 ## See Also
 
