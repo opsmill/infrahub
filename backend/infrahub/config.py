@@ -32,7 +32,6 @@ from infrahub.redis_connection import pool_size_from_url, validate_redis_url
 from infrahub.tls.bundle import resolve_ca_bundle
 
 if TYPE_CHECKING:
-    from infrahub.core.schema_change.operations_check import SchemaOperationsCheck
     from infrahub.git.state.reader import RepositoryGitStateReader
     from infrahub.services.adapters.cache import InfrahubCache
     from infrahub.services.adapters.message_bus import InfrahubMessageBus
@@ -2077,7 +2076,6 @@ class Override:
     cache: InfrahubCache | None = None
     workflow: InfrahubWorkflow | None = None
     repository_git_state_reader: RepositoryGitStateReader | None = None
-    schema_operations_check: SchemaOperationsCheck | None = None
 
 
 @dataclass

@@ -2,14 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub import config
 from infrahub.core.schema_change.application_migration_recorder import ApplicationMigrationRecorder
 from infrahub.core.schema_change.application_runner import SchemaChangeApplicationRunner
 from infrahub.core.schema_change.applier import SchemaChangeApplier
 from infrahub.core.schema_change.candidate import SchemaCandidateBuilder
+from infrahub.core.schema_change.candidate_comparer import SchemaCandidateComparer
 from infrahub.core.schema_change.migration_recorder import MigrationRecorder, NoRecordMigrationRecorder
 from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder
-from infrahub.core.schema_change.operations_check import NoSchemaOperationsCheck
 from infrahub.core.schema_change.recorder import SchemaChangeRecorder
 from infrahub.core.schema_change.repository import SchemaChangeRepository
 from infrahub.core.schema_change.version_resolver import SchemaChangeVersionResolver
@@ -20,11 +19,8 @@ if TYPE_CHECKING:
 
 
 def build_schema_candidate_builder() -> SchemaCandidateBuilder:
-    """Return the candidate builder; its operations check is the override when one is set, and checks nothing otherwise."""
     return SchemaCandidateBuilder(
-        operation_builder=SchemaOperationBuilder(),
-        applier=SchemaChangeApplier(),
-        operations_check=config.OVERRIDE.schema_operations_check or NoSchemaOperationsCheck(),
+        operation_builder=SchemaOperationBuilder(), applier=SchemaChangeApplier(), comparer=SchemaCandidateComparer()
     )
 
 

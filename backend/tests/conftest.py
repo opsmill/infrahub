@@ -86,7 +86,6 @@ from tests.helpers.file_repo import FileRepo
 from tests.helpers.git import clone_repository
 from tests.helpers.prefect_services import prefect_api_target
 from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
-from tests.helpers.schema_change import build_replay_schema_operations_check
 from tests.helpers.test_client import dummy_async_request
 from tests.helpers.utils import get_exposed_port, start_neo4j_container, start_prefect_server_container
 
@@ -171,15 +170,6 @@ def _dependency_overrides_are_restored() -> Generator[None, None, None]:
         f"the test left dependency overrides behind (put back now): provider={changed}, "
         f"config.OVERRIDE.workflow changed={workflow_changed}"
     )
-
-
-@pytest.fixture(scope="session", autouse=True)
-def _schema_operations_rebuild_the_schema() -> Generator[None, None, None]:
-    """Make every schema load of a test fail when the operations built from its file do not rebuild its schema."""
-    previous_check = config.OVERRIDE.schema_operations_check
-    config.OVERRIDE.schema_operations_check = build_replay_schema_operations_check()
-    yield
-    config.OVERRIDE.schema_operations_check = previous_check
 
 
 @pytest.fixture(scope="module")

@@ -28,6 +28,8 @@ from infrahub.exceptions import (
     RepositoryPushRejectedError,
     RPCError,
     SchemaNotFoundError,
+    SchemaOperationsRebuildError,
+    SchemaOperationTargetExistsError,
     SchemaOperationTargetNotFoundError,
     ValidationError,
 )
@@ -123,6 +125,20 @@ ERROR_PICKLE_CASES = [
             element_name="serial",
         ),
     ),
+    ErrorPickleCase(
+        name="schema_operation_target_exists",
+        error=SchemaOperationTargetExistsError(
+            position=1,
+            operation_type=SchemaOperationType.ELEMENT_ADD,
+            kind="DcimGenericDevice",
+            section=SchemaOperationSection.RELATIONSHIPS,
+            element_name="site",
+        ),
+    ),
+    ErrorPickleCase(
+        name="schema_operations_rebuild",
+        error=SchemaOperationsRebuildError(kinds=["DcimGenericDevice", "LocationSite"]),
+    ),
 ]
 
 
@@ -212,6 +228,59 @@ def test_schema_operation_target_not_found_names_the_operation_and_the_target(
 ) -> None:
     assert case.error.message == case.expected
     assert str(case.error) == case.expected
+
+
+@dataclass
+class SchemaOperationTargetExistsMessageCase:
+    name: str
+    error: SchemaOperationTargetExistsError
+    expected: str
+
+
+SCHEMA_OPERATION_TARGET_EXISTS_MESSAGE_CASES: list[SchemaOperationTargetExistsMessageCase] = [
+    SchemaOperationTargetExistsMessageCase(
+        name="existing_kind",
+        error=SchemaOperationTargetExistsError(
+            position=0, operation_type=SchemaOperationType.NODE_ADD, kind="DcimGenericDevice"
+        ),
+        expected="Schema operation 0 (node_add) adds the kind DcimGenericDevice, which the schema already has.",
+    ),
+    SchemaOperationTargetExistsMessageCase(
+        name="existing_attribute",
+        error=SchemaOperationTargetExistsError(
+            position=2,
+            operation_type=SchemaOperationType.ELEMENT_ADD,
+            kind="DcimGenericDevice",
+            section=SchemaOperationSection.ATTRIBUTES,
+            element_name="serial",
+        ),
+        expected=(
+            "Schema operation 2 (element_add) adds 'serial' to the attributes of the kind DcimGenericDevice, "
+            "which the schema already has."
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "case",
+    [pytest.param(case, id=case.name) for case in SCHEMA_OPERATION_TARGET_EXISTS_MESSAGE_CASES],
+)
+def test_schema_operation_target_exists_names_the_operation_and_the_target(
+    case: SchemaOperationTargetExistsMessageCase,
+) -> None:
+    assert str(case.error) == case.expected
+
+
+def test_schema_operations_rebuild_error_is_a_server_error_that_names_the_kinds() -> None:
+    error = SchemaOperationsRebuildError(kinds=["DcimGenericDevice", "LocationSite"])
+
+    assert error.HTTP_CODE == 500
+    assert str(error) == (
+        "The schema change cannot be stored accurately, so the schema was not loaded. This is an error in Infrahub, "
+        "not in the schema file: the operations built from the file do not rebuild its schema for the kinds "
+        "DcimGenericDevice, LocationSite."
+    )
 
 
 @dataclass

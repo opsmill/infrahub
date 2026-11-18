@@ -11,7 +11,7 @@ from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for
 from infrahub.core.schema_change.constants import SCHEMA_ELEMENT_NAME_PROPERTY, SCHEMA_KIND_NAME_PROPERTIES
 from infrahub.core.schema_change.enums import SchemaOperationNodeType, SchemaOperationSection, SchemaOperationType
 from infrahub.core.schema_change.schema_elements import find_element, split_property_path
-from infrahub.exceptions import SchemaOperationTargetNotFoundError
+from infrahub.exceptions import SchemaOperationTargetExistsError, SchemaOperationTargetNotFoundError
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -63,6 +63,8 @@ class SchemaChangeApplier:
         Raises:
             SchemaOperationTargetNotFoundError: When an operation names a kind, attribute or relationship that the
                 schema does not have at that step.
+            SchemaOperationTargetExistsError: When an operation adds a kind, or an attribute or relationship of a
+                kind, that the schema already has at that step.
 
         """
         schema = target_schema.duplicate()
@@ -92,6 +94,10 @@ class SchemaChangeApplier:
         match operation.operation_type:
             case SchemaOperationType.NODE_ADD:
                 added_node = self._build_node(operation=operation)
+                if added_node.kind in schema.nodes or added_node.kind in schema.generics:
+                    raise SchemaOperationTargetExistsError(
+                        position=position, operation_type=operation.operation_type, kind=added_node.kind
+                    )
                 schema.set(name=added_node.kind, schema=added_node)
             case SchemaOperationType.NODE_REMOVE:
                 node = self._get_kind(schema=schema, position=position, operation=operation)
@@ -108,7 +114,7 @@ class SchemaChangeApplier:
                 schema.set(name=node.kind, schema=node)
             case SchemaOperationType.ELEMENT_ADD:
                 node = self._get_kind(schema=schema, position=position, operation=operation)
-                self._add_element(node=node, operation=operation)
+                self._add_element(node=node, position=position, operation=operation)
                 schema.set(name=operation.kind, schema=node)
             case SchemaOperationType.ELEMENT_REMOVE:
                 node = self._get_kind(schema=schema, position=position, operation=operation)
@@ -139,11 +145,21 @@ class SchemaChangeApplier:
             return GenericSchema.model_validate(operation.value)
         return NodeSchema.model_validate(operation.value)
 
-    def _add_element(self, node: NodeSchema | GenericSchema, operation: SchemaOperation) -> None:
+    def _add_element(self, node: NodeSchema | GenericSchema, position: int, operation: SchemaOperation) -> None:
         definition = operation.value
         if not isinstance(definition, dict):
             raise ValueError(f"Operation {operation.operation_type.value} requires a definition as its value")
-        match self._section(operation=operation):
+        section = self._section(operation=operation)
+        element_name = self._element_name(operation=operation)
+        if find_element(node=node, section=section, name=element_name) is not None:
+            raise SchemaOperationTargetExistsError(
+                position=position,
+                operation_type=operation.operation_type,
+                kind=operation.kind,
+                section=section,
+                element_name=element_name,
+            )
+        match section:
             case SchemaOperationSection.ATTRIBUTES:
                 attribute_kind = definition.get(ATTRIBUTE_KIND_KEY)
                 if not isinstance(attribute_kind, str):

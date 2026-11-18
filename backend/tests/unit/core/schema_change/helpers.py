@@ -14,7 +14,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.schema_change.application_runner import ApplicationRecorder, SchemaUpdateExecutor
 from infrahub.core.schema_change.applier import SchemaChangeApplier
-from infrahub.core.schema_change.operations_check import SchemaOperationsCheck
+from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder, SchemaOperationBuildResult
 from infrahub.core.schema_change.recorder import SchemaChangeRecording
 from infrahub.exceptions import DatabaseError
 from tests.constants import TestKind
@@ -346,37 +346,20 @@ class RecordingSchemaChangeApplier(SchemaChangeApplier):
         )
 
 
-@dataclass(frozen=True)
-class OperationsCheckCall:
-    branch_schema: SchemaBranch
-    operations: list[SchemaOperation]
-    default_branch_schema: SchemaBranch
-    direct_load_schema: SchemaBranch
+class FixedOperationsBuilder(SchemaOperationBuilder):
+    """An operation builder that lays the schema file over the branch schema, then returns the given operations."""
 
-
-class RecordingSchemaOperationsCheck(SchemaOperationsCheck):
-    """An operations check that records each call and checks nothing."""
-
-    def __init__(self) -> None:
-        self.calls: list[OperationsCheckCall] = []
+    def __init__(self, operations: Sequence[SchemaOperation]) -> None:
+        self.operations = list(operations)
 
     @override
-    def check(
-        self,
-        *,
-        branch_schema: SchemaBranch,
-        operations: Sequence[SchemaOperation],
-        default_branch_schema: SchemaBranch,
-        direct_load_schema: SchemaBranch,
-    ) -> None:
-        self.calls.append(
-            OperationsCheckCall(
-                branch_schema=branch_schema,
-                operations=list(operations),
-                default_branch_schema=default_branch_schema,
-                direct_load_schema=direct_load_schema,
-            )
+    def build(
+        self, *, branch_schema: SchemaBranch, schema_root: SchemaRoot, default_branch_schema: SchemaBranch
+    ) -> SchemaOperationBuildResult:
+        result = super().build(
+            branch_schema=branch_schema, schema_root=schema_root, default_branch_schema=default_branch_schema
         )
+        return SchemaOperationBuildResult(operations=self.operations, direct_load_schema=result.direct_load_schema)
 
 
 RECORDER_START = "start"

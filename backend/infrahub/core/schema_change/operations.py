@@ -30,7 +30,7 @@ class SchemaOperation(BaseModel):
     to keep the difference through JSON.
     """
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(extra="forbid")
 
     operation_type: SchemaOperationType
     kind: str

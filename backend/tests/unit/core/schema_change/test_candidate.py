@@ -6,18 +6,25 @@ import pytest
 from infrahub.core.constants import HashableModelState
 from infrahub.core.schema import DropdownChoice, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.schema_change.applier import SchemaChangeApplier
 from infrahub.core.schema_change.candidate import SchemaCandidateBuilder
+from infrahub.core.schema_change.candidate_comparer import SchemaCandidateComparer
 from infrahub.core.schema_change.enums import SchemaOperationSection, SchemaOperationType
 from infrahub.core.schema_change.factory import build_schema_candidate_builder
 from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder
 from infrahub.core.schema_change.operations import SchemaOperation
+from infrahub.exceptions import (
+    SchemaNotFoundError,
+    SchemaOperationsRebuildError,
+    SchemaOperationTargetExistsError,
+    SchemaOperationTargetNotFoundError,
+)
 from tests.constants import TestKind
 from tests.unit.core.schema_change.helpers import (
     TAG_STATUS_ATTRIBUTE,
     ApplierCall,
-    OperationsCheckCall,
+    FixedOperationsBuilder,
     RecordingSchemaChangeApplier,
-    RecordingSchemaOperationsCheck,
     SchemaLoadResult,
     assert_same_load_result,
     base_node_definition,
@@ -26,6 +33,7 @@ from tests.unit.core.schema_change.helpers import (
     summarize_load_result,
 )
 
+UNKNOWN_KIND_ID = "0e7b5c2a-91d4-4f6e-b3a8-5d2c7f10e946"
 TAG_STATUS_CHOICES_BEFORE: list[dict[str, str]] = [
     {"name": "active", "color": "#2e7d32"},
     {"name": "reserved", "color": "#f9a825"},
@@ -207,13 +215,10 @@ def test_a_file_that_changes_nothing_gives_an_empty_diff_and_no_operation(
     assert (candidate.validation.migrations, candidate.validation.constraints) == ([], [])
 
 
-def test_a_schema_file_gives_the_processed_schema_of_the_file_without_applying_its_operations(
-    equivalence_base_schema: SchemaBranch,
-) -> None:
+def test_a_schema_file_gives_the_schema_that_its_operations_build(equivalence_base_schema: SchemaBranch) -> None:
     applier = RecordingSchemaChangeApplier()
-    operations_check = RecordingSchemaOperationsCheck()
     builder = SchemaCandidateBuilder(
-        operation_builder=SchemaOperationBuilder(), applier=applier, operations_check=operations_check
+        operation_builder=SchemaOperationBuilder(), applier=applier, comparer=SchemaCandidateComparer()
     )
 
     candidate = builder.from_schema_root(
@@ -222,13 +227,11 @@ def test_a_schema_file_gives_the_processed_schema_of_the_file_without_applying_i
         default_branch_schema=equivalence_base_schema,
     )
 
-    assert applier.calls == []
-    assert operations_check.calls == [
-        OperationsCheckCall(
-            branch_schema=equivalence_base_schema,
+    assert applier.calls == [
+        ApplierCall(
+            target_schema=equivalence_base_schema,
             operations=RELABEL_ATTRIBUTE_OPERATIONS,
             default_branch_schema=equivalence_base_schema,
-            direct_load_schema=candidate.schema,
         )
     ]
     assert candidate.operations == RELABEL_ATTRIBUTE_OPERATIONS
@@ -243,11 +246,114 @@ def test_a_schema_file_gives_the_processed_schema_of_the_file_without_applying_i
     assert candidate.validation.diff.model_dump() == direct_load.validation.diff.model_dump()
 
 
-def test_operations_are_applied_once_and_not_checked(equivalence_base_schema: SchemaBranch) -> None:
-    applier = RecordingSchemaChangeApplier()
-    operations_check = RecordingSchemaOperationsCheck()
+@dataclass(frozen=True)
+class RebuildFailureCase:
+    name: str
+    schema_file: Callable[[], SchemaRoot]
+    operations: list[SchemaOperation]
+    """The operations that the operation builder returns in place of those of the schema file."""
+
+    expected_kinds: str
+    expected_cause: type[Exception] | None
+
+
+REBUILD_FAILURE_CASES = [
+    RebuildFailureCase(
+        name="operations_miss_a_change_of_the_file",
+        schema_file=_relabel_attribute,
+        operations=[],
+        expected_kinds="ProfileTestingDevice, TemplateTestingDevice, TestingDevice",
+        expected_cause=None,
+    ),
+    RebuildFailureCase(
+        name="operation_names_a_missing_attribute",
+        schema_file=build_base_schema_root,
+        operations=[
+            SchemaOperation(
+                operation_type=SchemaOperationType.ELEMENT_REMOVE,
+                kind=TestKind.TAG,
+                section=SchemaOperationSection.ATTRIBUTES,
+                element_name="missing",
+            )
+        ],
+        expected_kinds="TestingTag",
+        expected_cause=SchemaOperationTargetNotFoundError,
+    ),
+    RebuildFailureCase(
+        name="operation_adds_an_existing_attribute",
+        schema_file=build_base_schema_root,
+        operations=[
+            SchemaOperation(
+                operation_type=SchemaOperationType.ELEMENT_ADD,
+                kind=TestKind.DEVICE,
+                section=SchemaOperationSection.ATTRIBUTES,
+                element_name="weight",
+                value={"name": "weight", "kind": "Number", "optional": True},
+            )
+        ],
+        expected_kinds="TestingDevice",
+        expected_cause=SchemaOperationTargetExistsError,
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", REBUILD_FAILURE_CASES, ids=lambda case: case.name)
+def test_a_schema_file_whose_operations_do_not_rebuild_its_schema_is_refused(
+    equivalence_base_schema: SchemaBranch, test_case: RebuildFailureCase
+) -> None:
     builder = SchemaCandidateBuilder(
-        operation_builder=SchemaOperationBuilder(), applier=applier, operations_check=operations_check
+        operation_builder=FixedOperationsBuilder(operations=test_case.operations),
+        applier=SchemaChangeApplier(),
+        comparer=SchemaCandidateComparer(),
+    )
+
+    with pytest.raises(
+        SchemaOperationsRebuildError,
+        match=(
+            r"^The schema change cannot be stored accurately, so the schema was not loaded\. This is an error in "
+            r"Infrahub, not in the schema file: the operations built from the file do not rebuild its schema for the "
+            rf"kinds {test_case.expected_kinds}\.$"
+        ),
+    ) as exc_info:
+        builder.from_schema_root(
+            branch_schema=equivalence_base_schema,
+            schema_root=test_case.schema_file(),
+            default_branch_schema=equivalence_base_schema,
+        )
+
+    cause = exc_info.value.__cause__
+    assert (None if cause is None else type(cause)) is test_case.expected_cause
+
+
+def test_a_schema_file_that_gives_an_existing_kind_an_unknown_id_is_refused_before_any_operation_is_applied(
+    equivalence_base_schema: SchemaBranch,
+) -> None:
+    applier = RecordingSchemaChangeApplier()
+    builder = SchemaCandidateBuilder(
+        operation_builder=SchemaOperationBuilder(), applier=applier, comparer=SchemaCandidateComparer()
+    )
+    tag = base_node_definition(TestKind.TAG)
+    tag.id = UNKNOWN_KIND_ID
+
+    with pytest.raises(SchemaNotFoundError) as exc_info:
+        builder.from_schema_root(
+            branch_schema=equivalence_base_schema,
+            schema_root=SchemaRoot(nodes=[tag]),
+            default_branch_schema=equivalence_base_schema,
+        )
+
+    assert (exc_info.value.message, exc_info.value.identifier, exc_info.value.branch_name) == (
+        f"Unable to find the Schema associated with {UNKNOWN_KIND_ID}, {TestKind.TAG}",
+        UNKNOWN_KIND_ID,
+        equivalence_base_schema.name,
+    )
+    assert applier.calls == []
+
+
+def test_operations_are_applied_once(equivalence_base_schema: SchemaBranch) -> None:
+    applier = RecordingSchemaChangeApplier()
+    builder = SchemaCandidateBuilder(
+        operation_builder=SchemaOperationBuilder(), applier=applier, comparer=SchemaCandidateComparer()
     )
 
     candidate = builder.from_operations(
@@ -263,5 +369,4 @@ def test_operations_are_applied_once_and_not_checked(equivalence_base_schema: Sc
             default_branch_schema=equivalence_base_schema,
         )
     ]
-    assert operations_check.calls == []
     assert sorted(candidate.validation.diff.changed) == [TestKind.DEVICE]

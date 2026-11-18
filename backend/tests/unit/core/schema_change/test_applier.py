@@ -4,11 +4,15 @@ import pytest
 
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.schema_change.applier import SchemaChangeApplier
-from infrahub.core.schema_change.enums import SchemaOperationSection, SchemaOperationType
+from infrahub.core.schema_change.enums import SchemaOperationNodeType, SchemaOperationSection, SchemaOperationType
 from infrahub.core.schema_change.operations import SchemaOperation
-from infrahub.exceptions import SchemaOperationTargetNotFoundError
+from infrahub.exceptions import SchemaOperationTargetExistsError, SchemaOperationTargetNotFoundError
 from tests.constants import TestKind
-from tests.unit.core.schema_change.helpers import TAG_STATUS_ATTRIBUTE, schema_content_hashes
+from tests.unit.core.schema_change.helpers import (
+    DEVICE_SPARE_SFPS_RELATIONSHIP,
+    TAG_STATUS_ATTRIBUTE,
+    schema_content_hashes,
+)
 
 RELABEL_TAG = SchemaOperation(
     operation_type=SchemaOperationType.NODE_PROPERTY,
@@ -187,6 +191,96 @@ def test_an_element_removed_by_an_earlier_operation_is_missing_for_a_later_one(
         SchemaChangeApplier().apply(
             target_schema=equivalence_base_schema, operations=operations, default_branch_schema=equivalence_base_schema
         )
+
+
+@dataclass(frozen=True)
+class ExistingTargetCase:
+    name: str
+    operations: list[SchemaOperation]
+    message: str
+
+
+SERIAL_ATTRIBUTE_ADD = SchemaOperation(
+    operation_type=SchemaOperationType.ELEMENT_ADD,
+    kind=TestKind.DEVICE,
+    section=SchemaOperationSection.ATTRIBUTES,
+    element_name="serial",
+    value={"name": "serial", "kind": "Text", "optional": True},
+)
+
+EXISTING_TARGET_CASES: list[ExistingTargetCase] = [
+    ExistingTargetCase(
+        name="existing_kind_added",
+        operations=[
+            RELABEL_TAG,
+            SchemaOperation(
+                operation_type=SchemaOperationType.NODE_ADD,
+                kind=TestKind.TAG,
+                node_type=SchemaOperationNodeType.NODE,
+                value={"name": "Tag", "namespace": "Testing"},
+            ),
+        ],
+        message=r"^Schema operation 1 \(node_add\) adds the kind TestingTag, which the schema already has\.$",
+    ),
+    ExistingTargetCase(
+        name="existing_attribute_added",
+        operations=[
+            RELABEL_TAG,
+            SchemaOperation(
+                operation_type=SchemaOperationType.ELEMENT_ADD,
+                kind=TestKind.DEVICE,
+                section=SchemaOperationSection.ATTRIBUTES,
+                element_name="weight",
+                value={"name": "weight", "kind": "Number", "optional": True},
+            ),
+        ],
+        message=(
+            r"^Schema operation 1 \(element_add\) adds 'weight' to the attributes of the kind TestingDevice, "
+            r"which the schema already has\.$"
+        ),
+    ),
+    ExistingTargetCase(
+        name="existing_relationship_added",
+        operations=[
+            RELABEL_TAG,
+            SchemaOperation(
+                operation_type=SchemaOperationType.ELEMENT_ADD,
+                kind=TestKind.DEVICE,
+                section=SchemaOperationSection.RELATIONSHIPS,
+                element_name=DEVICE_SPARE_SFPS_RELATIONSHIP,
+                value={"name": DEVICE_SPARE_SFPS_RELATIONSHIP, "peer": TestKind.SFP, "cardinality": "many"},
+            ),
+        ],
+        message=(
+            r"^Schema operation 1 \(element_add\) adds 'spare_sfps' to the relationships of the kind TestingDevice, "
+            r"which the schema already has\.$"
+        ),
+    ),
+    ExistingTargetCase(
+        name="attribute_added_by_an_earlier_operation",
+        operations=[SERIAL_ATTRIBUTE_ADD, SERIAL_ATTRIBUTE_ADD],
+        message=(
+            r"^Schema operation 1 \(element_add\) adds 'serial' to the attributes of the kind TestingDevice, "
+            r"which the schema already has\.$"
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in EXISTING_TARGET_CASES])
+def test_an_add_of_an_existing_target_is_refused(
+    test_case: ExistingTargetCase, equivalence_base_schema: SchemaBranch
+) -> None:
+    hashes_before = schema_content_hashes(equivalence_base_schema)
+
+    with pytest.raises(SchemaOperationTargetExistsError, match=test_case.message):
+        SchemaChangeApplier().apply(
+            target_schema=equivalence_base_schema,
+            operations=test_case.operations,
+            default_branch_schema=equivalence_base_schema,
+        )
+
+    assert schema_content_hashes(equivalence_base_schema) == hashes_before
 
 
 def test_apply_leaves_the_target_schema_unchanged(equivalence_base_schema: SchemaBranch) -> None:

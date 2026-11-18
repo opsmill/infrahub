@@ -31,7 +31,6 @@ from infrahub.exceptions import SchemaNotFoundError
 if TYPE_CHECKING:
     from pydantic import JsonValue
 
-    from infrahub.core.models import SchemaDiff
     from infrahub.core.schema import (
         AttributeSchema,
         MainSchemaTypes,
@@ -52,9 +51,6 @@ class SchemaOperationBuildResult:
     operations: list[SchemaOperation]
     direct_load_schema: SchemaBranch
     """The schema file laid over a copy of the branch schema, then processed, as a direct load builds it."""
-
-    diff: SchemaDiff
-    """The diff from the branch schema to `direct_load_schema`."""
 
 
 @dataclass
@@ -148,7 +144,7 @@ class SchemaOperationBuilder:
         for kind_operations in sorted(changed_kinds, key=lambda item: item.kind_before):
             operations.extend(kind_operations.ordered())
 
-        return SchemaOperationBuildResult(operations=operations, direct_load_schema=direct_load_schema, diff=diff)
+        return SchemaOperationBuildResult(operations=operations, direct_load_schema=direct_load_schema)
 
     def _stated_kinds(self, schema_root: SchemaRoot) -> dict[str, _StatedKind]:
         stated_kinds: dict[str, _StatedKind] = {}

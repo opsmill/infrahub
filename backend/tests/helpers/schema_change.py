@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING
 
 from infrahub.core.constants import SYSTEM_USER_ID, SchemaPathType
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.path import SchemaPath
-from infrahub.core.schema_change.applier import SchemaChangeApplier
-from infrahub.core.schema_change.candidate_comparer import SchemaCandidateComparer
 from infrahub.core.schema_change.enums import (
     SchemaChangeEdgeType,
     SchemaChangeMigrationStatus,
@@ -22,15 +20,12 @@ from infrahub.core.schema_change.models import (
     SchemaChangeOperation,
 )
 from infrahub.core.schema_change.operations import SchemaOperation
-from infrahub.core.schema_change.operations_check import SchemaOperationsCheck
 from infrahub.core.schema_change.repository import SchemaChangeRepository
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import SchemaOperationTargetNotFoundError
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 SEEDED_OPERATION_KIND = "TestCar"
@@ -291,72 +286,3 @@ async def count_schema_change_records(*, db: InfrahubDatabase, uuids: Sequence[s
         name="test_count_schema_change_records",
     )
     return int(results[0].get("nbr_records"))
-
-
-class SchemaOperationsRebuildError(AssertionError):
-    """The operations built from a schema file do not rebuild the schema of that file laid over the branch schema."""
-
-
-class ReplaySchemaOperationsCheck(SchemaOperationsCheck):
-    """Apply the operations to the branch schema and raise when the result differs from the schema of the file.
-
-    It is an assertion error, so a schema load does not report it as a refused schema.
-
-    It checks nothing when the schema file gives a kind of the branch schema an ID that the branch schema does not
-    hold. A load replaces that kind whole, without the IDs of its attributes and relationships, which no operation
-    holds, and the load is refused when it writes the kind to the database.
-    """
-
-    def __init__(self, applier: SchemaChangeApplier, comparer: SchemaCandidateComparer) -> None:
-        self.applier = applier
-        self.comparer = comparer
-
-    @override
-    def check(
-        self,
-        *,
-        branch_schema: SchemaBranch,
-        operations: Sequence[SchemaOperation],
-        default_branch_schema: SchemaBranch,
-        direct_load_schema: SchemaBranch,
-    ) -> None:
-        """Raise when the operations do not rebuild `direct_load_schema` from `branch_schema`.
-
-        Raises:
-            SchemaOperationsRebuildError: When the applier refuses an operation, or when kinds differ; the message
-                names the operation or the kinds.
-
-        """
-        if self._replaces_a_kind_by_an_unknown_id(branch_schema=branch_schema, direct_load_schema=direct_load_schema):
-            return
-
-        try:
-            applied_schema = self.applier.apply(
-                target_schema=branch_schema, operations=operations, default_branch_schema=default_branch_schema
-            )
-        except SchemaOperationTargetNotFoundError as exc:
-            raise SchemaOperationsRebuildError(
-                f"The operations built from the schema file cannot be applied to the branch schema: {exc.message}"
-            ) from exc
-
-        differing_kinds = self.comparer.differing_kinds(
-            direct_load_schema=direct_load_schema, applied_schema=applied_schema
-        )
-        if differing_kinds:
-            raise SchemaOperationsRebuildError(
-                "The operations built from the schema file do not rebuild its schema; "
-                f"kinds that differ: {', '.join(differing_kinds)}"
-            )
-
-    @staticmethod
-    def _replaces_a_kind_by_an_unknown_id(*, branch_schema: SchemaBranch, direct_load_schema: SchemaBranch) -> bool:
-        branch_kind_ids = branch_schema.get_all_kind_id_map(nodes_and_generics_only=True)
-        known_ids = set(branch_kind_ids.values())
-        return any(
-            kind_id is not None and kind in branch_kind_ids and kind_id not in known_ids
-            for kind, kind_id in direct_load_schema.get_all_kind_id_map(nodes_and_generics_only=True).items()
-        )
-
-
-def build_replay_schema_operations_check() -> ReplaySchemaOperationsCheck:
-    return ReplaySchemaOperationsCheck(applier=SchemaChangeApplier(), comparer=SchemaCandidateComparer())

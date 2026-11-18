@@ -27,21 +27,19 @@ class SchemaCandidateComparer:
             and not self._same_content(direct_load_schema=direct_load_schema, applied_schema=applied_schema, kind=kind)
         )
 
-    @staticmethod
-    def _kind_hashes(schema: SchemaBranch) -> dict[str, str]:
+    def _kind_hashes(self, schema: SchemaBranch) -> dict[str, str]:
         return {kind: kind_hash for hashes in schema.to_dict().values() for kind, kind_hash in hashes.items()}
 
     def _same_content(self, *, direct_load_schema: SchemaBranch, applied_schema: SchemaBranch, kind: str) -> bool:
         if not direct_load_schema.has(name=kind) or not applied_schema.has(name=kind):
             return False
         try:
-            return self._content_hash(direct_load_schema.get(name=kind, duplicate=False)) == self._content_hash(
-                applied_schema.get(name=kind, duplicate=False)
+            return self._content_hash(node=direct_load_schema.get(name=kind, duplicate=False)) == self._content_hash(
+                node=applied_schema.get(name=kind, duplicate=False)
             )
         except ValidationError:
             return False
 
-    @staticmethod
-    def _content_hash(node: MainSchemaTypes) -> str:
+    def _content_hash(self, node: MainSchemaTypes) -> str:
         # Parsing the kind again builds each attribute in the class of its attribute kind, as a schema read from the database has it.
         return type(node).model_validate(node.model_dump()).get_hash()

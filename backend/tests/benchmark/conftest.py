@@ -1,21 +1,10 @@
 import asyncio
 import inspect
-from collections.abc import Callable, Generator
+from collections.abc import Callable
 from typing import Any
 
 import pytest
 from pytest_benchmark.fixture import BenchmarkFixture
-
-from infrahub import config
-
-
-@pytest.fixture(scope="module", autouse=True)
-def _production_schema_operations_check() -> Generator[None, None, None]:
-    """Measure schema loads with the operations check of production, which checks nothing."""
-    previous_check = config.OVERRIDE.schema_operations_check
-    config.OVERRIDE.schema_operations_check = None
-    yield
-    config.OVERRIDE.schema_operations_check = previous_check
 
 
 @pytest.fixture

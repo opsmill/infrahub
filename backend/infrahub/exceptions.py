@@ -449,6 +449,51 @@ class SchemaOperationTargetNotFoundError(Error):
         super().__init__(self.message)
 
 
+class SchemaOperationTargetExistsError(Error):
+    """A schema operation adds a kind, attribute or relationship that the schema it applies to already has."""
+
+    HTTP_CODE: int = 422
+
+    def __init__(
+        self,
+        *,
+        position: int,
+        operation_type: SchemaOperationType,
+        kind: str,
+        section: SchemaOperationSection | None = None,
+        element_name: str | None = None,
+    ) -> None:
+        """Build the error for an existing kind, or for an existing element of a kind when `element_name` is given."""
+        self.position = position
+        self.operation_type = operation_type
+        self.kind = kind
+        self.section = section
+        self.element_name = element_name
+        if section is not None and element_name is not None:
+            target = f"'{element_name}' to the {section.value} of the kind {kind}"
+        else:
+            target = f"the kind {kind}"
+        self.message = (
+            f"Schema operation {position} ({operation_type.value}) adds {target}, which the schema already has."
+        )
+        super().__init__(self.message)
+
+
+class SchemaOperationsRebuildError(Error):
+    """The operations built from a schema file do not rebuild the schema of that file laid over the branch schema."""
+
+    HTTP_CODE: int = 500
+
+    def __init__(self, *, kinds: list[str]) -> None:
+        self.kinds = kinds
+        self.message = (
+            "The schema change cannot be stored accurately, so the schema was not loaded. This is an error in "
+            "Infrahub, not in the schema file: the operations built from the file do not rebuild its schema for the "
+            f"kinds {', '.join(kinds)}."
+        )
+        super().__init__(self.message)
+
+
 class QueryError(Error):
     def __init__(self, query: str, params: dict, message: str = "Unable to execute the CYPHER query.") -> None:
         self.query = query

@@ -4,7 +4,6 @@ from pytest_benchmark.fixture import BenchmarkFixture
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.schema_change.factory import build_schema_candidate_builder
-from infrahub.core.schema_change.operations_check import NoSchemaOperationsCheck
 from tests.helpers.schema import DEVICE_SCHEMA
 from tests.unit.core.schema_change.helpers import build_direct_load_result
 
@@ -42,7 +41,6 @@ def test_direct_load_of_device_schema(benchmark: BenchmarkFixture, internal_and_
 @pytest.mark.benchmark(group=DEVICE_SCHEMA_LOAD_GROUP)
 def test_candidate_of_device_schema(benchmark: BenchmarkFixture, internal_and_core_schema: SchemaBranch) -> None:
     candidate_builder = build_schema_candidate_builder()
-    assert isinstance(candidate_builder.operations_check, NoSchemaOperationsCheck)
 
     def load(schema_root: SchemaRoot) -> None:
         candidate_builder.from_schema_root(
