@@ -22,6 +22,7 @@ class SchemaChangeMigrationStatus(InfrahubStringEnum):
     APPLIED = "applied"
     FAILED = "failed"
     ROLLED_BACK = "rolled_back"
+    CANCELLED = "cancelled"
 
 
 class SchemaOperationType(InfrahubStringEnum):

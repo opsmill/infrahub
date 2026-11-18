@@ -21,7 +21,7 @@ class MigrationRecorder(ABC):
     async def register(self, *, migrations: Sequence[SchemaUpdateMigrationInfo]) -> None: ...
 
     @abstractmethod
-    async def batch_started(self, *, positions: Sequence[int]) -> None: ...
+    async def migration_started(self, *, position: int) -> None: ...
 
     @abstractmethod
     async def migration_ended(self, *, position: int, result: SchemaMigrationPathResponseData) -> None: ...
@@ -35,7 +35,7 @@ class NoRecordMigrationRecorder(MigrationRecorder):
         return
 
     @override
-    async def batch_started(self, *, positions: Sequence[int]) -> None:
+    async def migration_started(self, *, position: int) -> None:
         return
 
     @override

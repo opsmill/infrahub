@@ -1,7 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, override
+import asyncio
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, override
+
+from neo4j import Record
+from neo4j.exceptions import TransientError
 
 from infrahub.core.constants import RelationshipCardinality, RelationshipKind
 from infrahub.core.schema import (
@@ -16,6 +20,7 @@ from infrahub.core.schema_change.application_runner import ApplicationRecorder, 
 from infrahub.core.schema_change.applier import SchemaChangeApplier
 from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder, SchemaOperationBuildResult
 from infrahub.core.schema_change.recorder import SchemaChangeRecording
+from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode
 from infrahub.exceptions import DatabaseError
 from tests.constants import TestKind
 from tests.helpers.schema import DEVICE, INTERFACE, INTERFACE_HOLDER, PHYSICAL_INTERFACE, SFP, TAG, VIRTUAL_INTERFACE
@@ -28,7 +33,9 @@ if TYPE_CHECKING:
     from infrahub.context import InfrahubContext
     from infrahub.core.branch import Branch
     from infrahub.core.models import SchemaDiff, SchemaUpdateMigrationInfo, SchemaUpdateValidationResult
+    from infrahub.core.query import QueryType
     from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.core.schema.update_coordinator import SchemaUpdateFinalStep
     from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus
     from infrahub.core.schema_change.operations import SchemaOperation
     from infrahub.core.timestamp import Timestamp
@@ -313,6 +320,40 @@ class FailingMigrationRecordStore:
             raise self.error
 
 
+TRANSIENT_ERROR = "Deadlock detected while trying to acquire locks"
+
+
+class TransientFailingDatabase(InfrahubDatabase):
+    """A database that records the name of each write, and fails the first writes of one query with a transient error.
+
+    The first `nbr_failures` writes named `failing_query_name` raise, and the others return one empty row.
+    Skipping the base __init__ leaves it without a driver, so a read fails with AttributeError.
+    """
+
+    def __init__(
+        self, failing_query_name: str, nbr_failures: int, mode: InfrahubDatabaseMode = InfrahubDatabaseMode.SESSION
+    ) -> None:
+        self._mode = mode
+        self.failing_query_name = failing_query_name
+        self.nbr_failures = nbr_failures
+        self.write_names: list[str] = []
+
+    @override
+    async def execute_query_with_metadata(
+        self,
+        query: str,
+        params: dict[str, Any] | None = None,
+        name: str = "undefined",
+        context: dict[str, str] | None = None,
+        type: QueryType | None = None,
+        timeout_seconds: float | None = None,
+    ) -> tuple[list[Record], dict[str, Any]]:
+        self.write_names.append(name)
+        if name == self.failing_query_name and self.write_names.count(name) <= self.nbr_failures:
+            raise TransientError(TRANSIENT_ERROR)
+        return [Record({})], {}
+
+
 @dataclass(frozen=True)
 class ApplierCall:
     target_schema: SchemaBranch
@@ -364,6 +405,7 @@ RECORDER_START = "start"
 RECORDER_COMPLETE = "complete"
 RECORDER_FAIL = "fail"
 EXECUTOR_EXECUTE = "execute"
+EXECUTOR_ROLLBACK = "rollback"
 RECORDED_SCHEMA_CHANGE_ID = "2f1c9a64-8d3e-4b7a-9c51-0e6d4f3a8b21"
 RECORDED_APPLICATION_ID = "7b4e2d19-5a6c-4f08-b3d7-91c2e8a05f63"
 
@@ -423,6 +465,33 @@ class FailingApplicationRecorder(RecordingApplicationRecorder):
         raise DatabaseError(message=FAILING_STORE_ERROR)
 
 
+@dataclass
+class FailGate:
+    started: asyncio.Event = field(default_factory=asyncio.Event)
+    opened: asyncio.Event = field(default_factory=asyncio.Event)
+    finished: asyncio.Event = field(default_factory=asyncio.Event)
+
+
+class GatedFailApplicationRecorder(RecordingApplicationRecorder):
+    """An application recorder that records each call; `fail` sets `gate.started`, waits for `gate.opened`, then records.
+
+    `gate.finished` is set when `fail` returns or is cancelled.
+    """
+
+    def __init__(self, calls: list[SchemaApplicationCall], gate: FailGate) -> None:
+        super().__init__(calls=calls)
+        self.gate = gate
+
+    @override
+    async def fail(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> None:
+        self.gate.started.set()
+        try:
+            await self.gate.opened.wait()
+            await super().fail(recording=recording, error=error, user_id=user_id)
+        finally:
+            self.gate.finished.set()
+
+
 class FailingCompleteApplicationRecorder(RecordingApplicationRecorder):
     """An application recorder that records each call, and raises a database error from `complete`."""
 
@@ -454,6 +523,7 @@ class RecordingSchemaUpdateExecutor(SchemaUpdateExecutor):
         limit: list[str],
         user_id: str,
         application_id: str | None,
+        final_step: SchemaUpdateFinalStep | None,
     ) -> str:
         self.calls.append(
             SchemaApplicationCall(
@@ -473,13 +543,23 @@ class RecordingSchemaUpdateExecutor(SchemaUpdateExecutor):
                 },
             )
         )
+        await self._run_final_step(final_step=final_step)
         return self.updated_hash
+
+    async def _run_final_step(self, final_step: SchemaUpdateFinalStep | None) -> None:
+        if final_step is None:
+            return
+        try:
+            await final_step()
+        except Exception:
+            self.calls.append(SchemaApplicationCall(method=EXECUTOR_ROLLBACK, arguments={}))
+            raise
 
 
 class FailingSchemaUpdateExecutor(RecordingSchemaUpdateExecutor):
-    """A schema update executor that records each call, then raises `error`."""
+    """A schema update executor that records each call, then raises `error` instead of running the final step."""
 
-    def __init__(self, calls: list[SchemaApplicationCall], error: Exception) -> None:
+    def __init__(self, calls: list[SchemaApplicationCall], error: BaseException) -> None:
         super().__init__(calls=calls, updated_hash="")
         self.error = error
 
@@ -498,6 +578,7 @@ class FailingSchemaUpdateExecutor(RecordingSchemaUpdateExecutor):
         limit: list[str],
         user_id: str,
         application_id: str | None,
+        final_step: SchemaUpdateFinalStep | None,
     ) -> str:
         await super().execute(
             branch=branch,
@@ -511,5 +592,49 @@ class FailingSchemaUpdateExecutor(RecordingSchemaUpdateExecutor):
             limit=limit,
             user_id=user_id,
             application_id=application_id,
+            final_step=None,
         )
         raise self.error
+
+
+class BlockingSchemaUpdateExecutor(RecordingSchemaUpdateExecutor):
+    """A schema update executor that records each call, sets `started`, then waits until it is cancelled."""
+
+    def __init__(self, calls: list[SchemaApplicationCall]) -> None:
+        super().__init__(calls=calls, updated_hash="")
+        self.started = asyncio.Event()
+
+    @override
+    async def execute(
+        self,
+        *,
+        branch: Branch,
+        origin_schema: SchemaBranch,
+        rollback_schema: SchemaBranch,
+        candidate_schema: SchemaBranch,
+        at: Timestamp,
+        context: InfrahubContext,
+        diff: SchemaDiff,
+        migrations: list[SchemaUpdateMigrationInfo],
+        limit: list[str],
+        user_id: str,
+        application_id: str | None,
+        final_step: SchemaUpdateFinalStep | None,
+    ) -> str:
+        await super().execute(
+            branch=branch,
+            origin_schema=origin_schema,
+            rollback_schema=rollback_schema,
+            candidate_schema=candidate_schema,
+            at=at,
+            context=context,
+            diff=diff,
+            migrations=migrations,
+            limit=limit,
+            user_id=user_id,
+            application_id=application_id,
+            final_step=None,
+        )
+        self.started.set()
+        await asyncio.Event().wait()
+        return self.updated_hash

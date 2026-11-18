@@ -15,6 +15,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.query.rollback import RollbackScope
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
 from infrahub.core.timestamp import Timestamp
 
@@ -23,6 +24,8 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+
+FINAL_STEP_ERROR = "The final step of the schema update failed"
 
 
 class TestSchemaUpdateAndRollback:
@@ -296,3 +299,62 @@ class TestSchemaUpdateAndRollback:
         assert reloaded_schema.has(name="TestingChild"), (
             "Rollback should leave TestingChild intact after the post-write process_inheritance failure."
         )
+
+    async def test_schema_update_rolls_back_when_the_final_step_fails(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_schema_db: None,
+        car_accord_main: Node,
+    ) -> None:
+        current_schema = registry.schema.get_schema_branch(name=default_branch.name)
+        await registry.schema.load_schema_to_db(schema=current_schema, branch=default_branch, db=db, at=Timestamp())
+        original_schema = registry.schema.get_schema_branch(name=default_branch.name)
+        original_car_attributes = {attribute.name for attribute in original_schema.get(name="TestCar").attributes}
+        origin_schema = original_schema.duplicate()
+
+        candidate_schema = original_schema.duplicate()
+        new_car_schema = candidate_schema.get_node(name="TestCar").duplicate()
+        new_car_schema.attributes.append(
+            AttributeSchema(name="status", kind="Text", optional=True, default_value="available")
+        )
+        candidate_schema.set(name="TestCar", schema=new_car_schema)
+        candidate_schema.process()
+        diff = original_schema.diff(other=candidate_schema)
+        validation_result = original_schema.validate_update(other=candidate_schema, diff=diff)
+        assert [migration.migration_name for migration in validation_result.migrations] == ["node.attribute.add"]
+
+        final_step_calls: list[str] = []
+
+        async def failing_final_step() -> None:
+            final_step_calls.append("final_step")
+            raise RuntimeError(FINAL_STEP_ERROR)
+
+        coordinator = SchemaUpdateCoordinator(db=db, schema_manager=registry.schema, rollbacker=GraphRollbacker(db=db))
+        with pytest.raises(RuntimeError, match=rf"^{FINAL_STEP_ERROR}$"):
+            await coordinator.execute(
+                branch=default_branch,
+                origin_schema=origin_schema,
+                rollback_schema=origin_schema,
+                candidate_schema=candidate_schema,
+                at=Timestamp(),
+                migration_executor=MigrationExecutor.DIRECT,
+                diff=diff,
+                migrations=validation_result.migrations,
+                limit=diff.all,
+                update_db=True,
+                application_id=None,
+                final_step=failing_final_step,
+            )
+
+        assert final_step_calls == ["final_step"]
+        registry_car_schema = registry.schema.get_schema_branch(name=default_branch.name).get(name="TestCar")
+        assert {attribute.name for attribute in registry_car_schema.attributes} == original_car_attributes
+        reloaded_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        assert {
+            attribute.name for attribute in reloaded_schema.get(name="TestCar").attributes
+        } == original_car_attributes
+        loaded_car = await NodeManager.get_one(db=db, id=car_accord_main.id)
+        assert loaded_car is not None
+        with pytest.raises(ValueError, match=r"^status is not an attribute of TestCar$"):
+            loaded_car.get_attribute(name="status")

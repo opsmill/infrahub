@@ -40268,6 +40268,7 @@ export type SchemaChangeApplicationStatus = typeof SchemaChangeApplicationStatus
 /** Status of one migration that an application of a schema change runs on the data of its branch. */
 export const SchemaChangeMigrationStatus = {
   APPLIED: 'APPLIED',
+  CANCELLED: 'CANCELLED',
   FAILED: 'FAILED',
   ROLLED_BACK: 'ROLLED_BACK',
   RUNNING: 'RUNNING',

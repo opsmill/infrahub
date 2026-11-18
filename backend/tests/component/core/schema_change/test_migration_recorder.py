@@ -77,17 +77,17 @@ async def test_register_creates_waiting_records(db: InfrahubDatabase, empty_data
     ]
 
 
-async def test_batch_started_sets_only_the_records_at_the_positions_given_to_running(
+async def test_migration_started_sets_only_the_record_at_its_position_to_running(
     db: InfrahubDatabase, empty_database: None
 ) -> None:
     schema_change = await _seed_application(db=db)
     recorder = build_migration_recorder(db=db, application_id=schema_change.application_id)
     await recorder.register(migrations=MIGRATIONS)
 
-    await recorder.batch_started(positions=[0, 1])
+    await recorder.migration_started(position=1)
 
     assert [status for _, _, _, status, _, _ in await _read_migrations(db=db, schema_change=schema_change)] == [
-        SchemaChangeMigrationStatus.RUNNING,
+        SchemaChangeMigrationStatus.WAITING,
         SchemaChangeMigrationStatus.RUNNING,
         SchemaChangeMigrationStatus.WAITING,
     ]
@@ -99,7 +99,8 @@ async def test_migration_ended_without_error_sets_applied_and_stores_a_count_of_
     schema_change = await _seed_application(db=db)
     recorder = build_migration_recorder(db=db, application_id=schema_change.application_id)
     await recorder.register(migrations=MIGRATIONS)
-    await recorder.batch_started(positions=[0, 1, 2])
+    for position in range(len(MIGRATIONS)):
+        await recorder.migration_started(position=position)
 
     await recorder.migration_ended(position=1, result=_result(MIGRATIONS[1], nbr_migrations_executed=0))
 
@@ -116,7 +117,8 @@ async def test_migration_ended_with_errors_sets_failed_and_stores_the_errors(
     schema_change = await _seed_application(db=db)
     recorder = build_migration_recorder(db=db, application_id=schema_change.application_id)
     await recorder.register(migrations=MIGRATIONS)
-    await recorder.batch_started(positions=[0, 1, 2])
+    for position in range(len(MIGRATIONS)):
+        await recorder.migration_started(position=position)
 
     await recorder.migration_ended(
         position=1, result=_result(MIGRATIONS[1], nbr_migrations_executed=2, errors=[MIGRATION_ERROR])
@@ -138,7 +140,8 @@ async def test_migrations_with_the_same_name_and_path_are_updated_by_position(
     schema_change = await _seed_application(db=db)
     recorder = build_migration_recorder(db=db, application_id=schema_change.application_id)
     await recorder.register(migrations=MIGRATIONS)
-    await recorder.batch_started(positions=[0, 1, 2])
+    for position in range(len(MIGRATIONS)):
+        await recorder.migration_started(position=position)
 
     await recorder.migration_ended(position=2, result=_result(MIGRATIONS[2], nbr_migrations_executed=5))
     await recorder.migration_ended(
@@ -157,7 +160,8 @@ async def test_recorder_without_application_creates_no_record(db: InfrahubDataba
     recorder = build_migration_recorder(db=db, application_id=None)
 
     await recorder.register(migrations=MIGRATIONS)
-    await recorder.batch_started(positions=[0, 1, 2])
+    for position in range(len(MIGRATIONS)):
+        await recorder.migration_started(position=position)
     await recorder.migration_ended(position=0, result=_result(MIGRATIONS[0], nbr_migrations_executed=1))
 
     results = await db.execute_query(
@@ -174,7 +178,8 @@ async def test_recorder_of_a_missing_application_creates_no_record_and_does_not_
     recorder = build_migration_recorder(db=db, application_id=MISSING_APPLICATION_ID)
 
     await recorder.register(migrations=MIGRATIONS)
-    await recorder.batch_started(positions=[0, 1, 2])
+    for position in range(len(MIGRATIONS)):
+        await recorder.migration_started(position=position)
     await recorder.migration_ended(position=0, result=_result(MIGRATIONS[0], nbr_migrations_executed=1))
 
     results = await db.execute_query(

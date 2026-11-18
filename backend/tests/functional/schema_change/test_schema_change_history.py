@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from operator import itemgetter
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -464,8 +463,9 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
             query=LAST_SCHEMA_CHANGE_QUERY, branch_name=schema_change_dataset.branch_name
         )
 
-        def migration(kind: str) -> dict[str, Any]:
+        def migration(position: int, kind: str) -> dict[str, Any]:
             return {
+                "position": position,
                 "migration_name": "node.attribute.add",
                 "path": f"schema/{kind}/{POSITION_ATTRIBUTE}",
                 "path_type": "ATTRIBUTE",
@@ -484,12 +484,7 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
         ]
         assert [page["count"] for page in migration_pages] == [2]
         records = [migration["node"] for page in migration_pages for migration in page["edges"]]
-        # The schema diff orders the two inheriting kinds by a set of IDs, so their positions differ between processes.
-        assert [record["position"] for record in records] == [0, 1]
-        assert sorted(
-            ({key: value for key, value in record.items() if key != "position"} for record in records),
-            key=itemgetter("schema_kind"),
-        ) == [migration("TestingPowerSlot"), migration("TestingSlot")]
+        assert records == [migration(position=0, kind="TestingPowerSlot"), migration(position=1, kind="TestingSlot")]
         assert edges == [
             {
                 "node": {

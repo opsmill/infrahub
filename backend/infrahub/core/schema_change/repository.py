@@ -17,6 +17,7 @@ from infrahub.core.schema_change.enums import (
 from infrahub.core.schema_change.models import SchemaChange, SchemaChangeApplication, SchemaChangeMigration
 from infrahub.core.schema_change.operations import build_schema_change_summary
 from infrahub.core.timestamp import Timestamp
+from infrahub.database import retry_db_transaction
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -208,7 +209,11 @@ class SchemaChangeMarkAppliedQuery(Query):
 
 
 class SchemaChangeMarkFailedQuery(Query):
-    """Set a schema change and its application to failed, and roll back the applied migration records."""
+    """Set a schema change and its application to failed, and close the migration records of the application.
+
+    An applied migration record becomes rolled back, a waiting one cancelled, and a running one failed with the error
+    added to its errors; a failed one stays failed.
+    """
 
     name = "schema-change-mark-failed"
     type = QueryType.WRITE
@@ -226,6 +231,10 @@ class SchemaChangeMarkFailedQuery(Query):
         self.params["application_status"] = SchemaChangeApplicationStatus.FAILED.value
         self.params["applied_migration_status"] = SchemaChangeMigrationStatus.APPLIED.value
         self.params["rolled_back_migration_status"] = SchemaChangeMigrationStatus.ROLLED_BACK.value
+        self.params["waiting_migration_status"] = SchemaChangeMigrationStatus.WAITING.value
+        self.params["cancelled_migration_status"] = SchemaChangeMigrationStatus.CANCELLED.value
+        self.params["running_migration_status"] = SchemaChangeMigrationStatus.RUNNING.value
+        self.params["failed_migration_status"] = SchemaChangeMigrationStatus.FAILED.value
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = (
@@ -241,8 +250,15 @@ class SchemaChangeMarkFailedQuery(Query):
             application.updated_by = $updated_by
         WITH schema_change, application
         CALL (application) {
-            MATCH (application)-[:%(has_migration)s]->(record:%(migration_label)s {status: $applied_migration_status})
-            SET record.status = $rolled_back_migration_status,
+            MATCH (application)-[:%(has_migration)s]->(record:%(migration_label)s)
+            WHERE record.status IN [$applied_migration_status, $waiting_migration_status, $running_migration_status]
+            WITH record, record.status = $running_migration_status AS was_running
+            SET record.status = CASE record.status
+                    WHEN $applied_migration_status THEN $rolled_back_migration_status
+                    WHEN $waiting_migration_status THEN $cancelled_migration_status
+                    ELSE $failed_migration_status
+                END,
+                record.errors = CASE WHEN was_running THEN coalesce(record.errors, []) + $error ELSE record.errors END,
                 record.updated_at = $updated_at
         }
         RETURN schema_change.uuid AS schema_change_id
@@ -402,12 +418,24 @@ class AppliedSchemaChangeVersion:
 class SchemaChangeRepository:
     """The writes of the schema change records, the reads of the versions of a branch, and the deletion of a branch's records.
 
-    The ID of each record is its `uuid`, which is time-ordered.
+    The ID of each record is its `uuid`, which is time-ordered. Each write is one statement; outside a transaction,
+    a write that Neo4j rejects with a transient error runs again.
     """
 
     def __init__(self, db: InfrahubDatabase, serializer: SchemaChangeRecordSerializer) -> None:
         self.db = db
         self.serializer = serializer
+
+    async def _write(self, query: Query) -> None:
+        if self.db.is_transaction:
+            # A failed statement aborts the caller's transaction, so only the caller that owns it can run it again.
+            await query.execute(db=self.db)
+            return
+        await self._write_with_retry(query=query)
+
+    @retry_db_transaction(name="schema_change_record_write")
+    async def _write_with_retry(self, query: Query) -> None:
+        await query.execute(db=self.db)
 
     async def create_schema_change(
         self, *, branch: str, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
@@ -455,7 +483,7 @@ class SchemaChangeRepository:
             ],
             application_properties=self.serializer.application_to_properties(record=application),
         )
-        await query.execute(db=self.db)
+        await self._write(query=query)
         return CreatedSchemaChange(schema_change_id=schema_change.uuid, application_id=application.uuid)
 
     async def mark_applied(
@@ -484,10 +512,13 @@ class SchemaChangeRepository:
             updated_at=Timestamp().to_string(),
             user_id=user_id,
         )
-        await query.execute(db=self.db)
+        await self._write(query=query)
 
     async def mark_failed(self, *, schema_change_id: str, application_id: str, error: str, user_id: str) -> None:
-        """Set a schema change and its application to failed, and its applied migration records to rolled back.
+        """Set a schema change and its application to failed, and close its migration records.
+
+        An applied migration record becomes rolled back, a waiting one cancelled, and a running one failed with the
+        error added to its errors; a failed one stays failed.
 
         Raises:
             QueryError: When the schema change or its application is not stored.
@@ -501,7 +532,7 @@ class SchemaChangeRepository:
             updated_at=Timestamp().to_string(),
             user_id=user_id,
         )
-        await query.execute(db=self.db)
+        await self._write(query=query)
 
     async def create_migration_records(
         self, *, application_id: str, migrations: Sequence[SchemaUpdateMigrationInfo]
@@ -536,7 +567,7 @@ class SchemaChangeRepository:
             application_id=application_id,
             migration_properties=[self.serializer.migration_to_properties(record=record) for record in records],
         )
-        await query.execute(db=self.db)
+        await self._write(query=query)
 
     async def set_migration_records_status(
         self,
@@ -559,7 +590,7 @@ class SchemaChangeRepository:
             errors=errors,
             updated_at=Timestamp().to_string(),
         )
-        await query.execute(db=self.db)
+        await self._write(query=query)
 
     async def get_highest_applied_version(self, *, branch: str) -> AppliedSchemaChangeVersion | None:
         query = await SchemaChangeHighestVersionQuery.init(db=self.db, branch_name=branch)

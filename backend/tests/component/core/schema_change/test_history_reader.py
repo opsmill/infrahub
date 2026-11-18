@@ -336,7 +336,7 @@ class TestSchemaChangeHistoryReader:
         }
         assert {key: describe(page) for key, page in second_pages.items()} == {
             applied_1.application_id: (3, [(2, "node.attribute.add", "description", "waiting", None, [])]),
-            failed.application_id: (3, [(2, "node.attribute.add", "description", "waiting", None, [])]),
+            failed.application_id: (3, [(2, "node.attribute.add", "description", "cancelled", None, [])]),
             later_applications.first_id: (0, []),
         }
         assert {key: describe(page) for key, page in pages_past_the_end.items()} == {

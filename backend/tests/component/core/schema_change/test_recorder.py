@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 
 EMPTY_OPERATIONS_ERROR = r"^A schema change needs at least one operation$"
 FAILURE_ERROR = "The migration attribute.kind.update failed on 3 nodes"
+MIGRATION_ERROR = "Unable to convert the value of 2 nodes"
 
 
 def _build_recorder(db: InfrahubDatabase, default_branch: Branch) -> SchemaChangeRecorder:
@@ -200,9 +201,7 @@ async def test_fail_sets_both_to_failed_with_the_error_and_without_version_or_pa
     assert [record.application.error for record in applications[recording.schema_change_id]] == [FAILURE_ERROR]
 
 
-async def test_fail_rolls_back_the_applied_migration_records_and_keeps_the_others(
-    db: InfrahubDatabase, default_branch: Branch
-) -> None:
+async def test_fail_closes_each_migration_record_by_its_status(db: InfrahubDatabase, default_branch: Branch) -> None:
     recorder = _build_recorder(db=db, default_branch=default_branch)
     recording = await recorder.start(
         branch=default_branch,
@@ -228,18 +227,18 @@ async def test_fail_rolls_back_the_applied_migration_records_and_keeps_the_other
                 positions=[position],
                 status=status,
                 nbr_migrations_executed=None,
-                errors=[],
+                errors=[MIGRATION_ERROR] if status == SchemaChangeMigrationStatus.FAILED else [],
             )
 
     await recorder.fail(recording=recording, error=FAILURE_ERROR, user_id=SYSTEM_USER_ID)
 
     applications = await read_applications_with_migrations(db=db, schema_change_ids=[recording.schema_change_id])
     [application] = applications[recording.schema_change_id]
-    assert [(migration.position, migration.status) for migration in application.migrations] == [
-        (0, SchemaChangeMigrationStatus.ROLLED_BACK),
-        (1, SchemaChangeMigrationStatus.FAILED),
-        (2, SchemaChangeMigrationStatus.RUNNING),
-        (3, SchemaChangeMigrationStatus.WAITING),
+    assert [(migration.position, migration.status, list(migration.errors)) for migration in application.migrations] == [
+        (0, SchemaChangeMigrationStatus.ROLLED_BACK, []),
+        (1, SchemaChangeMigrationStatus.FAILED, [MIGRATION_ERROR]),
+        (2, SchemaChangeMigrationStatus.FAILED, [FAILURE_ERROR]),
+        (3, SchemaChangeMigrationStatus.CANCELLED, []),
     ]
 
 

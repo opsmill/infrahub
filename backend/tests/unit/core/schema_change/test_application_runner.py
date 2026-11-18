@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass, replace
 
@@ -13,24 +14,29 @@ from infrahub.core.constants import SchemaPathType
 from infrahub.core.models import HashableModelDiff, SchemaDiff, SchemaUpdateMigrationInfo, SchemaUpdateValidationResult
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema.schema_branch import SchemaBranch
-from infrahub.core.schema_change.application_runner import SchemaChangeApplicationRunner
+from infrahub.core.schema_change.application_runner import LOAD_CANCELLED_ERROR, SchemaChangeApplicationRunner
 from infrahub.core.schema_change.candidate import SchemaCandidate
 from infrahub.core.schema_change.enums import SchemaOperationSection, SchemaOperationType
 from infrahub.core.schema_change.operations import SchemaOperation
 from infrahub.core.schema_change.recorder import SchemaChangeRecording
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import MigrationError
+from infrahub.exceptions import DatabaseError, MigrationError
 from tests.helpers.log import find_logged_events
 from tests.unit.core.schema_change.helpers import (
     EXECUTOR_EXECUTE,
+    EXECUTOR_ROLLBACK,
+    FAILING_STORE_ERROR,
     RECORDED_APPLICATION_ID,
     RECORDED_SCHEMA_CHANGE_ID,
     RECORDER_COMPLETE,
     RECORDER_FAIL,
     RECORDER_START,
+    BlockingSchemaUpdateExecutor,
+    FailGate,
     FailingApplicationRecorder,
     FailingCompleteApplicationRecorder,
     FailingSchemaUpdateExecutor,
+    GatedFailApplicationRecorder,
     RecordingApplicationRecorder,
     RecordingSchemaUpdateExecutor,
     SchemaApplicationCall,
@@ -39,7 +45,6 @@ from tests.unit.core.schema_change.helpers import (
 USER_ID = "4d0c7e2a-6b19-4f3e-8a52-c1d9e7f30b64"
 UPDATED_HASH = "f3a1c92e7b4d5068"
 RECORD_FAILURE_EVENT = "Could not record the failure of a schema change"
-RECORD_COMPLETION_EVENT = "Could not record the application of a schema change"
 NO_OPERATION_EVENT = "Applying a schema change that has no operation, without recording it"
 CHANGED_KIND = "TestCar"
 MIGRATION_FAILURE = "The migration node.attribute.add failed on 2 nodes"
@@ -224,9 +229,7 @@ async def test_run_raises_the_error_of_the_executor_and_logs_when_recording_the_
     assert failures[0]["exc_info"]
 
 
-async def test_run_returns_the_hash_and_logs_when_recording_the_application_fails(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
+async def test_run_records_the_failure_and_raises_when_recording_the_application_fails_in_the_final_step() -> None:
     calls: list[SchemaApplicationCall] = []
     runner = SchemaChangeApplicationRunner(
         recorder=FailingCompleteApplicationRecorder(calls=calls),
@@ -234,19 +237,66 @@ async def test_run_returns_the_hash_and_logs_when_recording_the_application_fail
     )
     run_input = _build_run_input()
 
-    with caplog.at_level(logging.ERROR, logger="infrahub"):
-        updated_hash = await _run(runner=runner, run_input=run_input)
+    with pytest.raises(DatabaseError, match=rf"^{FAILING_STORE_ERROR}$"):
+        await _run(runner=runner, run_input=run_input)
 
-    assert updated_hash == UPDATED_HASH
-    assert [call.method for call in calls] == [RECORDER_START, EXECUTOR_EXECUTE, RECORDER_COMPLETE]
-    failures = find_logged_events(
-        caplog,
-        event=RECORD_COMPLETION_EVENT,
-        schema_change_id=RECORDED_SCHEMA_CHANGE_ID,
-        application_id=RECORDED_APPLICATION_ID,
+    assert calls == [
+        _start_call(run_input),
+        _execute_call(run_input),
+        SchemaApplicationCall(
+            method=RECORDER_COMPLETE,
+            arguments={"recording": _recording(run_input), "branch": run_input.branch, "user_id": USER_ID},
+        ),
+        SchemaApplicationCall(method=EXECUTOR_ROLLBACK, arguments={}),
+        SchemaApplicationCall(
+            method=RECORDER_FAIL,
+            arguments={"recording": _recording(run_input), "error": FAILING_STORE_ERROR, "user_id": USER_ID},
+        ),
+    ]
+
+
+def _cancelled_fail_call(run_input: RunInput) -> SchemaApplicationCall:
+    return SchemaApplicationCall(
+        method=RECORDER_FAIL,
+        arguments={"recording": _recording(run_input), "error": LOAD_CANCELLED_ERROR, "user_id": USER_ID},
     )
-    assert len(failures) == 1
-    assert failures[0]["exc_info"]
+
+
+async def test_run_records_the_failure_and_raises_the_cancellation_when_the_load_is_cancelled() -> None:
+    calls: list[SchemaApplicationCall] = []
+    executor = BlockingSchemaUpdateExecutor(calls=calls)
+    runner = SchemaChangeApplicationRunner(recorder=RecordingApplicationRecorder(calls=calls), executor=executor)
+    run_input = _build_run_input()
+    load = asyncio.create_task(_run(runner=runner, run_input=run_input))
+    await executor.started.wait()
+
+    load.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await load
+    assert calls == [_start_call(run_input), _execute_call(run_input), _cancelled_fail_call(run_input)]
+
+
+async def test_run_finishes_recording_the_failure_when_the_load_is_cancelled_again_during_the_write() -> None:
+    calls: list[SchemaApplicationCall] = []
+    executor = BlockingSchemaUpdateExecutor(calls=calls)
+    gate = FailGate()
+    runner = SchemaChangeApplicationRunner(
+        recorder=GatedFailApplicationRecorder(calls=calls, gate=gate), executor=executor
+    )
+    run_input = _build_run_input()
+    load = asyncio.create_task(_run(runner=runner, run_input=run_input))
+    await executor.started.wait()
+    load.cancel()
+    await gate.started.wait()
+
+    load.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await load
+    gate.opened.set()
+    await gate.finished.wait()
+
+    assert calls == [_start_call(run_input), _execute_call(run_input), _cancelled_fail_call(run_input)]
 
 
 async def test_run_applies_a_candidate_without_operations_without_recording_it_and_logs_a_warning(

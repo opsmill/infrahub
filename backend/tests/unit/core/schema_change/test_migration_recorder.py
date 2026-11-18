@@ -11,6 +11,7 @@ from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema_change.application_migration_recorder import ApplicationMigrationRecorder
 from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus
+from infrahub.core.schema_change.factory import build_schema_change_repository
 from infrahub.exceptions import DatabaseError, QueryError
 from tests.helpers.log import find_logged_events
 from tests.unit.core.schema_change.helpers import (
@@ -19,12 +20,13 @@ from tests.unit.core.schema_change.helpers import (
     SET_MIGRATION_RECORDS_STATUS,
     FailingMigrationRecordStore,
     MigrationRecordStoreCall,
+    TransientFailingDatabase,
 )
 
 APPLICATION_ID = "18a2cd5c-3f0b-4c41-9d3e-6a1d7c2b9e10"
 MIGRATION_ERROR = "Unable to convert the value of 2 nodes"
 REGISTER_FAILURE_EVENT = "Could not create the migration records of an application"
-BATCH_FAILURE_EVENT = "Could not set the migration records of a batch to running"
+STARTED_FAILURE_EVENT = "Could not set the migration record of a migration to running"
 MIGRATION_FAILURE_EVENT = "Could not update the migration record of a migration"
 
 MIGRATIONS = [
@@ -74,7 +76,7 @@ async def test_register_logs_a_failure_to_create_the_records_and_does_not_raise(
     assert failures[0]["exc_info"]
 
 
-async def test_batch_started_logs_a_failure_to_update_the_records_and_does_not_raise(
+async def test_migration_started_logs_a_failure_to_update_the_record_and_does_not_raise(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     store = FailingMigrationRecordStore(failing_methods=frozenset({SET_MIGRATION_RECORDS_STATUS}))
@@ -82,7 +84,7 @@ async def test_batch_started_logs_a_failure_to_update_the_records_and_does_not_r
     await recorder.register(migrations=MIGRATIONS)
 
     with caplog.at_level(logging.WARNING, logger="infrahub"):
-        await recorder.batch_started(positions=[0, 1])
+        await recorder.migration_started(position=1)
 
     assert store.calls == [
         CREATE_CALL,
@@ -90,14 +92,14 @@ async def test_batch_started_logs_a_failure_to_update_the_records_and_does_not_r
             method=SET_MIGRATION_RECORDS_STATUS,
             arguments={
                 "application_id": APPLICATION_ID,
-                "positions": [0, 1],
+                "positions": [1],
                 "status": SchemaChangeMigrationStatus.RUNNING,
                 "nbr_migrations_executed": None,
                 "errors": [],
             },
         ),
     ]
-    failures = find_logged_events(caplog, event=BATCH_FAILURE_EVENT, application_id=APPLICATION_ID, positions=[0, 1])
+    failures = find_logged_events(caplog, event=STARTED_FAILURE_EVENT, application_id=APPLICATION_ID, position=1)
     assert len(failures) == 1
     assert failures[0]["exc_info"]
 
@@ -134,3 +136,49 @@ async def test_migration_ended_logs_a_failure_to_update_the_record_and_does_not_
     failures = find_logged_events(caplog, event=MIGRATION_FAILURE_EVENT, application_id=APPLICATION_ID, position=1)
     assert len(failures) == 1
     assert failures[0]["exc_info"]
+
+
+CREATE_QUERY_NAME = "schema-change-migration-create"
+STATUS_QUERY_NAME = "schema-change-migration-status-update"
+
+
+@dataclass(frozen=True)
+class TransientWriteCase:
+    name: str
+    nbr_failures: int
+    """The number of status writes that fail with a transient error before the others succeed."""
+    expected_nbr_status_writes: int
+    expected_nbr_logged_failures: int
+
+
+TRANSIENT_WRITE_CASES = [
+    TransientWriteCase(
+        name="one_transient_error_is_retried",
+        nbr_failures=1,
+        expected_nbr_status_writes=2,
+        expected_nbr_logged_failures=0,
+    ),
+    TransientWriteCase(
+        name="a_transient_error_on_every_attempt_is_logged",
+        nbr_failures=100,
+        expected_nbr_status_writes=3,
+        expected_nbr_logged_failures=1,
+    ),
+]
+
+
+@pytest.mark.usefixtures("fast_record_write_retries")
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in TRANSIENT_WRITE_CASES])
+async def test_migration_started_retries_a_transient_error_then_logs_the_failure(
+    test_case: TransientWriteCase, caplog: pytest.LogCaptureFixture
+) -> None:
+    db = TransientFailingDatabase(failing_query_name=STATUS_QUERY_NAME, nbr_failures=test_case.nbr_failures)
+    recorder = ApplicationMigrationRecorder(store=build_schema_change_repository(db=db), application_id=APPLICATION_ID)
+    await recorder.register(migrations=MIGRATIONS)
+
+    with caplog.at_level(logging.WARNING, logger="infrahub"):
+        await recorder.migration_started(position=0)
+
+    assert db.write_names == [CREATE_QUERY_NAME] + [STATUS_QUERY_NAME] * test_case.expected_nbr_status_writes
+    failures = find_logged_events(caplog, event=STARTED_FAILURE_EVENT, application_id=APPLICATION_ID, position=0)
+    assert len(failures) == test_case.expected_nbr_logged_failures

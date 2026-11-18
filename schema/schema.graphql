@@ -28287,6 +28287,7 @@ Status of one migration that an application of a schema change runs on the data 
 """
 enum SchemaChangeMigrationStatus {
   APPLIED
+  CANCELLED
   FAILED
   ROLLED_BACK
   RUNNING

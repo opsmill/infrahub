@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, NoReturn
+from typing import TYPE_CHECKING, NoReturn, Protocol
 
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
@@ -33,6 +33,12 @@ class MigrationExecutor(Enum):
 
     DIRECT = "direct"  # Call schema_apply_migrations directly
     WORKFLOW = "workflow"  # Execute via workflow service
+
+
+class SchemaUpdateFinalStep(Protocol):
+    """The last step of a schema update, which runs after the schema is saved and the migrations succeed."""
+
+    async def __call__(self) -> None: ...
 
 
 class SchemaUpdateCoordinator:
@@ -97,6 +103,7 @@ class SchemaUpdateCoordinator:
         user_id: str = SYSTEM_USER_ID,
         manage_rollback: bool = True,
         application_id: str | None,
+        final_step: SchemaUpdateFinalStep | None = None,
     ) -> str:
         """Execute the schema update with migrations and rollback on failure.
 
@@ -120,6 +127,8 @@ class SchemaUpdateCoordinator:
                 failure (DB rollback + registry restore). When False, exceptions propagate without
                 triggering internal rollback.
             application_id: The schema application the migrations report to, or None when they report to none
+            final_step: Runs after the schema is saved and the migrations succeed; when it raises, the update
+                is rolled back like a failed migration
 
         Returns:
             The updated schema hash
@@ -127,7 +136,7 @@ class SchemaUpdateCoordinator:
         Raises:
             RuntimeError: When migrations must run via the WORKFLOW executor but workflow or context is not provided.
             MigrationError: If migrations fail and rollback completes
-            Exception: Original exception if migrations fail via exception
+            Exception: Original exception if migrations fail via exception, or the exception of `final_step`
 
         """
         if (
@@ -167,37 +176,53 @@ class SchemaUpdateCoordinator:
                 )
             raise
 
-        if not migrations:
-            return updated_hash
-
         # Step 2: Run migrations
-        error_msgs, exception = await self._run_migrations(
-            branch=branch,
-            origin_schema=origin_schema,
-            candidate_schema=candidate_schema,
-            at=at,
-            migrations=migrations,
-            migration_executor=migration_executor,
-            context=context,
-            user_id=user_id,
-            application_id=application_id,
-        )
+        if migrations:
+            error_msgs, exception = await self._run_migrations(
+                branch=branch,
+                origin_schema=origin_schema,
+                candidate_schema=candidate_schema,
+                at=at,
+                migrations=migrations,
+                migration_executor=migration_executor,
+                context=context,
+                user_id=user_id,
+                application_id=application_id,
+            )
 
-        if error_msgs or exception is not None:
-            if manage_rollback:
-                await self._handle_failure_and_rollback(
-                    branch=branch,
-                    rollback_schema=rollback_schema,
-                    origin_schema_changed_at=origin_schema_changed_at,
-                    origin_schema_hash=origin_schema_hash,
-                    at=at,
-                    phase="migration",
-                    exception=exception,
-                    error_msgs=error_msgs,
-                )
-            if exception:
-                raise exception
-            raise MigrationError(message=",\n".join(error_msgs))
+            if error_msgs or exception is not None:
+                if manage_rollback:
+                    await self._handle_failure_and_rollback(
+                        branch=branch,
+                        rollback_schema=rollback_schema,
+                        origin_schema_changed_at=origin_schema_changed_at,
+                        origin_schema_hash=origin_schema_hash,
+                        at=at,
+                        phase="migration",
+                        exception=exception,
+                        error_msgs=error_msgs,
+                    )
+                if exception:
+                    raise exception
+                raise MigrationError(message=",\n".join(error_msgs))
+
+        # Step 3: Run the final step of the caller
+        if final_step is not None:
+            try:
+                await final_step()
+            except Exception as exc:
+                if manage_rollback:
+                    await self._handle_failure_and_rollback(
+                        branch=branch,
+                        rollback_schema=rollback_schema,
+                        origin_schema_changed_at=origin_schema_changed_at,
+                        origin_schema_hash=origin_schema_hash,
+                        at=at,
+                        phase="final step",
+                        exception=exc,
+                        error_msgs=[],
+                    )
+                raise
 
         return updated_hash
 

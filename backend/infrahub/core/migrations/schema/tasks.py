@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 @dataclass(frozen=True)
 class PositionedMigration:
     position: int
-    """The index of the migration in the list of the flow message."""
+    """The index of the migration in the migrations of the flow message sorted by schema path."""
     migration: SchemaUpdateMigrationInfo
 
 
@@ -79,6 +79,28 @@ def get_derived_schema_pairs(
     return [pair for pair in pairs if pair is not None]
 
 
+def _migration_sort_key(migration: SchemaUpdateMigrationInfo) -> tuple[str, str, str, str, str]:
+    path = migration.path
+    return (
+        path.schema_kind,
+        path.field_name or "",
+        path.property_name or "",
+        path.path_type.value,
+        migration.migration_name,
+    )
+
+
+def position_migrations(migrations: Sequence[SchemaUpdateMigrationInfo]) -> list[PositionedMigration]:
+    """Give each migration its position in the migrations sorted by schema path, then by migration name.
+
+    The migrations come in the order of a set, so the sort keeps the positions the same between two runs of a load.
+    """
+    return [
+        PositionedMigration(position=position, migration=migration)
+        for position, migration in enumerate(sorted(migrations, key=_migration_sort_key))
+    ]
+
+
 def split_migrations_by_phase(
     migrations: Sequence[PositionedMigration],
 ) -> tuple[list[PositionedMigration], list[PositionedMigration]]:
@@ -105,6 +127,7 @@ def split_migrations_by_phase(
 
 async def _migrate_schema_path_at_position(
     position: int,
+    recorder: MigrationRecorder,
     branch: Branch,
     migration_name: str,
     schema_path: SchemaPath,
@@ -115,6 +138,7 @@ async def _migrate_schema_path_at_position(
     derived_schemas: list[DerivedSchemaPair],
     user_id: str,
 ) -> PositionedMigrationResult:
+    await recorder.migration_started(position=position)
     result = await schema_path_migrate(
         branch=branch,
         migration_name=migration_name,
@@ -168,6 +192,7 @@ async def _apply_migration_batch(
         batch.add(
             task=_migrate_schema_path_at_position,
             position=positioned.position,
+            recorder=recorder,
             branch=message.branch,
             migration_name=migration.migration_name,
             new_node_schema=new_node_schema,
@@ -183,8 +208,6 @@ async def _apply_migration_batch(
             user_id=message.user_id,
             at=message.at,
         )
-
-    await recorder.batch_started(positions=[positioned.position for positioned in migrations])
 
     async for _, positioned_result in batch.execute():
         await recorder.migration_ended(position=positioned_result.position, result=positioned_result.result)
@@ -216,11 +239,8 @@ async def _apply_migrations(
     if not message.migrations:
         return error_messages
 
-    positioned_migrations = [
-        PositionedMigration(position=position, migration=migration)
-        for position, migration in enumerate(message.migrations)
-    ]
-    await recorder.register(migrations=message.migrations)
+    positioned_migrations = position_migrations(migrations=message.migrations)
+    await recorder.register(migrations=[positioned.migration for positioned in positioned_migrations])
 
     kind_update_migrations, other_migrations = split_migrations_by_phase(migrations=positioned_migrations)
 

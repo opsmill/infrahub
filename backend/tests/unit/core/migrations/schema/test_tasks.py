@@ -5,7 +5,7 @@ import pytest
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.migrations import MIGRATION_MAP
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
-from infrahub.core.migrations.schema.tasks import PositionedMigration, split_migrations_by_phase
+from infrahub.core.migrations.schema.tasks import PositionedMigration, position_migrations, split_migrations_by_phase
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.path import SchemaPath
 
@@ -113,3 +113,63 @@ def test_split_keeps_the_position_of_each_migration_in_the_message() -> None:
         (2, "attribute.kind.update"),
         (4, "node.attribute.add"),
     ]
+
+
+def _path_migration(
+    migration_name: str,
+    schema_kind: str,
+    path_type: SchemaPathType = SchemaPathType.ATTRIBUTE,
+    field_name: str | None = None,
+    property_name: str | None = None,
+) -> SchemaUpdateMigrationInfo:
+    return SchemaUpdateMigrationInfo(
+        migration_name=migration_name,
+        path=SchemaPath(
+            path_type=path_type, schema_kind=schema_kind, field_name=field_name, property_name=property_name
+        ),
+    )
+
+
+def test_position_migrations_sorts_by_schema_path_then_migration_name() -> None:
+    car_color_kind = _path_migration(migration_name="attribute.kind.update", schema_kind="TestCar", field_name="color")
+    car_color_add = _path_migration(migration_name="node.attribute.add", schema_kind="TestCar", field_name="color")
+    car_name_kind = _path_migration(
+        migration_name="attribute.kind.update", schema_kind="TestCar", field_name="name", property_name="kind"
+    )
+    car_name = _path_migration(migration_name="attribute.name.update", schema_kind="TestCar", field_name="name")
+    car_rename = _path_migration(
+        migration_name="node.name.update", schema_kind="TestCar", path_type=SchemaPathType.NODE, property_name="name"
+    )
+    person_kind = _path_migration(
+        migration_name="node.inherit_from.update",
+        schema_kind="TestPerson",
+        path_type=SchemaPathType.NODE,
+        property_name="inherit_from",
+    )
+
+    positioned = position_migrations(
+        migrations=[person_kind, car_name_kind, car_color_add, car_rename, car_name, car_color_kind]
+    )
+
+    assert positioned == [
+        PositionedMigration(position=0, migration=car_rename),
+        PositionedMigration(position=1, migration=car_color_kind),
+        PositionedMigration(position=2, migration=car_color_add),
+        PositionedMigration(position=3, migration=car_name),
+        PositionedMigration(position=4, migration=car_name_kind),
+        PositionedMigration(position=5, migration=person_kind),
+    ]
+
+
+def test_position_migrations_keeps_the_kind_updates_before_the_others_after_the_split() -> None:
+    car_attribute_add = _path_migration(migration_name="node.attribute.add", schema_kind="TestCar", field_name="color")
+    person_rename = _path_migration(
+        migration_name="node.name.update", schema_kind="TestPerson", path_type=SchemaPathType.NODE, property_name="name"
+    )
+
+    phase_1, phase_2 = split_migrations_by_phase(
+        migrations=position_migrations(migrations=[person_rename, car_attribute_add])
+    )
+
+    assert phase_1 == [PositionedMigration(position=1, migration=person_rename)]
+    assert phase_2 == [PositionedMigration(position=0, migration=car_attribute_add)]
