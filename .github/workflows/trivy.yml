@@ -37,12 +37,25 @@ jobs:
         with:
           submodules: true
           persist-credentials: false
+      # Trivy reads .trivyignore, trivy.yaml and trivy-secret.yaml from the
+      # checked-out repository, so a PR could hide its own findings with them.
+      # Empty files outside the workspace replace them for this scan.
+      - name: "Create empty Trivy ignore and config files"
+        run: |
+          mkdir -p "$RUNNER_TEMP/trivy-trusted"
+          : > "$RUNNER_TEMP/trivy-trusted/ignore"
+          echo '{}' > "$RUNNER_TEMP/trivy-trusted/config.yaml"
+          echo '{}' > "$RUNNER_TEMP/trivy-trusted/secret.yaml"
       - name: "Run Trivy filesystem scan"
         id: "trivy"
         uses: "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25" # v0.36.0
         # Findings are reported in the summary and the artifact, not by failing
         # the job.
         continue-on-error: true
+        env:
+          TRIVY_IGNOREFILE: "${{ runner.temp }}/trivy-trusted/ignore"
+          TRIVY_CONFIG: "${{ runner.temp }}/trivy-trusted/config.yaml"
+          TRIVY_SECRET_CONFIG: "${{ runner.temp }}/trivy-trusted/secret.yaml"
         with:
           scan-type: "fs"
           scan-ref: "."
