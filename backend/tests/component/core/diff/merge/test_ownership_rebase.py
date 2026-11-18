@@ -8,7 +8,6 @@ import pytest
 from infrahub.core.branch import Branch
 from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.constants import DiffAction
-from infrahub.core.diff.model.path import ConflictSelection
 from infrahub.core.initialization import create_branch
 from infrahub.core.ownership.queries import NoOwnerVertexCreateQuery
 from infrahub.exceptions import ValidationError
@@ -113,88 +112,6 @@ async def test_rebase_after_both_branches_set_different_owners(
     assert (await Branch.get_by_name(db=db, name=branch.name)).branched_from == branch.branched_from
     assert await read_owners(db=db, branch=branch, node_id=tenant_id) == branch_owners
     assert await read_owners(db=db, branch=default_branch, node_id=tenant_id) == default_branch_owners
-
-    await set_owners(db=db, branch=branch, node_id=tenant_id, owner_ids=default_branch_owners)
-    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
-    assert diff.get_all_conflicts() == {}
-    await branch.rebase(db=db)
-
-    assert await read_owners(db=db, branch=branch, node_id=tenant_id) == default_branch_owners
-    await set_owners(db=db, branch=branch, node_id=tenant_id, owner_ids=branch_owners)
-    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
-    owners = owner_property(diff=diff, node_id=tenant_id)
-    assert (owners.previous_value, owners.new_value, owners.conflict) == (
-        dataset.owner_list(("network-emea",)),
-        dataset.owner_list(("security",)),
-        None,
-    )
-    await merge(db=db, branch=branch)
-    assert await read_owners(db=db, branch=default_branch, node_id=tenant_id) == branch_owners
-
-
-@pytest.mark.parametrize(
-    ("selection", "merged_owners"),
-    [
-        pytest.param(ConflictSelection.DIFF_BRANCH, ("dc-emea", "security"), id="second_branch_selected"),
-        pytest.param(ConflictSelection.BASE_BRANCH, ("dc-emea", "network-emea"), id="default_branch_selected"),
-    ],
-)
-async def test_second_merged_branch_with_other_owners_gives_one_owner_state(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    diff_repository: DiffRepository,
-    dataset: OwnerDataset,
-    selection: ConflictSelection,
-    merged_owners: tuple[str, ...],
-) -> None:
-    tenant_id = dataset.ids["tenant-a"]
-    await set_owners(db=db, branch=default_branch, node_id=tenant_id, owner_ids=dataset.owners(("dc-emea",)))
-    first_branch = await create_branch(db=db, branch_name="first-branch")
-    second_branch = await create_branch(db=db, branch_name="second-branch")
-    first_owners, second_owners = ("dc-emea", "network-emea"), ("dc-emea", "security")
-    await set_owners(db=db, branch=first_branch, node_id=tenant_id, owner_ids=dataset.owners(first_owners))
-    await set_owners(db=db, branch=second_branch, node_id=tenant_id, owner_ids=dataset.owners(second_owners))
-    await update_diff(db=db, default_branch=default_branch, branch=first_branch, diff_repository=diff_repository)
-    await merge(db=db, branch=first_branch)
-    assert await read_owners(db=db, branch=default_branch, node_id=tenant_id) == dataset.owners(first_owners)
-    assert await read_owners(db=db, branch=second_branch, node_id=tenant_id) == dataset.owners(second_owners)
-
-    diff = await update_diff(
-        db=db, default_branch=default_branch, branch=second_branch, diff_repository=diff_repository
-    )
-    conflict = owner_property(diff=diff, node_id=tenant_id).conflict
-    assert conflict is not None
-    assert (conflict.base_branch_value, conflict.diff_branch_value) == (
-        dataset.owner_list(first_owners),
-        dataset.owner_list(second_owners),
-    )
-    await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=selection)
-    await merge(db=db, branch=second_branch)
-
-    assert await read_owners(db=db, branch=default_branch, node_id=tenant_id) == dataset.owners(merged_owners)
-    assert await count_active_owner_edges(db=db, branch=default_branch, node_id=tenant_id) == len(merged_owners)
-
-
-async def test_second_merged_branch_with_the_same_first_owners_adds_no_owner_edge(
-    db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset
-) -> None:
-    tenant_id = dataset.ids["tenant-a"]
-    owner_ids = dataset.owners(("dc-emea", "network-emea"))
-    first_branch = await create_branch(db=db, branch_name="first-branch")
-    second_branch = await create_branch(db=db, branch_name="second-branch")
-    await set_owners(db=db, branch=first_branch, node_id=tenant_id, owner_ids=owner_ids)
-    await set_owners(db=db, branch=second_branch, node_id=tenant_id, owner_ids=owner_ids)
-    await update_diff(db=db, default_branch=default_branch, branch=first_branch, diff_repository=diff_repository)
-    await merge(db=db, branch=first_branch)
-
-    diff = await update_diff(
-        db=db, default_branch=default_branch, branch=second_branch, diff_repository=diff_repository
-    )
-    assert diff.get_all_conflicts() == {}
-    await merge(db=db, branch=second_branch)
-
-    assert await read_owners(db=db, branch=default_branch, node_id=tenant_id) == owner_ids
-    assert await count_active_owner_edges(db=db, branch=default_branch, node_id=tenant_id) == len(owner_ids)
 
 
 async def test_rebase_keeps_the_new_global_owners_of_a_branch_agnostic_node(

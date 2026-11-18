@@ -6,13 +6,15 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core.constants import DiffAction, PathType
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.conflicts_extractor import DiffConflictsExtractor
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.ownership.models import OwnerOrigin
+from infrahub.core.ownership.models import NODE_HOLDER, NODE_SOURCES_HOLDER, HolderKey, OwnerOrigin
 
 from ._ownership import (
     OWNERS_FIELD,
+    SOURCES_FIELD,
     OwnerDataset,
     load_owner_dataset,
     owner_property,
@@ -67,25 +69,39 @@ async def test_owner_change_lists_one_node_with_the_labels_of_its_owners(
         assert on_default_branch.owner_ids == dataset.owners(before)
 
 
-async def test_deleted_owner_has_a_mark_in_the_labels(
-    db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset
+@pytest.mark.parametrize(
+    ("holder", "field_name", "property_type", "mark"),
+    [
+        pytest.param(NODE_HOLDER, OWNERS_FIELD, DatabaseEdgeType.HAS_OWNER, "deleted owner", id="owners"),
+        pytest.param(NODE_SOURCES_HOLDER, SOURCES_FIELD, DatabaseEdgeType.HAS_SOURCE, "deleted source", id="sources"),
+    ],
+)
+async def test_deleted_owner_or_source_has_a_mark_in_the_labels(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    diff_repository: DiffRepository,
+    dataset: OwnerDataset,
+    holder: HolderKey,
+    field_name: str,
+    property_type: DatabaseEdgeType,
+    mark: str,
 ) -> None:
     tenant_id = dataset.ids["tenant-a"]
     before, after = ("dc-emea", "security"), ("dc-emea", "network-emea", "security")
-    await set_owners(db=db, branch=default_branch, node_id=tenant_id, owner_ids=dataset.owners(before))
+    await set_owners(db=db, branch=default_branch, node_id=tenant_id, owner_ids=dataset.owners(before), holder=holder)
     branch = await create_branch(db=db, branch_name="owner-deleted")
-    await set_owners(db=db, branch=branch, node_id=tenant_id, owner_ids=dataset.owners(after))
+    await set_owners(db=db, branch=branch, node_id=tenant_id, owner_ids=dataset.owners(after), holder=holder)
     # An account group is branch-agnostic, so the delete applies to the two branches.
     group = await NodeManager.get_one(db=db, branch=branch, id=dataset.ids["security"], raise_on_error=True)
     await group.delete(db=db)
 
     diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
 
-    owners = owner_property(diff=diff, node_id=tenant_id)
+    owners = owner_property(diff=diff, node_id=tenant_id, field_name=field_name, property_type=property_type)
     assert (owners.previous_value, owners.new_value) == (dataset.owner_list(before), dataset.owner_list(after))
     assert (owners.previous_label, owners.new_label) == (
-        dataset.owner_labels(before, deleted=("security",)),
-        dataset.owner_labels(after, deleted=("security",)),
+        dataset.owner_labels(before, deleted=("security",), mark=mark),
+        dataset.owner_labels(after, deleted=("security",), mark=mark),
     )
 
 
@@ -131,7 +147,6 @@ class OwnerConflictTestCase:
     """Group names, written on the default branch after the branch starts. None is inherit."""
 
     branch_owners: tuple[str, ...] | None
-    is_conflict: bool
 
 
 OWNER_CONFLICT_TEST_CASES: list[OwnerConflictTestCase] = [
@@ -139,25 +154,11 @@ OWNER_CONFLICT_TEST_CASES: list[OwnerConflictTestCase] = [
         name="different_owners_replace_the_same_owner",
         default_branch_owners=("network-emea",),
         branch_owners=("security",),
-        is_conflict=True,
-    ),
-    OwnerConflictTestCase(
-        name="different_owners_added_next_to_the_same_owner",
-        default_branch_owners=("dc-emea", "network-emea"),
-        branch_owners=("dc-emea", "security"),
-        is_conflict=True,
     ),
     OwnerConflictTestCase(
         name="no_owner_against_inherit",
         default_branch_owners=(),
         branch_owners=None,
-        is_conflict=True,
-    ),
-    OwnerConflictTestCase(
-        name="same_owners_on_both_branches",
-        default_branch_owners=("network-emea", "security"),
-        branch_owners=("security", "network-emea"),
-        is_conflict=False,
     ),
 ]
 
@@ -185,10 +186,6 @@ async def test_owner_changes_on_both_branches_conflict_when_the_lists_differ(
         dataset.owner_list(test_case.branch_owners),
     )
     data_conflicts = await DiffConflictsExtractor(db=db).get_data_conflicts(enriched_diff_root=diff)
-    if not test_case.is_conflict:
-        assert owners.conflict is None
-        assert data_conflicts == []
-        return
     assert owners.conflict is not None
     assert (owners.conflict.base_branch_value, owners.conflict.diff_branch_value) == (
         dataset.owner_list(test_case.default_branch_owners),

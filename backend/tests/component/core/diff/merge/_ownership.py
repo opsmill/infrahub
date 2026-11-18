@@ -40,6 +40,7 @@ if TYPE_CHECKING:
 USER_ID = "test-user-id"
 OWNERS_FIELD = "node_metadata__owners"
 TARGET_OWNERS_FIELD = "node_metadata__target_owners"
+SOURCES_FIELD = "node_metadata__sources"
 GROUP_NAMES = ("dc-emea", "network-emea", "security")
 
 
@@ -59,10 +60,10 @@ class OwnerDataset:
         owner_ids = self.owners(names)
         return None if owner_ids is None else ujson.dumps(list(owner_ids))
 
-    def owner_labels(self, names: tuple[str, ...], deleted: tuple[str, ...] = ()) -> str:
+    def owner_labels(self, names: tuple[str, ...], deleted: tuple[str, ...] = (), mark: str = "deleted owner") -> str:
         """Return the label that the diff gives to these owners, with the mark of each deleted owner."""
         by_id = sorted(names, key=lambda name: self.ids[name])
-        return ", ".join("deleted owner" if name in deleted else name for name in by_id)
+        return ", ".join(mark if name in deleted else name for name in by_id)
 
 
 async def _create(db: InfrahubDatabase, kind: str, name: str, **kwargs: Node) -> Node:
@@ -110,14 +111,21 @@ async def resolve_owners(db: InfrahubDatabase, branch: Branch, node_id: str) -> 
     return (await resolver.resolve(node_ids=[node_id]))[node_id]
 
 
-async def count_active_owner_edges(db: InfrahubDatabase, branch: Branch, node_id: str) -> int:
-    """Count the open owner edges that the node vertex holds on one branch."""
+async def count_active_owner_edges(
+    db: InfrahubDatabase,
+    branch: Branch,
+    node_id: str,
+    edge_types: tuple[str, ...] = (DatabaseEdgeType.HAS_OWNER.value, DatabaseEdgeType.HAS_NO_OWNER.value),
+) -> int:
+    """Count the open edges of these types that the node vertex holds on one branch."""
     query = """
-    MATCH (n:Node {uuid: $node_id})-[r:HAS_OWNER|HAS_NO_OWNER]->()
-    WHERE r.branch = $branch_name AND r.status = "active" AND r.to IS NULL
+    MATCH (n:Node {uuid: $node_id})-[r]->()
+    WHERE type(r) IN $edge_types AND r.branch = $branch_name AND r.status = "active" AND r.to IS NULL
     RETURN count(r) AS total
     """
-    results = await db.execute_query(query=query, params={"node_id": node_id, "branch_name": branch.name})
+    results = await db.execute_query(
+        query=query, params={"node_id": node_id, "branch_name": branch.name, "edge_types": list(edge_types)}
+    )
     return results[0]["total"]
 
 
@@ -157,9 +165,14 @@ async def rebase_with_conflict_check(
         await rebase_branch(branch=branch.name, context=context)
 
 
-def owner_property(diff: EnrichedDiffRoot, node_id: str, field_name: str = OWNERS_FIELD) -> EnrichedDiffProperty:
+def owner_property(
+    diff: EnrichedDiffRoot,
+    node_id: str,
+    field_name: str = OWNERS_FIELD,
+    property_type: DatabaseEdgeType = DatabaseEdgeType.HAS_OWNER,
+) -> EnrichedDiffProperty:
     node = get_one_diff_node(diff_root=diff, node_uuid=node_id)
-    return node.get_attribute(name=field_name).get_property(property_type=DatabaseEdgeType.HAS_OWNER)
+    return node.get_attribute(name=field_name).get_property(property_type=property_type)
 
 
 def has_owner_change(diff: EnrichedDiffRoot) -> bool:

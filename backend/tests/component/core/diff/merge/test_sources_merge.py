@@ -14,15 +14,13 @@ from infrahub.core.ownership.models import NODE_SOURCES_HOLDER
 from infrahub.database.validation import verify_graph
 
 from ..get_one_node import get_one_diff_node
-from ._ownership import OwnerDataset, load_owner_dataset, merge, read_owners, set_owners, update_diff
+from ._ownership import SOURCES_FIELD, OwnerDataset, load_owner_dataset, merge, read_owners, set_owners, update_diff
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.diff.model.path import EnrichedDiffProperty, EnrichedDiffRoot
     from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.database import InfrahubDatabase
-
-SOURCES_FIELD = "node_metadata__sources"
 
 
 @pytest.fixture
@@ -42,12 +40,6 @@ async def _read_sources(db: InfrahubDatabase, branch: Branch, node_id: str) -> t
 def _sources_property(diff: EnrichedDiffRoot, node_id: str) -> EnrichedDiffProperty:
     node = get_one_diff_node(diff_root=diff, node_uuid=node_id)
     return node.get_attribute(name=SOURCES_FIELD).get_property(property_type=DatabaseEdgeType.HAS_SOURCE)
-
-
-def _source_labels(dataset: OwnerDataset, names: tuple[str, ...], deleted: str) -> str:
-    """Return the label that the diff gives to these sources, with the mark of the deleted source."""
-    by_id = sorted(names, key=lambda name: dataset.ids[name])
-    return ", ".join("deleted source" if name == deleted else name for name in by_id)
 
 
 async def _count_active_source_edges(db: InfrahubDatabase, branch: Branch, node_id: str) -> int:
@@ -90,28 +82,6 @@ async def test_two_sources_set_on_a_branch_show_on_the_default_branch_after_the_
     assert await _read_sources(db=db, branch=default_branch, node_id=tenant_id) == sources
     assert await read_owners(db=db, branch=default_branch, node_id=tenant_id) == owners
     await verify_graph(db=db)
-
-
-async def test_deleted_source_has_a_mark_in_the_labels(
-    db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset
-) -> None:
-    tenant_id = dataset.ids["tenant-a"]
-    before, after = ("dc-emea", "security"), ("dc-emea", "network-emea", "security")
-    await _set_sources(db=db, branch=default_branch, node_id=tenant_id, source_ids=dataset.owners(before))
-    branch = await create_branch(db=db, branch_name="source-deleted")
-    await _set_sources(db=db, branch=branch, node_id=tenant_id, source_ids=dataset.owners(after))
-    # An account group is branch-agnostic, so the delete applies to the two branches.
-    group = await NodeManager.get_one(db=db, branch=branch, id=dataset.ids["security"], raise_on_error=True)
-    await group.delete(db=db)
-
-    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
-
-    changed = _sources_property(diff=diff, node_id=tenant_id)
-    assert (changed.previous_value, changed.new_value) == (dataset.owner_list(before), dataset.owner_list(after))
-    assert (changed.previous_label, changed.new_label) == (
-        _source_labels(dataset, before, deleted="security"),
-        _source_labels(dataset, after, deleted="security"),
-    )
 
 
 async def test_source_removed_on_a_branch_is_removed_by_the_merge_with_its_changelog(

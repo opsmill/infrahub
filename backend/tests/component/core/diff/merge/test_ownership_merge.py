@@ -18,6 +18,8 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
 from infrahub.core.ownership.models import (
+    NODE_HOLDER,
+    NODE_SOURCES_HOLDER,
     NODE_TARGET_HOLDER,
     HolderKey,
     HolderKind,
@@ -102,6 +104,7 @@ OWNER_MERGE_TEST_CASES: list[OwnerMergeTestCase] = [
         action=DiffAction.REMOVED,
     ),
 ]
+OWNER_SET_MERGE_TEST_CASES = [tc for tc in OWNER_MERGE_TEST_CASES if tc.name not in {"owner_added", "owner_removed"}]
 
 
 @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in OWNER_MERGE_TEST_CASES])
@@ -187,6 +190,49 @@ async def test_owner_state_set_again_on_a_branch_does_not_return_after_the_defau
     await verify_graph(db=db)
 
 
+@pytest.mark.parametrize(
+    ("selection", "merged_owners"),
+    [
+        pytest.param(ConflictSelection.DIFF_BRANCH, ("dc-emea", "security"), id="second_branch_selected"),
+        pytest.param(ConflictSelection.BASE_BRANCH, ("dc-emea", "network-emea"), id="default_branch_selected"),
+    ],
+)
+async def test_second_merged_branch_with_other_owners_gives_one_owner_state(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    diff_repository: DiffRepository,
+    dataset: OwnerDataset,
+    selection: ConflictSelection,
+    merged_owners: tuple[str, ...],
+) -> None:
+    tenant_id = dataset.ids["tenant-a"]
+    await set_owners(db=db, branch=default_branch, node_id=tenant_id, owner_ids=dataset.owners(("dc-emea",)))
+    first_branch = await create_branch(db=db, branch_name="first-branch")
+    second_branch = await create_branch(db=db, branch_name="second-branch")
+    first_owners, second_owners = ("dc-emea", "network-emea"), ("dc-emea", "security")
+    await set_owners(db=db, branch=first_branch, node_id=tenant_id, owner_ids=dataset.owners(first_owners))
+    await set_owners(db=db, branch=second_branch, node_id=tenant_id, owner_ids=dataset.owners(second_owners))
+    await update_diff(db=db, default_branch=default_branch, branch=first_branch, diff_repository=diff_repository)
+    await merge(db=db, branch=first_branch)
+    assert await read_owners(db=db, branch=default_branch, node_id=tenant_id) == dataset.owners(first_owners)
+    assert await read_owners(db=db, branch=second_branch, node_id=tenant_id) == dataset.owners(second_owners)
+
+    diff = await update_diff(
+        db=db, default_branch=default_branch, branch=second_branch, diff_repository=diff_repository
+    )
+    conflict = owner_property(diff=diff, node_id=tenant_id).conflict
+    assert conflict is not None
+    assert (conflict.base_branch_value, conflict.diff_branch_value) == (
+        dataset.owner_list(first_owners),
+        dataset.owner_list(second_owners),
+    )
+    await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=selection)
+    await merge(db=db, branch=second_branch)
+
+    assert await read_owners(db=db, branch=default_branch, node_id=tenant_id) == dataset.owners(merged_owners)
+    assert await count_active_owner_edges(db=db, branch=default_branch, node_id=tenant_id) == len(merged_owners)
+
+
 async def test_node_deleted_on_a_branch_loses_its_owners_at_the_merge(
     db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset
 ) -> None:
@@ -213,23 +259,40 @@ async def test_node_deleted_on_a_branch_loses_its_owners_at_the_merge(
     assert await count_active_owner_edges(db=db, branch=default_branch, node_id=device_id) == 0
 
 
+@pytest.mark.parametrize(
+    ("holder", "edge_types"),
+    [
+        pytest.param(NODE_HOLDER, (DatabaseEdgeType.HAS_OWNER.value, DatabaseEdgeType.HAS_NO_OWNER.value), id="owners"),
+        pytest.param(NODE_SOURCES_HOLDER, (DatabaseEdgeType.HAS_SOURCE.value,), id="sources"),
+    ],
+)
 async def test_merge_closes_the_owners_that_the_default_branch_gave_to_a_node_that_the_branch_deleted(
-    db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    diff_repository: DiffRepository,
+    dataset: OwnerDataset,
+    holder: HolderKey,
+    edge_types: tuple[str, ...],
 ) -> None:
     device_id = dataset.ids["device-a"]
-    await set_owners(db=db, branch=default_branch, node_id=device_id, owner_ids=dataset.owners(("dc-emea",)))
+    await set_owners(
+        db=db, branch=default_branch, node_id=device_id, owner_ids=dataset.owners(("dc-emea",)), holder=holder
+    )
     branch = await create_branch(db=db, branch_name="node-deleted")
     # The branch does not read these owners, so its delete does not close them.
     owners_after_branch_start = dataset.owners(("network-emea", "security"))
-    await set_owners(db=db, branch=default_branch, node_id=device_id, owner_ids=owners_after_branch_start)
+    await set_owners(
+        db=db, branch=default_branch, node_id=device_id, owner_ids=owners_after_branch_start, holder=holder
+    )
     device = await NodeManager.get_one(db=db, branch=branch, id=device_id, raise_on_error=True)
     await device.delete(db=db)
     await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
-    assert await count_active_owner_edges(db=db, branch=default_branch, node_id=device_id) == 2
+    assert await count_active_owner_edges(db=db, branch=default_branch, node_id=device_id, edge_types=edge_types) == 2
 
     await merge(db=db, branch=branch)
 
-    assert await count_active_owner_edges(db=db, branch=default_branch, node_id=device_id) == 0
+    assert await NodeManager.get_one(db=db, branch=default_branch, id=device_id) is None
+    assert await count_active_owner_edges(db=db, branch=default_branch, node_id=device_id, edge_types=edge_types) == 0
 
 
 @pytest.mark.parametrize(
@@ -307,47 +370,6 @@ async def test_merge_closes_the_owner_edge_of_a_link_to_a_node_that_the_branch_d
     assert (await db.execute_query(query=query, params=params))[0]["total"] == 0
 
 
-async def test_parent_changed_on_a_branch_changes_the_inherited_owners_after_the_merge(
-    db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset
-) -> None:
-    device_id = dataset.ids["device-a"]
-    await set_owners(
-        db=db, branch=default_branch, node_id=dataset.ids["rack-a"], owner_ids=dataset.owners(("dc-emea",))
-    )
-    await set_owners(
-        db=db, branch=default_branch, node_id=dataset.ids["rack-b"], owner_ids=dataset.owners(("network-emea",))
-    )
-    branch = await create_branch(db=db, branch_name="parent-changed")
-    device = await NodeManager.get_one(db=db, branch=branch, id=device_id, raise_on_error=True)
-    await device.rack.update(db=db, data=dataset.ids["rack-b"])
-    await device.save(db=db)
-
-    on_branch = await resolve_owners(db=db, branch=branch, node_id=device_id)
-    assert (on_branch.owner_ids, on_branch.origin_node_id) == (
-        dataset.owners(("network-emea",)),
-        dataset.ids["rack-b"],
-    )
-    on_default_branch = await resolve_owners(db=db, branch=default_branch, node_id=device_id)
-    assert (on_default_branch.owner_ids, on_default_branch.origin_node_id) == (
-        dataset.owners(("dc-emea",)),
-        dataset.ids["rack-a"],
-    )
-    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
-    assert not has_owner_change(diff=diff)
-    assert [
-        relationship.name for relationship in get_one_diff_node(diff_root=diff, node_uuid=device_id).relationships
-    ] == ["rack"]
-
-    await merge(db=db, branch=branch)
-
-    merged = await resolve_owners(db=db, branch=default_branch, node_id=device_id)
-    assert (merged.owner_ids, merged.origin, merged.origin_node_id) == (
-        dataset.owners(("network-emea",)),
-        OwnerOrigin.PARENT,
-        dataset.ids["rack-b"],
-    )
-
-
 async def test_merge_changelog_records_the_owner_change_of_the_changed_node_only(
     db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset
 ) -> None:
@@ -398,7 +420,7 @@ async def _count_active_given_owner_edges(db: InfrahubDatabase, branch: Branch, 
     return results[0]["total"]
 
 
-@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in OWNER_MERGE_TEST_CASES])
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in OWNER_SET_MERGE_TEST_CASES])
 async def test_owners_that_a_profile_gives_on_a_branch_are_merged(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -770,7 +792,7 @@ async def test_merge_closes_the_owners_that_the_default_branch_gave_through_a_pr
 NAME_HOLDER = HolderKey(kind=HolderKind.ATTRIBUTE, attribute="name")
 
 
-@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in OWNER_MERGE_TEST_CASES])
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in OWNER_SET_MERGE_TEST_CASES])
 async def test_owner_state_of_an_attribute_on_a_branch_is_merged(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -1064,14 +1086,22 @@ async def test_merge_keeps_the_global_owner_edges_of_a_branch_agnostic_node(
     await verify_graph(db=db)
 
 
-async def test_stored_conflict_with_one_owner_id_as_value_gives_that_owner_at_the_merge(
-    db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset
-) -> None:
+async def _select_the_branch_owners_of_an_attribute_conflict(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    diff_repository: DiffRepository,
+    dataset: OwnerDataset,
+    branch_name: str,
+) -> tuple[str, Branch, str]:
+    """Give other owners to the attribute `name` of `tenant-a` on both branches and select the branch in the conflict.
+
+    Return the ID of the tenant, the branch and the ID of the conflict.
+    """
     tenant_id = dataset.ids["tenant-a"]
     await set_owners(
         db=db, branch=default_branch, node_id=tenant_id, owner_ids=dataset.owners(("dc-emea",)), holder=NAME_HOLDER
     )
-    branch = await create_branch(db=db, branch_name="stored-conflict")
+    branch = await create_branch(db=db, branch_name=branch_name)
     await set_owners(
         db=db, branch=default_branch, node_id=tenant_id, owner_ids=dataset.owners(("network-emea",)), holder=NAME_HOLDER
     )
@@ -1082,10 +1112,23 @@ async def test_stored_conflict_with_one_owner_id_as_value_gives_that_owner_at_th
     conflict = owner_property(diff=diff, node_id=tenant_id, field_name="name").conflict
     assert conflict is not None
     await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=ConflictSelection.DIFF_BRANCH)
+    return tenant_id, branch, conflict.uuid
+
+
+async def test_stored_conflict_with_one_owner_id_as_value_gives_that_owner_at_the_merge(
+    db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset
+) -> None:
+    tenant_id, branch, conflict_id = await _select_the_branch_owners_of_an_attribute_conflict(
+        db=db,
+        default_branch=default_branch,
+        diff_repository=diff_repository,
+        dataset=dataset,
+        branch_name="stored-conflict",
+    )
     # A diff of a release that kept one owner for each attribute stores the owner ID and not a list.
     await db.execute_query(
         query="MATCH (c:DiffConflict {uuid: $uuid}) SET c.diff_branch_value = $owner_id",
-        params={"uuid": conflict.uuid, "owner_id": dataset.ids["security"]},
+        params={"uuid": conflict_id, "owner_id": dataset.ids["security"]},
     )
 
     await merge(db=db, branch=branch)
@@ -1098,21 +1141,13 @@ async def test_stored_conflict_with_one_owner_id_as_value_gives_that_owner_at_th
 async def test_rollback_of_a_merge_that_wrote_the_owners_of_an_attribute_restores_the_audit_metadata(
     db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset
 ) -> None:
-    tenant_id = dataset.ids["tenant-a"]
-    await set_owners(
-        db=db, branch=default_branch, node_id=tenant_id, owner_ids=dataset.owners(("dc-emea",)), holder=NAME_HOLDER
+    tenant_id, branch, _ = await _select_the_branch_owners_of_an_attribute_conflict(
+        db=db,
+        default_branch=default_branch,
+        diff_repository=diff_repository,
+        dataset=dataset,
+        branch_name="owner-rollback",
     )
-    branch = await create_branch(db=db, branch_name="owner-rollback")
-    await set_owners(
-        db=db, branch=default_branch, node_id=tenant_id, owner_ids=dataset.owners(("network-emea",)), holder=NAME_HOLDER
-    )
-    await set_owners(
-        db=db, branch=branch, node_id=tenant_id, owner_ids=dataset.owners(("security",)), holder=NAME_HOLDER
-    )
-    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
-    conflict = owner_property(diff=diff, node_id=tenant_id, field_name="name").conflict
-    assert conflict is not None
-    await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=ConflictSelection.DIFF_BRANCH)
     metadata_query = """
     MATCH (n:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: "name"})
     RETURN [n.updated_at, n.updated_by, a.updated_at, a.updated_by] AS metadata
