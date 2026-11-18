@@ -45,6 +45,9 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
   and are not part of this model.
   The merge of a branch that deletes a node closes the `HAS_OWNER` edge from a `Relationship` vertex to that node.
   The `HAS_OWNER` edges from the other vertices stay, so that the list of owners shows a deleted owner.
+- The merge copies an owner edge or a source edge of the branch also when its owner or source is deleted, so the
+  default branch reads the same list as the branch and the diff. Only the `HAS_OWNER_SOURCE` mark needs a live
+  template.
 
 ## Writes
 
@@ -224,6 +227,8 @@ holds, so it runs before the upgrade.
 - A rebase stops on a conflict of owners or sources until both branches hold the same list. See
   [Diff Conflicts](diff-conflicts.md).
 - An event stores the owners of an attribute as the `owners` property of the attribute, in its payload only.
+- The merge does not copy the `HAS_OWNER` edge of a link to a deleted owner. The default branch then reads no owner
+  on the link, and the branch reads the deleted owner.
 - The global edges of an `OwnerSet` that a schema change hides never close. The retirement of branch-agnostic data
   (`core/query/agnostic_retention.py`) reads only `Attribute` and `Relationship` vertices.
 - A `HAS_OWNER_SOURCE` edge of the global branch stays open after the delete of a branch-aware object template.
