@@ -37,6 +37,7 @@ from infrahub.exceptions import ValidationError
 from ..get_one_node import get_one_diff_node
 from ._ownership import (
     OWNERS_FIELD,
+    SOURCES_FIELD,
     TARGET_OWNERS_FIELD,
     OwnerDataset,
     load_owner_dataset,
@@ -306,9 +307,7 @@ PROFILE_RELATIONSHIP = ProfileHolder(
     holder=("TestDevice", "rack", True),
 )
 TEMPLATE_COPY = TemplateCopyHolder(name="template_copy", node_name="", field_name=OWNERS_FIELD, holder=NODE_HOLDER)
-SOURCES = SourcesHolder(
-    name="sources", node_name="tenant-a", field_name="node_metadata__sources", holder=NODE_SOURCES_HOLDER
-)
+SOURCES = SourcesHolder(name="sources", node_name="tenant-a", field_name=SOURCES_FIELD, holder=NODE_SOURCES_HOLDER)
 ATTRIBUTE_OWNER_PROPERTY = AttributeOwnerPropertyHolder(
     name="attribute_owner_property",
     node_name="tenant-a",
@@ -319,11 +318,11 @@ LINK_OWNER_PROPERTY = LinkOwnerHolder(
     name="link_owner_property", node_name="device-a", field_name="rack", holder=NODE_HOLDER
 )
 
+# The owner code does not read the cardinality of a relationship field, so only the conflict scenario holds both.
 ALL_HOLDERS = [
     NODE,
     ATTRIBUTE,
     RELATIONSHIP_ONE,
-    RELATIONSHIP_MANY,
     PROFILE,
     PROFILE_ATTRIBUTE,
     PROFILE_RELATIONSHIP,
@@ -399,7 +398,6 @@ async def _merge_changelogs(
 S1_HOLDERS = [
     ATTRIBUTE,
     RELATIONSHIP_ONE,
-    RELATIONSHIP_MANY,
     PROFILE,
     PROFILE_ATTRIBUTE,
     PROFILE_RELATIONSHIP,
@@ -640,7 +638,6 @@ REMOVAL_TEST_CASES: list[RemovalTestCase] = [
 ]
 S6_HOLDERS = [
     RELATIONSHIP_ONE,
-    RELATIONSHIP_MANY,
     PROFILE_ATTRIBUTE,
     PROFILE_RELATIONSHIP,
     TEMPLATE_COPY,
