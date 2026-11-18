@@ -6,12 +6,18 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.schema_change.applier import SchemaChangeApplier
 from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder
 from tests.constants import TestKind
+from tests.unit.core.schema_change.equivalence_cases import (
+    CHANGE_RELATIONSHIP_TO_COMPONENT,
+    CHANGE_RELATIONSHIP_TO_COMPONENT_WITH_ON_DELETE,
+    RENAME_ATTRIBUTE_ON_GENERIC_WITH_PROFILES,
+    TURN_UNIQUE_OFF,
+)
 from tests.unit.core.schema_change.helpers import (
     DEVICE_SPARE_SFPS_RELATIONSHIP,
+    CombinedLoad,
     SchemaLoadResult,
     base_generic_definition,
-    base_node_definition,
-    schema_element_id,
+    summarize_load_result,
     validate_candidate_schema,
 )
 
@@ -34,19 +40,13 @@ def _load_through_operations(*, branch_schema: SchemaBranch, schema_root: Schema
         "that were calculated from it, so the processed diff is empty and the load records no change"
     ),
 )
-def test_turning_unique_off_removes_the_calculated_uniqueness_constraint(
-    equivalence_base_schema: SchemaBranch,
-) -> None:
-    device_before = equivalence_base_schema.get(name=TestKind.DEVICE, duplicate=False)
+def test_turning_unique_off_removes_the_calculated_uniqueness_constraint(combined_load: CombinedLoad) -> None:
+    device_kind = TURN_UNIQUE_OFF.scope.kind(TestKind.DEVICE)
+    device_before = combined_load.base.get(name=device_kind, duplicate=False)
     assert device_before.get_attribute(name="name").unique is True
     assert device_before.uniqueness_constraints == [["name__value"]]
 
-    device = base_node_definition(TestKind.DEVICE)
-    device.get_attribute(name="name").unique = False
-
-    result = _load_through_operations(branch_schema=equivalence_base_schema, schema_root=SchemaRoot(nodes=[device]))
-
-    device_after = result.schema.get(name=TestKind.DEVICE, duplicate=False)
+    device_after = combined_load.actual.schema.get(name=device_kind, duplicate=False)
     assert device_after.get_attribute(name="name").unique is False
     assert (device_after.uniqueness_constraints or []) == []
 
@@ -59,38 +59,25 @@ def test_turning_unique_off_removes_the_calculated_uniqueness_constraint(
         "calculated for its earlier kind"
     ),
 )
-def test_a_relationship_changed_to_component_without_on_delete_cascades(
-    equivalence_base_schema: SchemaBranch,
-) -> None:
-    relationship_before = equivalence_base_schema.get(name=TestKind.DEVICE, duplicate=False).get_relationship(
+def test_a_relationship_changed_to_component_without_on_delete_cascades(combined_load: CombinedLoad) -> None:
+    device_kind = CHANGE_RELATIONSHIP_TO_COMPONENT.scope.kind(TestKind.DEVICE)
+    relationship_before = combined_load.base.get(name=device_kind, duplicate=False).get_relationship(
         name=DEVICE_SPARE_SFPS_RELATIONSHIP
     )
     assert relationship_before.kind == RelationshipKind.GENERIC
     assert relationship_before.on_delete == RelationshipDeleteBehavior.NO_ACTION
 
-    device = base_node_definition(TestKind.DEVICE)
-    device.get_relationship(name=DEVICE_SPARE_SFPS_RELATIONSHIP).kind = RelationshipKind.COMPONENT
-
-    result = _load_through_operations(branch_schema=equivalence_base_schema, schema_root=SchemaRoot(nodes=[device]))
-
-    relationship_after = result.schema.get(name=TestKind.DEVICE, duplicate=False).get_relationship(
+    relationship_after = combined_load.actual.schema.get(name=device_kind, duplicate=False).get_relationship(
         name=DEVICE_SPARE_SFPS_RELATIONSHIP
     )
     assert relationship_after.kind == RelationshipKind.COMPONENT
     assert relationship_after.on_delete == RelationshipDeleteBehavior.CASCADE
 
 
-def test_a_relationship_changed_to_component_keeps_the_on_delete_of_the_file(
-    equivalence_base_schema: SchemaBranch,
-) -> None:
-    device = base_node_definition(TestKind.DEVICE)
-    spare_sfps = device.get_relationship(name=DEVICE_SPARE_SFPS_RELATIONSHIP)
-    spare_sfps.kind = RelationshipKind.COMPONENT
-    spare_sfps.on_delete = RelationshipDeleteBehavior.NO_ACTION
+def test_a_relationship_changed_to_component_keeps_the_on_delete_of_the_file(combined_load: CombinedLoad) -> None:
+    device_kind = CHANGE_RELATIONSHIP_TO_COMPONENT_WITH_ON_DELETE.scope.kind(TestKind.DEVICE)
 
-    result = _load_through_operations(branch_schema=equivalence_base_schema, schema_root=SchemaRoot(nodes=[device]))
-
-    relationship_after = result.schema.get(name=TestKind.DEVICE, duplicate=False).get_relationship(
+    relationship_after = combined_load.actual.schema.get(name=device_kind, duplicate=False).get_relationship(
         name=DEVICE_SPARE_SFPS_RELATIONSHIP
     )
     assert relationship_after.kind == RelationshipKind.COMPONENT
@@ -105,24 +92,14 @@ def test_a_relationship_changed_to_component_keeps_the_on_delete_of_the_file(
         "that inherit the generic do not carry the label of the generic's profile kind"
     ),
 )
-def test_a_rename_on_a_generic_migrates_the_profiles_of_the_inheriting_kinds(
-    equivalence_base_schema: SchemaBranch,
-) -> None:
-    interface = base_generic_definition(TestKind.INTERFACE)
-    enabled = interface.get_attribute(name="enabled")
-    enabled.id = schema_element_id(equivalence_base_schema, TestKind.INTERFACE, "enabled")
-    enabled.name = "admin_enabled"
+def test_a_rename_on_a_generic_migrates_the_profiles_of_the_inheriting_kinds(combined_load: CombinedLoad) -> None:
+    case = RENAME_ATTRIBUTE_ON_GENERIC_WITH_PROFILES
+    owned_kinds = case.owned_kinds(base_schema=combined_load.base, result_schema=combined_load.actual.schema)
 
-    result = _load_through_operations(
-        branch_schema=equivalence_base_schema, schema_root=SchemaRoot(generics=[interface])
-    )
-
-    assert sorted(
-        (migration.migration_name, migration.path.get_path()) for migration in result.validation.migrations
-    ) == [
-        ("attribute.name.update", "schema/ProfileTestingPhysicalInterface/admin_enabled/name"),
-        ("attribute.name.update", "schema/ProfileTestingVirtualInterface/admin_enabled/name"),
-        ("attribute.name.update", "schema/TestingInterface/admin_enabled/name"),
+    assert summarize_load_result(combined_load.actual, kinds=owned_kinds).migrations == [
+        ("attribute.name.update", "schema/ProfileInheritedrenamePhysicalInterface/admin_enabled/name"),
+        ("attribute.name.update", "schema/ProfileInheritedrenameVirtualInterface/admin_enabled/name"),
+        ("attribute.name.update", "schema/InheritedrenameInterface/admin_enabled/name"),
     ]
 
 

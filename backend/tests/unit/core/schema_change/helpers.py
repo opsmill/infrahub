@@ -7,15 +7,17 @@ from typing import TYPE_CHECKING, Any, override
 from neo4j import Record
 from neo4j.exceptions import TransientError
 
-from infrahub.core.constants import RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import DEFAULT_NAME_MAX_LENGTH, RelationshipCardinality, RelationshipKind
 from infrahub.core.schema import (
     AttributeSchema,
     DropdownChoice,
     GenericSchema,
     NodeSchema,
     RelationshipSchema,
+    SchemaExtension,
     SchemaRoot,
 )
+from infrahub.core.schema.derived_kinds import get_object_template_kind, get_profile_kind
 from infrahub.core.schema_change.application_runner import ApplicationRecorder, SchemaUpdateExecutor
 from infrahub.core.schema_change.applier import SchemaChangeApplier
 from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder, SchemaOperationBuildResult
@@ -27,7 +29,7 @@ from tests.constants import TestKind
 from tests.helpers.schema import DEVICE, INTERFACE, INTERFACE_HOLDER, PHYSICAL_INTERFACE, SFP, TAG, VIRTUAL_INTERFACE
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping, Sequence
+    from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 
     from pydantic import JsonValue
 
@@ -79,6 +81,37 @@ def _tag_definition() -> NodeSchema:
     return tag
 
 
+BASE_NAMESPACE = "Testing"
+COUNTER_KIND = f"{BASE_NAMESPACE}Counter"
+BOUNDS_POOL_ATTRIBUTE = "bounds_number"
+RANGES_POOL_ATTRIBUTE = "ranges_number"
+BOUNDS_POOL_PARAMETERS: dict[str, JsonValue] = {"start_range": 50, "end_range": 1200}
+RANGES_POOL_PARAMETERS: dict[str, JsonValue] = {"ranges": [{"start": 1, "end": 10}, {"start": 100, "end": 200}]}
+
+
+def counter_definition(
+    *,
+    namespace: str = BASE_NAMESPACE,
+    bounds_parameters: dict[str, JsonValue] = BOUNDS_POOL_PARAMETERS,
+    ranges_parameters: dict[str, JsonValue] = RANGES_POOL_PARAMETERS,
+) -> NodeSchema:
+    """Return a node that holds one number pool declared by range bounds and one declared by ranges."""
+    return NodeSchema(
+        name="Counter",
+        namespace=namespace,
+        label="Counter",
+        attributes=[
+            AttributeSchema(name="name", kind="Text", unique=True),
+            AttributeSchema(
+                name=BOUNDS_POOL_ATTRIBUTE, kind="NumberPool", read_only=True, parameters=bounds_parameters
+            ),
+            AttributeSchema(
+                name=RANGES_POOL_ATTRIBUTE, kind="NumberPool", read_only=True, parameters=ranges_parameters
+            ),
+        ],
+    )
+
+
 _BASE_DEFINITIONS: dict[str, Callable[[], NodeSchema | GenericSchema]] = {
     TestKind.INTERFACE: INTERFACE.duplicate,
     TestKind.INTERFACE_HOLDER: INTERFACE_HOLDER.duplicate,
@@ -87,7 +120,18 @@ _BASE_DEFINITIONS: dict[str, Callable[[], NodeSchema | GenericSchema]] = {
     TestKind.VIRTUAL_INTERFACE: VIRTUAL_INTERFACE.duplicate,
     TestKind.SFP: SFP.duplicate,
     TestKind.TAG: _tag_definition,
+    COUNTER_KIND: counter_definition,
 }
+
+INTERFACE_KINDS: tuple[str, ...] = (
+    TestKind.INTERFACE_HOLDER,
+    TestKind.INTERFACE,
+    TestKind.DEVICE,
+    TestKind.PHYSICAL_INTERFACE,
+    TestKind.VIRTUAL_INTERFACE,
+    TestKind.SFP,
+)
+TAG_KINDS: tuple[str, ...] = (TestKind.TAG,)
 
 
 def base_node_definition(kind: str) -> NodeSchema:
@@ -151,6 +195,157 @@ def schema_element_id(schema: SchemaBranch, kind: str, element_name: str | None 
     if element.id is None:
         raise ValueError(f"{kind} {element_name or ''} has no ID in the schema")
     return element.id
+
+
+@dataclass(frozen=True)
+class CaseScope:
+    """Copies base kinds into the namespace of one case, so that the changes of several cases can be loaded together."""
+
+    namespace: str
+
+    def kind(self, base_kind: str) -> str:
+        """Return the kind that a base kind becomes in the namespace.
+
+        Raises:
+            ValueError: When the kind is not a kind of the base schema.
+
+        """
+        if base_kind not in _BASE_DEFINITIONS:
+            raise ValueError(f"{base_kind} is not a kind of the base schema")
+        return f"{self.namespace}{base_kind.removeprefix(BASE_NAMESPACE)}"
+
+    def definition(self, base_kind: str) -> NodeSchema | GenericSchema:
+        """Return a new copy of a base kind in the namespace, with its generics and peers moved there too."""
+        definition = _BASE_DEFINITIONS[base_kind]()
+        definition.namespace = self.namespace
+        if isinstance(definition, NodeSchema):
+            definition.inherit_from = [self._moved_kind(kind) for kind in definition.inherit_from]
+        for relationship in definition.relationships:
+            relationship.peer = self._moved_kind(relationship.peer)
+            if relationship.identifier is not None:
+                # The two sides of a relationship are matched by identifier across every kind of the schema.
+                relationship.identifier = f"{self.namespace.lower()}_{relationship.identifier}"
+        return definition
+
+    def node(self, base_kind: str) -> NodeSchema:
+        """Return a new copy of a base node in the namespace.
+
+        Raises:
+            TypeError: When the kind is not a node of the base schema.
+
+        """
+        definition = self.definition(base_kind)
+        if not isinstance(definition, NodeSchema):
+            raise TypeError(f"{base_kind} is not a node of the base schema")
+        return definition
+
+    def generic(self, base_kind: str) -> GenericSchema:
+        """Return a new copy of a base generic in the namespace.
+
+        Raises:
+            TypeError: When the kind is not a generic of the base schema.
+
+        """
+        definition = self.definition(base_kind)
+        if not isinstance(definition, GenericSchema):
+            raise TypeError(f"{base_kind} is not a generic of the base schema")
+        return definition
+
+    def schema_root(self, base_kinds: Sequence[str]) -> SchemaRoot:
+        definitions = [self.definition(base_kind) for base_kind in base_kinds]
+        return SchemaRoot(
+            generics=[definition for definition in definitions if isinstance(definition, GenericSchema)],
+            nodes=[definition for definition in definitions if isinstance(definition, NodeSchema)],
+        )
+
+    def element_id(self, schema: SchemaBranch, base_kind: str, element_name: str | None = None) -> str:
+        return schema_element_id(schema, self.kind(base_kind), element_name)
+
+    def _moved_kind(self, kind: str) -> str:
+        return self.kind(kind) if kind in _BASE_DEFINITIONS else kind
+
+
+@dataclass(frozen=True)
+class CombinedLoadCase:
+    name: str
+    namespace: str
+    base_kinds: tuple[str, ...]
+    """Every base kind that the case copies into its namespace, including each peer and generic they name."""
+
+    schema_file: Callable[[CaseScope, SchemaBranch], SchemaRoot]
+    """Builds a new schema file on each call, because a load changes the file; it reads IDs from the schema."""
+
+    base_file: Callable[[CaseScope], SchemaRoot] | None = None
+    """Builds the base of the case when it is not the plain copies of `base_kinds`."""
+
+    @property
+    def scope(self) -> CaseScope:
+        return CaseScope(namespace=self.namespace)
+
+    def build_base_file(self) -> SchemaRoot:
+        """Return the base kinds of the case in its namespace.
+
+        Raises:
+            ValueError: When the base kinds name a base kind that `base_kinds` leaves out, when the
+                base file defines other kinds than `base_kinds`, or when a kind is too long to name its
+                profile and template kinds.
+
+        """
+        scope = self.scope
+        base_file = scope.schema_root(self.base_kinds) if self.base_file is None else self.base_file(scope)
+        definitions = [*base_file.generics, *base_file.nodes]
+        declared = {scope.kind(base_kind) for base_kind in self.base_kinds}
+        defined = {definition.kind for definition in definitions}
+        if defined != declared:
+            raise ValueError(f"{self.name}: the base file defines {sorted(defined)}, not {sorted(declared)}")
+        # A profile or template kind takes the whole kind it is made from as its name.
+        if too_long := sorted(kind for kind in defined if len(kind) > DEFAULT_NAME_MAX_LENGTH):
+            raise ValueError(f"{self.name}: {too_long} are longer than {DEFAULT_NAME_MAX_LENGTH} characters")
+        moved = {scope.kind(base_kind) for base_kind in _BASE_DEFINITIONS}
+        named = {
+            kind
+            for definition in definitions
+            for kind in [
+                *(definition.inherit_from if isinstance(definition, NodeSchema) else []),
+                *(relationship.peer for relationship in definition.relationships),
+            ]
+        }
+        if missing := (named & moved) - declared:
+            raise ValueError(f"{self.name}: base_kinds must also name {sorted(missing)}")
+        return base_file
+
+    def owned_kinds(self, *, base_schema: SchemaBranch, result_schema: SchemaBranch) -> frozenset[str]:
+        """Return the kinds of the case before and after its change, with the profile and template kinds made from them.
+
+        A kind that the case renames or moves to another namespace keeps its ID, which ties it to the case.
+        """
+        kinds_before = {
+            name
+            for name in base_schema.node_names + base_schema.generic_names
+            if base_schema.get(name=name, duplicate=False).namespace == self.namespace
+        }
+        ids_before = {base_schema.get(name=name, duplicate=False).id for name in kinds_before} - {None}
+        kinds_after = {
+            name
+            for name in result_schema.node_names + result_schema.generic_names
+            if (node := result_schema.get(name=name, duplicate=False)).namespace == self.namespace
+            or node.id in ids_before
+        }
+        kinds = kinds_before | kinds_after
+        return frozenset(
+            kinds | {get_profile_kind(kind) for kind in kinds} | {get_object_template_kind(kind) for kind in kinds}
+        )
+
+
+def merge_schema_files(schema_files: Iterable[SchemaRoot]) -> SchemaRoot:
+    files = list(schema_files)
+    return SchemaRoot(
+        generics=[generic for schema_file in files for generic in schema_file.generics],
+        nodes=[node for schema_file in files for node in schema_file.nodes],
+        extensions=SchemaExtension(
+            nodes=[extension for schema_file in files for extension in schema_file.extensions.nodes]
+        ),
+    )
 
 
 @dataclass(frozen=True)
@@ -220,31 +415,39 @@ def describe_operation(operation: SchemaOperation) -> dict[str, JsonValue]:
     }
 
 
-def summarize_load_result(result: SchemaLoadResult) -> SchemaLoadSummary:
+def summarize_load_result(result: SchemaLoadResult, kinds: Collection[str] | None = None) -> SchemaLoadSummary:
+    """Summarize a load result; when `kinds` is given, keep only those kinds and their migrations and constraints."""
     return SchemaLoadSummary(
         kind_hashes={
             f"{section}:{kind}": kind_hash
             for section, hashes in result.schema.to_dict().items()
             for kind, kind_hash in hashes.items()
+            if kinds is None or kind in kinds
         },
         migrations=sorted(
-            (migration.migration_name, migration.path.get_path()) for migration in result.validation.migrations
+            (migration.migration_name, migration.path.get_path())
+            for migration in result.validation.migrations
+            if kinds is None or migration.path.schema_kind in kinds
         ),
         constraints=sorted(
-            (constraint.constraint_name, constraint.path.get_path()) for constraint in result.validation.constraints
+            (constraint.constraint_name, constraint.path.get_path())
+            for constraint in result.validation.constraints
+            if kinds is None or constraint.path.schema_kind in kinds
         ),
     )
 
 
-def assert_same_load_result(*, expected: SchemaLoadResult, actual: SchemaLoadResult) -> None:
-    """Compare the kind hashes, the migrations and the constraints of two results.
+def assert_same_load_result(
+    *, expected: SchemaLoadResult, actual: SchemaLoadResult, kinds: Collection[str] | None = None
+) -> None:
+    """Compare the kind hashes, the migrations and the constraints of two results, for `kinds` only when it is given.
 
     Raises:
         AssertionError: When they differ; the message names what differs.
 
     """
-    expected_summary = summarize_load_result(expected)
-    actual_summary = summarize_load_result(actual)
+    expected_summary = summarize_load_result(expected, kinds=kinds)
+    actual_summary = summarize_load_result(actual, kinds=kinds)
 
     differing_kinds = sorted(
         kind
@@ -258,6 +461,18 @@ def assert_same_load_result(*, expected: SchemaLoadResult, actual: SchemaLoadRes
     assert actual_summary.constraints == expected_summary.constraints, (
         f"constraints: expected {expected_summary.constraints}, got {actual_summary.constraints}"
     )
+
+
+@dataclass(frozen=True)
+class CombinedLoad:
+    """The changes of several cases, loaded together over a base that holds the kinds of every case."""
+
+    base: SchemaBranch
+    expected: SchemaLoadResult
+    """The result of the direct load of the schema files of every case."""
+
+    actual: SchemaLoadResult
+    """The result of applying the operations built from the same schema files."""
 
 
 CREATE_MIGRATION_RECORDS = "create_migration_records"
