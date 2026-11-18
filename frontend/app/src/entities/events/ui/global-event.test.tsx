@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { ProposedChangeEvent } from "@/entities/events/domain/model/event";
+import { useNodeLabel } from "@/entities/nodes/object/ui/queries/get-display-label.query";
 import { PERMISSION_ALLOW_ALL } from "@/entities/permission/domain/model/permission";
 import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
 import { useGetProposedChangeThread } from "@/entities/proposed-changes/ui/queries/get-proposed-change-thread.query";
@@ -8,12 +9,14 @@ import { useGetProposedChangeThread } from "@/entities/proposed-changes/ui/queri
 import { render } from "../../../../tests/components/render";
 import { Event } from "./global-event";
 
+vi.mock("@/entities/nodes/object/ui/queries/get-display-label.query");
 vi.mock("@/entities/proposed-changes/ui/queries/get-proposed-change-thread.query");
 vi.mock("@/entities/permission/ui/queries/get-object-permissions.query", () => ({
   useGetObjectPermissions: vi.fn(),
 }));
 
 const threadId = "18a3e1d1-efbe-bd53-38db-c51848891c21";
+const objectId = "18a2e83c-5415-e0f3-3399-c51c3c6f3398";
 
 const commonEvent = {
   id: "7dfb5bf2-d0ad-4a06-bfd3-d0916b5b904e",
@@ -28,6 +31,11 @@ const commonEvent = {
 
 describe("Event", () => {
   beforeEach(() => {
+    vi.mocked(useNodeLabel).mockReturnValue({
+      data: { id: objectId, display_label: "atl1-edge1", __typename: "InfraDevice" },
+      isPending: false,
+      error: null,
+    } as unknown as ReturnType<typeof useNodeLabel>);
     vi.mocked(useGetObjectPermissions).mockReturnValue({
       data: PERMISSION_ALLOW_ALL,
       isPending: false,
@@ -65,7 +73,7 @@ describe("Event", () => {
         display_label: "Thread",
         label: { value: null },
         resolved: { value: false },
-        object_path: { value: "data/18a2e83c-5415-e0f3-3399-c51c3c6f3398" },
+        object_path: { value: `data/${objectId}` },
         comments: {
           count: 1,
           edges: [

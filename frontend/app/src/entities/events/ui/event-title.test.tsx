@@ -16,7 +16,7 @@ import type { EventType, ProposedChangeEvent } from "@/entities/events/domain/mo
 import { render } from "../../../../tests/components/render";
 import { EventTitle } from "./event-title";
 
-const commonEvent = {
+const proposedChangeEventFields = {
   id: "7dfb5bf2-d0ad-4a06-bfd3-d0916b5b904e",
   branch: "main",
   occurred_at: "2026-04-06T21:29:30.290070+00:00",
@@ -25,8 +25,9 @@ const commonEvent = {
   primary_node: null,
   related_nodes: [],
   has_children: false,
-  parent_id: null,
 };
+
+const commonEvent = { ...proposedChangeEventFields, parent_id: null };
 
 const baseEvent = { ...commonEvent, payload: {} };
 
@@ -38,7 +39,7 @@ describe("EventTitle", () => {
   test("shows the review action for a proposed change review event", async () => {
     // GIVEN
     const event: ProposedChangeEvent = {
-      ...commonEvent,
+      ...proposedChangeEventFields,
       __typename: "ProposedChangeReviewEvent",
       event: "infrahub.proposed_change.approved",
     };
@@ -265,7 +266,7 @@ describe("EventTitle", () => {
     // GIVEN
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const event: ProposedChangeEvent = {
-      ...commonEvent,
+      ...proposedChangeEventFields,
       __typename: "ProposedChangeThreadEvent",
       event: "infrahub.proposed_change_thread.updated",
     };
