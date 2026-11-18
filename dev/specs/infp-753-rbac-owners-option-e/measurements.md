@@ -3,7 +3,8 @@
 ## Source of the numbers and the test files in pull request 1
 
 - All numbers in this file come from the branch `rbac-owners-option-e-impl-infp-753`. "This branch" in this file means that branch. Pull request 1 does not measure them again.
-- Pull request 1 holds `conftest.py`, `test_no_owner_overhead.py` and `test_plain_cypher.py` of `backend/tests/query_benchmark/ownership/`, and they pass.
+- Pull request 1 holds `conftest.py` and `test_no_owner_overhead.py` of `backend/tests/query_benchmark/ownership/`, and they pass.
+- The spike test `test_plain_cypher.py` stays on the branch `rbac-owners-option-e-impl-infp-753`. It is not in pull request 1. The numbers of the spike stay in this file.
 - A later pull request adds `test_owner_queries.py`, `option_specific.py` and `test_change_check_overhead.py`. `test_owner_queries.py` writes owners through the GraphQL owner API, and `test_change_check_overhead.py` needs the change check.
 
 ## "Today" numbers of SC-001 and SC-002, before any change
@@ -176,7 +177,7 @@ The fixture of the first data set is in commit `5deaf7a9f9` of this branch. The 
 
 - Date of the run: 2026-11-12, from 15:50 to 16:23 UTC.
 - Code: commit `3b7b68eee7`, with the test file of the spike.
-- Test: [test_plain_cypher.py](../../../backend/tests/query_benchmark/ownership/test_plain_cypher.py). It is not product code. The tasks T144 and T145 can reuse its owner data and its helpers.
+- Test: `backend/tests/query_benchmark/ownership/test_plain_cypher.py` on the branch `rbac-owners-option-e-impl-infp-753`. It is not product code, and it is not in pull request 1. The tasks T144 and T145 can reuse its owner data and its helpers from that branch.
 - Command: `uv run pytest backend/tests/query_benchmark/ownership/test_plain_cypher.py -s -p no:cacheprovider --no-cov -q --durations=10 --session-timeout=14400`
 - Result of the run: 9 tests passed in 1,955 seconds. The setup took 1,384 seconds: the load of the data set, then the write of the owner edges.
 - Machine: AMD EPYC 9R45, 16 CPUs, 61 GiB of memory.
