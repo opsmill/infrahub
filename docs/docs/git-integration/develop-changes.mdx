@@ -23,7 +23,7 @@ The example on this page adds a `color` attribute to the built-in Tag. To promot
 
 ### Step 1: Create the change in a Git branch
 
-Create a feature branch from the default branch, add a schema file that adds a `color` attribute to Tag, then commit and push it:
+Create a feature branch from the default branch, and add a schema file that adds a `color` attribute to Tag:
 
 ```bash
 git fetch origin
@@ -40,12 +40,24 @@ extensions:
           kind: Text
           optional: true
 EOF
-git add schemas/tags.yml
+```
+
+Add the file to the `schemas` list in `.infrahub.yml`, so that Infrahub imports it:
+
+```yaml
+# .infrahub.yml
+---
+schemas:
+  - schemas/tags.yml
+```
+
+Commit both files and push the branch:
+
+```bash
+git add schemas/tags.yml .infrahub.yml
 git commit -m "Add color attribute to Tag"
 git push -u origin feature/add-tag-color
 ```
-
-The `schemas` list in `.infrahub.yml` must include `schemas/tags.yml`, so that Infrahub imports the file.
 
 You can also create the branch on the instance, with **Sync with Git** turned on. Infrahub then creates the Git branch, and you push your commits to it.
 
