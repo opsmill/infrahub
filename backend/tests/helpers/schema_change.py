@@ -3,10 +3,17 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from infrahub_sdk.uuidt import UUIDT
+
 from infrahub.core.constants import SYSTEM_USER_ID, SchemaPathType
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.path import SchemaPath
+from infrahub.core.schema_change.constants import (
+    SCHEMA_CHANGE_APPLICATIONS_MAX_LIMIT,
+    SCHEMA_CHANGE_MIGRATIONS_MAX_LIMIT,
+)
 from infrahub.core.schema_change.enums import (
+    SchemaChangeApplicationStatus,
     SchemaChangeEdgeType,
     SchemaChangeMigrationStatus,
     SchemaChangeRecordLabel,
@@ -14,13 +21,16 @@ from infrahub.core.schema_change.enums import (
     SchemaOperationSection,
     SchemaOperationType,
 )
-from infrahub.core.schema_change.factory import build_schema_change_repository
+from infrahub.core.schema_change.factory import build_schema_change_history_reader, build_schema_change_repository
+from infrahub.core.schema_change.models import SchemaChangeApplication
 from infrahub.core.schema_change.operations import SchemaOperation
+from infrahub.core.schema_change.record_serializer import SchemaChangeRecordSerializer
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from infrahub.core.schema_change.models import SchemaChangeMigration
     from infrahub.core.schema_change.repository import SchemaChangeRepository
     from infrahub.database import InfrahubDatabase
 
@@ -211,6 +221,69 @@ async def _seed_migrations(
             nbr_migrations_executed=seed.nbr_migrations_executed,
             errors=list(seed.errors),
         )
+
+
+async def seed_application(
+    *,
+    db: InfrahubDatabase,
+    schema_change_id: str,
+    branch: str,
+    status: SchemaChangeApplicationStatus,
+    at: Timestamp,
+    user_id: str = SYSTEM_USER_ID,
+) -> str:
+    """Add an application to a stored schema change, as applying it to one more branch would, and return its ID."""
+    created_at = Timestamp().to_string()
+    application = SchemaChangeApplication(
+        uuid=str(UUIDT()),
+        branch=branch,
+        status=status,
+        at=at.to_string(),
+        created_at=created_at,
+        created_by=user_id,
+        updated_at=created_at,
+        updated_by=user_id,
+    )
+    await db.execute_query(
+        query=f"""
+        MATCH (schema_change:{SchemaChangeRecordLabel.SCHEMA_CHANGE.value} {{uuid: $schema_change_id}})
+        CREATE (application:{SchemaChangeRecordLabel.APPLICATION.value} $application)
+        CREATE (schema_change)-[:{SchemaChangeEdgeType.SCHEMA_CHANGE_HAS_APPLICATION.value}]->(application)
+        """,
+        params={
+            "schema_change_id": schema_change_id,
+            "application": SchemaChangeRecordSerializer().application_to_properties(record=application),
+        },
+        name="test_seed_schema_change_application",
+    )
+    return application.uuid
+
+
+@dataclass(frozen=True)
+class ApplicationWithMigrations:
+    application: SchemaChangeApplication
+    migrations: list[SchemaChangeMigration]
+
+
+async def read_applications_with_migrations(
+    *, db: InfrahubDatabase, schema_change_ids: Sequence[str]
+) -> dict[str, list[ApplicationWithMigrations]]:
+    """Return every application of each schema change with all its migration records, read in the largest pages."""
+    reader = build_schema_change_history_reader(db=db)
+    application_pages = await reader.list_applications(
+        schema_change_ids=schema_change_ids, limit=SCHEMA_CHANGE_APPLICATIONS_MAX_LIMIT, offset=0
+    )
+    application_ids = [application.uuid for page in application_pages.values() for application in page.applications]
+    migration_pages = await reader.list_migrations(
+        application_ids=application_ids, limit=SCHEMA_CHANGE_MIGRATIONS_MAX_LIMIT, offset=0
+    )
+    return {
+        schema_change_id: [
+            ApplicationWithMigrations(application=application, migrations=migration_pages[application.uuid].migrations)
+            for application in page.applications
+        ]
+        for schema_change_id, page in application_pages.items()
+    }
 
 
 @dataclass(frozen=True)

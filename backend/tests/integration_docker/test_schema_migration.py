@@ -24,8 +24,13 @@ query {
         summary
         status
         applications {
-          status
-          migrations { migration_name schema_kind status }
+          count
+          edges {
+            node {
+              status
+              migrations { count edges { node { migration_name schema_kind status } } }
+            }
+          }
         }
       }
     }
@@ -114,25 +119,38 @@ class TestSchemaMigrations(TestInfrahubDockerClient, SchemaCarPerson):
                 "node": {
                     "summary": "networkdevice_add_and_1_more",
                     "status": "APPLIED",
-                    "applications": [{"status": "APPLIED", "migrations": []}],
+                    "applications": {
+                        "count": 1,
+                        "edges": [{"node": {"status": "APPLIED", "migrations": {"count": 0, "edges": []}}}],
+                    },
                 }
             },
             {
                 "node": {
                     "summary": "networkinterface_remove",
                     "status": "APPLIED",
-                    "applications": [
-                        {
-                            "status": "APPLIED",
-                            "migrations": [
-                                {
-                                    "migration_name": "node.remove",
-                                    "schema_kind": "NetworkInterface",
+                    "applications": {
+                        "count": 1,
+                        "edges": [
+                            {
+                                "node": {
                                     "status": "APPLIED",
+                                    "migrations": {
+                                        "count": 1,
+                                        "edges": [
+                                            {
+                                                "node": {
+                                                    "migration_name": "node.remove",
+                                                    "schema_kind": "NetworkInterface",
+                                                    "status": "APPLIED",
+                                                }
+                                            }
+                                        ],
+                                    },
                                 }
-                            ],
-                        }
-                    ],
+                            }
+                        ],
+                    },
                 }
             },
         ]

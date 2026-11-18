@@ -26,6 +26,7 @@ from tests.adapters.cache import MemoryCache
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.graphql import graphql
+from tests.helpers.schema_change import read_applications_with_migrations
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -121,7 +122,7 @@ async def _read_history(db: InfrahubDatabase, branch: str) -> list[StoredSchemaC
     page = await reader.list_schema_changes(branch=branch, limit=SCHEMA_CHANGE_HISTORY_MAX_LIMIT, offset=0)
     ids = [str(entry.schema_change.uuid) for entry in page.entries]
     operations = await reader.list_operations(schema_change_ids=ids, limit=SCHEMA_CHANGE_OPERATIONS_MAX_LIMIT, offset=0)
-    applications = await reader.list_applications(schema_change_ids=ids)
+    applications = await read_applications_with_migrations(db=db, schema_change_ids=ids)
     return [
         StoredSchemaChange(
             id=str(entry.schema_change.uuid),

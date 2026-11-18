@@ -18661,9 +18661,29 @@ export type InfrahubSchemaChangeApplication = {
   /** Set when the status is FAILED. */
   error: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
-  migrations: Array<InfrahubSchemaChangeMigration>;
+  migrations: InfrahubSchemaChangeMigrations;
   status: SchemaChangeApplicationStatus;
   updated_at: Scalars['DateTime']['output'];
+};
+
+
+/** One time a schema change was applied to a branch. */
+export type InfrahubSchemaChangeApplicationMigrationsArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+};
+
+export type InfrahubSchemaChangeApplicationEdge = {
+  __typename: 'InfrahubSchemaChangeApplicationEdge';
+  node: InfrahubSchemaChangeApplication;
+};
+
+/** One page of the applications of a schema change, in the order of `at`. */
+export type InfrahubSchemaChangeApplications = {
+  __typename: 'InfrahubSchemaChangeApplications';
+  /** Number of applications of the schema change. */
+  count: Scalars['Int']['output'];
+  edges: Array<InfrahubSchemaChangeApplicationEdge>;
 };
 
 export type InfrahubSchemaChangeEdge = {
@@ -18679,8 +18699,6 @@ export type InfrahubSchemaChangeMigration = {
   id: Scalars['ID']['output'];
   /** For example "node.attribute.add". */
   migration_name: Scalars['String']['output'];
-  /** Result that the migration returned. Null until the migration ends. */
-  nbr_migrations_executed: Maybe<Scalars['Int']['output']>;
   /** Text form of the schema path, for example "schema/DcimCloudDevice/serial". */
   path: Scalars['String']['output'];
   path_type: SchemaPathType;
@@ -18693,15 +18711,27 @@ export type InfrahubSchemaChangeMigration = {
   updated_at: Scalars['DateTime']['output'];
 };
 
+export type InfrahubSchemaChangeMigrationEdge = {
+  __typename: 'InfrahubSchemaChangeMigrationEdge';
+  node: InfrahubSchemaChangeMigration;
+};
+
+/** One page of the migration records of an application of a schema change, in the order of `position`. */
+export type InfrahubSchemaChangeMigrations = {
+  __typename: 'InfrahubSchemaChangeMigrations';
+  /** Number of migration records of the application. */
+  count: Scalars['Int']['output'];
+  edges: Array<InfrahubSchemaChangeMigrationEdge>;
+};
+
 /** One change to the schema of a branch, made of one or more operations. */
 export type InfrahubSchemaChangeNode = {
   __typename: 'InfrahubSchemaChangeNode';
-  applications: Array<InfrahubSchemaChangeApplication>;
+  applications: InfrahubSchemaChangeApplications;
   /** Timestamp at which the schema was written to the branch. Null unless the status is APPLIED. */
   applied_at: Maybe<Scalars['DateTime']['output']>;
   branch: Scalars['String']['output'];
   created_at: Scalars['DateTime']['output'];
-  format_version: Scalars['Int']['output'];
   id: Scalars['ID']['output'];
   /** "<version, five digits>_<summary>", or the summary when there is no version. */
   name: Scalars['String']['output'];
@@ -18714,6 +18744,13 @@ export type InfrahubSchemaChangeNode = {
   updated_at: Scalars['DateTime']['output'];
   /** Null unless the status is APPLIED. */
   version: Maybe<Scalars['Int']['output']>;
+};
+
+
+/** One change to the schema of a branch, made of one or more operations. */
+export type InfrahubSchemaChangeNodeApplicationsArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
 };
 
 

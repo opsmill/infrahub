@@ -1,4 +1,4 @@
-"""Resolvers of the fields of a schema change that read through the loaders of its request."""
+"""Resolvers of the fields of a schema change and of its applications that read through the loaders of its request."""
 
 from __future__ import annotations
 
@@ -7,6 +7,10 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema_change.constants import (
+    SCHEMA_CHANGE_APPLICATIONS_DEFAULT_LIMIT,
+    SCHEMA_CHANGE_APPLICATIONS_MAX_LIMIT,
+    SCHEMA_CHANGE_MIGRATIONS_DEFAULT_LIMIT,
+    SCHEMA_CHANGE_MIGRATIONS_MAX_LIMIT,
     SCHEMA_CHANGE_OPERATIONS_DEFAULT_LIMIT,
     SCHEMA_CHANGE_OPERATIONS_MAX_LIMIT,
 )
@@ -19,12 +23,8 @@ if TYPE_CHECKING:
 
     from graphql import GraphQLResolveInfo
 
-    from infrahub.core.schema_change.history_reader import (
-        SchemaChangeApplicationRecord,
-        SchemaChangeHistoryEntry,
-        StoredSchemaOperation,
-    )
-    from infrahub.core.schema_change.models import SchemaChange, SchemaChangeMigration
+    from infrahub.core.schema_change.history_reader import SchemaChangeHistoryEntry, StoredSchemaOperation
+    from infrahub.core.schema_change.models import SchemaChange, SchemaChangeApplication, SchemaChangeMigration
     from infrahub.graphql.loaders.schema_change import SchemaChangeLoaders
 
 
@@ -64,7 +64,6 @@ class SchemaChangeNodeValue:
     version: int | None
     status: str
     branch: str
-    format_version: int
     created_at: datetime | None
     updated_at: datetime | None
     applied_at: datetime | None
@@ -98,7 +97,6 @@ def build_schema_change_node(entry: SchemaChangeHistoryEntry, loaders: SchemaCha
         version=schema_change.version,
         status=schema_change.status.value,
         branch=schema_change.branch,
-        format_version=schema_change.format_version,
         created_at=_to_datetime(schema_change.created_at),
         updated_at=_to_datetime(schema_change.updated_at),
         applied_at=_to_datetime(schema_change.applied_at),
@@ -139,24 +137,38 @@ def _migration_to_graphql(migration: SchemaChangeMigration) -> dict[str, Any]:
         "field_name": migration.field_name,
         "property_name": migration.property_name,
         "status": migration.status.value,
-        "nbr_migrations_executed": migration.nbr_migrations_executed,
         "errors": list(migration.errors),
         "updated_at": _to_datetime(migration.updated_at),
     }
 
 
-def _application_to_graphql(record: SchemaChangeApplicationRecord) -> dict[str, Any]:
-    application = record.application
-    return {
-        "id": application.uuid,
-        "status": application.status.value,
-        "branch": application.branch,
-        "at": _to_datetime(application.at),
-        "error": application.error,
-        "created_at": _to_datetime(application.created_at),
-        "updated_at": _to_datetime(application.updated_at),
-        "migrations": [_migration_to_graphql(migration=migration) for migration in record.migrations],
-    }
+@dataclass(frozen=True)
+class SchemaChangeApplicationNodeValue:
+    """An application as its GraphQL node reads it, with the loaders of its request."""
+
+    id: str
+    status: str
+    branch: str
+    at: datetime | None
+    error: str | None
+    created_at: datetime | None
+    updated_at: datetime | None
+    loaders: SchemaChangeLoaders
+
+
+def _application_to_graphql(
+    application: SchemaChangeApplication, loaders: SchemaChangeLoaders
+) -> SchemaChangeApplicationNodeValue:
+    return SchemaChangeApplicationNodeValue(
+        id=application.uuid,
+        status=application.status.value,
+        branch=application.branch,
+        at=_to_datetime(application.at),
+        error=application.error,
+        created_at=_to_datetime(application.created_at),
+        updated_at=_to_datetime(application.updated_at),
+        loaders=loaders,
+    )
 
 
 async def schema_change_operations_resolver(
@@ -187,7 +199,51 @@ async def schema_change_operations_resolver(
 async def schema_change_applications_resolver(
     parent: SchemaChangeNodeValue,
     info: GraphQLResolveInfo,  # noqa: ARG001
-) -> list[dict[str, Any]]:
-    """Resolve the applications of a schema change, each with its migration records."""
-    records = await parent.loaders.applications.load(parent.id)
-    return [_application_to_graphql(record=record) for record in records]
+    limit: int | None = None,
+    offset: int | None = None,
+) -> dict[str, Any]:
+    """Resolve one page of the applications of a schema change.
+
+    Raises:
+        ValidationError: When the limit or the offset is out of range.
+
+    """
+    page = validate_page_arguments(
+        limit=limit,
+        offset=offset,
+        default_limit=SCHEMA_CHANGE_APPLICATIONS_DEFAULT_LIMIT,
+        max_limit=SCHEMA_CHANGE_APPLICATIONS_MAX_LIMIT,
+    )
+    application_page = await parent.loaders.applications(limit=page.limit, offset=page.offset).load(parent.id)
+    return {
+        "count": application_page.count,
+        "edges": [
+            {"node": _application_to_graphql(application=application, loaders=parent.loaders)}
+            for application in application_page.applications
+        ],
+    }
+
+
+async def schema_change_migrations_resolver(
+    parent: SchemaChangeApplicationNodeValue,
+    info: GraphQLResolveInfo,  # noqa: ARG001
+    limit: int | None = None,
+    offset: int | None = None,
+) -> dict[str, Any]:
+    """Resolve one page of the migration records of an application of a schema change.
+
+    Raises:
+        ValidationError: When the limit or the offset is out of range.
+
+    """
+    page = validate_page_arguments(
+        limit=limit,
+        offset=offset,
+        default_limit=SCHEMA_CHANGE_MIGRATIONS_DEFAULT_LIMIT,
+        max_limit=SCHEMA_CHANGE_MIGRATIONS_MAX_LIMIT,
+    )
+    migration_page = await parent.loaders.migrations(limit=page.limit, offset=page.offset).load(parent.id)
+    return {
+        "count": migration_page.count,
+        "edges": [{"node": _migration_to_graphql(migration=migration)} for migration in migration_page.migrations],
+    }

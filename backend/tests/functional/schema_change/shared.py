@@ -10,16 +10,13 @@ from infrahub.core.schema_change.constants import SCHEMA_CHANGE_HISTORY_MAX_LIMI
 from infrahub.core.schema_change.factory import build_schema_change_history_reader
 from tests.helpers.schema import RACK_SCHEMA
 from tests.helpers.schema.rack import CARD, SLOT
+from tests.helpers.schema_change import ApplicationWithMigrations, read_applications_with_migrations
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
-    from infrahub.core.schema_change.history_reader import (
-        SchemaChangeApplicationRecord,
-        SchemaChangeHistoryPage,
-        SchemaOperationPage,
-    )
+    from infrahub.core.schema_change.history_reader import SchemaChangeHistoryPage, SchemaOperationPage
     from infrahub.database import InfrahubDatabase
 
 SCHEMA_CHANGE_BRANCH = "schema-change-history"
@@ -54,7 +51,7 @@ class SchemaChangeHistorySnapshot:
 
     page: SchemaChangeHistoryPage
     operations: dict[str, SchemaOperationPage]
-    applications: dict[str, list[SchemaChangeApplicationRecord]]
+    applications: dict[str, list[ApplicationWithMigrations]]
 
     @property
     def schema_change_ids(self) -> list[str]:
@@ -68,7 +65,7 @@ async def read_schema_change_history(db: InfrahubDatabase, branch: str) -> Schem
     operations = await reader.list_operations(
         schema_change_ids=schema_change_ids, limit=SCHEMA_CHANGE_OPERATIONS_MAX_LIMIT, offset=0
     )
-    applications = await reader.list_applications(schema_change_ids=schema_change_ids)
+    applications = await read_applications_with_migrations(db=db, schema_change_ids=schema_change_ids)
     return SchemaChangeHistorySnapshot(page=page, operations=operations, applications=applications)
 
 

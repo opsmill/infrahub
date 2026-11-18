@@ -18,6 +18,7 @@ from tests.helpers.schema_change import (
     BranchHistorySeed,
     attribute_migration,
     build_seeded_operations,
+    read_applications_with_migrations,
     seed_schema_change_history,
 )
 
@@ -44,7 +45,7 @@ async def _read_records(
     reader = build_schema_change_history_reader(db=db)
     page = await reader.list_schema_changes(branch=branch.name, limit=10, offset=0)
     schema_change_ids = [str(entry.schema_change.uuid) for entry in page.entries]
-    applications = await reader.list_applications(schema_change_ids=schema_change_ids)
+    applications = await read_applications_with_migrations(db=db, schema_change_ids=schema_change_ids)
     return [
         (
             schema_change_id,
@@ -195,9 +196,7 @@ async def test_fail_sets_both_to_failed_with_the_error_and_without_version_or_pa
         [(recording.application_id, SchemaChangeApplicationStatus.FAILED.value, at.to_string())],
     )
     assert len(records) == 2
-    applications = await build_schema_change_history_reader(db=db).list_applications(
-        schema_change_ids=[recording.schema_change_id]
-    )
+    applications = await read_applications_with_migrations(db=db, schema_change_ids=[recording.schema_change_id])
     assert [record.application.error for record in applications[recording.schema_change_id]] == [FAILURE_ERROR]
 
 
@@ -234,9 +233,7 @@ async def test_fail_rolls_back_the_applied_migration_records_and_keeps_the_other
 
     await recorder.fail(recording=recording, error=FAILURE_ERROR, user_id=SYSTEM_USER_ID)
 
-    applications = await build_schema_change_history_reader(db=db).list_applications(
-        schema_change_ids=[recording.schema_change_id]
-    )
+    applications = await read_applications_with_migrations(db=db, schema_change_ids=[recording.schema_change_id])
     [application] = applications[recording.schema_change_id]
     assert [(migration.position, migration.status) for migration in application.migrations] == [
         (0, SchemaChangeMigrationStatus.ROLLED_BACK),

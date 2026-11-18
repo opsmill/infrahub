@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
@@ -16,12 +17,18 @@ from tests.helpers.schema_change import (
     MigrationSeed,
     SeededSchemaChangeHistory,
     attribute_migration,
+    seed_application,
     seed_schema_change_history,
     seeded_operation_value,
 )
 
 if TYPE_CHECKING:
-    from infrahub.core.schema_change.history_reader import SchemaChangeHistoryPage
+    from infrahub.core.schema_change.history_reader import (
+        SchemaChangeApplicationPage,
+        SchemaChangeHistoryPage,
+        SchemaChangeMigrationPage,
+    )
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 MAIN = "main"
@@ -83,6 +90,38 @@ async def seeded_history(db: InfrahubDatabase, empty_database_scope_class: None)
         ],
     )
     return SeededSchemaChangeHistory(schema_changes=main_history.schema_changes + branch_history.schema_changes)
+
+
+@dataclass(frozen=True)
+class LaterApplications:
+    """Two more applications of the first schema change of main, created in the reverse order of their `at`."""
+
+    first_id: str
+    first_at: Timestamp
+    second_id: str
+    second_at: Timestamp
+
+
+@pytest.fixture(scope="class")
+async def later_applications(db: InfrahubDatabase, seeded_history: SeededSchemaChangeHistory) -> LaterApplications:
+    applied_1 = seeded_history.on_branch(MAIN)[0]
+    first_at = applied_1.at.add(minutes=1)
+    second_at = applied_1.at.add(minutes=2)
+    second_id = await seed_application(
+        db=db,
+        schema_change_id=applied_1.id,
+        branch=BRANCH_WITH_RUNNING_CHANGE,
+        status=SchemaChangeApplicationStatus.RUNNING,
+        at=second_at,
+    )
+    first_id = await seed_application(
+        db=db,
+        schema_change_id=applied_1.id,
+        branch=BRANCH_WITH_CHANGES,
+        status=SchemaChangeApplicationStatus.APPLIED,
+        at=first_at,
+    )
+    return LaterApplications(first_id=first_id, first_at=first_at, second_id=second_id, second_at=second_at)
 
 
 class TestSchemaChangeHistoryReader:
@@ -187,42 +226,121 @@ class TestSchemaChangeHistoryReader:
                 (stored.position, stored.operation.value) for stored in last_pages[schema_change_id].operations
             ] == [(6, seeded_operation_value(6))]
 
-    async def test_applications_come_with_their_migration_records(
-        self, db: InfrahubDatabase, seeded_history: SeededSchemaChangeHistory
+    async def test_applications_come_in_pages_in_the_order_of_at_with_the_count_of_each_schema_change(
+        self,
+        db: InfrahubDatabase,
+        seeded_history: SeededSchemaChangeHistory,
+        later_applications: LaterApplications,
     ) -> None:
         applied_1, failed, *_ = seeded_history.on_branch(MAIN)
+        schema_change_ids = [applied_1.id, failed.id]
+        reader = build_schema_change_history_reader(db=db)
 
-        applications = await build_schema_change_history_reader(db=db).list_applications(
-            schema_change_ids=[applied_1.id, failed.id]
-        )
+        first_pages = await reader.list_applications(schema_change_ids=schema_change_ids, limit=2, offset=0)
+        second_pages = await reader.list_applications(schema_change_ids=schema_change_ids, limit=2, offset=2)
+        pages_past_the_end = await reader.list_applications(schema_change_ids=schema_change_ids, limit=2, offset=3)
 
-        assert sorted(applications) == sorted([applied_1.id, failed.id])
-        assert [
-            (str(record.application.uuid), record.application.status, record.application.branch, record.application.at)
-            for record in applications[applied_1.id]
-        ] == [(applied_1.application_id, SchemaChangeApplicationStatus.APPLIED, MAIN, applied_1.at.to_string())]
-        assert applications[applied_1.id][0].application.error is None
-        assert [
-            (
-                migration.position,
-                migration.migration_name,
-                migration.field_name,
-                migration.status,
-                migration.nbr_migrations_executed,
-                list(migration.errors),
-            )
-            for migration in applications[applied_1.id][0].migrations
-        ] == [
-            (0, "node.attribute.add", "color", SchemaChangeMigrationStatus.APPLIED, 0, []),
-            (1, "attribute.kind.update", "name", SchemaChangeMigrationStatus.FAILED, None, [MIGRATION_ERROR]),
-            (2, "node.attribute.add", "description", SchemaChangeMigrationStatus.WAITING, None, []),
-        ]
-        assert [
-            (str(record.application.uuid), record.application.status, record.application.error)
-            for record in applications[failed.id]
-        ] == [(failed.application_id, SchemaChangeApplicationStatus.FAILED, SEEDED_FAILURE_ERROR)]
-        assert [migration.status for migration in applications[failed.id][0].migrations] == [
-            SchemaChangeMigrationStatus.ROLLED_BACK,
-            SchemaChangeMigrationStatus.FAILED,
-            SchemaChangeMigrationStatus.WAITING,
-        ]
+        def describe(page: SchemaChangeApplicationPage) -> tuple[int, list[tuple[str, str, str, str, str | None]]]:
+            return page.count, [
+                (
+                    application.uuid,
+                    application.status.value,
+                    application.branch,
+                    application.at,
+                    application.error,
+                )
+                for application in page.applications
+            ]
+
+        assert {key: describe(page) for key, page in first_pages.items()} == {
+            applied_1.id: (
+                3,
+                [
+                    (applied_1.application_id, "applied", MAIN, applied_1.at.to_string(), None),
+                    (
+                        later_applications.first_id,
+                        "applied",
+                        BRANCH_WITH_CHANGES,
+                        later_applications.first_at.to_string(),
+                        None,
+                    ),
+                ],
+            ),
+            failed.id: (1, [(failed.application_id, "failed", MAIN, failed.at.to_string(), SEEDED_FAILURE_ERROR)]),
+        }
+        assert {key: describe(page) for key, page in second_pages.items()} == {
+            applied_1.id: (
+                3,
+                [
+                    (
+                        later_applications.second_id,
+                        "running",
+                        BRANCH_WITH_RUNNING_CHANGE,
+                        later_applications.second_at.to_string(),
+                        None,
+                    )
+                ],
+            ),
+            failed.id: (1, []),
+        }
+        assert {key: describe(page) for key, page in pages_past_the_end.items()} == {
+            applied_1.id: (3, []),
+            failed.id: (1, []),
+        }
+
+    async def test_migration_records_come_in_pages_in_the_order_of_position_with_the_count_of_each_application(
+        self,
+        db: InfrahubDatabase,
+        seeded_history: SeededSchemaChangeHistory,
+        later_applications: LaterApplications,
+    ) -> None:
+        applied_1, failed, *_ = seeded_history.on_branch(MAIN)
+        application_ids = [applied_1.application_id, failed.application_id, later_applications.first_id]
+        reader = build_schema_change_history_reader(db=db)
+
+        first_pages = await reader.list_migrations(application_ids=application_ids, limit=2, offset=0)
+        second_pages = await reader.list_migrations(application_ids=application_ids, limit=2, offset=2)
+        pages_past_the_end = await reader.list_migrations(application_ids=application_ids, limit=2, offset=3)
+
+        def describe(
+            page: SchemaChangeMigrationPage,
+        ) -> tuple[int, list[tuple[int, str, str | None, str, int | None, list[str]]]]:
+            return page.count, [
+                (
+                    migration.position,
+                    migration.migration_name,
+                    migration.field_name,
+                    migration.status.value,
+                    migration.nbr_migrations_executed,
+                    list(migration.errors),
+                )
+                for migration in page.migrations
+            ]
+
+        assert {key: describe(page) for key, page in first_pages.items()} == {
+            applied_1.application_id: (
+                3,
+                [
+                    (0, "node.attribute.add", "color", "applied", 0, []),
+                    (1, "attribute.kind.update", "name", "failed", None, [MIGRATION_ERROR]),
+                ],
+            ),
+            failed.application_id: (
+                3,
+                [
+                    (0, "node.attribute.add", "color", "rolled_back", 0, []),
+                    (1, "attribute.kind.update", "name", "failed", None, [MIGRATION_ERROR]),
+                ],
+            ),
+            later_applications.first_id: (0, []),
+        }
+        assert {key: describe(page) for key, page in second_pages.items()} == {
+            applied_1.application_id: (3, [(2, "node.attribute.add", "description", "waiting", None, [])]),
+            failed.application_id: (3, [(2, "node.attribute.add", "description", "waiting", None, [])]),
+            later_applications.first_id: (0, []),
+        }
+        assert {key: describe(page) for key, page in pages_past_the_end.items()} == {
+            applied_1.application_id: (3, []),
+            failed.application_id: (3, []),
+            later_applications.first_id: (0, []),
+        }

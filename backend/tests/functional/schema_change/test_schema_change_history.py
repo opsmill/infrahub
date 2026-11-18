@@ -111,19 +111,29 @@ query {
           }
         }
         applications {
-          status
-          branch
-          error
-          migrations {
-            position
-            migration_name
-            path
-            path_type
-            schema_kind
-            field_name
-            property_name
-            status
-            errors
+          count
+          edges {
+            node {
+              status
+              branch
+              error
+              migrations {
+                count
+                edges {
+                  node {
+                    position
+                    migration_name
+                    path
+                    path_type
+                    schema_kind
+                    field_name
+                    property_name
+                    status
+                    errors
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -467,12 +477,13 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
             }
 
         edges = result["InfrahubSchemaChange"]["edges"]
-        records = [
-            record
+        migration_pages = [
+            application["node"].pop("migrations")
             for edge in edges
-            for application in edge["node"]["applications"]
-            for record in application.pop("migrations")
+            for application in edge["node"]["applications"]["edges"]
         ]
+        assert [page["count"] for page in migration_pages] == [2]
+        records = [migration["node"] for page in migration_pages for migration in page["edges"]]
         # The schema diff orders the two inheriting kinds by a set of IDs, so their positions differ between processes.
         assert [record["position"] for record in records] == [0, 1]
         assert sorted(
@@ -501,13 +512,18 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
                             }
                         ],
                     },
-                    "applications": [
-                        {
-                            "status": "APPLIED",
-                            "branch": schema_change_dataset.branch_name,
-                            "error": None,
-                        }
-                    ],
+                    "applications": {
+                        "count": 1,
+                        "edges": [
+                            {
+                                "node": {
+                                    "status": "APPLIED",
+                                    "branch": schema_change_dataset.branch_name,
+                                    "error": None,
+                                }
+                            }
+                        ],
+                    },
                 }
             }
         ]

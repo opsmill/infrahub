@@ -19,6 +19,7 @@ from tests.helpers.schema_change import (
     MigrationSeed,
     attribute_migration,
     count_schema_change_record_edges_to_root,
+    read_applications_with_migrations,
     seed_schema_change_history,
 )
 
@@ -139,7 +140,7 @@ async def test_create_schema_change_stores_operations_in_order_and_links_the_rec
             (SchemaChangeEdgeType.SCHEMA_CHANGE_HAS_PARENT.value, "SchemaChange", parent_id),
         ]
     )
-    applications = await reader.list_applications(schema_change_ids=[created.schema_change_id])
+    applications = await read_applications_with_migrations(db=db, schema_change_ids=[created.schema_change_id])
     assert [str(record.application.uuid) for record in applications[created.schema_change_id]] == [
         created.application_id
     ]
@@ -341,8 +342,7 @@ async def test_create_migration_records_stores_one_waiting_record_for_each_migra
 
     await repository.create_migration_records(application_id=schema_change.application_id, migrations=migrations)
 
-    reader = build_schema_change_history_reader(db=db)
-    applications = await reader.list_applications(schema_change_ids=[schema_change.id])
+    applications = await read_applications_with_migrations(db=db, schema_change_ids=[schema_change.id])
     assert [
         (
             migration.position,
@@ -389,8 +389,7 @@ async def test_set_migration_records_status_changes_only_the_records_named(
         errors=["first error", "second error"],
     )
 
-    reader = build_schema_change_history_reader(db=db)
-    applications = await reader.list_applications(schema_change_ids=[schema_change.id])
+    applications = await read_applications_with_migrations(db=db, schema_change_ids=[schema_change.id])
     assert [
         (migration.position, migration.status, migration.nbr_migrations_executed, list(migration.errors))
         for migration in applications[schema_change.id][0].migrations

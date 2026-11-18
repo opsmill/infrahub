@@ -9296,9 +9296,27 @@ type InfrahubSchemaChangeApplication {
   """Set when the status is FAILED."""
   error: String
   id: ID!
-  migrations: [InfrahubSchemaChangeMigration!]!
+  migrations(
+    """
+    Number of migration records to return. Default 50, maximum 500, minimum 1.
+    """
+    limit: Int
+    """Number of migration records to skip. Minimum 0."""
+    offset: Int
+  ): InfrahubSchemaChangeMigrations!
   status: SchemaChangeApplicationStatus!
   updated_at: DateTime!
+}
+
+type InfrahubSchemaChangeApplicationEdge {
+  node: InfrahubSchemaChangeApplication!
+}
+
+"""One page of the applications of a schema change, in the order of `at`."""
+type InfrahubSchemaChangeApplications {
+  """Number of applications of the schema change."""
+  count: Int!
+  edges: [InfrahubSchemaChangeApplicationEdge!]!
 }
 
 type InfrahubSchemaChangeEdge {
@@ -9314,8 +9332,6 @@ type InfrahubSchemaChangeMigration {
   id: ID!
   """For example "node.attribute.add"."""
   migration_name: String!
-  """Result that the migration returned. Null until the migration ends."""
-  nbr_migrations_executed: Int
   """
   Text form of the schema path, for example "schema/DcimCloudDevice/serial".
   """
@@ -9330,16 +9346,33 @@ type InfrahubSchemaChangeMigration {
   updated_at: DateTime!
 }
 
+type InfrahubSchemaChangeMigrationEdge {
+  node: InfrahubSchemaChangeMigration!
+}
+
+"""
+One page of the migration records of an application of a schema change, in the order of `position`.
+"""
+type InfrahubSchemaChangeMigrations {
+  """Number of migration records of the application."""
+  count: Int!
+  edges: [InfrahubSchemaChangeMigrationEdge!]!
+}
+
 """One change to the schema of a branch, made of one or more operations."""
 type InfrahubSchemaChangeNode {
-  applications: [InfrahubSchemaChangeApplication!]!
+  applications(
+    """Number of applications to return. Default 10, maximum 50, minimum 1."""
+    limit: Int
+    """Number of applications to skip. Minimum 0."""
+    offset: Int
+  ): InfrahubSchemaChangeApplications!
   """
   Timestamp at which the schema was written to the branch. Null unless the status is APPLIED.
   """
   applied_at: DateTime
   branch: String!
   created_at: DateTime!
-  format_version: Int!
   id: ID!
   """
   "<version, five digits>_<summary>", or the summary when there is no version.

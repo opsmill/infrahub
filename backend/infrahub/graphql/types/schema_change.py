@@ -5,6 +5,10 @@ from graphene.types.generic import GenericScalar
 
 from infrahub.core.constants import SchemaPathType as SchemaPathTypeEnum
 from infrahub.core.schema_change.constants import (
+    SCHEMA_CHANGE_APPLICATIONS_DEFAULT_LIMIT,
+    SCHEMA_CHANGE_APPLICATIONS_MAX_LIMIT,
+    SCHEMA_CHANGE_MIGRATIONS_DEFAULT_LIMIT,
+    SCHEMA_CHANGE_MIGRATIONS_MAX_LIMIT,
     SCHEMA_CHANGE_OPERATIONS_DEFAULT_LIMIT,
     SCHEMA_CHANGE_OPERATIONS_MAX_LIMIT,
 )
@@ -16,6 +20,7 @@ from infrahub.core.schema_change.enums import SchemaOperationSection as SchemaOp
 from infrahub.core.schema_change.enums import SchemaOperationType as SchemaOperationTypeEnum
 from infrahub.graphql.resolvers.schema_change import (
     schema_change_applications_resolver,
+    schema_change_migrations_resolver,
     schema_change_operations_resolver,
 )
 
@@ -115,11 +120,19 @@ class InfrahubSchemaChangeMigration(ObjectType):
     field_name = String(required=False)
     property_name = String(required=False)
     status = Field(SchemaChangeMigrationStatus, required=True)
-    nbr_migrations_executed = Int(
-        required=False, description="Result that the migration returned. Null until the migration ends."
-    )
     errors = List(of_type=NonNull(String), required=True)
     updated_at = DateTime(required=True, description="Time of the last status change.")
+
+
+class InfrahubSchemaChangeMigrationEdge(ObjectType):
+    node = Field(InfrahubSchemaChangeMigration, required=True)
+
+
+class InfrahubSchemaChangeMigrations(ObjectType):
+    """One page of the migration records of an application of a schema change, in the order of `position`."""
+
+    count = Int(required=True, description="Number of migration records of the application.")
+    edges = List(of_type=NonNull(InfrahubSchemaChangeMigrationEdge), required=True)
 
 
 class InfrahubSchemaChangeApplication(ObjectType):
@@ -132,7 +145,29 @@ class InfrahubSchemaChangeApplication(ObjectType):
     error = String(required=False, description="Set when the status is FAILED.")
     created_at = DateTime(required=True)
     updated_at = DateTime(required=True)
-    migrations = List(of_type=NonNull(InfrahubSchemaChangeMigration), required=True)
+    migrations = Field(
+        InfrahubSchemaChangeMigrations,
+        required=True,
+        limit=Int(
+            description=(
+                f"Number of migration records to return. Default {SCHEMA_CHANGE_MIGRATIONS_DEFAULT_LIMIT}, "
+                f"maximum {SCHEMA_CHANGE_MIGRATIONS_MAX_LIMIT}, minimum 1."
+            )
+        ),
+        offset=Int(description="Number of migration records to skip. Minimum 0."),
+        resolver=schema_change_migrations_resolver,
+    )
+
+
+class InfrahubSchemaChangeApplicationEdge(ObjectType):
+    node = Field(InfrahubSchemaChangeApplication, required=True)
+
+
+class InfrahubSchemaChangeApplications(ObjectType):
+    """One page of the applications of a schema change, in the order of `at`."""
+
+    count = Int(required=True, description="Number of applications of the schema change.")
+    edges = List(of_type=NonNull(InfrahubSchemaChangeApplicationEdge), required=True)
 
 
 class InfrahubSchemaChangeNode(ObjectType):
@@ -147,7 +182,6 @@ class InfrahubSchemaChangeNode(ObjectType):
     version = Int(required=False, description="Null unless the status is APPLIED.")
     status = Field(SchemaChangeStatus, required=True)
     branch = String(required=True)
-    format_version = Int(required=True)
     created_at = DateTime(required=True)
     updated_at = DateTime(required=True, description="Time of the last change of the record.")
     applied_at = DateTime(
@@ -174,9 +208,16 @@ class InfrahubSchemaChangeNode(ObjectType):
         offset=Int(description="Number of operations to skip. Minimum 0."),
         resolver=schema_change_operations_resolver,
     )
-    applications = List(
-        of_type=NonNull(InfrahubSchemaChangeApplication),
+    applications = Field(
+        InfrahubSchemaChangeApplications,
         required=True,
+        limit=Int(
+            description=(
+                f"Number of applications to return. Default {SCHEMA_CHANGE_APPLICATIONS_DEFAULT_LIMIT}, "
+                f"maximum {SCHEMA_CHANGE_APPLICATIONS_MAX_LIMIT}, minimum 1."
+            )
+        ),
+        offset=Int(description="Number of applications to skip. Minimum 0."),
         resolver=schema_change_applications_resolver,
     )
 

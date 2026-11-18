@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from infrahub.core.initialization import create_branch
-from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus, SchemaChangeStatus
+from infrahub.core.schema_change.enums import (
+    SchemaChangeApplicationStatus,
+    SchemaChangeMigrationStatus,
+    SchemaChangeStatus,
+)
 from infrahub.core.schema_change.factory import build_schema_change_history_reader
 from infrahub.core.timestamp import Timestamp
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -18,6 +22,7 @@ from tests.helpers.schema_change import (
     MigrationSeed,
     SeededSchemaChangeHistory,
     attribute_migration,
+    seed_application,
     seed_schema_change_history,
 )
 
@@ -49,7 +54,6 @@ query($limit: Int, $offset: Int, $status: [SchemaChangeStatus!]) {
         version
         status
         branch
-        format_version
         created_at
         updated_at
         applied_at
@@ -89,32 +93,47 @@ query($operations_limit: Int, $operations_offset: Int) {
 """
 
 APPLICATIONS_QUERY = """
-query($limit: Int, $offset: Int) {
-  InfrahubSchemaChange(limit: $limit, offset: $offset) {
+query(
+  $limit: Int
+  $applications_limit: Int
+  $applications_offset: Int
+  $migrations_limit: Int
+  $migrations_offset: Int
+) {
+  InfrahubSchemaChange(limit: $limit) {
     edges {
       node {
         id
-        applications {
-          id
-          status
-          branch
-          at
-          error
-          created_at
-          updated_at
-          migrations {
-            id
-            position
-            migration_name
-            path
-            path_type
-            schema_kind
-            field_name
-            property_name
-            status
-            nbr_migrations_executed
-            errors
-            updated_at
+        applications(limit: $applications_limit, offset: $applications_offset) {
+          count
+          edges {
+            node {
+              id
+              status
+              branch
+              at
+              error
+              created_at
+              updated_at
+              migrations(limit: $migrations_limit, offset: $migrations_offset) {
+                count
+                edges {
+                  node {
+                    id
+                    position
+                    migration_name
+                    path
+                    path_type
+                    schema_kind
+                    field_name
+                    property_name
+                    status
+                    errors
+                    updated_at
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -132,7 +151,10 @@ query($limit: Int) {
         name
         parent { name }
         operations(limit: 2) { count edges { node { position value } } }
-        applications { status migrations { status errors } }
+        applications(limit: 2) {
+          count
+          edges { node { status migrations(limit: 1) { count edges { node { status errors } } } } }
+        }
       }
     }
   }
@@ -182,13 +204,100 @@ REFUSED_PAGE_CASES: list[RefusedPageCase] = [
         variables={"operations_offset": -1},
         expected_error="offset must be >= 0",
     ),
+    RefusedPageCase(
+        name="applications_limit_below_1",
+        query=APPLICATIONS_QUERY,
+        variables={"limit": 1, "applications_limit": 0},
+        expected_error="limit must be >= 1",
+    ),
+    RefusedPageCase(
+        name="applications_limit_above_maximum",
+        query=APPLICATIONS_QUERY,
+        variables={"limit": 1, "applications_limit": 51},
+        expected_error="limit must be <= 50",
+    ),
+    RefusedPageCase(
+        name="applications_offset_below_0",
+        query=APPLICATIONS_QUERY,
+        variables={"limit": 1, "applications_offset": -1},
+        expected_error="offset must be >= 0",
+    ),
+    RefusedPageCase(
+        name="migrations_limit_below_1",
+        query=APPLICATIONS_QUERY,
+        variables={"limit": 1, "applications_limit": 1, "migrations_limit": 0},
+        expected_error="limit must be >= 1",
+    ),
+    RefusedPageCase(
+        name="migrations_limit_above_maximum",
+        query=APPLICATIONS_QUERY,
+        variables={"limit": 1, "applications_limit": 1, "migrations_limit": 501},
+        expected_error="limit must be <= 500",
+    ),
+    RefusedPageCase(
+        name="migrations_offset_below_0",
+        query=APPLICATIONS_QUERY,
+        variables={"limit": 1, "applications_limit": 1, "migrations_offset": -1},
+        expected_error="offset must be >= 0",
+    ),
 ]
+
+
+@dataclass(frozen=True)
+class NestedPageCase:
+    name: str
+    variables: dict[str, Any]
+    expected: dict[str, tuple[int, list[tuple[str, int, list[int]]]]]
+    """For each schema change of main, its number of applications and, for each application on the page, its
+    name, its number of migration records and the positions of the migration records on the page."""
+
+
+NESTED_PAGE_CASES: list[NestedPageCase] = [
+    NestedPageCase(
+        name="second_application_of_each_schema_change",
+        variables={"applications_limit": 1, "applications_offset": 1},
+        expected={"applied_1": (3, [("later_1", 0, [])]), "failed": (1, []), "applied_2": (1, [])},
+    ),
+    NestedPageCase(
+        name="applications_past_the_end",
+        variables={"applications_offset": 3},
+        expected={"applied_1": (3, []), "failed": (1, []), "applied_2": (1, [])},
+    ),
+    NestedPageCase(
+        name="second_migration_record_of_each_first_application",
+        variables={"applications_limit": 1, "migrations_limit": 1, "migrations_offset": 1},
+        expected={
+            "applied_1": (3, [("applied_1", 2, [1])]),
+            "failed": (1, [("failed", 2, [1])]),
+            "applied_2": (1, [("applied_2", 2, [1])]),
+        },
+    ),
+    NestedPageCase(
+        name="migration_records_past_the_end",
+        variables={"applications_limit": 2, "migrations_offset": 2},
+        expected={
+            "applied_1": (3, [("applied_1", 2, []), ("later_1", 0, [])]),
+            "failed": (1, [("failed", 2, [])]),
+            "applied_2": (1, [("applied_2", 2, [])]),
+        },
+    ),
+]
+
+
+@dataclass(frozen=True)
+class LaterApplication:
+    id: str
+    branch: str
+    status: str
+    at: Timestamp
 
 
 @dataclass(frozen=True)
 class SeededQueryHistory:
     branches: dict[str, Branch]
     history: SeededSchemaChangeHistory
+    later_applications: list[LaterApplication]
+    """Two more applications of the first schema change of main, in the order of their `at`."""
 
 
 @pytest.fixture(scope="class")
@@ -234,7 +343,35 @@ async def seeded_query_history(
             )
         ],
     )
+    first_main_change = main_history.on_branch(default_branch_scope_class.name)[0]
+    later_applications = [
+        LaterApplication(
+            id="",
+            branch=BRANCH_WITH_CHANGES,
+            status=SchemaChangeApplicationStatus.APPLIED.value,
+            at=first_main_change.at.add(minutes=1),
+        ),
+        LaterApplication(
+            id="",
+            branch=BRANCH_WITHOUT_CHANGE,
+            status=SchemaChangeApplicationStatus.RUNNING.value,
+            at=first_main_change.at.add(minutes=2),
+        ),
+    ]
+    later_application_ids = {
+        application.branch: await seed_application(
+            db=db,
+            schema_change_id=first_main_change.id,
+            branch=application.branch,
+            status=SchemaChangeApplicationStatus(application.status),
+            at=application.at,
+        )
+        for application in reversed(later_applications)
+    }
     return SeededQueryHistory(
+        later_applications=[
+            replace(application, id=later_application_ids[application.branch]) for application in later_applications
+        ],
         branches={
             default_branch_scope_class.name: default_branch_scope_class,
             BRANCH_WITH_CHANGES: branch_with_changes,
@@ -385,7 +522,6 @@ class TestSchemaChangeHistoryQuery:
                 "version": 1,
                 "status": "APPLIED",
                 "branch": "main",
-                "format_version": 1,
                 "parent": None,
             },
             {
@@ -395,7 +531,6 @@ class TestSchemaChangeHistoryQuery:
                 "version": 2,
                 "status": "APPLIED",
                 "branch": "main",
-                "format_version": 1,
                 "parent": {"id": applied_1.id, "name": f"00001_{MAIN_SUMMARY}", "version": 1, "branch": "main"},
             },
             {
@@ -405,7 +540,6 @@ class TestSchemaChangeHistoryQuery:
                 "version": None,
                 "status": "FAILED",
                 "branch": "main",
-                "format_version": 1,
                 "parent": None,
             },
             {
@@ -415,7 +549,6 @@ class TestSchemaChangeHistoryQuery:
                 "version": 3,
                 "status": "APPLIED",
                 "branch": BRANCH_WITH_CHANGES,
-                "format_version": 1,
                 "parent": {"id": applied_2.id, "name": f"00002_{MAIN_SUMMARY}", "version": 2, "branch": "main"},
             },
             {
@@ -425,7 +558,6 @@ class TestSchemaChangeHistoryQuery:
                 "version": 4,
                 "status": "APPLIED",
                 "branch": BRANCH_WITH_CHANGES,
-                "format_version": 1,
                 "parent": {
                     "id": branch_change_3.id,
                     "name": f"00003_{BRANCH_SUMMARY}",
@@ -488,14 +620,15 @@ class TestSchemaChangeHistoryQuery:
             for position in (1, 2)
         ]
 
-    async def test_applications_come_with_their_migrations(
+    async def test_applications_and_their_migration_records_have_the_values_of_the_contract(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
         session_admin_scope_class: AccountSession,
         seeded_query_history: SeededQueryHistory,
     ) -> None:
-        applied_1, failed, _ = seeded_query_history.history.on_branch(default_branch_scope_class.name)
+        applied_1, failed, applied_2 = seeded_query_history.history.on_branch(default_branch_scope_class.name)
+        later_1, later_2 = seeded_query_history.later_applications
 
         data = await self._query_data(
             db=db,
@@ -504,9 +637,6 @@ class TestSchemaChangeHistoryQuery:
             query=APPLICATIONS_QUERY,
         )
 
-        applications = {edge["node"]["id"]: edge["node"]["applications"] for edge in data["edges"]}
-        assert len(applications) == 3
-
         def describe(application: dict[str, Any]) -> dict[str, Any]:
             return {
                 "id": application["id"],
@@ -514,10 +644,13 @@ class TestSchemaChangeHistoryQuery:
                 "branch": application["branch"],
                 "at": Timestamp(application["at"]),
                 "error": application["error"],
-                "migrations": [
-                    {key: value for key, value in migration.items() if key not in {"id", "updated_at"}}
-                    for migration in application["migrations"]
-                ],
+                "migrations": {
+                    "count": application["migrations"]["count"],
+                    "edges": [
+                        {key: value for key, value in edge["node"].items() if key not in {"id", "updated_at"}}
+                        for edge in application["migrations"]["edges"]
+                    ],
+                },
             }
 
         def migration(position: int, status: str) -> dict[str, Any]:
@@ -531,30 +664,119 @@ class TestSchemaChangeHistoryQuery:
                 "field_name": "color" if first else "name",
                 "property_name": None,
                 "status": status,
-                "nbr_migrations_executed": 0 if first else 1,
                 "errors": [] if first else [MIGRATION_ERROR],
             }
 
-        assert [describe(application) for application in applications[applied_1.id]] == [
-            {
-                "id": applied_1.application_id,
-                "status": "APPLIED",
-                "branch": "main",
-                "at": applied_1.at,
-                "error": None,
-                "migrations": [migration(0, "APPLIED"), migration(1, "FAILED")],
+        assert {
+            edge["node"]["id"]: {
+                "count": edge["node"]["applications"]["count"],
+                "edges": [describe(application["node"]) for application in edge["node"]["applications"]["edges"]],
             }
-        ]
-        assert [describe(application) for application in applications[failed.id]] == [
-            {
-                "id": failed.application_id,
-                "status": "FAILED",
-                "branch": "main",
-                "at": failed.at,
-                "error": SEEDED_FAILURE_ERROR,
-                "migrations": [migration(0, "ROLLED_BACK"), migration(1, "FAILED")],
-            }
-        ]
+            for edge in data["edges"]
+        } == {
+            applied_1.id: {
+                "count": 3,
+                "edges": [
+                    {
+                        "id": applied_1.application_id,
+                        "status": "APPLIED",
+                        "branch": "main",
+                        "at": applied_1.at,
+                        "error": None,
+                        "migrations": {"count": 2, "edges": [migration(0, "APPLIED"), migration(1, "FAILED")]},
+                    },
+                    {
+                        "id": later_1.id,
+                        "status": "APPLIED",
+                        "branch": BRANCH_WITH_CHANGES,
+                        "at": later_1.at,
+                        "error": None,
+                        "migrations": {"count": 0, "edges": []},
+                    },
+                    {
+                        "id": later_2.id,
+                        "status": "RUNNING",
+                        "branch": BRANCH_WITHOUT_CHANGE,
+                        "at": later_2.at,
+                        "error": None,
+                        "migrations": {"count": 0, "edges": []},
+                    },
+                ],
+            },
+            failed.id: {
+                "count": 1,
+                "edges": [
+                    {
+                        "id": failed.application_id,
+                        "status": "FAILED",
+                        "branch": "main",
+                        "at": failed.at,
+                        "error": SEEDED_FAILURE_ERROR,
+                        "migrations": {"count": 2, "edges": [migration(0, "ROLLED_BACK"), migration(1, "FAILED")]},
+                    }
+                ],
+            },
+            applied_2.id: {
+                "count": 1,
+                "edges": [
+                    {
+                        "id": applied_2.application_id,
+                        "status": "APPLIED",
+                        "branch": "main",
+                        "at": applied_2.at,
+                        "error": None,
+                        "migrations": {"count": 2, "edges": [migration(0, "APPLIED"), migration(1, "FAILED")]},
+                    }
+                ],
+            },
+        }
+
+    @pytest.mark.parametrize("test_case", [pytest.param(case, id=case.name) for case in NESTED_PAGE_CASES])
+    async def test_applications_and_migration_records_come_in_pages_with_their_count(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        session_admin_scope_class: AccountSession,
+        seeded_query_history: SeededQueryHistory,
+        test_case: NestedPageCase,
+    ) -> None:
+        applied_1, failed, applied_2 = seeded_query_history.history.on_branch(default_branch_scope_class.name)
+        later_1, later_2 = seeded_query_history.later_applications
+        application_ids = {
+            "applied_1": applied_1.application_id,
+            "later_1": later_1.id,
+            "later_2": later_2.id,
+            "failed": failed.application_id,
+            "applied_2": applied_2.application_id,
+        }
+        names = {application_id: name for name, application_id in application_ids.items()}
+
+        data = await self._query_data(
+            db=db,
+            branch=default_branch_scope_class,
+            account_session=session_admin_scope_class,
+            query=APPLICATIONS_QUERY,
+            variables=test_case.variables,
+        )
+
+        assert {
+            edge["node"]["id"]: (
+                edge["node"]["applications"]["count"],
+                [
+                    (
+                        names[application["node"]["id"]],
+                        application["node"]["migrations"]["count"],
+                        [migration["node"]["position"] for migration in application["node"]["migrations"]["edges"]],
+                    )
+                    for application in edge["node"]["applications"]["edges"]
+                ],
+            )
+            for edge in data["edges"]
+        } == {
+            applied_1.id: test_case.expected["applied_1"],
+            failed.id: test_case.expected["failed"],
+            applied_2.id: test_case.expected["applied_2"],
+        }
 
     @pytest.mark.parametrize("test_case", [pytest.param(case, id=case.name) for case in REFUSED_PAGE_CASES])
     async def test_out_of_range_limit_or_offset_is_refused(
