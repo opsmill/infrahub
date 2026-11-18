@@ -325,6 +325,7 @@ class FailingMigrationRecordStore:
 CREATE_SCHEMA_CHANGE = "create_schema_change"
 MARK_APPLIED = "mark_applied"
 MARK_FAILED = "mark_failed"
+MARK_FAILED_IF_RUNNING = "mark_failed_if_running"
 GET_HIGHEST_APPLIED_VERSION = "get_highest_applied_version"
 GET_HIGHEST_APPLIED_VERSION_AT = "get_highest_applied_version_at"
 
@@ -339,7 +340,7 @@ class RecordingSchemaChangeRepository(SchemaChangeRecordStore, AppliedVersionRea
     """A schema change repository that records each call and returns the records it was given.
 
     `create_schema_change` returns the items of `created` in turn. The version reads return the
-    version given for the branch, or None.
+    version given for the branch, or None. `mark_failed_if_running` returns `running`.
     """
 
     def __init__(
@@ -347,8 +348,10 @@ class RecordingSchemaChangeRepository(SchemaChangeRecordStore, AppliedVersionRea
         created: Sequence[CreatedSchemaChange] = (),
         highest_versions: Mapping[str, AppliedSchemaChangeVersion] | None = None,
         highest_versions_at: Mapping[str, AppliedSchemaChangeVersion] | None = None,
+        running: bool = True,
     ) -> None:
         self._created = list(created)
+        self.running = running
         self.highest_versions = dict(highest_versions or {})
         self.highest_versions_at = dict(highest_versions_at or {})
         self.calls: list[SchemaChangeRepositoryCall] = []
@@ -386,6 +389,19 @@ class RecordingSchemaChangeRepository(SchemaChangeRecordStore, AppliedVersionRea
         self._record(
             MARK_FAILED, schema_change_id=schema_change_id, application_id=application_id, error=error, user_id=user_id
         )
+
+    @override
+    async def mark_failed_if_running(
+        self, *, schema_change_id: str, application_id: str, error: str, user_id: str
+    ) -> bool:
+        self._record(
+            MARK_FAILED_IF_RUNNING,
+            schema_change_id=schema_change_id,
+            application_id=application_id,
+            error=error,
+            user_id=user_id,
+        )
+        return self.running
 
     @override
     async def get_highest_applied_version(self, *, branch: str) -> AppliedSchemaChangeVersion | None:
@@ -517,6 +533,7 @@ class FixedOperationsBuilder(SchemaOperationBuilder):
 RECORDER_START = "start"
 RECORDER_COMPLETE = "complete"
 RECORDER_FAIL = "fail"
+RECORDER_FAIL_IF_RUNNING = "fail_if_running"
 EXECUTOR_EXECUTE = "execute"
 EXECUTOR_ROLLBACK = "rollback"
 RECORDED_SCHEMA_CHANGE_ID = "2f1c9a64-8d3e-4b7a-9c51-0e6d4f3a8b21"
@@ -532,11 +549,13 @@ class SchemaApplicationCall:
 class RecordingApplicationRecorder(ApplicationRecorder):
     """An application recorder that appends each call to `calls`, which it can share with an executor.
 
-    `start` returns a recording with `RECORDED_SCHEMA_CHANGE_ID` and `RECORDED_APPLICATION_ID`.
+    `start` returns a recording with `RECORDED_SCHEMA_CHANGE_ID` and `RECORDED_APPLICATION_ID`, and
+    `fail_if_running` returns `running`.
     """
 
-    def __init__(self, calls: list[SchemaApplicationCall]) -> None:
+    def __init__(self, calls: list[SchemaApplicationCall], running: bool = True) -> None:
         self.calls = calls
+        self.running = running
 
     @override
     async def start(
@@ -568,6 +587,16 @@ class RecordingApplicationRecorder(ApplicationRecorder):
             )
         )
 
+    @override
+    async def fail_if_running(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> bool:
+        self.calls.append(
+            SchemaApplicationCall(
+                method=RECORDER_FAIL_IF_RUNNING,
+                arguments={"recording": recording, "error": error, "user_id": user_id},
+            )
+        )
+        return self.running
+
 
 class FailingApplicationRecorder(RecordingApplicationRecorder):
     """An application recorder that records each call, and raises a database error from `fail`."""
@@ -586,9 +615,9 @@ class FailGate:
 
 
 class GatedFailApplicationRecorder(RecordingApplicationRecorder):
-    """An application recorder that records each call; `fail` sets `gate.started`, waits for `gate.opened`, then records.
+    """An application recorder that records each call; `fail_if_running` sets `gate.started`, waits for `gate.opened`, then records.
 
-    `gate.finished` is set when `fail` returns or is cancelled.
+    `gate.finished` is set when `fail_if_running` returns or is cancelled.
     """
 
     def __init__(self, calls: list[SchemaApplicationCall], gate: FailGate) -> None:
@@ -596,11 +625,11 @@ class GatedFailApplicationRecorder(RecordingApplicationRecorder):
         self.gate = gate
 
     @override
-    async def fail(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> None:
+    async def fail_if_running(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> bool:
         self.gate.started.set()
         try:
             await self.gate.opened.wait()
-            await super().fail(recording=recording, error=error, user_id=user_id)
+            return await super().fail_if_running(recording=recording, error=error, user_id=user_id)
         finally:
             self.gate.finished.set()
 

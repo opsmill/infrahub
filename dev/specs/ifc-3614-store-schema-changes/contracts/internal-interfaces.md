@@ -386,9 +386,10 @@ class SchemaChangeRecorder:
 | `start` | created, `running`, no version | created, `running` | none yet |
 | `complete` | `applied`, version, parent, `applied_at` | `applied` | unchanged |
 | `fail` | `failed` | `failed`, with the error | `applied` becomes `rolled_back`, `waiting` becomes `cancelled`, `running` becomes `failed` with the error; `failed` is unchanged |
+| `fail_if_running` | as `fail`, only while `running`; otherwise unchanged, and it returns `False` | as `fail`, only while the schema change is `running` | as `fail`, only while the schema change is `running` |
 | `record_applied` | created, `applied`, version, parent, `applied_at` | created, `applied` | none |
 
-- It has four entry methods because they are the steps of one schema change, and each needs the
+- It has five entry methods because they are the steps of one schema change, and each needs the
   `SchemaChangeRecording` that an earlier one returned.
 - `start` and `record_applied` raise `ValueError` with the message
   `A schema change needs at least one operation` when `operations` is empty, and store nothing.
@@ -489,9 +490,10 @@ class SchemaChangeApplicationRunner:
 - When the executor raises an `Exception`, the final step's included, calls `recorder.fail` with
   the text of the error, then raises the same exception. The caller receives the same error as
   today.
-- When the load is cancelled (`asyncio.CancelledError`), calls `recorder.fail` with the error
-  `The schema load was cancelled before it completed` inside `asyncio.shield`, then lets the
-  cancellation go on. The coordinator does not roll back a cancelled update
+- When the load is cancelled (`asyncio.CancelledError`), calls `recorder.fail_if_running` with the
+  error `The schema load was cancelled before it completed` inside `asyncio.shield`, then lets the
+  cancellation go on. A schema change that the final step already recorded as `applied` keeps that
+  status, and the runner logs a warning. The coordinator does not roll back a cancelled update
   ([research.md](../research.md), R8).
 - `run` always creates a new schema change. Applying a schema change that already exists, as the
   staging and replay tasks do, is not in this contract; those tasks extend it.

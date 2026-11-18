@@ -34,6 +34,8 @@ class ApplicationRecorder(Protocol):
 
     async def fail(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> None: ...
 
+    async def fail_if_running(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> bool: ...
+
 
 class SchemaUpdateExecutor(Protocol):
     async def execute(
@@ -82,9 +84,9 @@ class SchemaChangeApplicationRunner:
 
         The schema change is recorded as applied as the last step of the update, so a failure to record it rolls the
         update back. When the update raises, the schema change is recorded as failed with the text of the error, and
-        the same exception is raised again; a failure to record that is logged. When the load is cancelled, the
-        schema change is recorded as failed in a write that the cancellation does not stop, then the cancellation
-        goes on.
+        the same exception is raised again; a failure to record that is logged. When the load is cancelled, a schema
+        change that is still running is recorded as failed in a write that the cancellation does not stop, then the
+        cancellation goes on; one already recorded as applied keeps that status.
 
         A candidate without operations is applied without storing a schema change, and a warning names the branch.
 
@@ -92,7 +94,8 @@ class SchemaChangeApplicationRunner:
             The schema hash of the branch after the update.
 
         Raises:
-            CancelledError: When the load is cancelled, after the schema change is recorded as failed.
+            CancelledError: When the load is cancelled, after a schema change that is still running is recorded as
+                failed.
 
         """
         if not candidate.operations:
@@ -130,7 +133,7 @@ class SchemaChangeApplicationRunner:
                 final_step=record_completion,
             )
         except asyncio.CancelledError:
-            await asyncio.shield(self._record_failure(recording=recording, error=LOAD_CANCELLED_ERROR, user_id=user_id))
+            await asyncio.shield(self._record_cancellation(recording=recording, user_id=user_id))
             raise
         except Exception as exc:
             await self._record_failure(recording=recording, error=_error_text(exc), user_id=user_id)
@@ -162,6 +165,27 @@ class SchemaChangeApplicationRunner:
             application_id=application_id,
             final_step=final_step,
         )
+
+    async def _record_cancellation(self, *, recording: SchemaChangeRecording, user_id: str) -> None:
+        # The cancellation can arrive after the schema change was recorded as applied, and a cancelled load does not
+        # roll back the schema, so only a schema change that is still running is recorded as failed.
+        try:
+            recorded = await self.recorder.fail_if_running(
+                recording=recording, error=LOAD_CANCELLED_ERROR, user_id=user_id
+            )
+        except RECORD_WRITE_ERRORS:
+            log.exception(
+                "Could not record the failure of a schema change",
+                schema_change_id=recording.schema_change_id,
+                application_id=recording.application_id,
+            )
+            return
+        if not recorded:
+            log.warning(
+                "The schema load was cancelled after its schema change stopped running, so its status is kept",
+                schema_change_id=recording.schema_change_id,
+                application_id=recording.application_id,
+            )
 
     async def _record_failure(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> None:
         try:

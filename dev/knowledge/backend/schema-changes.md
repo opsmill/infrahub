@@ -168,9 +168,12 @@ progress and are best effort.
    load fails.
 4. When the update raises an `Exception`, the coordinator has already rolled back. The runner calls
    `fail` with the text of the error and raises the same exception again.
-5. When the load is cancelled (`asyncio.CancelledError`), the runner calls `fail` with the error
-   `The schema load was cancelled before it completed` inside `asyncio.shield`, then lets the
-   cancellation go on.
+5. When the load is cancelled (`asyncio.CancelledError`), the runner calls `fail_if_running` with
+   the error `The schema load was cancelled before it completed` inside `asyncio.shield`, then lets
+   the cancellation go on. `fail_if_running` changes the schema change only while it is `running`:
+   a cancellation can arrive after the final step recorded the schema change as applied, and a
+   cancelled load keeps its schema, so that schema change stays `applied` and the runner logs a
+   warning.
 
 A failure of `fail` itself is logged when it is one of `RECORD_WRITE_ERRORS`
 (`core/schema_change/record_errors.py`: a `DatabaseError`, a `QueryError`, a `QueryTimeoutError` or
@@ -222,7 +225,7 @@ A schema change and its application stay `running` when:
 - the process stops before the shielded write of `fail` runs.
 
 The coordinator rolls back only on an `Exception`, and `asyncio.CancelledError` is not one. A
-cancelled load therefore records its schema change as `failed`, but the coordinator does not roll
+cancelled load therefore records a running schema change as `failed`, but the coordinator does not roll
 back the schema and the data that the load wrote before the cancellation. The rollback on
 cancellation belongs to the coordinator, which every schema update uses, not to the records.
 
@@ -264,7 +267,8 @@ is the parent of the first schema change of the deleted branch stays. The number
 
 `graphql/queries/schema_change.py::InfrahubSchemaChange` reads the branch of the request. It lists
 applied schema changes by version, then the others by `created_at`, pages them with `limit` (default
-10, maximum 50) and `offset`, and reads `edges` and `count` only when the request selects them.
+10, maximum 50) and `offset`. A request that selects `edges` runs the list query and the count
+query, and a request that selects only `count` runs the count query alone.
 Three nested fields are paged the same way, with a `count` of all their records:
 
 - `operations` of a schema change, by position: default 50, maximum 500;

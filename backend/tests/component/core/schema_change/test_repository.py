@@ -25,6 +25,7 @@ from tests.helpers.schema_change import (
     count_schema_change_record_edges_to_root,
     count_schema_change_records,
     read_applications_with_migrations,
+    read_branch_schema_change_records,
     seed_schema_change_history,
 )
 
@@ -465,6 +466,56 @@ async def test_mark_failed_closes_each_migration_record_by_its_status(
         (1, SchemaChangeMigrationStatus.FAILED, [MIGRATION_ERROR]),
         (2, SchemaChangeMigrationStatus.FAILED, [FAILURE_ERROR]),
         (3, SchemaChangeMigrationStatus.CANCELLED, []),
+    ]
+
+
+async def test_mark_failed_if_running_changes_only_a_running_schema_change(
+    db: InfrahubDatabase, empty_database: None
+) -> None:
+    history = await seed_schema_change_history(
+        db=db,
+        branches=[
+            BranchHistorySeed(
+                branch=BRANCH_NAME,
+                changes=[SchemaChangeStatus.APPLIED, SchemaChangeStatus.RUNNING],
+                migrations=[
+                    MigrationSeed(migration=attribute_migration(), status=SchemaChangeMigrationStatus.APPLIED),
+                ],
+            )
+        ],
+    )
+    applied_change, running_change = history.schema_changes
+    records_before = await read_branch_schema_change_records(db=db, branch=BRANCH_NAME)
+    repository = build_schema_change_repository(db=db)
+
+    applied_result = await repository.mark_failed_if_running(
+        schema_change_id=applied_change.id,
+        application_id=applied_change.application_id,
+        error=FAILURE_ERROR,
+        user_id=SYSTEM_USER_ID,
+    )
+    running_result = await repository.mark_failed_if_running(
+        schema_change_id=running_change.id,
+        application_id=running_change.application_id,
+        error=FAILURE_ERROR,
+        user_id=SYSTEM_USER_ID,
+    )
+
+    assert (applied_result, running_result) == (False, True)
+    records_after = await read_branch_schema_change_records(db=db, branch=BRANCH_NAME)
+    assert records_after[applied_change.id] == records_before[applied_change.id]
+    assert records_after[applied_change.application_id] == records_before[applied_change.application_id]
+    assert records_after[running_change.id].properties["status"] == SchemaChangeStatus.FAILED.value
+    applications = await read_applications_with_migrations(
+        db=db, schema_change_ids=[applied_change.id, running_change.id]
+    )
+    assert [
+        (application.application.status.value, [migration.status for migration in application.migrations])
+        for schema_change_id in (applied_change.id, running_change.id)
+        for application in applications[schema_change_id]
+    ] == [
+        ("applied", [SchemaChangeMigrationStatus.APPLIED]),
+        ("failed", [SchemaChangeMigrationStatus.ROLLED_BACK]),
     ]
 
 

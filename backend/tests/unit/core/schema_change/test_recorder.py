@@ -19,6 +19,7 @@ from tests.unit.core.schema_change.helpers import (
     GET_HIGHEST_APPLIED_VERSION,
     MARK_APPLIED,
     MARK_FAILED,
+    MARK_FAILED_IF_RUNNING,
     FailingSchemaChangeRepository,
     RecordingSchemaChangeRepository,
     SchemaChangeRepositoryCall,
@@ -131,6 +132,28 @@ async def test_fail_marks_the_schema_change_failed_with_the_error() -> None:
     assert repository.calls == [
         SchemaChangeRepositoryCall(
             method=MARK_FAILED,
+            arguments={
+                "schema_change_id": SCHEMA_CHANGE_ID,
+                "application_id": APPLICATION_ID,
+                "error": FAILURE_ERROR,
+                "user_id": SYSTEM_USER_ID,
+            },
+        )
+    ]
+
+
+@pytest.mark.parametrize("running", [pytest.param(True, id="running"), pytest.param(False, id="no_longer_running")])
+async def test_fail_if_running_returns_whether_the_repository_marked_the_schema_change_failed(running: bool) -> None:
+    repository = RecordingSchemaChangeRepository(running=running)
+
+    marked = await _build_recorder(repository=repository).fail_if_running(
+        recording=RECORDING, error=FAILURE_ERROR, user_id=SYSTEM_USER_ID
+    )
+
+    assert marked is running
+    assert repository.calls == [
+        SchemaChangeRepositoryCall(
+            method=MARK_FAILED_IF_RUNNING,
             arguments={
                 "schema_change_id": SCHEMA_CHANGE_ID,
                 "application_id": APPLICATION_ID,

@@ -7,11 +7,10 @@ from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.query import Query, QueryType
 from infrahub.core.schema_change.constants import SCHEMA_OPERATION_FORMAT_VERSION
+from infrahub.core.schema_change.cypher_names import CYPHER_NAMES
 from infrahub.core.schema_change.enums import (
     SchemaChangeApplicationStatus,
-    SchemaChangeEdgeType,
     SchemaChangeMigrationStatus,
-    SchemaChangeRecordLabel,
     SchemaChangeStatus,
 )
 from infrahub.core.schema_change.models import SchemaChange, SchemaChangeApplication, SchemaChangeMigration
@@ -26,19 +25,6 @@ if TYPE_CHECKING:
     from infrahub.core.schema_change.operations import SchemaOperation
     from infrahub.core.schema_change.record_serializer import RecordProperties, SchemaChangeRecordSerializer
     from infrahub.database import InfrahubDatabase
-
-
-CYPHER_NAMES = {
-    "schema_change_label": SchemaChangeRecordLabel.SCHEMA_CHANGE.value,
-    "operation_label": SchemaChangeRecordLabel.OPERATION.value,
-    "application_label": SchemaChangeRecordLabel.APPLICATION.value,
-    "migration_label": SchemaChangeRecordLabel.MIGRATION.value,
-    "has_operation": SchemaChangeEdgeType.SCHEMA_CHANGE_HAS_OPERATION.value,
-    "has_application": SchemaChangeEdgeType.SCHEMA_CHANGE_HAS_APPLICATION.value,
-    "has_parent": SchemaChangeEdgeType.SCHEMA_CHANGE_HAS_PARENT.value,
-    "has_migration": SchemaChangeEdgeType.SCHEMA_APPLICATION_HAS_MIGRATION.value,
-}
-"""The labels and edge types that the queries write into their text; none of them comes from user input."""
 
 
 class SchemaChangeCreateQuery(Query):
@@ -212,7 +198,8 @@ class SchemaChangeMarkFailedQuery(Query):
     """Set a schema change and its application to failed, and close the migration records of the application.
 
     An applied migration record becomes rolled back, a waiting one cancelled, and a running one failed with the error
-    added to its errors; a failed one stays failed.
+    added to its errors; a failed one stays failed. With `only_if_running`, a schema change that is not running is left
+    as it is and the query returns no row.
     """
 
     name = "schema-change-mark-failed"
@@ -220,8 +207,20 @@ class SchemaChangeMarkFailedQuery(Query):
     insert_return = False
     raise_error_if_empty = True
 
-    def __init__(self, schema_change_id: str, application_id: str, error: str, updated_at: str, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        schema_change_id: str,
+        application_id: str,
+        error: str,
+        updated_at: str,
+        only_if_running: bool,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(**kwargs)
+        self.only_if_running = only_if_running
+        # A schema change that is no longer running gives no row, which is an answer and not an error.
+        self.raise_error_if_empty = not only_if_running
+        self.params["running_schema_change_status"] = SchemaChangeStatus.RUNNING.value
         self.params["schema_change_id"] = schema_change_id
         self.params["application_id"] = application_id
         self.params["error"] = error
@@ -237,10 +236,17 @@ class SchemaChangeMarkFailedQuery(Query):
         self.params["failed_migration_status"] = SchemaChangeMigrationStatus.FAILED.value
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        query = (
+        self.add_to_query(
             """
         MATCH (schema_change:%(schema_change_label)s {uuid: $schema_change_id})
             -[:%(has_application)s]->(application:%(application_label)s {uuid: $application_id})
+        """
+            % CYPHER_NAMES
+        )
+        if self.only_if_running:
+            self.add_to_query("WHERE schema_change.status = $running_schema_change_status")
+        query = (
+            """
         SET schema_change.status = $schema_change_status,
             schema_change.updated_at = $updated_at,
             schema_change.updated_by = $updated_by,
@@ -267,6 +273,10 @@ class SchemaChangeMarkFailedQuery(Query):
         )
         self.add_to_query(query)
         self.return_labels = ["schema_change_id"]
+
+    def get_data(self) -> bool:
+        """Return whether the schema change was set to failed."""
+        return self.get_result() is not None
 
 
 @dataclass(frozen=True)
@@ -530,9 +540,31 @@ class SchemaChangeRepository:
             application_id=application_id,
             error=error,
             updated_at=Timestamp().to_string(),
+            only_if_running=False,
             user_id=user_id,
         )
         await self._write(query=query)
+
+    async def mark_failed_if_running(
+        self, *, schema_change_id: str, application_id: str, error: str, user_id: str
+    ) -> bool:
+        """Set a schema change and its application to failed, as `mark_failed` does, only while the schema change is running.
+
+        Returns:
+            Whether the schema change was set to failed; False when it is no longer running or is not stored.
+
+        """
+        query = await SchemaChangeMarkFailedQuery.init(
+            db=self.db,
+            schema_change_id=schema_change_id,
+            application_id=application_id,
+            error=error,
+            updated_at=Timestamp().to_string(),
+            only_if_running=True,
+            user_id=user_id,
+        )
+        await self._write(query=query)
+        return query.get_data()
 
     async def create_migration_records(
         self, *, application_id: str, migrations: Sequence[SchemaUpdateMigrationInfo]

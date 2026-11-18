@@ -33,6 +33,10 @@ class SchemaChangeRecordStore(Protocol):
 
     async def mark_failed(self, *, schema_change_id: str, application_id: str, error: str, user_id: str) -> None: ...
 
+    async def mark_failed_if_running(
+        self, *, schema_change_id: str, application_id: str, error: str, user_id: str
+    ) -> bool: ...
+
 
 @dataclass(frozen=True)
 class SchemaChangeRecording:
@@ -88,9 +92,24 @@ class SchemaChangeRecorder:
     async def fail(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> None:
         """Set the schema change and its application to failed with the error, without a version.
 
-        The migration records that were applied become rolled back, and the others keep their status.
+        An applied migration record becomes rolled back, a waiting one cancelled, and a running one failed with the
+        error added to its errors; a failed one stays failed.
         """
         await self.repository.mark_failed(
+            schema_change_id=recording.schema_change_id,
+            application_id=recording.application_id,
+            error=error,
+            user_id=user_id,
+        )
+
+    async def fail_if_running(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> bool:
+        """Set the schema change and its application to failed as `fail` does, only while the schema change is running.
+
+        Returns:
+            Whether the schema change was set to failed; False when it was already recorded as applied or failed.
+
+        """
+        return await self.repository.mark_failed_if_running(
             schema_change_id=recording.schema_change_id,
             application_id=recording.application_id,
             error=error,

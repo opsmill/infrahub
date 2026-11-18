@@ -262,8 +262,9 @@ branch. Count the records of that branch and of main before and after.
 - **A write of the schema change or its application that fails**: the load fails. When the write
   that creates them fails, nothing is changed; when the write that sets `applied` fails, the load
   is rolled back and the schema change is set to `failed` (decision 9).
-- **A load request that is cancelled**: the schema change and its application are set to `failed`
-  with the error `The schema load was cancelled before it completed`. The schema and the data that
+- **A load request that is cancelled**: a schema change that is still `running`, and its
+  application, are set to `failed` with the error `The schema load was cancelled before it
+  completed`; one already recorded as `applied` keeps that status. The schema and the data that
   the load wrote before the cancellation are not rolled back, as before this feature
   ([research.md](research.md), R8).
 - **A worker that stops during a load, or a write of the status `failed` that fails**: the schema

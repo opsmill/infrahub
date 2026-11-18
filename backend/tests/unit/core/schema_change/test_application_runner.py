@@ -30,6 +30,7 @@ from tests.unit.core.schema_change.helpers import (
     RECORDED_SCHEMA_CHANGE_ID,
     RECORDER_COMPLETE,
     RECORDER_FAIL,
+    RECORDER_FAIL_IF_RUNNING,
     RECORDER_START,
     BlockingSchemaUpdateExecutor,
     FailGate,
@@ -46,6 +47,9 @@ USER_ID = "4d0c7e2a-6b19-4f3e-8a52-c1d9e7f30b64"
 UPDATED_HASH = "f3a1c92e7b4d5068"
 RECORD_FAILURE_EVENT = "Could not record the failure of a schema change"
 NO_OPERATION_EVENT = "Applying a schema change that has no operation, without recording it"
+CANCELLED_AFTER_RUNNING_EVENT = (
+    "The schema load was cancelled after its schema change stopped running, so its status is kept"
+)
 CHANGED_KIND = "TestCar"
 MIGRATION_FAILURE = "The migration node.attribute.add failed on 2 nodes"
 
@@ -257,7 +261,7 @@ async def test_run_records_the_failure_and_raises_when_recording_the_application
 
 def _cancelled_fail_call(run_input: RunInput) -> SchemaApplicationCall:
     return SchemaApplicationCall(
-        method=RECORDER_FAIL,
+        method=RECORDER_FAIL_IF_RUNNING,
         arguments={"recording": _recording(run_input), "error": LOAD_CANCELLED_ERROR, "user_id": USER_ID},
     )
 
@@ -275,6 +279,32 @@ async def test_run_records_the_failure_and_raises_the_cancellation_when_the_load
     with pytest.raises(asyncio.CancelledError):
         await load
     assert calls == [_start_call(run_input), _execute_call(run_input), _cancelled_fail_call(run_input)]
+
+
+async def test_run_keeps_the_status_of_a_schema_change_that_stopped_running_when_the_load_is_cancelled(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    calls: list[SchemaApplicationCall] = []
+    executor = BlockingSchemaUpdateExecutor(calls=calls)
+    runner = SchemaChangeApplicationRunner(
+        recorder=RecordingApplicationRecorder(calls=calls, running=False), executor=executor
+    )
+    run_input = _build_run_input()
+    load = asyncio.create_task(_run(runner=runner, run_input=run_input))
+    await executor.started.wait()
+
+    load.cancel()
+
+    with caplog.at_level(logging.WARNING, logger="infrahub"), pytest.raises(asyncio.CancelledError):
+        await load
+    assert calls == [_start_call(run_input), _execute_call(run_input), _cancelled_fail_call(run_input)]
+    warnings = find_logged_events(
+        caplog,
+        event=CANCELLED_AFTER_RUNNING_EVENT,
+        schema_change_id=RECORDED_SCHEMA_CHANGE_ID,
+        application_id=RECORDED_APPLICATION_ID,
+    )
+    assert len(warnings) == 1
 
 
 async def test_run_finishes_recording_the_failure_when_the_load_is_cancelled_again_during_the_write() -> None:
