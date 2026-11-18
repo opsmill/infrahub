@@ -4,8 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core.migrations.schema.models import SchemaMigrationPathResponseData
 from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus, SchemaChangeStatus
-from infrahub.core.schema_change.factory import build_migration_recorder
-from infrahub.core.schema_change.history_reader import SchemaChangeHistoryReader
+from infrahub.core.schema_change.factory import build_migration_recorder, build_schema_change_history_reader
 from tests.helpers.schema_change import (
     BranchHistorySeed,
     SeededSchemaChange,
@@ -38,7 +37,9 @@ async def _seed_application(db: InfrahubDatabase) -> SeededSchemaChange:
 async def _read_migrations(
     db: InfrahubDatabase, schema_change: SeededSchemaChange
 ) -> list[tuple[int, str, str | None, SchemaChangeMigrationStatus, int | None, list[str]]]:
-    applications = await SchemaChangeHistoryReader(db=db).list_applications(schema_change_ids=[schema_change.id])
+    applications = await build_schema_change_history_reader(db=db).list_applications(
+        schema_change_ids=[schema_change.id]
+    )
     (record,) = applications[schema_change.id]
     return [
         (
@@ -47,7 +48,7 @@ async def _read_migrations(
             migration.field_name,
             migration.status,
             migration.nbr_migrations_executed,
-            migration.errors,
+            list(migration.errors),
         )
         for migration in record.migrations
     ]

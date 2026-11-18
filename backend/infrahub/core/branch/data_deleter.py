@@ -13,7 +13,6 @@ from infrahub.core.query.branch import (
     DeleteBranchReservedAttributesQuery,
 )
 from infrahub.core.query.branch_agnostic_retirement import RetireBranchAgnosticFieldsQuery
-from infrahub.core.query.schema_change import SchemaChangeDeleteByBranchQuery
 from infrahub.core.query.standard_node import StandardNodeDeleteQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
@@ -47,6 +46,10 @@ class BranchDataDeleterInterface(Protocol):
     async def delete(self, branch: Branch, user_id: str = SYSTEM_USER_ID) -> BranchDeleteResult: ...
 
 
+class SchemaChangeRecordDeleter(Protocol):
+    async def delete_branch_schema_changes(self, *, branch: str, batch_size: int) -> int: ...
+
+
 class LoggerInterface(Protocol):
     """Just enough of a logger for progress reporting."""
 
@@ -61,9 +64,16 @@ class BranchDataDeleter:
     an interrupted delete can be resumed by running the whole thing again.
     """
 
-    def __init__(self, db: InfrahubDatabase, batch_size: int, log: LoggerInterface | None = None) -> None:
+    def __init__(
+        self,
+        db: InfrahubDatabase,
+        batch_size: int,
+        schema_change_records: SchemaChangeRecordDeleter,
+        log: LoggerInterface | None = None,
+    ) -> None:
         self.db = db
         self.batch_size = batch_size
+        self.schema_change_records = schema_change_records
         self.log = log or get_logger()
 
     async def delete(self, branch: Branch, user_id: str = SYSTEM_USER_ID) -> BranchDeleteResult:
@@ -200,16 +210,8 @@ class BranchDataDeleter:
 
     async def _delete_schema_changes(self, branch_name: str) -> None:
         """Delete the schema changes recorded on the branch, with their operations, applications and migration records."""
-        deleted_total = 0
-        while True:
-            query = await SchemaChangeDeleteByBranchQuery.init(
-                db=self.db, branch_name=branch_name, batch_size=self.batch_size
-            )
-            await query.execute(db=self.db)
-            deleted = query.get_data()
-            if not deleted:
-                break
-            deleted_total += deleted
-
-        if deleted_total:
-            self.log.info(f"Deleted {deleted_total} schema change(s) of branch '{branch_name}' with their records")
+        deleted = await self.schema_change_records.delete_branch_schema_changes(
+            branch=branch_name, batch_size=self.batch_size
+        )
+        if deleted:
+            self.log.info(f"Deleted {deleted} schema change(s) of branch '{branch_name}' with their records")

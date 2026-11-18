@@ -7,13 +7,13 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core.branch.data_deleter import BranchDataDeleter
-from infrahub.core.schema_change.enums import SchemaChangeEdgeType, SchemaChangeMigrationStatus, SchemaChangeStatus
-from infrahub.core.schema_change.models import (
-    SchemaChange,
-    SchemaChangeApplication,
-    SchemaChangeMigration,
-    SchemaChangeOperation,
+from infrahub.core.schema_change.enums import (
+    SchemaChangeEdgeType,
+    SchemaChangeMigrationStatus,
+    SchemaChangeRecordLabel,
+    SchemaChangeStatus,
 )
+from infrahub.core.schema_change.factory import build_schema_change_repository
 from tests.adapters.log import FakeLogger
 from tests.helpers.schema_change import (
     BranchHistorySeed,
@@ -21,6 +21,7 @@ from tests.helpers.schema_change import (
     SeededSchemaChangeHistory,
     StoredSchemaChangeRecord,
     attribute_migration,
+    count_schema_change_record_edges_to_root,
     count_schema_change_records,
     read_branch_schema_change_records,
     seed_schema_change_history,
@@ -59,17 +60,17 @@ class DeletionContext:
     log: FakeLogger
 
 
-def _labels(records: dict[str, StoredSchemaChangeRecord]) -> Counter[str]:
-    return Counter(record.label for record in records.values())
+def _labels(records: dict[str, StoredSchemaChangeRecord]) -> Counter[tuple[str, ...]]:
+    return Counter(record.labels for record in records.values())
 
 
-def _expected_labels(nbr_schema_changes: int) -> Counter[str]:
+def _expected_labels(nbr_schema_changes: int) -> Counter[tuple[str, ...]]:
     return Counter(
         {
-            SchemaChange.get_type(): nbr_schema_changes,
-            SchemaChangeOperation.get_type(): nbr_schema_changes * NBR_OPERATIONS,
-            SchemaChangeApplication.get_type(): nbr_schema_changes,
-            SchemaChangeMigration.get_type(): nbr_schema_changes * len(MIGRATIONS),
+            (SchemaChangeRecordLabel.SCHEMA_CHANGE.value,): nbr_schema_changes,
+            (SchemaChangeRecordLabel.OPERATION.value,): nbr_schema_changes * NBR_OPERATIONS,
+            (SchemaChangeRecordLabel.APPLICATION.value,): nbr_schema_changes,
+            (SchemaChangeRecordLabel.MIGRATION.value,): nbr_schema_changes * len(MIGRATIONS),
         }
     )
 
@@ -127,28 +128,37 @@ class TestDeleteSchemaChangesByBranch:
                 branch: await read_branch_schema_change_records(db=db, branch=branch)
                 for branch in (MAIN, DELETED_BRANCH, OTHER_BRANCH)
             },
-            deleter=BranchDataDeleter(db=db, batch_size=BATCH_SIZE, log=log),
+            deleter=BranchDataDeleter(
+                db=db,
+                batch_size=BATCH_SIZE,
+                schema_change_records=build_schema_change_repository(db=db),
+                log=log,
+            ),
             log=log,
         )
 
-    async def test_records_before_the_deletion_are_the_seeded_ones(self, context: DeletionContext) -> None:
+    async def test_records_before_the_deletion_are_the_seeded_ones(
+        self, db: InfrahubDatabase, context: DeletionContext
+    ) -> None:
         for branch, nbr_schema_changes in ((MAIN, 2), (DELETED_BRANCH, NBR_DELETED_BRANCH_CHANGES), (OTHER_BRANCH, 2)):
             records = context.records_before[branch]
             assert _labels(records) == _expected_labels(nbr_schema_changes)
-            assert {uuid for uuid, record in records.items() if record.label == SchemaChange.get_type()} == {
-                change.id for change in context.history.on_branch(branch)
-            }
+            assert {
+                uuid
+                for uuid, record in records.items()
+                if record.labels == (SchemaChangeRecordLabel.SCHEMA_CHANGE.value,)
+            } == {change.id for change in context.history.on_branch(branch)}
 
         deleted_branch_records = context.records_before[DELETED_BRANCH]
         failed_change = context.history.on_branch(DELETED_BRANCH)[FAILED_POSITION]
         assert deleted_branch_records[failed_change.id].properties["status"] == SchemaChangeStatus.FAILED.value
-        main_parent_db_id = context.records_before[MAIN][context.main_parent_id].db_id
         first_change = context.history.on_branch(DELETED_BRANCH)[0]
         assert [
             edge
             for edge in deleted_branch_records[first_change.id].edges
             if edge[0] == SchemaChangeEdgeType.SCHEMA_CHANGE_HAS_PARENT.value
-        ] == [(SchemaChangeEdgeType.SCHEMA_CHANGE_HAS_PARENT.value, main_parent_db_id)]
+        ] == [(SchemaChangeEdgeType.SCHEMA_CHANGE_HAS_PARENT.value, context.main_parent_id)]
+        assert await count_schema_change_record_edges_to_root(db=db) == 0
 
     async def test_deletion_removes_every_record_of_the_branch(
         self, db: InfrahubDatabase, context: DeletionContext

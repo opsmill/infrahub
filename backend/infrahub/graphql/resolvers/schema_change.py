@@ -82,7 +82,7 @@ def _schema_change_name(schema_change: SchemaChange) -> str:
 
 def _parent_to_graphql(parent: SchemaChange) -> dict[str, Any]:
     return {
-        "id": str(parent.get_uuid()),
+        "id": parent.uuid,
         "name": _schema_change_name(schema_change=parent),
         "version": parent.version,
         "branch": parent.branch,
@@ -92,7 +92,7 @@ def _parent_to_graphql(parent: SchemaChange) -> dict[str, Any]:
 def build_schema_change_node(entry: SchemaChangeHistoryEntry, loaders: SchemaChangeLoaders) -> SchemaChangeNodeValue:
     schema_change = entry.schema_change
     return SchemaChangeNodeValue(
-        id=str(schema_change.get_uuid()),
+        id=schema_change.uuid,
         name=_schema_change_name(schema_change=schema_change),
         summary=schema_change.summary,
         version=schema_change.version,
@@ -130,7 +130,7 @@ def _migration_to_graphql(migration: SchemaChangeMigration) -> dict[str, Any]:
         property_name=migration.property_name,
     )
     return {
-        "id": str(migration.get_uuid()),
+        "id": migration.uuid,
         "position": migration.position,
         "migration_name": migration.migration_name,
         "path": path.get_path(),
@@ -140,7 +140,7 @@ def _migration_to_graphql(migration: SchemaChangeMigration) -> dict[str, Any]:
         "property_name": migration.property_name,
         "status": migration.status.value,
         "nbr_migrations_executed": migration.nbr_migrations_executed,
-        "errors": migration.errors,
+        "errors": list(migration.errors),
         "updated_at": _to_datetime(migration.updated_at),
     }
 
@@ -148,7 +148,7 @@ def _migration_to_graphql(migration: SchemaChangeMigration) -> dict[str, Any]:
 def _application_to_graphql(record: SchemaChangeApplicationRecord) -> dict[str, Any]:
     application = record.application
     return {
-        "id": str(application.get_uuid()),
+        "id": application.uuid,
         "status": application.status.value,
         "branch": application.branch,
         "at": _to_datetime(application.at),

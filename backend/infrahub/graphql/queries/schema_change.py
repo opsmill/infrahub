@@ -6,7 +6,7 @@ from graphene import Field, Int, List, NonNull
 
 from infrahub.core.schema_change.constants import SCHEMA_CHANGE_HISTORY_DEFAULT_LIMIT, SCHEMA_CHANGE_HISTORY_MAX_LIMIT
 from infrahub.core.schema_change.enums import SchemaChangeStatus
-from infrahub.core.schema_change.history_reader import SchemaChangeHistoryReader
+from infrahub.core.schema_change.factory import build_schema_change_history_reader
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.loaders.schema_change import SchemaChangeLoaders
 from infrahub.graphql.resolvers.schema_change import build_schema_change_node, validate_page_arguments
@@ -45,7 +45,7 @@ async def infrahub_schema_change_resolver(
 
     result: dict[str, Any] = {}
     async with graphql_context.db.start_session(read_only=True) as db:
-        reader = SchemaChangeHistoryReader(db=db)
+        reader = build_schema_change_history_reader(db=db)
         if "edges" in fields:
             history_page = await reader.list_schema_changes(
                 branch=branch_name, limit=page.limit, offset=page.offset, statuses=statuses

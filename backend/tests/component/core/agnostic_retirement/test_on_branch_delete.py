@@ -15,6 +15,7 @@ from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema_change.factory import build_schema_change_repository
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
@@ -102,7 +103,9 @@ class TestAgnosticRetirementOnBranchDelete:
         ), "the branch still reads the object through its fork window, so the delete released nothing"
 
         lower_bound = Timestamp()
-        result = await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch, user_id=TEST_ACTOR_ID)
+        result = await BranchDataDeleter(
+            db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)
+        ).delete(branch=branch, user_id=TEST_ACTOR_ID)
         upper_bound = Timestamp()
         assert result.branch_deleted
 
@@ -142,7 +145,9 @@ class TestAgnosticRetirementOnBranchDelete:
         assert open_edge_types(before) == {"HAS_ATTRIBUTE", "HAS_VALUE", "IS_PROTECTED"}
 
         await delete_node(db=db, node_id=widget.id, branch=default_branch, at=Timestamp())
-        await BranchDataDeleter(db=db, batch_size=5).delete(branch=doomed, user_id=TEST_ACTOR_ID)
+        await BranchDataDeleter(
+            db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)
+        ).delete(branch=doomed, user_id=TEST_ACTOR_ID)
 
         assert edge_summary(await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")) == (
             edge_summary(before)
@@ -151,7 +156,9 @@ class TestAgnosticRetirementOnBranchDelete:
         assert on_retainer is not None
         assert on_retainer.get_attribute(name="serial").value == 3200
 
-        await BranchDataDeleter(db=db, batch_size=5).delete(branch=retainer, user_id=TEST_ACTOR_ID)
+        await BranchDataDeleter(
+            db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)
+        ).delete(branch=retainer, user_id=TEST_ACTOR_ID)
 
         after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
         assert open_edges(after) == [], "the last retainer's deletion released it"
@@ -192,7 +199,9 @@ class TestAgnosticRetirementOnBranchDelete:
             await delete_node(db=db, node_id=widget.id, branch=default_branch, at=Timestamp())
 
         lower_bound = Timestamp()
-        result = await BranchDataDeleter(db=db, batch_size=2).delete(branch=branch, user_id=TEST_ACTOR_ID)
+        result = await BranchDataDeleter(
+            db=db, batch_size=2, schema_change_records=build_schema_change_repository(db=db)
+        ).delete(branch=branch, user_id=TEST_ACTOR_ID)
         upper_bound = Timestamp()
         assert result.branch_deleted
 
@@ -246,7 +255,9 @@ class TestAgnosticRetirementOnBranchDelete:
         ), "the merged branch still reads the object, so the default-branch delete released nothing"
 
         lower_bound = Timestamp()
-        result = await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch, user_id=TEST_ACTOR_ID)
+        result = await BranchDataDeleter(
+            db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)
+        ).delete(branch=branch, user_id=TEST_ACTOR_ID)
         upper_bound = Timestamp()
         assert result.branch_deleted
 
@@ -278,7 +289,9 @@ class TestAgnosticRetirementOnBranchDelete:
 
         failing_db = FailingBranchRetirementDatabase.from_db(db=db)
         with pytest.raises(RetirementFailureError, match=r"^the retirement run could not complete$"):
-            await BranchDataDeleter(db=failing_db, batch_size=5).delete(branch=branch)
+            await BranchDataDeleter(
+                db=failing_db, batch_size=5, schema_change_records=build_schema_change_repository(db=failing_db)
+            ).delete(branch=branch)
 
         assert await self._branch_vertex_count(db=db, branch_name=branch.name) == 1, (
             "the failed delete must stop before removing the branch, or the leak could never be re-evaluated"
@@ -287,7 +300,9 @@ class TestAgnosticRetirementOnBranchDelete:
             edge_summary(before)
         ), "the failed run closed nothing"
 
-        result = await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch, user_id=TEST_ACTOR_ID)
+        result = await BranchDataDeleter(
+            db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)
+        ).delete(branch=branch, user_id=TEST_ACTOR_ID)
         assert result.branch_deleted
         assert await self._branch_vertex_count(db=db, branch_name=branch.name) == 0
         after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")

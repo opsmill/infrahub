@@ -16,7 +16,7 @@ from infrahub.core.schema_change.enums import (
     SchemaOperationSection,
     SchemaOperationType,
 )
-from infrahub.core.schema_change.history_reader import SchemaChangeHistoryReader
+from infrahub.core.schema_change.factory import build_schema_change_history_reader
 from infrahub.core.schema_change.operations import SchemaOperation
 from infrahub.core.timestamp import Timestamp
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -117,7 +117,7 @@ class StoredSchemaChange:
 
 
 async def _read_history(db: InfrahubDatabase, branch: str) -> list[StoredSchemaChange]:
-    reader = SchemaChangeHistoryReader(db=db)
+    reader = build_schema_change_history_reader(db=db)
     page = await reader.list_schema_changes(branch=branch, limit=SCHEMA_CHANGE_HISTORY_MAX_LIMIT, offset=0)
     ids = [str(entry.schema_change.uuid) for entry in page.entries]
     operations = await reader.list_operations(schema_change_ids=ids, limit=SCHEMA_CHANGE_OPERATIONS_MAX_LIMIT, offset=0)

@@ -6,6 +6,7 @@ from infrahub import config
 from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.query import Query, QueryType
+from infrahub.core.schema_change.factory import build_schema_change_repository
 from infrahub.log import get_logger
 
 from ..shared import ArbitraryMigration
@@ -84,7 +85,11 @@ class Migration032(ArbitraryMigration):
 
             log.info(f"Found {len(orphaned_branch_names)} orphaned branch names: {orphaned_branch_names}")
 
-            deleter = BranchDataDeleter(db=db, batch_size=config.SETTINGS.database.query_size_limit)
+            deleter = BranchDataDeleter(
+                db=db,
+                batch_size=config.SETTINGS.database.query_size_limit,
+                schema_change_records=build_schema_change_repository(db=db),
+            )
             for branch_name in orphaned_branch_names:
                 log.info(f"Cleaning up branch '{branch_name}'...")
                 await deleter.delete_branch_data(branch_name=branch_name, user_id=migration_input.user_id)

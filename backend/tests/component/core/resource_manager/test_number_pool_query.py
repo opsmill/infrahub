@@ -33,6 +33,7 @@ from infrahub.core.query.resource_manager import (
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.schema_change.factory import build_schema_change_repository
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
@@ -206,7 +207,9 @@ class TestNumberPoolGetUsed:
         assert await get_used_numbers_in_pool(db=db, pool=incident_pool, branch=default_branch) == [1, 2, 3, 4, 5, 6, 7]
 
         # Delete the branch and validate that the numbers allocated previously are available
-        await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch2)
+        await BranchDataDeleter(
+            db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)
+        ).delete(branch=branch2)
         assert await get_used_numbers_in_pool(db=db, pool=incident_pool, branch=default_branch) == [1, 2, 3]
 
         # Create a new branch and add more incidents
@@ -216,7 +219,9 @@ class TestNumberPoolGetUsed:
         assert await get_used_numbers_in_pool(db=db, pool=incident_pool, branch=default_branch) == [1, 2, 3, 4, 5, 6]
 
         # Delete the branch and validate that the numbers allocated previously are available
-        await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch3)
+        await BranchDataDeleter(
+            db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)
+        ).delete(branch=branch3)
         assert await get_used_numbers_in_pool(db=db, pool=incident_pool, branch=default_branch) == [1, 2, 3]
 
         # Delete nodes in main and ensure the numbers are reallocated

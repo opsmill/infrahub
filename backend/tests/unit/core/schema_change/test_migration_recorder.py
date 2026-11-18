@@ -89,7 +89,8 @@ async def test_batch_started_logs_a_failure_to_update_the_records_and_does_not_r
         MigrationRecordStoreCall(
             method=SET_MIGRATION_RECORDS_STATUS,
             arguments={
-                "record_ids": ["record-0", "record-1"],
+                "application_id": APPLICATION_ID,
+                "positions": [0, 1],
                 "status": SchemaChangeMigrationStatus.RUNNING,
                 "nbr_migrations_executed": None,
                 "errors": [],
@@ -122,7 +123,8 @@ async def test_migration_ended_logs_a_failure_to_update_the_record_and_does_not_
         MigrationRecordStoreCall(
             method=SET_MIGRATION_RECORDS_STATUS,
             arguments={
-                "record_ids": ["record-1"],
+                "application_id": APPLICATION_ID,
+                "positions": [1],
                 "status": SchemaChangeMigrationStatus.FAILED,
                 "nbr_migrations_executed": 2,
                 "errors": [MIGRATION_ERROR],

@@ -9,7 +9,7 @@ from infrahub.core.schema_change.enums import (
     SchemaChangeMigrationStatus,
     SchemaChangeStatus,
 )
-from infrahub.core.schema_change.history_reader import SchemaChangeHistoryPage, SchemaChangeHistoryReader
+from infrahub.core.schema_change.factory import build_schema_change_history_reader
 from tests.helpers.schema_change import (
     SEEDED_FAILURE_ERROR,
     BranchHistorySeed,
@@ -21,6 +21,7 @@ from tests.helpers.schema_change import (
 )
 
 if TYPE_CHECKING:
+    from infrahub.core.schema_change.history_reader import SchemaChangeHistoryPage
     from infrahub.database import InfrahubDatabase
 
 MAIN = "main"
@@ -90,7 +91,7 @@ class TestSchemaChangeHistoryReader:
     ) -> None:
         applied_1, failed, applied_2, running, applied_3 = seeded_history.on_branch(MAIN)
 
-        page = await SchemaChangeHistoryReader(db=db).list_schema_changes(branch=MAIN, limit=10, offset=0)
+        page = await build_schema_change_history_reader(db=db).list_schema_changes(branch=MAIN, limit=10, offset=0)
 
         assert page.count == 5
         assert _ids(page) == [applied_1.id, applied_2.id, applied_3.id, failed.id, running.id]
@@ -114,7 +115,7 @@ class TestSchemaChangeHistoryReader:
         self, db: InfrahubDatabase, seeded_history: SeededSchemaChangeHistory
     ) -> None:
         _, failed, _, running, applied_3 = seeded_history.on_branch(MAIN)
-        reader = SchemaChangeHistoryReader(db=db)
+        reader = build_schema_change_history_reader(db=db)
 
         middle_page = await reader.list_schema_changes(branch=MAIN, limit=2, offset=2)
         last_page = await reader.list_schema_changes(branch=MAIN, limit=2, offset=4)
@@ -127,7 +128,7 @@ class TestSchemaChangeHistoryReader:
     ) -> None:
         _, failed, _, running, _ = seeded_history.on_branch(MAIN)
 
-        page = await SchemaChangeHistoryReader(db=db).list_schema_changes(
+        page = await build_schema_change_history_reader(db=db).list_schema_changes(
             branch=MAIN, limit=10, offset=0, statuses=[SchemaChangeStatus.FAILED, SchemaChangeStatus.RUNNING]
         )
 
@@ -138,7 +139,7 @@ class TestSchemaChangeHistoryReader:
     ) -> None:
         failed, applied_4, applied_5 = seeded_history.on_branch(BRANCH_WITH_CHANGES)
         last_main_change = seeded_history.applied_on_branch(MAIN)[-1]
-        reader = SchemaChangeHistoryReader(db=db)
+        reader = build_schema_change_history_reader(db=db)
 
         page = await reader.list_schema_changes(branch=BRANCH_WITH_CHANGES, limit=10, offset=0)
         running_page = await reader.list_schema_changes(branch=BRANCH_WITH_RUNNING_CHANGE, limit=10, offset=0)
@@ -166,7 +167,7 @@ class TestSchemaChangeHistoryReader:
         main_change = seeded_history.on_branch(MAIN)[0]
         running_branch_change = seeded_history.on_branch(BRANCH_WITH_RUNNING_CHANGE)[0]
         schema_change_ids = [main_change.id, running_branch_change.id]
-        reader = SchemaChangeHistoryReader(db=db)
+        reader = build_schema_change_history_reader(db=db)
 
         second_pages = await reader.list_operations(
             schema_change_ids=schema_change_ids, limit=OPERATIONS_PAGE_SIZE, offset=OPERATIONS_PAGE_SIZE
@@ -191,7 +192,7 @@ class TestSchemaChangeHistoryReader:
     ) -> None:
         applied_1, failed, *_ = seeded_history.on_branch(MAIN)
 
-        applications = await SchemaChangeHistoryReader(db=db).list_applications(
+        applications = await build_schema_change_history_reader(db=db).list_applications(
             schema_change_ids=[applied_1.id, failed.id]
         )
 
@@ -208,7 +209,7 @@ class TestSchemaChangeHistoryReader:
                 migration.field_name,
                 migration.status,
                 migration.nbr_migrations_executed,
-                migration.errors,
+                list(migration.errors),
             )
             for migration in applications[applied_1.id][0].migrations
         ] == [

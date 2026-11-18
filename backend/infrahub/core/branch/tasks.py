@@ -62,6 +62,7 @@ from infrahub.core.migrations.runner import MigrationRunner
 from infrahub.core.query.node_agnostic_retirement import NodesToCheckForGlobalEdgesQuery, RetireNodeAgnosticFieldsQuery
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
+from infrahub.core.schema_change.factory import build_schema_change_repository
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.constraint_merge import build_constraint_info_merger
 from infrahub.core.validators.determiner import build_constraint_validator_determiner
@@ -632,7 +633,12 @@ async def delete_branch(
 
         log = get_run_logger()
         orchestrator = BranchDeleteOrchestrator(
-            data_deleter=BranchDataDeleter(db=db, batch_size=config.SETTINGS.database.query_size_limit, log=log),
+            data_deleter=BranchDataDeleter(
+                db=db,
+                batch_size=config.SETTINGS.database.query_size_limit,
+                schema_change_records=build_schema_change_repository(db=db),
+                log=log,
+            ),
             diff_freezer=diff_repository,
             event_service=event_service,
             workflow=workflow,

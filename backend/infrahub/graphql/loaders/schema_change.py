@@ -7,11 +7,8 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 from aiodataloader import DataLoader
 
-from infrahub.core.schema_change.history_reader import (
-    SchemaChangeApplicationRecord,
-    SchemaChangeHistoryReader,
-    SchemaOperationPage,
-)
+from infrahub.core.schema_change.factory import build_schema_change_history_reader
+from infrahub.core.schema_change.history_reader import SchemaChangeApplicationRecord, SchemaOperationPage
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -39,7 +36,7 @@ class SchemaChangeOperationsDataLoader(DataLoader[str, SchemaOperationPage]):
 
     async def batch_load_fn(self, keys: list[str]) -> list[SchemaOperationPage]:
         async with self.open_session(read_only=True) as db:
-            pages = await SchemaChangeHistoryReader(db=db).list_operations(
+            pages = await build_schema_change_history_reader(db=db).list_operations(
                 schema_change_ids=keys, limit=self.params.limit, offset=self.params.offset
             )
         return [pages.get(key, SchemaOperationPage(count=0, operations=[])) for key in keys]
@@ -54,7 +51,7 @@ class SchemaChangeApplicationsDataLoader(DataLoader[str, list[SchemaChangeApplic
 
     async def batch_load_fn(self, keys: list[str]) -> list[list[SchemaChangeApplicationRecord]]:
         async with self.open_session(read_only=True) as db:
-            applications = await SchemaChangeHistoryReader(db=db).list_applications(schema_change_ids=keys)
+            applications = await build_schema_change_history_reader(db=db).list_applications(schema_change_ids=keys)
         return [applications.get(key, []) for key in keys]
 
 

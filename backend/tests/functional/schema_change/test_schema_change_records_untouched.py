@@ -6,8 +6,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema_change.enums import SchemaChangeStatus
-from infrahub.core.schema_change.models import SchemaChange
+from infrahub.core.schema_change.enums import SchemaChangeRecordLabel, SchemaChangeStatus
 from tests.helpers.schema import load_schema
 from tests.helpers.schema_change import (
     StoredSchemaChangeRecord,
@@ -49,7 +48,7 @@ async def take_records_snapshot(db: InfrahubDatabase, branch_name: str) -> Schem
 
 
 def _schema_change_ids(records: dict[str, StoredSchemaChangeRecord]) -> set[str]:
-    return {uuid for uuid, record in records.items() if record.label == SchemaChange.get_type()}
+    return {uuid for uuid, record in records.items() if record.labels == (SchemaChangeRecordLabel.SCHEMA_CHANGE.value,)}
 
 
 class TestSchemaChangeRecordsUntouched(TestSchemaChangeBase):

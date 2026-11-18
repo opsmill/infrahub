@@ -7,7 +7,7 @@ import pytest
 
 from infrahub.core.initialization import create_branch
 from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus, SchemaChangeStatus
-from infrahub.core.schema_change.history_reader import SchemaChangeHistoryReader
+from infrahub.core.schema_change.factory import build_schema_change_history_reader
 from infrahub.core.timestamp import Timestamp
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
@@ -442,7 +442,7 @@ class TestSchemaChangeHistoryQuery:
             branch_change_4.at,
         ]
 
-        reader = SchemaChangeHistoryReader(db=db)
+        reader = build_schema_change_history_reader(db=db)
         stored: dict[str, SchemaChange] = {}
         for branch_name in (default_branch_scope_class.name, BRANCH_WITH_CHANGES):
             page = await reader.list_schema_changes(branch=branch_name, limit=10, offset=0)

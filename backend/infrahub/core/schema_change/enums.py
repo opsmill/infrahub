@@ -43,6 +43,13 @@ class SchemaOperationSection(InfrahubStringEnum):
     RELATIONSHIPS = "relationships"
 
 
+class SchemaChangeRecordLabel(InfrahubStringEnum):
+    SCHEMA_CHANGE = "SchemaChange"
+    OPERATION = "SchemaChangeOperation"
+    APPLICATION = "SchemaChangeApplication"
+    MIGRATION = "SchemaChangeMigration"
+
+
 class SchemaChangeEdgeType(InfrahubStringEnum):
     """Kept out of the graph's edge types because the branch data deletion iterates over that set."""
 

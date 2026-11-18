@@ -10,9 +10,8 @@ from infrahub.core.schema_change.enums import (
     SchemaChangeMigrationStatus,
     SchemaChangeStatus,
 )
-from infrahub.core.schema_change.history_reader import SchemaChangeHistoryReader
+from infrahub.core.schema_change.factory import build_schema_change_history_reader, build_schema_change_repository
 from infrahub.core.schema_change.recorder import SchemaChangeRecorder, SchemaChangeRecording
-from infrahub.core.schema_change.repository import SchemaChangeRepository
 from infrahub.core.schema_change.version_resolver import SchemaChangeVersionResolver
 from infrahub.core.timestamp import Timestamp
 from tests.helpers.schema_change import (
@@ -31,7 +30,7 @@ FAILURE_ERROR = "The migration attribute.kind.update failed on 3 nodes"
 
 
 def _build_recorder(db: InfrahubDatabase, default_branch: Branch) -> SchemaChangeRecorder:
-    repository = SchemaChangeRepository(db=db)
+    repository = build_schema_change_repository(db=db)
     return SchemaChangeRecorder(
         repository=repository,
         version_resolver=SchemaChangeVersionResolver(repository=repository, default_branch_name=default_branch.name),
@@ -42,7 +41,7 @@ async def _read_records(
     db: InfrahubDatabase, branch: Branch
 ) -> list[tuple[str, SchemaChangeStatus, int | None, str | None, str | None, list[tuple[str, str, str]]]]:
     """Return each schema change of the branch with its version, parent, `applied_at` and applications."""
-    reader = SchemaChangeHistoryReader(db=db)
+    reader = build_schema_change_history_reader(db=db)
     page = await reader.list_schema_changes(branch=branch.name, limit=10, offset=0)
     schema_change_ids = [str(entry.schema_change.uuid) for entry in page.entries]
     applications = await reader.list_applications(schema_change_ids=schema_change_ids)
@@ -196,7 +195,7 @@ async def test_fail_sets_both_to_failed_with_the_error_and_without_version_or_pa
         [(recording.application_id, SchemaChangeApplicationStatus.FAILED.value, at.to_string())],
     )
     assert len(records) == 2
-    applications = await SchemaChangeHistoryReader(db=db).list_applications(
+    applications = await build_schema_change_history_reader(db=db).list_applications(
         schema_change_ids=[recording.schema_change_id]
     )
     assert [record.application.error for record in applications[recording.schema_change_id]] == [FAILURE_ERROR]
@@ -212,26 +211,30 @@ async def test_fail_rolls_back_the_applied_migration_records_and_keeps_the_other
         at=Timestamp(),
         user_id=SYSTEM_USER_ID,
     )
-    repository = SchemaChangeRepository(db=db)
+    repository = build_schema_change_repository(db=db)
     statuses_before = [
         SchemaChangeMigrationStatus.APPLIED,
         SchemaChangeMigrationStatus.FAILED,
         SchemaChangeMigrationStatus.RUNNING,
         SchemaChangeMigrationStatus.WAITING,
     ]
-    record_ids = await repository.create_migration_records(
+    await repository.create_migration_records(
         application_id=recording.application_id,
         migrations=[attribute_migration(field_name=f"field{position}") for position in range(len(statuses_before))],
     )
     for position, status in enumerate(statuses_before):
         if status != SchemaChangeMigrationStatus.WAITING:
             await repository.set_migration_records_status(
-                record_ids=[record_ids[position]], status=status, nbr_migrations_executed=None, errors=[]
+                application_id=recording.application_id,
+                positions=[position],
+                status=status,
+                nbr_migrations_executed=None,
+                errors=[],
             )
 
     await recorder.fail(recording=recording, error=FAILURE_ERROR, user_id=SYSTEM_USER_ID)
 
-    applications = await SchemaChangeHistoryReader(db=db).list_applications(
+    applications = await build_schema_change_history_reader(db=db).list_applications(
         schema_change_ids=[recording.schema_change_id]
     )
     [application] = applications[recording.schema_change_id]

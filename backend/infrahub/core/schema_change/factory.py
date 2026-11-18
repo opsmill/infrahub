@@ -7,8 +7,10 @@ from infrahub.core.schema_change.application_runner import SchemaChangeApplicati
 from infrahub.core.schema_change.applier import SchemaChangeApplier
 from infrahub.core.schema_change.candidate import SchemaCandidateBuilder
 from infrahub.core.schema_change.candidate_comparer import SchemaCandidateComparer
+from infrahub.core.schema_change.history_reader import SchemaChangeHistoryReader
 from infrahub.core.schema_change.migration_recorder import MigrationRecorder, NoRecordMigrationRecorder
 from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder
+from infrahub.core.schema_change.record_serializer import SchemaChangeRecordSerializer
 from infrahub.core.schema_change.recorder import SchemaChangeRecorder
 from infrahub.core.schema_change.repository import SchemaChangeRepository
 from infrahub.core.schema_change.version_resolver import SchemaChangeVersionResolver
@@ -24,8 +26,16 @@ def build_schema_candidate_builder() -> SchemaCandidateBuilder:
     )
 
 
+def build_schema_change_repository(db: InfrahubDatabase) -> SchemaChangeRepository:
+    return SchemaChangeRepository(db=db, serializer=SchemaChangeRecordSerializer())
+
+
+def build_schema_change_history_reader(db: InfrahubDatabase) -> SchemaChangeHistoryReader:
+    return SchemaChangeHistoryReader(db=db, serializer=SchemaChangeRecordSerializer())
+
+
 def build_schema_change_recorder(db: InfrahubDatabase, default_branch_name: str) -> SchemaChangeRecorder:
-    repository = SchemaChangeRepository(db=db)
+    repository = build_schema_change_repository(db=db)
     return SchemaChangeRecorder(
         repository=repository,
         version_resolver=SchemaChangeVersionResolver(repository=repository, default_branch_name=default_branch_name),
@@ -43,4 +53,4 @@ def build_schema_change_application_runner(
 def build_migration_recorder(db: InfrahubDatabase, application_id: str | None) -> MigrationRecorder:
     if application_id is None:
         return NoRecordMigrationRecorder()
-    return ApplicationMigrationRecorder(store=SchemaChangeRepository(db=db), application_id=application_id)
+    return ApplicationMigrationRecorder(store=build_schema_change_repository(db=db), application_id=application_id)

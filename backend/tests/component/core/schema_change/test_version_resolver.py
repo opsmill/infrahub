@@ -8,7 +8,7 @@ import pytest
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.schema_change.enums import SchemaChangeStatus
-from infrahub.core.schema_change.repository import SchemaChangeRepository
+from infrahub.core.schema_change.factory import build_schema_change_repository
 from infrahub.core.schema_change.version_resolver import SchemaChangeVersion, SchemaChangeVersionResolver
 from infrahub.core.timestamp import Timestamp
 from tests.helpers.schema_change import BranchHistorySeed, SeededSchemaChangeHistory, seed_schema_change_history
@@ -68,7 +68,7 @@ async def _seed(db: InfrahubDatabase, cases: ResolverCases, *seeds: BranchHistor
 
 def _resolver(db: InfrahubDatabase, default_branch_name: str) -> SchemaChangeVersionResolver:
     return SchemaChangeVersionResolver(
-        repository=SchemaChangeRepository(db=db), default_branch_name=default_branch_name
+        repository=build_schema_change_repository(db=db), default_branch_name=default_branch_name
     )
 
 

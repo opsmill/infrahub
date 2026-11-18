@@ -7,12 +7,7 @@ import pytest
 
 from infrahub.core.schema import AttributeSchema, SchemaRoot
 from infrahub.core.schema_change.constants import SCHEMA_CHANGE_HISTORY_MAX_LIMIT, SCHEMA_CHANGE_OPERATIONS_MAX_LIMIT
-from infrahub.core.schema_change.history_reader import (
-    SchemaChangeApplicationRecord,
-    SchemaChangeHistoryPage,
-    SchemaChangeHistoryReader,
-    SchemaOperationPage,
-)
+from infrahub.core.schema_change.factory import build_schema_change_history_reader
 from tests.helpers.schema import RACK_SCHEMA
 from tests.helpers.schema.rack import CARD, SLOT
 from tests.helpers.test_app import TestInfrahubApp
@@ -20,6 +15,11 @@ from tests.helpers.test_app import TestInfrahubApp
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
+    from infrahub.core.schema_change.history_reader import (
+        SchemaChangeApplicationRecord,
+        SchemaChangeHistoryPage,
+        SchemaOperationPage,
+    )
     from infrahub.database import InfrahubDatabase
 
 SCHEMA_CHANGE_BRANCH = "schema-change-history"
@@ -62,7 +62,7 @@ class SchemaChangeHistorySnapshot:
 
 
 async def read_schema_change_history(db: InfrahubDatabase, branch: str) -> SchemaChangeHistorySnapshot:
-    reader = SchemaChangeHistoryReader(db=db)
+    reader = build_schema_change_history_reader(db=db)
     page = await reader.list_schema_changes(branch=branch, limit=SCHEMA_CHANGE_HISTORY_MAX_LIMIT, offset=0)
     schema_change_ids = [str(entry.schema_change.uuid) for entry in page.entries]
     operations = await reader.list_operations(

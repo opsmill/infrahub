@@ -637,7 +637,7 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
                 migration.migration_name,
                 migration.field_name,
                 migration.status,
-                migration.errors,
+                list(migration.errors),
             )
             for migration in application.migrations
         ) == [

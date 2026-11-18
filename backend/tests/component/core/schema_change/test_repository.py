@@ -11,14 +11,14 @@ from infrahub.core.schema_change.enums import (
     SchemaOperationSection,
     SchemaOperationType,
 )
-from infrahub.core.schema_change.history_reader import SchemaChangeHistoryReader
+from infrahub.core.schema_change.factory import build_schema_change_history_reader, build_schema_change_repository
 from infrahub.core.schema_change.operations import SchemaOperation
-from infrahub.core.schema_change.repository import SchemaChangeRepository
 from infrahub.core.timestamp import Timestamp
 from tests.helpers.schema_change import (
     BranchHistorySeed,
     MigrationSeed,
     attribute_migration,
+    count_schema_change_record_edges_to_root,
     seed_schema_change_history,
 )
 
@@ -57,7 +57,6 @@ async def _read_edges_of_schema_change(db: InfrahubDatabase, schema_change_id: s
     results = await db.execute_query(
         query="""
         MATCH (:SchemaChange {uuid: $schema_change_id})-[edge]->(destination)
-        WHERE type(edge) <> "IS_PART_OF"
         RETURN type(edge) AS edge_type, labels(destination)[0] AS destination_label,
             coalesce(toString(destination.position), destination.uuid) AS destination_identifier
         """,
@@ -102,15 +101,13 @@ async def test_create_schema_change_stores_operations_in_order_and_links_the_rec
             previous_value=True,
         ),
     ]
-    repository = SchemaChangeRepository(db=db)
+    repository = build_schema_change_repository(db=db)
     at = Timestamp()
 
     created = await repository.create_schema_change(
         branch=BRANCH_NAME, operations=operations, at=at, user_id=SYSTEM_USER_ID
     )
-    record_ids = await repository.create_migration_records(
-        application_id=created.application_id, migrations=[attribute_migration()]
-    )
+    await repository.create_migration_records(application_id=created.application_id, migrations=[attribute_migration()])
     await repository.mark_applied(
         schema_change_id=created.schema_change_id,
         application_id=created.application_id,
@@ -120,7 +117,7 @@ async def test_create_schema_change_stores_operations_in_order_and_links_the_rec
         user_id=SYSTEM_USER_ID,
     )
 
-    reader = SchemaChangeHistoryReader(db=db)
+    reader = build_schema_change_history_reader(db=db)
     pages = await reader.list_operations(schema_change_ids=[created.schema_change_id], limit=10, offset=0)
     page = pages[created.schema_change_id]
     assert page.count == 3
@@ -146,11 +143,12 @@ async def test_create_schema_change_stores_operations_in_order_and_links_the_rec
     assert [str(record.application.uuid) for record in applications[created.schema_change_id]] == [
         created.application_id
     ]
-    assert sorted(record_ids) == [0]
     assert [migration.position for migration in applications[created.schema_change_id][0].migrations] == [0]
 
 
-async def test_edges_between_records_have_no_branch_property(db: InfrahubDatabase, empty_database: None) -> None:
+async def test_edges_between_records_have_no_branch_property_and_no_record_is_linked_to_the_root(
+    db: InfrahubDatabase, empty_database: None
+) -> None:
     await seed_schema_change_history(
         db=db,
         branches=[
@@ -191,6 +189,90 @@ async def test_edges_between_records_have_no_branch_property(db: InfrahubDatabas
         for edge_type, _, _, keys in edges
         if EDGE_PROPERTIES_OF_BRANCH_AWARE_GRAPH.intersection(keys)
     ] == []
+    assert await count_schema_change_record_edges_to_root(db=db) == 0
+
+
+async def _read_stored_properties(db: InfrahubDatabase, schema_change_id: str) -> dict[str, dict[str, object]]:
+    """Return the properties of a schema change and of each record under it, without the uuid and the timestamps."""
+    results = await db.execute_query(
+        query="""
+        MATCH (schema_change:SchemaChange {uuid: $schema_change_id})
+        MATCH (schema_change)-[:SCHEMA_CHANGE_HAS_OPERATION]->(operation:SchemaChangeOperation)
+        MATCH (schema_change)-[:SCHEMA_CHANGE_HAS_APPLICATION]->(application:SchemaChangeApplication)
+        MATCH (application)-[:SCHEMA_APPLICATION_HAS_MIGRATION]->(migration:SchemaChangeMigration)
+        RETURN properties(schema_change) AS schema_change, properties(operation) AS operation,
+            properties(application) AS application, properties(migration) AS migration
+        """,
+        params={"schema_change_id": schema_change_id},
+        name="test_schema_change_stored_properties",
+    )
+    (result,) = results
+    ignored = {"uuid", "created_at", "updated_at", "at"}
+    return {
+        record: {key: value for key, value in dict(result.get(record)).items() if key not in ignored}
+        for record in ("schema_change", "operation", "application", "migration")
+    }
+
+
+async def test_fields_that_are_not_set_are_missing_properties_and_the_text_null_is_kept(
+    db: InfrahubDatabase, empty_database: None
+) -> None:
+    operation = SchemaOperation(
+        operation_type=SchemaOperationType.ELEMENT_PROPERTY,
+        kind="TestCar",
+        section=SchemaOperationSection.ATTRIBUTES,
+        element_name="NULL",
+        property_name="description",
+        value="NULL",
+    )
+    repository = build_schema_change_repository(db=db)
+    created = await repository.create_schema_change(
+        branch=BRANCH_NAME, operations=[operation], at=Timestamp(), user_id=SYSTEM_USER_ID
+    )
+    await repository.create_migration_records(
+        application_id=created.application_id,
+        migrations=[attribute_migration(migration_name="node.attribute.add", field_name="color")],
+    )
+
+    assert await _read_stored_properties(db=db, schema_change_id=created.schema_change_id) == {
+        "schema_change": {
+            "branch": BRANCH_NAME,
+            "status": "running",
+            "summary": "testcar_NULL_update",
+            "format_version": 1,
+            "created_by": SYSTEM_USER_ID,
+            "updated_by": SYSTEM_USER_ID,
+        },
+        "operation": {
+            "position": 0,
+            "operation_type": "element_property",
+            "kind": "TestCar",
+            "section": "attributes",
+            "element_name": "NULL",
+            "property_name": "description",
+            "value": '"NULL"',
+            "created_by": SYSTEM_USER_ID,
+        },
+        "application": {
+            "branch": BRANCH_NAME,
+            "status": "running",
+            "created_by": SYSTEM_USER_ID,
+            "updated_by": SYSTEM_USER_ID,
+        },
+        "migration": {
+            "position": 0,
+            "migration_name": "node.attribute.add",
+            "path_type": "attribute",
+            "schema_kind": "TestCar",
+            "field_name": "color",
+            "status": "waiting",
+            "errors": [],
+        },
+    }
+    pages = await build_schema_change_history_reader(db=db).list_operations(
+        schema_change_ids=[created.schema_change_id], limit=10, offset=0
+    )
+    assert [stored.operation for stored in pages[created.schema_change_id].operations] == [operation]
 
 
 async def test_operation_values_keep_their_json_type_apart_from_a_value_not_set(
@@ -216,12 +298,12 @@ async def test_operation_values_keep_their_json_type_apart_from_a_value_not_set(
         element_property("description", value="NULL", previous_value=None),
         element_property("order_weight"),
     ]
-    repository = SchemaChangeRepository(db=db)
+    repository = build_schema_change_repository(db=db)
     created = await repository.create_schema_change(
         branch=BRANCH_NAME, operations=operations, at=Timestamp(), user_id=SYSTEM_USER_ID
     )
 
-    reader = SchemaChangeHistoryReader(db=db)
+    reader = build_schema_change_history_reader(db=db)
     pages = await reader.list_operations(schema_change_ids=[created.schema_change_id], limit=10, offset=0)
 
     assert [
@@ -255,15 +337,11 @@ async def test_create_migration_records_stores_one_waiting_record_for_each_migra
         attribute_migration(migration_name="attribute.kind.update", field_name="name"),
         attribute_migration(migration_name="node.attribute.add", field_name="color"),
     ]
-    repository = SchemaChangeRepository(db=db)
+    repository = build_schema_change_repository(db=db)
 
-    record_ids = await repository.create_migration_records(
-        application_id=schema_change.application_id, migrations=migrations
-    )
+    await repository.create_migration_records(application_id=schema_change.application_id, migrations=migrations)
 
-    assert sorted(record_ids) == [0, 1, 2]
-    assert len(set(record_ids.values())) == 3
-    reader = SchemaChangeHistoryReader(db=db)
+    reader = build_schema_change_history_reader(db=db)
     applications = await reader.list_applications(schema_change_ids=[schema_change.id])
     assert [
         (
@@ -273,7 +351,7 @@ async def test_create_migration_records_stores_one_waiting_record_for_each_migra
             migration.field_name,
             migration.status,
             migration.nbr_migrations_executed,
-            migration.errors,
+            list(migration.errors),
         )
         for migration in applications[schema_change.id][0].migrations
     ] == [
@@ -301,19 +379,20 @@ async def test_set_migration_records_status_changes_only_the_records_named(
         ],
     )
     schema_change = history.schema_changes[0]
-    repository = SchemaChangeRepository(db=db)
+    repository = build_schema_change_repository(db=db)
 
     await repository.set_migration_records_status(
-        record_ids=[schema_change.migration_record_ids[0], schema_change.migration_record_ids[2]],
+        application_id=schema_change.application_id,
+        positions=[0, 2],
         status=SchemaChangeMigrationStatus.FAILED,
         nbr_migrations_executed=3,
         errors=["first error", "second error"],
     )
 
-    reader = SchemaChangeHistoryReader(db=db)
+    reader = build_schema_change_history_reader(db=db)
     applications = await reader.list_applications(schema_change_ids=[schema_change.id])
     assert [
-        (migration.position, migration.status, migration.nbr_migrations_executed, migration.errors)
+        (migration.position, migration.status, migration.nbr_migrations_executed, list(migration.errors))
         for migration in applications[schema_change.id][0].migrations
     ] == [
         (0, SchemaChangeMigrationStatus.FAILED, 3, ["first error", "second error"]),

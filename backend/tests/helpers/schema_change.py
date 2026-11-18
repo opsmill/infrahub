@@ -9,23 +9,19 @@ from infrahub.core.path import SchemaPath
 from infrahub.core.schema_change.enums import (
     SchemaChangeEdgeType,
     SchemaChangeMigrationStatus,
+    SchemaChangeRecordLabel,
     SchemaChangeStatus,
     SchemaOperationSection,
     SchemaOperationType,
 )
-from infrahub.core.schema_change.models import (
-    SchemaChange,
-    SchemaChangeApplication,
-    SchemaChangeMigration,
-    SchemaChangeOperation,
-)
+from infrahub.core.schema_change.factory import build_schema_change_repository
 from infrahub.core.schema_change.operations import SchemaOperation
-from infrahub.core.schema_change.repository import SchemaChangeRepository
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from infrahub.core.schema_change.repository import SchemaChangeRepository
     from infrahub.database import InfrahubDatabase
 
 SEEDED_OPERATION_KIND = "TestCar"
@@ -35,20 +31,7 @@ SEEDED_FAILURE_ERROR = "The migration node.attribute.add failed on 2 nodes"
 SEEDED_SUMMARY = "testcar_color_update"
 """The summary of a seeded schema change with one operation; `_and_<n>_more` follows when it has more."""
 
-SCHEMA_CHANGE_RECORD_LABELS = (
-    SchemaChange.get_type(),
-    SchemaChangeOperation.get_type(),
-    SchemaChangeApplication.get_type(),
-    SchemaChangeMigration.get_type(),
-)
-_RECORD_TREE_EDGE_TYPES = "|".join(
-    edge_type.value
-    for edge_type in (
-        SchemaChangeEdgeType.SCHEMA_CHANGE_HAS_OPERATION,
-        SchemaChangeEdgeType.SCHEMA_CHANGE_HAS_APPLICATION,
-        SchemaChangeEdgeType.SCHEMA_APPLICATION_HAS_MIGRATION,
-    )
-)
+SCHEMA_CHANGE_RECORD_LABELS = tuple(label.value for label in SchemaChangeRecordLabel)
 
 
 def seeded_operation_value(position: int) -> str:
@@ -121,8 +104,6 @@ class SeededSchemaChange:
     """The timestamp of the application, which is also `applied_at` for an applied schema change."""
 
     operations: list[SchemaOperation]
-    migration_record_ids: list[str]
-    """The IDs that the repository returned for the migration records, in the order of their position."""
 
 
 @dataclass(frozen=True)
@@ -151,7 +132,7 @@ async def seed_schema_change_history(
         ValueError: When a branch seed asks for a status that a load does not leave.
 
     """
-    repository = SchemaChangeRepository(db=db)
+    repository = build_schema_change_repository(db=db)
     seeded: list[SeededSchemaChange] = []
 
     for branch_seed in branches:
@@ -163,7 +144,7 @@ async def seed_schema_change_history(
             created = await repository.create_schema_change(
                 branch=branch_seed.branch, operations=operations, at=at, user_id=user_id
             )
-            record_ids = await _seed_migrations(
+            await _seed_migrations(
                 repository=repository, application_id=created.application_id, migrations=branch_seed.migrations
             )
 
@@ -205,7 +186,6 @@ async def seed_schema_change_history(
                     parent_id=change_parent_id,
                     at=at,
                     operations=operations,
-                    migration_record_ids=record_ids,
                 )
             )
 
@@ -214,35 +194,33 @@ async def seed_schema_change_history(
 
 async def _seed_migrations(
     *, repository: SchemaChangeRepository, application_id: str, migrations: Sequence[MigrationSeed]
-) -> list[str]:
+) -> None:
     if not migrations:
-        return []
+        return
 
-    record_ids_by_position = await repository.create_migration_records(
+    await repository.create_migration_records(
         application_id=application_id, migrations=[seed.migration for seed in migrations]
     )
-    record_ids = [record_ids_by_position[position] for position in range(len(migrations))]
     for position, seed in enumerate(migrations):
         if seed.status == SchemaChangeMigrationStatus.WAITING:
             continue
         await repository.set_migration_records_status(
-            record_ids=[record_ids[position]],
+            application_id=application_id,
+            positions=[position],
             status=seed.status,
             nbr_migrations_executed=seed.nbr_migrations_executed,
             errors=list(seed.errors),
         )
-    return record_ids
 
 
 @dataclass(frozen=True)
 class StoredSchemaChangeRecord:
     """One record vertex as the database holds it."""
 
-    db_id: str
-    label: str
+    labels: tuple[str, ...]
     properties: dict[str, object]
     edges: tuple[tuple[str, str], ...]
-    """Each edge that leaves the record, as its type and the database ID of its end, sorted."""
+    """Each edge that leaves the record, as its type and the `uuid` of its end, sorted."""
 
 
 async def read_branch_schema_change_records(
@@ -251,18 +229,22 @@ async def read_branch_schema_change_records(
     """Return the schema changes of a branch and every operation, application and migration record under them, by UUID."""
     results = await db.execute_query(
         query=f"""
-        MATCH (:{SchemaChange.get_type()} {{branch: $branch}})-[:{_RECORD_TREE_EDGE_TYPES}*0..2]->(record)
-        RETURN DISTINCT record.uuid AS uuid, elementId(record) AS db_id, labels(record)[0] AS label,
-            properties(record) AS properties,
-            [(record)-[edge]->(peer) | [type(edge), elementId(peer)]] AS edges
+        MATCH (schema_change:{SchemaChangeRecordLabel.SCHEMA_CHANGE.value} {{branch: $branch}})
+        OPTIONAL MATCH (schema_change)-[:{SchemaChangeEdgeType.SCHEMA_CHANGE_HAS_OPERATION.value}]->(operation)
+        OPTIONAL MATCH (schema_change)-[:{SchemaChangeEdgeType.SCHEMA_CHANGE_HAS_APPLICATION.value}]->(application)
+        OPTIONAL MATCH (application)-[:{SchemaChangeEdgeType.SCHEMA_APPLICATION_HAS_MIGRATION.value}]->(migration)
+        UNWIND [schema_change, operation, application, migration] AS record
+        WITH DISTINCT record
+        WHERE record IS NOT NULL
+        RETURN record.uuid AS uuid, labels(record) AS labels, properties(record) AS properties,
+            [(record)-[edge]->(peer) | [type(edge), peer.uuid]] AS edges
         """,
         params={"branch": branch},
         name="test_schema_change_records_of_branch",
     )
     return {
         str(result.get("uuid")): StoredSchemaChangeRecord(
-            db_id=str(result.get("db_id")),
-            label=str(result.get("label")),
+            labels=tuple(sorted(str(label) for label in result.get("labels"))),
             properties=dict(result.get("properties")),
             edges=tuple(sorted((str(edge_type), str(peer_id)) for edge_type, peer_id in result.get("edges"))),
         )
@@ -286,3 +268,17 @@ async def count_schema_change_records(*, db: InfrahubDatabase, uuids: Sequence[s
         name="test_count_schema_change_records",
     )
     return int(results[0].get("nbr_records"))
+
+
+async def count_schema_change_record_edges_to_root(*, db: InfrahubDatabase) -> int:
+    """Count the edges between a record vertex and the root vertex, in either direction."""
+    results = await db.execute_query(
+        query="""
+        MATCH (record)-[edge]-(:Root)
+        WHERE any(label IN labels(record) WHERE label IN $record_labels)
+        RETURN count(edge) AS nbr_edges
+        """,
+        params={"record_labels": list(SCHEMA_CHANGE_RECORD_LABELS)},
+        name="test_count_schema_change_record_edges_to_root",
+    )
+    return int(results[0].get("nbr_edges"))

@@ -263,10 +263,7 @@ class MigrationRecordStoreCall:
 
 
 class FailingMigrationRecordStore:
-    """A migration record store that records each call, then raises `error` for the methods named in `failing_methods`.
-
-    A method that does not fail returns the record ID `record-<position>` for each migration.
-    """
+    """A migration record store that records each call, then raises `error` for the methods named in `failing_methods`."""
 
     def __init__(
         self,
@@ -279,7 +276,7 @@ class FailingMigrationRecordStore:
 
     async def create_migration_records(
         self, *, application_id: str, migrations: Sequence[SchemaUpdateMigrationInfo]
-    ) -> dict[int, str]:
+    ) -> None:
         self.calls.append(
             MigrationRecordStoreCall(
                 method=CREATE_MIGRATION_RECORDS,
@@ -287,12 +284,12 @@ class FailingMigrationRecordStore:
             )
         )
         self._raise_if_failing(CREATE_MIGRATION_RECORDS)
-        return {position: f"record-{position}" for position in range(len(migrations))}
 
     async def set_migration_records_status(
         self,
         *,
-        record_ids: Sequence[str],
+        application_id: str,
+        positions: Sequence[int],
         status: SchemaChangeMigrationStatus,
         nbr_migrations_executed: int | None,
         errors: Sequence[str],
@@ -301,7 +298,8 @@ class FailingMigrationRecordStore:
             MigrationRecordStoreCall(
                 method=SET_MIGRATION_RECORDS_STATUS,
                 arguments={
-                    "record_ids": list(record_ids),
+                    "application_id": application_id,
+                    "positions": list(positions),
                     "status": status,
                     "nbr_migrations_executed": nbr_migrations_executed,
                     "errors": list(errors),
