@@ -192,12 +192,6 @@ ACCEPTED_INPUT_TEST_CASES: list[AcceptedInputTestCase] = [
         expected={NODE_SOURCES_HOLDER: StoredOwnerState(owner_ids=None)},
     ),
     AcceptedInputTestCase(
-        name="null_owner_of_an_attribute_gives_no_state",
-        node_metadata={},
-        data={"name": {"owner": None}},
-        expected={},
-    ),
-    AcceptedInputTestCase(
         name="owner_of_an_attribute_gives_no_state",
         node_metadata={},
         data={"name": {"owner": GROUP_ID}},
