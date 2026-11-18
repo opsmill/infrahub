@@ -24,6 +24,7 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 * `reset`: Erase all Infrahub data from the databases...
 * `delete-diffs`: Delete the stored diffs that are not...
 * `check-duplicate-schema-fields`: Check for any duplicate schema attributes...
+* `ownership-report`: List the data that the upgrade to node...
 * `update-core-schema`: Reload the internal core schema definition...
 * `constraint`: Manage Database Constraints.
 * `index`: Manage Database Indexes.
@@ -213,6 +214,27 @@ $ infrahub db check-duplicate-schema-fields [OPTIONS] [CONFIG_FILE]
 **Options**:
 
 * `--fix / --no-fix`: Fix the duplicate schema fields on the default branch.  [default: no-fix]
+* `--help`: Show this message and exit.
+
+## `infrahub db ownership-report`
+
+List the data that the upgrade to node owners changes.
+
+The report lists the attributes that a repository owns, the relationships whose links have owners, and the
+attributes with values that have `is_protected` set. Run this command before the upgrade. It changes no data.
+
+**Usage**:
+
+```console
+$ infrahub db ownership-report [OPTIONS] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
 * `--help`: Show this message and exit.
 
 ## `infrahub db update-core-schema`

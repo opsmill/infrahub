@@ -1,9 +1,21 @@
+from infrahub.core.constants.database import DatabaseEdgeType
+
 from ..models import EdgeToDelete, EdgeToUpdate, PatchPlan
 from .base import PatchQuery
+
+# Owner and source edges can have two edges to the same peer on purpose: an owner that is removed and added again.
+DUPLICATED_EDGE_TYPES = [
+    DatabaseEdgeType.IS_PART_OF.value,
+    DatabaseEdgeType.HAS_ATTRIBUTE.value,
+    DatabaseEdgeType.IS_RELATED.value,
+    DatabaseEdgeType.IS_RESERVED.value,
+]
 
 
 class DeleteDuplicatedEdgesPatchQuery(PatchQuery):
     """For all Node vertices, find duplicated or overlapping edges of the same status, type, and branch to update and delete.
+
+    The query reads only the `IS_PART_OF`, `HAS_ATTRIBUTE`, `IS_RELATED` and `IS_RESERVED` edges.
 
     - one edge will be kept for each pair of nodes and a given status, type, and branch. it will be
         updated to have the earliest "from" and "to" times in this group
@@ -21,6 +33,7 @@ class DeleteDuplicatedEdgesPatchQuery(PatchQuery):
 // Find vertex pairs that have duplicate edges
 // ------------
 MATCH (node_with_dup_edges:Node)-[edge]-(peer)
+WHERE type(edge) IN $edge_types
 WITH node_with_dup_edges, type(edge) AS edge_type, edge.status AS edge_status, edge.branch AS edge_branch, peer, count(*) AS num_dup_edges
 WHERE num_dup_edges > 1
 WITH DISTINCT node_with_dup_edges, edge_type, edge_branch, peer
@@ -124,7 +137,7 @@ CALL (node_with_dup_edges, edge_type, edge_branch, peer) {
 }
 RETURN edges_to_update, edges_to_delete
         """ % {"id_func_name": self.db.get_id_function_name()}
-        results = await self.db.execute_query(query=query)
+        results = await self.db.execute_query(query=query, params={"edge_types": DUPLICATED_EDGE_TYPES})
         edges_to_delete: list[EdgeToDelete] = []
         edges_to_update: list[EdgeToUpdate] = []
         for result in results:

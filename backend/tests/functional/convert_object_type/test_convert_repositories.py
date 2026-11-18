@@ -6,12 +6,12 @@ from unittest.mock import patch
 from uuid import UUID
 
 import pytest
+from infrahub_sdk.convert_object_type import ConversionFieldInput, ConversionFieldValue
 from infrahub_sdk.protocols import CoreUserValidator
 
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, RepositoryInternalStatus
-from infrahub.core.convert_object_type.object_conversion import ConversionFieldInput, ConversionFieldValue
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node

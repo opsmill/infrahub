@@ -100,7 +100,7 @@ async def _create_person_and_dog(db: InfrahubDatabase, branch: Branch, schema: S
     await person.save(db=db)
 
     dog = await Node.init(db=db, schema=schema.get(name="TestDog"), branch=branch)
-    await dog.new(db=db, name={"value": "Rocky", "owner": person.id}, breed="Labrador", owner=person)
+    await dog.new(db=db, name="Rocky", breed="Labrador", owner=person)
     await dog.save(db=db)
     return person, dog
 

@@ -7,7 +7,7 @@ import pytest
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.builder import build_diff_changelog_collector
 from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog, RelationshipCardinalityOneChangelog
-from infrahub.core.constants import DiffAction, RelationshipCardinality
+from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipCardinality
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 from infrahub.core.diff.merger.merger import DiffMerger
@@ -50,7 +50,13 @@ async def test_merge_diff_changelogs(
     default_branch: Branch,
     register_simplified_proposed_change_schema: SchemaBranch,
     car_person_schema: None,
+    first_account: Node,
+    second_account: Node,
 ) -> None:
+    third_account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await third_account.new(db=db, name="Third Account", account_type="Git", password="ThirdPassword123")
+    await third_account.save(db=db)
+
     p1 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await p1.new(db=db, name="John", height=180)
     await p1.save(db=db)
@@ -66,10 +72,10 @@ async def test_merge_diff_changelogs(
     car1 = await Node.init(db=db, schema="TestCar", branch=default_branch)
     await car1.new(
         db=db,
-        name={"value": "Volvo", "owner": p1, "source": p2},
+        name={"value": "Volvo", "owner": first_account, "source": p2},
         nbr_seats=5,
         is_electric=False,
-        owner={"id": p1.id, "_relation__source": p2.id, "_relation__owner": p3.id},
+        owner={"id": p1.id, "_relation__source": p2.id, "_relation__owner": third_account.id},
     )
     await car1.save(db=db)
 
@@ -82,17 +88,19 @@ async def test_merge_diff_changelogs(
     car1_update = await NodeManager.get_one(id=car1.id, kind="TestCar", db=db, branch=branch5)
     car1_update.name.value = "Volvo 240"
     car1_update.name.source = p1
-    car1_update.name.owner = p2
-    await car1_update.owner.update(data={"id": p2.id, "_relation__source": p3.id, "_relation__owner": p2.id}, db=db)
+    car1_update.name.owner = second_account
+    await car1_update.owner.update(
+        data={"id": p2.id, "_relation__source": p3.id, "_relation__owner": second_account.id}, db=db
+    )
     await car1_update.save(db=db)
 
     car2 = await Node.init(db=db, schema="TestCar", branch=branch5)
     await car2.new(
         db=db,
-        name={"value": "Saab", "owner": p1, "source": p2},
+        name={"value": "Saab", "owner": first_account, "source": p2},
         nbr_seats=5,
         is_electric=False,
-        owner={"id": p1.id, "_relation__source": p1.id, "_relation__owner": p1.id},
+        owner={"id": p1.id, "_relation__source": p1.id, "_relation__owner": first_account.id},
     )
     await car2.save(db=db)
 
@@ -143,8 +151,8 @@ async def test_merge_diff_changelogs(
     assert c1_changelog.attributes["display_label"].value_update_status == DiffAction.UPDATED
     assert c1_changelog.attributes["display_label"].value == "Volvo 240 #444444"
     assert c1_changelog.attributes["display_label"].value_previous == "Volvo #444444"
-    assert c1_changelog.attributes["name"].properties["owner"].value == p2.id
-    assert c1_changelog.attributes["name"].properties["owner"].value_previous == p1.id
+    assert c1_changelog.attributes["name"].properties["owner"].value == second_account.id
+    assert c1_changelog.attributes["name"].properties["owner"].value_previous == first_account.id
     assert c1_changelog.attributes["human_friendly_id"].value_update_status == DiffAction.UPDATED
     assert c1_changelog.attributes["human_friendly_id"].value == '["Volvo 240"]'
     assert c1_changelog.attributes["human_friendly_id"].value_previous == '["Volvo"]'
@@ -153,8 +161,8 @@ async def test_merge_diff_changelogs(
     assert c1_changelog.relationships["owner"].peer_kind == "TestPerson"
     assert c1_changelog.relationships["owner"].peer_id == p2.id
     assert c1_changelog.relationships["owner"].peer_id_previous == p1.id
-    assert c1_changelog.relationships["owner"].properties["owner"].value == p2.id
-    assert c1_changelog.relationships["owner"].properties["owner"].value_previous == p3.id
+    assert c1_changelog.relationships["owner"].properties["owner"].value == second_account.id
+    assert c1_changelog.relationships["owner"].properties["owner"].value_previous == third_account.id
     assert c1_changelog.relationships["owner"].properties["source"].value == p3.id
     assert c1_changelog.relationships["owner"].properties["source"].value_previous == p2.id
 
@@ -169,7 +177,7 @@ async def test_merge_diff_changelogs(
     ]
     assert len(c2_changelog.relationships.keys()) == 1
     assert isinstance(c2_changelog.relationships["owner"], RelationshipCardinalityOneChangelog)
-    assert c2_changelog.relationships["owner"].properties["owner"].value == p1.id
+    assert c2_changelog.relationships["owner"].properties["owner"].value == first_account.id
     assert c2_changelog.relationships["owner"].properties["owner"].value_previous is None
     assert c2_changelog.relationships["owner"].properties["source"].value == p1.id
     assert c2_changelog.relationships["owner"].properties["source"].value_previous is None

@@ -288,16 +288,16 @@ class TestRetireNodeAgnosticFields:
         db: InfrahubDatabase,
         default_branch: Branch,
         nodedel_schema: None,
+        first_account: Node,
     ) -> None:
         """Verify HAS_OWNER and HAS_SOURCE edges are retired correctly."""
         source = await _create_gadget(db=db, branch=default_branch, name="the-source")
-        owner = await _create_gadget(db=db, branch=default_branch, name="the-owner")
 
         widget = await Node.init(db=db, schema=WIDGET_KIND, branch=default_branch)
         await widget.new(
             db=db,
             name="sourced-and-owned",
-            serial={"value": 2200, "source": source.get_id(), "owner": owner.get_id()},
+            serial={"value": 2200, "source": source.get_id(), "owner": first_account.get_id()},
         )
         await widget.save(db=db)
 

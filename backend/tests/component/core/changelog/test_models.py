@@ -25,7 +25,7 @@ from tests.helpers.schema import TICKET
 
 
 async def test_node_changelog_creation(
-    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch, first_account: Node
 ) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
@@ -35,7 +35,7 @@ async def test_node_changelog_creation(
     await person1.save(db=db)
 
     dog1 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
-    await dog1.new(db=db, name={"value": "Rocky", "owner": person1.id}, breed="Labrador", owner=person1)
+    await dog1.new(db=db, name={"value": "Rocky", "owner": first_account.id}, breed="Labrador", owner=person1)
     await dog1.save(db=db)
 
     assert person1.node_changelog == NodeChangelog(
@@ -149,7 +149,7 @@ async def test_node_changelog_creation(
                 value="Rocky",
                 value_previous=None,
                 properties={
-                    "owner": PropertyChangelog(name="owner", value=person1.id, value_previous=None),
+                    "owner": PropertyChangelog(name="owner", value=first_account.id, value_previous=None),
                     "is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None),
                 },
                 kind="Text",
@@ -259,7 +259,7 @@ async def test_node_changelog_creation_without_display_label(
 
 
 async def test_node_changelog_update_with_cardinality_one_relationship(
-    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch, first_account: Node
 ) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
@@ -272,7 +272,7 @@ async def test_node_changelog_update_with_cardinality_one_relationship(
     await person2.save(db=db)
 
     dog1 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
-    await dog1.new(db=db, name={"value": "Rocky", "owner": person1.id}, breed="Labrador", owner=person1)
+    await dog1.new(db=db, name={"value": "Rocky", "owner": first_account.id}, breed="Labrador", owner=person1)
     await dog1.save(db=db)
 
     dog1_update = await NodeManager.get_one(id=dog1.id, db=db)
@@ -379,7 +379,7 @@ async def test_node_changelog_update_with_cardinality_many_relationship(
 
 
 async def test_node_changelog_delete_with_cardinality_one_relationship(
-    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch, first_account: Node
 ) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
@@ -389,7 +389,7 @@ async def test_node_changelog_delete_with_cardinality_one_relationship(
     await person1.save(db=db)
 
     dog1 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
-    await dog1.new(db=db, name={"value": "Rocky", "owner": person1.id}, breed="Labrador", owner=person1)
+    await dog1.new(db=db, name={"value": "Rocky", "owner": first_account.id}, breed="Labrador", owner=person1)
     await dog1.save(db=db)
 
     dog1_update = await NodeManager.get_one(id=dog1.id, db=db)
@@ -401,7 +401,7 @@ async def test_node_changelog_delete_with_cardinality_one_relationship(
 
 
 async def test_node_changelog_delete_with_cardinality_many_relationship(
-    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch, first_account: Node
 ) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
@@ -411,11 +411,11 @@ async def test_node_changelog_delete_with_cardinality_many_relationship(
     await person1.save(db=db)
 
     dog1 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
-    await dog1.new(db=db, name={"value": "Rocky", "owner": person1.id}, breed="Labrador", owner=person1)
+    await dog1.new(db=db, name={"value": "Rocky", "owner": first_account.id}, breed="Labrador", owner=person1)
     await dog1.save(db=db)
 
     dog2 = await Node.init(db=db, schema=dog_schema, branch=default_branch)
-    await dog2.new(db=db, name={"value": "Lassie", "owner": person1.id}, breed="Collie", owner=person1)
+    await dog2.new(db=db, name={"value": "Lassie", "owner": first_account.id}, breed="Collie", owner=person1)
     await dog2.save(db=db)
     assert not dog2.node_changelog.parent
 

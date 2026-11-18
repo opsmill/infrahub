@@ -3,7 +3,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.core.ownership.models import HolderKind
 from infrahub.core.query import Query, QueryType
+
+from .ownership import HOLDER_PATTERNS, holder_edge_patterns
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -12,6 +16,7 @@ if TYPE_CHECKING:
         CardinalityOneDiffResolution,
         CarryOverBaseRelProperty,
         CarryOverDiffRelProperty,
+        OwnerHolderPath,
         RelationshipPath,
         RelationshipPropertyPath,
     )
@@ -163,14 +168,33 @@ CALL (n, tgt_n, src) {
     SET rel1.to = $at, rel1.to_user_id = src.from_user_id
     SET rel2.to = $at, rel2.to_user_id = src.from_user_id
     // ------------------------------
-    // close HAS_OWNER and HAS_SOURCE edges pointing to this deleted node
+    // close the owner edges and the source edges that start at this deleted node, and the owner edges of its sets
     // ------------------------------
     WITH DISTINCT tgt_n, src
-    OPTIONAL MATCH (tgt_n)<-[owner_source_rel:HAS_OWNER|HAS_SOURCE]-()
-    WHERE owner_source_rel.branch = $target_branch
-    AND owner_source_rel.status = "active"
-    AND owner_source_rel.to IS NULL
-    SET owner_source_rel.to = $at, owner_source_rel.to_user_id = src.from_user_id
+    CALL (tgt_n, src) {
+        MATCH (tgt_n)-[own_rel:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE|HAS_OWNER_SET|HAS_TARGET_OWNER_SET|HAS_SOURCE]->()
+        WHERE own_rel.branch = $target_branch
+        AND own_rel.status = "active"
+        AND own_rel.to IS NULL
+        SET own_rel.to = $at, own_rel.to_user_id = src.from_user_id
+    }
+    CALL (tgt_n, src) {
+        MATCH (tgt_n)-[:HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(:OwnerSet)-[set_rel:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE]->()
+        WHERE set_rel.branch = $target_branch
+        AND set_rel.status = "active"
+        AND set_rel.to IS NULL
+        SET set_rel.to = $at, set_rel.to_user_id = src.from_user_id
+    }
+    // ------------------------------
+    // close HAS_SOURCE and HAS_OWNER_SOURCE edges pointing to this deleted node, and the HAS_OWNER edge of each link
+    // that it owns. the other HAS_OWNER edges that point to it stay, so that what it owned shows a deleted owner
+    // ------------------------------
+    OPTIONAL MATCH (tgt_n)<-[inbound_rel:HAS_SOURCE|HAS_OWNER|HAS_OWNER_SOURCE]-(holder)
+    WHERE (type(inbound_rel) <> "HAS_OWNER" OR holder:Relationship)
+    AND inbound_rel.branch = $target_branch
+    AND inbound_rel.status = "active"
+    AND inbound_rel.to IS NULL
+    SET inbound_rel.to = $at, inbound_rel.to_user_id = src.from_user_id
 }
 
 // ==============================
@@ -216,6 +240,24 @@ CALL (n, a, src) {
     WHERE src.status = "deleted"
     AND tgt.to IS NULL
     SET tgt.to = $at, tgt.to_user_id = src.from_user_id
+}
+// -------------------------
+// close the owner edges of the deleted attribute on target branch: the source branch has no deleted edge
+// for an owner that the target branch added after the start of the source branch.
+// an attribute that another Node vertex holds on the source branch, after a kind migration, keeps its owners
+// -------------------------
+CALL (a, src) {
+    WITH a, src
+    WHERE src.status = "deleted"
+    AND NOT EXISTS {
+        MATCH ()-[kept:HAS_ATTRIBUTE {branch: $source_branch, status: "active"}]->(a)
+        WHERE kept.to IS NULL
+    }
+    MATCH (a)-[own_rel:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE]->()
+    WHERE own_rel.branch = $target_branch
+    AND own_rel.status = "active"
+    AND own_rel.to IS NULL
+    SET own_rel.to = $at, own_rel.to_user_id = src.from_user_id
 }
 // -------------------------
 // only remaining case to handle is #2, so we only care about active source HAS_ATTRIBUTE edges
@@ -676,12 +718,12 @@ CALL (rel, source_user_id) {
 
 
 class BulkMergeAttributePropertyEdgesQuery(Query):
-    """Bulk merge HAS_VALUE, IS_PROTECTED, HAS_OWNER, HAS_SOURCE edges that hang off Attribute vertices.
+    """Bulk merge HAS_VALUE, IS_PROTECTED, HAS_SOURCE edges that hang off Attribute vertices.
 
     These are singleton property edges: at most one active per parent per branch.
     When merging an active edge, close any existing active target edge pointing to a different child
     and create the new one. For active creates, the parent Node must be alive on target (based on
-    the LATEST IS_PART_OF edge). For HAS_SOURCE / HAS_OWNER, the target child Node must also be alive.
+    the LATEST IS_PART_OF edge). For HAS_SOURCE, the target child Node must also be alive.
 
     `excluded_attribute_property_paths` skips specific (node_uuid, attr_name, edge_type) paths whose
     property conflict was resolved to BASE.
@@ -723,7 +765,7 @@ class BulkMergeAttributePropertyEdgesQuery(Query):
 // ==============================
 // Attribute property edges: (Node)-[:HAS_ATTRIBUTE]->(Attribute)-[src]->(child)
 // ==============================
-MATCH (n:Node)-[:HAS_ATTRIBUTE]-(field:Attribute)-[src:HAS_VALUE|IS_PROTECTED|HAS_OWNER|HAS_SOURCE]->(child)
+MATCH (n:Node)-[:HAS_ATTRIBUTE]-(field:Attribute)-[src:HAS_VALUE|IS_PROTECTED|HAS_SOURCE]->(child)
 WHERE src.branch = $source_branch
 AND src.to IS NULL
 AND NOT n.uuid IN $excluded_node_uuids
@@ -763,7 +805,7 @@ CALL (n) {
 WITH n, field, child, src, edge_type, prop_from_user_id, parent_is_alive
 WHERE parent_is_alive = TRUE
 // -------------------------
-// For HAS_SOURCE/HAS_OWNER active creates, the target child Node must also be alive on target
+// For HAS_SOURCE active creates, the target child Node must also be alive on target
 // -------------------------
 CALL (child) {
     OPTIONAL MATCH (child)-[c_ipo:IS_PART_OF]->(:Root)
@@ -963,4 +1005,176 @@ CALL (field, src, child, edge_type, prop_from_user_id) {
         new_e.to_user_id = NULL
 }
         """
+        self.add_to_query(query=query)
+
+
+# The Cypher list that identifies a set of owners `{set}` of a node: its kind of holder and its key.
+OWNER_SET_KEY = (
+    '["{kind}", coalesce({set}.attribute, ""), coalesce({set}.identifier, ""), coalesce({set}.direction, "")]'
+)
+OWNER_HOLDER_KEYS: dict[HolderKind, str] = {
+    HolderKind.NODE: f'["{HolderKind.NODE.value}", "", "", ""]',
+    HolderKind.ATTRIBUTE: f'["{HolderKind.ATTRIBUTE.value}", holder.name, "", ""]',
+    HolderKind.FIELD_SET: OWNER_SET_KEY.format(kind=HolderKind.FIELD_SET.value, set="holder"),
+    HolderKind.TARGET_SET: OWNER_SET_KEY.format(kind=HolderKind.TARGET_SET.value, set="holder"),
+    HolderKind.SOURCES: f'["{HolderKind.SOURCES.value}", "", "", ""]',
+}
+OWNER_SET_EDGE_TYPES: dict[HolderKind, DatabaseEdgeType] = {
+    HolderKind.FIELD_SET: DatabaseEdgeType.HAS_OWNER_SET,
+    HolderKind.TARGET_SET: DatabaseEdgeType.HAS_TARGET_OWNER_SET,
+}
+
+
+class BulkMergeOwnershipEdgesQuery(Query):
+    """Bulk merge the owner edges that start at a node, at its attributes and at its sets of owners.
+
+    The edges of each holder are HAS_OWNER, HAS_NO_OWNER and the HAS_OWNER_SOURCE mark of a copy from an object
+    template. The edges of a node are also the HAS_OWNER_SET and HAS_TARGET_OWNER_SET edges to its sets, and the
+    HAS_SOURCE edges to its sources.
+
+    The edges of each type form a set for each holder: a deleted source edge closes the active target edge of the
+    same type to the same child, and an active source edge is created on target when the Node and a child Node are
+    alive there.
+
+    `excluded_owner_holders` skips the holders whose owner conflict was resolved to BASE.
+    """
+
+    name = "bulk_merge_ownership_edges"
+    type = QueryType.WRITE
+    insert_return = False
+    raise_error_if_empty = False
+
+    def __init__(
+        self,
+        at: Timestamp,
+        target_branch: Branch,
+        excluded_node_uuids: list[str],
+        excluded_owner_holders: list[OwnerHolderPath],
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+        self.at = at
+        self.target_branch = target_branch
+        self.source_branch_name = self.branch.name
+        self.excluded_node_uuids = excluded_node_uuids
+        self.excluded_owner_holders = excluded_owner_holders
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params = {
+            "at": self.at.to_string(),
+            "branch_level": self.target_branch.hierarchy_level,
+            "target_branch": self.target_branch.name,
+            "source_branch": self.source_branch_name,
+            "global_branch": GLOBAL_BRANCH_NAME,
+            "excluded_node_uuids": self.excluded_node_uuids,
+            "excluded_owner_holders": [
+                [
+                    path.node_uuid,
+                    path.holder.kind.value,
+                    path.holder.attribute or "",
+                    path.holder.identifier or "",
+                    path.holder.direction or "",
+                ]
+                for path in self.excluded_owner_holders
+            ],
+        }
+        # One pattern for each edge type, so that each one starts from the index on the branch of its edges.
+        patterns = [
+            f"""
+    MATCH {pattern}-[src:{edge_type.value}]->(child)
+    USING INDEX src:{edge_type.value}(branch)
+    WHERE src.branch = $source_branch
+    AND src.to IS NULL
+    RETURN DISTINCT n, {"holder" if "holder" in pattern else "n"} AS holder,
+        {OWNER_HOLDER_KEYS[holder_kind]} AS holder_key, src, child"""
+            for holder_kind, pattern, edge_type in holder_edge_patterns()
+        ]
+        # shortcut: these edge types have no index on the branch, add one when a merge is slow with many template copies
+        patterns += [
+            f"""
+    MATCH {pattern}-[src:{DatabaseEdgeType.HAS_OWNER_SOURCE.value}]->(child)
+    WHERE src.branch = $source_branch
+    AND src.to IS NULL
+    RETURN DISTINCT n, {"n" if holder_kind is HolderKind.NODE else "holder"} AS holder,
+        {OWNER_HOLDER_KEYS[holder_kind]} AS holder_key, src, child"""
+            for holder_kind, pattern in HOLDER_PATTERNS.items()
+            if holder_kind not in (HolderKind.TARGET_SET, HolderKind.SOURCES)
+        ]
+        patterns += [
+            f"""
+    MATCH (n:Node)-[src:{edge_type.value}]->(child:OwnerSet)
+    WHERE src.branch = $source_branch
+    AND src.to IS NULL
+    RETURN n, n AS holder, {OWNER_SET_KEY.format(kind=holder_kind.value, set="child")} AS holder_key, src, child"""
+            for holder_kind, edge_type in OWNER_SET_EDGE_TYPES.items()
+        ]
+        query = """
+// ==============================
+// Owner edges: (holder)-[src]->(child), with the Node, one of its attributes or one of its sets of owners as the holder
+// ==============================
+CALL () {%(patterns)s
+}
+WITH n, holder, holder_key, src, child
+WHERE NOT n.uuid IN $excluded_node_uuids
+AND NOT ([n.uuid] + holder_key) IN $excluded_owner_holders
+AND (holder:Attribute OR n.branch_support = "aware")
+WITH n, holder, src, child, type(src) AS edge_type, src.from_user_id AS prop_from_user_id
+// -------------------------
+// A deleted source edge closes the active target edge of the same type to the same child
+// -------------------------
+CALL (holder, child, src, edge_type, prop_from_user_id) {
+    OPTIONAL MATCH (holder)-[tgt:$(edge_type)]->(child)
+    WHERE src.status = "deleted"
+    AND tgt.branch = $target_branch
+    AND tgt.status = "active"
+    AND tgt.to IS NULL
+    SET tgt.to = $at, tgt.to_user_id = prop_from_user_id
+}
+// -------------------------
+// For deleted edges, the work is done and we can filter to just active src edges
+// -------------------------
+WITH n, holder, src, child, edge_type
+WHERE src.status = "active"
+// -------------------------
+// For active edges, the Node must be alive on target based on the latest IS_PART_OF
+// -------------------------
+CALL (n) {
+    MATCH (n)-[ipo:IS_PART_OF]->(:Root)
+    WHERE ipo.branch IN [$target_branch, $global_branch]
+    RETURN (ipo.status = "active" AND ipo.to IS NULL) AS parent_is_alive
+    ORDER BY ipo.from DESC
+    LIMIT 1
+}
+WITH holder, src, child, edge_type, parent_is_alive
+WHERE parent_is_alive = TRUE
+// -------------------------
+// A child that is a Node must also be alive on target
+// -------------------------
+CALL (child) {
+    OPTIONAL MATCH (child)-[c_ipo:IS_PART_OF]->(:Root)
+    WHERE c_ipo.branch IN [$target_branch, $global_branch]
+    AND child:Node
+    RETURN (c_ipo IS NULL OR (c_ipo.status = "active" AND c_ipo.to IS NULL)) AS child_is_alive
+    ORDER BY c_ipo.from DESC
+    LIMIT 1
+}
+WITH holder, src, child, edge_type, child_is_alive
+WHERE child_is_alive = TRUE
+// -------------------------
+// Create the edge on target branch if not already present
+// -------------------------
+CALL (holder, src, child, edge_type) {
+    OPTIONAL MATCH (holder)-[existing:$(edge_type) {branch: $target_branch, status: "active"}]->(child)
+    WHERE existing.to IS NULL
+    WITH holder, src, child, edge_type, existing
+    WHERE existing IS NULL
+    CREATE (holder)-[new_e:$(edge_type)]->(child)
+    SET new_e = properties(src)
+    SET new_e.branch = $target_branch,
+        new_e.branch_level = $branch_level,
+        new_e.from = $at,
+        new_e.to = NULL,
+        new_e.to_user_id = NULL
+}
+        """ % {"patterns": "\n    UNION ALL".join(patterns)}
         self.add_to_query(query=query)

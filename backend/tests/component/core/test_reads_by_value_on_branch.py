@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from infrahub.constants.enums import OrderDirection
-from infrahub.core.constants import RelationshipHierarchyDirection
+from infrahub.core.constants import InfrahubKind, RelationshipHierarchyDirection
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -120,14 +120,14 @@ VALUE_FILTER_CASES = [
     ValueFilterCase(
         name="attribute_owner",
         kind=TestKind.CAR,
-        filters={"color__owner__id": "alice"},
+        filters={"color__owner__id": "owner-on-default"},
         expected_on_default={"car-red"},
         expected_on_branch=set(),
     ),
     ValueFilterCase(
         name="attribute_owner_set_on_the_branch",
         kind=TestKind.CAR,
-        filters={"color__owner__id": "carol"},
+        filters={"color__owner__id": "owner-on-branch"},
         expected_on_default=set(),
         expected_on_branch={"car-red"},
     ),
@@ -191,10 +191,15 @@ class TestReadsByValueOnBranch:
             await person.new(db=db, name=name)
             await person.save(db=db)
             ids[name] = person.id
+        for name in ("owner-on-default", "owner-on-branch"):
+            account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+            await account.new(db=db, name=name, password="OwnerPassword123")
+            await account.save(db=db)
+            ids[name] = account.id
 
         cars: dict[str, dict[str, Any]] = {
             "car-red": {
-                "color": {"value": "red", "source": ids["alice"], "owner": ids["alice"]},
+                "color": {"value": "red", "source": ids["alice"], "owner": ids["owner-on-default"]},
                 "description": "fast",
                 "owner": "alice",
             },
@@ -221,7 +226,7 @@ class TestReadsByValueOnBranch:
 
         branch = await create_branch(db=db, branch_name="reads-by-value")
         await _update(
-            db, branch, ids["car-red"], color={"value": "blue", "source": ids["carol"], "owner": ids["carol"]}
+            db, branch, ids["car-red"], color={"value": "blue", "source": ids["carol"], "owner": ids["owner-on-branch"]}
         )
         await _update(db, branch, ids["car-scarlet"], color={"value": "blue"})
         await _update(db, branch, ids["car-green"], color={"is_protected": True}, name={"value": "car-teal"})

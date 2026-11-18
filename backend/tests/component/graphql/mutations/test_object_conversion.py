@@ -2,16 +2,29 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import pytest
 from infrahub_sdk.convert_object_type import ConversionFieldInput, ConversionFieldValue
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
+from infrahub.core.ownership.models import (
+    NODE_HOLDER,
+    NODE_SOURCES_HOLDER,
+    HolderKey,
+    HolderKind,
+    StoredOwnerState,
+    field_holder,
+)
+from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
+from infrahub.core.timestamp import Timestamp
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 
@@ -134,6 +147,189 @@ async def test_convert_object_type_already_converted_returns_not_found(
     assert [error.message for error in second_result.errors] == [
         f"Unable to find the node {person1_node_id} / Node in the database."
     ]
+
+
+async def _write_owners(
+    db: InfrahubDatabase, branch: Branch, node_id: str, states: dict[HolderKey, StoredOwnerState]
+) -> None:
+    repository = OwnershipRepository(db=db, branch=branch, at=None)
+    for holder, state in states.items():
+        await repository.write(
+            node_id=node_id, holder=holder, state=state, write_branch=branch, at=Timestamp(), user_id="test-user-id"
+        )
+
+
+async def _convert_person(db: InfrahubDatabase, branch: Branch, node_id: str, fields_mapping: dict[str, Any]) -> str:
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CONVERT_OBJECT_TYPE_MUTATION,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"node_id": node_id, "target_kind": "TestconvPerson2", "fields_mapping": fields_mapping},
+    )
+    assert result.errors is None
+    assert result.data
+    return result.data["ConvertObjectType"]["node"]["id"]
+
+
+async def test_convert_object_type_keeps_node_owners_and_sources(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    schemas_conversion: dict[str, Any],
+) -> None:
+    registry.schema.register_schema(schema=SchemaRoot(**schemas_conversion), branch=default_branch.name)
+    default_branch.update_schema_hash()
+    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group.new(db=db, name="dc-emea")
+    await group.save(db=db)
+    new_ids: dict[str, str] = {}
+    for name, owner_ids in {"with-owners": (group.id,), "without-owner": ()}.items():
+        person = await Node.init(db=db, schema="TestconvPerson1")
+        await person.new(db=db, name=name)
+        await person.save(db=db)
+        state = StoredOwnerState(owner_ids=owner_ids)
+        await _write_owners(
+            db=db, branch=default_branch, node_id=person.id, states={NODE_HOLDER: state, NODE_SOURCES_HOLDER: state}
+        )
+
+        new_ids[name] = await _convert_person(
+            db=db,
+            branch=default_branch,
+            node_id=person.id,
+            fields_mapping={"name": {"source_field": "name"}, "age": {"data": {"attribute_value": 30}}},
+        )
+
+    stored = await OwnershipRepository(db=db, branch=default_branch, at=None).read(node_ids=list(new_ids.values()))
+    assert {
+        name: (stored[node_id].get(NODE_HOLDER).owner_ids, stored[node_id].get(NODE_SOURCES_HOLDER).owner_ids)
+        for name, node_id in new_ids.items()
+    } == {"with-owners": ((group.id,), (group.id,)), "without-owner": ((), None)}
+
+
+async def test_convert_object_type_keeps_the_owners_of_mapped_attributes(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    schemas_conversion: dict[str, Any],
+) -> None:
+    registry.schema.register_schema(schema=SchemaRoot(**schemas_conversion), branch=default_branch.name)
+    default_branch.update_schema_hash()
+    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group.new(db=db, name="dc-emea")
+    await group.save(db=db)
+    person = await Node.init(db=db, schema="TestconvPerson1")
+    await person.new(db=db, name="with-attribute-owners", height=180, favorite_color="red")
+    await person.save(db=db)
+    owned = StoredOwnerState(owner_ids=(group.id,))
+    await _write_owners(
+        db=db,
+        branch=default_branch,
+        node_id=person.id,
+        states={
+            HolderKey(kind=HolderKind.ATTRIBUTE, attribute="name"): owned,
+            HolderKey(kind=HolderKind.ATTRIBUTE, attribute="height"): StoredOwnerState(owner_ids=()),
+            HolderKey(kind=HolderKind.ATTRIBUTE, attribute="favorite_color"): owned,
+        },
+    )
+
+    new_id = await _convert_person(
+        db=db,
+        branch=default_branch,
+        node_id=person.id,
+        fields_mapping={
+            "name": {"source_field": "name"},
+            "age": {"data": {"attribute_value": 30}},
+            "favorite_color": {"data": {"attribute_value": "green"}},
+        },
+    )
+
+    stored = await OwnershipRepository(db=db, branch=default_branch, at=None).read(node_ids=[new_id], attributes=True)
+    assert {
+        holder.attribute: state.owner_ids
+        for holder, state in stored[new_id].holders.items()
+        if holder.kind == HolderKind.ATTRIBUTE
+    } == {"name": (group.id,), "height": ()}
+
+
+async def _field_owners(db: InfrahubDatabase, branch: Branch, node_id: str) -> dict[str | None, tuple[str, ...] | None]:
+    stored = await OwnershipRepository(db=db, branch=branch, at=None).read(node_ids=[node_id])
+    return {
+        holder.identifier: state.owner_ids
+        for holder, state in stored[node_id].holders.items()
+        if holder.kind == HolderKind.FIELD_SET
+    }
+
+
+@pytest.mark.parametrize(
+    ("source_kind", "source_values", "source_field", "target_kind", "fields_mapping", "expected_identifiers"),
+    [
+        pytest.param(
+            "TestconvPerson1",
+            {},
+            "favorite_car",
+            "TestconvPerson2",
+            {"age": {"data": {"attribute_value": 30}}, "worst_car": {"source_field": "favorite_car"}},
+            {"person__favorite_car", "person__worst_car"},
+            id="relationship-mapped-from-another-relationship",
+        ),
+        pytest.param(
+            "TestconvPerson2", {"age": 30}, "worst_car", "TestconvPerson1", {}, set(), id="relationship-not-in-target"
+        ),
+    ],
+)
+async def test_convert_object_type_gives_the_owners_of_a_relationship_to_the_relationships_mapped_from_it(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    schemas_conversion: dict[str, Any],
+    source_kind: str,
+    source_values: dict[str, Any],
+    source_field: str,
+    target_kind: str,
+    fields_mapping: dict[str, Any],
+    expected_identifiers: set[str],
+) -> None:
+    registry.schema.register_schema(schema=SchemaRoot(**schemas_conversion), branch=default_branch.name)
+    default_branch.update_schema_hash()
+    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group.new(db=db, name="dc-emea")
+    await group.save(db=db)
+    car = await Node.init(db=db, schema="TestconvCar")
+    await car.new(db=db, name="car")
+    await car.save(db=db)
+    person = await Node.init(db=db, schema=source_kind)
+    await person.new(db=db, name="with-relationship-owners", **source_values, **{source_field: car})
+    await person.save(db=db)
+    holder = field_holder(
+        schema=registry.schema.get(name=source_kind, branch=default_branch, duplicate=False), field_name=source_field
+    )
+    assert holder is not None
+    await OwnershipRepository(db=db, branch=default_branch, at=None).write(
+        node_id=person.id,
+        holder=holder,
+        state=StoredOwnerState(owner_ids=(group.id,)),
+        write_branch=default_branch,
+        at=Timestamp(),
+        user_id="test-user-id",
+    )
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CONVERT_OBJECT_TYPE_MUTATION,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"node_id": person.id, "target_kind": target_kind, "fields_mapping": fields_mapping},
+    )
+
+    assert result.errors is None
+    assert result.data
+    new_id = result.data["ConvertObjectType"]["node"]["id"]
+    assert await _field_owners(db=db, branch=default_branch, node_id=new_id) == dict.fromkeys(
+        expected_identifiers, (group.id,)
+    )
 
 
 CONVERT_OBJECT_TYPE_MUTATION = """

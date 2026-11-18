@@ -8,7 +8,14 @@ from opentelemetry import trace
 
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.core.constants.schema import NodeProperty
 from infrahub.core.diff.model.path import ConflictSelection
+from infrahub.core.diff.ownership_fields import (
+    is_list_property,
+    is_owners_field_name,
+    owner_ids_from_value,
+)
+from infrahub.core.ownership.fields import ATTRIBUTE_OWNERS_PROPERTY, OWNERS_CHANGELOG_KIND
 from infrahub.exceptions import SchemaNotFoundError
 
 from .models import (
@@ -99,6 +106,11 @@ class DiffChangelogCollector:
     def _process_node_attribute(
         self, node: NodeChangelog, attribute: EnrichedDiffAttribute, schema: MainSchemaTypes | None
     ) -> None:
+        if is_owners_field_name(field_name=attribute.name) and (
+            schema is None or attribute.name not in schema.attribute_names
+        ):
+            self._process_owner_list(node=node, attribute=attribute)
+            return
         if schema is None:
             attribute_kind = "n/a"
         else:
@@ -136,13 +148,23 @@ class DiffChangelogCollector:
                         )
                 case DatabaseEdgeType.HAS_OWNER:
                     if _keep_branch_update(diff_property=attr_property):
-                        changelog_attribute.add_property(
-                            name="owner",
-                            value_current=attr_property.new_value,
-                            value_previous=attr_property.previous_value,
-                        )
+                        _add_owners_property(attribute=changelog_attribute, diff_property=attr_property)
 
         node.add_attribute(attribute=changelog_attribute)
+
+    def _process_owner_list(self, node: NodeChangelog, attribute: EnrichedDiffAttribute) -> None:
+        for owner_list in attribute.properties:
+            if is_list_property(
+                field_name=attribute.name, property_type=owner_list.property_type
+            ) and _keep_branch_update(diff_property=owner_list):
+                node.add_attribute(
+                    attribute=AttributeChangelog(
+                        name=attribute.name,
+                        kind=OWNERS_CHANGELOG_KIND,
+                        value=owner_list.new_value,
+                        value_previous=owner_list.previous_value,
+                    )
+                )
 
     def _process_node_relationship(self, node: NodeChangelog, relationship: EnrichedDiffRelationship) -> None:
         match relationship.cardinality:
@@ -272,6 +294,25 @@ class DiffChangelogCollector:
     def _is_resolvable_kind(self, kind: str) -> bool:
         """Whether a node kind still exists on the branch, so its labels can be loaded."""
         return self._db.schema.has(name=kind, branch=self._branch)
+
+
+def _add_owners_property(attribute: AttributeChangelog, diff_property: EnrichedDiffProperty) -> None:
+    """Record the change of the owners of an attribute.
+
+    A change between one owner and none gives the `owner` property with the owner ID. Any other change gives the
+    `owners` property with the owner lists.
+    """
+    values = [diff_property.new_value, diff_property.previous_value]
+    owner_ids = [owner_ids_from_value(value=value) for value in values]
+    if all(value is None or (ids is not None and len(ids) == 1) for value, ids in zip(values, owner_ids, strict=True)):
+        current, previous = (ids[0] if ids else None for ids in owner_ids)
+        attribute.add_property(name=NodeProperty.OWNER.value, value_current=current, value_previous=previous)
+        return
+    attribute.add_property(
+        name=ATTRIBUTE_OWNERS_PROPERTY,
+        value_current=diff_property.new_value,
+        value_previous=diff_property.previous_value,
+    )
 
 
 def _keep_branch_update(diff_property: EnrichedDiffProperty) -> bool:

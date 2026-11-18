@@ -22,6 +22,7 @@ from infrahub.log import get_logger
 
 from .model.field_specifiers_map import NodeFieldSpecifierMap
 from .model.path import CalculatedDiffs, DiffNode, DiffRoot, NodeIdentifier
+from .ownership_differ import OwnerDiffRequest, OwnershipDiffer
 
 log = get_logger()
 
@@ -301,10 +302,28 @@ class DiffCalculator:
         diff_parser.parse(include_unchanged=include_unchanged)
         log.info("Calculated diff parsed")
         branch_diff = diff_parser.get_diff_root_for_branch(branch=diff_branch.name)
+        base_diff = diff_parser.get_diff_root_for_branch(branch=base_branch.name)
+        log.info("Beginning diff owner calculation")
+        await OwnershipDiffer(db=self.db).add_owner_changes(
+            request=OwnerDiffRequest(
+                base_branch=base_branch,
+                diff_branch=diff_branch,
+                branch_from_time=diff_branch_from_time,
+                from_time=from_time,
+                to_time=to_time,
+                include_unchanged=include_unchanged,
+                previous_node_specifiers=previous_node_specifiers,
+                node_kinds=node_kinds,
+                node_uuids=node_uuids,
+            ),
+            branch_root=branch_diff,
+            base_root=base_diff,
+        )
+        log.info("Diff owner calculation complete")
         await self._apply_kind_migrated_nodes(branch_diff=branch_diff, calculation_request=calculation_request)
         return CalculatedDiffs(
             base_branch_name=base_branch.name,
             diff_branch_name=diff_branch.name,
-            base_branch_diff=diff_parser.get_diff_root_for_branch(branch=base_branch.name),
+            base_branch_diff=base_diff,
             diff_branch_diff=branch_diff,
         )

@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 from collections.abc import Sequence  # noqa: TC003  needed for pydantic
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ..query import AttributeMigrationQuery
 from ..query.attribute_rename import AttributeInfo, AttributeRenameQuery
+from ..query.owner_set_attribute import OwnerSetKeyMigrationQuery, profile_and_template_kinds
 from ..shared import AttributeSchemaMigration
+
+if TYPE_CHECKING:
+    from infrahub.database import InfrahubDatabase
 
 
 class AttributeNameUpdateMigrationQuery01(AttributeMigrationQuery, AttributeRenameQuery):
@@ -40,6 +44,36 @@ class AttributeNameUpdateMigrationQuery01(AttributeMigrationQuery, AttributeRena
         return self.stats.get_counter(name="nodes_created")
 
 
+class AttributeNameUpdateMigrationQuery02(AttributeMigrationQuery, OwnerSetKeyMigrationQuery):
+    """Move the owners that profiles and object templates give to the attribute to its new name."""
+
+    name = "migration_attribute_name_update_02"
+
+    def __init__(self, migration: AttributeSchemaMigration, **kwargs: Any) -> None:
+        attr_id = migration.new_attribute_schema.id or migration.new_attribute_schema.source_attribute_id
+        if not attr_id:
+            raise ValueError("The Id is not defined on new_attribute_schema")
+        super().__init__(
+            migration=migration,
+            node_kinds=[],
+            set_key={"attribute": migration.previous_schema.get_attribute_by_id(id=attr_id).name},
+            new_set_key={"attribute": migration.new_attribute_schema.name},
+            **kwargs,
+        )
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+        self.node_kinds = profile_and_template_kinds(
+            db=db,
+            branch=self.branch,
+            node_kind=self.migration.previous_schema.kind,
+            attribute_name=self.set_key["attribute"],
+        )
+        await super().query_init(db=db, **kwargs)
+
+
 class AttributeNameUpdateMigration(AttributeSchemaMigration):
     name: str = "attribute.name.update"
-    queries: Sequence[type[AttributeMigrationQuery]] = [AttributeNameUpdateMigrationQuery01]  # type: ignore[assignment]
+    queries: Sequence[type[AttributeMigrationQuery]] = [  # type: ignore[assignment]
+        AttributeNameUpdateMigrationQuery01,
+        AttributeNameUpdateMigrationQuery02,
+    ]

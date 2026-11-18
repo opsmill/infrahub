@@ -53,10 +53,11 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery):
 class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     """Close inbound edges that point to nodes of the removed kind.
 
-    Inbound edge types from another Node/Attribute/Relationship to our active_node:
-      - HAS_SOURCE  (Attribute|Relationship -> Node)        : peer is the Attribute/Rel
-      - HAS_OWNER   (Attribute|Relationship -> Node)        : peer is the Attribute/Rel
-      - IS_RELATED  (Node <-> Relationship, either dir)     : peer is the Relationship
+    Inbound edge types from another Node/Attribute/Relationship/OwnerSet to our active_node:
+      - HAS_SOURCE        (Attribute|Relationship|Node -> Node)          : peer is the vertex with the source
+      - HAS_OWNER         (Attribute|Relationship|Node|OwnerSet -> Node) : peer is the vertex with the owner
+      - HAS_OWNER_SOURCE  (Attribute|Node|OwnerSet -> Node)              : peer is the vertex with the owners
+      - IS_RELATED        (Node <-> Relationship, either dir)            : peer is the Relationship
 
     For each such edge we close it on the migration branch and create a matching deleted
     edge so that downstream branches see the removal.
@@ -66,8 +67,9 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     We close its other sub-edges (IS_PROTECTED, HAS_SOURCE, HAS_OWNER, far-side IS_RELATED)
     on the same branch.
 
-    For inbound HAS_SOURCE/HAS_OWNER the peer is an Attribute/Relationship belonging to a
-    different Node, so its sub-edges are left alone; only the inbound pointer itself is closed.
+    For inbound HAS_SOURCE/HAS_OWNER/HAS_OWNER_SOURCE the peer is another Node, or an
+    Attribute/Relationship/OwnerSet belonging to a different Node, so its sub-edges are left alone;
+    only the inbound pointer itself is closed.
     """
 
     name = "migration_node_remove_in"
@@ -97,7 +99,7 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     // ----------------------------------------------------------
     // For each inbound edge to active_node, find the latest active edge on the branch
     // ----------------------------------------------------------
-    MATCH (active_node)<-[r:IS_RELATED|HAS_SOURCE|HAS_OWNER]-(peer:Attribute|Relationship)
+    MATCH (active_node)<-[r:IS_RELATED|HAS_SOURCE|HAS_OWNER|HAS_OWNER_SOURCE]-(peer:Attribute|Relationship|Node|OwnerSet)
     WITH DISTINCT active_node, type(r) AS edge_type, peer
     CALL (active_node, edge_type, peer) {
         MATCH (active_node)<-[r:$(edge_type)]-(peer)
@@ -114,7 +116,7 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     // ----------------------------------------------------------
     CALL (peer_node) {
         WITH peer_node
-        WHERE $set_metadata
+        WHERE $set_metadata AND NOT peer_node:OwnerSet
         SET peer_node.previous_updated_at = CASE
                 WHEN peer_node.updated_at IS NULL OR peer_node.updated_at <> $current_time THEN peer_node.updated_at
                 ELSE peer_node.previous_updated_at
@@ -151,8 +153,8 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     // ----------------------------------------------------------
     // For inbound IS_RELATED, the Relationship vertex (peer_node) is being torn down.
     // Close its other sub-edges (IS_PROTECTED, HAS_SOURCE, HAS_OWNER, far-side IS_RELATED)
-    // on the same branch. HAS_SOURCE/HAS_OWNER inbound do NOT need this — their peer
-    // belongs to another Node and stays active.
+    // on the same branch. HAS_SOURCE/HAS_OWNER/HAS_OWNER_SOURCE inbound do NOT need this — their peer
+    // is or belongs to another Node and stays active.
     // ----------------------------------------------------------
     WITH DISTINCT active_node, peer_node, rel_inbound
     WHERE type(rel_inbound) = "IS_RELATED"
@@ -208,11 +210,14 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
       - HAS_ATTRIBUTE (Node -> Attribute)
       - IS_PART_OF    (Node -> Root)
       - IS_RELATED    (Node <-> Relationship, either dir)
+      - HAS_OWNER, HAS_SOURCE, HAS_OWNER_SOURCE (Node -> Node)
+      - HAS_NO_OWNER  (Node -> NoOwner)
+      - HAS_OWNER_SET, HAS_TARGET_OWNER_SET (Node -> OwnerSet)
 
-    After closing the parent HAS_ATTRIBUTE/IS_RELATED edge, the Attribute/Relationship
-    vertex is orphaned from active_node's perspective. We must also close any active
-    sub-edges hanging off that Attribute/Relationship (HAS_VALUE, HAS_SOURCE, HAS_OWNER,
-    IS_PROTECTED, far-side IS_RELATED) on the same branch
+    After closing the parent HAS_ATTRIBUTE/IS_RELATED/HAS_OWNER_SET/HAS_TARGET_OWNER_SET edge, the
+    Attribute/Relationship/OwnerSet vertex is orphaned from active_node's perspective. We must also
+    close any active sub-edges hanging off that vertex (HAS_VALUE, HAS_SOURCE, HAS_OWNER, HAS_NO_OWNER,
+    HAS_OWNER_SOURCE, IS_PROTECTED, far-side IS_RELATED) on the same branch
     """
 
     name = "migration_node_remove_out"
@@ -260,7 +265,10 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     // For each outbound edge from active_node, find the latest active edge on the branch
     // ----------------------------------------------------------
     WITH active_node
-    MATCH (active_node)-[e:HAS_ATTRIBUTE|IS_RELATED|IS_PART_OF]->(peer:Attribute|Relationship|Root)
+    MATCH (active_node)-[
+        e:HAS_ATTRIBUTE|IS_RELATED|IS_PART_OF
+        |HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SET|HAS_TARGET_OWNER_SET|HAS_OWNER_SOURCE|HAS_SOURCE
+    ]->(peer:Attribute|Relationship|Root|Node|NoOwner|OwnerSet)
     WITH DISTINCT active_node, type(e) AS edge_type, peer
     CALL (active_node, edge_type, peer) {
         MATCH (active_node)-[r:$(edge_type)]->(peer)
@@ -312,10 +320,10 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     }
 
     // ----------------------------------------------------------
-    // Close sub-edges hanging off the Attribute/Relationship peer vertex
+    // Close sub-edges hanging off the Attribute/Relationship/OwnerSet peer vertex
     // ----------------------------------------------------------
     WITH DISTINCT active_node, peer_node
-    MATCH (peer_node:Attribute|Relationship)-[e]-(sub_peer)
+    MATCH (peer_node:Attribute|Relationship|OwnerSet)-[e]-(sub_peer)
     WHERE sub_peer <> active_node
     WITH DISTINCT active_node, peer_node, type(e) AS sub_edge_type, sub_peer
     CALL (peer_node, sub_edge_type, sub_peer) {
