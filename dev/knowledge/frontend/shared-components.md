@@ -76,15 +76,15 @@ All `.field.tsx` files in `shared/components/form/fields/` wrap a primitive in t
 ### Editing an object in a side sheet
 
 Open the edit form for one node with `ObjectEditSheet` in `entities/nodes/object/ui/object-edit/`
-instead of composing `Sheet`, `SlideOverTitle` and `ObjectEdit` again. Pass the schema of the node
-being edited: `schema` sets the breadcrumb label and the help link, and the form edits
+instead of composing `Sheet`, `SlideOverTitle` and `ObjectEdit` again. `schema` sets the breadcrumb
+label and the help link, and `objectKind` sets the kind the form edits; `objectKind` defaults to
 `schema.kind`. The sheet shows the title `Edit <objectLabel>` under a breadcrumb of the schema label
 and the node label. Cancel closes it. A successful update refreshes the object queries
 (`objectQueryKeys.all`) and then closes it. Pass `subtitle` to show text under the title and
-`extraRelationshipNames` to also fetch relationships that are not form fields. Leave `objectKind`
-unset: it changes only the kind the form edits, so with a value other than `schema.kind` the
-breadcrumb and the help link no longer match the edited node. The caller keeps the trigger, the open
-state and the permission check.
+`extraRelationshipNames` to also fetch relationships that are not form fields. Pass `objectKind`
+only when the form edits a node of another kind than `schema`: `RelationshipActionsCell` passes the
+parent schema and the peer kind, so the sheet edits the peer under the breadcrumb and help link of
+the parent. The caller keeps the trigger, the open state and the permission check.
 
 ### Tab bars
 
