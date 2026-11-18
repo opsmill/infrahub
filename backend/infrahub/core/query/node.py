@@ -3019,8 +3019,7 @@ class NodeGetHierarchyQuery(Query):
 
     def get_peer_ids(self) -> Generator[str, None, None]:
         for result in self.get_results_group_by(("peer", "uuid")):
-            data = result.get_node("peer").get("uuid")
-            yield data
+            yield result.get_node("peer").get("uuid")
 
     def get_relatives(self) -> Generator[PeerInfo, None, None]:
         for result in self.get_results_group_by(("peer", "uuid")):

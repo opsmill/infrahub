@@ -628,15 +628,7 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
-    "RUF070",  # Unnecessary assignment before `yield` statement
     "RUF073",  # `%` operator used on an f-string
-]
-
-"backend/infrahub/core/query/relationship.py" = [
-    ##################################################################################################
-    # Refactor code and remove the ignore rule
-    ##################################################################################################
-    "RUF070",  # Unnecessary assignment before `yield` statement
 ]
 
 "backend/infrahub/core/registry.py" = [
@@ -1061,20 +1053,6 @@ allow-dunder-method-names = [
     # Refactor code and remove the ignore rule
     ##################################################################################################
     "PERF102", # When using only the values of a dict use the `values()` method
-]
-
-"backend/tests/component/core/diff/repository/test_diff_repository.py" = [
-    ##################################################################################################
-    # Refactor code and remove the ignore rule
-    ##################################################################################################
-    "RUF070",  # Unnecessary assignment before `yield` statement
-]
-
-"backend/tests/component/core/migrations/graph/test_061_link_proposed_changes_to_diff_roots.py" = [
-    ##################################################################################################
-    # Refactor code and remove the ignore rule
-    ##################################################################################################
-    "RUF070",  # Unnecessary assignment before `yield` statement
 ]
 
 "backend/tests/component/core/migrations/schema/test_node_attribute_add.py" = [
