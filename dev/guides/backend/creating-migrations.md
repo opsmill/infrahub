@@ -30,7 +30,7 @@ Choose the right base class in `backend/infrahub/core/migrations/shared.py`:
 - **`ArbitraryMigration`** — Implements a custom `execute()` method. Use when you need Python logic (e.g., JSON parsing, conditional branching, batching decisions driven by fetched data).
 - **`InternalSchemaMigration`** — Modifies internal schema definitions. Rarely used directly.
 
-`SchemaMigration` is a separate family under `backend/infrahub/core/migrations/schema/`, registered in `MIGRATION_MAP` and selected by the schema diff rather than by `GRAPH_VERSION`. Steps 1-3 below do not apply to it, but the retry rule does.
+`SchemaMigration` is a separate family under `backend/infrahub/core/migrations/schema/`, registered in `MIGRATION_MAP` and selected by the schema diff rather than by `GRAPH_VERSION`. Steps 1-3 below do not apply to it, but the retry rule does. A new `MIGRATION_MAP` entry with a class also needs a case in `backend/tests/component/core/migrations/schema/test_migration_second_run.py`, which runs the migration twice on one branch; `test_every_migration_class_has_a_second_run_case` fails until it has one.
 
 ## Migrations run at the current timestamp
 
