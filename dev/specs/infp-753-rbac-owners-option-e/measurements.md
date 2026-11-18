@@ -1,5 +1,11 @@
 # Measurements: owner and source metadata, storage option E
 
+## Source of the numbers and the test files in pull request 1
+
+- All numbers in this file come from the branch `rbac-owners-option-e-impl-infp-753`. "This branch" in this file means that branch. Pull request 1 does not measure them again.
+- Pull request 1 holds `conftest.py`, `test_no_owner_overhead.py` and `test_plain_cypher.py` of `backend/tests/query_benchmark/ownership/`, and they pass.
+- A later pull request adds `test_owner_queries.py`, `option_specific.py` and `test_change_check_overhead.py`. `test_owner_queries.py` writes owners through the GraphQL owner API, and `test_change_check_overhead.py` needs the change check.
+
 ## "Today" numbers of SC-001 and SC-002, before any change
 
 SC-001 and SC-002 of [spec.md](spec.md) allow at most 5% more time than "today". This section records "today" (task T008).
@@ -386,7 +392,7 @@ Measured on the first data set of option E (interface → device → location).
 
 ### Method
 
-- The test is [test_change_check_overhead.py](../../../backend/tests/query_benchmark/ownership/test_change_check_overhead.py). It uses the common data set of [conftest.py](../../../backend/tests/query_benchmark/ownership/conftest.py).
+- The test is `backend/tests/query_benchmark/ownership/test_change_check_overhead.py` (a later pull request adds this file). It uses the common data set of [conftest.py](../../../backend/tests/query_benchmark/ownership/conftest.py).
 - The mutations run in the test process, through the GraphQL schema and without the HTTP layer. A mutation through the API takes longer, so the share of the change check through the API is smaller than in the table below.
 - "Without a session" is a request without an account session. Such a request builds no change set and calls no change check.
 - "With a session" is a request with the session of the administrator account. It builds the change set and calls the change check of Infrahub Community.
@@ -479,7 +485,7 @@ Date: 2026-11-13. The test is a temporary component test. It is not in the repos
 - Run: 2026-11-14, from 11:50:50 to 13:02:11 UTC. Result of the test runner: `10 passed, 1 warning in 4272.90s (1:11:12)`.
 - Code: commit `0f54daade5` of the branch `rbac-owners-option-e-impl-infp-753`.
   - The work tree was at commit `fc07690f315da522a00901da438781aa12ed38d2`. This commit adds one Markdown file to `0f54daade5` and changes no code.
-- Test: [test_owner_queries.py](../../../backend/tests/query_benchmark/ownership/test_owner_queries.py). The file is the same in each branch that implements owners. The parts that depend on the storage are in [option_specific.py](../../../backend/tests/query_benchmark/ownership/option_specific.py).
+- Test: `backend/tests/query_benchmark/ownership/test_owner_queries.py` (a later pull request adds this file). The file is the same in each branch that implements owners. The parts that depend on the storage are in `option_specific.py` of the same folder, which the same later pull request adds.
 - Real size of the data set: the full reference data set of the spec, from [conftest.py](../../../backend/tests/query_benchmark/ownership/conftest.py).
   - 10,000 devices
   - 480,000 interfaces (48 for each device)
@@ -588,7 +594,7 @@ The test plans each owner query with `EXPLAIN`, then runs it one time with `PROF
 | merge of the owner edges of a branch | `DirectedRelationshipTypeScan:HAS_OWNER_SOURCE`, `DirectedRelationshipTypeScan:HAS_TARGET_OWNER_SET`, `NodeByLabelScan:OwnerSet` | 1,201 |
 
 - No plan has a scan of all nodes (`AllNodesScan`).
-- The test passed. No plan has a scan outside the accepted list of [option_specific.py](../../../backend/tests/query_benchmark/ownership/option_specific.py).
+- The test passed. No plan has a scan outside the accepted list of `option_specific.py`.
 - In the first run, the test failed because the plan of "diff of the owner changes of a branch" has the scan `NodeByLabelScan:OwnerSet`. The accepted list did not have it for this query.
 - Commit `3232ec2960` added the scan to the accepted list for this query. The reasons:
   - The whole query costs 455 database hits, so the label has fewer than 455 vertices in this data set.

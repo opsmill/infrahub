@@ -4,7 +4,7 @@
 
 **Input**: Feature specification from `dev/specs/infp-753-rbac-owners-option-e/spec.md`
 
-**Sibling plan**: [`infp-753-rbac-owners-option-b`](../infp-753-rbac-owners-option-b/plan.md) plans the same behaviour with storage option B. Decided on 2026-11-16: the team builds option E ([provisional-decisions.md](provisional-decisions.md), "Storage decision of 2026-11-16").
+**Sibling plan**: `infp-753-rbac-owners-option-b` (not in this repository) plans the same behaviour with storage option B. Decided on 2026-11-16: the team builds option E ([provisional-decisions.md](provisional-decisions.md), "Storage decision of 2026-11-16").
 
 ## Summary
 
@@ -215,7 +215,7 @@ The decisions, the API review and the spike produce no pull request. The spike b
 
 | Order | Pull request | Content | Layers | Needs |
 |---|---|---|---|---|
-| 1 | Storage, branch and upgrade | Graph structure, `core/ownership/` (storage, resolution, owner filter, node sources), the copy of template owners at the create, query benchmarks, `dev/knowledge/backend/database-schema.md`. Diff, merge, conflicts, rebase and changelog of owners and sources. Graph migrations, schema migrations, the kind change, the upgrade report, the refusal of repositories as owners | Database layer, branch layer, upgrade | The spike. The storage option is decided: option E |
+| 1 | Storage, branch and upgrade | Graph structure, `core/ownership/` (storage, resolution, owner filter, node sources), the copy of template owners at the create, query benchmarks, `dev/knowledge/backend/database-schema.md`. Diff, merge, conflicts, rebase and changelog of owners and sources. Graph migrations, schema migrations, the kind change, the object conversion, the upgrade report, the refusal of repositories as owners | Database layer, branch layer, upgrade | The spike. The storage option is decided: option E |
 | 2 | GraphQL API | Types, resolvers, fields, inputs and filters, the deprecated `owner` and `is_protected`, owner labels in the activity log, E2E tests | GraphQL layer | Pull request 1 |
 | 3 | Permissions and object files | The change check and its calls in the mutations, "applies to" and its graph migration, the permission report of each node, `dev/knowledge/backend/permissions.md` and `dev/knowledge/backend/mutations.md`. The account group tree: the setting, the permission queries, the report. Object files: the backend part and the submodule pointer | Permission layer, account group tree, object files | Pull request 2, and the pull request on the SDK repository |
 

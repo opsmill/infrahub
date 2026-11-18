@@ -83,7 +83,7 @@ The numbers are the next free numbers when the work starts.
 | Migration | Requirement |
 |---|---|
 | `m084`: hide the attribute owner of the default branch that a branch replaced. It runs before `m085`, so a branch that replaced an account group with a repository reads as inherit | FR-037 |
-| `m085`: close the `HAS_OWNER` edges from attributes to repositories, on every branch | FR-036 |
+| `m085`: close the `HAS_OWNER` edges from attributes to repositories, on every branch, and add a `deleted` edge on each branch that still reads a closed edge of the default branch, and on the global branch for a closed global edge that a branch still reads | FR-036 |
 | `m086`: create the `NoOwner` vertex, so that two first "no owner" writes at the same time cannot each create one | none |
 | `m087`: set `applies_to = all_objects` on every object permission and recompute its human-friendly ID. It runs on the default branch at the upgrade, and on each other branch after the rebase of that branch | FR-047 |
 
