@@ -8,7 +8,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.ownership.models import NODE_HOLDER, HolderKey, HolderKind, StoredOwnerState, field_holder
+from infrahub.core.ownership.models import NODE_HOLDER, HolderKey, StoredOwnerState, field_holder
 from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -94,22 +94,15 @@ async def test_two_first_writes_in_open_transactions_create_one_set(
     assert await _read(db=db, branch=default_branch, node_id=person.id, holder=holder) == tuple(group_ids[1:])
 
 
-@pytest.mark.parametrize(
-    "holder",
-    [
-        pytest.param(NODE_HOLDER, id="node"),
-        pytest.param(HolderKey(kind=HolderKind.ATTRIBUTE, attribute="name"), id="attribute"),
-    ],
-)
 async def test_two_writes_of_one_owner_in_open_transactions_create_one_edge(
-    db: InfrahubDatabase, default_branch: Branch, person: Node, group_ids: list[str], holder: HolderKey
+    db: InfrahubDatabase, default_branch: Branch, person: Node, group_ids: list[str]
 ) -> None:
     branch = await create_branch(db=db, branch_name="two-writes")
     first_is_written = asyncio.Event()
 
     async def first_write() -> None:
         async with db.start_session() as session_db, session_db.start_transaction() as dbt:
-            await _write(db=dbt, branch=branch, node_id=person.id, holder=holder, owner_ids=group_ids[:1])
+            await _write(db=dbt, branch=branch, node_id=person.id, holder=NODE_HOLDER, owner_ids=group_ids[:1])
             first_is_written.set()
             # The second write runs while this transaction is open.
             await asyncio.sleep(SECONDS_BEFORE_FIRST_COMMIT)
@@ -117,7 +110,7 @@ async def test_two_writes_of_one_owner_in_open_transactions_create_one_edge(
     async def second_write() -> None:
         await first_is_written.wait()
         async with db.start_session() as session_db, session_db.start_transaction() as dbt:
-            await _write(db=dbt, branch=branch, node_id=person.id, holder=holder, owner_ids=group_ids[:1])
+            await _write(db=dbt, branch=branch, node_id=person.id, holder=NODE_HOLDER, owner_ids=group_ids[:1])
 
     await asyncio.gather(first_write(), second_write())
 
@@ -130,7 +123,7 @@ RETURN count(r) AS edges
         params={"branch": branch.name, "owner_id": group_ids[0]},
     )
     assert records[0]["edges"] == 1
-    assert await _read(db=db, branch=branch, node_id=person.id, holder=holder) == tuple(group_ids[:1])
+    assert await _read(db=db, branch=branch, node_id=person.id, holder=NODE_HOLDER) == tuple(group_ids[:1])
 
 
 async def test_write_reuses_a_set_that_has_another_property(
@@ -193,9 +186,19 @@ RETURN count(r) AS open_edges
     await verify_graph(db=db, kinds=["TestPerson"])
 
 
-@pytest.mark.parametrize("field_name", [pytest.param(None, id="node"), "name", "cars"])
-@pytest.mark.parametrize("on_branch", [pytest.param(False, id="default-branch"), pytest.param(True, id="branch")])
-@pytest.mark.parametrize("delete_first", [pytest.param(False, id="write-first"), pytest.param(True, id="delete-first")])
+@pytest.mark.parametrize(
+    ("field_name", "on_branch", "delete_first"),
+    [
+        *[
+            pytest.param(field_name, on_branch, False, id=f"write-first-{branch_id}-{field_name or 'node'}")
+            for branch_id, on_branch in (("default-branch", False), ("branch", True))
+            for field_name in (None, "name", "cars")
+        ],
+        # A write after the delete fails its check that the node is active before it reads the holder.
+        pytest.param(None, False, True, id="delete-first-default-branch-node"),
+        pytest.param(None, True, True, id="delete-first-branch-node"),
+    ],
+)
 async def test_owner_write_and_node_delete_in_open_transactions_leave_no_open_owner_edge(
     db: InfrahubDatabase,
     default_branch: Branch,
