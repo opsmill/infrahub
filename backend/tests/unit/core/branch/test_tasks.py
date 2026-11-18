@@ -13,6 +13,7 @@ class RebaseKeepsBranchSideCase:
     conflict_level: ConflictLevel
     base_branch_action: DiffAction
     expected: bool
+    conflict_path: str = "data/node-id/name/value"
 
 
 REBASE_KEEPS_BRANCH_SIDE_CASES = [
@@ -27,6 +28,41 @@ REBASE_KEEPS_BRANCH_SIDE_CASES = [
         conflict_level=ConflictLevel.ATTRIBUTE_PROPERTY,
         base_branch_action=DiffAction.REMOVED,
         expected=False,
+    ),
+    RebaseKeepsBranchSideCase(
+        name="owners_of_a_node_updated_on_the_default_branch",
+        conflict_level=ConflictLevel.ATTRIBUTE_PROPERTY,
+        base_branch_action=DiffAction.UPDATED,
+        expected=False,
+        conflict_path="data/node-id/node_metadata__owners/property/HAS_OWNER",
+    ),
+    RebaseKeepsBranchSideCase(
+        name="sources_of_a_node_updated_on_the_default_branch",
+        conflict_level=ConflictLevel.ATTRIBUTE_PROPERTY,
+        base_branch_action=DiffAction.UPDATED,
+        expected=False,
+        conflict_path="data/node-id/node_metadata__sources/property/HAS_SOURCE",
+    ),
+    RebaseKeepsBranchSideCase(
+        name="source_of_an_attribute_updated_on_the_default_branch",
+        conflict_level=ConflictLevel.ATTRIBUTE_PROPERTY,
+        base_branch_action=DiffAction.UPDATED,
+        expected=True,
+        conflict_path="data/node-id/name/property/HAS_SOURCE",
+    ),
+    RebaseKeepsBranchSideCase(
+        name="owners_that_a_profile_gives_updated_on_the_default_branch",
+        conflict_level=ConflictLevel.ATTRIBUTE_PROPERTY,
+        base_branch_action=DiffAction.UPDATED,
+        expected=False,
+        conflict_path="data/node-id/node_metadata__target_owners/property/HAS_OWNER",
+    ),
+    RebaseKeepsBranchSideCase(
+        name="owners_of_an_attribute_updated_on_the_default_branch",
+        conflict_level=ConflictLevel.ATTRIBUTE_PROPERTY,
+        base_branch_action=DiffAction.UPDATED,
+        expected=False,
+        conflict_path="data/node-id/name/property/HAS_OWNER",
     ),
     RebaseKeepsBranchSideCase(
         name="relationship_property_updated_on_the_default_branch",
@@ -59,4 +95,9 @@ def test_rebase_keeps_branch_side(case: RebaseKeepsBranchSideCase) -> None:
         diff_branch_value="branch-value",
     )
 
-    assert _rebase_keeps_branch_side(conflict_level=case.conflict_level, conflict=conflict) is case.expected
+    assert (
+        _rebase_keeps_branch_side(
+            conflict_path=case.conflict_path, conflict_level=case.conflict_level, conflict=conflict
+        )
+        is case.expected
+    )

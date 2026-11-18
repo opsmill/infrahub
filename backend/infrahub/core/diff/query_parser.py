@@ -633,6 +633,9 @@ class DiffQueryParser:
 
     def _update_attribute_level(self, database_path: DatabasePath, diff_node: DiffNodeIntermediate) -> None:
         if "Attribute" in database_path.attribute_node.labels:
+            # The owners of an attribute are a set of edges, which the diff of owners reads as one list.
+            if database_path.property_type is DatabaseEdgeType.HAS_OWNER:
+                return
             diff_attribute = self._get_diff_attribute(database_path=database_path, diff_node=diff_node)
             self._update_attribute_property(database_path=database_path, diff_attribute=diff_attribute)
             return

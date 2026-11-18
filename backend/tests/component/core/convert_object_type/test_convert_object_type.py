@@ -3,16 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from infrahub_sdk.convert_object_type import ConversionFieldInput, ConversionFieldValue
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipCardinality
-from infrahub.core.convert_object_type.object_conversion import (
-    ConversionFieldInput,
-    ConversionFieldValue,
-    convert_and_validate_object_type,
-)
+from infrahub.core.convert_object_type.object_conversion import convert_and_validate_object_type
 from infrahub.core.convert_object_type.schema_mapping import SchemaMappingValue, get_schema_mapping
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager

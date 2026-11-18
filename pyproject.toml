@@ -913,6 +913,7 @@ allow-dunder-method-names = [
     ##################################################################################################
     "PLR0913",  # Too many arguments in function definition
     "PLR0917",  # Too many positional arguments
+    "PLR6301",  # Method could be a function, class method, or static method
     "RUF029",   # Function is declared `async`, but doesn't `await`
 ]
 

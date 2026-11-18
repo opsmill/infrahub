@@ -1,24 +1,31 @@
+from __future__ import annotations
+
 from contextlib import nullcontext
+from typing import TYPE_CHECKING
 
 from infrahub import lock
-from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, RepositoryDeliveryStatus
 from infrahub.core.convert_object_type.object_conversion import (
-    ConversionFieldInput,
     convert_object_type,
     validate_conversion,
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository, CoreRepositoryValidator, CoreUserValidator
-from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import DeliveryPendingError, ValidationError
-from infrahub.git.writeback.ports import DeliveryStatePort
 from infrahub.message_bus.messages import RefreshRegistryBranches
-from infrahub.repositories.create_repository import RepositoryFinalizer
 from infrahub.workers.dependencies import get_message_bus
+
+if TYPE_CHECKING:
+    from infrahub_sdk.convert_object_type import ConversionFieldInput
+
+    from infrahub.core.branch import Branch
+    from infrahub.core.node.create import AfterSave
+    from infrahub.core.schema import NodeSchema
+    from infrahub.database import InfrahubDatabase
+    from infrahub.git.writeback.ports import DeliveryStatePort
+    from infrahub.repositories.create_repository import RepositoryFinalizer
 
 
 async def convert_repository_type(
@@ -29,10 +36,12 @@ async def convert_repository_type(
     db: InfrahubDatabase,
     repository_post_creator: RepositoryFinalizer,
     delivery_state: DeliveryStatePort,
+    after_create: AfterSave | None = None,
 ) -> Node:
     """Delete the node and return the new created one. If creation fails, the node is not deleted, and raise an error.
 
     An extra check is performed on input node peers relationships to make sure they are still valid.
+    `after_create` runs after the new repository is saved, in the transaction of the conversion.
 
     Raises:
         ValidationError: The mapping sets a read-only attribute of the target kind.
@@ -90,6 +99,7 @@ async def convert_repository_type(
                     mapping=mapping,
                     branch=branch,
                     db=dbt,
+                    after_create=after_create,
                 )
 
                 for user_validator in user_validators:

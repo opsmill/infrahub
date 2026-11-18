@@ -217,11 +217,11 @@ class NodeDuplicateQuery(MigrationSelectionQuery):
         }
 
         // Process Outbound Relationship
-        MATCH (active_node)-[]->(peer_node)
-        WITH DISTINCT active_node, new_node, peer_node
-        CALL (active_node, peer_node) {
+        MATCH (active_node)-[edge]->(peer_node)
+        WITH DISTINCT active_node, new_node, peer_node, type(edge) AS edge_type
+        CALL (active_node, peer_node, edge_type) {
             MATCH (active_node)-[r]->(peer_node)
-            WHERE %(branch_filter)s
+            WHERE type(r) = edge_type AND %(branch_filter)s
             RETURN r as rel_outband
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
@@ -239,11 +239,11 @@ class NodeDuplicateQuery(MigrationSelectionQuery):
         }
         WITH DISTINCT active_node, new_node
         // Process Inbound Relationship
-        MATCH (active_node)<-[]-(peer_node)
-        WITH DISTINCT active_node, new_node, peer_node
-        CALL (active_node, peer_node) {
+        MATCH (active_node)<-[edge]-(peer_node)
+        WITH DISTINCT active_node, new_node, peer_node, type(edge) AS edge_type
+        CALL (active_node, peer_node, edge_type) {
             MATCH (active_node)<-[r]-(peer_node)
-            WHERE %(branch_filter)s
+            WHERE type(r) = edge_type AND %(branch_filter)s
             RETURN r as rel_inband
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
@@ -258,6 +258,15 @@ class NodeDuplicateQuery(MigrationSelectionQuery):
             WITH rel_inband
             WHERE rel_inband.branch IN ["-global-", $branch]
             SET rel_inband.to = $current_time, rel_inband.to_user_id = $user_id
+        }
+        // When both ends of an edge migrate, the outbound step of the peer leaves a copy of the edge on this
+        // superseded vertex, and the copy must not stay there after the step above moved it to the new vertex
+        CALL (rel_inband, active_node, peer_node) {
+            WITH rel_inband, active_node, peer_node
+            WHERE rel_inband.from = $current_time
+            MATCH (active_node)<-[copied]-(peer_node)
+            WHERE type(copied) = type(rel_inband) AND copied.from = $current_time
+            DELETE copied
         }
         RETURN DISTINCT new_node
         """ % {

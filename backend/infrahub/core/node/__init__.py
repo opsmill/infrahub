@@ -8,7 +8,7 @@ from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core import registry
-from infrahub.core.changelog.models import NodeChangelog
+from infrahub.core.changelog.models import AttributeChangelog, NodeChangelog
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
     OBJECT_TEMPLATE_RELATIONSHIP_NAME,
@@ -22,10 +22,12 @@ from infrahub.core.constants import (
     RelationshipCardinality,
     RelationshipKind,
 )
-from infrahub.core.constants.schema import SchemaElementPathType
+from infrahub.core.constants.schema import NodeProperty, SchemaElementPathType
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
 from infrahub.core.mutation_context import NodeMutationContext
+from infrahub.core.ownership.input import check_owner_kinds
+from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.protocols_base import CoreNode
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeUpdateMetadataQuery
 from infrahub.core.query.node_agnostic_retirement import RetireNodeAgnosticFieldsQuery
@@ -1225,6 +1227,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             await self.add_human_friendly_id(db=db)
             await self.add_display_label(db=db)
 
+        await self._check_property_owner_kinds(db=db)
         query = await NodeCreateAllQuery.init(db=db, node=self, at=create_at, user_id=user_id)
         await query.execute(db=db)
 
@@ -1263,6 +1266,29 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         await self._set_changelog_labels(db=db, node_changelog=node_changelog)
         return node_changelog
+
+    async def _check_property_owner_kinds(self, db: InfrahubDatabase) -> None:
+        """Refuse the create when an attribute or a link has an owner that is not an account or an account group.
+
+        Raises:
+            ValidationError: When an owner is not found, or is not an account or an account group.
+
+        """
+        owner_ids = {
+            str(attr.owner_id) for name in self._attributes if (attr := self.get_attribute(name=name)).owner_id
+        }
+        owner_ids |= {
+            str(rel.owner_id)
+            for name in self._relationships
+            for rel in self.get_relationship(name=name)._relationships
+            if rel.owner_id
+        }
+        if owner_ids:
+            await check_owner_kinds(
+                lookup=OwnershipRepository(db=db, branch=self._branch, at=None),
+                owner_ids=sorted(owner_ids),
+                path=NodeProperty.OWNER.value,
+            )
 
     async def _set_changelog_labels(self, db: InfrahubDatabase, node_changelog: NodeChangelog) -> None:
         """Fill the changelog with this node's display label and the HFID it holds.
@@ -1339,6 +1365,18 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         if parent := await relationship_manager.get_parent(db=db):
             node_changelog.add_parent_from_relationship(parent=parent)
 
+    async def add_changelog_attribute(self, db: InfrahubDatabase, attribute: AttributeChangelog) -> None:
+        """Add a change that the last save did not write to the changelog of that save.
+
+        Raises:
+            InitializationError: When the node has not been saved.
+
+        """
+        node_changelog = self.node_changelog
+        node_changelog.add_attribute(attribute=attribute)
+        if node_changelog.has_changes and not node_changelog.parent:
+            await self._add_parent_to_changelog(db=db, node_changelog=node_changelog, processed_relationships=[])
+
     async def save(
         self,
         db: InfrahubDatabase,
@@ -1406,6 +1444,10 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         deleted_relationships_changelogs = delete_query.get_deleted_relationships_changelog(self._schema)
         for relationship_changelog in deleted_relationships_changelogs:
             node_changelog.add_relationship(relationship_changelog=relationship_changelog)
+
+        await OwnershipRepository(db=db, branch=self._branch, at=None).close_node_owner_edges(
+            node_id=self.get_id(), write_branch=branch, at=delete_at, user_id=user_id
+        )
 
         query = await NodeDeleteQuery.init(db=db, node=self, at=delete_at, user_id=user_id)
         await query.execute(db=db)

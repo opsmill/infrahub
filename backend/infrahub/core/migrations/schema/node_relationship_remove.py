@@ -14,6 +14,7 @@ from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import retry_db_transaction
 
 from ..query import MigrationBaseQuery
+from ..query.owner_set_attribute import OwnerSetKeyMigrationQuery
 from ..shared import MigrationResult, RelationshipSchemaMigration
 
 if TYPE_CHECKING:
@@ -283,23 +284,44 @@ class NodeRelationshipRemoveMigration(RelationshipSchemaMigration):
         if node_kind in kinds_to_skip or previous_relationship.peer in kinds_to_skip:
             return None
 
-        # Expand the population to the profile and object-template copies of the kind, and for a generic
-        # to the profile/template copies of the kinds that inherit it.
-        node_kinds: list[str] = [node_kind, f"Profile{node_kind}", f"Template{node_kind}"]
-        schema = db.schema.get(name=node_kind, branch=branch, duplicate=False)
-        if isinstance(schema, GenericSchema):
-            for inheriting_kind in schema.used_by:
-                node_kinds.extend([f"Profile{inheriting_kind}", f"Template{inheriting_kind}"])
-
         # Profiles and object templates replicate the relationship under "profile_"/"template_"-prefixed
         # identifiers, and the schema diff never emits a migration for those kinds, so all three close.
         rel_identifiers = [identifier, f"profile_{identifier}", f"template_{identifier}"]
 
         return RelationshipRemoveQueryParams(
-            node_kinds=node_kinds,
+            node_kinds=self._get_node_kinds(db=db, branch=branch),
             kinds_to_skip=sorted(kinds_to_skip),
             rel_identifiers=rel_identifiers,
         )
+
+    def _get_node_kinds(self, db: InfrahubDatabase, branch: Branch) -> list[str]:
+        """Return the kind of the relationship, with the profile and object-template copies of the kind.
+
+        For a generic, the copies of the kinds that inherit it are added.
+        """
+        node_kind = self.previous_schema.kind
+        node_kinds: list[str] = [node_kind, f"Profile{node_kind}", f"Template{node_kind}"]
+        schema = db.schema.get(name=node_kind, branch=branch, duplicate=False)
+        if isinstance(schema, GenericSchema):
+            for inheriting_kind in schema.used_by:
+                node_kinds.extend([f"Profile{inheriting_kind}", f"Template{inheriting_kind}"])
+        return node_kinds
+
+    def _get_owner_set_kinds_to_skip(self, db: InfrahubDatabase, branch: Branch) -> list[str]:
+        """Return the kinds that still declare the relationship with the same direction, with their copies.
+
+        The key of a set of owners holds the direction, so the other side of the relationship keeps no set.
+        """
+        previous_relationship = self.previous_relationship_schema
+        kinds_to_skip: list[str] = []
+        for other_schema in db.schema.get_full(branch=branch).values():
+            if isinstance(other_schema, (NodeSchema, GenericSchema)) and any(
+                rel.identifier == previous_relationship.get_identifier()
+                and rel.direction == previous_relationship.direction
+                for rel in other_schema.relationships
+            ):
+                kinds_to_skip.extend([other_schema.kind, f"Profile{other_schema.kind}", f"Template{other_schema.kind}"])
+        return kinds_to_skip
 
     @retry_db_transaction(name="relationship_remove_schema_migration")
     async def execute(
@@ -311,21 +333,35 @@ class NodeRelationshipRemoveMigration(RelationshipSchemaMigration):
         result = MigrationResult()
 
         query_params = self._build_query_params(db=migration_input.db, branch=branch)
-        if query_params is None:
-            return result
+        previous_relationship = self.previous_relationship_schema
 
         async with migration_input.db.start_transaction() as ts:
-            query = await NodeRelationshipRemoveMigrationQuery.init(
+            if query_params is not None:
+                query = await NodeRelationshipRemoveMigrationQuery.init(
+                    db=ts,
+                    branch=branch,
+                    at=migration_input.at,
+                    migration=self,
+                    user_id=migration_input.user_id,
+                    operation_ats=migration_input.operation_ats,
+                    query_params=query_params,
+                    node_ids=migration_input.node_ids,
+                )
+                await query.execute(db=ts)
+                result.nbr_migrations_executed += query.get_nbr_migrations_executed()
+            # The owners of the field go with it, also when the other side keeps the data of the relationship.
+            owner_sets_query = await OwnerSetKeyMigrationQuery.init(
                 db=ts,
                 branch=branch,
                 at=migration_input.at,
-                migration=self,
                 user_id=migration_input.user_id,
-                operation_ats=migration_input.operation_ats,
-                query_params=query_params,
-                node_ids=migration_input.node_ids,
+                node_kinds=self._get_node_kinds(db=migration_input.db, branch=branch),
+                set_key={
+                    "identifier": previous_relationship.get_identifier(),
+                    "direction": previous_relationship.direction.value,
+                },
+                kinds_to_skip=self._get_owner_set_kinds_to_skip(db=migration_input.db, branch=branch),
             )
-            await query.execute(db=ts)
-            result.nbr_migrations_executed += query.get_nbr_migrations_executed()
+            await owner_sets_query.execute(db=ts)
 
         return result

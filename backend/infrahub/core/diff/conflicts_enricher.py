@@ -320,6 +320,12 @@ class ConflictsEnricher:
             return True
         if {base_property.new_value, branch_property.new_value} <= {NULL_VALUE, None}:
             return True
+        # An update that keeps the value changes what the value does not show, such as the origin of a list of owners.
+        if any(
+            prop.action is DiffAction.UPDATED and prop.previous_value == prop.new_value
+            for prop in (base_property, branch_property)
+        ):
+            return True
         if (
             base_property.action is DiffAction.UNCHANGED
             and base_property.previous_value == branch_property.previous_value

@@ -79,6 +79,7 @@ from infrahub.lock import initialize_lock
 from .constants import APPLIED_BADGE, ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
 from .db_commands.check_inheritance import check_inheritance
 from .db_commands.clean_duplicate_schema_fields import clean_duplicate_schema_fields
+from .db_commands.ownership_report import ownership_report
 from .db_commands.reset import (
     get_configured_task_manager_database_url,
     get_task_manager_database_dialect,
@@ -688,6 +689,30 @@ async def check_duplicate_schema_fields_cmd(
     success = await clean_duplicate_schema_fields(db=dbdriver, fix=fix)
     if not success:
         raise typer.Exit(code=1)
+
+    await dbdriver.close()
+
+
+@app.command(name="ownership-report")
+async def ownership_report_cmd(
+    ctx: typer.Context,
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """List the data that the upgrade to node owners changes.
+
+    The report lists the attributes that a repository owns, the relationships whose links have owners, and the
+    attributes with values that have `is_protected` set. Run this command before the upgrade. It changes no data.
+    """
+    logging.getLogger("infrahub").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("prefect").setLevel(logging.ERROR)
+
+    config.load_and_exit(config_file_name=config_file)
+
+    context: CliContext = ctx.obj
+    dbdriver = await context.init_db(retry=1)
+
+    await ownership_report(db=dbdriver)
 
     await dbdriver.close()
 

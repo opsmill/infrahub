@@ -60,6 +60,7 @@ rel_indexes: list[IndexItem] = [
     IndexItem(name="owner_branch", label="HAS_OWNER", properties=["branch"], type=IndexType.RANGE),
     IndexItem(name="is_part_of_from", label="IS_PART_OF", properties=["from"], type=IndexType.RANGE),
     IndexItem(name="is_part_of_to", label="IS_PART_OF", properties=["to"], type=IndexType.RANGE),
+    IndexItem(name="no_owner_branch", label="HAS_NO_OWNER", properties=["branch"], type=IndexType.RANGE),
     IndexItem(name="is_part_of_branch", label="IS_PART_OF", properties=["branch"], type=IndexType.RANGE),
     IndexItem(name="reserved_from", label="IS_RESERVED", properties=["from"], type=IndexType.RANGE),
     IndexItem(name="reserved_to", label="IS_RESERVED", properties=["to"], type=IndexType.RANGE),

@@ -106,8 +106,7 @@ async def load_data(
         random_tags = [tags[tag] for tag in random.choices(TAGS, k=3)]
         random_repo = repository[random.choice(list(repository.keys()))]
         random_repo_tags = [
-            {"id": tags[tag].id, "_relation__owner": random_repo.id, "_relation__source": random_repo.id}
-            for tag in random.choices(TAGS, k=3)
+            {"id": tags[tag].id, "_relation__source": random_repo.id} for tag in random.choices(TAGS, k=3)
         ]
 
         name = f"query-{nbr_query:04}"
@@ -115,10 +114,10 @@ async def load_data(
         obj = await Node.init(db=db, schema=gqlquery_schema, branch=default_branch)
         await obj.new(
             db=db,
-            name={"value": name, "source": random_repo.id, "owner": random_repo.id},
+            name={"value": name, "source": random_repo.id},
             query=query_str,
             tags=random_repo_tags,
-            repository={"id": random_repo.id, "_relation__owner": random_repo.id, "_relation__source": random_repo.id},
+            repository={"id": random_repo.id, "_relation__source": random_repo.id},
         )
         await obj.save(db=db)
         gqlquery[name] = obj

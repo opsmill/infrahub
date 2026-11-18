@@ -1,23 +1,28 @@
-from typing import Any, assert_never
+from __future__ import annotations
 
-from infrahub_sdk.convert_object_type import ConversionFieldInput, ConversionFieldValue
+from typing import TYPE_CHECKING, Any, assert_never
 
 from infrahub.core.attribute import BaseAttribute
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import BranchSupportType, RelationshipCardinality
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
 from infrahub.core.query.relationship import GetAllPeersIds
 from infrahub.core.query.resource_manager import IPPoolChangeReserved, NumberPoolChangeReserved
 from infrahub.core.relationship import RelationshipManager
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import InfrahubDatabase
 from infrahub.message_bus.messages.refresh_registry_branches import RefreshRegistryBranches
 from infrahub.tasks.registry import update_branch_registry
 from infrahub.workers.dependencies import get_message_bus
+
+if TYPE_CHECKING:
+    from infrahub_sdk.convert_object_type import ConversionFieldInput, ConversionFieldValue
+
+    from infrahub.core.node import Node
+    from infrahub.core.node.create import AfterSave
+    from infrahub.database import InfrahubDatabase
 
 
 def _get_conversion_field_raw_value(conv_field_value: ConversionFieldValue) -> Any:
@@ -121,11 +126,21 @@ async def convert_and_validate_object_type(
     mapping: dict[str, ConversionFieldInput],
     branch: Branch,
     db: InfrahubDatabase,
+    after_create: AfterSave | None = None,
 ) -> Node:
+    """Convert the node in one transaction, and check the relationships of its peers.
+
+    `after_create` runs after the new node is saved, in the transaction of the conversion.
+    """
     async with db.start_transaction() as dbt:
         timestamp_before_conversion = Timestamp()
         new_node = await convert_object_type(
-            node=node, target_schema=target_schema, mapping=mapping, branch=branch, db=dbt
+            node=node,
+            target_schema=target_schema,
+            mapping=mapping,
+            branch=branch,
+            db=dbt,
+            after_create=after_create,
         )
         await validate_conversion(
             deleted_node=node, branch=branch, db=dbt, timestamp_before_conversion=timestamp_before_conversion
@@ -144,10 +159,12 @@ async def convert_object_type(
     mapping: dict[str, ConversionFieldInput],
     branch: Branch,
     db: InfrahubDatabase,
+    after_create: AfterSave | None = None,
 ) -> Node:
     """Delete the node and return the new created one. If creation fails, the node is not deleted, and raise an error.
 
     An extra check is performed on input node peers relationships to make sure they are still valid.
+    `after_create` runs after the new node is saved, in the transaction of the save.
 
     Raises:
         ValueError: When the node schema is not a `NodeSchema`, when deletion does not return exactly one node,
@@ -191,6 +208,7 @@ async def convert_object_type(
         db=db,
         branch=branch,
         schema=target_schema,
+        after_save=after_create,
     )
 
     # The converted node gets a new id, so its pool reservations must move to that id.
