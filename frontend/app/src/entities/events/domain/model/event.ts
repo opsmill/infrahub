@@ -34,10 +34,19 @@ export type GroupAutoCreateEvent =
   | GroupAutoCreateRejectedEventType
   | GroupAutoCreateCappedEventType;
 
-// The events query requests only the common event fields for proposed change events.
+// The events query selects only these shared event fields for proposed change events.
 type CommonEventFields<T extends EventNodeInterface & { __typename: string }> = Pick<
   T,
-  "__typename" | keyof EventNodeInterface
+  | "__typename"
+  | "id"
+  | "event"
+  | "branch"
+  | "occurred_at"
+  | "level"
+  | "account_id"
+  | "primary_node"
+  | "related_nodes"
+  | "has_children"
 >;
 
 export type ProposedChangeEvent =

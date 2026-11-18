@@ -86,7 +86,6 @@ describe("EventCard", () => {
       primary_node: null,
       related_nodes: [],
       has_children: false,
-      parent_id: null,
     };
 
     // WHEN

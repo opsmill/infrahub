@@ -3,6 +3,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi 
 import { store } from "@/shared/stores";
 
 import { useNodeLabel } from "@/entities/nodes/object/ui/queries/get-display-label.query";
+import { PERMISSION_ALLOW_ALL } from "@/entities/permission/domain/model/permission";
+import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import { render } from "../../../../../tests/components/render";
@@ -10,6 +12,9 @@ import { generateNodeSchema } from "../../../../../tests/fake/schema";
 import { Thread } from "./thread";
 
 vi.mock("@/entities/nodes/object/ui/queries/get-display-label.query");
+vi.mock("@/entities/permission/ui/queries/get-object-permissions.query", () => ({
+  useGetObjectPermissions: vi.fn(),
+}));
 
 const initialUrl = window.location.pathname + window.location.search;
 
@@ -57,6 +62,10 @@ describe("Thread", () => {
       isPending: false,
       error: null,
     } as unknown as ReturnType<typeof useNodeLabel>);
+    vi.mocked(useGetObjectPermissions).mockReturnValue({
+      data: PERMISSION_ALLOW_ALL,
+      isPending: false,
+    } as unknown as ReturnType<typeof useGetObjectPermissions>);
   });
 
   afterEach(() => {

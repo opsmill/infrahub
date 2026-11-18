@@ -1,12 +1,17 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { ProposedChangeEvent } from "@/entities/events/domain/model/event";
+import { PERMISSION_ALLOW_ALL } from "@/entities/permission/domain/model/permission";
+import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
 import { useGetProposedChangeThread } from "@/entities/proposed-changes/ui/queries/get-proposed-change-thread.query";
 
 import { render } from "../../../../tests/components/render";
 import { Event } from "./global-event";
 
 vi.mock("@/entities/proposed-changes/ui/queries/get-proposed-change-thread.query");
+vi.mock("@/entities/permission/ui/queries/get-object-permissions.query", () => ({
+  useGetObjectPermissions: vi.fn(),
+}));
 
 const threadId = "18a3e1d1-efbe-bd53-38db-c51848891c21";
 
@@ -19,10 +24,16 @@ const commonEvent = {
   primary_node: null,
   related_nodes: [],
   has_children: false,
-  parent_id: null,
 };
 
 describe("Event", () => {
+  beforeEach(() => {
+    vi.mocked(useGetObjectPermissions).mockReturnValue({
+      data: PERMISSION_ALLOW_ALL,
+      isPending: false,
+    } as unknown as ReturnType<typeof useGetObjectPermissions>);
+  });
+
   afterEach(() => {
     vi.resetAllMocks();
   });
