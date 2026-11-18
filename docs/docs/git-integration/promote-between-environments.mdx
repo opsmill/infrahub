@@ -4,7 +4,6 @@ title: Promote changes between environments
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
-import PromotionReadOnly from '../media/promotion-read-only.svg';
 
 You run one Infrahub instance per environment, and promote a change from development to the next environments, ending in production. Each instance imports its own long-lived Git branch of one repository. [Multiple environments from a single repository](./multi-environment.mdx) explains the workflow, the reasons for each setting and the rules for the team.
 
@@ -15,7 +14,7 @@ The steps depend on the type of the repository:
 
 ## With read-write repositories
 
-The example uses three instances: development imports the Git branch `develop`, integration imports `integration`, and production imports `production`.
+The example uses three instances: development imports the Git branch `develop`, integration imports `integration`, and production imports `production`. The promotion steps are steps 3 to 5 of the [read-write diagram](./multi-environment.mdx#how-you-promote-a-change-between-environments).
 
 ### Prerequisites
 
@@ -147,9 +146,7 @@ Keep one open promotion branch per target instance. Merge or delete it before yo
 
 The example uses three environments: development imports the Git branch `develop`, staging imports `staging`, and production imports `main`. Each instance has a read-only repository whose `ref` on `main` is the Git branch of its environment.
 
-<PromotionReadOnly role="img" style={{width: '100%', height: 'auto'}} />
-
-Steps 1 to 5 of the diagram develop a change on the development instance, as described in [develop changes from a Git repository](./develop-changes.mdx#with-a-read-only-repository). Steps 6 to 10 promote the change to staging, then repeat for production. Hover over a step to show only that step. Infrahub never writes to Git in this workflow.
+The promotion steps are steps 6 to 10 of the [read-only diagram](./multi-environment.mdx#alternative-read-only-repositories). Develop the change first, as described in [develop changes from a Git repository](./develop-changes.mdx#with-a-read-only-repository). Infrahub never writes to Git in this workflow.
 
 Git and Infrahub both have branches, a `main` and a merge step. In this section, a **Git branch** and a **merge request** are on your Git host. An **Infrahub branch** and a **Proposed Change** are inside one instance. The Git branch `main` of production is not related to the Infrahub branch `main` of any instance.
 

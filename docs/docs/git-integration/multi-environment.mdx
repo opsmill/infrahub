@@ -3,6 +3,7 @@ title: Multiple environments from a single repository
 ---
 
 import PromotionReadWrite from '../media/promotion-read-write.svg';
+import PromotionReadOnly from '../media/promotion-read-only.svg';
 
 You can run one Infrahub instance per environment, such as development, integration and production, from one Git repository. You then promote each change that you make in the repository through each environment, ending in production. The repository holds one long-lived Git branch per environment, and each instance imports its own branch.
 
@@ -105,6 +106,26 @@ A [read-only repository](./overview.mdx#read-only-vs-core) imports one Git branc
 | Work on each target instance | Merge the Proposed Change | Create a branch, set its `ref` to the source branch, merge the merge request, set the `ref` to the target branch, then merge the Proposed Change, manually or with a pipeline that you maintain |
 | Git access that Infrahub needs | Push to the long-lived branch of each environment | Read |
 | What enforces the order of the environments | Nothing: you create each promotion branch from the correct source branch | The Git host |
+
+The diagram shows the read-only workflow with three environments: development imports the Git branch `develop`, staging imports `staging`, and production imports `main`. Hover over a step to show only that step. Steps 1 to 5 develop a change on the development instance:
+
+<PromotionReadOnly role="img" style={{width: '100%', height: 'auto'}} />
+
+1. A developer creates the Git branch `feature/x` from `develop`.
+2. On the development instance, the developer creates an Infrahub branch for testing and sets its `ref` to `feature/x`. After each push to `feature/x`, the developer runs **Import latest commit** on that Infrahub branch.
+3. A reviewer merges the merge request from `feature/x` into `develop` on the Git host.
+4. The developer sets the `ref` on the Infrahub branch back to `develop`.
+5. A reviewer merges the Proposed Change of the Infrahub branch into `main`.
+
+Steps 6 to 10 promote the change to staging, then to production:
+
+6. A user opens a merge request from `develop` into `staging` on the Git host, and does not merge it yet.
+7. On the staging instance, the user creates an Infrahub branch and sets its `ref` to `develop`, the source branch of the merge request.
+8. When the import succeeds, a reviewer merges the merge request.
+9. The user sets the `ref` on the Infrahub branch to `staging`, the target branch of the merge request.
+10. A reviewer merges the Proposed Change of the Infrahub branch into `main`.
+
+The promotion to production repeats steps 6 to 10, from `staging` into `main`.
 
 To set up this workflow, follow [promote changes between environments](./promote-between-environments.mdx#with-read-only-repositories).
 

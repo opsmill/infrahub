@@ -2,8 +2,6 @@
 title: Develop changes from a Git repository
 ---
 
-import PromotionReadOnly from '../media/promotion-read-only.svg';
-
 You change the schemas, objects, Transformations, Generators and other [`.infrahub.yml`](./infrahub-yml.mdx) content of an instance in Git. You then test the change on an Infrahub branch, and merge it into `main` of the instance through a [Proposed Change](../proposed-changes/overview.mdx). You never change `main` directly, because an import can fail, and you cannot undo a failed import on `main`.
 
 The steps depend on the type of the repository:
@@ -14,6 +12,8 @@ The steps depend on the type of the repository:
 The example on this page adds a `color` attribute to the built-in Tag. To promote the change to other instances afterwards, follow [promote changes between environments](./promote-between-environments.mdx).
 
 ## With a read-write repository
+
+These steps are steps 1 and 2 of the [read-write diagram](./multi-environment.mdx#how-you-promote-a-change-between-environments).
 
 ### Prerequisites
 
@@ -80,9 +80,7 @@ With `INFRAHUB_DELETE_BRANCH_AFTER_MERGE` and `INFRAHUB_GIT_DELETE_GIT_BRANCH_AF
 
 A read-only repository imports only the Git branch named in its `ref`, and only when you run **Import latest commit** or change the `ref`. The `ref` is recorded per Infrahub branch. You import your Git branch onto an Infrahub branch by changing the `ref` on that Infrahub branch only, so `main` stays unchanged.
 
-<PromotionReadOnly role="img" style={{width: '100%', height: 'auto'}} />
-
-Steps 1 to 5 of the diagram develop a change on the development instance. Hover over a step to show only that step. Steps 6 to 10 promote the change, as described in [promote changes between environments](./promote-between-environments.mdx#with-read-only-repositories).
+These steps are steps 1 to 5 of the [read-only diagram](./multi-environment.mdx#alternative-read-only-repositories). To promote the change afterwards, follow [promote changes between environments](./promote-between-environments.mdx#with-read-only-repositories).
 
 ### Prerequisites
 
