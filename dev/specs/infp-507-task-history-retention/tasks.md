@@ -98,7 +98,7 @@ Run through the `test-dataset` workflow (`test_filter=...`) on restored backups 
 
 ### Prerequisite
 
-- [X] T025 [US2] Merge PR #10379 (count only when requested, plan per query) into `stable`, or carry its commits into this branch, before T030-T033; if carried, keep its tests. Carried into this branch; PR #10379 is still an open draft
+- [X] T025 [US2] Merge PR #10379 (count only when requested, plan per query) into `stable`, or carry its commits into this branch, before T030-T033; if carried, keep its tests. Carried into this branch; PR #10379 is still an open draft. The carried commits are delivered with User Story 2 in [opsmill/infrahub#11649](https://github.com/opsmill/infrahub/pull/11649)
 
 ### Tests for User Story 2
 
@@ -196,7 +196,7 @@ Run through the `test-dataset` workflow (`test_filter=...`) on restored backups 
 - **Foundational (T003-T007)**: after Setup; blocks US1, US3, US4.
 - **US1 (T008-T024)**: after Foundational. T014 → T015 → T016 → T017 → T018, T019. Tests T008-T012 are written first and fail until T014-T019 land; T013 after T018. Evidence T021-T024 after T019 on a built image; the separate-container case in T021 also needs T048 (US4). T066 and T067 after T062 and T065; T068 and T069 after T066, and T069 before the evidence run of T022.
 - **US2 (T025-T038)**: independent of Foundational except T044 (US3). T025 first; T030-T033 after T025; T034 after T033; T035 after T034. Evidence T037 any time (lands PR #33), T038 after T033 and T034 on a built image.
-- **US3 (T040-T046)**: after Foundational and after US2 has merged (a longer retention with today's queries makes the page slower). T043 (filling the list) before T040 and T041 pass. Evidence T046 after T044. T071 once the Enterprise Compose file's pointer to this repository includes opsmill/infrahub#11289; T072 with opsmill/infrahub-helm#100.
+- **US3 (T040-T046)**: after Foundational and after US2 has merged (a longer retention with today's queries makes the page slower). US2 is delivered in [opsmill/infrahub#11649](https://github.com/opsmill/infrahub/pull/11649), and US1, US3 and US4 in [opsmill/infrahub#11289](https://github.com/opsmill/infrahub/pull/11289), so [opsmill/infrahub#11649](https://github.com/opsmill/infrahub/pull/11649) merges first. T043 (filling the list) before T040 and T041 pass. Evidence T046 after T044. T071 once the Enterprise Compose file's pointer to this repository includes opsmill/infrahub#11289; T072 with opsmill/infrahub-helm#100.
 - **US4 (T047-T050)**: after Foundational; T048 before T049 and T050.
 - **Polish (T051-T059, T073)**: T051-T056 alongside US1 and US3; T073 after T066 and T070; T057 (evidence run on the release candidate), then T058-T059 last.
 
@@ -218,3 +218,5 @@ Each slice ships only with its private-test evidence (the "Evidence" block of it
 2. **Then US2**: the Activities page fix, independent of the retention values.
 3. **Then US3**: configurable activity log retention, once US2 is merged.
 4. **Documentation** ships with US1 and US3.
+
+Two pull requests deliver these steps: [opsmill/infrahub#11649](https://github.com/opsmill/infrahub/pull/11649) delivers US2, and [opsmill/infrahub#11289](https://github.com/opsmill/infrahub/pull/11289) delivers US1, US3, US4 and the documentation. [opsmill/infrahub#11649](https://github.com/opsmill/infrahub/pull/11649) merges first.

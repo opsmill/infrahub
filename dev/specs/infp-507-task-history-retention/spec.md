@@ -284,7 +284,7 @@ From the design doc's "Design changes for implementation" list, entries of 8 and
 - **Changes outside this repository, in the same release**: the Enterprise Docker Compose file in opsmill/infrahub-private (30-day activity log; prepared, and waits until its pointer to this repository includes [opsmill/infrahub#11289](https://github.com/opsmill/infrahub/pull/11289)), and the Helm chart in [opsmill/infrahub-helm#100](https://github.com/opsmill/infrahub-helm/pull/100) (30-day activity log in the Enterprise chart, `--no-task-history-cleanup` in the pre-upgrade hook).
 - Non-blocking: whether runs accumulate in SCHEDULED, LATE, PAUSED or CANCELLING, and whether runs legitimately stay RUNNING more than 2 days.
 - **Release evidence**: the private performance tests (Activities queries, task history retention, the cleanup step, activity log retention, cleanups under load, database size and dead space) must pass and be attached to each part's PR and to INFP-507; PR #33 in opsmill/infrahub-private-tests lands first.
-- Delivery order: part 1 task history (User Story 1, with the background-services command of User Story 4), part 2 Activities page (User Story 2), part 3 activity log retention (User Story 3), part 4 documentation with parts 1 and 3. Part 2 lands before part 3.
+- Delivery order: part 1 task history (User Story 1, with the background-services command of User Story 4), part 2 Activities page (User Story 2), part 3 activity log retention (User Story 3), part 4 documentation with parts 1 and 3. Part 2 lands before part 3. Part 2 is delivered in [opsmill/infrahub#11649](https://github.com/opsmill/infrahub/pull/11649), and parts 1, 3 and 4 in [opsmill/infrahub#11289](https://github.com/opsmill/infrahub/pull/11289).
 
 ## Out of Scope
 
