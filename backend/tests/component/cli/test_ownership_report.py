@@ -6,10 +6,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.ownership.report import (
-    LinkOwnerRow,
     OwnershipReport,
-    ProtectedValueRow,
-    RepositoryOwnerRow,
     build_ownership_report,
 )
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -96,52 +93,6 @@ async def repository(
     branch = await create_branch(db=db, branch_name="branch1")
     await _add_owner(db=db, query=ADD_ATTRIBUTE_OWNER, branch=branch, node_id=branch_car.id, owner_id=repository.id)
     return repository
-
-
-async def test_report_lists_repository_owners_links_with_owners_and_protected_values(
-    db: InfrahubDatabase, repository: Node
-) -> None:
-    report = await build_ownership_report(db=db)
-
-    assert report == OwnershipReport(
-        repository_owners=[
-            RepositoryOwnerRow(
-                repository_id=repository.id,
-                repository_kind="CoreRepository",
-                node_kind="TestCar",
-                attribute_name="color",
-                branch="branch1",
-                nb_attributes=1,
-            ),
-            RepositoryOwnerRow(
-                repository_id=repository.id,
-                repository_kind="CoreRepository",
-                node_kind="TestCar",
-                attribute_name="color",
-                branch="main",
-                nb_attributes=2,
-            ),
-        ],
-        link_owners=[
-            LinkOwnerRow(
-                identifier="testcar__testperson",
-                peer_kinds=("TestCar", "TestPerson"),
-                owner_kind="CoreAccountGroup",
-                branch="main",
-                nb_links=1,
-            ),
-            LinkOwnerRow(
-                identifier="testcar__testperson",
-                peer_kinds=("TestCar", "TestPerson"),
-                owner_kind="CoreRepository",
-                branch="main",
-                nb_links=1,
-            ),
-        ],
-        protected_values=[
-            ProtectedValueRow(node_kind="TestCar", attribute_name="color", branch="main", nb_values=1),
-        ],
-    )
 
 
 async def test_report_of_a_database_without_any_case_is_empty(

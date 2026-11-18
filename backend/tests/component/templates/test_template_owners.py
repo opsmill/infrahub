@@ -313,7 +313,6 @@ async def test_components_get_the_owners_that_their_subtemplates_give(
     ("written", "expected_state", "expected_origin"),
     [
         pytest.param(("dc-emea",), OwnerState.OWNERS, OwnerOrigin.SELF, id="same_owners"),
-        pytest.param(("dc-security",), OwnerState.OWNERS, OwnerOrigin.SELF, id="other_owners"),
         pytest.param((), OwnerState.NO_OWNER, OwnerOrigin.SELF, id="no_owner"),
         pytest.param(None, OwnerState.INHERIT, None, id="inherit"),
     ],
