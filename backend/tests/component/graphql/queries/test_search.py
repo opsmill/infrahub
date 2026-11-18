@@ -6,10 +6,13 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
@@ -17,7 +20,7 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.queries.search import _collapse_ipv6
 from tests.constants import TestKind
 from tests.helpers.graphql import graphql
-from tests.helpers.schema import CAR_SCHEMA, TICKET, load_schema, save_schema
+from tests.helpers.schema import CAR_SCHEMA, TAG, TICKET, load_schema, save_schema
 from tests.helpers.schema.agnostic_retirement import AGNOSTIC_BEACON, BEACON_KIND
 
 if TYPE_CHECKING:
@@ -488,7 +491,7 @@ SEARCHED_TICKET.attributes.extend(
 )
 
 
-@dataclass
+@dataclass(frozen=True)
 class SearchDataset:
     ids: dict[str, str] = field(default_factory=dict)
     kinds: dict[str, str] = field(default_factory=dict)
@@ -496,7 +499,7 @@ class SearchDataset:
     times: dict[str, Timestamp] = field(default_factory=dict)
 
     async def create(
-        self, db: InfrahubDatabase, key: str, kind: str, branch: Branch | None = None, **data: Any
+        self, *, db: InfrahubDatabase, key: str, kind: str, branch: Branch | None = None, **data: Any
     ) -> Node:
         node = await Node.init(db=db, schema=kind, branch=branch)
         await node.new(db=db, **data)
@@ -505,13 +508,13 @@ class SearchDataset:
         self.kinds[key] = kind
         return node
 
-    async def update(self, db: InfrahubDatabase, key: str, branch: Branch, **values: Any) -> None:
+    async def update(self, *, db: InfrahubDatabase, key: str, branch: Branch, **values: Any) -> None:
         node = await NodeManager.get_one(db=db, id=self.ids[key], branch=branch, raise_on_error=True)
         for attribute_name, value in values.items():
             getattr(node, attribute_name).value = value
         await node.save(db=db)
 
-    async def delete(self, db: InfrahubDatabase, key: str, branch: Branch) -> None:
+    async def delete(self, *, db: InfrahubDatabase, key: str, branch: Branch) -> None:
         node = await NodeManager.get_one(db=db, id=self.ids[key], branch=branch, raise_on_error=True)
         await node.delete(db=db)
 
@@ -530,13 +533,18 @@ class SearchResult:
     count: int
 
 
+@dataclass(frozen=True)
+class UuidOf:
+    """The UUID of a dataset object, searched instead of a text."""
+
+    key: str
+
+
 @dataclass(frozen=True, kw_only=True)
 class SearchTestCase:
     name: str
+    search: str | UuidOf
     expected: list[str]
-    search: str = ""
-    uuid_of: str | None = None
-    """Key of the dataset object whose UUID is searched instead of `search`."""
     limit: int | None = None
     partial_match: bool = True
     case_sensitive: bool = False
@@ -544,10 +552,6 @@ class SearchTestCase:
     """Key of the searched branch in the dataset."""
     at: str | None = None
     """Key of the dataset time to search at; the search runs at the current time when unset."""
-
-    def __post_init__(self) -> None:
-        if bool(self.search) == bool(self.uuid_of):
-            raise ValueError(f"{self.name}: set exactly one of search and uuid_of")
 
 
 def _uuid_fragment(uuid: str) -> str:
@@ -567,7 +571,9 @@ async def _search(
 ) -> SearchResult:
     searched_branch = dataset.branches[branch]
     searched_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=searched_branch, at=dataset.times[at] if at else None)
+    gql_params = await prepare_graphql_params(
+        db=db, branch=searched_branch, at=dataset.times[at] if at is not None else None
+    )
     variables: dict[str, Any] = {"search": search, "partialMatch": partial_match, "caseSensitive": case_sensitive}
     # An explicit null limit lifts the limit, so the default is checked by leaving the variable out.
     if limit is not None:
@@ -593,7 +599,7 @@ async def _search_case(db: InfrahubDatabase, dataset: SearchDataset, test_case: 
     return await _search(
         db=db,
         dataset=dataset,
-        search=dataset.ids[test_case.uuid_of] if test_case.uuid_of else test_case.search,
+        search=dataset.ids[test_case.search.key] if isinstance(test_case.search, UuidOf) else test_case.search,
         branch=test_case.branch,
         at=test_case.at,
         limit=test_case.limit,
@@ -711,7 +717,7 @@ SEARCH_MODE_TEST_CASES: list[SearchTestCase] = [
         expected=["VOLT Bay North"],
     ),
     SearchTestCase(
-        name="exact_case_sensitive_match_finds_the_four_spellings",
+        name="exact_case_sensitive_match_finds_the_text_as_typed_and_in_lowercase",
         search="Volt",
         partial_match=False,
         case_sensitive=True,
@@ -738,8 +744,8 @@ PLAIN_TEXT_TEST_CASES: list[SearchTestCase] = [
 ]
 
 UUID_TEST_CASES: list[SearchTestCase] = [
-    SearchTestCase(name="object", uuid_of="Volt", expected=["Volt"]),
-    SearchTestCase(name="group", uuid_of="Volt team", expected=["Volt team"]),
+    SearchTestCase(name="object", search=UuidOf(key="Volt"), expected=["Volt"]),
+    SearchTestCase(name="group", search=UuidOf(key="Volt team"), expected=["Volt team"]),
     SearchTestCase(name="unknown_uuid", search=UNKNOWN_UUID, expected=[]),
 ]
 
@@ -756,73 +762,66 @@ class TestSearchRanking:
         dataset = SearchDataset(branches={DEFAULT_BRANCH_KEY: default_branch_scope_class})
 
         # Values of one rank are created longest first so the order proves the length rule, and the twins tie on purpose.
-        volt = await dataset.create(db, "Volt", TestKind.PERSON, name="Volt", description="volt")
-        await dataset.create(db, "VOLT Bay North", TestKind.PERSON, name="VOLT Bay North")
-        await dataset.create(db, "Ohm", TestKind.PERSON, name="Ohm", description="Volt meter")
-        manufacturer = await dataset.create(db, "Voltage", TestKind.MANUFACTURER, name="Voltage")
-        ampere = await dataset.create(db, "Ampere", TestKind.PERSON, name="Ampere", description="volt")
+        volt = await dataset.create(db=db, key="Volt", kind=TestKind.PERSON, name="Volt", description="volt")
+        await dataset.create(db=db, key="VOLT Bay North", kind=TestKind.PERSON, name="VOLT Bay North")
+        await dataset.create(db=db, key="Ohm", kind=TestKind.PERSON, name="Ohm", description="Volt meter")
+        manufacturer = await dataset.create(db=db, key="Voltage", kind=TestKind.MANUFACTURER, name="Voltage")
+        ampere = await dataset.create(db=db, key="Ampere", kind=TestKind.PERSON, name="Ampere", description="volt")
         await dataset.create(
-            db, "Voltron blue", TestKind.CAR, name="Voltron", color="blue", owner=ampere, manufacturer=manufacturer
+            db=db,
+            key="Voltron blue",
+            kind=TestKind.CAR,
+            name="Voltron",
+            color="blue",
+            owner=ampere,
+            manufacturer=manufacturer,
         )
-        await dataset.create(db, "vOlt Oddity", TestKind.PERSON, name="vOlt Oddity")
-        await dataset.create(db, "Volt twins (first)", TestKind.PERSON, name="Volt twins")
-        await dataset.create(db, "Volt twins (second)", TestKind.PERSON, name="Volt twins")
-        await dataset.create(db, "Volt team", InfrahubKind.STANDARDGROUP, name="volt-team", label="Volt team")
-        await dataset.create(db, "VoLt-max", TestKind.PERSON, name="VoLt-max")
-        await dataset.create(db, "Volt-01", TestKind.PERSON, name="Volt-01")
-        await dataset.create(db, "Café Volta", TestKind.PERSON, name="Café Volta")
-        await dataset.create(db, "Old Volt", TestKind.PERSON, name="Old Volt")
-        await dataset.create(db, "Watt", TestKind.PERSON, name="Watt", description="kilovolt")
+        await dataset.create(db=db, key="vOlt Oddity", kind=TestKind.PERSON, name="vOlt Oddity")
+        await dataset.create(db=db, key="Volt twins (first)", kind=TestKind.PERSON, name="Volt twins")
+        await dataset.create(db=db, key="Volt twins (second)", kind=TestKind.PERSON, name="Volt twins")
+        await dataset.create(
+            db=db, key="Volt team", kind=InfrahubKind.STANDARDGROUP, name="volt-team", label="Volt team"
+        )
+        await dataset.create(db=db, key="VoLt-max", kind=TestKind.PERSON, name="VoLt-max")
+        await dataset.create(db=db, key="Volt-01", kind=TestKind.PERSON, name="Volt-01")
+        await dataset.create(db=db, key="Café Volta", kind=TestKind.PERSON, name="Café Volta")
+        await dataset.create(db=db, key="Old Volt", kind=TestKind.PERSON, name="Old Volt")
+        await dataset.create(db=db, key="Watt", kind=TestKind.PERSON, name="Watt", description="kilovolt")
         for name in ('Say "hi"', "It's", "back\\slash", "100% pure", "dot.star .*", "Q"):
-            await dataset.create(db, name, TestKind.PERSON, name=name)
-        await dataset.create(db, "uuid fragment", TestKind.PERSON, name=_uuid_fragment(volt.id))
+            await dataset.create(db=db, key=name, kind=TestKind.PERSON, name=name)
+        await dataset.create(db=db, key="uuid fragment", kind=TestKind.PERSON, name=_uuid_fragment(volt.id))
         return dataset
 
     @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in RANKING_TEST_CASES])
     async def test_lists_the_best_matches_first(
         self, db: InfrahubDatabase, dataset: SearchDataset, test_case: SearchTestCase
     ) -> None:
-        # WHEN
         result = await _search_case(db=db, dataset=dataset, test_case=test_case)
-
-        # THEN
         _assert_found(result=result, dataset=dataset, expected=test_case.expected)
 
     @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in SEARCH_MODE_TEST_CASES])
     async def test_matches_only_what_the_search_mode_allows(
         self, db: InfrahubDatabase, dataset: SearchDataset, test_case: SearchTestCase
     ) -> None:
-        # WHEN
         result = await _search_case(db=db, dataset=dataset, test_case=test_case)
-
-        # THEN
         _assert_found(result=result, dataset=dataset, expected=test_case.expected)
 
     @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in PLAIN_TEXT_TEST_CASES])
     async def test_searches_any_text_as_plain_text(
         self, db: InfrahubDatabase, dataset: SearchDataset, test_case: SearchTestCase
     ) -> None:
-        # WHEN
         result = await _search_case(db=db, dataset=dataset, test_case=test_case)
-
-        # THEN
         _assert_found(result=result, dataset=dataset, expected=test_case.expected)
 
     async def test_searches_a_partial_uuid_as_text(self, db: InfrahubDatabase, dataset: SearchDataset) -> None:
-        # WHEN
         result = await _search(db=db, dataset=dataset, search=_uuid_fragment(dataset.ids["Volt"]))
-
-        # THEN
         _assert_found(result=result, dataset=dataset, expected=["uuid fragment"])
 
     @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in UUID_TEST_CASES])
     async def test_finds_an_object_or_group_by_its_uuid(
         self, db: InfrahubDatabase, dataset: SearchDataset, test_case: SearchTestCase
     ) -> None:
-        # WHEN
         result = await _search_case(db=db, dataset=dataset, test_case=test_case)
-
-        # THEN
         _assert_found(result=result, dataset=dataset, expected=test_case.expected)
 
 
@@ -864,58 +863,48 @@ class TestSearchedValues:
         dataset = SearchDataset(branches={DEFAULT_BRANCH_KEY: default_branch_scope_class})
 
         await dataset.create(
-            db,
-            "Zephyr ticket",
-            TestKind.TICKET,
+            db=db,
+            key="Zephyr ticket",
+            kind=TestKind.TICKET,
             title="Zephyr",
             ticket_id=7,
             description="nimbus cloud",
             urgent=True,
             settings={"layer": "cirrus"},
         )
-        await dataset.create(db, "Zephyr Labs", TestKind.PERSON, name="Zephyr Labs", age=48213)
-        await dataset.create(db, "Ada", TestKind.PERSON, name="Ada", description="Ticketing desk")
-        member = await dataset.create(db, "Orion Member", TestKind.PERSON, name="Orion Member")
-        await dataset.create(db, "Crew", InfrahubKind.STANDARDGROUP, name="crew", label="Crew", members=[member])
+        await dataset.create(db=db, key="Zephyr Labs", kind=TestKind.PERSON, name="Zephyr Labs", age=48213)
+        await dataset.create(db=db, key="Ada", kind=TestKind.PERSON, name="Ada", description="Ticketing desk")
+        member = await dataset.create(db=db, key="Orion Member", kind=TestKind.PERSON, name="Orion Member")
+        await dataset.create(
+            db=db, key="Crew", kind=InfrahubKind.STANDARDGROUP, name="crew", label="Crew", members=[member]
+        )
         return dataset
 
     @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in SEARCHED_VALUE_TEST_CASES])
     async def test_finds_text_numbers_and_booleans(
         self, db: InfrahubDatabase, dataset: SearchDataset, test_case: SearchTestCase
     ) -> None:
-        # WHEN
         result = await _search_case(db=db, dataset=dataset, test_case=test_case)
-
-        # THEN
         _assert_found(result=result, dataset=dataset, expected=test_case.expected)
 
     @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in UNSEARCHED_VALUE_TEST_CASES])
     async def test_never_matches_unsearched_or_empty_values(
         self, db: InfrahubDatabase, dataset: SearchDataset, test_case: SearchTestCase
     ) -> None:
-        # WHEN
         result = await _search_case(db=db, dataset=dataset, test_case=test_case)
-
-        # THEN
         _assert_found(result=result, dataset=dataset, expected=test_case.expected)
 
     async def test_ranks_an_object_without_a_display_label_by_its_attributes(
         self, db: InfrahubDatabase, dataset: SearchDataset
     ) -> None:
-        # WHEN
         result = await _search(db=db, dataset=dataset, search="zephyr")
-
-        # THEN
         _assert_found(result=result, dataset=dataset, expected=["Zephyr Labs", "Zephyr ticket"])
 
     @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in OBJECTS_AND_GROUPS_TEST_CASES])
     async def test_returns_only_objects_and_groups(
         self, db: InfrahubDatabase, dataset: SearchDataset, test_case: SearchTestCase
     ) -> None:
-        # WHEN
         result = await _search_case(db=db, dataset=dataset, test_case=test_case)
-
-        # THEN
         _assert_found(result=result, dataset=dataset, expected=test_case.expected)
 
 
@@ -953,8 +942,8 @@ BRANCH_TEST_CASES: list[SearchTestCase] = [
 ]
 
 BRANCH_UUID_TEST_CASES: list[SearchTestCase] = [
-    SearchTestCase(name="on_another_branch", branch=BRANCH_A, uuid_of="Kestrel", expected=[]),
-    SearchTestCase(name="on_its_branch", branch=BRANCH_B, uuid_of="Kestrel", expected=["Kestrel"]),
+    SearchTestCase(name="on_another_branch", branch=BRANCH_A, search=UuidOf(key="Kestrel"), expected=[]),
+    SearchTestCase(name="on_its_branch", branch=BRANCH_B, search=UuidOf(key="Kestrel"), expected=["Kestrel"]),
 ]
 
 
@@ -971,35 +960,29 @@ class TestSearchOnBranches:
         dataset = SearchDataset(branches={DEFAULT_BRANCH_KEY: default_branch_scope_class})
 
         for name in ("Kestrel Bay", "Ospreya", "Ospreya Point"):
-            await dataset.create(db, name, TestKind.PERSON, name=name)
+            await dataset.create(db=db, key=name, kind=TestKind.PERSON, name=name)
 
         branch_a = await create_branch(db=db, branch_name="search-branch-a")
         branch_b = await create_branch(db=db, branch_name="search-branch-b")
         dataset.branches.update({BRANCH_A: branch_a, BRANCH_B: branch_b})
-        await dataset.create(db, "Branchonly", TestKind.PERSON, branch=branch_a, name="Branchonly")
-        await dataset.delete(db, "Ospreya", branch_a)
-        await dataset.create(db, "Lighthouse", BEACON_KIND, branch=branch_a, name="Lighthouse")
-        await dataset.create(db, "Kestrel", TestKind.PERSON, branch=branch_b, name="Kestrel")
+        await dataset.create(db=db, key="Branchonly", kind=TestKind.PERSON, branch=branch_a, name="Branchonly")
+        await dataset.delete(db=db, key="Ospreya", branch=branch_a)
+        await dataset.create(db=db, key="Lighthouse", kind=BEACON_KIND, branch=branch_a, name="Lighthouse")
+        await dataset.create(db=db, key="Kestrel", kind=TestKind.PERSON, branch=branch_b, name="Kestrel")
         return dataset
 
     @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in BRANCH_TEST_CASES])
     async def test_returns_the_objects_the_branch_shows(
         self, db: InfrahubDatabase, dataset: SearchDataset, test_case: SearchTestCase
     ) -> None:
-        # WHEN
         result = await _search_case(db=db, dataset=dataset, test_case=test_case)
-
-        # THEN
         _assert_found(result=result, dataset=dataset, expected=test_case.expected)
 
     @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in BRANCH_UUID_TEST_CASES])
     async def test_finds_by_uuid_only_objects_on_the_branch(
         self, db: InfrahubDatabase, dataset: SearchDataset, test_case: SearchTestCase
     ) -> None:
-        # WHEN
         result = await _search_case(db=db, dataset=dataset, test_case=test_case)
-
-        # THEN
         _assert_found(result=result, dataset=dataset, expected=test_case.expected)
 
 
@@ -1070,16 +1053,30 @@ PAST_DATE_TEST_CASES: list[SearchTestCase] = [
     SearchTestCase(name="branch_old_value_now", branch=BRANCH_X, search="harrier", expected=[]),
 ]
 
+OLDER_BRANCH_TEST_CASES: list[SearchTestCase] = [
+    SearchTestCase(name="keeps_its_value", branch=BRANCH_X, search="brandon", expected=["Brandon"]),
+    SearchTestCase(name="ignores_a_later_value", branch=BRANCH_X, search="marlon", expected=[]),
+    SearchTestCase(name="ignores_a_later_object", branch=BRANCH_X, search="brandy", expected=[]),
+    SearchTestCase(name="ignores_a_later_object_by_uuid", branch=BRANCH_X, search=UuidOf(key="Brandy"), expected=[]),
+    SearchTestCase(
+        name="keeps_objects_deleted_later", branch=BRANCH_X, search="ghost", expected=["Ghost-late", "Ghost-early"]
+    ),
+    SearchTestCase(name="keeps_its_best_match", branch=BRANCH_X, search="osprey", limit=1, expected=["Osprey"]),
+    SearchTestCase(
+        name="ranks_by_its_own_display_label", branch=BRANCH_X, search="kestrel", expected=["Kestrel", "Kestrel Bay"]
+    ),
+]
+
 PAST_DATE_UUID_TEST_CASES: list[SearchTestCase] = [
-    SearchTestCase(name="created_after_the_date", at=BEFORE_CHANGES, uuid_of="Brandy", expected=[]),
-    SearchTestCase(name="created_now", uuid_of="Brandy", expected=["Brandy"]),
+    SearchTestCase(name="created_after_the_date", at=BEFORE_CHANGES, search=UuidOf(key="Brandy"), expected=[]),
+    SearchTestCase(name="created_now", search=UuidOf(key="Brandy"), expected=["Brandy"]),
     SearchTestCase(
         name="deleted_after_the_date",
         at=BEFORE_CHANGES,
-        uuid_of="Ghost-late",
+        search=UuidOf(key="Ghost-late"),
         expected=["Ghost-late"],
     ),
-    SearchTestCase(name="deleted_now", uuid_of="Ghost-late", expected=[]),
+    SearchTestCase(name="deleted_now", search=UuidOf(key="Ghost-late"), expected=[]),
 ]
 
 
@@ -1097,39 +1094,133 @@ class TestSearchOverTime:
 
         names = ("Brandon", "Kestrel", "Kestrel Bay", "Ghost-early", "Ghost-late", "Osprey", "Osprey Point", "Harrier")
         for name in names:
-            await dataset.create(db, name, TestKind.PERSON, name=name)
+            await dataset.create(db=db, key=name, kind=TestKind.PERSON, name=name)
         branch_x = await create_branch(db=db, branch_name="search-branch-x")
         dataset.branches[BRANCH_X] = branch_x
-        await dataset.create(db, "Kite", TestKind.PERSON, branch=branch_x, name="Kite")
+        await dataset.create(db=db, key="Kite", kind=TestKind.PERSON, branch=branch_x, name="Kite")
 
         dataset.times[BEFORE_DELETION] = Timestamp()
-        await dataset.delete(db, "Ghost-early", main)
+        await dataset.delete(db=db, key="Ghost-early", branch=main)
         dataset.times[BEFORE_CHANGES] = Timestamp()
 
-        await dataset.update(db, "Brandon", main, name="Marlon")
-        await dataset.update(db, "Kestrel", main, name="Old Kestrel")
-        await dataset.create(db, "Brandy", TestKind.PERSON, name="Brandy")
-        await dataset.delete(db, "Ghost-late", main)
-        await dataset.delete(db, "Osprey", main)
-        await dataset.update(db, "Harrier", branch_x, name="Falcon")
+        await dataset.update(db=db, key="Brandon", branch=main, name="Marlon")
+        await dataset.update(db=db, key="Kestrel", branch=main, name="Old Kestrel")
+        await dataset.create(db=db, key="Brandy", kind=TestKind.PERSON, name="Brandy")
+        await dataset.delete(db=db, key="Ghost-late", branch=main)
+        await dataset.delete(db=db, key="Osprey", branch=main)
+        await dataset.update(db=db, key="Harrier", branch=branch_x, name="Falcon")
         return dataset
 
     @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in PAST_DATE_TEST_CASES])
     async def test_returns_the_objects_as_they_were_at_the_date(
         self, db: InfrahubDatabase, dataset: SearchDataset, test_case: SearchTestCase
     ) -> None:
-        # WHEN
         result = await _search_case(db=db, dataset=dataset, test_case=test_case)
-
-        # THEN
         _assert_found(result=result, dataset=dataset, expected=test_case.expected)
 
     @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in PAST_DATE_UUID_TEST_CASES])
     async def test_finds_by_uuid_only_objects_that_exist_at_the_date(
         self, db: InfrahubDatabase, dataset: SearchDataset, test_case: SearchTestCase
     ) -> None:
-        # WHEN
         result = await _search_case(db=db, dataset=dataset, test_case=test_case)
-
-        # THEN
         _assert_found(result=result, dataset=dataset, expected=test_case.expected)
+
+    @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in OLDER_BRANCH_TEST_CASES])
+    async def test_older_branch_ignores_later_changes_on_the_default_branch(
+        self, db: InfrahubDatabase, dataset: SearchDataset, test_case: SearchTestCase
+    ) -> None:
+        result = await _search_case(db=db, dataset=dataset, test_case=test_case)
+        _assert_found(result=result, dataset=dataset, expected=test_case.expected)
+
+
+MOVED_TAG_KIND = "MovedTag"
+BEFORE_MIGRATION = "before_migration"
+BRANCH_BEFORE_MIGRATION = "branch_before_migration"
+
+
+@dataclass(frozen=True, kw_only=True)
+class KindMigrationTestCase:
+    name: str
+    search: str | UuidOf
+    expected_kind: str
+    branch: str = DEFAULT_BRANCH_KEY
+    at: str | None = None
+
+
+KIND_MIGRATION_TEST_CASES: list[KindMigrationTestCase] = [
+    KindMigrationTestCase(name="text_now", search="merlin", expected_kind=MOVED_TAG_KIND),
+    KindMigrationTestCase(name="uuid_now", search=UuidOf(key="Merlin"), expected_kind=MOVED_TAG_KIND),
+    KindMigrationTestCase(
+        name="text_before_the_migration", search="merlin", at=BEFORE_MIGRATION, expected_kind=TestKind.TAG
+    ),
+    KindMigrationTestCase(
+        name="text_on_a_branch_created_before_the_migration",
+        search="merlin",
+        branch=BRANCH_BEFORE_MIGRATION,
+        expected_kind=TestKind.TAG,
+    ),
+    KindMigrationTestCase(
+        name="uuid_on_a_branch_created_before_the_migration",
+        search=UuidOf(key="Merlin"),
+        branch=BRANCH_BEFORE_MIGRATION,
+        expected_kind=TestKind.TAG,
+    ),
+]
+
+
+async def _move_tag_to_a_new_kind(db: InfrahubDatabase, branch: Branch) -> None:
+    """The migration moves every tag to a new vertex with the same UUID and leaves the old vertex in the graph."""
+    schema = registry.schema.get_schema_branch(name=branch.name).duplicate()
+    previous_schema = schema.get_node(name=TestKind.TAG, duplicate=True)
+    new_schema = schema.get_node(name=TestKind.TAG, duplicate=True)
+    new_schema.namespace = "Moved"
+    schema.delete(name=TestKind.TAG)
+    schema.set(name=new_schema.kind, schema=new_schema)
+    schema.process()
+    registry.schema.set_schema_branch(name=branch.name, schema=schema)
+    branch.update_schema_hash()
+    await branch.save(db=db)
+
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=previous_schema,
+        new_node_schema=schema.get_node(name=new_schema.kind, duplicate=True),
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=new_schema.kind, field_name="namespace"),
+    )
+    result = await migration.execute(
+        migration_input=MigrationInput(db=db, at=Timestamp(), user_id="migration-user"), branch=branch
+    )
+    assert not result.errors
+
+
+class TestSearchAfterKindMigration:
+    @pytest.fixture(scope="class")
+    async def dataset(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> SearchDataset:
+        await load_schema(db=db, schema=SchemaRoot(nodes=[TAG]))
+        main = default_branch_scope_class
+        dataset = SearchDataset(branches={DEFAULT_BRANCH_KEY: main})
+
+        await dataset.create(db=db, key="Merlin", kind=TestKind.TAG, name="Merlin")
+        dataset.branches[BRANCH_BEFORE_MIGRATION] = await create_branch(db=db, branch_name="search-before-migration")
+        dataset.times[BEFORE_MIGRATION] = Timestamp()
+        await _move_tag_to_a_new_kind(db=db, branch=main)
+        return dataset
+
+    @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in KIND_MIGRATION_TEST_CASES])
+    async def test_finds_a_migrated_object_once_with_the_kind_of_its_date_and_branch(
+        self, db: InfrahubDatabase, dataset: SearchDataset, test_case: KindMigrationTestCase
+    ) -> None:
+        result = await _search(
+            db=db,
+            dataset=dataset,
+            search=dataset.ids[test_case.search.key] if isinstance(test_case.search, UuidOf) else test_case.search,
+            branch=test_case.branch,
+            at=test_case.at,
+        )
+        assert result.keys == ["Merlin"]
+        assert result.kinds == [test_case.expected_kind]
+        assert result.count == 1
