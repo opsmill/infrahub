@@ -72,6 +72,39 @@ future change to that shared behavior should have one implementation to update. 
 rows, while callers supply the popover title and edit action and mark the element whose hover
 reveals the icon.
 
+### Add a variant by passing what differs
+
+When a new kind, action or tab needs what a sibling component already does, pass the differences to
+that component instead of copying its file. A copy misses every later fix to the original, and the
+values left unchanged by mistake, such as toast IDs, log messages and conditions, keep the
+original's meaning.
+
+```tsx
+// Illustrative file and component names
+// ❌ remove-from-groups-action.tsx copied from add-to-groups-action.tsx with a new label and mutation
+// ✅ One component; each caller passes its label, variant and mutation
+<GroupsAction label="Add to groups" variant="outline" mutateMembers={addRelationships} />
+<GroupsAction label="Remove from groups" variant="danger-outline" mutateMembers={removeRelationships} />
+```
+
+When each kind needs a fixed set of values, keep them in one typed record keyed by the kind, so a
+caller cannot pair one kind's values with another kind's.
+
+### Make a change in one place
+
+When a change edits the same block in more than one file, such as a component migration, a theme
+token or a bug fix, extract the block first and then make the change once. Edits made copy by copy
+miss copies: a theme change that reached three of five copies of one list item left two with the
+old color.
+
+Find the copies by the block's literals rather than by a component name, and list the files that
+past commits changed together with the file you are editing:
+
+```bash
+rg -l '<a data-testid, label, toast message or class string from the block>' frontend/app/src
+git log --format=%H -- <file> | xargs -n1 git show --format= --name-only | sort | uniq -c | sort -rn | head
+```
+
 ## Early Return Style
 
 Use early returns instead of nested ternaries for components with multiple states.
