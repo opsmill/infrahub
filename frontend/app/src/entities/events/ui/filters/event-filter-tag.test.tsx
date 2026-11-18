@@ -64,6 +64,26 @@ describe("EventFilterTag", () => {
     expect(getIcon(component.container, "mdi:plus-circle-outline")).toBeNull();
   });
 
+  it("shows the remove icon instead of the add icon for an empty branch value", async () => {
+    // GIVEN
+    const currentFilter: Filter = { name: "branches__value", value: "" };
+
+    // WHEN
+    const component = await renderTag({
+      label: "Branch",
+      tagLabel: "branches",
+      currentFilter,
+      renderValue: () => currentFilter.value,
+    });
+
+    // THEN
+    await expect
+      .element(component.getByRole("button", { name: "Branch", exact: true }))
+      .toBeVisible();
+    expect(getIcon(component.container, "mdi:close-circle-outline")).not.toBeNull();
+    expect(getIcon(component.container, "mdi:plus-circle-outline")).toBeNull();
+  });
+
   it("removes the value without opening the form when the value is clicked", async () => {
     // GIVEN
     const onRemove = vi.fn();
