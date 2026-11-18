@@ -23,7 +23,6 @@ from infrahub.core.query.node import (
     GroupedPeerNodes,
     NodeGetByHFIDQuery,
     NodeGetHierarchyQuery,
-    NodeGetListQuery,
     NodeListGetAttributeQuery,
     NodeListGetInfoQuery,
     NodeListGetRelationshipsQuery,
@@ -31,6 +30,7 @@ from infrahub.core.query.node import (
     NodeStoredLabels,
     NodeToProcess,
 )
+from infrahub.core.query.node_get_list_builder import NodeGetListQueryBuilder
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship
@@ -181,8 +181,7 @@ class NodeManager:
             return [node] if node else []
 
         # Query the list of nodes matching this Query
-        query = await NodeGetListQuery.init(
-            db=db,
+        query = await NodeGetListQueryBuilder(db=db).build(
             schema=node_schema,
             branch=branch,
             offset=offset,
@@ -237,8 +236,7 @@ class NodeManager:
 
         node_schema = get_schema(db=db, branch=branch, node_schema=schema)
 
-        query = await NodeGetListQuery.init(
-            db=db,
+        query = await NodeGetListQueryBuilder(db=db).build(
             schema=node_schema,
             branch=branch,
             filters=filters,

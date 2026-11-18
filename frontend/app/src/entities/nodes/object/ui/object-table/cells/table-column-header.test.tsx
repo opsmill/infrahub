@@ -328,6 +328,39 @@ describe("TableColumnHeader", () => {
       .not.toBeInTheDocument();
   });
 
+  test("announces an active filter on the column in the header's accessible name", async () => {
+    // GIVEN
+    seedFiltersInUrl([{ name: "name__value", value: "atl" }]);
+
+    // WHEN
+    const component = await render(
+      <TableColumnHeader schema={schema} columnSchema={nameAttribute} />
+    );
+
+    // THEN
+    await expect
+      .element(component.getByRole("button", { name: "Name filtered", exact: true }))
+      .toBeVisible();
+  });
+
+  test("does not announce a filter when no filter is active on the column", async () => {
+    // GIVEN
+    seedFiltersInUrl([{ name: "description__value", value: "atl" }]);
+
+    // WHEN
+    const component = await render(
+      <TableColumnHeader schema={schema} columnSchema={nameAttribute} />
+    );
+
+    // THEN
+    await expect
+      .element(component.getByRole("button", { name: "Name", exact: true }))
+      .toBeVisible();
+    await expect
+      .element(component.getByRole("button", { name: "filtered" }))
+      .not.toBeInTheDocument();
+  });
+
   test("opens the filter form pre-filled when a filter is active on the column", async () => {
     // GIVEN
     seedFiltersInUrl([{ name: "name__value", value: "atl" }]);

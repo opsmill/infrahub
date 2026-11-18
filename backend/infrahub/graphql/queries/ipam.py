@@ -45,11 +45,27 @@ class IPAddressGetNextAvailable(ObjectType):
             if not ip_prefix.prefixlen <= prefix_length <= ip_prefix.max_prefixlen:
                 raise ValidationError(input_value="Invalid prefix length for current selected prefix")
 
+<<<<<<< HEAD
             namespace = await prefix.ip_namespace.get_peer(db=db)
             allocator = IPAMResourceAllocator(db=db, namespace=namespace, branch=graphql_context.branch)
+||||||| b71e735525
+            namespace = await prefix.ip_namespace.get_peer(db=db)  # type: ignore[attr-defined]
+            allocator = IPAMResourceAllocator(db=db, namespace=namespace, branch=graphql_context.branch)
+=======
+            namespace = await prefix.ip_namespace.get_peer(db=db)  # type: ignore[attr-defined]
+            allocator = IPAMResourceAllocator(db=db)
+>>>>>>> origin/stable
             next_address = await allocator.get_next_address(
                 ip_prefix=ip_prefix,
+<<<<<<< HEAD
                 is_pool=prefix.is_pool.value,
+||||||| b71e735525
+                is_pool=prefix.is_pool.value,  # type: ignore[attr-defined]
+=======
+                namespace=namespace,
+                on_branch=graphql_context.branch,
+                is_pool=prefix.is_pool.value,  # type: ignore[attr-defined]
+>>>>>>> origin/stable
             )
 
         if not next_address:
@@ -80,10 +96,12 @@ class IPPrefixGetNextAvailable(ObjectType):
 
             ip_prefix = prefix.prefix.obj
             namespace = await prefix.ip_namespace.get_peer(db=db)
-            allocator = IPAMResourceAllocator(db=db, namespace=namespace, branch=graphql_context.branch)
+            allocator = IPAMResourceAllocator(db=db)
 
             # Build available pool by removing existing subnets from parent prefix
-            subnets = await allocator.get_subnets(ip_prefix=ip_prefix)
+            subnets = await allocator.get_subnets(
+                ip_prefix=ip_prefix, namespace=namespace, on_branch=graphql_context.branch
+            )
         available_pool = IPSet([str(ip_prefix)]) - IPSet([str(subnet.prefix) for subnet in subnets])
 
         if prefix_length is not None and not ip_prefix.prefixlen < prefix_length <= ip_prefix.max_prefixlen:

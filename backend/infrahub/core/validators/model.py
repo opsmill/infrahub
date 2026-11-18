@@ -20,6 +20,13 @@ class SchemaConstraintValidatorRequest(BaseModel):
         default=None,
         description="When set, restrict validation to these nodes; None validates the full population",
     )
+    is_isolated: bool = Field(
+        default=True,
+        description=(
+            "Whether to read the default branch as it was when the branch was created or last rebased; False reads its "
+            "current data, which a merge or a rebase produces"
+        ),
+    )
 
     @model_serializer()
     def serialize_model(self) -> dict[str, Any]:
@@ -30,6 +37,7 @@ class SchemaConstraintValidatorRequest(BaseModel):
             "schema_path": self.schema_path.model_dump(),
             "schema_branch": self.schema_branch.to_dict_schema_object(),
             "node_uuids": self.node_uuids,
+            "is_isolated": self.is_isolated,
         }
 
     @field_validator("schema_branch", mode="before")

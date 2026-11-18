@@ -1,0 +1,1 @@
+Fixed deleting an IP namespace by its human-friendly ID failing with an HTTP 500 error. Deleting a namespace by human-friendly ID now deletes it, and deleting the default namespace by human-friendly ID returns HTTP 422 with the message "Cannot delete default IPAM namespace", as it already did when deleting it by ID.

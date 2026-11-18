@@ -10,10 +10,16 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.registry import registry
-from infrahub.core.schema import NodeSchema, SchemaRoot
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
-from infrahub.pools.scope import AllocationScopeResolver
-from tests.component.pools.schema_number_pool_synchronizer.helpers import COUNTER_KIND, provision_pool, run_synchronizer
+from tests.component.pools.schema_number_pool_synchronizer.helpers import (
+    COUNTER_KIND,
+    create_device_pool,
+    default_device,
+    provision_pool,
+    run_synchronizer,
+    stored_scope_of,
+)
 from tests.helpers.number_pool import SCOPED_DEVICE, SCOPED_POOL_SCHEMA
 from tests.helpers.schema import save_schema
 
@@ -21,25 +27,6 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
-
-
-async def create_device_pool(db: InfrahubDatabase, name: str, scope: list[str]) -> str:
-    """Create a user pool over the device's vlan_id with the scope resolved on the default branch, and return its id."""
-    allocation_scope = AllocationScopeResolver(
-        schema_branch=registry.schema.get_schema_branch(name=registry.default_branch)
-    ).resolve(kind=SCOPED_DEVICE.kind, entries=scope)
-    pool = await Node.init(db=db, schema=InfrahubKind.NUMBERPOOL)
-    await pool.new(
-        db=db,
-        name=name,
-        node=SCOPED_DEVICE.kind,
-        node_attribute="vlan_id",
-        start_range=1,
-        end_range=10,
-        allocation_scope=None if allocation_scope.is_empty else allocation_scope.to_stored(),
-    )
-    await pool.save(db=db)
-    return pool.get_id()
 
 
 async def create_pool_with_stored_scope(db: InfrahubDatabase, name: str, kind: str, stored_scope: Any) -> str:
@@ -58,12 +45,6 @@ async def create_pool_with_stored_scope(db: InfrahubDatabase, name: str, kind: s
     return pool.get_id()
 
 
-async def stored_scope_of(db: InfrahubDatabase, pool_id: str) -> list[dict[str, str]] | None:
-    pool = await NodeManager.get_one(db=db, id=pool_id, kind=CoreNumberPool, branch_agnostic=True)
-    assert pool is not None
-    return pool.allocation_scope.value
-
-
 async def scope_writes_of(db: InfrahubDatabase, pool_id: str) -> int:
     """Return how many values the pool's allocation_scope attribute has held, one more after each write."""
     query = """
@@ -72,12 +53,6 @@ async def scope_writes_of(db: InfrahubDatabase, pool_id: str) -> int:
     """
     results = await db.execute_query(query=query, params={"pool_id": pool_id})
     return results[0]["writes"]
-
-
-def default_device() -> NodeSchema:
-    device = registry.schema.get_schema_branch(name=registry.default_branch).get_node(name=SCOPED_DEVICE.kind)
-    assert isinstance(device, NodeSchema)
-    return device
 
 
 async def test_renaming_scope_elements_rewrites_their_stored_names(

@@ -45,7 +45,7 @@ Infrahub applies the rules only when it creates new Infrahub branches from Git b
 
 ## Configuring selective synchronization
 
-Set the `INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES` environment variable (or the equivalent `sync_branch_names` key in `infrahub.toml`) to a JSON array of regular expression patterns:
+Set the `INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES` environment variable (or the equivalent `import_sync_branch_names` key in `infrahub.toml`) to a JSON array of regular expression patterns:
 
 ```shell
 INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES=["^infra/.*$","^feature/infrahub-.*$"]
@@ -81,11 +81,13 @@ When you modify the synchronization rules after a repository has been imported, 
 If a Git branch exists but was not previously imported because it didn't match the old rules, and it now matches the updated rules, Infrahub will import that branch during the next synchronization cycle.
 
 ```toml
+[git]
+
 # Before
-sync_branch_names = ["^infra/.*$"]
+import_sync_branch_names = ["^infra/.*$"]
 
 # After — network/topology and similar branches are now imported
-sync_branch_names = [
+import_sync_branch_names = [
   "^infra/.*$",
   "^network/.*$"
 ]
@@ -96,14 +98,16 @@ sync_branch_names = [
 If a branch was already imported into Infrahub and has the "sync with Git" flag enabled, it will continue to synchronize even if it no longer matches the updated rules. This preserves existing work and prevents unexpected data loss.
 
 ```toml
+[git]
+
 # Before
-sync_branch_names = [
+import_sync_branch_names = [
   "^infra/.*$",
   "^feature/.*$"
 ]
 
 # After — existing feature/* branches in Infrahub continue syncing
-sync_branch_names = ["^infra/.*$"]
+import_sync_branch_names = ["^infra/.*$"]
 ```
 
 **Cleaning up branches manually:**
@@ -592,7 +596,7 @@ Selective branch synchronization only affects the **Git → Infrahub** direction
 
 ### Dynamic updates
 
-When you modify the `sync_branch_names` configuration:
+When you modify the `import_sync_branch_names` configuration:
 
 - New Git branches will be evaluated against the updated rules during the next synchronization
 - Git branches that now match the rules will be automatically imported

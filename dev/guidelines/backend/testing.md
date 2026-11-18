@@ -61,7 +61,7 @@ Skip tests that test the framework rather than our integration:
 
 A useful rule of thumb: if the test would still pass after we delete our implementation and reinstall the library, the test belongs to the library, not us.
 
-**Skip tests that string-match a feature query's generated text.** A test asserting the built Cypher contains or equals a given string pins the implementation, not the behavior: it breaks on a harmless rewording and still passes on a query that is wrong in ways the string never captured. Assert the query's observable behavior (a component test against the database), and state the reasoning behind the query's shape in its own comments or docstring. Exact query-text assertions belong only where the string *is* the output contract — the query-building infrastructure itself (assembly, parameter interpolation).
+**Never unit-test the Cypher text a query renders.** A test asserting the built Cypher contains or equals a given string pins the implementation, not the behavior: it breaks on a harmless rewording and still passes on a query that is wrong in ways the string never captured. The rule covers every query, every helper that renders a Cypher clause or predicate for several queries, and the query-building code itself (assembly, parameter interpolation). Assert the query's observable behavior in a component test against the database, and state the reasoning behind the query's shape in its own comments or docstring.
 
 **The exception is a bound that encodes a domain invariant.** `Field(ge=1)` on a multiplier that must never shrink the value it scales is not arbitrary tuning — it is a rule about how the feature behaves, and deleting it changes behavior with nothing failing. Assert those, but write the test against the invariant rather than the mechanism: name it for the rule, not for the constraint (`test_<what must hold>`, not `test_field_rejects_zero`), cover the boundary value that must stay legal, and add a test that the **shipped defaults** satisfy the invariant. Cross-field `model_validator` logic is ours outright and always warrants a test.
 
@@ -416,12 +416,12 @@ Hold the shape instead of the duration:
 - Count the work. When a fix turns a scan into a lookup, assert the number of calls, queries or
   comparisons; a counting double fails identically on every machine.
 - Keep the measurement out of the suite. The numbers that justified the change belong in the commit
-  message or the pull request, where they are read once, not in an assertion CI re-runs forever.
-- A `PROFILE` db-hit count is the same trap without the clock: it encodes the Neo4j planner's choice
-  for the test database's statistics, not the code's behavior, so it flips when the planner replans.
-  Counting the work means counting what the code under test does — calls, queries, submissions — not
-  what the planner spends. Keep db-hit measurements in the pull request description, or in
-  `backend/tests/query_benchmark/` when they must be tracked over time.
+  message or the pull request, or in `backend/tests/query_benchmark/` when they must be tracked over
+  time, not in an assertion CI re-runs forever.
+- A `PROFILE` db-hit count is the same trap without the clock: it follows the planner statistics
+  earlier tests left behind, so a test can pass with its module and fail alone. Count what the code
+  does (calls, queries, submissions). When a fix removes a label from the query text, assert with
+  `EXPLAIN` that no plan operator names that label: the planner cannot choose what the query lacks.
 
 When the behavior under test genuinely is a schedule, inject the clock as above so the schedule
 becomes a value the test reads exactly, rather than a duration it races.
