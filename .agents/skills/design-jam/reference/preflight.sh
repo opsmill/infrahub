@@ -10,10 +10,14 @@
 set -uo pipefail
 
 REQUIRED=(
-  emil-product-thinking
   grilling-ideas
-  emil-prototype
+  prototype
   emil-design-eng
+  break-ui
+)
+
+# All four present: phase 4 runs the full review. Otherwise it runs the reduced one.
+FULL_REVIEW=(
   emil-ui-polish
   emil-surfaces
   emil-ui-review
@@ -21,8 +25,10 @@ REQUIRED=(
 )
 
 OPTIONAL=(
+  emil-product-thinking
+  emil-prototype
   emil-animations
-  emil-mobile-native
+  animate
   emil-get-creative
   emil-design-foundations
 )
@@ -43,6 +49,7 @@ find_skill() {
 
 missing_required=0
 missing_optional=()
+missing_review=0
 
 echo "design-jam preflight"
 echo
@@ -57,11 +64,21 @@ for name in "${REQUIRED[@]}"; do
 done
 
 echo
+for name in "${FULL_REVIEW[@]}"; do
+  if find_skill "$name" >/dev/null; then
+    printf '  ok       %-26s full review (paid)\n' "$name"
+  else
+    printf '  absent   %-26s full review (paid)\n' "$name"
+    missing_review=$((missing_review + 1))
+  fi
+done
+
+echo
 for name in "${OPTIONAL[@]}"; do
   if find_skill "$name" >/dev/null; then
-    printf '  ok       %-26s conditional\n' "$name"
+    printf '  ok       %-26s optional\n' "$name"
   else
-    printf '  absent   %-26s conditional\n' "$name"
+    printf '  absent   %-26s optional\n' "$name"
     missing_optional+=("$name")
   fi
 done
@@ -70,16 +87,18 @@ echo
 if [ "$missing_required" -gt 0 ]; then
   echo "BLOCKED: $missing_required required skill(s) missing."
   echo "  See \"Setup, once per machine\" in .agents/skills/design-jam/SKILL.md."
-  echo "  emil-design-eng: public, from https://github.com/emilkowalski/skills"
-  echo "  other emil-*:    paid, from https://aiforui.dev/learn/skills; ask @pa-lem for the token"
-  echo "                   and never commit it"
-  echo "  grilling-ideas:  ships with this repo (.agents/skills) or the opsmill-dev plugin"
+  echo "  grilling-ideas: ships with this repo (.agents/skills)"
+  echo "  prototype, emil-design-eng, break-ui: public, from https://github.com/emilkowalski/skills"
   exit 1
 fi
 
-if [ "${#missing_optional[@]}" -gt 0 ]; then
-  echo "OK with gaps: ${missing_optional[*]} unavailable — those passes will be skipped and said so."
-  exit 0
+if [ "$missing_review" -gt 0 ]; then
+  echo "Review: reduced (public skills and reference/review-checklist.md)."
+else
+  echo "Review: full (paid review skills)."
 fi
 
-echo "OK: every skill available."
+if [ "${#missing_optional[@]}" -gt 0 ]; then
+  echo "Skipped or replaced: ${missing_optional[*]}."
+fi
+exit 0

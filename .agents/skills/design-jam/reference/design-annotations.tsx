@@ -8,7 +8,7 @@
  * Controlled: it draws pins and captures clicks; the notes themselves live in whatever
  * `useNotesStore` decided — this browser, or the Infrahub instance the prototype runs in.
  *
- * See SKILL.md § Iterating inside the prototype.
+ * See history-panel.md.
  */
 
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";

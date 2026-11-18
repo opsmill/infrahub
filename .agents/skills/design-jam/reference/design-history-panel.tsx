@@ -8,8 +8,7 @@
  * Does four things: switch between directions, scrub through revisions, tune exposed
  * values without an agent round trip, and collect pinned feedback to hand back.
  *
- * Copy into the prototype route's folder and adapt. See SKILL.md § The history panel and
- * § Iterating inside the prototype.
+ * Copy into the prototype route's folder and adapt. See history-panel.md.
  */
 
 import {
