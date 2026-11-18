@@ -56,6 +56,7 @@ from tests.component.core.migrations.schema.selection_dataset import (
     build_relationship_remove_params,
     get_branch,
     load_selection_dataset,
+    population,
 )
 
 if TYPE_CHECKING:
@@ -110,6 +111,7 @@ async def test_attribute_remove_aware(
         init_kwargs={"migration": migration},
         branch=branch,
         expected=case.expected,
+        population=population(WIDGET_KIND),
     )
 
 
@@ -140,7 +142,12 @@ async def test_attribute_remove_generated_kinds(
     branch = get_branch(selection_dataset, default_branch, case.branch_name)
     migration = build_attribute_migration(AttributeSupportsGeneratedSchemaMigration, branch, WIDGET_KIND, "color")
     await assert_count_matches_write(
-        db=db, queries=[case.query], init_kwargs={"migration": migration}, branch=branch, expected=case.expected
+        db=db,
+        queries=[case.query],
+        init_kwargs={"migration": migration},
+        branch=branch,
+        expected=case.expected,
+        population=population(WIDGET_KIND),
     )
 
 
@@ -156,6 +163,7 @@ async def test_attribute_remove_agnostic_attribute(
         init_kwargs={"migration": migration},
         branch=branch,
         expected=case.expected,
+        population=population(WIDGET_KIND),
     )
 
 
@@ -171,6 +179,7 @@ async def test_attribute_remove_agnostic_node(
         init_kwargs={"migration": migration},
         branch=branch,
         expected=case.expected,
+        population=population(BEACON_KIND),
     )
 
 
@@ -211,6 +220,7 @@ async def test_attribute_remove_generic_with_override(
         init_kwargs={"migration": migration},
         branch=default_branch,
         expected={"TestGazCar": 1},
+        population=["TestElectricCar", "TestGazCar"],
     )
 
 
@@ -231,6 +241,7 @@ async def test_attribute_rename_aware(
         init_kwargs={"migration": migration},
         branch=branch,
         expected=case.expected,
+        population=population(WIDGET_KIND),
     )
 
 
@@ -248,6 +259,7 @@ async def test_attribute_rename_agnostic_node(
         init_kwargs={"migration": migration},
         branch=branch,
         expected=case.expected,
+        population=population(BEACON_KIND),
         check_remaining=case.branch_name == SELECTION_BRANCH_NAME,
     )
 
@@ -271,6 +283,7 @@ async def test_attribute_rename_agnostic_node_leaves_nothing_on_main(
         init_kwargs={"migration": migration},
         branch=default_branch,
         expected={BEACON_KIND: 2},
+        population=population(BEACON_KIND),
     )
 
 
@@ -292,6 +305,7 @@ async def test_attribute_add_aware(
         init_kwargs={"migration": migration},
         branch=branch,
         expected=case.expected,
+        population=population(WIDGET_KIND),
     )
 
 
@@ -308,6 +322,7 @@ async def test_attribute_add_local_on_agnostic_node(
         init_kwargs={"migration": migration},
         branch=branch,
         expected=case.expected,
+        population=population(BEACON_KIND),
     )
 
 
@@ -328,6 +343,7 @@ async def test_attribute_add_given_nodes(
         },
         branch=branch,
         expected=case.expected,
+        population=population(WIDGET_KIND),
     )
 
 
@@ -348,6 +364,7 @@ async def test_node_kind_update_aware(
         init_kwargs={"migration": migration},
         branch=branch,
         expected=case.expected,
+        population=population(WIDGET_KIND),
     )
 
 
@@ -363,6 +380,7 @@ async def test_node_kind_update_agnostic_node(
         init_kwargs={"migration": migration},
         branch=branch,
         expected=case.expected,
+        population=population(BEACON_KIND),
     )
 
 
@@ -383,6 +401,7 @@ async def test_attribute_kind_update_to_large(
         init_kwargs={"migration": migration},
         branch=branch,
         expected=case.expected,
+        population=population(WIDGET_KIND),
     )
 
 
@@ -398,6 +417,40 @@ async def test_attribute_kind_update_agnostic_node(
         init_kwargs={"migration": migration},
         branch=branch,
         expected=case.expected,
+        population=population(BEACON_KIND),
+    )
+
+
+KIND_UPDATE_SELECTS_NODES_ON_OTHER_BRANCHES = pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "the selection does not check the node's IS_PART_OF edge, so on the default branch it selects the "
+        "branch-agnostic attributes of nodes that exist only on another branch"
+    ),
+)
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        pytest.param(case, marks=KIND_UPDATE_SELECTS_NODES_ON_OTHER_BRANCHES if case.branch_name == "main" else ())
+        for case in WIDGET_AND_GENERATED_KINDS
+    ],
+    ids=lambda case: case.name,
+)
+async def test_attribute_kind_update_agnostic_attribute(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: CountCase
+) -> None:
+    branch = get_branch(selection_dataset, default_branch, case.branch_name)
+    migration = build_attribute_migration(AttributeKindUpdateMigration, branch, WIDGET_KIND, "serial", kind="TextArea")
+    await assert_count_matches_write(
+        db=db,
+        queries=[AttributeKindUpdateMigrationQuery],
+        init_kwargs={"migration": migration},
+        branch=branch,
+        expected=case.expected,
+        population=population(WIDGET_KIND),
     )
 
 
@@ -423,6 +476,7 @@ async def test_node_remove_aware(
         init_kwargs={"migration": migration},
         branch=branch,
         expected=case.expected,
+        population=population(WIDGET_KIND),
     )
 
 
@@ -437,6 +491,7 @@ async def test_node_remove_agnostic_node(
         init_kwargs={"migration": build_node_remove_migration(branch, BEACON_KIND)},
         branch=branch,
         expected=case.expected,
+        population=population(BEACON_KIND),
     )
 
 
@@ -449,6 +504,7 @@ async def test_node_remove_empty_kind(
         init_kwargs={"migration": build_node_remove_migration(default_branch, EMPTY_KIND)},
         branch=default_branch,
         expected={},
+        population=population(EMPTY_KIND),
     )
 
 
@@ -525,4 +581,5 @@ async def test_relationship_remove(
         init_kwargs={"migration": migration, "query_params": query_params},
         branch=branch,
         expected=case.expected,
+        population=population(case.node_kind),
     )

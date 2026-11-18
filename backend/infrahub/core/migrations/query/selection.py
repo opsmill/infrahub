@@ -18,7 +18,7 @@ class MigrationSelectionQuery(Query):
     selected_node: ClassVar[str] = "active_node"
 
     def render_selection(self) -> str:
-        """Return the Cypher that selects the nodes to change, ending in a ``WITH`` that names ``selected_node``.
+        """Return the Cypher that selects the nodes to change, ending with ``selected_node`` in scope.
 
         Raises:
             NotImplementedError: When the subclass does not define its selection.
@@ -27,7 +27,10 @@ class MigrationSelectionQuery(Query):
         raise NotImplementedError
 
     async def count_changes(self, db: InfrahubDatabase) -> dict[str, int]:
-        """Return the number of distinct selected nodes per node kind, without running the write."""
+        """Return the number of distinct selected nodes per node kind, without running the write.
+
+        The query must be built with ``init()``, because the selection reads the parameters it sets.
+        """
         node = self.selected_node
         query = self.render_selection() + f"\nRETURN {node}.kind AS kind, count(DISTINCT {node}) AS nbr"
         results = await db.execute_query(
