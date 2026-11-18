@@ -179,7 +179,7 @@ class _RecordingCollectorFactory:
         self.branch: Branch | None = None
 
     def __call__(
-        self, *, diff: EnrichedDiffRoot, db: InfrahubDatabase, branch: Branch
+        self, *, diff: EnrichedDiffRoot, db: InfrahubDatabase, branch: Branch, merge_at: Timestamp
     ) -> _ProbingChangelogCollector | _RaisingChangelogCollector:
         self.diff = diff
         self.branch = branch

@@ -140,10 +140,10 @@ async def update_diff(
     return await diff_repository.get_one(diff_branch_name=branch.name, diff_id=metadata.uuid)
 
 
-async def merge(db: InfrahubDatabase, branch: Branch) -> None:
+async def merge(db: InfrahubDatabase, branch: Branch, at: Timestamp | None = None) -> None:
     """Merge the branch with its latest diff, the way the merge of a branch does after the diff update."""
     merger = await get_diff_merger(db=db, branch=branch)
-    await merger.merge_graph(at=Timestamp())
+    await merger.merge_graph(at=at or Timestamp())
 
 
 async def rebase_with_conflict_check(

@@ -161,7 +161,8 @@ class OwnershipDiffer:
             schema_branch=schema_branch,
         )
 
-    async def _read_states(self, branch: Branch, at: Timestamp, node_ids: list[str]) -> OwnerStates:
+    async def read_states(self, branch: Branch, at: Timestamp, node_ids: list[str]) -> OwnerStates:
+        """Return the stored state of each holder of the nodes that does not inherit, as the branch reads it at `at`."""
         repository = OwnershipRepository(db=self.db, branch=branch, at=at)
         states: OwnerStates = {}
         for node_ids_chunk in batched(node_ids, config.SETTINGS.database.query_size_limit):
@@ -182,13 +183,13 @@ class OwnershipDiffer:
     ) -> None:
         if not start_times:
             return
-        end_states = await self._read_states(
+        end_states = await self.read_states(
             branch=end_branch, at=request.to_time, node_ids=sorted({change.node_uuid for change in start_times})
         )
         start_states_by_time: dict[Timestamp, OwnerStates] = {}
         for at in set(start_times.values()):
             node_ids = sorted({change.node_uuid for change, start_time in start_times.items() if start_time == at})
-            start_states_by_time[at] = await self._read_states(branch=start_branch, at=at, node_ids=node_ids)
+            start_states_by_time[at] = await self.read_states(branch=start_branch, at=at, node_ids=node_ids)
         nodes_by_identifier = {node.identifier: node for node in root.nodes}
         for change, start_time in start_times.items():
             key = (change.node_uuid, change.holder)
