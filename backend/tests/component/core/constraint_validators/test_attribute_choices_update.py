@@ -1,6 +1,11 @@
+from dataclasses import dataclass
+
+import pytest
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
@@ -391,3 +396,59 @@ async def test_validator_generic_and_node_have_different_choices(
     assert len(grouped_data_paths) == 1
     data_paths = grouped_data_paths[0].get_all_data_paths()
     assert len(data_paths) == 0
+
+
+@dataclass(frozen=True)
+class ViewCase:
+    name: str
+    is_isolated: bool
+    reports_the_node_created_on_main_after_branching: bool
+
+
+VIEW_CASES = [
+    ViewCase(name="branch-view", is_isolated=True, reports_the_node_created_on_main_after_branching=False),
+    ViewCase(name="merge-view", is_isolated=False, reports_the_node_created_on_main_after_branching=True),
+]
+
+
+@pytest.mark.parametrize("case", VIEW_CASES, ids=lambda case: case.name)
+async def test_validator_on_branch_reads_the_requested_view_of_main(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema, case: ViewCase
+) -> None:
+    valid = await Node.init(db=db, schema=criticality_schema)
+    await valid.new(db=db, name="low", level=4, status="active")
+    await valid.save(db=db)
+    branch = await create_branch(db=db, branch_name="branch-removes-choice")
+    created_after_branching = await Node.init(db=db, schema=criticality_schema)
+    await created_after_branching.new(db=db, name="med", level=4, status="passive")
+    await created_after_branching.save(db=db)
+
+    crit_schema = registry.schema.get(name="TestCriticality", branch=branch).duplicate()
+    crit_schema.get_attribute(name="status").choices = [
+        DropdownChoice(name="active", color="#00ff00", description="Online things")
+    ]
+    request = SchemaConstraintValidatorRequest(
+        branch=branch,
+        constraint_name="attribute.choices.update",
+        node_schema=crit_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCriticality", field_name="status"),
+        schema_branch=SchemaBranch(cache={}, name="test"),
+        is_isolated=case.is_isolated,
+    )
+
+    grouped_data_paths = await AttributeChoicesChecker(db=db, branch=branch).check(request)
+
+    expected = [
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.ATTRIBUTE,
+            node_id=created_after_branching.id,
+            kind="TestCriticality",
+            field_name="status",
+            value="passive",
+        )
+    ]
+    assert len(grouped_data_paths) == 1
+    assert grouped_data_paths[0].get_all_data_paths() == (
+        expected if case.reports_the_node_created_on_main_after_branching else []
+    )

@@ -588,7 +588,7 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     # ----------------------------------------------------------
     responses = await schema_validate_migrations(
         message=SchemaValidateMigrationData(
-            branch=source_branch, schema_branch=candidate_schema, constraints=constraints
+            branch=source_branch, schema_branch=candidate_schema, constraints=constraints, is_isolated=True
         )
     )
 

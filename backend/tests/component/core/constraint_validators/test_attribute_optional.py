@@ -1,6 +1,11 @@
+from dataclasses import dataclass
+
+import pytest
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import PathType, SchemaPathType
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
@@ -177,3 +182,98 @@ async def test_validator(db: InfrahubDatabase, branch: Branch, person_john_main:
     assert len(data_paths) == 1
     assert data_paths[0].node_id == person.id
     assert data_paths[0].branch == branch.name
+
+
+@dataclass(frozen=True)
+class ViewCase:
+    name: str
+    is_isolated: bool
+    expected_nodes: list[str]
+
+
+VIEW_CASES = [
+    ViewCase(name="branch-view", is_isolated=True, expected_nodes=["set_on_main_after_branch"]),
+    ViewCase(name="merge-view", is_isolated=False, expected_nodes=["created_on_main_after_branch"]),
+]
+
+
+@pytest.mark.parametrize("case", VIEW_CASES, ids=lambda case: case.name)
+async def test_validator_on_branch_reads_the_requested_view_of_main(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch, case: ViewCase
+) -> None:
+    set_on_main_after_branch = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await set_on_main_after_branch.new(db=db, name="Height set on main after branch")
+    await set_on_main_after_branch.save(db=db)
+    branch = await create_branch(db=db, branch_name="branch-before-person")
+    set_on_main_after_branch.get_attribute("height").value = 170
+    await set_on_main_after_branch.save(db=db)
+    created_on_main_after_branch = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await created_on_main_after_branch.new(db=db, name="Created on main after branch")
+    await created_on_main_after_branch.save(db=db)
+    nodes = {
+        "set_on_main_after_branch": set_on_main_after_branch,
+        "created_on_main_after_branch": created_on_main_after_branch,
+    }
+
+    person_schema = registry.schema.get(name="TestPerson", branch=branch).duplicate()
+    person_schema.get_attribute(name="height").optional = False
+    request = SchemaConstraintValidatorRequest(
+        branch=branch,
+        constraint_name="attribute.optional.update",
+        node_schema=person_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="height"),
+        schema_branch=SchemaBranch(cache={}, name="test"),
+        is_isolated=case.is_isolated,
+    )
+
+    grouped_data_paths = await AttributeOptionalChecker(db=db, branch=branch).check(request)
+
+    assert len(grouped_data_paths) == 1
+    assert grouped_data_paths[0].get_all_data_paths() == [
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.ATTRIBUTE,
+            node_id=nodes[label].id,
+            kind="TestPerson",
+            field_name="height",
+        )
+        for label in case.expected_nodes
+    ]
+
+
+async def test_validator_in_merge_view_skips_a_node_from_main_that_the_branch_deleted(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+) -> None:
+    deleted_on_branch = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await deleted_on_branch.new(db=db, name="Deleted on branch")
+    await deleted_on_branch.save(db=db)
+    kept_on_branch = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await kept_on_branch.new(db=db, name="Kept on branch")
+    await kept_on_branch.save(db=db)
+    branch = await create_branch(db=db, branch_name="branch-deletes-person")
+    person_on_branch = await NodeManager.get_one(db=db, id=deleted_on_branch.id, branch=branch, raise_on_error=True)
+    await person_on_branch.delete(db=db)
+
+    person_schema = registry.schema.get(name="TestPerson", branch=branch).duplicate()
+    person_schema.get_attribute(name="height").optional = False
+    request = SchemaConstraintValidatorRequest(
+        branch=branch,
+        constraint_name="attribute.optional.update",
+        node_schema=person_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="height"),
+        schema_branch=SchemaBranch(cache={}, name="test"),
+        is_isolated=False,
+    )
+
+    grouped_data_paths = await AttributeOptionalChecker(db=db, branch=branch).check(request)
+
+    assert len(grouped_data_paths) == 1
+    assert grouped_data_paths[0].get_all_data_paths() == [
+        DataPath(
+            branch=default_branch.name,
+            path_type=PathType.ATTRIBUTE,
+            node_id=kept_on_branch.id,
+            kind="TestPerson",
+            field_name="height",
+        )
+    ]

@@ -128,7 +128,9 @@ class MergeConstraintValidator:
             return MergeConstraintValidationResult()
 
         responses = await self.migration_validator(
-            SchemaValidateMigrationData(branch=self.branch, schema_branch=candidate_schema, constraints=constraints)
+            SchemaValidateMigrationData(
+                branch=self.branch, schema_branch=candidate_schema, constraints=constraints, is_isolated=True
+            )
         )
         conflicted_fields = await gather_conflicted_fields(
             diff_repository=self.diff_repository, branch_name=self.branch.name

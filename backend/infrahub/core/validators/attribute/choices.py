@@ -31,7 +31,9 @@ class AttributeChoicesUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         if self.attribute_schema.choices is None:
             return
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), is_isolated=self.is_isolated
+        )
         self.params.update(branch_params)
 
         self.params["attr_name"] = self.attribute_schema.name
@@ -121,6 +123,7 @@ class AttributeChoicesChecker(ConstraintCheckerInterface):
                 node_schema=request.node_schema,
                 schema_path=request.schema_path,
                 excluded_kinds=excluded_kinds,
+                is_isolated=request.is_isolated,
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())
