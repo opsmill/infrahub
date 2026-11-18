@@ -13,7 +13,7 @@ interface PcSplitActionButtonProps {
   isPending?: boolean;
   /** Disables both buttons. */
   isDisabled?: boolean;
-  /** Backend availability of the action; an unavailable action disables the main button. */
+  /** Backend availability of the action; an unavailable action blocks the main button but keeps it hoverable and focusable for its reason tooltip. */
   availability?: PcActionAvailability;
   /** Opens the action picker; without it the chevron is disabled. */
   onOpenMenu?: () => void;
@@ -48,7 +48,7 @@ export function PcSplitActionButton({
       type={type}
       variant={variant}
       isPending={isPending}
-      isDisabled={isDisabled || isUnavailable || isPending}
+      isDisabled={isDisabled || isPending}
       isDisabledAndFocusable={isUnavailable && !isPending}
     >
       {label}

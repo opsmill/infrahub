@@ -1,7 +1,15 @@
 import { describe, expect, test, vi } from "vitest";
+import { userEvent } from "vitest/browser";
 
 import { render } from "../../../../../tests/components/render";
+import { initPointerTracking } from "../../../../../tests/components/utils";
 import { PcSplitActionButton } from "./pc-split-action-button";
+
+const unavailableMerge = {
+  action: "merge",
+  available: false,
+  unavailability_reason: "The proposed change has failing checks",
+};
 
 describe("PcSplitActionButton", () => {
   test("runs the action when the main button is pressed", async () => {
@@ -19,20 +27,13 @@ describe("PcSplitActionButton", () => {
   });
 
   test("disables an unavailable action and keeps its picker chevron enabled", async () => {
-    // GIVEN
-    const availability = {
-      action: "merge",
-      available: false,
-      unavailability_reason: "The proposed change has failing checks",
-    };
-
     // WHEN
     const component = await render(
       <PcSplitActionButton
         label="Merge"
         variant="active"
         onPress={vi.fn()}
-        availability={availability}
+        availability={unavailableMerge}
         onOpenMenu={vi.fn()}
       />
     );
@@ -40,6 +41,72 @@ describe("PcSplitActionButton", () => {
     // THEN
     await expect.element(component.getByRole("button", { name: "Merge" })).toBeDisabled();
     await expect.element(component.getByRole("button", { name: "More actions" })).toBeEnabled();
+  });
+
+  test("shows why an action is unavailable when the pointer rests on it", async () => {
+    // GIVEN
+    const component = await render(
+      <PcSplitActionButton
+        label="Merge"
+        variant="active"
+        onPress={vi.fn()}
+        availability={unavailableMerge}
+        onOpenMenu={vi.fn()}
+      />
+    );
+
+    // WHEN
+    await initPointerTracking(component.locator);
+    await component.getByRole("button", { name: "Merge" }).hover();
+
+    // THEN
+    await expect
+      .element(component.getByRole("tooltip", { name: "The proposed change has failing checks" }))
+      .toBeVisible();
+  });
+
+  test("shows why an action is unavailable when it receives keyboard focus", async () => {
+    // GIVEN
+    const component = await render(
+      <PcSplitActionButton
+        label="Merge"
+        variant="active"
+        onPress={vi.fn()}
+        availability={unavailableMerge}
+        onOpenMenu={vi.fn()}
+      />
+    );
+
+    // WHEN
+    await userEvent.keyboard("{Tab}");
+
+    // THEN
+    await expect.element(component.getByRole("button", { name: "Merge" })).toHaveFocus();
+    await expect
+      .element(component.getByRole("tooltip", { name: "The proposed change has failing checks" }))
+      .toBeVisible();
+  });
+
+  test("does not run an unavailable action from the keyboard", async () => {
+    // GIVEN
+    const onPress = vi.fn();
+    const component = await render(
+      <PcSplitActionButton
+        label="Merge"
+        variant="active"
+        onPress={onPress}
+        availability={unavailableMerge}
+      />
+    );
+    await userEvent.keyboard("{Tab}");
+    await expect.element(component.getByRole("button", { name: "Merge" })).toHaveFocus();
+
+    // WHEN
+    await userEvent.keyboard("{Enter}");
+    await userEvent.keyboard(" ");
+
+    // THEN
+    expect(onPress).not.toHaveBeenCalled();
   });
 
   test("keeps an available action enabled", async () => {
