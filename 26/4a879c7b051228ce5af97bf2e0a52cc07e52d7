@@ -1,0 +1,19 @@
+backend/infrahub/core/validators/node/attribute.py
+  s_c635c0ab719820::t_07786f64b96f54 10,86-116,145-152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "264a879c7b051228ce5af97bf2e0a52cc07e52d7",
+  "prompts": {},
+  "sessions": {
+    "s_c635c0ab719820": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9dc6648c-b1f2-4d6d-9231-bda66faa77f5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
