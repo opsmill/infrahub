@@ -359,4 +359,4 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
 
 class NodeRemoveMigration(SchemaMigration):
     name: str = "node.remove"
-    queries: Sequence[type[MigrationQuery]] = [NodeRemoveMigrationQueryIn, NodeRemoveMigrationQueryOut]  # type: ignore[assignment]
+    queries: Sequence[type[MigrationQuery]] = [NodeRemoveMigrationQueryIn, NodeRemoveMigrationQueryOut]

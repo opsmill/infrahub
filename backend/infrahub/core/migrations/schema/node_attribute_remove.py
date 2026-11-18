@@ -27,4 +27,4 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery, AttributeRemo
 
 class NodeAttributeRemoveMigration(AttributeSchemaMigration):
     name: str = "node.attribute.remove"
-    queries: Sequence[type[AttributeMigrationQuery]] = [NodeAttributeRemoveMigrationQuery01]  # type: ignore[assignment]
+    queries: Sequence[type[AttributeMigrationQuery]] = [NodeAttributeRemoveMigrationQuery01]

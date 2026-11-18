@@ -285,7 +285,7 @@ async def allocate_from_resource_pools(
                 continue
             # Number pool: allocate a value and set it on the attribute
             attr_schema = obj_schema.get_attribute(name=original_name)
-            allocated_value = await pool.get_resource(  # type: ignore[attr-defined]
+            allocated_value = await pool.get_resource(
                 db=db, branch=branch, identifier=obj.get_id(), attribute=attr_schema
             )
             attribute = obj.get_attribute(name=original_name)
@@ -296,7 +296,7 @@ async def allocate_from_resource_pools(
             attribute.tracking_pool = TrackingPool(pool_id=pool.id, provenance=PoolRecordProvenance.ALLOCATED)
         elif original_name in obj_schema.relationship_names:
             # IP pool: allocate a node and set it as the relationship peer
-            allocated_resource = await pool.get_resource(  # type: ignore[attr-defined]
+            allocated_resource = await pool.get_resource(
                 db=db, branch=branch, identifier=obj.get_id(), at=at, user_id=user_id
             )
             NodeMutationContext.record_if_active(node=allocated_resource, action=MutationAction.CREATED)

@@ -230,7 +230,7 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery, Migration
 
 class NodeRelationshipRemoveMigration(RelationshipSchemaMigration):
     name: str = "node.relationship.remove"
-    queries: Sequence[type[RelationshipMigrationQuery]] = [NodeRelationshipRemoveMigrationQuery]  # type: ignore[assignment]
+    queries: Sequence[type[RelationshipMigrationQuery]] = [NodeRelationshipRemoveMigrationQuery]
 
     def _build_query_params(self, db: InfrahubDatabase, branch: Branch) -> RelationshipRemoveQueryParams | None:
         """Analyse the schema and return the query parameters, or None if there is nothing to close.

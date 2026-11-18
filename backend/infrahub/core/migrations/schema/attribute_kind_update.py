@@ -157,7 +157,7 @@ CALL (attr, n) {
 
 class AttributeKindUpdateMigration(AttributeSchemaMigration):
     name: str = "attribute.kind.update"
-    queries: Sequence[type[AttributeMigrationQuery]] = [AttributeKindUpdateMigrationQuery]  # type: ignore[assignment]
+    queries: Sequence[type[AttributeMigrationQuery]] = [AttributeKindUpdateMigrationQuery]
 
     async def execute(
         self,
