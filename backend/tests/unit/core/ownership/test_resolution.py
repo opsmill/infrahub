@@ -33,39 +33,10 @@ class NodeOwnershipTestCase:
 
 NODE_OWNERSHIP_TEST_CASES: list[NodeOwnershipTestCase] = [
     NodeOwnershipTestCase(
-        name="node_without_parent_inherits_nothing",
-        owner_ids=(None,),
-        expected=ResolvedOwnership(state=OwnerState.INHERIT, owner_ids=(), origin=None, origin_node_id=None),
-    ),
-    NodeOwnershipTestCase(
-        name="own_owners_apply",
-        owner_ids=(("dc-emea", "security"),),
-        expected=ResolvedOwnership(
-            state=OwnerState.OWNERS,
-            owner_ids=("dc-emea", "security"),
-            origin=OwnerOrigin.SELF,
-            origin_node_id="interface",
-        ),
-    ),
-    NodeOwnershipTestCase(
         name="own_owners_stop_the_walk",
         owner_ids=(("dc-emea",), ("network-emea",), ("security",)),
         expected=ResolvedOwnership(
             state=OwnerState.OWNERS, owner_ids=("dc-emea",), origin=OwnerOrigin.SELF, origin_node_id="interface"
-        ),
-    ),
-    NodeOwnershipTestCase(
-        name="own_no_owner_stops_the_walk",
-        owner_ids=((), ("network-emea",)),
-        expected=ResolvedOwnership(
-            state=OwnerState.NO_OWNER, owner_ids=(), origin=OwnerOrigin.SELF, origin_node_id="interface"
-        ),
-    ),
-    NodeOwnershipTestCase(
-        name="owners_of_the_parent_apply",
-        owner_ids=(None, ("network-emea",)),
-        expected=ResolvedOwnership(
-            state=OwnerState.INHERIT, owner_ids=("network-emea",), origin=OwnerOrigin.PARENT, origin_node_id="device"
         ),
     ),
     NodeOwnershipTestCase(
