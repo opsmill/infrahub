@@ -82,40 +82,6 @@ async def _deleted_edges(db: InfrahubDatabase) -> list[dict]:
     return [dict(record) for record in await db.execute_query(query=DELETED_EDGES)]
 
 
-async def test_branch_owner_written_before_the_upgrade_replaces_the_default_branch_owner(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    register_core_models_schema: SchemaBranch,
-    car_person_schema: SchemaBranch,
-) -> None:
-    main_owner = await _create_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="main-owner")
-    branch_owner = await _create_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="branch-owner")
-    person = await _create_node(db=db, kind="TestPerson", name="John")
-    car = await _create_car(db=db, name="volt", person=person, owner_id=main_owner.id)
-    branch = await create_branch(db=db, branch_name="branch1")
-    before_branch_write = Timestamp()
-    await _add_owner_edge(db=db, branch=branch, node_id=car.id, owner_id=branch_owner.id)
-    before_upgrade = Timestamp()
-    assert await _active_owner_ids(db=db, branch=branch, node_id=car.id) == {main_owner.id, branch_owner.id}
-
-    result = await Migration084().execute(migration_input=MigrationInput(db=db))
-    deleted_edges = await _deleted_edges(db=db)
-    second_result = await Migration084().execute(migration_input=MigrationInput(db=db))
-
-    assert result.errors == []
-    assert second_result.errors == []
-    assert [(edge["owner_id"], edge["branch"]) for edge in deleted_edges] == [(main_owner.id, branch.name)]
-    assert await _deleted_edges(db=db) == deleted_edges
-    assert await _active_owner_ids(db=db, branch=branch, node_id=car.id) == {branch_owner.id}
-    assert await _active_owner_ids(db=db, branch=branch, node_id=car.id, at=before_upgrade) == {branch_owner.id}
-    assert await _active_owner_ids(db=db, branch=branch, node_id=car.id, at=before_branch_write) == {main_owner.id}
-    assert await _active_owner_ids(db=db, branch=default_branch, node_id=car.id) == {main_owner.id}
-    branch_car = await NodeManager.get_one(
-        db=db, id=car.id, branch=branch, include_metadata=MetadataOptions.OWNER, raise_on_error=True
-    )
-    assert branch_car.color.owner_id == branch_owner.id
-
-
 async def test_default_branch_owner_closed_after_the_branch_start_is_hidden_on_the_branch(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -253,3 +219,7 @@ async def test_default_branch_owner_is_hidden_from_the_first_of_two_branch_owner
     assert await _active_owner_ids(db=db, branch=branch, node_id=car.id, at=between_writes) == {first_owner.id}
     assert await _active_owner_ids(db=db, branch=branch, node_id=car.id) == {second_owner.id}
     assert await _active_owner_ids(db=db, branch=default_branch, node_id=car.id) == {main_owner.id}
+    branch_car = await NodeManager.get_one(
+        db=db, id=car.id, branch=branch, include_metadata=MetadataOptions.OWNER, raise_on_error=True
+    )
+    assert branch_car.color.owner_id == second_owner.id

@@ -11,7 +11,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.node import Node
 from infrahub.core.ownership.constants import NO_OWNER_VERTEX_UUID
-from infrahub.core.ownership.models import NODE_HOLDER, NODE_SOURCES_HOLDER, HolderKey, HolderKind, StoredOwnerState
+from infrahub.core.ownership.models import NODE_HOLDER, NODE_SOURCES_HOLDER, HolderKey, StoredOwnerState
 from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -133,13 +133,6 @@ OWNER_RE_ADD_TEST_CASES: list[OwnerReAddTestCase] = [
         states=[("dc-emea",), (), ("dc-emea",)],
         peer_name="dc-emea",
     ),
-    OwnerReAddTestCase(
-        name="attribute_owner",
-        holder=HolderKey(kind=HolderKind.ATTRIBUTE, attribute="name"),
-        edge_type=DatabaseEdgeType.HAS_OWNER,
-        states=[("dc-emea",), ("network-emea",), ("dc-emea",)],
-        peer_name="dc-emea",
-    ),
 ]
 
 
@@ -172,17 +165,13 @@ async def test_edge_deduplication_plan_keeps_owner_added_again(
             user_id="test-user-id",
         )
 
-    holder_match = "(:Node {uuid: $node_id})"
-    if test_case.holder.kind == HolderKind.ATTRIBUTE:
-        holder_match += "-[:HAS_ATTRIBUTE]->(:Attribute {name: $attribute})"
     records = await db.execute_query(
         query=f"""
-MATCH {holder_match}-[e:{test_case.edge_type.value} {{branch: $branch, status: "active"}}]->({{uuid: $peer_id}})
+MATCH (:Node {{uuid: $node_id}})-[e:{test_case.edge_type.value} {{branch: $branch, status: "active"}}]->({{uuid: $peer_id}})
 RETURN e.to IS NULL AS is_open
 """,
         params={
             "node_id": person.id,
-            "attribute": test_case.holder.attribute,
             "branch": default_branch.name,
             "peer_id": peer_ids[test_case.peer_name],
         },

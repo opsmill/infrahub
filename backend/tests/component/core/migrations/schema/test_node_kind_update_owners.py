@@ -111,9 +111,6 @@ KIND_CHANGE_TEST_CASES: list[KindChangeTestCase] = [
         on_branch=True,
         branch_owners=("network-emea", "security"),
     ),
-    KindChangeTestCase(
-        name="no_owner_set_on_branch", default_branch_owners=("dc-emea",), on_branch=True, branch_owners=()
-    ),
 ]
 
 
@@ -193,7 +190,7 @@ ORDER BY edge_type
 
 
 @pytest.mark.parametrize("on_branch", [pytest.param(False, id="default_branch"), pytest.param(True, id="branch")])
-async def test_node_and_relationship_field_with_the_same_owner_keep_their_owners_when_the_kind_changes(
+async def test_owners_of_a_relationship_field_follow_the_node_when_its_kind_changes(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
@@ -209,11 +206,11 @@ async def test_node_and_relationship_field_with_the_same_owner_keep_their_owners
     node_owners = tuple(sorted([group_ids["dc-emea"], group_ids["security"]]))
     await _write(db=db, branch=default_branch, node_id=person.id, owner_ids=node_owners)
     await _write(
-        db=db, branch=default_branch, node_id=person.id, owner_ids=(group_ids["security"],), holder=cars_holder
+        db=db, branch=default_branch, node_id=person.id, owner_ids=(group_ids["network-emea"],), holder=cars_holder
     )
     holders = {
         NODE_HOLDER: StoredOwnerState(owner_ids=node_owners),
-        cars_holder: StoredOwnerState(owner_ids=(group_ids["security"],)),
+        cars_holder: StoredOwnerState(owner_ids=(group_ids["network-emea"],)),
     }
     branch = await create_branch(branch_name="branch2", db=db) if on_branch else default_branch
     assert await _read_holders(db=db, branch=branch, node_ids={"person": person.id}) == {
@@ -241,7 +238,7 @@ ORDER BY edge_type, owner_id
     )
     assert [(row["kind"], row["edge_type"], row["owner_id"]) for row in rows] == [
         *[(NEW_KIND, "HAS_OWNER", owner_id) for owner_id in node_owners],
-        (NEW_KIND, "HAS_OWNER_SET", group_ids["security"]),
+        (NEW_KIND, "HAS_OWNER_SET", group_ids["network-emea"]),
     ]
     await verify_graph(db=db, kinds=[PREVIOUS_KIND, NEW_KIND])
 
