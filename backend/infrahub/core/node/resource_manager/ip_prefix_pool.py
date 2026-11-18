@@ -150,7 +150,7 @@ class CoreIPPrefixPool(Node):
         allocator = IPAMResourceAllocator(db=db)
 
         for resource in resources:
-            resource_prefix = ipaddress.ip_network(resource.prefix.value)
+            resource_prefix = ipaddress.ip_network(resource.prefix.value)  # type: ignore[attr-defined]
             next_available = await allocator.get_next_prefix(
                 ip_prefix=resource_prefix,
                 target_prefix_length=prefixlen,

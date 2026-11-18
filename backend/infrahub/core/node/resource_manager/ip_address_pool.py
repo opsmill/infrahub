@@ -140,7 +140,7 @@ class CoreIPAddressPool(Node):
         allocator = IPAMResourceAllocator(db=db)
 
         for resource in resources:
-            ip_prefix = ipaddress.ip_network(resource.prefix.value)
+            ip_prefix = ipaddress.ip_network(resource.prefix.value)  # type: ignore[attr-defined]
             prefix_length = prefixlen or ip_prefix.prefixlen
 
             if not ip_prefix.prefixlen <= prefix_length <= ip_prefix.max_prefixlen:
@@ -150,7 +150,7 @@ class CoreIPAddressPool(Node):
                 ip_prefix=ip_prefix,
                 namespace=ip_namespace.get_id(),
                 on_branch=ANY_BRANCH,
-                is_pool=resource.is_pool.value,
+                is_pool=resource.is_pool.value,  # type: ignore[attr-defined]
             )
 
             if next_address:
