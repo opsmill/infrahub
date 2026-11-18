@@ -2,41 +2,34 @@
 title: Develop changes from a Git repository
 ---
 
-Change the schemas, objects, Transformations, Generators, and other [`.infrahub.yml`](./infrahub-yml.mdx) content an instance imports from a [read-only repository](./overview.mdx#read-only-vs-core), and land the change on the instance's `main` safely.
+import PromotionReadOnly from '../media/promotion-read-only.svg';
 
-:::tip With a read-write repository
+You change the schemas, objects, Transformations, Generators and other [`.infrahub.yml`](./infrahub-yml.mdx) content of an instance in Git. You then test the change on an Infrahub branch, and merge it into `main` of the instance through a [Proposed Change](../proposed-changes/overview.mdx). You never change `main` directly, because an import can fail, and you cannot undo a failed import on `main`.
 
-With a [read-write repository](./overview.mdx#read-only-vs-core), developing a change takes fewer steps. Push a `feature/` branch to Git, wait for the instance to import it, and merge its Proposed Change into `main`. Infrahub then merges the Git branch and pushes it. To follow these steps, see [promote changes between environments](./promote-between-environments.mdx#develop-a-change-on-the-development-instance). From Infrahub 1.12, the recommended workflow for several environments uses read-write repositories. The rest of this page applies to read-only repositories.
+The steps depend on the type of the repository:
 
-:::
+- With a [read-write repository](#with-a-read-write-repository), the recommended type from Infrahub 1.12, the instance imports your Git branch by itself. When a reviewer merges the Proposed Change, Infrahub merges the Git branch and pushes it.
+- With a [read-only repository](#with-a-read-only-repository), you point an Infrahub branch at your Git branch through the `ref` of the repository, and you merge the Git branch on your Git host.
 
-The instance's `main` tracks a Git branch through the read-only repository's `ref`, and you never import onto `main` directly. Instead you develop on an Infrahub branch and merge it into `main` through a proposed change. This worked example adds a `color` attribute to the built-in Tag.
+The example on this page adds a `color` attribute to the built-in Tag. To promote the change to other instances afterwards, follow [promote changes between environments](./promote-between-environments.mdx).
 
-## Prerequisites
+## With a read-write repository
 
-- An Infrahub instance with the repository connected as a **read-only repository** (see [connect a repository](./connect-repository.mdx)). Its `ref` is the Git branch it tracks — `main` in this example.
-- A [`.infrahub.yml`](./overview.mdx#infrahub-yaml) file on that branch.
-- A local checkout of the repository and permission to open a pull request.
+### Prerequisites
 
-:::note How imports are triggered
+- An instance with the repository connected as a read-write repository. Its default branch is the Git branch that the instance imports into `main`, `develop` in this example. [Connect a repository](./connect-repository.mdx) describes how.
+- If the instance has an import filter, `INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES`, a filter that matches your branch name, such as `["feature/.*"]`. [Branch synchronization](./branch-synchronization.mdx) describes the filter.
+- A local checkout of the repository with permission to push branches.
 
-A read-only repository does not poll for new commits — there is no background sync. An import runs only when you trigger one: the **Import latest commit** action imports the current `ref`'s latest commit, and changing the repository's `ref` dispatches an import on its own (so you do not also run **Import latest commit**). A mutation that returns `ok: true` means the import was dispatched, not finished — confirm a change landed by checking the repository's recorded commit on the instance.
+### Step 1: Create the change in a Git branch
 
-:::
-
-## Step 1: Create the change in Git
-
-Work from a feature branch cut from the tracked branch (`main`).
+Create a feature branch from the default branch, add a schema file that adds a `color` attribute to Tag, then commit and push it:
 
 ```bash
-git switch main
-git switch -c feature/add-tag-color
-```
-
-Add a schema file that extends the built-in Tag with a `color` attribute:
-
-```yaml
-# schemas/tags.yml
+git fetch origin
+git switch -c feature/add-tag-color origin/develop
+mkdir -p schemas
+cat > schemas/tags.yml <<'EOF'
 ---
 version: '1.0'
 extensions:
@@ -46,32 +39,55 @@ extensions:
         - name: color
           kind: Text
           optional: true
-```
-
-Make sure `.infrahub.yml` loads it, then commit and push:
-
-```yaml
-# .infrahub.yml
----
-schemas:
-  - schemas/tags.yml
-```
-
-```bash
-git add schemas/tags.yml .infrahub.yml
+EOF
+git add schemas/tags.yml
 git commit -m "Add color attribute to Tag"
 git push -u origin feature/add-tag-color
 ```
 
-## Step 2: Test it on an Infrahub branch
+The `schemas` list in `.infrahub.yml` must include `schemas/tags.yml`, so that Infrahub imports the file.
 
-Import your feature branch onto an Infrahub branch and check it there before it reaches `main`.
+You can also create the branch on the instance, with **Sync with Git** turned on. Infrahub then creates the Git branch, and you push your commits to it.
 
-1. On the instance, create an Infrahub branch, for example `test-tag-color`.
-2. On `test-tag-color`, set the repository's `ref` to your `feature/add-tag-color` Git branch. Changing the `ref` triggers the import on its own. Because `ref` is branch-aware, only this branch is affected — `main` is untouched.
+### Step 2: Test the change on the Infrahub branch
+
+Infrahub checks Git for new branches and commits once a minute. It imports `feature/add-tag-color` as an Infrahub branch with the same name, and imports each commit that you push to it.
+
+On the Infrahub branch, check that the schema of Tag has the `color` attribute. To change the schema, push another commit and wait for the import.
+
+Objects that you create on the Infrahub branch also merge into `main` with the Proposed Change. Delete test objects before you merge.
+
+### Step 3: Merge the change into `main`
+
+1. Open a Proposed Change from `feature/add-tag-color` to `main` and review it.
+2. Merge the Proposed Change. Infrahub merges the Git branch into `develop` and pushes `develop`.
+
+With `INFRAHUB_DELETE_BRANCH_AFTER_MERGE` and `INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE` set to `true`, Infrahub also deletes the branch in Infrahub and in Git.
+
+## With a read-only repository
+
+A read-only repository imports only the Git branch named in its `ref`, and only when you run **Import latest commit** or change the `ref`. The `ref` is recorded per Infrahub branch. You import your Git branch onto an Infrahub branch by changing the `ref` on that Infrahub branch only, so `main` stays unchanged.
+
+<PromotionReadOnly role="img" style={{width: '100%', height: 'auto'}} />
+
+Steps 1 to 5 of the diagram develop a change on the development instance. Hover over a step to show only that step. Steps 6 to 10 promote the change, as described in [promote changes between environments](./promote-between-environments.mdx#with-read-only-repositories).
+
+### Prerequisites
+
+- An instance with the repository connected as a read-only repository. Its `ref` on `main` is the Git branch that the instance tracks, `develop` in this example. [Connect a repository](./connect-repository.mdx) describes how.
+- A local checkout of the repository with permission to open a merge request.
+
+### Step 1: Create the change in a Git branch
+
+Create the feature branch and the schema file as in [step 1 of the read-write workflow](#step-1-create-the-change-in-a-git-branch), and push it.
+
+### Step 2: Import the Git branch onto an Infrahub branch
+
+1. On the instance, create an Infrahub branch, for example `add-tag-color`.
+2. On that Infrahub branch, set the `ref` of the repository to `feature/add-tag-color`. Changing the `ref` starts the import.
 
    ```graphql
-   # against the Infrahub branch, e.g. https://<host>/graphql/test-tag-color
+   # against the Infrahub branch: https://<host>/graphql/add-tag-color
    mutation {
      CoreReadOnlyRepositoryUpdate(data: {
        id: "<repository-id>"
@@ -80,68 +96,39 @@ Import your feature branch onto an Infrahub branch and check it there before it 
    }
    ```
 
-3. Test the change on `test-tag-color` — confirm the schema has the `color` attribute and behaves as you expect, for example by creating a Tag with a color on this branch. There is no proposed change here; you work on the branch directly and never merge it.
+3. Test the change on `add-tag-color`. To change the schema, push another commit to `feature/add-tag-color` and run **Import latest commit** on the Infrahub branch.
 
-   This is an **iterative loop**: refine the schema on your Git feature branch, push, run **Import latest commit** on `test-tag-color`, and re-check. Repeat until the feature is ready — delete the branch when you are done.
+:::tip Load the schema with infrahubctl while you iterate
 
-:::tip Faster iteration with infrahubctl
-
-While developing, you can load a schema file straight onto the branch with [`infrahubctl`]($(base_url)infrahubctl/infrahubctl) instead of importing it from Git — no commit or push required:
+To skip the commit and the import while you develop, load the schema file onto the Infrahub branch with [`infrahubctl`]($(base_url)infrahubctl/infrahubctl):
 
 ```shell
-infrahubctl schema load schemas/tags.yml --branch test-tag-color
+infrahubctl schema load schemas/tags.yml --branch add-tag-color
 ```
 
-This shortens the inner loop. The Git import is what makes the change reproducible and promotable, so land the final version through Git as below.
+Commit the final version to Git, because only the Git import makes the change promotable to other instances.
 
 :::
 
-## Step 3: Land the change on `main`
+### Step 3: Merge the Git branch
 
-1. Merge the Git pull request into `main`:
+On your Git host, merge the merge request from `feature/add-tag-color` into `develop`.
 
-   ```bash
-   gh pr create --base main --head feature/add-tag-color --title "Add color attribute to Tag" --fill
-   gh pr merge --merge
-   ```
+### Step 4: Point the `ref` back to the tracked branch
 
-2. On the instance, create an Infrahub branch, set its `ref` to `main` (which now holds the change), and open a proposed change from it to `main`. The `ref` change re-imports on its own.
+On `add-tag-color`, set the `ref` back to `develop`, which now holds the change. Changing the `ref` starts the import.
 
-   ```graphql
-   # against the Infrahub branch, e.g. https://<host>/graphql/land-tag-color
-   mutation {
-     CoreReadOnlyRepositoryUpdate(data: {
-       id: "<repository-id>"
-       ref: { value: "main" }
-     }) { ok }
-   }
-   ```
+When you merge an Infrahub branch, Infrahub also applies its `ref` to `main`. If you skip this step, `main` tracks `feature/add-tag-color` from then on.
 
-3. Review the proposed change and merge it. The instance's `main` now has the `color` attribute.
+### Step 5: Merge the change into `main`
 
-:::caution Do not import onto `main` directly
+Open a Proposed Change from `add-tag-color` to `main`, review it, and merge it. The instance's `main` now has the `color` attribute, and its `ref` is still `develop`.
 
-You can import onto `main` — run **Import latest commit** or set its `ref` there — to skip the Infrahub branch and proposed change. It is faster but not recommended: an import can fail, especially while iterating on a schema, and there is no clean way to undo a bad import on `main`, whereas an Infrahub branch can be discarded.
-
-:::
-
-## Step 4: Verify
-
-Create a Tag with a color to confirm the attribute is on `main`:
-
-```graphql
-# against https://<host>/graphql/main
-mutation {
-  BuiltinTagCreate(data: {
-    name: { value: "ready" }
-    color: { value: "#2ecc71" }
-  }) { ok object { id color { value } } }
-}
-```
+Objects that you created on the Infrahub branch while you tested, such as a test Tag, also merge into `main`. If you created test objects, use a new Infrahub branch for steps 4 and 5 instead.
 
 ## Related
 
-- [Promote changes with read-only repositories](./promote-read-only.mdx) — repeat this workflow across dev / staging / production
-- [Connect a repository](./connect-repository.mdx) — repository registration
-- [Schema extensions](../schema/extensions.mdx) — extending existing nodes like Tag
-- [Proposed changes](../proposed-changes/overview.mdx) — the review workflow used to merge into `main`
+- [Promote changes between environments](./promote-between-environments.mdx): move the change to the next instance.
+- [Multiple environments from a single repository](./multi-environment.mdx): the two workflows compared, and the rules for the team.
+- [Branch synchronization](./branch-synchronization.mdx): how a read-write repository imports and pushes branches.
+- [Schema extensions](../schema/extensions.mdx): extending existing nodes such as Tag.

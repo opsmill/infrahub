@@ -37,7 +37,7 @@ Follow the numbers in the diagram. Hover over a step to show only that step.
 
 Repeat steps 3 to 5 from `integration` to `production`. This example uses three environments. Two environments, or more than three, use the same workflow. Add or remove a long-lived Git branch and the instance that imports it.
 
-Each promotion needs its own branch, because an Infrahub branch merges only once. After the merge, Infrahub marks the branch as merged and makes it read-only. A long-lived branch such as `develop` therefore cannot be promoted a second time.
+Each promotion needs a new promotion branch, because the target instance imports it as a new Infrahub branch, and an Infrahub branch merges only once. After the merge, Infrahub marks the Infrahub branch as merged and makes it read-only. The long-lived Git branch, such as `develop`, stays the source of every later promotion.
 
 Create the promotion branch in Git. You can also create it on the development instance with **Sync with Git** turned on, so that Infrahub pushes it to Git. The integration instance then imports it in the same way. But the branch stays open on the development instance after a reviewer merges it on the integration instance, and you have to delete it there yourself.
 
@@ -67,7 +67,7 @@ For every setting on each instance, follow the [promotion guide](./promote-betwe
 Infrahub does not enforce the rules below. Each rule names the failure that it prevents.
 
 - **Protect the long-lived Git branches on your Git host.** Block deletion and force-push of `develop`, `integration` and `production`. With branch deletion turned on, Infrahub deletes the Git branch with the same name when you merge an Infrahub branch that syncs with Git. Infrahub does not check that name against the long-lived branches. When an Infrahub branch named `integration` merges, Infrahub deletes the Git branch `integration`.
-- **Turn on branch deletion after a merge.** Set `INFRAHUB_DELETE_BRANCH_AFTER_MERGE` and `INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE` to `true` on every instance. Infrahub then deletes the feature or promotion branch in Infrahub and in Git after the merge. The instances and the Git host do not keep merged branches. Infrahub does not start when the Git setting is on and the Infrahub setting is off.
+- **Turn on branch deletion after a merge.** Set `INFRAHUB_DELETE_BRANCH_AFTER_MERGE` and `INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE` to `true` on every instance. Infrahub then deletes the feature or promotion branch in Infrahub, and deletes the Git branch after it pushes the merge. While a push waits in the [push queue](./branch-synchronization.mdx#the-source-branch-is-kept-until-its-merge-is-pushed), Infrahub keeps the Git branch. Infrahub does not start when the Git setting is on and the Infrahub setting is off.
 - **Turn on explicit merge commits.** Set `INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT` to `true` on every instance. Infrahub then creates one merge commit in Git for each merge. You need that commit to [undo a change](#undo-a-promoted-change) with one revert. Without it, Git fast-forwards the branch when it can and records no merge commit.
 - **Set an import filter on every instance.** Without a filter, an instance imports the branches of the other environments.
 - **Use a new name for every promotion branch.** Do not reuse a name. If you delete an Infrahub branch and create it again under the same name, Infrahub keeps its old Git commit. Merging its Proposed Change can then promote the old content.
@@ -106,11 +106,12 @@ A [read-only repository](./overview.mdx#read-only-vs-core) imports one Git branc
 | Git access that Infrahub needs | Push to the long-lived branch of each environment | Read |
 | What enforces the order of the environments | Nothing: you create each promotion branch from the correct source branch | The Git host |
 
-To set up this workflow, follow [promote changes with read-only repositories](./promote-read-only.mdx).
+To set up this workflow, follow [promote changes between environments](./promote-between-environments.mdx#with-read-only-repositories).
 
 ## Further reading
 
-- [Promote changes between environments](./promote-between-environments.mdx): the settings and commands for each instance.
+- [Develop changes from a Git repository](./develop-changes.mdx): develop a change on one instance, with either type of repository.
+- [Promote changes between environments](./promote-between-environments.mdx): the settings and commands for each instance, with either type of repository.
 - [Branch synchronization](./branch-synchronization.mdx): the import filter and what happens when a push to Git fails.
 - [Git integration](./overview.mdx): the two repository types and how Infrahub merges Git branches.
 - [Proposed Changes](../proposed-changes/overview.mdx): the review and merge step on each instance.

@@ -4,23 +4,31 @@ title: Promote changes between environments
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import PromotionReadOnly from '../media/promotion-read-only.svg';
 
-In this guide, you set up one Infrahub instance per environment with a read-write repository. You then develop a change and promote it from development to integration and production. A reviewer merges the change through a Proposed Change on each instance, and Infrahub pushes each merge to Git. [Multiple environments from a single repository](./multi-environment.mdx) explains the workflow and the reasons for each setting.
+You run one Infrahub instance per environment, and promote a change from development to the next environments, ending in production. Each instance imports its own long-lived Git branch of one repository. [Multiple environments from a single repository](./multi-environment.mdx) explains the workflow, the reasons for each setting and the rules for the team.
+
+The steps depend on the type of the repository:
+
+- With [read-write repositories](#with-read-write-repositories), the recommended type from Infrahub 1.12, a reviewer merges the change through a Proposed Change on each instance, and Infrahub pushes each merge to Git.
+- With [read-only repositories](#with-read-only-repositories), no instance writes to Git. A promotion is a merge request on your Git host, which you test and import on an Infrahub branch of the target instance.
+
+## With read-write repositories
 
 The example uses three instances: development imports the Git branch `develop`, integration imports `integration`, and production imports `production`.
 
-## Prerequisites
+### Prerequisites
 
 - Infrahub 1.12 or later on every instance.
 - One Git repository with one long-lived branch per environment: `develop`, `integration` and `production`.
 - A Git credential for each instance that can push to the branches of the repository.
 - Branch protection on your Git host that blocks deletion and force-push of the long-lived branches.
 
-## Set up each instance
+### Set up each instance
 
 Run these two steps once on each instance, in this order. The instance imports branches as soon as you connect the repository, so set the import filter first.
 
-### Step 1: Set the configuration
+#### Step 1: Set the configuration
 
 Set these environment variables on the Infrahub server and on the task workers of each instance, then restart them. Only the import filter differs between instances:
 
@@ -45,7 +53,7 @@ INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT=true
 
 [How to configure Infrahub](../deploy-manage/install-configure/configure-infrahub) describes how to set environment variables for your deployment.
 
-### Step 2: Connect the repository
+#### Step 2: Connect the repository
 
 Connect the repository as a read-write repository, and set its default branch to the Git branch of the environment: `develop`, `integration` or `production`.
 
@@ -101,44 +109,11 @@ Connect the repository as a read-write repository, and set its default branch to
 
 The instance imports the Git branch of its environment into its `main` branch. [Connect a repository](./connect-repository.mdx) describes credentials and the other options.
 
-## Develop a change on the development instance
+### Develop a change on the development instance
 
-1. Create a feature branch from the current `develop` and push it:
+Develop the change on a `feature/` branch, and merge its Proposed Change on the development instance, as described in [develop changes from a Git repository](./develop-changes.mdx#with-a-read-write-repository). Infrahub then merges the change into `develop` and pushes `develop`.
 
-   ```bash
-   git fetch origin
-   git switch -c feature/add-tag-color origin/develop
-   ```
-
-   Add a schema file that adds a `color` attribute to the built-in Tag, then commit and push it:
-
-   ```bash
-   mkdir -p schemas
-   cat > schemas/tags.yml <<'EOF'
-   ---
-   version: '1.0'
-   extensions:
-     nodes:
-       - kind: BuiltinTag
-         attributes:
-           - name: color
-             kind: Text
-             optional: true
-   EOF
-   git add schemas/tags.yml
-   git commit -m "Add color attribute to Tag"
-   git push -u origin feature/add-tag-color
-   ```
-
-   The `schemas` list in `.infrahub.yml` must include `schemas/tags.yml`, so that Infrahub imports the file.
-
-   You can also create the branch on the development instance, with **Sync with Git** turned on. Infrahub then creates the Git branch, and you push your commits to it.
-
-2. Wait for the development instance to import the branch. Infrahub checks Git for new branches and commits once a minute.
-3. Open a [Proposed Change](../proposed-changes/overview.mdx) from `feature/add-tag-color` to `main` and review it.
-4. Merge the Proposed Change. Infrahub merges the Git branch into `develop`, pushes `develop`, and deletes the feature branch.
-
-## Promote the change to the next environment
+### Promote the change to the next environment
 
 1. Create a promotion branch in Git from the current `develop` and push it. Give it a name that you have not used before:
 
@@ -158,13 +133,7 @@ To promote to production, repeat these steps with a branch such as `promote/prod
 
 Keep one open promotion branch per target instance. Merge or delete it before you create the next one.
 
-:::note Rehearse a production promotion first
-
-Before you merge on production, test the promotion on a separate instance restored from a current [database backup](../deploy-manage/maintain-upgrade/database-backup/backup-and-restore.mdx) of production. See [test a promotion against a copy of production](./multi-environment.mdx#test-a-promotion-against-a-copy-of-production).
-
-:::
-
-## Recover from a mistake
+### Recover from a mistake
 
 | What happened | What you view | What to do |
 | --- | --- | --- |
@@ -174,9 +143,90 @@ Before you merge on production, test the promotion on a separate instance restor
 | Someone pushed a commit directly to an environment branch, and you merge right after | Infrahub refuses the merge: `Unable to merge branch ..., because Infrahub has not recorded the latest commit of branch ...` | Merge again after about one minute, when Infrahub has imported the commit |
 | Infrahub cannot push a merge to Git | The repository shows a failed push | See [when a push to the remote fails](./branch-synchronization.mdx#when-a-push-to-the-remote-fails) |
 
+## With read-only repositories
+
+The example uses three environments: development imports the Git branch `develop`, staging imports `staging`, and production imports `main`. Each instance has a read-only repository whose `ref` on `main` is the Git branch of its environment.
+
+<PromotionReadOnly role="img" style={{width: '100%', height: 'auto'}} />
+
+Steps 1 to 5 of the diagram develop a change on the development instance, as described in [develop changes from a Git repository](./develop-changes.mdx#with-a-read-only-repository). Steps 6 to 10 promote the change to staging, then repeat for production. Hover over a step to show only that step. Infrahub never writes to Git in this workflow.
+
+Git and Infrahub both have branches, a `main` and a merge step. In this section, a **Git branch** and a **merge request** are on your Git host. An **Infrahub branch** and a **Proposed Change** are inside one instance. The Git branch `main` of production is not related to the Infrahub branch `main` of any instance.
+
+### Connect the repository on each instance
+
+Connect the repository on each instance as a read-only repository, with `ref` set to the Git branch of that environment.
+
+```graphql
+mutation {
+  CoreReadOnlyRepositoryCreate(data: {
+    name: { value: "infra" }
+    location: { value: "https://github.com/<org>/<repo>.git" }
+    ref: { value: "develop" }          # "main" on the production instance
+    credential: { id: "<credential-id>" }
+  }) { ok }
+}
+```
+
+On the Infrahub branch `main`, the `ref` of the repository always names the Git branch of the environment. A promotion changes the commit that the instance imported, not the `ref`.
+
+### Promote a change
+
+A promotion is a Git merge into the branch of the next environment. You test the source branch on an Infrahub branch of the target instance before you merge it in Git. Do not import onto `main` directly: an import can fail, and you cannot undo a failed import on `main`. Import onto an Infrahub branch instead: if the import fails, you delete that branch.
+
+1. On your Git host, open a merge request from the source branch to the target branch, for example from `develop` to `staging`. Do not merge it yet.
+2. On the target instance, create an Infrahub branch. On that branch, set the `ref` of the repository to the source branch, `develop`. Changing the `ref` starts the import.
+3. Check the import and the result on the Infrahub branch. If the import fails, delete the Infrahub branch and fix the change on the development instance.
+4. When the import succeeds, merge the merge request on your Git host.
+5. On the Infrahub branch, set the `ref` back to the target branch, `staging`. The instance imports the merged commit.
+6. Open a Proposed Change from the Infrahub branch to `main`, review it, and merge it.
+
+Repeat the promotion for each environment in the chain, for example from `develop` to `staging`, then from `staging` to `main`.
+
+:::caution Point the `ref` back before you merge
+
+The `ref` of the repository and the imported commit are recorded per Infrahub branch. When you merge an Infrahub branch on which you changed them, Infrahub also changes them on `main`. That is why step 5 sets the `ref` back to the Git branch of the environment before the merge. Otherwise `main` of the instance tracks the source branch from then on.
+
+:::
+
+### Automate the promotion (optional)
+
+:::note Experimental
+
+Only the manual steps above are supported. Adapt the example below to your CI system. Keep production promotions manual until you have tested your automation from start to finish.
+
+:::
+
+A CI system can run the same steps in two jobs:
+
+1. When a merge request into an environment branch opens, the first job creates an Infrahub branch on the target instance and sets its `ref` to the source branch. The job then opens a Proposed Change. As a required status check, the job blocks the merge request until the checks of the Proposed Change pass.
+2. After the merge request merges, the second job sets the `ref` on the Infrahub branch to the target branch. A reviewer then merges the Proposed Change.
+
+The first job reads the checks from the `validations` of the Proposed Change. Each validation has a `state` (`queued`, `in_progress`, `completed`) and a `conclusion` (`unknown`, `failure`, `success`):
+
+```graphql
+query {
+  CoreProposedChange(ids: ["<proposed-change-id>"]) {
+    edges { node {
+      validations { edges { node {
+        display_label
+        state { value }
+        conclusion { value }
+      } } }
+    } }
+  }
+}
+```
+
+Query until the `state` of every validation is `completed`, then fail the CI job unless every `conclusion` is `success`. Store the address of each instance and an [API token](../deploy-manage/user-management/managing-api-tokens.mdx) as CI secrets, and authenticate with the `X-INFRAHUB-KEY` header.
+
+## Rehearse a production promotion first
+
+Before you promote to production, rehearse the promotion on a separate instance restored from a current [database backup](../deploy-manage/maintain-upgrade/database-backup/backup-and-restore.mdx) of production. See [test a promotion against a copy of production](./multi-environment.mdx#test-a-promotion-against-a-copy-of-production).
+
 ## Related
 
 - [Multiple environments from a single repository](./multi-environment.mdx): the workflow, the rules for the team, and how to undo a promoted change.
+- [Develop changes from a Git repository](./develop-changes.mdx): develop the change on the development instance.
 - [Branch synchronization](./branch-synchronization.mdx): the import filter in full.
-- [Promote changes with read-only repositories](./promote-read-only.mdx): the alternative workflow, in which Infrahub never writes to Git.
 - [Proposed Changes](../proposed-changes/overview.mdx): the review step on each instance.

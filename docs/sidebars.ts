@@ -289,7 +289,6 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'git-integration/develop-changes', label: 'Develop changes' },
             { type: 'doc', id: 'git-integration/multi-environment', label: 'Multiple environments' },
             { type: 'doc', id: 'git-integration/promote-between-environments', label: 'Promote between environments' },
-            { type: 'doc', id: 'git-integration/promote-read-only', label: 'Promote with read-only repositories' },
           ],
         },
       ],
