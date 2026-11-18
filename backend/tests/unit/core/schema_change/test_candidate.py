@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import pytest
 
 from infrahub.core.constants import HashableModelState
-from infrahub.core.schema import DropdownChoice, SchemaRoot
+from infrahub.core.schema import AttributeSchema, DropdownChoice, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.schema_change.applier import SchemaChangeApplier
 from infrahub.core.schema_change.candidate import SchemaCandidateBuilder
@@ -370,3 +370,68 @@ def test_operations_are_applied_once(equivalence_base_schema: SchemaBranch) -> N
         )
     ]
     assert sorted(candidate.validation.diff.changed) == [TestKind.DEVICE]
+
+
+USER_GIVEN_ID = "3f8d2b61-0c4e-4a97-9b15-7e2a6c0d8f43"
+CABLE_KIND = "TestingCable"
+
+
+def _new_kind_with_an_id() -> SchemaRoot:
+    cable = NodeSchema(
+        id=USER_GIVEN_ID,
+        name="Cable",
+        namespace="Testing",
+        label="Cable",
+        attributes=[AttributeSchema(name="length", kind="Number", optional=True)],
+    )
+    return SchemaRoot(nodes=[cable])
+
+
+def _new_attribute_with_an_id() -> SchemaRoot:
+    tag = base_node_definition(TestKind.TAG)
+    tag.attributes.append(AttributeSchema(id=USER_GIVEN_ID, name="code", kind="Text", optional=True))
+    return SchemaRoot(nodes=[tag])
+
+
+@dataclass(frozen=True)
+class UserGivenIdCase:
+    name: str
+    schema_file: Callable[[], SchemaRoot]
+    kind: str
+    element_name: str | None
+    """The new attribute that the file gives an ID, or `None` when the file gives the new kind an ID."""
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [
+        pytest.param(
+            UserGivenIdCase(name="new_kind", schema_file=_new_kind_with_an_id, kind=CABLE_KIND, element_name=None),
+            id="new_kind",
+        ),
+        pytest.param(
+            UserGivenIdCase(
+                name="new_attribute_of_an_existing_kind",
+                schema_file=_new_attribute_with_an_id,
+                kind=TestKind.TAG,
+                element_name="code",
+            ),
+            id="new_attribute_of_an_existing_kind",
+        ),
+    ],
+)
+def test_an_id_that_a_file_gives_a_new_kind_or_attribute_is_left_out(
+    equivalence_base_schema: SchemaBranch, test_case: UserGivenIdCase
+) -> None:
+    candidate = build_schema_candidate_builder().from_schema_root(
+        branch_schema=equivalence_base_schema,
+        schema_root=test_case.schema_file(),
+        default_branch_schema=equivalence_base_schema,
+    )
+
+    kind = candidate.schema.get(name=test_case.kind, duplicate=False)
+    target = kind if test_case.element_name is None else kind.get_attribute(name=test_case.element_name)
+    assert target.id is None
+    assert [operation.operation_type for operation in candidate.operations] == [
+        SchemaOperationType.NODE_ADD if test_case.element_name is None else SchemaOperationType.ELEMENT_ADD
+    ]

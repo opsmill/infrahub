@@ -4,6 +4,9 @@ from typing import TYPE_CHECKING
 
 from pydantic import ValidationError
 
+from infrahub.core.schema_change.enums import SchemaOperationSection
+from infrahub.core.schema_change.operations import INSTANCE_ID_KEY
+
 if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
@@ -15,8 +18,9 @@ class SchemaCandidateComparer:
     def differing_kinds(self, *, direct_load_schema: SchemaBranch, applied_schema: SchemaBranch) -> list[str]:
         """Return the sorted kinds whose content differs between the two schemas, or that only one of them has.
 
-        Two kinds with the same content are equal even when an attribute is held in another Python class. A kind that
-        cannot be parsed again in either schema is returned, and nothing is raised for it.
+        Two kinds with the same content are equal even when an attribute is held in another Python class, or when the
+        kind or one of its attributes or relationships has another ID. A kind that cannot be parsed again in either
+        schema is returned, and nothing is raised for it.
         """
         direct_load_hashes = self._kind_hashes(schema=direct_load_schema)
         applied_hashes = self._kind_hashes(schema=applied_schema)
@@ -41,5 +45,11 @@ class SchemaCandidateComparer:
             return False
 
     def _content_hash(self, node: MainSchemaTypes) -> str:
+        # Saving a schema gives a new kind or element an ID of its own whatever ID the file set, so IDs are no content.
+        definition = node.model_dump()
+        definition.pop(INSTANCE_ID_KEY, None)
+        for section in SchemaOperationSection:
+            for element in definition.get(section.value) or []:
+                element.pop(INSTANCE_ID_KEY, None)
         # Parsing the kind again builds each attribute in the class of its attribute kind, as a schema read from the database has it.
-        return type(node).model_validate(node.model_dump()).get_hash()
+        return type(node).model_validate(definition).get_hash()

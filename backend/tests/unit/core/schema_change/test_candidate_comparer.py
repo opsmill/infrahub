@@ -87,3 +87,22 @@ def test_a_kind_that_cannot_be_parsed_again_is_returned(equivalence_base_schema:
     )
 
     assert differing_kinds == [TestKind.TAG]
+
+
+def test_a_kind_and_an_attribute_that_differ_only_by_id_give_no_kind(equivalence_base_schema: SchemaBranch) -> None:
+    direct_load_schema = _with_device_attribute(
+        equivalence_base_schema,
+        TextAttributeSchema(id="5b0c3f1e-2d7a-4c9b-8e61-0a4f9d2c7b13", name="serial", kind="Text", optional=True),
+    )
+    device = direct_load_schema.get(name=TestKind.DEVICE)
+    device.id = "9a1e6d42-7c3b-4f05-b8d2-3e5f0c9a1b76"
+    direct_load_schema.set(name=TestKind.DEVICE, schema=device)
+    applied_schema = _with_device_attribute(
+        equivalence_base_schema, TextAttributeSchema(name="serial", kind="Text", optional=True)
+    )
+
+    differing_kinds = SchemaCandidateComparer().differing_kinds(
+        direct_load_schema=direct_load_schema, applied_schema=applied_schema
+    )
+
+    assert differing_kinds == []

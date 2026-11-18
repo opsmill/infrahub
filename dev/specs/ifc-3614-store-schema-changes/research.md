@@ -325,9 +325,10 @@ kinds. The load saves nothing, and the check returns the same error.
   refused with `SchemaNotFoundError` before the operations are built. Laying it over the branch
   schema would replace the kind whole, which no operation states, and a direct load refused the
   same file with the same error when it wrote the kind.
-- A file that gives a new kind an ID fails with `SchemaOperationsRebuildError`, because the
-  `node_add` operation does not hold instance IDs. No test covers it, and whether to refuse it as
-  an error of the file is open.
+- A file that gives a new kind, or a new attribute or relationship of an existing kind, an ID loads
+  as if it gave none: the operations do not hold instance IDs, the comparison leaves IDs out, and
+  saving a schema gives a new kind or element a database ID whatever ID the file set
+  (`_create_node_in_db` and the element writes in `core/schema/manager.py` exclude `id`).
 - `SchemaCandidateComparer` returns the kinds whose content differs. A kind whose stored hash
   differs is parsed again into the class of each attribute kind, as a schema read from the
   database is, and is returned only when the hash of that content still differs; an attribute
