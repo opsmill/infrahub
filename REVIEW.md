@@ -30,7 +30,7 @@ For a change users can see in the UI, the API, the CLI or the documentation, als
 In a frontend change, look for a UI block that now exists in more than one place:
 
 - A new component or block that repeats an existing one with different values, such as another kind, action or tab. Report it as a Nit and name the existing one by `file:line`.
-- A change to a block that also exists in other files. Search for the block's test ID, label or class string. Rate a copy the change missed like any other behavior finding, and the same edit made by hand in several copies as a Nit.
+- A change to a block that also exists in other files. Search for the block's test ID, label or class string, and for any component or hook it uses that few other files import, because a copy made for another value can have a different label and no test ID. Rate a copy the change missed like any other behavior finding, and the same edit made by hand in several copies as a Nit.
 
 `dev/guidelines/frontend/component-patterns.md` says when to extract a shared component.
 
