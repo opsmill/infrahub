@@ -89,6 +89,18 @@ def build_merge_constraint_result(
     return result
 
 
+def without_constraints(
+    constraints: list[SchemaUpdateConstraintInfo], excluded: list[SchemaUpdateConstraintInfo]
+) -> list[SchemaUpdateConstraintInfo]:
+    """Return the constraints that ``excluded`` does not hold, matched by constraint name and schema path."""
+    excluded_keys = {(constraint.constraint_name, constraint.path.get_path()) for constraint in excluded}
+    return [
+        constraint
+        for constraint in constraints
+        if (constraint.constraint_name, constraint.path.get_path()) not in excluded_keys
+    ]
+
+
 class MergeConstraintValidator:
     """Validate that merging a branch will not violate any schema/data constraint on the destination.
 
@@ -113,25 +125,52 @@ class MergeConstraintValidator:
         self.migration_validator = migration_validator
 
     async def validate(
-        self, candidate_schema: SchemaBranch, schema_diff_constraints: list[SchemaUpdateConstraintInfo]
+        self,
+        candidate_schema: SchemaBranch,
+        schema_diff_constraints: list[SchemaUpdateConstraintInfo],
+        source_constraints: list[SchemaUpdateConstraintInfo],
     ) -> MergeConstraintValidationResult:
+        """Check the source branch's schema changes against the destination's current data, and the rest as before.
+
+        The other constraints keep reading the destination as it was when the branch was created or last rebased,
+        because the candidate schema can hold the source's older value for a change made only on the destination.
+        """
         node_field_summaries = await self.diff_repository.get_node_field_summaries(
             diff_branch_name=self.branch.name, tracking_id=BranchTrackingId(name=self.branch.name)
         )
         data_diff_constraints = await self.determiner.get_constraints(
             schema_branch=candidate_schema, node_diffs=node_field_summaries
         )
-        constraints = self.constraint_info_merger.merge(
-            candidate_schema, data_diff_constraints, schema_diff_constraints
+        current_data_constraints = self.constraint_info_merger.merge(candidate_schema, source_constraints)
+        constraints = without_constraints(
+            constraints=self.constraint_info_merger.merge(
+                candidate_schema, data_diff_constraints, schema_diff_constraints
+            ),
+            excluded=current_data_constraints,
         )
-        if not constraints:
+        if not constraints and not current_data_constraints:
             return MergeConstraintValidationResult()
 
-        responses = await self.migration_validator(
-            SchemaValidateMigrationData(
-                branch=self.branch, schema_branch=candidate_schema, constraints=constraints, is_isolated=True
+        responses: list[SchemaValidatorPathResponseData] = []
+        if constraints:
+            responses.extend(
+                await self.migration_validator(
+                    SchemaValidateMigrationData(
+                        branch=self.branch, schema_branch=candidate_schema, constraints=constraints, is_isolated=True
+                    )
+                )
             )
-        )
+        if current_data_constraints:
+            responses.extend(
+                await self.migration_validator(
+                    SchemaValidateMigrationData(
+                        branch=self.branch,
+                        schema_branch=candidate_schema,
+                        constraints=current_data_constraints,
+                        is_isolated=False,
+                    )
+                )
+            )
         conflicted_fields = await gather_conflicted_fields(
             diff_repository=self.diff_repository, branch_name=self.branch.name
         )
