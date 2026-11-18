@@ -38,6 +38,10 @@ constraints into two batches, keyed by constraint name and schema path:
 - **Branch view**: every other constraint, from the data diff and from the three-way schema diff
   (`MergeSchemaAnalyzer.calculate_validations`).
 
+Merge computes both schema batches only when `MergeSchemaAnalyzer.has_schema_changes()` is true. It reads the diff
+of `SchemaNode`, `SchemaAttribute` and `SchemaRelationship` vertices, and leaves out `SchemaGeneric`. Rebase
+decides with `Branch.schema_differs_from_default_branch` instead.
+
 Schema changes made on the default branch stay in the branch view, because the candidate schema cannot be trusted
 for them. `SchemaBranch.update` builds the candidate by copying the source branch's value of every scalar that
 differs, except where the source branch leaves the field unset, which keeps the default branch's value. So a value
@@ -49,7 +53,25 @@ branch's schema allows.
 
 - A schema change made on the default branch is checked against the branch's data only through the candidate schema,
   which can hold the branch's older value, so the check can miss nodes that break it.
+- When both branches changed the same attribute, the branch's change is checked against a candidate attribute
+  that holds the branch's older value of each property only the default branch changed, so the check can refuse a
+  merge that combining both changes would allow.
 - A dropdown choice removed on the branch is not checked against the default branch's current data:
   `SchemaBranch.update` merges lists of choices and keeps a choice that only the default branch still holds.
+- An attribute renamed on the branch is matched by its new name, but a node created on the default branch after
+  branching still stores the value under the old name, so the merge view misses that node. The rename migration at
+  merge then moves the value to the new name, where it can break a regular expression or a mandatory flag added on
+  the branch.
+- A merge whose only schema changes are to generics runs none of the schema-change checks, because
+  `has_schema_changes()` is false: a generic's `uniqueness_constraints` does not reach a node that has uniqueness
+  constraints of its own, so no `SchemaNode` changes. The same condition skips the schema update of the default
+  branch after the merge. Rebase checks these changes.
 - The Schema Integrity check of a proposed change reads the branch view, so it can pass while the merge of the
   proposed change is refused.
+
+## Schema Integrity result after a refused merge
+
+A refused merge of a proposed change records its violations as a failure of the Schema Integrity validator. When a
+later pipeline or Schema Integrity check finds nothing to check, `ObjectConflictValidatorRecorder.clear_failure`
+replaces that failure with a passing result. It replaces only a failure the validator completed before that run
+started, so a merge refused while the run was in progress keeps its failure.
