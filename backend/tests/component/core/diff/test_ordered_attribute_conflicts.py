@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock
 
 from infrahub.core import registry
+from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
@@ -181,6 +182,17 @@ async def test_data_attribute_list_conflicts(
         db=db, branch=recompute_branch, node_id=recompute_id, sequence=["a", "main_only", "feature_only"]
     )
     assert await _recompute_conflict() is None
+    recompute_diff = await _get_branch_diff(db=db, branch=recompute_branch)
+    sequence = (
+        {n.uuid: n for n in recompute_diff.nodes}[recompute_id]
+        .get_attribute(name="sequence")
+        .get_property(property_type=DatabaseEdgeType.HAS_VALUE)
+    )
+    assert (sequence.previous_value, sequence.new_value, sequence.action) == (
+        '["a"]',
+        '["a","main_only","feature_only"]',
+        DiffAction.UPDATED,
+    )
 
 
 async def test_dropdown_choices_conflicts_cleared_on_recompute_paths(

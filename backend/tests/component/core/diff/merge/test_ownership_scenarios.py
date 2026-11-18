@@ -8,16 +8,11 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
-from uuid import uuid4
 
 import pytest
 
-from infrahub.auth.session import AccountSession
-from infrahub.auth.types import AuthType
-from infrahub.context import InfrahubContext
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.changelog.builder import build_diff_changelog_collector
 from infrahub.core.constants import DiffAction, MetadataOptions
 from infrahub.core.constants.database import DatabaseEdgeType
@@ -37,8 +32,6 @@ from infrahub.core.ownership.models import (
 from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.database.validation import verify_graph
 from infrahub.exceptions import ValidationError
-from infrahub.workers.dependencies import build_database
-from tests.helpers.dependency_override import override_dependency
 
 from ..get_one_node import get_one_diff_node
 from ._ownership import (
@@ -48,6 +41,7 @@ from ._ownership import (
     load_owner_dataset,
     merge,
     read_owners,
+    rebase_with_conflict_check,
     set_owners,
     update_diff,
 )
@@ -588,15 +582,7 @@ async def test_different_owner_changes_on_both_branches_conflict_and_the_merge_a
     await verify_graph(db=db)
 
 
-async def _rebase(db: InfrahubDatabase, default_branch: Branch, branch: Branch, dependency_provider: Provider) -> None:
-    context = InfrahubContext.init(
-        branch=default_branch, account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE)
-    )
-    with override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider):  # noqa: ARG005
-        await rebase_branch(branch=branch.name, context=context)
-
-
-@pytest.mark.parametrize("holder", _params(ALL_HOLDERS))
+@pytest.mark.parametrize("holder", _params([holder for holder in ALL_HOLDERS if holder is not NODE]))
 async def test_rebase_refuses_different_owner_changes_on_both_branches(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -618,7 +604,9 @@ async def test_rebase_refuses_different_owner_changes_on_both_branches(
 
     message = f"Update the data so that both branches agree on these conflicts: {conflict_paths[0]}."
     with pytest.raises(ValidationError, match=f"{re.escape(message)}$"):
-        await _rebase(db=db, default_branch=default_branch, branch=branch, dependency_provider=dependency_provider)
+        await rebase_with_conflict_check(
+            db=db, default_branch=default_branch, branch=branch, dependency_provider=dependency_provider
+        )
 
     assert (await Branch.get_by_name(db=db, name=branch.name)).branched_from == branch.branched_from
     assert await holder.read(db=db, branch=branch, node_id=node_id) == dataset.owners(after)

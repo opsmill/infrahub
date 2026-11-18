@@ -4,10 +4,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import ujson
 
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
+from infrahub.context import InfrahubContext
 from infrahub.core import registry
+from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.manager import NodeManager
@@ -17,12 +22,16 @@ from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.ownership.resolver import OwnershipResolver
 from infrahub.core.ownership.writer import OwnershipWriter
 from infrahub.core.timestamp import Timestamp
+from infrahub.workers.dependencies import build_database
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.schema.ownership import OWNERSHIP_SCHEMA
 
 from ..get_one_node import get_one_diff_node
 from .conftest import get_diff_coordinator, get_diff_merger
 
 if TYPE_CHECKING:
+    from fast_depends import Provider
+
     from infrahub.core.branch import Branch
     from infrahub.core.diff.model.path import EnrichedDiffProperty, EnrichedDiffRoot
     from infrahub.core.diff.repository.repository import DiffRepository
@@ -135,6 +144,17 @@ async def merge(db: InfrahubDatabase, branch: Branch) -> None:
     """Merge the branch with its latest diff, the way the merge of a branch does after the diff update."""
     merger = await get_diff_merger(db=db, branch=branch)
     await merger.merge_graph(at=Timestamp())
+
+
+async def rebase_with_conflict_check(
+    db: InfrahubDatabase, default_branch: Branch, branch: Branch, dependency_provider: Provider
+) -> None:
+    """Rebase the branch the way a user does, with the check that refuses some conflicts."""
+    context = InfrahubContext.init(
+        branch=default_branch, account=AccountSession(account_id=str(uuid4()), auth_type=AuthType.NONE)
+    )
+    with override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider):  # noqa: ARG005
+        await rebase_branch(branch=branch.name, context=context)
 
 
 def owner_property(diff: EnrichedDiffRoot, node_id: str, field_name: str = OWNERS_FIELD) -> EnrichedDiffProperty:
