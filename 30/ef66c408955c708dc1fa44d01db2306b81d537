@@ -1,0 +1,25 @@
+backend/infrahub/proposed_change/tasks.py
+  s_c635c0ab719820::t_d5f57b9a4d0489 197-200,203,541-542,595-597,1232-1233,1343-1345
+backend/tests/component/core/integrity/test_conflict_recorder.py
+  s_c635c0ab719820::t_e0018ef0c22818 9,51,57,59,65-83,93,108
+backend/infrahub/core/integrity/object_conflict/conflict_recorder.py
+  s_c635c0ab719820::t_7eaf009293c752 99
+  s_c635c0ab719820::t_224cbe4c88934d 98,100-102,112-113
+  s_c635c0ab719820::t_c0725440049352 114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "30ef66c408955c708dc1fa44d01db2306b81d537",
+  "prompts": {},
+  "sessions": {
+    "s_c635c0ab719820": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9dc6648c-b1f2-4d6d-9231-bda66faa77f5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
