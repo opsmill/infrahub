@@ -5,7 +5,7 @@ Read this at the end of phase 2, before opening the design PR, and again in phas
 The design PR is a draft opened at the end of phase 2. Its preview is the link reviewers
 open, and its comments hold their notes. Until phase 5 its body says what is being
 designed, gives the preview link, and explains how to give feedback (pin notes, press
-*Post to PR*). At phase 5 the body becomes `05-handoff.md` and the PR is where the design
+*Copy gh command* and run it in a terminal, or paste *Copy all notes* into a comment). At phase 5 the body becomes `05-handoff.md` and the PR is where the design
 is approved. Approval goes on a PR because it is recorded, has an author, and sits next to
 the code. The design PR is never merged.
 

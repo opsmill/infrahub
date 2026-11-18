@@ -11,7 +11,7 @@
  * See SKILL.md § Iterating inside the prototype.
  */
 
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { NewNote, Note, NoteStatus } from "./notes-store";
 
@@ -37,6 +37,26 @@ const pathFrom = (root: Element, el: Element): string => {
  * A pane selector never starts at `body`, which is what tells the two apart on render.
  */
 const isViewportPin = (n: Note) => n.selector === "body" || n.selector.startsWith("body >");
+
+/** An empty selector means the pin was dropped on the content box itself. */
+const findAnchor = (content: Element, selector: string): Element | null => {
+  if (!selector) return content;
+  try {
+    return content.querySelector(`:scope > ${selector}`);
+  } catch {
+    return null;
+  }
+};
+
+type Point = { left: number; top: number };
+
+const samePoints = (a: Record<string, Point>, b: Record<string, Point>) => {
+  const keys = Object.keys(b);
+  return (
+    keys.length === Object.keys(a).length &&
+    keys.every((k) => a[k]?.left === b[k]?.left && a[k]?.top === b[k]?.top)
+  );
+};
 
 type Props = {
   scope: string;
@@ -67,6 +87,57 @@ export function Annotations({
   /** Text being typed, per note, so a poll refresh can't yank the caret mid-sentence. */
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const rootRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [layoutTick, setLayoutTick] = useState(0);
+  const [points, setPoints] = useState<Record<string, Point>>({});
+
+  /*
+   * A pin follows the element it was dropped on, so it is re-placed whenever the design
+   * changes size or its DOM changes; observing only the content box keeps pin renders out.
+   */
+  useLayoutEffect(() => {
+    const content = contentRef.current;
+    if (!content) return;
+    let frame = 0;
+    const schedule = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        setLayoutTick((t) => t + 1);
+      });
+    };
+    const resize = new ResizeObserver(schedule);
+    resize.observe(content);
+    const mutation = new MutationObserver(schedule);
+    mutation.observe(content, { childList: true, subtree: true, attributes: true, characterData: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      resize.disconnect();
+      mutation.disconnect();
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    const content = contentRef.current;
+    if (!root || !content) return;
+    const box = root.getBoundingClientRect();
+    const next: Record<string, Point> = {};
+    for (const n of notes) {
+      if (isViewportPin(n) || !n.anchor) continue;
+      const el = findAnchor(content, n.selector);
+      if (!el) {
+        next[n.id] = { left: n.anchor.ox, top: n.anchor.oy };
+        continue;
+      }
+      const r = el.getBoundingClientRect();
+      next[n.id] = {
+        left: r.left - box.left + n.anchor.ex * r.width,
+        top: r.top - box.top + n.anchor.ey * r.height,
+      };
+    }
+    setPoints((prev) => (samePoints(prev, next) ? prev : next));
+  }, [notes, layoutTick]);
 
   /**
    * Fired on the shield, not on the design. Two reasons it has to work this way:
@@ -85,7 +156,8 @@ export function Annotations({
 
     const shield = e.currentTarget;
     const root = rootRef.current;
-    if (!root) return;
+    const content = contentRef.current;
+    if (!root || !content) return;
 
     shield.style.pointerEvents = "none";
     const target = document.elementFromPoint(e.clientX, e.clientY);
@@ -107,15 +179,22 @@ export function Annotations({
       return;
     }
 
+    // An existing pin under the pointer is not part of the design; anchor to the content box.
+    const anchorEl = content.contains(target) ? target : content;
     const box = root.getBoundingClientRect();
+    const r = anchorEl.getBoundingClientRect();
     await onAdd({
       scope,
-      selector: pathFrom(root, target),
+      selector: anchorEl === content ? "" : pathFrom(content, anchorEl),
       snippet,
-      // `box` is the scrolling content's own rect, so these offsets already account for
-      // how far the pane is scrolled. Fractions keep pins put across resizes.
       x: (e.clientX - box.left) / box.width,
       y: (e.clientY - box.top) / box.height,
+      anchor: {
+        ex: r.width ? (e.clientX - r.left) / r.width : 0,
+        ey: r.height ? (e.clientY - r.top) / r.height : 0,
+        ox: e.clientX - box.left,
+        oy: e.clientY - box.top,
+      },
       text: "",
     });
   };
@@ -130,11 +209,12 @@ export function Annotations({
   const pin = (n: Note, i: number) => {
     const mine = isMine(n);
     const status = n.status ?? "open";
+    const at = points[n.id];
     return (
           <div
             key={n.id}
             className={isViewportPin(n) ? "dja-pin dja-pin--viewport" : "dja-pin"}
-            style={{ left: `${n.x * 100}%`, top: `${n.y * 100}%` }}
+            style={at ? { left: at.left, top: at.top } : { left: `${n.x * 100}%`, top: `${n.y * 100}%` }}
           >
             <button
               type="button"
@@ -218,7 +298,9 @@ export function Annotations({
   return (
     <div className="dja-root" ref={rootRef}>
       <style>{css}</style>
-      {children}
+      <div className="dja-content" ref={contentRef}>
+        {children}
+      </div>
 
       {numbered.filter(({ n }) => !isViewportPin(n)).map(({ n, i }) => pin(n, i))}
 

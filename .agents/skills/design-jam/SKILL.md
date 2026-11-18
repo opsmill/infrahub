@@ -263,7 +263,7 @@ Feedback arrives over days, so refining runs in rounds that can be resumed at an
 
 1. **Build** rev N, commit and push. The push rebuilds the preview.
 2. **Share**: post one comment on the design PR with what changed, the preview link and
-   "pin notes, then press *Post to PR*". Set `status: awaiting feedback since <date>`.
+   "pin notes, then press *Copy gh command* and run it". Set `status: awaiting feedback since <date>`.
 3. **Collect**: reviewers pin notes and post them to the PR. Nothing to do.
 4. **Gather**: when the owner says "gather", read the PR comments with
    `gh pr view <number> --comments` (or `gh api repos/{owner}/{repo}/issues/<number>/comments`

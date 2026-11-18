@@ -5,7 +5,7 @@ changing it or `notes-store.ts`.
 
 Pass the panel `frame` so it fills the app's content area, not the whole window: a screen
 reviewed without the real sidebar and header is reviewed at the wrong width. Once the
-design PR exists, pass its URL as `prUrl`, which turns the main action into *Post to PR*.
+design PR exists, pass its URL as `prUrl`, which turns on the *Design PR* section.
 
 ## What the panel must do
 
@@ -32,8 +32,12 @@ design PR exists, pass its URL as `prUrl`, which turns the main action into *Pos
   the four corners; pressing the grip cycles corners for keyboard users. The corner
   survives a reload. In the top corners the column flips, so the knobs drawer opens toward
   the middle of the screen.
-- **Drag without lag.** While dragging, the dock follows the pointer 1:1 with no
-  transition and lifts by `scale(1.02)`; deepen the shadow by fading in a second layer,
+- **Drag without lag.** Portal the dock to `document.body`: inside a transformed or zoomed
+  parent, `position: fixed` is relative to that parent and the dock drifts away from the
+  pointer. Compute the translate from the pointer's position and the point where the dock
+  was grabbed, not from the distance moved, so the grabbed point stays under the pointer.
+  While dragging, the dock follows the pointer with no transition and lifts by
+  `scale(1.02)`; deepen the shadow by fading in a second layer,
   never by animating `box-shadow`. Do not store the position in React state, because a
   render per `pointermove` drops frames: write `transform` to the element once per frame
   with `requestAnimationFrame`, and keep only the dragging flag in state. On release, use
@@ -42,13 +46,17 @@ design PR exists, pass its URL as `prUrl`, which turns the main action into *Pos
   180 to 320 ms depending on distance. Grabbing it while it settles starts from where it
   is. With `prefers-reduced-motion`, change corners without movement.
 - **Hide completely** with one key or one button, so handoff screenshots do not show it.
-- **One header and three sections.** The header holds the run name, the grip and Hide.
+- **One header and four sections.** The header holds the run name, the grip and Hide.
   Each section has an uppercase label and its own actions in its first row:
   - **Prototype**: the direction picker and Knobs.
   - **Revision**: the scrubber and note, Latest and Compare.
-  - **Feedback**: a status line saying where notes are kept and whose name they carry,
-    Add note, and the main action (*Post to PR* once `prUrl` is set, *Copy all notes*
-    before). Copy all and Copy rev are for the owner and sit behind a ⋯ button.
+  - **Notes**: actions that stay in this browser. A status line says nobody else sees the
+    notes and whose name they carry, then Add note, Copy all notes, Copy rev and Clear all.
+  - **Design PR**: actions that reach the PR. Without `prUrl` it is greyed out and says
+    there is no PR yet. With it: *Copy gh command* and *Open PR*.
+
+  Only one button is primary: *Copy gh command* when `prUrl` is set, *Copy all notes*
+  before.
 
   Do not add a "View" or "Misc" section, and do not use a full-width bar.
 
@@ -73,7 +81,14 @@ gets `undefined` and fails visibly instead of showing a slider that changes noth
 
 The user arms the pin tool, clicks the element that is wrong and types the change. The note
 stores the comment, the element's text and its CSS path, so nobody has to describe which
-element they meant. Notes are scoped to `<slug>:<variant>:rev<N>`, so a note on rev 2 does
+element they meant.
+
+A pin in the design pane is anchored to that element: the note stores where on the element
+the click landed, as fractions of its box, and the pin is placed from the element's
+position. A `ResizeObserver` and a `MutationObserver` on the design re-place the pins when
+the screen changes height or its content changes, so a pin stays on its element. When the
+element no longer exists, the pin falls back to its pixel position in the pane. Never place
+pins as fractions of the pane height: the pin moves as soon as the screen grows. Notes are scoped to `<slug>:<variant>:rev<N>`, so a note on rev 2 does
 not show up as open on rev 4.
 
 While the tool is armed, an overlay covers the window and takes the pointer:
@@ -84,9 +99,8 @@ While the tool is armed, an overlay covers the window and takes the pointer:
   `elementFromPoint` call that finds the element underneath.
 - It covers the whole window, portaled to `document.body` with `position: fixed; inset: 0`,
   because a fixed element inside a transformed or scrolling parent is clipped to it.
-  Feedback is often about the app around the prototype. A pin in the design pane is stored
-  relative to the pane; a pin outside it is stored relative to the window, with a selector
-  rooted at `body`. The overlay sits below the dock, so pressing *Add note* again cancels.
+  Feedback is often about the app around the prototype. A pin outside the design pane is
+  stored relative to the window, with a selector rooted at `body`. The overlay sits below the dock, so pressing *Add note* again cancels.
 
 ## Where notes are kept
 
@@ -95,18 +109,30 @@ Notes stay in each reviewer's browser (`notes-store.ts`, `local` backend) until 
 reviewer posts them to the design PR. The PR comment is the shared copy: GitHub records the
 author, keeps it through preview redeploys and notifies the owner.
 
+Keep the two kinds of action apart in the panel, so a reviewer always knows whether an
+action leaves their browser.
+
+Local only, in the *Notes* section:
+
 - **Name**: the panel asks for the reviewer's name once, remembers it in that browser, and
-  adds it to every note and posted block.
-- **Post to PR**: copies this reviewer's new notes, across all directions and revisions, as
-  Markdown, and opens the PR comment box. The reviewer pastes and submits; GitHub cannot
-  pre-fill a comment from a link. Posted notes are marked `sent` and stay on screen, so the
-  next post carries only new ones.
-- **Block format**: a `<!-- design-jam:<slug> -->` marker on the first line, the reviewer's
-  name, then the notes grouped by scope, each with the element's text and CSS path, and per
-  group a link that reopens that direction, revision and knob values.
-- **Copy all notes**: the main action before the PR exists, then an owner action behind ⋯.
-  It copies every note, posted or not, to paste into `/design-jam`.
+  adds it to every note and copied block.
+- **Copy all notes**: copies every note, posted or not, to paste into `/design-jam` or by
+  hand into a PR comment.
 - **Copy rev**: the same, for the current revision only.
+- **Clear all**: deletes every note on every direction and revision in this browser. It
+  asks for a second press, because unposted notes exist nowhere else.
+
+Design PR, in the *Design PR* section, only when `prUrl` is set:
+
+- **Copy gh command**: copies a `gh pr comment <prUrl> --body-file -` command with this
+  reviewer's new notes in a heredoc. The reviewer runs it in a terminal (bash or zsh), and
+  GitHub records their own account as the author. A browser cannot run `gh`. Posted notes
+  are marked `sent` and stay on screen, so the next post carries only new ones.
+- **Open PR**: opens the PR, for reviewers without `gh`, who paste *Copy all notes* by hand.
+The block format is the same for both: a `<!-- design-jam:<slug> -->` marker on the first
+line, the reviewer's name when set, then the notes grouped by scope, each with the element's
+text and CSS path, and per group a link that reopens that direction, revision and knob
+values.
 
 Reviewers see each other's notes on the PR, not as pins in the prototype. Do not enable the
 `infrahub` backend or the `DesignJamNote` schema to change that: both stay off behind

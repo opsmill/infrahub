@@ -37,9 +37,14 @@ export type Note = {
   scope: string;
   selector: string;
   snippet: string;
-  /** Fractions of the pane box, so pins survive a resize. */
+  /** Fractions of the pane box; only used for notes saved without an anchor. */
   x: number;
   y: number;
+  /**
+   * Where the pin sits on the element it was dropped on (`ex`, `ey`, fractions of that
+   * element's box), and its pixel offset in the pane (`ox`, `oy`) for when the element is gone.
+   */
+  anchor?: NoteAnchor;
   text: string;
   status: NoteStatus;
   resolution?: string;
@@ -51,6 +56,8 @@ export type Note = {
   /** Local-only: set once the note has been posted to the design PR. */
   sentAt?: string;
 };
+
+export type NoteAnchor = { ex: number; ey: number; ox: number; oy: number };
 
 export type NewNote = Omit<Note, "id" | "status" | "createdAt" | "author" | "authorId">;
 
@@ -118,6 +125,19 @@ const readAllLocal = (slug: string): Record<string, Note[]> => {
   return out;
 };
 
+const clearAllLocal = (slug: string) => {
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(`${PREFIX}${slug}:`)) keys.push(key);
+    }
+    for (const key of keys) localStorage.removeItem(key);
+  } catch {
+    /* fine */
+  }
+};
+
 /** Stamps every unposted note on the run, across every direction and revision. */
 const markAllSentLocal = (slug: string, stamp: string) => {
   try {
@@ -147,6 +167,7 @@ const NODE_FIELDS = {
   text: { value: true },
   status: { value: true },
   resolution: { value: true },
+  anchor: { value: true },
 };
 
 type Edge = {
@@ -160,11 +181,21 @@ type Edge = {
     text: { value: string | null };
     status: { value: NoteStatus };
     resolution: { value: string | null };
+    anchor?: { value: string | null };
   };
   node_metadata?: {
     created_at?: string;
     created_by?: { id?: string; display_label?: string } | null;
   };
+};
+
+const parseAnchor = (raw?: string | null): NoteAnchor | undefined => {
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(raw) as NoteAnchor;
+  } catch {
+    return undefined;
+  }
 };
 
 const fromEdge = (e: Edge): Note => ({
@@ -177,6 +208,7 @@ const fromEdge = (e: Edge): Note => ({
   text: e.node.text.value ?? "",
   status: e.node.status.value ?? "open",
   resolution: e.node.resolution.value ?? undefined,
+  anchor: parseAnchor(e.node.anchor?.value),
   author: e.node_metadata?.created_by?.display_label ?? undefined,
   authorId: e.node_metadata?.created_by?.id ?? undefined,
   createdAt: e.node_metadata?.created_at ?? new Date().toISOString(),
@@ -219,6 +251,7 @@ const createInfrahub = async (slug: string, note: NewNote) => {
             x: { value: String(note.x) },
             y: { value: String(note.y) },
             text: { value: note.text },
+            ...(note.anchor ? { anchor: { value: JSON.stringify(note.anchor) } } : {}),
             status: { value: "open" },
           },
         },
@@ -292,6 +325,7 @@ export const enableSharedNotes = async () => {
             choices: ["open", "addressed", "declined", "deferred", "deleted"].map((name) => ({ name })),
           },
           { name: "resolution", kind: "Text", optional: true },
+          { name: "anchor", kind: "Text", optional: true },
         ],
       },
     ],
@@ -316,6 +350,8 @@ export type NotesStore = {
   remove: (id: string) => Promise<void>;
   /** Every non-deleted note on the run, keyed by scope — the owner's "copy all". */
   all: () => Promise<Record<string, Note[]>>;
+  /** Deletes every note on the run in this browser; on the shared backend, only your own. */
+  clearAll: () => Promise<void>;
   /** Marks every note on the run as posted, so the next post carries only new ones. */
   markAllSent: () => void;
   refresh: () => Promise<unknown>;
@@ -377,10 +413,12 @@ export function useNotesStore(slug: string, scope: string): NotesStore {
     ? (query.data ?? [])
     : localNotes.filter((n) => n.status !== "deleted");
 
+  const isMine = (n: Note) => !shared || !n.authorId || n.authorId === user?.id;
+
   return {
     backend,
     notes,
-    isMine: (n) => !shared || !n.authorId || n.authorId === user?.id,
+    isMine,
 
     add: async (note) => {
       if (shared) {
@@ -428,6 +466,17 @@ export function useNotesStore(slug: string, scope: string): NotesStore {
         (out[n.scope] ??= []).push(n);
       }
       return out;
+    },
+
+    clearAll: async () => {
+      if (shared) {
+        const mine = (await fetchInfrahub({ slug__value: slug })).filter(isMine);
+        await Promise.all(mine.map((n) => updateInfrahub(n.id, { status: "deleted" })));
+        await invalidate();
+        return;
+      }
+      clearAllLocal(slug);
+      setLocalNotes([]);
     },
 
     markAllSent: () => {

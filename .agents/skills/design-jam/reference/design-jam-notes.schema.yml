@@ -77,3 +77,7 @@ nodes:
         kind: Text
         optional: true
         description: "Which rev fixed it, or a one-line reason"
+      - name: anchor
+        kind: Text
+        optional: true
+        description: "JSON: position on the pinned element (ex, ey) and pixel fallback (ox, oy)"

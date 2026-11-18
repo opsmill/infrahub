@@ -20,6 +20,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { Annotations, notesToMarkdown } from "./design-annotations";
 import { type Note, readReviewerName, useNotesStore, writeReviewerName } from "./notes-store";
 
@@ -85,9 +86,8 @@ type Props = {
    */
   frame?: CSSProperties;
   /**
-   * The draft design PR. When set, the primary action is *Post to PR*: reviewers' notes
-   * reach the owner as a PR comment, because the preview is used through one shared login
-   * and nothing on the instance can say who wrote what.
+   * The draft design PR. Without it, the Design PR group is shown but disabled. With it,
+   * reviewers copy a `gh pr comment` command, so the comment is posted as their GitHub user.
    */
   prUrl?: string;
 };
@@ -130,8 +130,7 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame, prUrl
   const [armed, setArmed] = useState(false);
   const [saved, setSaved] = useState("");
   const [allCount, setAllCount] = useState(0);
-  /** Owner-only feedback tools, tucked behind ⋯ so a reviewer sees two buttons, not three. */
-  const [more, setMore] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
   const [reviewer, setReviewer] = useState(readReviewerName);
   const [editingName, setEditingName] = useState(false);
 
@@ -215,28 +214,31 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame, prUrl
   }, [corner]);
 
   const onGrip = (e: React.PointerEvent<HTMLElement>) => {
-    if (e.button !== 0) return;
+    const el = dockRef.current;
+    if (e.button !== 0 || !el) return;
     const start = { x: e.clientX, y: e.clientY };
     movedRef.current = false;
     e.currentTarget.setPointerCapture(e.pointerId);
-    // Grabbing mid-settle: drop the settle's inline transition so the drag follows the
-    // hand 1:1 from wherever the dock is right now.
-    if (dockRef.current) dockRef.current.style.transition = "none";
+    // The translate is computed from the pointer's absolute position, not its delta, so the
+    // grabbed point stays under the pointer even when grabbed mid-settle.
+    const shown = el.getBoundingClientRect();
+    el.style.transition = "none";
+    el.style.transform = "none";
+    const home = el.getBoundingClientRect();
+    el.style.transform = `translate(${shown.left - home.left}px, ${shown.top - home.top}px)`;
+    const grab = { x: e.clientX - shown.left, y: e.clientY - shown.top };
     const move = (ev: PointerEvent) => {
-      const dx = ev.clientX - start.x;
-      const dy = ev.clientY - start.y;
       if (!movedRef.current) {
-        if (Math.abs(dx) <= 4 && Math.abs(dy) <= 4) return;
+        if (Math.abs(ev.clientX - start.x) <= 4 && Math.abs(ev.clientY - start.y) <= 4) return;
         movedRef.current = true;
         setDragging(true); // one render, at the threshold, not one per event
       }
-      pendingRef.current = { dx, dy };
+      pendingRef.current = { dx: ev.clientX - grab.x - home.left, dy: ev.clientY - grab.y - home.top };
       if (rafRef.current) return; // a write is already scheduled for this frame
       rafRef.current = requestAnimationFrame(() => {
         rafRef.current = 0;
         const p = pendingRef.current;
-        const el = dockRef.current;
-        if (p && el) el.style.transform = `translate(${p.dx}px, ${p.dy}px) scale(1.02)`;
+        if (p) el.style.transform = `translate(${p.dx}px, ${p.dy}px) scale(1.02)`;
       });
     };
     const up = (ev: PointerEvent) => {
@@ -247,14 +249,17 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame, prUrl
         cancelAnimationFrame(rafRef.current);
         rafRef.current = 0;
       }
-      if (!movedRef.current) return;
+      if (!movedRef.current) {
+        el.style.transform = "";
+        el.style.transition = "";
+        return;
+      }
       // Flush the last pending position so the measurement below is exactly where the
       // hand let go — the rect includes the inline drag translate.
       const p = pendingRef.current;
-      const el = dockRef.current;
-      if (p && el) el.style.transform = `translate(${p.dx}px, ${p.dy}px) scale(1.02)`;
-      const r = el?.getBoundingClientRect();
-      if (r) settleFrom.current = { left: r.left, top: r.top };
+      if (p) el.style.transform = `translate(${p.dx}px, ${p.dy}px) scale(1.02)`;
+      const r = el.getBoundingClientRect();
+      settleFrom.current = { left: r.left, top: r.top };
       const right = ev.clientX > window.innerWidth / 2;
       const bottom = ev.clientY > window.innerHeight / 2;
       setDragging(false);
@@ -461,31 +466,39 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame, prUrl
   };
 
   /**
-   * Copies this reviewer's new notes and opens the PR's comment box. GitHub cannot
-   * pre-fill a comment from a link, so the paste is the one manual step. Posted notes are
-   * marked, so the next post carries only what was added since.
+   * Copies a `gh pr comment` command carrying this reviewer's new notes. A browser cannot
+   * run `gh`, and running it in the reviewer's terminal is what makes GitHub record their
+   * own account as the author. Posted notes are marked, so the next post carries only new ones.
    */
-  const postToPr = async () => {
+  const copyGhCommand = async () => {
     if (!prUrl) return;
-    if (!reviewer) {
-      setEditingName(true);
-      flash("Add your name first, so the owner knows who wrote these");
-      return;
-    }
     const md = await allAsMarkdown({ unsentOnly: true });
     if (!md) {
       flash("No new notes since your last post");
       return;
     }
+    const command = `gh pr comment ${prUrl} --body-file - <<'DESIGN_JAM_NOTES'\n${md}\nDESIGN_JAM_NOTES\n`;
     try {
-      await navigator.clipboard.writeText(md);
+      await navigator.clipboard.writeText(command);
     } catch {
       flash("Clipboard blocked by the browser");
       return;
     }
-    window.open(`${prUrl}#new_comment_field`, "_blank", "noopener");
     store.markAllSent();
-    flash("✓ Copied — paste it into the comment box on the PR");
+    flash("✓ Copied. Run it in a terminal: gh posts it as your GitHub user");
+  };
+
+  /** Two presses, because the notes exist nowhere else until they are posted or copied. */
+  const clearAll = async () => {
+    if (!confirmClear) {
+      setConfirmClear(true);
+      setTimeout(() => setConfirmClear(false), 3000);
+      return;
+    }
+    setConfirmClear(false);
+    await store.clearAll();
+    setAllCount(0);
+    flash(store.backend === "infrahub" ? "✓ Deleted your notes" : "✓ Deleted every note in this browser");
   };
 
   /**
@@ -592,6 +605,9 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame, prUrl
           survive switching between single and compare views. */}
       {/* No `style` prop: the drag writes `transform` to this element directly, and React
           must not own that attribute or it would overwrite the value on every render. */}
+      {/* Portaled to the body: a transformed or zoomed ancestor would make `position: fixed`
+          relative to it, and the drag would no longer follow the pointer. */}
+      {createPortal(
       <div
         ref={dockRef}
         className={`djh-dock djh-dock--${corner}${dragging ? " djh-dock--dragging" : ""}`}
@@ -832,27 +848,19 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame, prUrl
             </section>
 
             <section className="djh-zone djh-zone--act">
+              {/* Two groups, so it is clear which actions stay on this device and which
+                  reach the design PR. */}
               <div className="djh-zone-head">
-                <span className="djh-zone-label">Feedback</span>
-                <button
-                  type="button"
-                  aria-pressed={more}
-                  aria-label="Owner tools"
-                  title="Owner tools: copy every note, or this revision only"
-                  className={more ? "djh-btn djh-btn--sm djh-btn--on" : "djh-btn djh-btn--sm"}
-                  onClick={() => setMore(!more)}
-                >
-                  ⋯
-                </button>
+                <span className="djh-zone-label">
+                  {store.backend === "infrahub" ? "Notes · shared on this instance" : "Notes · this browser"}
+                </span>
+                <span className="djh-count">{totalNotes}</span>
               </div>
 
-              {/* Where the notes live, in plain words, on its own line — not crammed into
-                  the section label. A poll is stated as a poll. */}
               <p className="djh-status">
                 {store.backend === "infrahub" ? (
                   <>
                     <span className="djh-status-dot djh-status-dot--on" aria-hidden="true" />
-                    Shared on this instance ·{" "}
                     <span className="djh-count">
                       {store.isFetching ? "refreshing…" : `updated ${ago(store.updatedAt)}`}
                     </span>
@@ -869,8 +877,7 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame, prUrl
                 ) : (
                   <>
                     <span className="djh-status-dot" aria-hidden="true" />
-                    {prUrl ? "In this browser until you post" : "This browser only"}
-                    {" · "}
+                    Nobody else sees them ·{" "}
                     {editingName || !reviewer ? (
                       <input
                         className="djh-name"
@@ -926,55 +933,67 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame, prUrl
                   {armed ? "Click the spot…" : "Add note"}
                   {!armed && written > 0 && <span className="djh-badge">{written}</span>}
                 </button>
-                {/* The one primary action. On a preview: post to the design PR, which is
-                    where the owner gathers from. Without a PR yet: copy, and paste into
-                    /design-jam. */}
-                {prUrl ? (
-                  <button
-                    type="button"
-                    className="djh-btn djh-btn--primary"
-                    disabled={totalNotes === 0 && written === 0}
-                    title="Copy your new notes and open the PR to paste them"
-                    onClick={postToPr}
-                  >
-                    Post to PR
-                    {written > 0 && <span className="djh-badge">{written}</span>}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="djh-btn djh-btn--primary"
-                    disabled={totalNotes === 0 && written === 0}
-                    onClick={copyAll}
-                  >
-                    Copy all notes
-                    {totalNotes > 0 && <span className="djh-badge">{totalNotes}</span>}
-                  </button>
+                <button
+                  type="button"
+                  className={prUrl ? "djh-btn djh-btn--sm" : "djh-btn djh-btn--primary"}
+                  disabled={totalNotes === 0 && written === 0}
+                  title="Copy every note on the run, to paste into /design-jam or a PR comment"
+                  onClick={copyAll}
+                >
+                  Copy all notes
+                  {!prUrl && totalNotes > 0 && <span className="djh-badge">{totalNotes}</span>}
+                </button>
+                <button
+                  type="button"
+                  className="djh-btn djh-btn--sm"
+                  title="Copy this revision's notes only"
+                  onClick={copy}
+                >
+                  Copy rev
+                </button>
+                <button
+                  type="button"
+                  className={confirmClear ? "djh-btn djh-btn--sm djh-btn--danger" : "djh-btn djh-btn--sm"}
+                  disabled={totalNotes === 0 && notes.length === 0}
+                  title={
+                    store.backend === "infrahub"
+                      ? "Delete your notes on every direction and revision"
+                      : "Delete every note on every direction and revision in this browser"
+                  }
+                  onClick={clearAll}
+                >
+                  {confirmClear ? "Press again to delete" : "Clear all"}
+                </button>
+              </div>
+            </section>
+
+            <section className={prUrl ? "djh-zone djh-zone--act" : "djh-zone djh-zone--off"}>
+              <div className="djh-zone-head">
+                <span className="djh-zone-label">Design PR</span>
+                {prUrl && (
+                  <a className="djh-btn djh-btn--sm" href={prUrl} target="_blank" rel="noopener noreferrer">
+                    Open PR ↗
+                  </a>
                 )}
               </div>
-
-              {more && (
-                <div className="djh-row djh-row--more">
-                  <span className="djh-more-label">Owner</span>
-                  {prUrl && (
+              {prUrl ? (
+                <>
+                  <p className="djh-status">Posts your new notes as a PR comment, as your GitHub user.</p>
+                  <div className="djh-row">
                     <button
                       type="button"
-                      className="djh-btn djh-btn--sm"
-                      title="Copy every note on the run, posted or not"
-                      onClick={copyAll}
+                      className="djh-btn djh-btn--primary"
+                      disabled={written === 0}
+                      title="Copy a gh pr comment command with your new notes, to run in a terminal"
+                      onClick={copyGhCommand}
                     >
-                      Copy all
+                      Copy gh command
+                      {written > 0 && <span className="djh-badge">{written}</span>}
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    className="djh-btn djh-btn--sm"
-                    title="Copy this revision's notes only"
-                    onClick={copy}
-                  >
-                    Copy rev
-                  </button>
-                </div>
+                  </div>
+                </>
+              ) : (
+                <p className="djh-status">No design PR yet. Posting is available once the PR link is set.</p>
               )}
             </section>
 
@@ -1009,7 +1028,9 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame, prUrl
           {written > 0 && <span className="djh-badge djh-badge--fab">{written}</span>}
         </button>
       )}
-      </div>
+      </div>,
+      document.body,
+      )}
     </>
   );
 }
@@ -1207,11 +1228,6 @@ const css = `
 }
 .djh-status-dot { width: 6px; height: 6px; border-radius: 999px; background: #5c5c64; flex: none; }
 .djh-status-dot--on { background: #4ade80; }
-.djh-row--more { margin-top: 2px; padding-top: 8px; border-top: var(--hair) solid var(--line); }
-.djh-more-label {
-  font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--dim); margin-right: 2px;
-}
 .djh-grip {
   display: flex; align-items: center; justify-content: center;
   width: 22px; height: 22px; border: none; border-radius: 4px;
@@ -1254,8 +1270,8 @@ const css = `
 /*
  * Four labelled zones, separated by hairline rules rather than guesswork about gaps:
  * what you are looking at (Prototype), when (Revision), how you look at it (View), and
- * what you send back (Feedback). One primary action in the whole bar — Copy all notes —
- * so the submit is never ambiguous; everything else is a quiet ghost button.
+ * what you send back (Notes, Design PR). One primary action in the whole bar, so the
+ * submit is never ambiguous; everything else is a quiet ghost button.
  *
  * On a dark surface, separation is a solid quiet line: translucent white hairlines glow
  * instead of receding.
@@ -1336,6 +1352,10 @@ const css = `
   color: #fff; background: var(--accent); font-weight: 600;
 }
 .djh-btn--primary:hover:not(:disabled) { background: #6b6be0; }
+.djh-btn--danger { color: #fff; background: #b91c1c; }
+.djh-btn--danger:hover:not(:disabled) { background: #991b1b; }
+a.djh-btn { text-decoration: none; }
+.djh-zone--off .djh-status { color: #6b6b73; }
 .djh-btn:disabled, .djh-icon:disabled { color: #5c5c64; background: rgba(255,255,255,.04); cursor: default; }
 /* Neutral focus rings, not the accent — a brand-coloured outline fights the accent it is
    drawn next to, and here it would sit on top of the very button it marks. */
