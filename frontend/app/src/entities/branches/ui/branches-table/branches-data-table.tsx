@@ -2,27 +2,23 @@ import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tan
 import React from "react";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
-import type { BranchListItem } from "@/entities/branches/domain/model/branch";
+import type { BranchTableRow } from "@/entities/branches/ui/branches-table/branch-table-row";
 import { BranchesToolbar } from "@/entities/branches/ui/branches-table/branches-toolbar";
+import { getGridTemplateColumns } from "@/entities/branches/ui/branches-table/get-grid-template-columns";
 import { ObjectTableSkeleton } from "@/entities/nodes/object/ui/object-table/object-table-skeleton";
 
 export interface BranchesDataTableProps extends React.HTMLAttributes<HTMLDivElement> {
-  columns: ColumnDef<BranchListItem>[];
-  data: Array<BranchListItem>;
+  columns: ColumnDef<BranchTableRow>[];
+  data: Array<BranchTableRow>;
   isLoading?: boolean;
   renderEmpty?: () => React.ReactNode;
-  gridTemplateColumns?: (columnCount: number) => string;
 }
-
-const defaultGridTemplateColumns = (columnCount: number) =>
-  `minmax(auto, 400px) auto minmax(150px, 200px) repeat(${columnCount - 4}, auto) 2.5rem`;
 
 export function BranchesDataTable({
   columns,
   data,
   isLoading,
   renderEmpty,
-  gridTemplateColumns = defaultGridTemplateColumns,
   ...props
 }: BranchesDataTableProps) {
   const { isAuthenticated } = useAuth();
@@ -44,17 +40,16 @@ export function BranchesDataTable({
 
   const allHeaders = table.getFlatHeaders();
   const allRows = table.getRowModel().rows;
-  const style = React.useMemo<React.CSSProperties>(
-    () => ({
-      gridTemplateColumns: gridTemplateColumns(allHeaders.length),
-    }),
-    [allHeaders.length, gridTemplateColumns]
-  );
+  const style: React.CSSProperties = {
+    gridTemplateColumns: getGridTemplateColumns(allHeaders.map(({ column }) => column.columnDef)),
+  };
 
   const selectedRows = table.getSelectedRowModel().flatRows.map((row) => row.original);
 
   return (
-    <div className="grid content-start" style={style} {...props}>
+    // See DataTable: `min-w-max` keeps the columns at their own width and lets the
+    // table scroll instead of compressing every track to fit the container.
+    <div className="grid min-w-max content-start" style={style} {...props}>
       {selectedRows.length > 0 && (
         <BranchesToolbar selectedBranches={selectedRows} onClose={table.resetRowSelection} />
       )}

@@ -7,11 +7,15 @@ from __future__ import annotations
 
 from infrahub.core.merge.recompute_coalescing import (
     COMPUTED_ATTRIBUTE,
+    RECOMPUTE_CHAIN_DEPTH_FLOOR,
     AffectedTarget,
     CoalescedRecompute,
     CoalescedRecomputeBuilder,
     MergeChange,
+    max_recompute_chain_depth,
 )
+from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
 from infrahub.core.schema.schema_branch import SchemaBranch
 from tests.helpers.merge_recompute.dataset import build_chain_schema, chain_kind
 
@@ -82,3 +86,44 @@ def test_full_chain_diff_covers_each_reader_level_once() -> None:
     assert set(targets) == {(l2, "summary"), (l3, "summary")}
     assert _lookups(targets[l2, "summary"]) == {(l1, "source__ids", frozenset({"l1-0"}))}
     assert _lookups(targets[l3, "summary"]) == {(l2, "source__ids", frozenset({"l2-0"}))}
+
+
+def _python_attribute_schema_branch(attributes: int) -> SchemaBranch:
+    """A schema whose only computed attributes are Python transforms, one kind carrying them all."""
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    name="Widget",
+                    namespace="Testing",
+                    default_filter="name__value",
+                    attributes=[
+                        AttributeSchema(name="name", kind="Text", optional=False, unique=True),
+                        *[
+                            AttributeSchema(
+                                name=f"derived_{index}",
+                                kind="Text",
+                                optional=True,
+                                read_only=True,
+                                computed_attribute=ComputedAttribute(
+                                    kind=ComputedAttributeKind.TRANSFORM_PYTHON,
+                                    transform=f"transform_{index}",
+                                ),
+                            )
+                            for index in range(attributes)
+                        ],
+                    ],
+                )
+            ]
+        )
+    )
+    schema_branch.process()
+    return schema_branch
+
+
+def test_python_attributes_raise_the_chain_bound() -> None:
+    """Python transforms join the chain, so the bound has to count them or a deep chain truncates."""
+    attributes = RECOMPUTE_CHAIN_DEPTH_FLOOR + 5
+
+    assert max_recompute_chain_depth(_python_attribute_schema_branch(attributes=attributes)) >= attributes

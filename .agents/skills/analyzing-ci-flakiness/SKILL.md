@@ -90,7 +90,8 @@ For failed jobs with an empty `tests` list and no bucket tag, read the log yours
 | `runner-oom` | `Process completed with exit code 137` | Runner OOM/SIGKILL; the mass test failures in the same job are casualties, not flakes. |
 | `docker-network-pool-exhausted` | `all predefined address pools have been fully subnetted` | Leaked compose networks exhausted the docker address pools on a self-hosted runner. |
 | `actions-download-429` | `Failed to download action … 429` | GitHub rate-limited its own action download; pure platform flake. |
-| `pytest-green-exit-1` | green pytest summary directly followed by exit 1 | Session-teardown/plugin abort after all tests passed (e.g. testcontainers result reporting). |
+| `prefect-task-manager-wedged` | `RuntimeError: Prefect task manager setup already failed for http…` | The memoized task-manager setup (`backend/tests/helpers/task_manager.py`) timed out once against a Prefect test server; every later class fail-fasts on the remembered failure. One incident, hundreds of cascaded ERRORs. |
+| `pytest-green-exit-1` | green pytest summary (no failed, no errors) directly followed by exit 1 | Session-teardown/plugin abort after all tests passed (e.g. testcontainers result reporting). |
 
 ## Step 4 — Judge: flake vs regression
 

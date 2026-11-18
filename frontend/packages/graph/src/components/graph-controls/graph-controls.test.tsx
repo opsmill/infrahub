@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
 import { type EdgeStyle, GraphControls, type LayoutDirection } from "./graph-controls";
@@ -15,10 +15,6 @@ vi.mock("@xyflow/react", () => ({
   useReactFlow: () => reactFlow,
 }));
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
 const onEdgeStyleChangeMock = () => vi.fn<(style: EdgeStyle) => void>();
 const onLayoutMock = () => vi.fn<(direction: LayoutDirection) => void>();
 
@@ -30,7 +26,7 @@ describe("GraphControls", () => {
         edgeStyle="bezier"
         onEdgeStyleChange={onEdgeStyleChangeMock()}
         onLayout={onLayoutMock()}
-      />,
+      />
     );
 
     // THEN
@@ -50,7 +46,7 @@ describe("GraphControls", () => {
         edgeStyle="bezier"
         onEdgeStyleChange={onEdgeStyleChange}
         onLayout={onLayoutMock()}
-      />,
+      />
     );
 
     // WHEN
@@ -68,7 +64,7 @@ describe("GraphControls", () => {
         edgeStyle="bezier"
         onEdgeStyleChange={onEdgeStyleChangeMock()}
         onLayout={onLayout}
-      />,
+      />
     );
 
     // WHEN
@@ -85,7 +81,7 @@ describe("GraphControls", () => {
         edgeStyle="bezier"
         onEdgeStyleChange={onEdgeStyleChangeMock()}
         onLayout={onLayoutMock()}
-      />,
+      />
     );
 
     // WHEN / THEN

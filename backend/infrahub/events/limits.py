@@ -29,10 +29,10 @@ def get_related_resource_budget() -> int:
     """Return the number of related resources an event may still carry when it leaves Infrahub.
 
     Prefect's events worker appends run-context resources to an event after it has been handed
-    over, by extending the list in place, which does not re-run the client-side validation. An
-    event that leaves on the maximum therefore arrives above it, and the Prefect API answers by
-    closing the event stream rather than by dropping the single event. The budget stays below the
-    maximum so the enlarged event is still accepted.
+    over, and holds the enlarged event to the same maximum by attaching only as many as still fit.
+    An event that leaves on the maximum therefore reaches the API stripped of its run context,
+    which is what the tags a run is filtered by are carried in. The budget stays below the maximum
+    so those resources survive the append.
 
     The reservation is a tenth of the maximum, never less than what the append can add.
     """

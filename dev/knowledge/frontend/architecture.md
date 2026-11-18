@@ -36,9 +36,8 @@ entities today. The rule stands — do not add new edges like them; migrate thes
 - Most of `shared/components/inputs/` (`peer`, `enum`, `dropdown`, `pool-select`,
   `relationship-one`/`-many`, `node-kind-select`, `kind-multi-select`): import the `schema` and
   `nodes` entities
-- `shared/components/display/slide-over.tsx`, `shared/components/display/meta-details-tooltips.tsx`,
-  `shared/components/table/data-table.tsx`, `shared/components/ui/id.tsx`, and
-  `shared/libs/graphiql/use-graphiql-fetcher.ts`
+- `shared/components/display/slide-over.tsx`, `shared/components/table/data-table.tsx`,
+  `shared/components/ui/id.tsx`, and `shared/libs/graphiql/use-graphiql-fetcher.ts`
 
 ## Entity structure
 

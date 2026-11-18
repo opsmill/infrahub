@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 from infrahub.core import registry
@@ -13,6 +15,13 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 @pytest.fixture(autouse=True)
 def set_registry_default_branch() -> None:
     registry._default_branch = "main"
+
+
+@pytest.fixture
+def without_cache_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Unset every INFRAHUB_CACHE_* variable, so the shell running the tests cannot change what is loaded."""
+    for name in [name for name in os.environ if name.startswith("INFRAHUB_CACHE_")]:
+        monkeypatch.delenv(name)
 
 
 @pytest.fixture

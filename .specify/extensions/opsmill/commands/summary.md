@@ -1,8 +1,8 @@
 ---
 description: Produce a flow-level summary of the current Claude Code session — executive summary, chronological timeline, and outcomes — written into the active feature directory next to spec.md / plan.md.
 scripts:
-  sh: scripts/bash/check-prerequisites.sh --json --paths-only
-  ps: scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
+  sh: ../../scripts/bash/check-prerequisites.sh --json --paths-only
+  ps: ../../scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
 ---
 
 ## User Input

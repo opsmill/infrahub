@@ -1,7 +1,6 @@
-import { Button, Tooltip } from "@infrahub/ui";
+import { LockIcon } from "lucide-react";
 
 import { Row } from "@/shared/components/container";
-import { Icon } from "@/shared/components/display/icon";
 import { Link } from "@/shared/components/ui/link";
 
 import type {
@@ -10,9 +9,13 @@ import type {
   NodeRelationshipWithMetadata,
 } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { EditMetadataButton } from "@/entities/nodes/object/ui/metadata/edit-metadata-button";
+import {
+  FieldMetadataPopover,
+  METADATA_HOVER_AREA,
+} from "@/entities/nodes/object/ui/metadata/field-metadata-popover";
 import { ExtraFieldIndicator } from "@/entities/nodes/object/ui/object-details/object-data-display/extra-field-indicator";
 import { ObjectDataRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-row";
-import { ObjectFieldMetadata } from "@/entities/nodes/object/ui/object-details/object-data-display/object-field-metadata";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
@@ -73,9 +76,11 @@ function RelationshipOneRow({
   const relatedNode = relationshipData.node;
   const relationshipProperties = relationshipData.properties;
   const { schema: peerSchema } = useSchema(relationshipSchema.peer);
+  const relationshipLabel = getRelationshipLabel(relationshipSchema, peerSchema);
 
   return (
     <ObjectDataRow
+      className={METADATA_HOVER_AREA}
       fieldSchema={relationshipSchema}
       objectKind={objectKind}
       value={
@@ -89,31 +94,24 @@ function RelationshipOneRow({
           )}
 
           {relationshipProperties && (
-            <ObjectFieldMetadata
-              metadata={relationshipProperties}
-              header={
-                onClickMetadata && (
-                  <div className="flex items-center justify-between border-b p-1 pt-0 pl-2">
-                    <div className="font-semibold">
-                      {getRelationshipLabel(relationshipSchema, peerSchema)}
-                    </div>
-
-                    <Tooltip message={permission.update.message ?? undefined}>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        shape="circle"
-                        isDisabledAndFocusable={!permission.update.isAllowed}
-                        onPress={() => onClickMetadata(relationshipSchema)}
-                        data-testid="edit-metadata-button"
-                      >
-                        <Icon icon="mdi:pencil" className="text-custom-blue-500" />
-                      </Button>
-                    </Tooltip>
-                  </div>
-                )
-              }
-            />
+            <>
+              {relationshipProperties.is_protected && (
+                <LockIcon className="size-3.5 text-foreground-muted" />
+              )}
+              <FieldMetadataPopover
+                metadata={relationshipProperties}
+                revealOnHover
+                title={onClickMetadata ? relationshipLabel : undefined}
+                action={
+                  onClickMetadata ? (
+                    <EditMetadataButton
+                      onPress={() => onClickMetadata(relationshipSchema)}
+                      permission={permission.update}
+                    />
+                  ) : undefined
+                }
+              />
+            </>
           )}
 
           {relationshipSchema.display === "extra" && <ExtraFieldIndicator className="ml-auto" />}
@@ -161,13 +159,18 @@ function RelationshipManyRow({
               if (!relatedNode) return null;
 
               return (
-                <Row key={relatedNode.id} className="group/edge w-full">
+                <Row key={relatedNode.id} className={METADATA_HOVER_AREA}>
                   <Link to={getObjectDetailsUrl(relatedNode.__typename, relatedNode.id)}>
                     {getNodeLabel(relatedNode)}
                   </Link>
 
                   {edgeProperties && (
-                    <ObjectFieldMetadata metadata={edgeProperties} hoverScope="edge" />
+                    <>
+                      {edgeProperties.is_protected && (
+                        <LockIcon className="size-3.5 text-foreground-muted" />
+                      )}
+                      <FieldMetadataPopover metadata={edgeProperties} revealOnHover />
+                    </>
                   )}
                 </Row>
               );

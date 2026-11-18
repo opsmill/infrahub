@@ -17,6 +17,7 @@ generic_menu_item = GenericSchema(
     display_label="label__value",
     generate_profile=False,
     restricted_namespaces=["Core"],
+    documentation="/menu/overview/",
     attributes=[
         Attr(
             name="namespace",
@@ -80,4 +81,5 @@ menu_item = NodeSchema(
     label="Menu Item",
     inherit_from=["CoreMenu"],
     generate_profile=False,
+    documentation="/menu/overview/",
 )

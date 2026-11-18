@@ -3,9 +3,13 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any
 
-from infrahub_sdk.exceptions import ModuleImportError
 from infrahub_sdk.node import InfrahubNode
-from infrahub_sdk.protocols import CoreGeneratorInstance
+from infrahub_sdk.protocols import (
+    CoreGeneratorDefinition,
+    CoreGeneratorInstance,
+    CoreReadOnlyRepository,
+    CoreRepository,
+)
 from infrahub_sdk.schema.repository import InfrahubGeneratorDefinitionConfig
 from prefect import State, flow, get_run_logger, task
 from prefect.cache_policies import NONE
@@ -14,6 +18,7 @@ from prefect.states import Completed, Failed
 from infrahub import lock
 from infrahub.context import InfrahubContext  # noqa: TC001 needed for prefect flow
 from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind
+from infrahub.core.regeneration.definitions import selects_repository
 from infrahub.core.regeneration.members import map_subscriber_ids_by_member
 from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.generators.models import (
@@ -40,38 +45,51 @@ if TYPE_CHECKING:
     flow_run_name="Run generator {model.generator_definition.definition_name}",
 )
 async def run_generator(model: RequestGeneratorRun) -> None:
-    await add_tags(branches=[model.branch_name], nodes=[model.target_id])
-
     client = get_client()
 
-    repository = await get_initialized_repo(
-        client=client,
-        repository_id=model.repository_id,
-        name=model.repository_name,
-        repository_kind=model.repository_kind,
-        commit=model.commit,
-    )
+    # Each tag update replaces the whole set, so collect the related node ids and send them in one update.
+    node_ids = [model.target_id]
+    try:
+        repository = await get_initialized_repo(
+            client=client,
+            repository_id=model.repository_id,
+            name=model.repository_name,
+            repository_kind=model.repository_kind,
+            infrahub_branch_name=model.branch_name,
+            commit=model.commit,
+        )
 
-    generator_definition = InfrahubGeneratorDefinitionConfig(
-        name=model.generator_definition.definition_name,
-        class_name=model.generator_definition.class_name,
-        file_path=model.generator_definition.file_path,
-        parameters=model.generator_definition.parameters,
-        query=model.generator_definition.query_name,
-        targets=model.generator_definition.group_id,
-        convert_query_response=model.generator_definition.convert_query_response,
-        execute_in_proposed_change=model.generator_definition.execute_in_proposed_change,
-        execute_after_merge=model.generator_definition.execute_after_merge,
-    )
+        generator_definition = InfrahubGeneratorDefinitionConfig(
+            name=model.generator_definition.definition_name,
+            class_name=model.generator_definition.class_name,
+            file_path=model.generator_definition.file_path,
+            parameters=model.generator_definition.parameters,
+            query=model.generator_definition.query_name,
+            targets=model.generator_definition.group_id,
+            convert_query_response=model.generator_definition.convert_query_response,
+            execute_in_proposed_change=model.generator_definition.execute_in_proposed_change,
+            execute_after_merge=model.generator_definition.execute_after_merge,
+        )
 
-    commit_worktree = repository.get_commit_worktree(commit=model.commit)
+        commit_worktree = repository.get_commit_worktree(commit=model.commit)
 
-    file_info = extract_repo_file_information(
-        full_filename=commit_worktree.directory / generator_definition.file_path,
-        repo_directory=repository.directory_root,
-        worktree_directory=commit_worktree.directory,
-    )
-    generator_instance = await _define_instance(model=model, client=client)
+        file_info = extract_repo_file_information(
+            full_filename=commit_worktree.directory / generator_definition.file_path,
+            repo_directory=repository.directory_root,
+            worktree_directory=commit_worktree.directory,
+        )
+        generator_instance = await _define_instance(model=model, client=client)
+        node_ids.append(generator_instance.id)
+    finally:
+        # Tagging is best-effort observability: it must not fail the run or mask a setup error.
+        try:
+            await add_tags(branches=[model.branch_name], nodes=node_ids)
+        except Exception:  # noqa: BLE001
+            get_run_logger().warning(
+                f"Failed to tag the run of generator '{model.generator_definition.definition_name}' "
+                f"for target '{model.target_name}'",
+                exc_info=True,
+            )
 
     try:
         generator_class = generator_definition.load_class(
@@ -91,7 +109,7 @@ async def run_generator(model: RequestGeneratorRun) -> None:
         )
         await generator.run(identifier=generator_definition.name)
         generator_instance.status.value = GeneratorInstanceStatus.READY.value
-    except (ModuleImportError, Exception):
+    except Exception:
         generator_instance.status.value = GeneratorInstanceStatus.ERROR.value
         await generator_instance.update(do_full_update=True)
         raise
@@ -137,22 +155,32 @@ async def _define_instance(model: RequestGeneratorRun, client: InfrahubClient) -
 
 @flow(name="generator-definition-run", flow_run_name="Run all generators")
 async def run_generator_definition(
-    branch: str, context: InfrahubContext, source: GeneratorDefinitionRunSource = GeneratorDefinitionRunSource.UNKNOWN
+    branch: str,
+    context: InfrahubContext,
+    source: GeneratorDefinitionRunSource = GeneratorDefinitionRunSource.UNKNOWN,
+    exclude_repository_ids: list[str] | None = None,
+    include_repository_ids: list[str] | None = None,
 ) -> None:
     await add_tags(branches=[branch])
 
     client = get_client()
     client.request_context = context.to_request_context()
     generators = await client.filters(
-        kind=InfrahubKind.GENERATORDEFINITION, prefetch_relationships=True, populate_store=True, branch=branch
+        kind=CoreGeneratorDefinition, prefetch_relationships=True, populate_store=True, branch=branch
     )
 
     generator_definitions: list[ProposedChangeGeneratorDefinition] = []
 
     for generator in generators:
         if (
-            source == GeneratorDefinitionRunSource.PROPOSED_CHANGE and not generator.execute_in_proposed_change.value
-        ) or (source == GeneratorDefinitionRunSource.MERGE and not generator.execute_after_merge.value):
+            (source == GeneratorDefinitionRunSource.PROPOSED_CHANGE and not generator.execute_in_proposed_change.value)
+            or (source == GeneratorDefinitionRunSource.MERGE and not generator.execute_after_merge.value)
+            or not selects_repository(
+                repository_id=generator.repository.peer.id,
+                exclude_repository_ids=exclude_repository_ids,
+                include_repository_ids=include_repository_ids,
+            )
+        ):
             continue
 
         generator_definitions.append(
@@ -163,7 +191,6 @@ async def run_generator_definition(
                 file_path=generator.file_path.value,
                 query_name=generator.query.peer.name.value,
                 query_id=generator.query.peer.id,
-                query_models=generator.query.peer.models.value,
                 query_payload=generator.query.peer.query.value,
                 repository_id=generator.repository.peer.id,
                 parameters=generator.parameters.value,
@@ -212,21 +239,22 @@ async def request_generator_definition_run(
         log=get_run_logger(),
     )
 
-    repository = await client.get(
-        kind=InfrahubKind.REPOSITORY,
+    repository: CoreRepository | CoreReadOnlyRepository | None = await client.get(
+        kind=CoreRepository,
         branch=model.branch,
         id=model.generator_definition.repository_id,
         raise_when_missing=False,
     )
     if not repository:
         repository = await client.get(
-            kind=InfrahubKind.READONLYREPOSITORY,
+            kind=CoreReadOnlyRepository,
             branch=model.branch,
             id=model.generator_definition.repository_id,
             raise_when_missing=True,
         )
 
     tasks: list[Coroutine[Any, Any, Any]] = []
+    members: list[tuple[str, str]] = []
     for relationship in group.members.peers:
         member = relationship.peer
 
@@ -247,15 +275,31 @@ async def request_generator_definition_run(
             target_id=member.id,
             target_name=member.display_label,
         )
+        members.append((request_generator_run_model.target_id, request_generator_run_model.target_name))
         tasks.append(
             get_workflow().execute_workflow(
                 workflow=REQUEST_GENERATOR_RUN, context=context, parameters={"model": request_generator_run_model}
             )
         )
 
-    try:
-        await asyncio.gather(*tasks)
+    # Let every member run and report each outcome, rather than aborting on the first failure.
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    # A cancelled member is a BaseException, not an Exception, so propagate the cancellation
+    # instead of letting it slip past the failure filter below and count as a success.
+    for result in results:
+        if isinstance(result, asyncio.CancelledError):
+            raise result
+    failures = [
+        (target_id, target_name, result)
+        for (target_id, target_name), result in zip(members, results, strict=True)
+        if isinstance(result, Exception)
+    ]
+    if not failures:
         return Completed(message=f"Successfully run {len(tasks)} generators")
-    # Flow boundary: any generator failure must surface as a Failed state carrying the error, not a crashed flow run
-    except Exception as exc:  # noqa: BLE001
-        return Failed(message="One or more generators failed", error=exc)
+
+    succeeded = len(results) - len(failures)
+    details = "; ".join(f"{target_name} ({target_id}): {error}" for target_id, target_name, error in failures)
+    return Failed(
+        message=f"{len(failures)} of {len(results)} generators failed, {succeeded} succeeded: {details}",
+        data=ExceptionGroup("generator run failures", [error for *_, error in failures]),
+    )

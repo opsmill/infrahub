@@ -80,7 +80,7 @@ class Migration075(ArbitraryMigration):
             console.log(f"Cleaning up branch '{branch_name}' left in the DELETING state...")
             try:
                 branch = await Branch.get_by_name(db=db, name=branch_name, ignore_deleting=False)
-                delete_result = await deleter.delete(branch=branch)
+                delete_result = await deleter.delete(branch=branch, user_id=migration_input.user_id)
             except Exception as exc:  # noqa: BLE001 - see the comment above: one branch must not hide the others
                 console.log(f"Branch '{branch_name}' could not be deleted: {exc}")
                 errors.append(f"branch '{branch_name}': {exc}")

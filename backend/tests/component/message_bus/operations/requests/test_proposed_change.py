@@ -27,6 +27,7 @@ from infrahub.proposed_change.tasks import (
 from infrahub.workers.dependencies import build_cache
 from tests.adapters.cache import MemoryCache
 from tests.conftest import TestHelper
+from tests.helpers.dependency_override import override_dependency
 
 SOURCE_BRANCH_A = "branch2"
 DST_BRANCH_A = "main"
@@ -153,7 +154,6 @@ async def test_get_proposed_change_schema_integrity_constraints(
         ("attribute.unique.update", "TestPerson", "name", "unique", SchemaPathType.ATTRIBUTE, None),
         ("attribute.unique.update", "TestPerson", "height", "unique", SchemaPathType.ATTRIBUTE, None),
         ("relationship.optional.update", "TestPerson", "cars", "optional", SchemaPathType.RELATIONSHIP, None),
-        ("relationship.peer.update", "TestPerson", "cars", "peer", SchemaPathType.RELATIONSHIP, None),
         ("relationship.cardinality.update", "TestPerson", "cars", "cardinality", SchemaPathType.RELATIONSHIP, None),
         ("relationship.min_count.update", "TestPerson", "cars", "min_count", SchemaPathType.RELATIONSHIP, None),
         ("relationship.max_count.update", "TestPerson", "cars", "max_count", SchemaPathType.RELATIONSHIP, None),
@@ -181,7 +181,7 @@ async def test_schema_integrity(
     person_john_main: Node,
 ) -> None:
     cache = MemoryCache()
-    with dependency_provider.scope(build_cache, lambda: cache):
+    with override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider):
         branch2 = await create_branch(branch_name=SOURCE_BRANCH_A, db=db)
 
         person = await Node.init(db=db, schema="TestPerson", branch=branch2)
@@ -258,7 +258,7 @@ async def test_schema_integrity_process_validation_error(
     dependency_provider: Provider,
 ) -> None:
     cache = MemoryCache()
-    with dependency_provider.scope(build_cache, lambda: cache):
+    with override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider):
         branch2 = await create_branch(branch_name=SOURCE_BRANCH_A, db=db)
         branch2_schema = registry.schema.get_schema_branch(name=branch2.name)
         person_schema = branch2_schema.get(name="TestPerson")

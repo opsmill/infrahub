@@ -17,7 +17,7 @@ Historically, the message bus handled both task execution and broadcasts. With t
 
 ## Decision
 
-We implement a message bus using **RabbitMQ** (primary) or **NATS** (alternative) for asynchronous inter-component communication.
+We implement a message bus using **RabbitMQ** for asynchronous inter-component communication.
 
 ### Core Principles
 
@@ -56,7 +56,6 @@ We implement a message bus using **RabbitMQ** (primary) or **NATS** (alternative
 - **Horizontal scaling**: Workers scale independently based on message load
 - **Non-blocking execution**: Operations don't block HTTP request handling
 - **Automatic retries**: Built-in retry logic with exponential backoff
-- **Multiple broker support**: RabbitMQ and NATS implementations available
 - **Priority support**: Messages can be prioritized (1-5 scale)
 
 ### Negative

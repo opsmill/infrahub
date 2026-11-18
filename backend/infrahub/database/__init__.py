@@ -4,8 +4,9 @@ import asyncio
 import functools
 import random
 import time
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, TypeVar
+from typing import TYPE_CHECKING, Any, Self, TypeVar
 
 from neo4j import (
     READ_ACCESS,
@@ -26,7 +27,6 @@ from neo4j import (
 )
 from neo4j.exceptions import ClientError, Neo4jError, ServiceUnavailable, TransientError
 from opentelemetry import trace
-from typing_extensions import Self
 
 from infrahub import config, lock
 from infrahub.constants.database import DatabaseType, Neo4jRuntime
@@ -40,15 +40,18 @@ from infrahub.exceptions import DatabaseError, QueryTimeoutError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
+from .connection_metrics import instrument_connection_pool
 from .load_signal_registry import get_reference_query_load_tracker
 from .metrics import (
     CONNECTION_POOL_USAGE,
+    CONNECTION_WAIT_METRICS,
     QUERY_EXECUTION_METRICS,
     REFERENCE_QUERY_NAME,
     TRANSACTION_RETRIES,
 )
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Callable, Coroutine
     from types import TracebackType
 
     # neo4j only exports the concrete trust stores, not the base class the driver accepts.
@@ -58,7 +61,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
 
-validated_database = {}
+validated_database: dict[str, bool] = {}
 R = TypeVar("R")
 
 log = get_logger()
@@ -94,10 +97,14 @@ class DatabaseSchemaManager:
     def __init__(self, db: InfrahubDatabase) -> None:
         self._db = db
 
-    def get(self, name: str, branch: Branch | str | None = None, duplicate: bool = True) -> MainSchemaTypes:
+    def get(
+        self, name: str, branch: Branch | str | None = None, duplicate: bool = True, check_branch_only: bool = False
+    ) -> MainSchemaTypes:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
-            return registry.schema.get(name=name, branch=branch, duplicate=duplicate)
+            return registry.schema.get(
+                name=name, branch=branch, duplicate=duplicate, check_branch_only=check_branch_only
+            )
         return self._db._schemas[branch_name].get(name=name, duplicate=duplicate)
 
     def get_node_schema(self, name: str, branch: Branch | str | None = None, duplicate: bool = True) -> NodeSchema:
@@ -577,6 +584,12 @@ async def get_db(retry: int = 0) -> AsyncDriver:
             )
         address_resolver = build_address_resolver(members=members, default_port=config.SETTINGS.database.port)
 
+    pool_connection_kwargs: dict[str, int] = {}
+    if config.SETTINGS.database.max_connection_lifetime is not None:
+        pool_connection_kwargs["max_connection_lifetime"] = config.SETTINGS.database.max_connection_lifetime
+    if config.SETTINGS.database.liveness_check_timeout is not None:
+        pool_connection_kwargs["liveness_check_timeout"] = config.SETTINGS.database.liveness_check_timeout
+
     driver = AsyncGraphDatabase.driver(
         config.SETTINGS.database.database_uri,
         auth=(config.SETTINGS.database.username, config.SETTINGS.database.password),
@@ -590,6 +603,12 @@ async def get_db(retry: int = 0) -> AsyncDriver:
         ],
         notifications_min_severity=NotificationMinimumSeverity.WARNING,
         max_connection_pool_size=config.SETTINGS.database.max_connection_pool_size,
+        **pool_connection_kwargs,
+    )
+    instrument_connection_pool(
+        driver=driver,
+        pool_size=config.SETTINGS.database.max_connection_pool_size,
+        record_wait=CONNECTION_WAIT_METRICS.observe,
     )
 
     if config.SETTINGS.database.database_name not in validated_database:
@@ -607,6 +626,16 @@ def is_retriable_db_error(exc: BaseException) -> bool:
     if isinstance(exc, ClientError):
         return exc.code == "Neo.ClientError.Statement.EntityNotFound"
     return False
+
+
+@asynccontextmanager
+async def within_transaction(db: InfrahubDatabase) -> AsyncIterator[InfrahubDatabase]:
+    """Yield a database running a transaction, joining the one already open rather than nesting a second one."""
+    if db.is_transaction:
+        yield db
+        return
+    async with db.start_transaction() as dbt:
+        yield dbt
 
 
 def retry_db_transaction(

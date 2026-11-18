@@ -10,16 +10,14 @@ from .timeline import LockAction, LockTimeline
 if TYPE_CHECKING:
     import redis.asyncio as redis
 
-    from infrahub.services import InfrahubServices
-
 
 class RecordingLock(InfrahubLock):
-    """A local lock that logs its real (non-re-entrant) acquire/release boundaries to a timeline."""
+    """A local lock that logs its real (non-re-entrant) waits, acquires and releases to a timeline."""
 
     def __init__(
         self,
         name: str,
-        connection: redis.Redis | InfrahubServices | None = None,
+        connection: redis.Redis | None = None,
         in_multi: bool = False,
         metrics: bool = True,
         ttl: int | None = None,
@@ -30,10 +28,17 @@ class RecordingLock(InfrahubLock):
         self._timeline = timeline
 
     async def acquire(self) -> None:
-        reentrant = self._recursion_var.get() is not None
-        await super().acquire()
-        if not reentrant:
-            self._timeline.record(self.name, LockAction.ACQUIRE)
+        if self._recursion_var.get() is not None:
+            await super().acquire()
+            return
+        self._timeline.record(self.name, LockAction.WAIT)
+        try:
+            await super().acquire()
+        except BaseException:
+            # A cancelled or failed wait leaves the queue, so the count of waiters must drop too.
+            self._timeline.record(self.name, LockAction.ABANDON)
+            raise
+        self._timeline.record(self.name, LockAction.ACQUIRE)
 
     async def release(self) -> None:
         will_release = self._recursion_var.get() == 1

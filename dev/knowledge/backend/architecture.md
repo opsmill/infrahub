@@ -1,6 +1,6 @@
 # Backend Architecture
 
-> Part of: `dev/knowledge/backend/` | Related: [AGENTS.md](../../../backend/AGENTS.md)
+> Part of: `dev/knowledge/backend/`
 
 High-level overview of the Infrahub backend architecture.
 
@@ -50,7 +50,7 @@ Similar to pull requests, proposed changes allow reviewing and approving data mo
 - **Server:** `server.py` - FastAPI application factory
 - **Config:** `config.py` - Pydantic settings management
 - **Database:** `database/__init__.py` - `InfrahubDatabase` client
-- **Registry:** `core/__init__.py` - Central node class registry
+- **Registry:** `core/registry.py` - Central in-memory registry (schemas, branches, node classes); `core/__init__.py` only re-exports it
 
 ## See Also
 
@@ -59,6 +59,7 @@ Similar to pull requests, proposed changes allow reviewing and approving data mo
 - [Testing](testing.md) - Testing infrastructure and patterns
 - [Authentication](authentication.md) - Login flow, SSO group resolution, auto-create groups
 - [API Backpressure](api-backpressure.md) - Priority-aware load shedding (admission layer) and the database-stress signal
+- [Observability](observability.md) - Traces, logs and metrics, and the rules that keep metrics correct across worker processes
 - [Events System](events.md) - Event-driven architecture
 - [Async Tasks](async-tasks.md) - Background task processing
 - [Message Bus](message-bus.md) - Inter-service communication
@@ -69,4 +70,3 @@ Similar to pull requests, proposed changes allow reviewing and approving data mo
 ### Guidelines
 
 - [Python Coding Standards](../../guidelines/backend/python.md) - How to write backend code
-- [Backend AGENTS.md](../../../backend/AGENTS.md) - Quick reference and commands

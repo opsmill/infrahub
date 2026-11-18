@@ -7,7 +7,11 @@ on:
   github-app:
     client-id: ${{ secrets.GH_AW_APP_ID }}
     private-key: ${{ secrets.GH_AW_APP_PRIVATE_KEY }}
-engine: claude
+engine:
+  id: claude
+  bare: false
+  permission-mode: acceptEdits
+model: opus
 timeout-minutes: 40
 permissions:
   contents: read
@@ -32,7 +36,7 @@ safe-outputs:
     discussions: false
   add-labels:
     max: 2
-  missing-tool:
+  report-missing-tool:
 ---
 
 # Bug analyst agent

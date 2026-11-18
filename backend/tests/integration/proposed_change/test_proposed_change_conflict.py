@@ -11,9 +11,9 @@ from uuid import uuid4
 import pytest
 from infrahub_sdk.context import ContextAccount, RequestContext
 from infrahub_sdk.exceptions import GraphQLError
-from infrahub_sdk.protocols import CoreDataCheck, CoreProposedChange
+from infrahub_sdk.protocols import CoreDataCheck, CoreProposedChange, CoreStandardCheck, CoreUserValidator
 
-from infrahub.core.constants import InfrahubKind, ValidatorConclusion
+from infrahub.core.constants import SYSTEM_USER_ID, InfrahubKind, ValidatorConclusion
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_account, create_branch
@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 
 
 class ErroringGraphMerger(GraphMerger):
-    async def merge(self, at: Timestamp) -> None:
+    async def merge(self, at: Timestamp, user_id: str = SYSTEM_USER_ID) -> None:
         raise ValueError("This will always fail")
 
 
@@ -116,8 +116,8 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         john = await NodeManager.get_one_by_id_or_default_filter(
             db=db, id="John", kind=TestKind.PERSON, branch=branch1.name
         )
-        john.name.value = "Johnny"  # type: ignore[attr-defined]
-        john.age.value = 26  # type: ignore[attr-defined]
+        john.name.value = "Johnny"
+        john.age.value = 26
         await john.save(db=db)
         return branch_name
 
@@ -129,17 +129,31 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         await steve.save(db=db)
 
     @pytest.fixture(scope="class")
+    async def user_check_branch(self, initial_dataset: None, client: InfrahubClient) -> str:
+        branch_name = f"user_checks-{uuid4()}"
+        await client.branch.create(branch_name=branch_name, sync_with_git=True)
+        paul = await client.create(
+            kind=TestKind.PERSON, branch=branch_name, data={"name": "Paul", "height": 182, "age": 40}
+        )
+        await paul.save()
+        people = await client.get(kind=InfrahubKind.STANDARDGROUP, name__value="people", branch=branch_name)
+        await people.members.fetch()
+        people.members.add(paul.id)
+        await people.save()
+        return branch_name
+
+    @pytest.fixture(scope="class")
     async def conflict_dataset(self, db: InfrahubDatabase, initial_dataset: None) -> None:
         branch1 = await create_branch(db=db, branch_name="conflict_data")
         john = await NodeManager.get_one_by_id_or_default_filter(db=db, id="John", kind=TestKind.PERSON)
-        john.description.value = "Who is this?"  # type: ignore[attr-defined]
+        john.description.value = "Who is this?"
         await john.save(db=db)
 
         john_branch = await NodeManager.get_one_by_id_or_default_filter(
             db=db, id="John", kind=TestKind.PERSON, branch=branch1
         )
-        john_branch.description.value = "Oh boy"  # type: ignore[attr-defined]
-        john_branch.age.value = 30  # type: ignore[attr-defined]
+        john_branch.description.value = "Oh boy"
+        john_branch.age.value = 30
         await john_branch.save(db=db)
 
     async def test_conflict_pipeline(
@@ -212,7 +226,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         john = await NodeManager.get_one_by_default_filter(db=db, id="John", kind=TestKind.PERSON)
         # The value of the description should match that of the source branch that was selected
         # as the branch to keep in the data conflict
-        assert john.description.value == "Oh boy"  # type: ignore[attr-defined, union-attr]
+        assert john.description.value == "Oh boy"  # type: ignore[union-attr]
 
     async def test_happy_pipeline(
         self, db: InfrahubDatabase, default_branch: Branch, happy_data_branch: str, client: InfrahubClient
@@ -279,8 +293,8 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
 
         tags = await client.all(kind="TestingTag", branch=happy_data_branch)
         # The Generator defined in the repository is expected to have created this tag during the pipeline
-        assert "johnny-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
-        assert "InfrahubNode-johnny-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
+        assert "johnny-jesko" in [tag.name.value for tag in tags]
+        assert "InfrahubNode-johnny-jesko" in [tag.name.value for tag in tags]
 
         # -------------------------------------------------
         # Merge the proposed change and ensure everything looks good
@@ -449,6 +463,40 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         result = await client.execute_graphql(query=query, variables={"id": initial_dataset})
         assert result["InfrahubRepositoryConnectivity"]["ok"]
         assert result["InfrahubRepositoryConnectivity"]["message"] == "Successfully accessed repository"
+
+    async def test_rerun_user_checks_updates_each_existing_check(
+        self, user_check_branch: str, client: InfrahubClient
+    ) -> None:
+        proposed_change = await client.create(
+            kind=CoreProposedChange,
+            data={"source_branch": user_check_branch, "destination_branch": "main", "name": "user-checks-rerun"},
+        )
+        await proposed_change.save()
+
+        validators = await client.filters(kind=CoreUserValidator, proposed_change__ids=[proposed_change.id])
+        age_checks = [validator for validator in validators if validator.label.value == "Check: owner_age_check"]
+        assert len(age_checks) == 1
+        age_check = age_checks[0]
+        first_checks = await client.filters(kind=CoreStandardCheck, validator__ids=[age_check.id])
+        assert len({check.name.value for check in first_checks}) == len(first_checks) == 2
+
+        await client.execute_graphql(query=RUN_USER_CHECKS, variables={"proposed_change": proposed_change.id})
+
+        rerun_checks = await client.filters(kind=CoreStandardCheck, validator__ids=[age_check.id])
+        assert {check.id: check.name.value for check in rerun_checks} == {
+            check.id: check.name.value for check in first_checks
+        }
+        first_created_at = {check.id: check.created_at.value for check in first_checks}
+        assert all(check.created_at.value != first_created_at[check.id] for check in rerun_checks)
+
+
+RUN_USER_CHECKS = """
+mutation RunUserChecks($proposed_change: String!) {
+    CoreProposedChangeRunCheck(data: {id: $proposed_change, check_type: USER}) {
+        ok
+    }
+}
+"""
 
 
 QUERY_EVENT = """

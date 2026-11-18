@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
-
-from typing_extensions import Self
+from typing import TYPE_CHECKING, Any, Protocol, Self, runtime_checkable
 
 from infrahub.core.constants import SYSTEM_USER_ID
 
@@ -13,6 +11,7 @@ if TYPE_CHECKING:
     from infrahub.core.relationship import RelationshipManager
     from infrahub.core.schema import NonGenericSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.pools.attribute_pool_applier import AttributePoolApplierInterface
 
 
 @runtime_checkable
@@ -129,7 +128,13 @@ class CoreNode:
     async def get_display_label(self, db: InfrahubDatabase) -> str:
         raise NotImplementedError()
 
-    async def from_graphql(self, data: dict, db: InfrahubDatabase) -> bool:
+    async def from_graphql(
+        self,
+        data: dict,
+        db: InfrahubDatabase,
+        pool_applier: AttributePoolApplierInterface,
+        process_pools: bool = True,
+    ) -> bool:
         raise NotImplementedError()
 
     def _get_created_at(self) -> Timestamp | None:

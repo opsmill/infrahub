@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from pydantic import BaseModel, ConfigDict, Field
 from rich import print as rprint
-from typing_extensions import Self
 
 from infrahub.core.constants import (
     HashableModelState,
@@ -189,9 +188,7 @@ class SchemaUpdateValidationResult(BaseModel):
         for schema_name in self.diff.removed.keys():
             self.migrations.append(
                 SchemaUpdateMigrationInfo(
-                    path=SchemaPath(  # type: ignore[call-arg]
-                        schema_kind=schema_name, path_type=SchemaPathType.NODE
-                    ),
+                    path=SchemaPath(schema_kind=schema_name, path_type=SchemaPathType.NODE),
                     migration_name="node.remove",
                 )
             )
@@ -201,9 +198,7 @@ class SchemaUpdateValidationResult(BaseModel):
             if "inherit_from" in schema_diff.changed:
                 self.migrations.append(
                     SchemaUpdateMigrationInfo(
-                        path=SchemaPath(  # type: ignore[call-arg]
-                            schema_kind=schema_name, path_type=SchemaPathType.NODE
-                        ),
+                        path=SchemaPath(schema_kind=schema_name, path_type=SchemaPathType.NODE),
                         migration_name="node.inherit_from.update",
                     )
                 )
@@ -235,28 +230,22 @@ class SchemaUpdateValidationResult(BaseModel):
             if path_type == SchemaPathType.ATTRIBUTE:
                 self.migrations.append(
                     SchemaUpdateMigrationInfo(
-                        path=SchemaPath(  # type: ignore[call-arg]
-                            schema_kind=schema.kind, path_type=path_type, field_name=field_name
-                        ),
+                        path=SchemaPath(schema_kind=schema.kind, path_type=path_type, field_name=field_name),
                         migration_name="node.attribute.add",
                     )
                 )
             elif path_type == SchemaPathType.RELATIONSHIP:
                 self.constraints.append(
                     SchemaUpdateConstraintInfo(
-                        path=SchemaPath(  # type: ignore[call-arg]
-                            schema_kind=schema.kind, path_type=path_type, field_name=field_name
-                        ),
+                        path=SchemaPath(schema_kind=schema.kind, path_type=path_type, field_name=field_name),
                         constraint_name="node.relationship.add",
                     )
                 )
 
         for field_name in node_field_diff.removed.keys():
             self.migrations.append(
-                SchemaUpdateMigrationInfo(  # type: ignore[call-arg]
-                    path=SchemaPath(  # type: ignore[call-arg]
-                        schema_kind=schema.kind, path_type=path_type, field_name=field_name
-                    ),
+                SchemaUpdateMigrationInfo(
+                    path=SchemaPath(schema_kind=schema.kind, path_type=path_type, field_name=field_name),
                     migration_name=f"node.{path_type.value}.remove",
                 )
             )
@@ -320,7 +309,7 @@ class SchemaUpdateValidationResult(BaseModel):
         if schema.is_generic_schema and node_field_name in GENERIC_ATTRIBUTES_TO_IGNORE:
             return
 
-        schema_path = SchemaPath(  # type: ignore[call-arg]
+        schema_path = SchemaPath(
             schema_kind=schema.kind,
             path_type=SchemaPathType.NODE,
             field_name=node_field_name,

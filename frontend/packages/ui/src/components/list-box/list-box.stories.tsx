@@ -28,7 +28,7 @@ type Story = StoryObj<typeof meta>;
 
 function ColumnLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[10px] font-medium tracking-wider text-subtle-muted uppercase">
+    <div className="font-medium text-[10px] text-subtle-muted uppercase tracking-wider">
       {children}
     </div>
   );

@@ -3,15 +3,11 @@ from __future__ import annotations
 import inspect
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Generator
+from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.uuidt import UUIDT
 
-from infrahub.core.changelog.models import (
-    ChangelogRelationshipMapper,
-    RelationshipCardinalityManyChangelog,
-    RelationshipCardinalityOneChangelog,
-)
+from infrahub.core.changelog.relationship_mapper import ChangelogRelationshipMapper
 from infrahub.core.constants import InfrahubKind, MetadataOptions, RelationshipDirection, RelationshipStatus
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.order import METADATA_CREATED_AT, METADATA_UPDATED_AT, OrderModel
@@ -28,12 +24,17 @@ from infrahub.core.utils import extract_field_filters
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
     from uuid import UUID
 
     from neo4j.graph import Relationship as Neo4jRelationship
 
     from infrahub.constants.enums import OrderDirection
     from infrahub.core.branch import Branch
+    from infrahub.core.changelog.models import (
+        RelationshipCardinalityManyChangelog,
+        RelationshipCardinalityOneChangelog,
+    )
     from infrahub.core.node import Node
     from infrahub.core.relationship import Relationship
     from infrahub.core.schema import MainSchemaTypes, NodeSchema, RelationshipSchema
@@ -76,33 +77,15 @@ class NodePropertyData:
 @dataclass
 class RelationshipPeerData:
     branch: str
-
     source_id: UUID
-    """UUID of the Source Node."""
-
     source_db_id: str
-    """Internal DB ID of the Source Node."""
-
     source_kind: str
-    """Kind of the Source Node."""
-
     peer_id: UUID
-    """UUID of the Peer Node."""
-
     peer_db_id: str
-    """Internal DB ID of the Peer Node."""
-
     peer_kind: str
-    """Kind of the Peer Node."""
-
     properties: dict[str, FlagPropertyData | NodePropertyData]
-    """UUID of the Relationship Node."""
-
     rel_node_id: UUID
-    """UUID of the Relationship Node."""
-
     rel_node_db_id: str | None = None
-    """Internal DB ID of the Relationship Node."""
 
     rels: list[RelData] | None = None
     """Both relationships pointing at this Relationship Node."""
@@ -190,7 +173,7 @@ class RelationshipQuery(Query):
 
         self.rel = rel
         self.rel_id = rel_id
-        self.schema = schema or self.rel.schema
+        self.schema = schema or self.rel.schema  # type: ignore[misc]  # self.rel is type[Relationship] | Relationship | None
 
         if not branch and inspect.isclass(rel) and not hasattr(rel, "branch"):
             raise ValueError("Either an instance of Relationship or a valid branch must be provided.")
@@ -414,7 +397,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        self.params["rel_node_id"] = self.rel_id or (self.rel.id if self.rel else None)
+        self.params["rel_node_id"] = self.rel_id or (self.rel.id if self.rel else None)  # type: ignore[misc]  # self.rel is type[Relationship] | Relationship | None
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["user_id"] = self.user_id
@@ -576,7 +559,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         rel_filter, rel_params = self.branch.get_query_filter_path(at=self.at, variable_name="edge")
-        self.params["rel_id"] = self.rel_id or self.rel.id
+        self.params["rel_id"] = self.rel_id or self.rel.id  # type: ignore[misc]  # self.rel is type[Relationship] | Relationship | None
         self.params["branch"] = self.branch.name
         self.params["rel_prop"] = self.get_relationship_properties_dict(
             status=RelationshipStatus.DELETED, user_id=self.user_id
@@ -1038,6 +1021,7 @@ RETURN updated_at, updated_by
                 branch_filter=branch_filter,
                 branch=self.branch,
                 subquery_idx=filter_cnt,
+                branch_agnostic=self.branch_agnostic,
             )
             self.params.update(subquery_params)
 
@@ -1061,6 +1045,8 @@ RETURN updated_at, updated_by
         # ----------------------------------------------------------------------------
         await self._add_peer_order_by(db=db, peer_schema=peer_schema, branch_filter=branch_filter)
         self.order_by.append("peer.uuid ASC")
+        # Source nodes can share a peer, and a read in pages needs a total order to not skip rows.
+        self.order_by.append("source_node.uuid ASC")
 
     def get_peer_ids(self) -> list[str]:
         """Return a list of UUID of nodes associated with this relationship."""
@@ -1068,7 +1054,7 @@ RETURN updated_at, updated_by
 
     def get_peers(self) -> Generator[RelationshipPeerData, None, None]:
         for result in self.get_results_group_by(("peer", "uuid"), ("source_node", "uuid")):
-            rels = result.get("rels")
+            rels = result.get_rel_collection("rels")
             source_node = result.get_node("source_node")
             peer_node = result.get_node("peer")
 
@@ -1089,38 +1075,42 @@ RETURN updated_at, updated_by
                 peer_id=peer_node.get("uuid"),
                 peer_db_id=peer_node.element_id,
                 peer_kind=peer_node.get("kind"),
-                rel_node_db_id=result.get("rl").element_id,
-                rel_node_id=result.get("rl").get("uuid"),
+                rel_node_db_id=result.get_node("rl").element_id,
+                rel_node_id=result.get_node("rl").get("uuid"),
                 rels=[RelData.from_db(rel) for rel in rels],
                 branch=self.branch.name,
                 created_at=created_at,
-                created_by=result.get("created_by") if self.include_metadata & MetadataOptions.CREATED_BY else None,
+                created_by=result.get_as_optional_type("created_by", return_type=str)
+                if self.include_metadata & MetadataOptions.CREATED_BY
+                else None,
                 updated_at=updated_at,
-                updated_by=result.get("updated_by") if self.include_metadata & MetadataOptions.UPDATED_BY else None,
+                updated_by=result.get_as_optional_type("updated_by", return_type=str)
+                if self.include_metadata & MetadataOptions.UPDATED_BY
+                else None,
                 properties={},
             )
 
             prop, metadata_option = ("is_protected", MetadataOptions.IS_PROTECTED)
             if self.include_metadata & metadata_option:
-                prop_node = result.get(prop)
+                prop_node = result.get_optional_node(prop)
                 if prop_node:
                     data.properties[prop] = FlagPropertyData(
                         name=prop,
                         prop_db_id=prop_node.element_id,
-                        rel=RelData.from_db(result.get(f"rel_{prop}")),
+                        rel=RelData.from_db(result.get_rel(f"rel_{prop}")),
                         value=prop_node.get("value"),
                     )
 
             for prop, metadata_option in [("owner", MetadataOptions.OWNER), ("source", MetadataOptions.SOURCE)]:
                 if not self.include_metadata & metadata_option:
                     continue
-                prop_node = result.get(prop)
+                prop_node = result.get_optional_node(prop)
                 if not prop_node:
                     continue
                 data.properties[prop] = NodePropertyData(
                     name=prop,
                     prop_db_id=prop_node.element_id,
-                    rel=RelData.from_db(result.get(f"rel_{prop}")),
+                    rel=RelData.from_db(result.get_rel(f"rel_{prop}")),
                     value=prop_node.get("uuid"),
                 )
 
@@ -1152,10 +1142,6 @@ class RelationshipGetByIdentifierQuery(Query):
             self.identifiers = identifiers
             self.full_identifiers = []
         self.excluded_namespaces = excluded_namespaces or []
-
-        # Always exclude relationships with internal nodes
-        if "Internal" not in self.excluded_namespaces:
-            self.excluded_namespaces.append("Internal")
 
         super().__init__(**kwargs)
 
@@ -1196,12 +1182,12 @@ class RelationshipGetByIdentifierQuery(Query):
     def get_peers(self) -> Generator[RelationshipPeersData, None, None]:
         for result in self.get_results():
             data = RelationshipPeersData(
-                id=result.get("rl").get("uuid"),
-                identifier=result.get("rl").get("name"),
-                source_id=result.get("src").get("uuid"),
-                source_kind=result.get("src").get("kind"),
-                destination_id=result.get("dst").get("uuid"),
-                destination_kind=result.get("dst").get("kind"),
+                id=result.get_node("rl").get("uuid"),
+                identifier=result.get_node("rl").get("name"),
+                source_id=result.get_node("src").get("uuid"),
+                source_kind=result.get_node("src").get("kind"),
+                destination_id=result.get_node("dst").get("uuid"),
+                destination_kind=result.get_node("dst").get("kind"),
             )
             yield data
 
@@ -1472,14 +1458,17 @@ class RelationshipDeleteAllQuery(Query):
     def get_deleted_relationships_changelog(
         self, node_schema: NodeSchema
     ) -> list[RelationshipCardinalityOneChangelog | RelationshipCardinalityManyChangelog]:
-        rel_identifier_to_changelog_mapper: dict[str, ChangelogRelationshipMapper] = {}
+        # Both sides of a hierarchy share one identifier, so it cannot be the key.
+        rel_name_to_changelog_mapper: dict[str, ChangelogRelationshipMapper] = {}
 
         for item in self.get_data():
             if item.uuid == self.node_id:
                 continue
 
             deleted_rel_schemas = [
-                rel_schema for rel_schema in node_schema.relationships if rel_schema.identifier == item.rel_identifier
+                rel_schema
+                for rel_schema in node_schema.relationships
+                if rel_schema.get_identifier() == item.rel_identifier
             ]
 
             if len(deleted_rel_schemas) == 0:
@@ -1501,14 +1490,14 @@ class RelationshipDeleteAllQuery(Query):
                 deleted_rel_schema = deleted_rel_schemas[0]
 
             try:
-                changelog_mapper = rel_identifier_to_changelog_mapper[item.rel_identifier]
+                changelog_mapper = rel_name_to_changelog_mapper[deleted_rel_schema.name]
             except KeyError:
                 changelog_mapper = ChangelogRelationshipMapper(schema=deleted_rel_schema)
-                rel_identifier_to_changelog_mapper[item.rel_identifier] = changelog_mapper
+                rel_name_to_changelog_mapper[deleted_rel_schema.name] = changelog_mapper
 
             changelog_mapper.delete_relationship(peer_id=item.uuid, peer_kind=item.kind, rel_schema=deleted_rel_schema)
 
-        return [changelog_mapper.changelog for changelog_mapper in rel_identifier_to_changelog_mapper.values()]
+        return [changelog_mapper.changelog for changelog_mapper in rel_name_to_changelog_mapper.values()]
 
 
 class GetAllPeersIds(Query):
@@ -1541,6 +1530,7 @@ class GetAllPeersIds(Query):
         """ % {"active_rel_filter": active_rel_filter}
 
         self.add_to_query(query)
+        self.return_labels = ["uuid"]
 
     def get_peers_uuids(self) -> list[str]:
-        return [row.data["uuid"] for row in self.results]  # type: ignore
+        return [row.get_as_type("uuid", return_type=str) for row in self.results]

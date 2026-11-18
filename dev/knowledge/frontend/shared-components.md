@@ -39,7 +39,7 @@ define when repeated behavior needs a component and when similar markup should s
 |------|-----|----------|
 | Combobox (single value) | `Combobox` | `shared/components/ui/combobox.tsx` |
 | Command palette pattern | `Command` | `shared/components/ui/command.tsx` |
-| Dropdown menu | `DropdownMenu` | `shared/components/ui/dropdown-menu.tsx` |
+| Dropdown menu | `Menu`, `MenuTrigger` | `@infrahub/ui` |
 | Date picker | `DatePicker` | `shared/components/inputs/date-picker.tsx` |
 | Color picker | `ColorPicker` | `shared/components/inputs/color-picker.tsx` |
 | Search input | `SearchInput` | `shared/components/inputs/search-input.tsx` |
@@ -111,12 +111,13 @@ The `tab` argument on each helper is a string-literal union (e.g. `BranchDetails
 
 ### Object field metadata
 
-`ObjectFieldMetadata` in `entities/nodes/object/ui/object-details/object-data-display/` composes
-`MetaDetailsTooltip` with the protected lock icon for attribute and relationship values. Pass the
-metadata object and an optional `header` for field-specific editing controls. The default hover
-scope uses the surrounding `ObjectDataRow` group; relationship list items use `hoverScope="edge"`
-with a `group/edge` wrapper so hovering one item reveals only its metadata button. Keyboard focus
-also reveals the button. On devices without hover, the button stays visible.
+`FieldMetadataPopover` in `entities/nodes/object/ui/metadata/` shows the source, owner, update
+time and protected status of an attribute or relationship. Pass the metadata object, and a `title`
+and an `action` such as `EditMetadataButton` for field-specific editing controls. With
+`revealOnHover`, the icon appears while the pointer is over an enclosing element with the
+`METADATA_HOVER_AREA` class: field rows set it on the row, and relationship list items set it on
+each item so hovering one item reveals only its icon. Keyboard focus and an open popover also
+reveal the icon. On devices without hover, the icon stays visible.
 
 ### Layout
 
@@ -126,17 +127,25 @@ also reveals the button. On devices without hover, the button stays visible.
 | Vertical flex layout | `Col` | `shared/components/container.tsx` |
 | Resizable panels | `ResizablePanelGroup` | `@infrahub/ui` |
 | Scrollable area | `ScrollArea` | `@infrahub/ui` |
+| Pan/zoom viewport with zoom controls | `PanZoom` | `shared/components/display/pan-zoom.tsx` |
 | Tooltip | `Tooltip` | `@infrahub/ui` |
 | Popover | `Popover` | `shared/components/ui/popover.tsx` |
 | Accordion | `Accordion` | `shared/components/ui/accordion.tsx` |
 | Badge | `Badge` | `shared/components/ui/badge.tsx` |
 | Alert | `Alert` | `shared/components/ui/alert.tsx` |
-| Pagination | `Pagination` | `shared/components/ui/pagination.tsx` |
+| Pagination (one list per page) | `Pagination` — bound to the page-global `pagination` query-string parameter (`usePagination`), so only one list per page can use it | `shared/components/ui/pagination.tsx` |
+| Paginated table footer, one per table | `TablePagination` — controlled (`page`, `onPageChange`); give each pager an `aria-label`. Pair with `useTablePagination({ urlKey })` (`shared/hooks/use-table-pagination.ts`, page in `${urlKey}_page`, one key per table) and `shared/utils/table-pagination.ts` (`PAGE_SIZE`, `getOffset`) | `shared/components/table/table-pagination.tsx` |
+| Card with a server-paged table | `PagedTableCard` — region labelled by its title, count badge, fixed-height body, `TablePagination`, and the loading, denied (`UnauthorizedScreen`), failed (`ErrorScreen` with "Go to first page" or "Try again"), empty (`NoDataFound`) and page-past-the-end states. Pair with `keepPreviousDataWithin(listKey, hasRows)` (`shared/api/keep-previous-data-within.ts`) as the query's `placeholderData` | `shared/components/table/paged-table-card.tsx` |
+| Page header row (title, actions) | `HeaderContainer` | `shared/components/layout/header-container.tsx` |
+| Refresh button with "Last data refresh" tooltip | `RefreshButton` — pass the `queryKeys` it invalidates | `shared/components/buttons/refresh-button.tsx` |
+| Value on a schema colour, with an optional tooltip | `ColorDisplay` — `className` adjusts its size | `shared/components/display/color-display.tsx` |
 | Keyboard shortcut display | `Kbd` | `shared/components/ui/kbd.tsx` |
 | Card surface | `Card`, `CardHeader`, `CardContent` | `@infrahub/ui` (see `design-system.md`) |
 | Modal/dialog | `Modal`, `ModalOverlay` | `@infrahub/ui` |
 | Button | `Button`, `LinkButton` | `@infrahub/ui` |
 | Spinner | `Spinner` | `@infrahub/ui` |
+
+Two limits worth knowing before you pick a paging primitive: `Pagination` always renders "of {count}" and cannot hide the total, so a list that must not show one (`entities/repository/ui/repository-commits-manager.tsx`) uses `DataTable` inside `InfiniteScroll` instead, passing `getRowId={(commit) => commit.hash}` because its rows are not nodes. `DataTable` keys node rows by their `id`; rows that are not nodes must pass `getRowId`, and passing it turns row selection off, because selection hands rows to the node toolbar. Row selection (`enableRowSelection`, `toolbarActions`) is therefore node-only, and the props reject it alongside `getRowId`. Second, `DataTable`'s `isLoading` renders `ObjectTableSkeleton`, whose first column is a checkbox, so a table without row selection shows its own spinner for a next-page fetch rather than passing `isLoading`.
 
 More primitives (`Sheet`, `Tree`, `Menu`, `Select`, `ListBox`, `Autocomplete`, `SortableList`, `Checkbox`, `Popover`, `useDismissGuard`, …) live in `@infrahub/ui` — check `frontend/packages/ui/src/index.ts` first; `design-system.md` owns that inventory.
 
@@ -150,6 +159,8 @@ More primitives (`Sheet`, `Tree`, `Menu`, `Select`, `ListBox`, `Autocomplete`, `
 | Pagination state | `usePagination` | `shared/hooks/usePagination.ts` |
 | Local-storage state | `useLocalStorage` | `shared/hooks/useLocalStorage.ts` |
 | Copy to clipboard | `useCopyToClipboard` | `shared/hooks/useCopyToClipboard.ts` |
+| Copy to clipboard outside a component, or once for many rows | `copyTextToClipboard` (resolves to whether the copy worked) | `shared/utils/clipboard.ts` |
+| Announce a copy to screen readers | `CopiedAnnouncement` | `shared/components/a11y/copied-announcement.tsx` |
 | Page title | `useTitle` | `shared/hooks/useTitle.ts` |
 | Branch context | `useCurrentBranch` | (entity hook) |
 | Date context | `useAtomValue(datetimeAtom)` | `shared/stores/` |
@@ -185,6 +196,6 @@ Before adding a component or changing repeated UI behavior:
 | `<div className="flex items-center gap-2">` | `<Row>` from `shared/components/container` |
 | Hardcoding system namespace lists on the client | Backend is authoritative; surface via schema if needed |
 | Duplicating `useState` between page and selector | Single source of truth — see `dev/guidelines/frontend/page-architecture.md` |
-| Repeating lock icons, metadata mapping, and reveal styles in each field renderer | `ObjectFieldMetadata` with caller-specific headers and hover scope |
+| Repeating metadata mapping and reveal styles in each field renderer | `FieldMetadataPopover` with a caller-specific `title` and `action`, inside a `METADATA_HOVER_AREA` element |
 | Hand-rolled tab bar with manual active-state CSS | `LinkTab` + `<nav aria-label="Tabs">` — see `dev/guidelines/frontend/route-architecture.md` |
 | `useParams() as { foo: string }` for guaranteed params | `useRequiredParams("foo")` — runtime-checked, no type lie |

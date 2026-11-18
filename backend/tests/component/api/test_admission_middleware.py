@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Callable
 
 import httpx
 import pytest
@@ -11,7 +10,6 @@ from fastapi import FastAPI
 from infrahub import config
 from infrahub.api.admission import metrics
 from infrahub.api.admission.capacity import derive_max_concurrency
-from infrahub.api.admission.codel import CoDelController
 from infrahub.api.admission.controller import AdmissionController
 from infrahub.api.admission.factory import build_admission_controller
 from infrahub.api.admission.middleware import AdmissionMiddleware
@@ -23,29 +21,13 @@ from infrahub.api.admission.observers import (
 from infrahub.api.admission.priority import Priority
 from infrahub.api.admission.retry_policy import RetryAfterPolicy
 from infrahub.api.admission.slot_pool import PrioritySlotPool
-
-
-def _codel_controllers(
-    *, target: float, interval: float, high_target_multiplier: float, clock: Callable[[], float] = time.monotonic
-) -> dict[Priority, CoDelController]:
-    """Per-class CoDel controllers, HIGH given a larger effective target so it sheds last."""
-    return {
-        Priority.HIGH: CoDelController(target=target * high_target_multiplier, interval=interval, clock=clock),
-        Priority.MEDIUM: CoDelController(target=target, interval=interval, clock=clock),
-        Priority.LOW: CoDelController(target=target, interval=interval, clock=clock),
-    }
-
-
-def _install_admission(app: FastAPI, controller: AdmissionController, *, enabled: bool = True) -> None:
-    """Publish the controller/kill-switch on app.state (as the startup lifespan does) and gate the app.
-
-    The middleware reads both from app.state per request; setting them here mirrors production
-    startup without a live server.
-    """
-    app.state.admission_controller = controller
-    app.state.admission_enabled = enabled
-    app.add_middleware(AdmissionMiddleware)
-
+from tests.helpers.admission import (
+    THRESHOLDS,
+    UNSTRESSED,
+    codel_controllers,
+    install_admission,
+    shed_everything_controller,
+)
 
 HANDLER_SLEEP = 0.02
 MAX_CONCURRENCY = 2
@@ -54,30 +36,6 @@ HIGH_REQUESTS = 15
 
 _PRIORITY_LABELS = ("high", "medium", "low")
 _REASON_LABELS = ("codel", "backstop")
-
-# Realistic per-class thresholds; the quiet signal below never reaches them, so these tests
-# exercise CoDel/backstop shedding in isolation. The stress trigger and its tiering are covered
-# by the dedicated controller unit test.
-_THRESHOLDS = {Priority.HIGH: 100.0, Priority.MEDIUM: 10.0, Priority.LOW: 5.0}
-
-
-class _FakeLoadSignal:
-    """Hand-set database-stress signal for driving the admission decision deterministically."""
-
-    def __init__(self, *, ratio: float, samples: int) -> None:
-        self._ratio = ratio
-        self._samples = samples
-
-    def stress_ratio_median(self) -> float:
-        return self._ratio
-
-    def sample_count(self) -> int:
-        return self._samples
-
-
-# A ratio of 1.0 (database at its best) is below every threshold, so the stress trigger stays
-# quiet and never sheds — leaving CoDel and the backstop as the only shed mechanisms here.
-_UNSTRESSED = _FakeLoadSignal(ratio=1.0, samples=1_000_000)
 
 
 def _backstop(value: int) -> dict[Priority, int]:
@@ -141,15 +99,15 @@ def _build_app() -> FastAPI:
     controller = AdmissionController(
         slot_pool=PrioritySlotPool(max_concurrency=MAX_CONCURRENCY, observers=[SlotPoolMetricsObserver()]),
         # A large HIGH target keeps the interactive stream admitted while LOW is shed.
-        codel_priority_map=_codel_controllers(target=0.005, interval=0.02, high_target_multiplier=20.0),
+        codel_priority_map=codel_controllers(target=0.005, interval=0.02, high_target_multiplier=20.0),
         backstop_max_waiters=_backstop(1000),
-        stress_signal=_UNSTRESSED,
-        stress_thresholds=_THRESHOLDS,
+        stress_signal=UNSTRESSED,
+        stress_thresholds=THRESHOLDS,
         stress_min_samples=0,
         retry_policy=RetryAfterPolicy(observers=[]),
         observers=[AdmissionMetricsObserver()],
     )
-    _install_admission(app, controller, enabled=True)
+    install_admission(app, controller, enabled=True)
     return app
 
 
@@ -200,15 +158,15 @@ async def test_all_admitted_when_capacity_available(priority: str) -> None:
 
     controller = AdmissionController(
         slot_pool=PrioritySlotPool(max_concurrency=10, observers=[SlotPoolMetricsObserver()]),
-        codel_priority_map=_codel_controllers(target=0.005, interval=0.1, high_target_multiplier=4.0),
+        codel_priority_map=codel_controllers(target=0.005, interval=0.1, high_target_multiplier=4.0),
         backstop_max_waiters=_backstop(1000),
-        stress_signal=_UNSTRESSED,
-        stress_thresholds=_THRESHOLDS,
+        stress_signal=UNSTRESSED,
+        stress_thresholds=THRESHOLDS,
         stress_min_samples=0,
         retry_policy=RetryAfterPolicy(observers=[]),
         observers=[AdmissionMetricsObserver()],
     )
-    _install_admission(app, controller, enabled=True)
+    install_admission(app, controller, enabled=True)
 
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/work", headers={"X-Priority": priority})
@@ -234,16 +192,16 @@ async def test_shed_backstop_returns_rest_envelope() -> None:
 
     controller = AdmissionController(
         slot_pool=PrioritySlotPool(max_concurrency=0, observers=[SlotPoolMetricsObserver()]),
-        codel_priority_map=_codel_controllers(target=0.005, interval=0.1, high_target_multiplier=4.0),
+        codel_priority_map=codel_controllers(target=0.005, interval=0.1, high_target_multiplier=4.0),
         backstop_max_waiters=_backstop(0),
-        stress_signal=_UNSTRESSED,
-        stress_thresholds=_THRESHOLDS,
+        stress_signal=UNSTRESSED,
+        stress_thresholds=THRESHOLDS,
         stress_min_samples=0,
         # Backstop sheds at the top tier; pin level-3 so the wired-through Retry-After is 7.
         retry_policy=RetryAfterPolicy(observers=[], level3_seconds=7),
         observers=[AdmissionMetricsObserver()],
     )
-    _install_admission(app, controller, enabled=True)
+    install_admission(app, controller, enabled=True)
 
     before = metrics.REJECTED_TOTAL.labels(priority="low", reason="backstop")._value.get()
 
@@ -286,18 +244,18 @@ async def test_shed_codel_returns_429() -> None:
     slot_pool = PrioritySlotPool(max_concurrency=1, observers=[SlotPoolMetricsObserver()], clock=_StepClock(step=1.0))
     controller = AdmissionController(
         slot_pool=slot_pool,
-        codel_priority_map=_codel_controllers(
+        codel_priority_map=codel_controllers(
             target=0.005, interval=1.0, high_target_multiplier=4.0, clock=_StepClock(step=1.0)
         ),
         backstop_max_waiters=_backstop(1000),
-        stress_signal=_UNSTRESSED,
-        stress_thresholds=_THRESHOLDS,
+        stress_signal=UNSTRESSED,
+        stress_thresholds=THRESHOLDS,
         stress_min_samples=0,
         # Unstressed CoDel shed lands at tier 0, which floors to level 1; pin it to 3.
         retry_policy=RetryAfterPolicy(observers=[], level1_seconds=3),
         observers=[AdmissionMetricsObserver()],
     )
-    _install_admission(app, controller, enabled=True)
+    install_admission(app, controller, enabled=True)
 
     before = metrics.REJECTED_TOTAL.labels(priority="low", reason="codel")._value.get()
 
@@ -362,10 +320,10 @@ async def test_capacity_and_burst() -> None:
 
     controller = AdmissionController(
         slot_pool=PrioritySlotPool(max_concurrency=max_concurrency, observers=[SlotPoolMetricsObserver()]),
-        codel_priority_map=_codel_controllers(target=0.005, interval=interval, high_target_multiplier=4.0),
+        codel_priority_map=codel_controllers(target=0.005, interval=interval, high_target_multiplier=4.0),
         backstop_max_waiters=_backstop(1000),
-        stress_signal=_UNSTRESSED,
-        stress_thresholds=_THRESHOLDS,
+        stress_signal=UNSTRESSED,
+        stress_thresholds=THRESHOLDS,
         stress_min_samples=0,
         retry_policy=RetryAfterPolicy(observers=[]),
         observers=[AdmissionMetricsObserver()],
@@ -373,7 +331,7 @@ async def test_capacity_and_burst() -> None:
     # The gauge is set at server wiring time, not by constructing a controller; set it the same
     # way the wiring does so the invariant is observable here.
     metrics.MAX_CONCURRENCY.set(max_concurrency)
-    _install_admission(app, controller, enabled=True)
+    install_admission(app, controller, enabled=True)
 
     # (a) Gauge equals the derived cap and is positive.
     gauge_value = metrics.MAX_CONCURRENCY._value.get()
@@ -412,15 +370,15 @@ def _admit_app() -> FastAPI:
 
     controller = AdmissionController(
         slot_pool=PrioritySlotPool(max_concurrency=10, observers=[SlotPoolMetricsObserver()]),
-        codel_priority_map=_codel_controllers(target=0.005, interval=0.1, high_target_multiplier=4.0),
+        codel_priority_map=codel_controllers(target=0.005, interval=0.1, high_target_multiplier=4.0),
         backstop_max_waiters=_backstop(1000),
-        stress_signal=_UNSTRESSED,
-        stress_thresholds=_THRESHOLDS,
+        stress_signal=UNSTRESSED,
+        stress_thresholds=THRESHOLDS,
         stress_min_samples=0,
         retry_policy=RetryAfterPolicy(observers=[]),
         observers=[AdmissionMetricsObserver()],
     )
-    _install_admission(app, controller, enabled=True)
+    install_admission(app, controller, enabled=True)
     return app
 
 
@@ -434,15 +392,15 @@ def _backstop_app() -> FastAPI:
 
     controller = AdmissionController(
         slot_pool=PrioritySlotPool(max_concurrency=0, observers=[SlotPoolMetricsObserver()]),
-        codel_priority_map=_codel_controllers(target=0.005, interval=0.1, high_target_multiplier=4.0),
+        codel_priority_map=codel_controllers(target=0.005, interval=0.1, high_target_multiplier=4.0),
         backstop_max_waiters=_backstop(0),
-        stress_signal=_UNSTRESSED,
-        stress_thresholds=_THRESHOLDS,
+        stress_signal=UNSTRESSED,
+        stress_thresholds=THRESHOLDS,
         stress_min_samples=0,
         retry_policy=RetryAfterPolicy(observers=[]),
         observers=[AdmissionMetricsObserver()],
     )
-    _install_admission(app, controller, enabled=True)
+    install_admission(app, controller, enabled=True)
     return app
 
 
@@ -496,17 +454,17 @@ async def test_metrics() -> None:
     slot_pool = PrioritySlotPool(max_concurrency=1, observers=[SlotPoolMetricsObserver()], clock=_StepClock(step=1.0))
     controller = AdmissionController(
         slot_pool=slot_pool,
-        codel_priority_map=_codel_controllers(
+        codel_priority_map=codel_controllers(
             target=0.005, interval=1.0, high_target_multiplier=4.0, clock=_StepClock(step=1.0)
         ),
         backstop_max_waiters=_backstop(1000),
-        stress_signal=_UNSTRESSED,
-        stress_thresholds=_THRESHOLDS,
+        stress_signal=UNSTRESSED,
+        stress_thresholds=THRESHOLDS,
         stress_min_samples=0,
         retry_policy=RetryAfterPolicy(observers=[]),
         observers=[AdmissionMetricsObserver()],
     )
-    _install_admission(codel_app, controller, enabled=True)
+    install_admission(codel_app, controller, enabled=True)
 
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=codel_app), base_url="http://test") as client:
 
@@ -567,20 +525,6 @@ def _offered_total() -> float:
     return sum(_offered(priority) for priority in _PRIORITY_LABELS)
 
 
-def _shed_everything_controller() -> AdmissionController:
-    """Controller with no slots and no waiter budget: every admitted attempt is shed."""
-    return AdmissionController(
-        slot_pool=PrioritySlotPool(max_concurrency=0, observers=[SlotPoolMetricsObserver()]),
-        codel_priority_map=_codel_controllers(target=0.005, interval=0.1, high_target_multiplier=4.0),
-        backstop_max_waiters=_backstop(0),
-        stress_signal=_UNSTRESSED,
-        stress_thresholds=_THRESHOLDS,
-        stress_min_samples=0,
-        retry_policy=RetryAfterPolicy(observers=[]),
-        observers=[AdmissionMetricsObserver()],
-    )
-
-
 @pytest.mark.parametrize("path", ["/health", "/metrics"])
 async def test_excluded_path_bypasses_admission(path: str) -> None:
     """An excluded path passes through even behind a shed-everything controller and moves no metric.
@@ -598,7 +542,7 @@ async def test_excluded_path_bypasses_admission(path: str) -> None:
     async def scrape() -> dict[str, bool]:
         return {"ok": True}
 
-    _install_admission(app, _shed_everything_controller(), enabled=True)
+    install_admission(app, shed_everything_controller(), enabled=True)
 
     offered_before = _offered_total()
     missing_before = metrics.MISSING_PRIORITY_TOTAL._value.get()
@@ -630,7 +574,7 @@ async def test_prefix_of_excluded_path_is_not_bypassed(path: str) -> None:
     async def metrics_internal() -> dict[str, bool]:
         return {"ok": True}
 
-    _install_admission(app, _shed_everything_controller(), enabled=True)
+    install_admission(app, shed_everything_controller(), enabled=True)
 
     offered_before = _offered_total()
     missing_before = metrics.MISSING_PRIORITY_TOTAL._value.get()
@@ -657,7 +601,7 @@ async def test_probe_path_bypasses_admission() -> None:
     async def config_probe() -> dict[str, bool]:
         return {"ok": True}
 
-    _install_admission(app, _shed_everything_controller(), enabled=True)
+    install_admission(app, shed_everything_controller(), enabled=True)
 
     offered_before = _offered_total()
     missing_before = metrics.MISSING_PRIORITY_TOTAL._value.get()
@@ -703,7 +647,7 @@ async def test_kill_switch_passes_through() -> None:
     async def work() -> dict[str, bool]:
         return {"ok": True}
 
-    _install_admission(app, _shed_everything_controller(), enabled=False)
+    install_admission(app, shed_everything_controller(), enabled=False)
 
     offered_before = _offered_total()
     missing_before = metrics.MISSING_PRIORITY_TOTAL._value.get()
@@ -733,15 +677,15 @@ async def test_handler_exception_releases_slot() -> None:
     slot_pool = PrioritySlotPool(max_concurrency=1, observers=[SlotPoolMetricsObserver()])
     controller = AdmissionController(
         slot_pool=slot_pool,
-        codel_priority_map=_codel_controllers(target=0.005, interval=0.1, high_target_multiplier=4.0),
+        codel_priority_map=codel_controllers(target=0.005, interval=0.1, high_target_multiplier=4.0),
         backstop_max_waiters=_backstop(1000),
-        stress_signal=_UNSTRESSED,
-        stress_thresholds=_THRESHOLDS,
+        stress_signal=UNSTRESSED,
+        stress_thresholds=THRESHOLDS,
         stress_min_samples=0,
         retry_policy=RetryAfterPolicy(observers=[]),
         observers=[AdmissionMetricsObserver()],
     )
-    _install_admission(app, controller, enabled=True)
+    install_admission(app, controller, enabled=True)
 
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         with pytest.raises(ValueError, match=r"^handler exploded$"):
@@ -775,3 +719,68 @@ async def test_build_admission_controller_sets_gauge() -> None:
         factor=config.SETTINGS.api.backpressure_max_concurrency_factor,
     )
     assert metrics.MAX_CONCURRENCY._value.get() == expected
+
+
+_BROWSER_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+
+
+@pytest.mark.parametrize(
+    ("method", "headers"),
+    [
+        pytest.param("GET", {"Accept": _BROWSER_ACCEPT}, id="ordinary-navigation"),
+        pytest.param(
+            "GET",
+            [("Accept", "application/json"), ("Accept", "text/html")],
+            id="accept-split-across-fields",
+        ),
+    ],
+)
+async def test_page_navigation_bypasses_admission(method: str, headers: object) -> None:
+    """A page load passes through behind a shed-everything controller and moves no metric."""
+    app = FastAPI()
+
+    @app.get("/{rest_of_path:path}")
+    async def frontend(rest_of_path: str) -> dict[str, bool]:
+        return {"ok": True}
+
+    install_admission(app, shed_everything_controller(), enabled=True)
+
+    offered_before = _offered_total()
+    missing_before = metrics.MISSING_PRIORITY_TOTAL._value.get()
+
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.request(method, "/branches/some-branch", headers=headers)
+
+    assert response.status_code == 200
+    # The navigation never reached the admission layer, so no admission metric moved.
+    assert _offered_total() - offered_before == 0
+    assert metrics.MISSING_PRIORITY_TOTAL._value.get() - missing_before == 0
+
+
+@pytest.mark.parametrize(
+    ("method", "accept"),
+    [
+        pytest.param("GET", "application/json", id="data-fetch-on-a-gated-path"),
+        pytest.param("GET", "*/*", id="wildcard-accept-is-not-a-navigation"),
+        pytest.param("POST", _BROWSER_ACCEPT, id="html-accept-on-a-write"),
+        pytest.param("GET", "text/htmlx", id="longer-media-type-sharing-the-prefix"),
+        pytest.param("HEAD", _BROWSER_ACCEPT, id="head-is-not-a-page-load"),
+    ],
+)
+async def test_non_navigation_is_still_gated(method: str, accept: str) -> None:
+    """Only a GET listing text/html as a whole media range is exempt; the rest reach the gate."""
+    app = FastAPI()
+
+    @app.api_route("/api/anything", methods=["GET", "HEAD", "POST"])
+    async def anything() -> dict[str, bool]:
+        return {"ok": True}
+
+    install_admission(app, shed_everything_controller(), enabled=True)
+
+    offered_before = _offered_total()
+
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.request(method, "/api/anything", headers={"Accept": accept})
+
+    assert response.status_code == 429
+    assert _offered_total() - offered_before == 1

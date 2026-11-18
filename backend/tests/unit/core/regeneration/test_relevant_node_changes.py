@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub.core.regeneration.models import ExcludedChange
 from infrahub.core.regeneration.predicates import relevant_node_changes
 from tests.helpers.diff_summary import node_diff, node_diff_element
 
@@ -177,5 +178,47 @@ def test_relevant_node_changes(case: RelevantChangeCase) -> None:
         diff_summary=case.diff_summary,
         query_branch=case.source_branch,
         readable_fields_by_kind=case.readable_fields_by_kind,
+        excluded_changes=frozenset(),
+    )
+    assert sorted(result) == case.expected_ids
+
+
+@dataclass(frozen=True, kw_only=True)
+class ExcludedChangeCase:
+    name: str
+    diff_summary: list[NodeDiff]
+    excluded_changes: frozenset[ExcludedChange]
+    expected_ids: list[str]
+
+
+EXCLUDED_CHANGE_CASES = [
+    ExcludedChangeCase(
+        name="a_node_whose_only_read_change_is_excluded_is_left_out",
+        diff_summary=[_node_diff("vrf1", "TestVrf", ["prefixes"])],
+        excluded_changes=frozenset({ExcludedChange(node_id="vrf1", field_name="prefixes")}),
+        expected_ids=[],
+    ),
+    ExcludedChangeCase(
+        name="a_node_with_another_read_change_is_kept",
+        diff_summary=[_node_diff("vrf1", "TestVrf", ["prefixes", "name"])],
+        excluded_changes=frozenset({ExcludedChange(node_id="vrf1", field_name="prefixes")}),
+        expected_ids=["vrf1"],
+    ),
+    ExcludedChangeCase(
+        name="an_exclusion_applies_only_to_its_own_node",
+        diff_summary=[_node_diff("vrf1", "TestVrf", ["prefixes"]), _node_diff("vrf2", "TestVrf", ["prefixes"])],
+        excluded_changes=frozenset({ExcludedChange(node_id="vrf1", field_name="prefixes")}),
+        expected_ids=["vrf2"],
+    ),
+]
+
+
+@pytest.mark.parametrize("case", EXCLUDED_CHANGE_CASES, ids=lambda case: case.name)
+def test_excluded_changes(case: ExcludedChangeCase) -> None:
+    result = relevant_node_changes(
+        diff_summary=case.diff_summary,
+        query_branch=BRANCH,
+        readable_fields_by_kind={"TestVrf": {"name", "prefixes"}},
+        excluded_changes=case.excluded_changes,
     )
     assert sorted(result) == case.expected_ids

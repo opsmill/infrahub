@@ -68,9 +68,10 @@ PRIORITY_FIXTURE_WORKFLOWS = [
 ]
 
 
-@flow(name="priority-fixture-grandchild")
-async def priority_grandchild(context: InfrahubContext) -> None:
-    """Leaf of the fixture tree; dispatches nothing."""
+@flow(name="priority-fixture-grandchild", persist_result=True)
+async def priority_grandchild(context: InfrahubContext) -> str:
+    """Leaf of the fixture tree; dispatches nothing and stores a value, which a blocking parent reads."""
+    return "grandchild"
 
 
 @flow(name="priority-fixture-leaf-high-default")

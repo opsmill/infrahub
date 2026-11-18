@@ -111,6 +111,7 @@ class TestUniquenessConstraintMigrationAddToConstraint(TestSchemaLifecycleBase):
         """Schema check reports the uniqueness_constraints field as changed."""
         success, response = await client.schema.check(schemas=[schema_step_02])
         assert success
+        assert response is not None
         assert response["diff"]["changed"][CAR_KIND]["changed"]["uniqueness_constraints"] is None
 
     async def test_step02_load_triggers_migration_removing_nbr_seats_from_profile(
@@ -237,6 +238,7 @@ class TestUniquenessConstraintMigrationRemoveFromConstraint(TestSchemaLifecycleB
         """Schema check reports the uniqueness_constraints field as changed."""
         success, response = await client.schema.check(schemas=[schema_step_02])
         assert success
+        assert response is not None
         assert response["diff"]["changed"][CAR_KIND]["changed"]["uniqueness_constraints"] is None
 
     async def test_step02_load_triggers_migration_adding_nbr_seats_to_profile(

@@ -78,7 +78,7 @@ export function ListBox<T extends object>({
 
 const listBoxItemStyles = tv({
   base: [
-    "flex min-w-40 cursor-pointer items-center gap-2 rounded-lg border border-transparent px-2 py-1 text-sm text-subtle outline-hidden select-none",
+    "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-lg border border-transparent px-2 py-1 text-sm text-subtle outline-hidden",
     "data-disabled:pointer-events-none data-disabled:opacity-50",
   ],
   variants: {
@@ -126,7 +126,7 @@ export function ListBoxItem<T extends object>({
       ref={ref}
       textValue={textValue || (typeof children === "string" ? children : undefined)}
       className={composeAriaClassName(className, ({ isFocused, isSelected }) =>
-        listBoxItemStyles({ isFocused, isSelected, selectionIndicator }),
+        listBoxItemStyles({ isFocused, isSelected, selectionIndicator })
       )}
       {...props}
     >

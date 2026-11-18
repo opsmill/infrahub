@@ -1,3 +1,5 @@
+from collections.abc import Awaitable, Callable
+
 import ujson
 from prefect import Flow
 
@@ -8,14 +10,21 @@ from infrahub.message_bus.types import MessageTTL
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.tasks.check import set_check_status
 
-COMMAND_MAP = {
+# Each handler takes a distinct InfrahubMessage subtype while the dispatch site holds only the base
+# type, so the parameters cannot be pinned.
+MessageHandler = Callable[..., Awaitable[None]]
+
+COMMAND_MAP: dict[str, MessageHandler] = {
+    "git.commit_log.get": git.commit_log.get,
     "git.file.get": git.file.get,
     "git.repository.connectivity": git.repository.connectivity,
+    "refresh.git.clone": git.repository.clone,
     "refresh.git.fetch": git.repository.fetch,
     "refresh.git.branch_deleted": git.repository.branch_deleted,
     "refresh.registry.branches": refresh.registry.branches,
     "refresh.registry.rebased_branch": refresh.registry.rebased_branch,
     "refresh.settings.response_delay": refresh.settings.response_delay,
+    "refresh.settings.trace_sample_ratio": refresh.settings.trace_sample_ratio,
     "send.echo.request": send.echo.request,
 }
 
@@ -31,6 +40,7 @@ async def execute_message(
         if skip_flow and isinstance(func, Flow):
             func = func.fn
         await func(message=message)
+        return None
     # Message-bus boundary: any handler failure must be routed to the reply/retry/dead-letter protocol, never crash the consumer
     except Exception as exc:  # noqa: BLE001
         if message.reply_requested:

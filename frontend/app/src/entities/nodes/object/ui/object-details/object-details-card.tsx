@@ -14,6 +14,7 @@ interface ObjectDetailsCardProps {
   permission: Permission;
   className?: string;
   excludeRelationships?: string[];
+  title?: React.ReactNode;
 }
 
 export function ObjectDetailsCard({
@@ -22,14 +23,25 @@ export function ObjectDetailsCard({
   permission,
   className,
   excludeRelationships,
+  title = "Details",
 }: ObjectDetailsCardProps) {
+  const id = React.useId();
+  const titleId = `${id}-title`;
   const [showExtra, setShowExtra] = React.useState(false);
   const schemaHasExtraFields = hasExtraFields(objectSchema);
 
   return (
-    <Card className={className} data-testid="object-details">
-      <CardHeader className="flex justify-between">
-        Details
+    <Card
+      className={className}
+      role="region"
+      aria-labelledby={titleId}
+      data-testid="object-details"
+    >
+      <CardHeader className="flex items-center justify-between gap-2">
+        <h2 id={titleId} className="flex min-w-0 items-center gap-2 whitespace-nowrap">
+          {title}
+        </h2>
+
         {schemaHasExtraFields && (
           <Button
             variant="ghost"

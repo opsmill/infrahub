@@ -4,10 +4,10 @@ from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 from types import GenericAlias
-from typing import Any
+from typing import Any, NotRequired
 
 from pydantic import BaseModel, ConfigDict, Field
-from typing_extensions import NotRequired, TypedDict
+from typing_extensions import TypedDict
 
 from infrahub.core.constants import (
     DEFAULT_DESCRIPTION_LENGTH,
@@ -875,7 +875,7 @@ relationship_schema = SchemaNode(
             regex=str(NAME_REGEX),
             min_length=DEFAULT_KIND_MIN_LENGTH,
             max_length=DEFAULT_KIND_MAX_LENGTH,
-            extra={"update": UpdateSupport.ALLOWED, "visibility": Visibility.WRITE},
+            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
         ),
         SchemaAttribute(
             name="peer",

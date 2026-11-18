@@ -3,10 +3,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core.constants import DiffAction
+from infrahub.core.schema.schema_branch_computed.python_transform import IMPRECISE_READ_FIELDS
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.git.closure_builder.canonicalizer import canonicalize_path
 
-from .models import PredicateOutcome, RegenerationReason, RegenerationTrigger
+from .models import ExcludedChange, PredicateOutcome, RegenerationReason, RegenerationTrigger
 
 if TYPE_CHECKING:
     from infrahub_sdk.diff import NodeDiff
@@ -53,17 +54,25 @@ def _find_triggering_entry(diff_summary: list[NodeDiff], node_id: str) -> NodeDi
     )
 
 
-def _is_unchanged(action: str) -> bool:
-    """Return True for the diff action marking an entry as carrying no change.
+def parse_diff_action(action: str) -> DiffAction:
+    """Return the diff action a diff-summary entry or element carries.
 
     A diff summary serialises an action as the GraphQL enum *name* (uppercase), whereas
     ``DiffAction.*.value`` is lowercase, so the comparison has to be case-insensitive.
     """
-    return action.lower() == DiffAction.UNCHANGED.value
+    return DiffAction(action.lower())
+
+
+def _is_unchanged(action: str) -> bool:
+    """Return True for the diff action marking an entry as carrying no change."""
+    return parse_diff_action(action) == DiffAction.UNCHANGED
 
 
 def relevant_node_changes(
-    diff_summary: list[NodeDiff], query_branch: str, readable_fields_by_kind: dict[str, set[str]]
+    diff_summary: list[NodeDiff],
+    query_branch: str,
+    readable_fields_by_kind: dict[str, set[str]],
+    excluded_changes: frozenset[ExcludedChange],
 ) -> list[str]:
     """Return ids of nodes whose modified fields intersect the fields a query reads.
 
@@ -72,11 +81,21 @@ def relevant_node_changes(
     -- is excluded. `readable_fields_by_kind` maps each kind the query reads to the set of its
     attribute and relationship names that the query selects.
 
+    A read of a computed/derived field never intersects a change by name: the field that moved the
+    value is reported under a backing field the read set cannot name. A read set holding such a
+    field is therefore imprecise for its kind -- any change to that kind counts -- since narrowing
+    it away would leave the reader stale.
+
     Only entries marked unchanged are skipped, at both the node and the element level: a diff can
     carry a node purely as hierarchical context, and can hang an unchanged parent relationship off
     a node that did change, neither of which makes a reader stale. A removed node is deliberately
     kept -- whatever read it is now stale, so dropping it would under-execute.
+
+    A field listed in ``excluded_changes`` for a node does not count as modified for that node.
     """
+    excluded_fields_by_node: dict[str, set[str]] = {}
+    for excluded in excluded_changes:
+        excluded_fields_by_node.setdefault(excluded.node_id, set()).add(excluded.field_name)
     relevant_node_ids: list[str] = []
     for node_diff in diff_summary:
         if node_diff["branch"] != query_branch or _is_unchanged(node_diff["action"]):
@@ -84,15 +103,13 @@ def relevant_node_changes(
         readable_fields = readable_fields_by_kind.get(node_diff["kind"])
         if not readable_fields:
             continue
-        updated_fields = {element["name"] for element in node_diff["elements"] if not _is_unchanged(element["action"])}
-        if updated_fields & readable_fields:
+        updated_fields = {
+            element["name"] for element in node_diff["elements"] if not _is_unchanged(element["action"])
+        } - excluded_fields_by_node.get(node_diff["id"], set())
+        imprecise_read = bool(readable_fields & IMPRECISE_READ_FIELDS)
+        if updated_fields and (imprecise_read or (updated_fields & readable_fields)):
             relevant_node_ids.append(node_diff["id"])
     return relevant_node_ids
-
-
-def reads_kind(definition: RegenerationDefinition, kind: str) -> bool:
-    """Whether a data change to ``kind`` is relevant because the definition's query reads that kind."""
-    return kind in definition.query_models
 
 
 def query_changed(

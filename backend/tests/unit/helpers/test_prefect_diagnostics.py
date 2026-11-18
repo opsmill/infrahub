@@ -17,6 +17,7 @@ from tests.helpers.prefect_diagnostics import (
     clear_prefect_test_servers,
     dump_prefect_test_server_diagnostics,
     register_prefect_test_server,
+    timeout_diagnostics_section,
 )
 from tests.helpers.prefect_test_server import enable_stack_dump_on_signal
 
@@ -154,3 +155,51 @@ def test_only_the_tail_of_a_long_log_is_reported(exited_server: tuple[subprocess
     assert f"... 10 earlier lines in {log_path}" in reported
     assert "line 9\n" not in reported
     assert f"line {LOG_TAIL_LINES + 9}\n" in reported
+
+
+def _timeout_failure() -> BaseException:
+    """The exception pytest-timeout raises when it kills a test."""
+    return pytest.fail.Exception("Timeout >300.0s")
+
+
+def test_a_timed_out_test_gets_a_section_holding_the_server_stacks(
+    idle_server: tuple[subprocess.Popen[bytes], Path],
+) -> None:
+    process, log_path = idle_server
+    register_prefect_test_server(port=4242, process=process, log_path=log_path)
+
+    section = timeout_diagnostics_section(
+        nodeid="tests/component/trigger/test_tasks.py::test_setup_triggers",
+        when="teardown",
+        exception=_timeout_failure(),
+    )
+
+    assert section is not None
+    title, reported = section
+    assert title == "Prefect test server diagnostics (teardown)"
+    assert "tests/component/trigger/test_tasks.py::test_setup_triggers" in reported
+    assert "Timeout >300.0s" in reported
+    assert f"Prefect test server on port 4242 (pid {process.pid})" in reported
+    assert "Current thread" in reported
+
+
+@pytest.mark.parametrize(
+    "exception",
+    [
+        pytest.param(None, id="passed"),
+        pytest.param(AssertionError("assert 1 == 2"), id="ordinary failure"),
+        pytest.param(pytest.fail.Exception("this test is not ready"), id="deliberate fail()"),
+    ],
+)
+def test_only_a_timeout_is_worth_signalling_the_server_for(
+    exception: BaseException | None, idle_server: tuple[subprocess.Popen[bytes], Path]
+) -> None:
+    process, log_path = idle_server
+    register_prefect_test_server(port=4242, process=process, log_path=log_path)
+
+    assert timeout_diagnostics_section(nodeid="test_something", when="call", exception=exception) is None
+
+
+def test_a_timeout_reports_nothing_when_no_server_is_registered() -> None:
+    """Every suite that runs no Prefect server still times out for its own reasons."""
+    assert timeout_diagnostics_section(nodeid="test_something", when="call", exception=_timeout_failure()) is None

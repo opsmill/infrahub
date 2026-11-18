@@ -41,6 +41,9 @@ class NodeAttributeAddChecker(ConstraintCheckerInterface):
 
         # If the attribute is a NumberPool, we need to ensure that the pool is big enough for all existing nodes
         if attribute_schema.kind == "NumberPool" and isinstance(attribute_schema.parameters, NumberPoolParameters):
+            # A scoped pool's limit applies to each division, which the migration enforces as it allocates.
+            if attribute_schema.parameters.allocation_scope:
+                return grouped_data_paths_list
             nbr_nodes = await registry.manager.count(db=self.db, branch=self.branch, schema=request.node_schema)
             pool_size = attribute_schema.parameters.get_pool_size()
 

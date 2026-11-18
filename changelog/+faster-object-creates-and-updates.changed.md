@@ -1,1 +1,0 @@
-Creating and updating objects is now faster: a mutation reads the peers of the relationships in its payload once, instead of once per validation step, and reading an object together with its relationships no longer costs an extra query for each relationship without a peer. Bulk loads and repeated upserts of unchanged data benefit the most.

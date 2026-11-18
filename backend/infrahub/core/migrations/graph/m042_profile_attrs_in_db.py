@@ -11,6 +11,7 @@ from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
+from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
 
 from ..shared import MigrationRequiringRebase
@@ -80,7 +81,7 @@ class Migration042(MigrationRequiringRebase):
     minimum_version: int = 41
 
     def _get_profile_applier(self, db: InfrahubDatabase, branch: Branch) -> NodeProfilesApplier:
-        return NodeProfilesApplier(db=db, branch=branch)
+        return NodeProfilesApplier(db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch))
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()

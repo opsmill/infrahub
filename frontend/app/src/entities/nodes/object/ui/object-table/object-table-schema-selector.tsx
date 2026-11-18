@@ -1,4 +1,4 @@
-import { parseAsJson, parseAsString, useQueryStates } from "nuqs";
+import { parseAsArrayOf, parseAsJson, parseAsString, useQueryStates } from "nuqs";
 import React from "react";
 
 import { Row } from "@/shared/components/container";
@@ -21,17 +21,37 @@ import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { isGenericSchema } from "@/entities/schema/domain/rules/is-generic-schema";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
+/**
+ * Column choices are cleared on a kind switch, exactly as filters are pruned to the new schema.
+ *
+ * The alternative — carrying them across — silently destroys them: `useColumnVisibility` writes back
+ * the *validated* lists, so a name the new kind has no column for is erased from the URL by the next
+ * hide the user makes under that kind. Clearing up front is the predictable half of that choice.
+ */
+const CLEARED_COLUMN_PARAMS = {
+  [QSP.HIDE_COLUMNS]: null,
+  [QSP.SHOW_COLUMNS]: null,
+} as const;
+
 export function ObjectTableSchemaSelector() {
   const [isOpen, setIsOpen] = React.useState(false);
   const [{ filters }, setObjectTableQueryParams] = useQueryStates(
     {
       [QSP.KIND]: parseAsString,
       [QSP.FILTER]: parseAsJson(FilterSchema).withDefault([]),
+      // Declared only so the kind switch can clear them; nothing here reads their value.
+      [QSP.HIDE_COLUMNS]: parseAsArrayOf(parseAsString),
+      [QSP.SHOW_COLUMNS]: parseAsArrayOf(parseAsString),
     },
     { history: "push" }
   );
 
   const { baseSchema, selectedSchema } = useObjectTableContext();
+  // Column choices belong to the schema they were made under, so picking the kind already in view
+  // leaves them alone rather than throwing away work the user can still see.
+  const columnParamsForSwitchTo = (targetSchema: ModelSchema) =>
+    targetSchema.kind === selectedSchema.kind ? {} : CLEARED_COLUMN_PARAMS;
+
   const items = React.useMemo<ModelSchema[]>(() => {
     if (!isGenericSchema(baseSchema)) return [];
     const inheritingKind = baseSchema.used_by ?? [];
@@ -67,6 +87,7 @@ export function ObjectTableSchemaSelector() {
               setObjectTableQueryParams({
                 kind: null,
                 filters: pruned,
+                ...columnParamsForSwitchTo(baseSchema),
               });
               setIsOpen(false);
             }}
@@ -85,6 +106,7 @@ export function ObjectTableSchemaSelector() {
                   setObjectTableQueryParams({
                     kind: schema.kind,
                     filters: pruned,
+                    ...columnParamsForSwitchTo(schema),
                   });
                   setIsOpen(false);
                 }}

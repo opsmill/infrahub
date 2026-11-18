@@ -16,7 +16,7 @@ from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import RESERVED_ATTR_REL_HIERARCHICAL_NAMES, InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
-from infrahub.core.schema import SchemaRoot, core_models
+from infrahub.core.schema import NodeSchema, SchemaRoot, core_models
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
@@ -300,6 +300,23 @@ async def test_json_schema_kind_default_branch(
     assert "prefix" in schema["properties"]["member_type"]["enum"]
 
 
+async def test_json_schema_kind_with_list_attribute(
+    db: InfrahubDatabase,
+    client: TestClient,
+    client_headers: dict[str, str],
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+    car_person_data_generic: dict[str, Node],
+) -> None:
+    with client:
+        response = client.get(f"/api/schema/json_schema/{InfrahubKind.GRAPHQLQUERY}", headers=client_headers)
+
+    assert response.status_code == 200
+    operations = response.json()["properties"]["operations"]
+    assert operations["type"] == "array"
+    assert operations["items"] == {}
+
+
 async def test_schema_kind_not_valid(
     db: InfrahubDatabase,
     client: TestClient,
@@ -551,6 +568,61 @@ async def test_schema_load_endpoint_constraints_not_valid(
     assert response.status_code == 422
 
 
+async def test_schema_load_absent_choice_rejected_while_in_use(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    rpc_bus: BusRPCMock,
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+    criticality_schema: NodeSchema,
+) -> None:
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
+    criticality = await Node.init(db=db, schema=criticality_schema)
+    await criticality.new(db=db, name="med", level=4, status="passive")
+    await criticality.save(db=db)
+
+    status_attribute = {
+        "name": "status",
+        "kind": "Dropdown",
+        "optional": True,
+        "choices": [{"name": "passive", "state": "absent"}],
+    }
+    with client:
+        response = client.post(
+            "/api/schema/load",
+            headers=admin_headers,
+            json={
+                "schemas": [
+                    {
+                        "version": "1.0",
+                        "nodes": [
+                            {
+                                "name": "Criticality",
+                                "namespace": "Test",
+                                "inherit_from": ["TestGenericCriticality"],
+                                "attributes": [status_attribute],
+                            }
+                        ],
+                    }
+                ]
+            },
+        )
+
+    error_message = (
+        "Attribute-level 'choices' constraint violation on schema 'TestCriticality'."
+        " Node (Med) is not compliant. The error relates to field status='passive'."
+    )
+    assert response.json() == {"data": None, "errors": [{"extensions": {"code": 422}, "message": error_message}]}
+    assert response.status_code == 422
+    status_choices = registry.schema.get(name="TestCriticality", branch=default_branch).get_attribute("status").choices
+    assert status_choices is not None
+    assert sorted(choice.name for choice in status_choices) == ["active", "passive"]
+
+
 @pytest.mark.parametrize("allow_anonymous_access", [False, True])
 async def test_schema_read_endpoints_anonymous_account(
     db: InfrahubDatabase,
@@ -698,6 +770,47 @@ async def test_schema_check_reserved_suffix_attribute(
         response.json()["errors"][0]["message"]
         == "Reserved suffix '_from_resource_pool' used on attribute 'foo_from_resource_pool' in 'TestTestNode'"
     )
+
+
+async def test_schema_check_warns_on_number_pool_shorthand(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+) -> None:
+    payload = {
+        "version": "1.0",
+        "nodes": [
+            {
+                "name": "Vlan",
+                "namespace": "Test",
+                "attributes": [
+                    {
+                        "name": "vlan_id",
+                        "kind": "NumberPool",
+                        "read_only": True,
+                        "parameters": {"start_range": 100, "end_range": 200},
+                    }
+                ],
+            }
+        ],
+    }
+
+    with client:
+        response = client.post("/api/schema/check", headers=admin_headers, json={"schemas": [payload]})
+
+    assert response.status_code == 202, response.text
+    assert response.json()["warnings"] == [
+        {
+            "type": "deprecation",
+            "kinds": [{"kind": "TestVlan", "field": "vlan_id"}],
+            "message": "Use of 'start_range' and 'end_range' on NumberPool attributes is deprecated, "
+            "use 'ranges' instead",
+        }
+    ]
 
 
 async def test_schema_check_reserved_suffix_relationship(

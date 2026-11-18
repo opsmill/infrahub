@@ -31,7 +31,9 @@ const MultipleProgressBar = ({ elements, className, ...props }: MultipleProgress
               className={classNames("h-full transition-all", className)}
               style={{
                 width: `${value}%`,
-                backgroundColor: color ?? `rgba(9,135,168, ${1 - index * (1 / length)})`,
+                backgroundColor:
+                  color ??
+                  `color-mix(in oklch, var(--accent-strong) ${(1 - index * (1 / length)) * 100}%, transparent)`,
                 ...style,
               }}
               {...props}

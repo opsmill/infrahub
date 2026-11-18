@@ -1,8 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PRIORITY_HEADER } from "@/shared/api/priority";
+import { MAX_RETRIES } from "@/shared/api/rate-limit/policy";
+import { SHED_USER_MESSAGE } from "@/shared/api/rate-limit/shed-envelope";
 
-import { authMiddleware, queryClient } from "./client";
+import { shedResponse } from "../../../../tests/fake/shed-response";
+import { apiClient, authMiddleware, queryClient } from "./client";
 
 describe("authMiddleware.onRequest — outbound X-Priority header", () => {
   beforeEach(() => {
@@ -31,7 +34,7 @@ describe("authMiddleware.onRequest — outbound X-Priority header", () => {
 });
 
 describe("authMiddleware 401 replay — X-Priority survives the stored clone", () => {
-  let fetchQuerySpy: ReturnType<typeof vi.spyOn>;
+  let querySpy: ReturnType<typeof vi.spyOn>;
   let fetchSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -46,7 +49,7 @@ describe("authMiddleware 401 replay — X-Priority survives the stored clone", (
     // Capture the Request handed to the replay `fetch(clonedRequest)`.
     fetchSpy = vi.fn(async () => new Response(null, { status: 200 }));
     vi.stubGlobal("fetch", fetchSpy);
-    fetchQuerySpy = vi.spyOn(queryClient, "fetchQuery");
+    querySpy = vi.spyOn(queryClient, "query");
   });
 
   afterEach(() => {
@@ -56,7 +59,7 @@ describe("authMiddleware 401 replay — X-Priority survives the stored clone", (
 
   it("replays the 401'd request with the original X-Priority carried on the clone", async () => {
     // GIVEN
-    fetchQuerySpy.mockResolvedValue({ access_token: "new-token", refresh_token: "new-refresh" });
+    querySpy.mockResolvedValue({ access_token: "new-token", refresh_token: "new-refresh" });
     const request = new Request("http://localhost:8000/api/test");
 
     // WHEN
@@ -69,5 +72,38 @@ describe("authMiddleware 401 replay — X-Priority survives the stored clone", (
     const replayed = fetchSpy.mock.calls[0]?.[0] as Request;
     expect(replayed.headers.get(PRIORITY_HEADER)).toBe("high");
     expect(replayed.headers.get("Authorization")).toBe("Bearer new-token");
+  });
+});
+
+describe("apiClient — a shed request", () => {
+  let fetchSpy: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.stubGlobal("localStorage", {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
+      clear: () => {},
+    });
+    fetchSpy = vi.fn(async () => shedResponse());
+    vi.stubGlobal("fetch", fetchSpy);
+    vi.spyOn(Math, "random").mockReturnValue(0);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("hands the caller the user-facing wording once the retries are spent", async () => {
+    // GIVEN a server that sheds every attempt
+
+    // WHEN
+    const { error, response } = await apiClient.GET("/api/config");
+
+    // THEN
+    expect(fetchSpy).toHaveBeenCalledTimes(MAX_RETRIES + 1);
+    expect(response.status).toBe(429);
+    expect(error).toMatchObject({ errors: [{ message: SHED_USER_MESSAGE }] });
   });
 });

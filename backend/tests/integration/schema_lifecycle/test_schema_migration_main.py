@@ -161,7 +161,7 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         persons = await registry.manager.query(db=db, schema=PERSON_KIND, filters={"firstname__value": "John"})
         assert len(persons) == 1
         john = persons[0]
-        assert john.firstname.value == "John"  # type: ignore[attr-defined]
+        assert john.firstname.value == "John"
 
     async def test_step03_check(
         self,
@@ -264,7 +264,7 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
         )
         assert len(manufacturers) == 1
         honda = manufacturers[0]
-        honda_cars = await honda.cars.get_peers(db=db)  # type: ignore[attr-defined]
+        honda_cars = await honda.cars.get_peers(db=db)
         assert len(honda_cars) == 2
 
     async def test_step04_check(

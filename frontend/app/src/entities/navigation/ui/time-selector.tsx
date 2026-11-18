@@ -65,9 +65,9 @@ export const TimeFrameSelector = () => {
         show={!!date}
         enter="linear duration-300"
         enterFrom="w-0 opacity-0"
-        enterTo="w-[158px] opacity-100"
+        enterTo="w-39.5 opacity-100"
         leave="linear duration-300"
-        leaveFrom="w-[158px] h-full w-full opacity-100"
+        leaveFrom="w-39.5 h-full w-full opacity-100"
         leaveTo="w-0 opacity-0"
         className="inline-flex items-center text-white text-xxs"
       >

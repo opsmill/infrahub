@@ -174,8 +174,8 @@ class Tasks(ObjectType):
         )
         options = _build_fetch_options(fields=fields, log_limit=log_limit, log_offset=log_offset)
 
-        async with get_client(sync_client=False) as client:
-            service = await build_prefect_task_service(db=graphql_context.db, client=client)
+        async with get_client(sync_client=False) as client, graphql_context.db.start_session(read_only=True) as db:
+            service = await build_prefect_task_service(db=db, client=client)
             result = await service.query(criteria=criteria, options=options)
         return FlowRunConnectionSerializer().serialize(result=result)
 

@@ -24,7 +24,7 @@ core_transform = GenericSchema(
     order_by=["name__value"],
     display_label="label__value",
     branch=BranchSupportType.AWARE,
-    documentation="/topics/proposed-change",
+    documentation="/transformations/overview/",
     uniqueness_constraints=[["name__value"]],
     restricted_namespaces=["Core"],
     attributes=[
@@ -99,7 +99,7 @@ core_transform_jinja2 = NodeSchema(
     inherit_from=[InfrahubKind.TRANSFORM],
     generate_profile=False,
     branch=BranchSupportType.AWARE,
-    documentation="/topics/transformation",
+    documentation="/transformations/jinja2/",
     attributes=[
         Attr(name="template_path", kind="Text", description="Path to the Jinja2 template file in the repository"),
     ],
@@ -117,7 +117,7 @@ core_transform_python = NodeSchema(
     inherit_from=[InfrahubKind.TRANSFORM],
     generate_profile=False,
     branch=BranchSupportType.AWARE,
-    documentation="/topics/transformation",
+    documentation="/transformations/python/",
     attributes=[
         Attr(name="file_path", kind="Text", description="Path to the Python file in the repository"),
         Attr(name="class_name", kind="Text", description="Name of the Python class implementing the transformation"),

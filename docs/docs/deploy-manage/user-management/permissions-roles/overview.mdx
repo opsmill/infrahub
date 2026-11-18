@@ -36,6 +36,8 @@ Authentication is the first step - it creates users and assigns them to groups. 
 
 With a global permission, a user can act on the entire system, not just on particular objects. For example, a person with the permission to manage accounts can do so across the entire platform. If the required permission is not granted, the action is blocked.
 
+Infrahub reads global permissions from the default branch, whatever branch a request is sent to. This applies to the members of each account group, the roles of each group and the global permissions of each role. A change to any of them made on a branch does not change global permissions on any branch, including that branch, until the branch is merged into the default branch. The roles listed for a user at login also come from the default branch.
+
 <details>
     <summary>Global permission example</summary>
 
@@ -51,7 +53,7 @@ With a global permission, a user can act on the entire system, not just on parti
 
 ### Object permissions
 
-Object permissions specify actions that apply to a certain kind of object. Actions like create, update, remove, and view are supported. Depending on the kind of object or branch, object permissions may be granted or refused.
+Object permissions specify actions that apply to a certain kind of object. Actions like create, update, remove, and view are supported. Depending on the kind of object or branch, object permissions may be granted or refused. Unlike global permissions, Infrahub reads object permissions from the branch the request is sent to.
 
 Key features:
 

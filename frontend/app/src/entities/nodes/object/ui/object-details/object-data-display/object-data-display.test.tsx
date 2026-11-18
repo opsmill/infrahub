@@ -53,7 +53,7 @@ describe("ObjectDataDisplay - showExtra filtering", () => {
 
     // THEN
     await expect.element(component.getByText("Name")).toBeVisible();
-    await expect.element(component.baseElement).not.toHaveTextContent("Description");
+    await expect.element(component.baseElement).not.toMatchTextContent("Description");
   });
 
   it("shows fields with display 'extra' when showExtra is true", async () => {
@@ -164,7 +164,7 @@ describe("ObjectDataDisplay - showExtra filtering", () => {
     );
 
     // THEN
-    await expect.element(component.baseElement).not.toHaveTextContent("Name");
+    await expect.element(component.baseElement).not.toMatchTextContent("Name");
   });
 
   it("renders nothing when schema has no attributes or relationships", async () => {
@@ -186,7 +186,7 @@ describe("ObjectDataDisplay - showExtra filtering", () => {
     );
 
     // THEN
-    await expect.element(component.baseElement).not.toHaveTextContent("Name");
+    await expect.element(component.baseElement).not.toMatchTextContent("Name");
   });
 
   it("hides extra relationships by default", async () => {
@@ -230,7 +230,7 @@ describe("ObjectDataDisplay - showExtra filtering", () => {
 
     // THEN
     await expect.element(component.getByText("Name")).toBeVisible();
-    await expect.element(component.baseElement).not.toHaveTextContent("Device");
+    await expect.element(component.baseElement).not.toMatchTextContent("Device");
   });
 
   it("shows extra relationships when showExtra is true", async () => {
@@ -325,7 +325,7 @@ describe("ObjectDataDisplay - showExtra filtering", () => {
     // THEN
     await expect.element(component.getByText("Name")).toBeVisible();
     await expect.element(component.getByText("Status")).toBeVisible();
-    await expect.element(component.baseElement).not.toHaveTextContent("Description");
+    await expect.element(component.baseElement).not.toMatchTextContent("Description");
   });
 
   it("shows eye icon on extra attribute rows when showExtra is true", async () => {
@@ -565,7 +565,7 @@ describe("ObjectDataDisplay - showExtra filtering", () => {
     // THEN
     await expect.element(component.getByText("Name")).toBeVisible();
     await expect.element(component.getByText("Device")).toBeVisible();
-    await expect.element(component.baseElement).not.toHaveTextContent("Children");
+    await expect.element(component.baseElement).not.toMatchTextContent("Children");
   });
 
   it("skips fields that have no corresponding data in objectData", async () => {
@@ -602,6 +602,6 @@ describe("ObjectDataDisplay - showExtra filtering", () => {
 
     // THEN
     await expect.element(component.getByText("Name")).toBeVisible();
-    await expect.element(component.baseElement).not.toHaveTextContent("Missing");
+    await expect.element(component.baseElement).not.toMatchTextContent("Missing");
   });
 });

@@ -1,9 +1,14 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import NULL_VALUE, RelationshipDirection
 from infrahub.core.query import Query, QueryType
-from infrahub.database import InfrahubDatabase
+
+if TYPE_CHECKING:
+    from infrahub.core.schema import RelationshipSchema
+    from infrahub.database import InfrahubDatabase
 
 
 @dataclass
@@ -14,6 +19,11 @@ class RelationshipFilter:
     def __hash__(self) -> int:
         return hash((self.relationship_identifier, self.direction))
 
+    @classmethod
+    def for_relationship(cls, relationship: RelationshipSchema) -> RelationshipFilter:
+        """Return the filter that selects, on a profile, the peers it holds for the relationship."""
+        return cls(relationship_identifier=f"profile_{relationship.get_identifier()}", direction=relationship.direction)
+
 
 @dataclass
 class ProfileData:
@@ -22,8 +32,13 @@ class ProfileData:
     attribute_values: dict[str, Any]
     relationship_peers: dict[RelationshipFilter, list[str]]
 
+    def peers_of(self, relationship: RelationshipSchema) -> list[str]:
+        """Return the ids of the peers the profile holds for the relationship, empty when it holds none."""
+        return self.relationship_peers.get(RelationshipFilter.for_relationship(relationship=relationship), [])
+
 
 class GetProfileDataQuery(Query):
+    name = "profile_get_data"
     type: QueryType = QueryType.READ
     insert_return: bool = False
 
@@ -32,13 +47,13 @@ class GetProfileDataQuery(Query):
         *args: Any,
         profile_ids: list[str],
         attr_names: list[str],
-        relationship_filters: list[RelationshipFilter] | None = None,
+        include_relationships: list[RelationshipFilter] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
         self.profile_ids = profile_ids
         self.attr_names = attr_names
-        self.relationship_filters = relationship_filters or []
+        self.include_relationships = include_relationships or []
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
@@ -50,7 +65,7 @@ class GetProfileDataQuery(Query):
         outbound_identifiers = []
         inbound_identifiers = []
         bidirectional_identifiers = []
-        for rf in self.relationship_filters:
+        for rf in self.include_relationships:
             if rf.direction == RelationshipDirection.OUTBOUND:
                 outbound_identifiers.append(rf.relationship_identifier)
             elif rf.direction == RelationshipDirection.INBOUND:
@@ -61,8 +76,9 @@ class GetProfileDataQuery(Query):
         self.params["outbound_identifiers"] = outbound_identifiers
         self.params["inbound_identifiers"] = inbound_identifiers
         self.params["bidirectional_identifiers"] = bidirectional_identifiers
+        self.params["relationship_names"] = outbound_identifiers + bidirectional_identifiers + inbound_identifiers
 
-        query = """
+        profiles_query = """
 // --------------
 // get the Profile nodes
 // --------------
@@ -76,6 +92,7 @@ CALL (profile) {
     WHERE %(branch_filter)s
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     RETURN r.status = "active" AS is_active
+    LIMIT 1
 }
 WITH profile
 WHERE is_active = TRUE
@@ -109,11 +126,22 @@ WITH profile, CASE
     ELSE NULL
 END AS attribute_details
 WITH profile, collect(attribute_details) AS attributes
+        """ % {"branch_filter": branch_filter}
+        self.add_to_query(profiles_query)
+        self.return_labels = ["profile_uuid", "attributes", "relationships"]
+
+        if not self.include_relationships:
+            self.add_to_query("RETURN profile.uuid AS profile_uuid, attributes, [] AS relationships")
+            return
+
+        relationships_query = """
 // --------------
-// get all possible relationships we might want for this profile
+// get the relationships that we want for this profile
+// start from their names, because the profile also links to each node and template that uses it
 // --------------
 OPTIONAL MATCH (profile)-[r:IS_RELATED]-(rel:Relationship)
-WHERE rel.name IN $outbound_identifiers + $bidirectional_identifiers + $inbound_identifiers
+USING INDEX rel:Relationship(name)
+WHERE rel.name IN $relationship_names
 AND %(branch_filter)s
 WITH DISTINCT profile, attributes, rel
 // --------------
@@ -168,43 +196,38 @@ END AS relationship_details
 WITH profile, attributes, collect(relationship_details) AS relationships
 RETURN profile.uuid AS profile_uuid, attributes, relationships
         """ % {"branch_filter": branch_filter}
-        self.add_to_query(query)
-        self.return_labels = ["profile_uuid", "attributes", "relationships"]
+        self.add_to_query(relationships_query)
 
     def get_profile_data(self) -> list[ProfileData]:
         profile_data_list: list[ProfileData] = []
         for result in self.results:
             profile_uuid = result.get_as_type(label="profile_uuid", return_type=str)
-            attributes = result.get(label="attributes")
-            relationships = result.get(label="relationships")
 
             profile_data = ProfileData(
                 uuid=profile_uuid, priority=float("inf"), attribute_values={}, relationship_peers={}
             )
 
-            for attr_pair in attributes:
-                if not isinstance(attr_pair, list) or len(attr_pair) != 2:
-                    continue
-                attr_name, attr_value = attr_pair
-                if attr_value == NULL_VALUE:
-                    attr_value = None
-                if attr_name == "profile_priority":
-                    if attr_value is not None and not isinstance(attr_value, int):
-                        attr_value = int(attr_value)
-                    profile_data.priority = attr_value
-                else:
-                    profile_data.attribute_values[attr_name] = attr_value
+            for attr_pair in result.get_list(label="attributes"):
+                match attr_pair:
+                    case [str() as attr_name, attr_value]:
+                        if attr_value == NULL_VALUE:
+                            attr_value = None
+                        if attr_name == "profile_priority":
+                            # A null priority keeps the default, which ranks the profile below every profile with one.
+                            if isinstance(attr_value, int | float | str):
+                                profile_data.priority = int(attr_value)
+                        else:
+                            profile_data.attribute_values[attr_name] = attr_value
 
             # Parse relationships
-            for rel_tuple in relationships:
-                if not isinstance(rel_tuple, list) or len(rel_tuple) != 3:
-                    continue
-                rel_name, direction_str, peer_uuid = rel_tuple
-                direction = RelationshipDirection(direction_str)
-                rel_filter = RelationshipFilter(relationship_identifier=rel_name, direction=direction)
-                if rel_filter not in profile_data.relationship_peers:
-                    profile_data.relationship_peers[rel_filter] = []
-                profile_data.relationship_peers[rel_filter].append(peer_uuid)
+            for rel_tuple in result.get_list(label="relationships"):
+                match rel_tuple:
+                    case [str() as rel_name, str() as direction_str, str() as peer_uuid]:
+                        direction = RelationshipDirection(direction_str)
+                        rel_filter = RelationshipFilter(relationship_identifier=rel_name, direction=direction)
+                        if rel_filter not in profile_data.relationship_peers:
+                            profile_data.relationship_peers[rel_filter] = []
+                        profile_data.relationship_peers[rel_filter].append(peer_uuid)
 
             profile_data_list.append(profile_data)
         return profile_data_list

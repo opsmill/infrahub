@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence  # noqa: TC003  needed for pydantic
+from typing import TYPE_CHECKING, Any
 
 from infrahub.types import is_large_attribute_type
 
@@ -166,7 +167,7 @@ CALL (attr, n) {
 
 class AttributeKindUpdateMigration(AttributeSchemaMigration):
     name: str = "attribute.kind.update"
-    queries: Sequence[type[AttributeMigrationQuery]] = [AttributeKindUpdateMigrationQuery]  # type: ignore[assignment]
+    queries: Sequence[type[AttributeMigrationQuery]] = [AttributeKindUpdateMigrationQuery]
 
     async def execute(
         self,

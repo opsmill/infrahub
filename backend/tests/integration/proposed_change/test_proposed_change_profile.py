@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from infrahub_sdk.protocols import CoreProposedChange
 
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.manager import NodeManager
@@ -57,12 +58,12 @@ class TestProposedChangePipelineProfile(TestInfrahubApp):
             db=db, id="missing_description", kind=f"Profile{TestKind.CAR}", branch=branch1.name
         )
         assert profile1
-        profile1.description.value = "MISSING DESCRIPTION"  # type: ignore[attr-defined]
+        profile1.description.value = "MISSING DESCRIPTION"
         await profile1.save(db=db)
 
     async def test_pipeline(self, db: InfrahubDatabase, update_profile: None, client: InfrahubClient) -> None:
         proposed_change_create = await client.create(
-            kind=InfrahubKind.PROPOSEDCHANGE,
+            kind=CoreProposedChange,
             data={"source_branch": "update_profile", "destination_branch": "main", "name": "PC1"},
         )
         await proposed_change_create.save()
@@ -71,7 +72,7 @@ class TestProposedChangePipelineProfile(TestInfrahubApp):
             db=db, id=proposed_change_create.id, kind=InfrahubKind.PROPOSEDCHANGE
         )
         assert proposed_change
-        peers = await proposed_change.validations.get_peers(db=db)  # type: ignore[attr-defined]
+        peers = await proposed_change.validations.get_peers(db=db)
         assert peers
 
         # Ensure all validators and all tasks are successful
@@ -79,5 +80,5 @@ class TestProposedChangePipelineProfile(TestInfrahubApp):
             validator.conclusion.value.value == ValidatorConclusion.SUCCESS.value for validator in peers.values()
         )
 
-        proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
+        proposed_change_create.state.value = "merged"
         await proposed_change_create.save()

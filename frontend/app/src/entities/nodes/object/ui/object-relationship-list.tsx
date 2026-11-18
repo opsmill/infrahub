@@ -4,8 +4,8 @@ import { Collection } from "react-aria-components";
 import { Icon } from "@/shared/components/display/icon";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
-import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import {
   type UseObjectRelationshipsParams,
   useObjectRelationships,
@@ -15,6 +15,7 @@ import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
 interface ObjectRelationshipListProps extends UseObjectRelationshipsParams {
   className?: string;
+  getItemHref: (node: NodeCore) => string;
 }
 
 export function ObjectRelationshipList({
@@ -24,6 +25,7 @@ export function ObjectRelationshipList({
   relationshipSchema,
   filters,
   className,
+  getItemHref,
 }: ObjectRelationshipListProps) {
   const { isPending, data, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useObjectRelationships({
@@ -50,7 +52,7 @@ export function ObjectRelationshipList({
           const nodeLabel = getNodeLabel(node);
 
           return (
-            <ListBoxItem textValue={nodeLabel} href={getObjectDetailsUrl(node.__typename, node.id)}>
+            <ListBoxItem textValue={nodeLabel} href={getItemHref(node)}>
               <Icon icon={getSchemaIcon(schema)} />
               <span className="truncate">{nodeLabel}</span>
             </ListBoxItem>

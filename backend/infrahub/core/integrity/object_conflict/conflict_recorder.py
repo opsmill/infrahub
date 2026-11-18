@@ -1,4 +1,5 @@
-from typing import Sequence, cast
+from collections.abc import Sequence
+from typing import cast
 
 from infrahub import lock
 from infrahub.core.constants import ValidatorConclusion, ValidatorState
@@ -28,7 +29,7 @@ class ObjectConflictValidatorRecorder:
         validator = await self.get_or_create_validator(proposed_change)
         await self.initialize_validator(validator)
 
-        previous_checks = await validator.checks.get_peers(db=self.db, peer_type=Node)  # type: ignore[attr-defined]
+        previous_checks = await validator.checks.get_peers(db=self.db, peer_type=Node)
         previous_checks_by_conflict_id = {check.enriched_conflict_id.value: check for check in previous_checks.values()}  # type: ignore[attr-defined]
         is_success = False
 
@@ -95,7 +96,7 @@ class ObjectConflictValidatorRecorder:
         return current_checks
 
     async def get_validator(self, proposed_change: CoreProposedChange) -> CoreValidator | None:
-        validations = await proposed_change.validations.get_peers(db=self.db, branch_agnostic=True)
+        validations = await proposed_change.validations.get_peers(db=self.db)
 
         for validation in validations.values():
             if validation.get_kind() == self.validator_kind:
@@ -122,8 +123,8 @@ class ObjectConflictValidatorRecorder:
     async def initialize_validator(self, validator: CoreValidator) -> None:
         validator.state.value = ValidatorState.IN_PROGRESS.value  # type: ignore[misc]  # ty: ignore[invalid-assignment]
         validator.conclusion.value = ValidatorConclusion.UNKNOWN.value  # type: ignore[misc]  # ty: ignore[invalid-assignment]
-        validator.started_at.value = Timestamp().to_string()  # type: ignore[attr-defined]
-        validator.completed_at.value = ""  # type: ignore[attr-defined]
+        validator.started_at.value = Timestamp().to_string()
+        validator.completed_at.value = ""
         await validator.save(db=self.db)
 
     async def finalize_validator(self, validator: CoreValidator, is_success: bool) -> None:
@@ -131,5 +132,5 @@ class ObjectConflictValidatorRecorder:
         validator.conclusion.value = (  # type: ignore[misc]  # ty: ignore[invalid-assignment]
             ValidatorConclusion.SUCCESS.value if is_success else ValidatorConclusion.FAILURE.value
         )
-        validator.completed_at.value = Timestamp().to_string()  # type: ignore[attr-defined]
+        validator.completed_at.value = Timestamp().to_string()
         await validator.save(db=self.db)

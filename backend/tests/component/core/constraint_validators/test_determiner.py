@@ -16,7 +16,8 @@ from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.core.validators.node_diff_index import NodeDiffIndex
 from infrahub.core.validators.uniqueness.scope import UniquenessConstraintScoper
 
-RELATIONSHIP_PROPERTIES = ("peer", "cardinality", "optional", "min_count", "max_count")
+# the relationship properties whose constraint a data change can break; a write already checks the peer kind
+DATA_RELATIONSHIP_PROPERTIES = ("cardinality", "optional", "min_count", "max_count")
 
 # uuids of the changed nodes carried by the test node-diffs, so a uniqueness check emitted for a
 # directly-changed kind can be asserted to be scoped to exactly those nodes
@@ -39,18 +40,6 @@ def _build_determiner() -> ConstraintValidatorDeterminer:
     node_diff_index = NodeDiffIndex()
     scoper = UniquenessConstraintScoper(dependent_resolver=_NoDependentsResolver(), node_diff_index=node_diff_index)
     return ConstraintValidatorDeterminer(node_diff_index=node_diff_index, uniqueness_scoper=scoper)
-
-
-def node_constraint(kind: str, property_name: str) -> SchemaUpdateConstraintInfo:
-    return SchemaUpdateConstraintInfo(
-        constraint_name=f"node.{property_name}.update",
-        path=SchemaPath(
-            path_type=SchemaPathType.NODE,
-            schema_kind=kind,
-            field_name=property_name,
-            property_name=property_name,
-        ),
-    )
 
 
 def node_uniqueness_constraint(kind: str, node_uuids: list[str] | None = None) -> SchemaUpdateConstraintInfo:
@@ -150,15 +139,6 @@ def person_cars_node_diff(
                 schema_kind="TestPerson",
                 field_name="cars",
                 property_name="max_count",
-            ),
-        ),
-        SchemaUpdateConstraintInfo(
-            constraint_name="relationship.peer.update",
-            path=SchemaPath(
-                path_type=SchemaPathType.RELATIONSHIP,
-                schema_kind="TestPerson",
-                field_name="cars",
-                property_name="peer",
             ),
         ),
         SchemaUpdateConstraintInfo(
@@ -418,7 +398,7 @@ class TestConstraintDeterminer:
             assert node_uniqueness_constraint(kind) in set(constraints)
         assert {c.path.schema_kind for c in constraints} == {"TestPerson", *internal_kinds}
 
-    async def test_hierarchy_constraints_selected_for_both_endpoint_kinds(
+    async def test_hierarchy_edge_change_selects_relationship_constraints_for_both_endpoint_kinds(
         self,
         hierarchical_location_schema_simple: SchemaRoot,
         default_branch: Branch,
@@ -426,18 +406,16 @@ class TestConstraintDeterminer:
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
         determiner = _build_determiner()
         # A hierarchy edge change surfaces on both endpoints: the child (LocationRack) records its
-        # `parent` change and the parent (LocationSite) records its `children` change. Each endpoint
-        # emits only the hierarchy constraint whose relationship actually changed there, and no
-        # uniqueness constraint since `name` (the only unique field) is not in the diff.
+        # `parent` change and the parent (LocationSite) records its `children` change. A write already
+        # checks the parent and child kinds, so no hierarchy constraint is emitted, and no uniqueness
+        # constraint either since `name` (the only unique field) is not in the diff.
         node_diffs = [
             NodeDiffFieldSummary(kind="LocationRack", relationship_node_uuids={"parent": set()}),
             NodeDiffFieldSummary(kind="LocationSite", relationship_node_uuids={"children": set()}),
         ]
         expected = {
-            node_constraint("LocationRack", "parent"),
-            node_constraint("LocationSite", "children"),
-            *(relationship_constraint("LocationRack", "parent", p) for p in RELATIONSHIP_PROPERTIES),
-            *(relationship_constraint("LocationSite", "children", p) for p in RELATIONSHIP_PROPERTIES),
+            *(relationship_constraint("LocationRack", "parent", p) for p in DATA_RELATIONSHIP_PROPERTIES),
+            *(relationship_constraint("LocationSite", "children", p) for p in DATA_RELATIONSHIP_PROPERTIES),
         }
 
         constraints = await determiner.get_constraints(schema_branch=schema_branch, node_diffs=node_diffs)
@@ -464,21 +442,3 @@ class TestConstraintDeterminer:
         assert "Cannot parse TestPerson.uniqueness_constraints element 'does_not_exist__value'" in caplog.text
         # the unparseable element is skipped in isolation, so no uniqueness check is emitted for the kind
         assert node_uniqueness_constraint("TestPerson") not in set(constraints)
-
-    async def test_hierarchy_constraint_scoped_to_changed_relationship(
-        self,
-        hierarchical_location_schema_simple: SchemaRoot,
-        default_branch: Branch,
-    ) -> None:
-        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-        determiner = _build_determiner()
-        # Re-parenting a rack changes only its `parent` relationship, so only the parent hierarchy
-        # constraint may be emitted for that kind, never the children one.
-        node_diffs = [NodeDiffFieldSummary(kind="LocationSite", relationship_node_uuids={"parent": set()})]
-
-        constraints = await determiner.get_constraints(schema_branch=schema_branch, node_diffs=node_diffs)
-
-        constraint_set = set(constraints)
-        assert node_constraint("LocationSite", "parent") in constraint_set
-        assert node_constraint("LocationSite", "children") not in constraint_set
-        assert node_uniqueness_constraint("LocationSite") not in constraint_set

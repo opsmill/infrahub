@@ -101,7 +101,9 @@ describe("useCommonParentFilter - clears the selection on parent change", () => 
     );
 
     // Preserved on mount.
-    await expect.element(component.getByTestId("dependent")).toHaveTextContent("profile-1");
+    await expect
+      .element(component.getByTestId("dependent"))
+      .toHaveTextContent(JSON.stringify(selected));
 
     // Changing the parent clears the now out-of-filter selection.
     await component.getByRole("button", { name: "change parent" }).click();

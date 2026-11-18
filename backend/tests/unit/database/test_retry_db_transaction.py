@@ -166,5 +166,5 @@ class TestRetryDbTransactionExponentialBackoff:
             return "ok"
 
         decorated = retry_db_transaction(name="test_wraps")(my_original_function)
-        assert decorated.__name__ == "my_original_function"  # type: ignore[attr-defined]
-        assert decorated.__doc__ == "My docstring."  # type: ignore[attr-defined]
+        assert decorated.__name__ == "my_original_function"
+        assert decorated.__doc__ == "My docstring."

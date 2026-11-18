@@ -4,11 +4,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 from infrahub_sdk.exceptions import GraphQLError
+from infrahub_sdk.protocols import CoreProposedChange
 from prefect import get_client
 from tests.helpers.events import query_events_by_name
 from tests.helpers.test_app import TestInfrahubApp
 
-from infrahub.core.constants.infrahubkind import PROPOSEDCHANGE
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreAccountGroup
@@ -51,13 +51,13 @@ class TestProposedChangeReview(TestInfrahubApp):
 
         # Create a proposed change
         proposed_change = await client.create(
-            kind=PROPOSEDCHANGE,
+            kind=CoreProposedChange,
             data={"source_branch": source_branch.name, "destination_branch": "main", "name": "test-pc"},
         )
         await proposed_change.save()
 
         # Get the proposed change to verify initial state
-        pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id)
+        pc = await client.get(kind=CoreProposedChange, id=proposed_change.id)
         assert pc is not None
         approved_by_peers = {related_node.peer for related_node in pc.approved_by.peers}
         assert len(approved_by_peers) == 0
@@ -77,7 +77,7 @@ class TestProposedChangeReview(TestInfrahubApp):
         reviewer = await unprivileged_client.get_user()
 
         # Verify the proposed change still exists and is in the correct state
-        updated_pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id, prefetch_relationships=True)
+        updated_pc = await client.get(kind=CoreProposedChange, id=proposed_change.id, prefetch_relationships=True)
         assert updated_pc is not None
         assert updated_pc.state.value == "open"  # Should still be open after review
         assert {related_node.peer.id for related_node in updated_pc.approved_by.peers} == {
@@ -102,14 +102,14 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert response["CoreProposedChangeReview"]["ok"] is True
 
         # Verify user has been removed from `approved_by` and added to `rejected_by`
-        updated_pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id, prefetch_relationships=True)
+        updated_pc = await client.get(kind=CoreProposedChange, id=proposed_change.id, prefetch_relationships=True)
         assert updated_pc is not None
         assert updated_pc.state.value == "open"  # Should still be open after review
 
-        approved_by_peers = {related_node.peer.id for related_node in updated_pc.approved_by.peers}
-        assert len(approved_by_peers) == 0
-        rejected_by_peers = {related_node.peer.id for related_node in updated_pc.rejected_by.peers}
-        assert rejected_by_peers == {reviewer["AccountProfile"]["id"]}
+        approved_by_ids = {related_node.peer.id for related_node in updated_pc.approved_by.peers}
+        assert len(approved_by_ids) == 0
+        rejected_by_ids = {related_node.peer.id for related_node in updated_pc.rejected_by.peers}
+        assert rejected_by_ids == {reviewer["AccountProfile"]["id"]}
 
         # Verify that an event has been logged
         await self.assert_event(
@@ -134,7 +134,7 @@ class TestProposedChangeReview(TestInfrahubApp):
         source_branch = await create_branch(branch_name="branch-pc-review-scope", db=db)
 
         proposed_change = await client.create(
-            kind=PROPOSEDCHANGE,
+            kind=CoreProposedChange,
             data={
                 "source_branch": source_branch.name,
                 "destination_branch": "main",
@@ -181,13 +181,13 @@ class TestProposedChangeReview(TestInfrahubApp):
 
         # Create a proposed change
         proposed_change = await client.create(
-            kind=PROPOSEDCHANGE,
+            kind=CoreProposedChange,
             data={"source_branch": source_branch.name, "destination_branch": "main", "name": "test-pc-2"},
         )
         await proposed_change.save()
 
         # Get the proposed change to verify initial state
-        pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id)
+        pc = await client.get(kind=CoreProposedChange, id=proposed_change.id)
         assert pc is not None
         approved_by_peers = {related_node.peer for related_node in pc.approved_by.peers}
         assert len(approved_by_peers) == 0
@@ -202,7 +202,7 @@ class TestProposedChangeReview(TestInfrahubApp):
         )
 
         # Verify the proposed change still exists and is in the correct state
-        updated_pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id, prefetch_relationships=True)
+        updated_pc = await client.get(kind=CoreProposedChange, id=proposed_change.id, prefetch_relationships=True)
         assert updated_pc is not None
         reviewer = await unprivileged_client.get_user()
         assert {related_node.peer.id for related_node in updated_pc.approved_by.peers} == {
@@ -219,7 +219,7 @@ class TestProposedChangeReview(TestInfrahubApp):
 
         assert response["CoreProposedChangeReview"]["ok"] is True
 
-        updated_pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id, prefetch_relationships=True)
+        updated_pc = await client.get(kind=CoreProposedChange, id=proposed_change.id, prefetch_relationships=True)
         assert updated_pc is not None
         assert updated_pc.state.value == "open"
         assert len(updated_pc.approved_by.peers) == 0
@@ -246,13 +246,13 @@ class TestProposedChangeReview(TestInfrahubApp):
 
         # Create a proposed change
         proposed_change = await client.create(
-            kind=PROPOSEDCHANGE,
+            kind=CoreProposedChange,
             data={"source_branch": source_branch.name, "destination_branch": "main", "name": "test-pc-3"},
         )
         await proposed_change.save()
 
         # Get the proposed change to verify initial state
-        pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id)
+        pc = await client.get(kind=CoreProposedChange, id=proposed_change.id)
         assert pc is not None
         approved_by_peers = {related_node.peer for related_node in pc.approved_by.peers}
         assert len(approved_by_peers) == 0
@@ -267,7 +267,7 @@ class TestProposedChangeReview(TestInfrahubApp):
         )
 
         # Verify the proposed change still exists and is in the correct state
-        updated_pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id, prefetch_relationships=True)
+        updated_pc = await client.get(kind=CoreProposedChange, id=proposed_change.id, prefetch_relationships=True)
         assert updated_pc is not None
         reviewer = await unprivileged_client.get_user()
         assert {related_node.peer.id for related_node in updated_pc.rejected_by.peers} == {
@@ -284,7 +284,7 @@ class TestProposedChangeReview(TestInfrahubApp):
 
         assert response["CoreProposedChangeReview"]["ok"] is True
 
-        updated_pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id, prefetch_relationships=True)
+        updated_pc = await client.get(kind=CoreProposedChange, id=proposed_change.id, prefetch_relationships=True)
         assert updated_pc is not None
         assert updated_pc.state.value == "open"
         assert len(updated_pc.approved_by.peers) == 0
@@ -310,13 +310,13 @@ class TestProposedChangeReview(TestInfrahubApp):
 
         # Create a proposed change
         proposed_change = await client.create(
-            kind=PROPOSEDCHANGE,
+            kind=CoreProposedChange,
             data={"source_branch": source_branch.name, "destination_branch": "main", "name": "test-pc-4"},
         )
         await proposed_change.save()
 
         # Get the proposed change to verify initial state
-        pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id)
+        pc = await client.get(kind=CoreProposedChange, id=proposed_change.id)
         assert pc is not None
         approved_by_peers = {related_node.peer for related_node in pc.approved_by.peers}
         assert len(approved_by_peers) == 0
@@ -339,7 +339,7 @@ class TestProposedChangeReview(TestInfrahubApp):
         assert exc.value.errors[0]["message"] == "You are not allowed to review proposed changes"
 
         # Verify the proposed change still exists and is in the correct state
-        updated_pc = await client.get(kind=PROPOSEDCHANGE, id=proposed_change.id, prefetch_relationships=True)
+        updated_pc = await client.get(kind=CoreProposedChange, id=proposed_change.id, prefetch_relationships=True)
         assert updated_pc is not None
         assert len(updated_pc.approved_by.peers) == 0
         assert len(updated_pc.rejected_by.peers) == 0

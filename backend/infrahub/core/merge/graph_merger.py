@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.exceptions import (
     MergeConflictsUnresolvedError,
@@ -51,7 +52,7 @@ class GraphMerger:
         self.constraint_validator = constraint_validator
         self.log = logger or get_logger()
 
-    async def merge(self, at: Timestamp) -> None:
+    async def merge(self, at: Timestamp, user_id: str = SYSTEM_USER_ID) -> None:
         """Merge the current branch into the default branch.
 
         Raises:
@@ -84,7 +85,7 @@ class GraphMerger:
             await self._validate_constraints()
 
             try:
-                await self.diff_merger.merge_graph(at=at)
+                await self.diff_merger.merge_graph(at=at, user_id=user_id)
             except Exception as exc:
                 # Rollback is handled outside of this class b/c there is more than just the graph changes to revert
                 self.log.exception("Graph merge failed")

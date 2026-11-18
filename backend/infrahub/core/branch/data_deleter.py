@@ -4,13 +4,17 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
 
 from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query.branch import (
     DeleteBranchAgnosticAttributesQuery,
     DeleteBranchAgnosticRelationshipsQuery,
     DeleteBranchEdgesQuery,
+    DeleteBranchReservedAttributesQuery,
 )
+from infrahub.core.query.branch_agnostic_retirement import RetireBranchAgnosticFieldsQuery
 from infrahub.core.query.standard_node import StandardNodeDeleteQuery
+from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
 
@@ -18,8 +22,9 @@ if TYPE_CHECKING:
     from infrahub.core.branch.models import Branch
     from infrahub.database import InfrahubDatabase
 
-# The agnostic cleanup batches Nodes, and each one can drag an unbounded number of peer vertices
-# into the transaction with it, so its batch is capped low.
+# The agnostic cleanup and the agnostic retirement batch Nodes, and each one can drag an unbounded
+# number of peer vertices into the transaction with it -- for the retirement, its fields evaluated
+# against every branch -- so their batch is capped low.
 MAX_AGNOSTIC_PEER_BATCH_SIZE = 500
 
 
@@ -38,7 +43,7 @@ class BranchDeleteResult:
 class BranchDataDeleterInterface(Protocol):
     """The database side of a branch delete."""
 
-    async def delete(self, branch: Branch) -> BranchDeleteResult: ...
+    async def delete(self, branch: Branch, user_id: str = SYSTEM_USER_ID) -> BranchDeleteResult: ...
 
 
 class LoggerInterface(Protocol):
@@ -60,7 +65,7 @@ class BranchDataDeleter:
         self.batch_size = batch_size
         self.log = log or get_logger()
 
-    async def delete(self, branch: Branch) -> BranchDeleteResult:
+    async def delete(self, branch: Branch, user_id: str = SYSTEM_USER_ID) -> BranchDeleteResult:
         """Remove the branch's data and then the branch itself.
 
         Returns whether the Branch object was actually deleted in case multiple processes try to
@@ -79,7 +84,7 @@ class BranchDataDeleter:
             branch.status = BranchStatus.DELETING
             await branch.save(db=self.db)
 
-        edges_removed = await self.delete_branch_data(branch_name=branch.name)
+        edges_removed = await self.delete_branch_data(branch_name=branch.name, user_id=user_id)
 
         query = await StandardNodeDeleteQuery.init(db=self.db, node=branch)
         await query.execute(db=self.db)
@@ -87,22 +92,28 @@ class BranchDataDeleter:
 
         return BranchDeleteResult(branch_deleted=branch_deleted, edges_removed=edges_removed)
 
-    async def delete_branch_data(self, branch_name: str) -> int:
+    async def delete_branch_data(self, branch_name: str, user_id: str = SYSTEM_USER_ID) -> int:
         """Remove a branch's data without requiring the branch itself to still exist.
 
         Returns the number of edges removed, so a caller whose own logging is the only thing the
         operator can see is able to report progress.
         """
         agnostic_edges_count = await self._delete_agnostic_peers(branch_name=branch_name)
+        await self._retire_agnostic_fields(branch_name=branch_name, user_id=user_id)
         branch_edges_count = await self._delete_edges(branch_name=branch_name)
         return agnostic_edges_count + branch_edges_count
 
     async def _delete_agnostic_peers(self, branch_name: str) -> int:
         """Drop the agnostic attributes and relationships of Nodes that exist on no other branch.
 
-        Both queries locate those Nodes through the branch's IS_PART_OF edges, so this has to
-        finish before the edge deletion starts removing them. Resuming a delete that failed part
-        way through this stage is safe for the same reason: no IS_PART_OF edge has been touched yet.
+        Also drops the attributes a number pool reserves that exist only on this branch, whose global
+        IS_RESERVED edge would otherwise keep them alive after the branch's edges are gone.
+
+        The agnostic queries locate those Nodes through the branch's IS_PART_OF edges, and the
+        reserved-attribute query locates its attributes through the branch's HAS_ATTRIBUTE edges, so
+        this has to finish before the edge deletion starts removing them. Resuming a delete that
+        failed part way through this stage is safe for the same reason: none of those edges has been
+        touched yet.
 
         Returns the number of edges removed, which is every edge of the peers detached here, not
         only the agnostic ones that led to them.
@@ -119,14 +130,48 @@ class BranchDataDeleter:
         )
         await attributes_query.execute(db=self.db)
 
-        edges_removed = relationships_query.stats.get_counter(
-            "relationships_deleted"
-        ) + attributes_query.stats.get_counter("relationships_deleted")
+        reserved_attributes_query = await DeleteBranchReservedAttributesQuery.init(
+            db=self.db, branch_name=branch_name, batch_size=batch_size
+        )
+        await reserved_attributes_query.execute(db=self.db)
+
+        edges_removed = (
+            relationships_query.stats.get_counter("relationships_deleted")
+            + attributes_query.stats.get_counter("relationships_deleted")
+            + reserved_attributes_query.stats.get_counter("relationships_deleted")
+        )
         if edges_removed:
             self.log.info(
-                f"Deleted agnostic peers of nodes only on branch '{branch_name}', {edges_removed} edge(s) removed"
+                f"Deleted agnostic peers of nodes only on branch '{branch_name}' and pool-reserved "
+                f"attributes only on branch '{branch_name}', {edges_removed} edge(s) removed"
             )
         return edges_removed
+
+    async def _retire_agnostic_fields(self, branch_name: str, user_id: str) -> None:
+        """Close the global edges of branch-agnostic fields this branch was the last to retain.
+
+        The complement of the agnostic-peer hard-delete: that stage removes the peers of Nodes
+        existing on no other branch, while this one covers Nodes that do exist elsewhere but,
+        following this branch's delete, are no longer readable on any branch. Retention is
+        re-evaluated across every remaining branch, so anything still readable somewhere stays open.
+
+        Uses IS_PART_OF edges on this branch, so must run before those edges are deleted. The query
+        streams the candidate Nodes and evaluates them per batch, so the transaction memory it needs
+        is bounded by the batch size rather than by the size of the branch.
+        """
+        batch_size = min(self.batch_size, MAX_AGNOSTIC_PEER_BATCH_SIZE)
+
+        query = await RetireBranchAgnosticFieldsQuery.init(
+            db=self.db, branch_name=branch_name, at=Timestamp(), batch_size=batch_size, user_id=user_id
+        )
+        await query.execute(db=self.db)
+
+        edges_closed = query.closed_edge_count()
+        if edges_closed:
+            self.log.info(
+                f"Retired agnostic fields no branch retains after deleting branch '{branch_name}', "
+                f"{edges_closed} global edge(s) closed"
+            )
 
     async def _delete_edges(self, branch_name: str) -> int:
         edges_removed = 0

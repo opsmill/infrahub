@@ -1,7 +1,6 @@
-from typing import Any
+from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict
-from typing_extensions import Self
 
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.timestamp import Timestamp
@@ -12,7 +11,6 @@ from .diff_get import QUERY_MATCH_NODES
 from .filters import EnrichedDiffQueryFilters
 
 
-# type: ignore[call-overload]
 class DiffSummaryCounters(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     num_added: int = 0
