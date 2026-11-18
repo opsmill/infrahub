@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core import registry
 from infrahub.core.constants import NULL_VALUE, PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 
 from ..interface import ConstraintCheckerInterface
-from ..shared import AttributeSchemaValidatorQuery
+from ..shared import AttributeSchemaValidatorQuery, SchemaValidatorQuery
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -84,6 +83,37 @@ class NodeAttributeValueMissingValidatorQuery(AttributeSchemaValidatorQuery):
         return grouped_data_paths
 
 
+class NodeCountValidatorQuery(SchemaValidatorQuery):
+    """Find the active nodes of the kind, to be counted rather than returned."""
+
+    name: str = "node_count_validator"
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), is_isolated=self.is_isolated
+        )
+        self.params.update(branch_params)
+
+        query = """
+        MATCH (n:%(node_kind)s)
+        CALL (n) {
+            MATCH path = (:Root)<-[rr:IS_PART_OF]-(n)
+            WHERE all(
+                r in relationships(path)
+                WHERE %(branch_filter)s
+            )
+            RETURN rr.status AS root_status
+            ORDER BY rr.branch_level DESC, rr.from DESC, rr.status ASC
+            LIMIT 1
+        }
+        WITH n, root_status
+        WHERE root_status = "active"
+        """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
+
+        self.add_to_query(query)
+        self.return_labels = ["n.uuid"]
+
+
 class NodeAttributeAddChecker(ConstraintCheckerInterface):
     query_classes = [NodeAttributeValueMissingValidatorQuery]
 
@@ -112,11 +142,14 @@ class NodeAttributeAddChecker(ConstraintCheckerInterface):
             # A scoped pool's limit applies to each division, which the migration enforces as it allocates.
             if attribute_schema.parameters.allocation_scope:
                 return grouped_data_paths_list
-            # The node count reads its view from the branch rather than from a parameter.
-            count_branch = self.branch
-            if count_branch is not None and not request.is_isolated:
-                count_branch = count_branch.model_copy(update={"is_isolated": False})
-            nbr_nodes = await registry.manager.count(db=self.db, branch=count_branch, schema=request.node_schema)
+            count_query = await NodeCountValidatorQuery.init(
+                db=self.db,
+                branch=self.branch,
+                node_schema=request.node_schema,
+                schema_path=request.schema_path,
+                is_isolated=request.is_isolated,
+            )
+            nbr_nodes = await count_query.count(db=self.db)
             pool_size = attribute_schema.parameters.get_pool_size()
 
             if pool_size < nbr_nodes:
