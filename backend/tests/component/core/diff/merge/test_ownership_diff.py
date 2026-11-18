@@ -11,17 +11,16 @@ from infrahub.core.diff.conflicts_extractor import DiffConflictsExtractor
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.ownership.models import NODE_HOLDER, NODE_SOURCES_HOLDER, HolderKey, OwnerOrigin
-
-from ._ownership import (
+from tests.helpers.ownership import (
     OWNERS_FIELD,
     SOURCES_FIELD,
     OwnerDataset,
     load_owner_dataset,
-    owner_property,
     resolve_owners,
     set_owners,
-    update_diff,
 )
+
+from ._ownership import owner_property, update_diff
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch

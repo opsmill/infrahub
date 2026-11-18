@@ -11,15 +11,26 @@ from infrahub.core.diff.model.path import ConflictSelection
 from infrahub.core.initialization import create_branch
 from infrahub.core.ownership.models import NODE_SOURCES_HOLDER
 from infrahub.database.validation import verify_graph
+from tests.helpers.ownership import (
+    SOURCES_FIELD,
+    OwnerDataset,
+    count_active_owner_edges,
+    load_owner_dataset,
+    read_owners,
+    set_owners,
+)
 
 from ..get_one_node import get_one_diff_node
-from ._ownership import SOURCES_FIELD, OwnerDataset, load_owner_dataset, merge, read_owners, set_owners, update_diff
+from ._ownership import merge, update_diff
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.diff.model.path import EnrichedDiffProperty, EnrichedDiffRoot
     from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.database import InfrahubDatabase
+
+
+SOURCE_EDGE_TYPES = (DatabaseEdgeType.HAS_SOURCE.value,)
 
 
 @pytest.fixture
@@ -39,16 +50,6 @@ async def _read_sources(db: InfrahubDatabase, branch: Branch, node_id: str) -> t
 def _sources_property(diff: EnrichedDiffRoot, node_id: str) -> EnrichedDiffProperty:
     node = get_one_diff_node(diff_root=diff, node_uuid=node_id)
     return node.get_attribute(name=SOURCES_FIELD).get_property(property_type=DatabaseEdgeType.HAS_SOURCE)
-
-
-async def _count_active_source_edges(db: InfrahubDatabase, branch: Branch, node_id: str) -> int:
-    query = """
-    MATCH (n:Node {uuid: $node_id})-[r:HAS_SOURCE]->()
-    WHERE r.branch = $branch_name AND r.status = "active" AND r.to IS NULL
-    RETURN count(r) AS total
-    """
-    results = await db.execute_query(query=query, params={"node_id": node_id, "branch_name": branch.name})
-    return results[0]["total"]
 
 
 async def test_two_sources_set_on_a_branch_show_on_the_default_branch_after_the_merge(
@@ -98,7 +99,10 @@ async def test_source_removed_on_a_branch_is_removed_by_the_merge_with_its_chang
     changelogs = await build_diff_changelog_collector(diff=diff, db=db, branch=default_branch).collect_changelogs()
 
     assert await _read_sources(db=db, branch=default_branch, node_id=tenant_id) == dataset.owners(("network-emea",))
-    assert await _count_active_source_edges(db=db, branch=default_branch, node_id=tenant_id) == 1
+    assert (
+        await count_active_owner_edges(db=db, branch=default_branch, node_id=tenant_id, edge_types=SOURCE_EDGE_TYPES)
+        == 1
+    )
     assert [(action, changelog.node_id) for action, changelog in changelogs] == [(DiffAction.UPDATED, tenant_id)]
     assert changelogs[0][1].model_dump()["attributes"] == {
         SOURCES_FIELD: {
@@ -147,4 +151,7 @@ async def test_different_sources_on_both_branches_conflict(
     await merge(db=db, branch=branch)
 
     assert await _read_sources(db=db, branch=default_branch, node_id=tenant_id) == dataset.owners(merged_sources)
-    assert await _count_active_source_edges(db=db, branch=default_branch, node_id=tenant_id) == 1
+    assert (
+        await count_active_owner_edges(db=db, branch=default_branch, node_id=tenant_id, edge_types=SOURCE_EDGE_TYPES)
+        == 1
+    )

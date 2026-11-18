@@ -33,18 +33,23 @@ from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
 from infrahub.exceptions import ValidationError
-
-from ..get_one_node import get_one_diff_node
-from ._ownership import (
+from tests.helpers.ownership import (
     OWNERS_FIELD,
     SOURCES_FIELD,
     TARGET_OWNERS_FIELD,
     OwnerDataset,
     load_owner_dataset,
-    merge,
     read_owners,
-    rebase_with_conflict_check,
     set_owners,
+)
+
+from ..get_one_node import get_one_diff_node
+from ._ownership import (
+    count_active_holder_edges,
+    holder_edges,
+    merge,
+    profile_with_device,
+    rebase_with_conflict_check,
     update_diff,
 )
 
@@ -65,8 +70,6 @@ Names = tuple[str, ...] | None
 
 Changelog = tuple[str, Any, Any]
 """The name of the changed field or property, its previous value and its new value."""
-
-OWNER_EDGE_TYPES = ("HAS_OWNER", "HAS_NO_OWNER", "HAS_SOURCE")
 
 
 @pytest.fixture
@@ -148,14 +151,9 @@ class ProfileHolder(OwnerListHolder):
     """Owners that a device profile gives. A device of the rack `rack-a` uses the profile."""
 
     async def prepare(self, db: InfrahubDatabase, default_branch: Branch, dataset: OwnerDataset, start: Names) -> str:
-        profile = await Node.init(db=db, schema="ProfileTestDevice")
-        await profile.new(db=db, profile_name="emea-fabric")
-        await profile.save(db=db)
-        device = await Node.init(db=db, schema="TestDevice")
-        await device.new(db=db, name="device-with-profile", rack=dataset.ids["rack-a"], profiles=[profile])
-        await device.save(db=db)
-        await self.write(db=db, branch=default_branch, dataset=dataset, node_id=profile.id, names=start)
-        return profile.id
+        profile_id, _ = await profile_with_device(db=db, dataset=dataset)
+        await self.write(db=db, branch=default_branch, dataset=dataset, node_id=profile_id, names=start)
+        return profile_id
 
 
 class TemplateCopyHolder(OwnerListHolder):
@@ -344,39 +342,6 @@ def _params(holders: list[OwnerListHolder]) -> list[Any]:
     return [pytest.param(holder, id=holder.name) for holder in holders]
 
 
-async def _holder_edges(
-    db: InfrahubDatabase, branch: Branch, node_id: str
-) -> list[tuple[str, str, str, str, str | None]]:
-    """Return the type, the status, the peer, `from` and `to` of each edge of each holder of the node on one branch."""
-    query = """
-    MATCH (n:Node {uuid: $node_id})
-    CALL (n) {
-        MATCH (n)-[r:HAS_OWNER|HAS_NO_OWNER|HAS_SOURCE|HAS_OWNER_SOURCE|HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(peer)
-        RETURN r, peer
-        UNION ALL
-        MATCH (n)-[:HAS_ATTRIBUTE]->(:Attribute)-[r:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE]->(peer)
-        RETURN r, peer
-        UNION ALL
-        MATCH (n)-[:HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(:OwnerSet)-[r:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE]->(peer)
-        RETURN DISTINCT r, peer
-        UNION ALL
-        MATCH (n)-[:IS_RELATED]-(:Relationship)-[r:HAS_OWNER]->(peer)
-        RETURN DISTINCT r, peer
-    }
-    WITH DISTINCT r, peer
-    WHERE r.branch = $branch_name
-    RETURN type(r) AS edge_type, r.status AS status, elementId(peer) AS peer_id, r.from AS from_time, r.to AS to_time
-    ORDER BY edge_type, from_time, peer_id, status
-    """
-    results = await db.execute_query(query=query, params={"node_id": node_id, "branch_name": branch.name})
-    return [(row["edge_type"], row["status"], row["peer_id"], row["from_time"], row["to_time"]) for row in results]
-
-
-async def _count_active_owner_edges(db: InfrahubDatabase, branch: Branch, node_id: str) -> int:
-    edges = await _holder_edges(db=db, branch=branch, node_id=node_id)
-    return sum(1 for edge in edges if edge[0] in OWNER_EDGE_TYPES and edge[1] == "active" and edge[4] is None)
-
-
 def _edge_count(names: Names) -> int:
     """Return the number of active owner edges that a holder needs for this state."""
     if names is None:
@@ -433,7 +398,7 @@ async def test_owner_change_on_a_branch_is_merged_with_its_changelog(
 
     for read_branch in (default_branch, branch):
         assert await holder.read(db=db, branch=read_branch, node_id=node_id) == dataset.owners(after)
-    assert await _count_active_owner_edges(db=db, branch=default_branch, node_id=node_id) == _edge_count(after)
+    assert await count_active_holder_edges(db=db, branch=default_branch, node_id=node_id) == _edge_count(after)
     assert holder.changelog(changelogs=changelogs, node_id=node_id) == holder.expected_changelog(
         dataset=dataset, before=START, after=after
     )
@@ -478,11 +443,11 @@ async def test_same_owner_change_on_both_branches_gives_no_conflict_and_the_merg
         None,
     )
     assert diff.get_all_conflicts() == {}
-    edges_before_merge = await _holder_edges(db=db, branch=default_branch, node_id=node_id)
+    edges_before_merge = await holder_edges(db=db, branch=default_branch, node_id=node_id)
 
     await merge(db=db, branch=branch)
 
-    assert await _holder_edges(db=db, branch=default_branch, node_id=node_id) == edges_before_merge
+    assert await holder_edges(db=db, branch=default_branch, node_id=node_id) == edges_before_merge
     for read_branch in (default_branch, branch):
         assert await holder.read(db=db, branch=read_branch, node_id=node_id) == dataset.owners(after)
     await verify_graph(db=db)
@@ -581,7 +546,7 @@ async def test_different_owner_changes_on_both_branches_conflict_and_the_merge_a
     merged = after if selection is ConflictSelection.DIFF_BRANCH else OTHER
     assert await holder.read(db=db, branch=default_branch, node_id=node_id) == dataset.owners(merged)
     assert await holder.read(db=db, branch=branch, node_id=node_id) == dataset.owners(after)
-    assert await _count_active_owner_edges(db=db, branch=default_branch, node_id=node_id) == _edge_count(merged)
+    assert await count_active_holder_edges(db=db, branch=default_branch, node_id=node_id) == _edge_count(merged)
     assert holder.changelog(changelogs=changelogs, node_id=node_id) == (
         holder.expected_changelog(dataset=dataset, before=START, after=after)
         if selection is ConflictSelection.DIFF_BRANCH
@@ -686,7 +651,7 @@ async def test_owner_removal_on_a_branch_is_merged(
 
     for read_branch in (default_branch, branch):
         assert await holder.read(db=db, branch=read_branch, node_id=node_id) == dataset.owners(test_case.after)
-    assert await _count_active_owner_edges(db=db, branch=default_branch, node_id=node_id) == _edge_count(
+    assert await count_active_holder_edges(db=db, branch=default_branch, node_id=node_id) == _edge_count(
         test_case.after
     )
     assert holder.changelog(changelogs=changelogs, node_id=node_id) == holder.expected_changelog(

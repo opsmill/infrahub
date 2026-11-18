@@ -11,21 +11,17 @@ from infrahub.core.constants import DiffAction
 from infrahub.core.initialization import create_branch
 from infrahub.core.ownership.queries import NoOwnerVertexCreateQuery
 from infrahub.exceptions import ValidationError
-
-from ._ownership import (
+from tests.helpers.ownership import (
     OWNERS_FIELD,
     OwnerDataset,
     count_active_owner_edges,
-    has_owner_change,
     load_owner_dataset,
-    merge,
     owner_edges,
-    owner_property,
     read_owners,
-    rebase_with_conflict_check,
     set_owners,
-    update_diff,
 )
+
+from ._ownership import has_owner_change, merge, owner_property, rebase_with_conflict_check, update_diff
 
 if TYPE_CHECKING:
     from fast_depends import Provider

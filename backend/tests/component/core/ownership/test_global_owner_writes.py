@@ -7,7 +7,6 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node
 from infrahub.core.ownership.constants import OWNERS_IDS_FILTER
 from infrahub.core.ownership.models import (
     NODE_HOLDER,
@@ -22,16 +21,9 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
+from tests.helpers.ownership import USER_ID, add_node
 
-USER_ID = "test-user-id"
 SEATS_HOLDER = HolderKey(kind=HolderKind.ATTRIBUTE, attribute="nbr_seats")
-
-
-async def _create(db: InfrahubDatabase, kind: str, **kwargs: str | int | bool | Node) -> Node:
-    node = await Node.init(db=db, schema=kind)
-    await node.new(db=db, **kwargs)
-    await node.save(db=db)
-    return node
 
 
 @pytest.fixture
@@ -39,7 +31,7 @@ async def groups(
     db: InfrahubDatabase, register_core_models_schema: SchemaBranch, car_person_schema_global: None
 ) -> list[str]:
     return [
-        (await _create(db=db, kind=InfrahubKind.ACCOUNTGROUP, name=name)).id
+        (await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name=name)).id
         for name in ("dc-emea", "network-emea", "security")
     ]
 
@@ -52,8 +44,8 @@ async def _stored(db: InfrahubDatabase, branch: Branch, node_id: str, holder: Ho
 async def test_branch_made_before_a_global_owner_change_of_an_attribute_reads_the_new_owner_only(
     db: InfrahubDatabase, default_branch: Branch, groups: list[str]
 ) -> None:
-    person = await _create(db=db, kind="TestPerson", name="person-a")
-    thing = await _create(db=db, kind="TestCar", name="car-a", nbr_seats=4, is_electric=False, owner=person)
+    person = await add_node(db=db, kind="TestPerson", name="person-a")
+    thing = await add_node(db=db, kind="TestCar", name="car-a", nbr_seats=4, is_electric=False, owner=person)
     thing.nbr_seats.owner = groups[0]
     await thing.save(db=db)
     branch = await create_branch(db=db, branch_name="before-global-write")
@@ -120,7 +112,7 @@ def _with_ids(state: StoredOwnerState, groups: list[str]) -> StoredOwnerState:
 async def test_branch_made_before_a_global_write_reads_the_new_state_of_each_holder(
     db: InfrahubDatabase, default_branch: Branch, groups: list[str], test_case: GlobalWriteTestCase
 ) -> None:
-    thing = await _create(db=db, kind="TestPerson", name="shared-a")
+    thing = await add_node(db=db, kind="TestPerson", name="shared-a")
     global_branch = registry.get_global_branch()
     repository = OwnershipRepository(db=db, branch=default_branch, at=None)
     for state in (test_case.before, None, test_case.after):
@@ -153,7 +145,7 @@ async def test_global_write_that_adds_back_a_removed_state_is_read_on_all_branch
     removed: StoredOwnerState,
     added_back: StoredOwnerState,
 ) -> None:
-    thing = await _create(db=db, kind="TestPerson", name="shared-a")
+    thing = await add_node(db=db, kind="TestPerson", name="shared-a")
     global_branch = registry.get_global_branch()
     repository = OwnershipRepository(db=db, branch=default_branch, at=None)
     for state in (added_back, None, removed, added_back):
@@ -180,7 +172,7 @@ async def test_global_write_that_adds_back_a_removed_state_is_read_on_all_branch
 async def test_resolver_and_owner_filter_of_a_branch_made_before_a_global_write_give_the_new_owners(
     db: InfrahubDatabase, default_branch: Branch, groups: list[str]
 ) -> None:
-    thing = await _create(db=db, kind="TestPerson", name="shared-a")
+    thing = await add_node(db=db, kind="TestPerson", name="shared-a")
     global_branch = registry.get_global_branch()
     repository = OwnershipRepository(db=db, branch=default_branch, at=None)
     await repository.write(

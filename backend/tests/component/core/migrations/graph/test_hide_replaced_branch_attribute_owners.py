@@ -4,10 +4,10 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m084_hide_replaced_branch_attribute_owners import Migration084
 from infrahub.core.migrations.shared import MigrationInput
-from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from tests.helpers.ownership import add_node, create_car
 
 # An owner edge as an earlier release stored it: an owner write on a branch left the edge of the default branch active.
 ADD_OWNER_EDGE = """
@@ -36,20 +36,6 @@ MATCH (:Attribute)-[r:HAS_OWNER {status: "deleted"}]->(owner:Node)
 RETURN owner.uuid AS owner_id, r.branch AS branch, r.from AS from
 ORDER BY owner_id, branch, from
 """
-
-
-async def _create_node(db: InfrahubDatabase, kind: str, **data: str) -> Node:
-    node = await Node.init(db=db, schema=kind)
-    await node.new(db=db, **data)
-    await node.save(db=db)
-    return node
-
-
-async def _create_car(db: InfrahubDatabase, name: str, person: Node, owner_id: str | None = None) -> Node:
-    car = await Node.init(db=db, schema="TestCar")
-    await car.new(db=db, name=name, owner=person, color={"value": "#000000", "owner": owner_id})
-    await car.save(db=db)
-    return car
 
 
 async def _add_owner_edge(
@@ -89,10 +75,10 @@ async def test_default_branch_owner_closed_after_the_branch_start_is_hidden_on_t
     car_person_schema: SchemaBranch,
 ) -> None:
     """The branch is not rebased, so it still reads the owner edge that the default branch closed."""
-    main_owner = await _create_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="main-owner")
-    branch_owner = await _create_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="branch-owner")
-    person = await _create_node(db=db, kind="TestPerson", name="John")
-    car = await _create_car(db=db, name="volt", person=person, owner_id=main_owner.id)
+    main_owner = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="main-owner")
+    branch_owner = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="branch-owner")
+    person = await add_node(db=db, kind="TestPerson", name="John")
+    car = await create_car(db=db, name="volt", person=person, owner_id=main_owner.id)
     branch = await create_branch(db=db, branch_name="branch1")
     await _add_owner_edge(db=db, branch=branch, node_id=car.id, owner_id=branch_owner.id)
     await db.execute_query(
@@ -124,10 +110,10 @@ async def test_default_branch_owner_closed_before_the_branch_start_gets_no_delet
     register_core_models_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
 ) -> None:
-    main_owner = await _create_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="main-owner")
-    branch_owner = await _create_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="branch-owner")
-    person = await _create_node(db=db, kind="TestPerson", name="John")
-    car = await _create_car(db=db, name="volt", person=person)
+    main_owner = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="main-owner")
+    branch_owner = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="branch-owner")
+    person = await add_node(db=db, kind="TestPerson", name="John")
+    car = await create_car(db=db, name="volt", person=person)
     await _add_owner_edge(db=db, branch=default_branch, node_id=car.id, owner_id=main_owner.id, to=Timestamp())
     branch = await create_branch(db=db, branch_name="branch1")
     await _add_owner_edge(db=db, branch=branch, node_id=car.id, owner_id=branch_owner.id)
@@ -145,10 +131,10 @@ async def test_owner_that_the_branch_wrote_first_and_then_replaced_is_hidden(
     register_core_models_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
 ) -> None:
-    main_owner = await _create_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="main-owner")
-    branch_owner = await _create_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="branch-owner")
-    person = await _create_node(db=db, kind="TestPerson", name="John")
-    car = await _create_car(db=db, name="volt", person=person, owner_id=main_owner.id)
+    main_owner = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="main-owner")
+    branch_owner = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="branch-owner")
+    person = await add_node(db=db, kind="TestPerson", name="John")
+    car = await create_car(db=db, name="volt", person=person, owner_id=main_owner.id)
     branch = await create_branch(db=db, branch_name="branch1")
     await _add_owner_edge(db=db, branch=branch, node_id=car.id, owner_id=main_owner.id, to=Timestamp())
     await _add_owner_edge(db=db, branch=branch, node_id=car.id, owner_id=branch_owner.id)
@@ -165,12 +151,12 @@ async def test_repository_that_the_branch_replaced_gets_no_deleted_edge(
     register_core_models_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
 ) -> None:
-    repository = await _create_node(
+    repository = await add_node(
         db=db, kind=InfrahubKind.REPOSITORY, name="repo01", location="git@github.com:user/repo01.git"
     )
-    branch_owner = await _create_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="branch-owner")
-    person = await _create_node(db=db, kind="TestPerson", name="John")
-    car = await _create_car(db=db, name="volt", person=person)
+    branch_owner = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="branch-owner")
+    person = await add_node(db=db, kind="TestPerson", name="John")
+    car = await create_car(db=db, name="volt", person=person)
     await _add_owner_edge(db=db, branch=default_branch, node_id=car.id, owner_id=repository.id)
     branch = await create_branch(db=db, branch_name="branch1")
     await _add_owner_edge(db=db, branch=branch, node_id=car.id, owner_id=branch_owner.id)
@@ -187,11 +173,11 @@ async def test_default_branch_owner_is_hidden_from_the_first_of_two_branch_owner
     register_core_models_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
 ) -> None:
-    main_owner = await _create_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="main-owner")
-    first_owner = await _create_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="first-branch-owner")
-    second_owner = await _create_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="second-branch-owner")
-    person = await _create_node(db=db, kind="TestPerson", name="John")
-    car = await _create_car(db=db, name="volt", person=person, owner_id=main_owner.id)
+    main_owner = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="main-owner")
+    first_owner = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="first-branch-owner")
+    second_owner = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="second-branch-owner")
+    person = await add_node(db=db, kind="TestPerson", name="John")
+    car = await create_car(db=db, name="volt", person=person, owner_id=main_owner.id)
     branch = await create_branch(db=db, branch_name="branch1")
     before_first_write = Timestamp()
     await _add_owner_edge(db=db, branch=branch, node_id=car.id, owner_id=first_owner.id)

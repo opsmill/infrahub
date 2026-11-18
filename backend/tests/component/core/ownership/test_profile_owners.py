@@ -30,9 +30,9 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
+from tests.helpers.ownership import TARGET_OWNERS_FIELD, USER_ID, add_node
 from tests.helpers.schema.ownership import OWNERSHIP_SCHEMA
 
-USER_ID = "test-user-id"
 DEFAULT_BRANCH = "main"
 OTHER_BRANCH = "branch2"
 GROUPS = ("dc-emea", "dc-security", "network-emea", "deleted-group")
@@ -40,14 +40,6 @@ DEVICE_PROFILE = "ProfileTestDevice"
 RACK_PROFILE = "ProfileTestRack"
 SITE_PROFILE = "ProfileTestSite"
 SITE_TEMPLATE = "TemplateTestSite"
-TARGET_OWNERS_FIELD = "node_metadata__target_owners"
-
-
-async def _create(db: InfrahubDatabase, kind: str, **kwargs: Any) -> Node:
-    node = await Node.init(db=db, schema=kind)
-    await node.new(db=db, **kwargs)
-    await node.save(db=db)
-    return node
 
 
 async def _write(
@@ -367,7 +359,7 @@ class TestProfileOwnersRead:
 
         nodes: dict[str, Node] = {}
         for name in GROUPS:
-            nodes[name] = await _create(db=db, kind=InfrahubKind.ACCOUNTGROUP, name=name)
+            nodes[name] = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name=name)
         device_profiles: dict[str, int] = {
             "emea-fabric": 100,
             "security": 50,
@@ -379,15 +371,15 @@ class TestProfileOwnersRead:
             "last-priority": 5000,
         }
         for name, priority in device_profiles.items():
-            nodes[name] = await _create(db=db, kind=DEVICE_PROFILE, profile_name=name, profile_priority=priority)
-        nodes["rack-security"] = await _create(db=db, kind=RACK_PROFILE, profile_name="rack-security")
+            nodes[name] = await add_node(db=db, kind=DEVICE_PROFILE, profile_name=name, profile_priority=priority)
+        nodes["rack-security"] = await add_node(db=db, kind=RACK_PROFILE, profile_name="rack-security")
 
-        nodes["site-0"] = await _create(db=db, kind="TestSite", name="site-0")
-        nodes["tenant-a"] = await _create(db=db, kind="TestTenant", name="tenant-a")
-        nodes["rack-a"] = await _create(
+        nodes["site-0"] = await add_node(db=db, kind="TestSite", name="site-0")
+        nodes["tenant-a"] = await add_node(db=db, kind="TestTenant", name="tenant-a")
+        nodes["rack-a"] = await add_node(
             db=db, kind="TestRack", name="rack-a", parent=nodes["site-0"], tenant=nodes["tenant-a"]
         )
-        nodes["rack-with-profile"] = await _create(
+        nodes["rack-with-profile"] = await add_node(
             db=db,
             kind="TestRack",
             name="rack-with-profile",
@@ -396,20 +388,20 @@ class TestProfileOwnersRead:
             profiles=[nodes["rack-security"]],
         )
         for name, profile_names in DEVICES_IN_RACK_A.items():
-            nodes[name] = await _create(
+            nodes[name] = await add_node(
                 db=db,
                 kind="TestDevice",
                 name=name,
                 rack=nodes["rack-a"],
                 profiles=[nodes[profile_name] for profile_name in profile_names],
             )
-        nodes["device-under-rack-with-profile"] = await _create(
+        nodes["device-under-rack-with-profile"] = await add_node(
             db=db, kind="TestDevice", name="device-under-rack-with-profile", rack=nodes["rack-with-profile"]
         )
-        nodes["site-owned"] = await _create(db=db, kind="TestSite", name="site-owned")
-        nodes["site-fabric"] = await _create(db=db, kind=SITE_PROFILE, profile_name="site-fabric")
+        nodes["site-owned"] = await add_node(db=db, kind="TestSite", name="site-owned")
+        nodes["site-fabric"] = await add_node(db=db, kind=SITE_PROFILE, profile_name="site-fabric")
         for name in ("site-template", "no-owner-site-template"):
-            nodes[name] = await _create(db=db, kind=SITE_TEMPLATE, template_name=name)
+            nodes[name] = await add_node(db=db, kind=SITE_TEMPLATE, template_name=name)
         ids = {name: node.id for name, node in nodes.items()}
 
         own_owners: dict[str, tuple[str, ...]] = {
@@ -458,7 +450,7 @@ class TestProfileOwnersRead:
             )
             ids[name] = site.id
         ids["site-under-template-copy"] = (
-            await _create(db=db, kind="TestSite", name="site-under-template-copy", parent=ids["site-from-template"])
+            await add_node(db=db, kind="TestSite", name="site-under-template-copy", parent=ids["site-from-template"])
         ).id
         await _write(
             db=db,
@@ -649,18 +641,18 @@ class TestProfileOwnerChanges:
         registry.schema.register_schema(schema=OWNERSHIP_SCHEMA, branch=branch.name)
         branch.update_schema_hash()
         groups = {
-            name: (await _create(db=db, kind=InfrahubKind.ACCOUNTGROUP, name=name)).id
+            name: (await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name=name)).id
             for name in ("dc-emea", "dc-security", "network-emea")
         }
-        tenant = await _create(db=db, kind="TestTenant", name="tenant-a")
-        rack = await _create(db=db, kind="TestRack", name="rack-a", tenant=tenant)
+        tenant = await add_node(db=db, kind="TestTenant", name="tenant-a")
+        rack = await add_node(db=db, kind="TestRack", name="rack-a", tenant=tenant)
         await _write(db=db, branch=branch, node_id=tenant.id, holder=NODE_HOLDER, owner_ids=(groups["network-emea"],))
         return ChangesDataset(branch=branch, groups=groups, rack=rack, tenant=tenant)
 
     async def _profile_that_gives(
         self, db: InfrahubDatabase, dataset: ChangesDataset, name: str, *group_names: str, priority: int = 100
     ) -> Node:
-        profile = await _create(db=db, kind=DEVICE_PROFILE, profile_name=name, profile_priority=priority)
+        profile = await add_node(db=db, kind=DEVICE_PROFILE, profile_name=name, profile_priority=priority)
         await _write(
             db=db,
             branch=dataset.branch,
@@ -677,7 +669,7 @@ class TestProfileOwnerChanges:
         profile = await self._profile_that_gives(db, dataset, "profile-changed", "dc-emea")
         device_ids = [
             (
-                await _create(
+                await add_node(
                     db=db, kind="TestDevice", name=f"device-changed-{index}", rack=dataset.rack, profiles=[profile]
                 )
             ).id
@@ -724,8 +716,8 @@ class TestProfileOwnerChanges:
     async def test_owners_set_on_the_node_replace_the_owners_of_its_profile_and_of_its_template(
         self, db: InfrahubDatabase, dataset: ChangesDataset
     ) -> None:
-        profile = await _create(db=db, kind=SITE_PROFILE, profile_name="site-profile-replaced")
-        template = await _create(db=db, kind=SITE_TEMPLATE, template_name="site-template-replaced")
+        profile = await add_node(db=db, kind=SITE_PROFILE, profile_name="site-profile-replaced")
+        template = await add_node(db=db, kind=SITE_TEMPLATE, template_name="site-template-replaced")
         for giver, group in ((profile, "dc-emea"), (template, "dc-security")):
             await _write(
                 db=db,
@@ -768,7 +760,7 @@ class TestProfileOwnerChanges:
         self, db: InfrahubDatabase, dataset: ChangesDataset
     ) -> None:
         profile = await self._profile_that_gives(db, dataset, "profile-added-later", "dc-emea")
-        device = await _create(db=db, kind="TestDevice", name="device-no-owner", rack=dataset.rack)
+        device = await add_node(db=db, kind="TestDevice", name="device-no-owner", rack=dataset.rack)
         await _write(db=db, branch=dataset.branch, node_id=device.id, holder=NODE_HOLDER, owner_ids=())
 
         await _set_profiles(db=db, branch=dataset.branch, node_id=device.id, profiles=[profile])
@@ -785,7 +777,7 @@ class TestProfileOwnerChanges:
         self, db: InfrahubDatabase, dataset: ChangesDataset
     ) -> None:
         profile = await self._profile_that_gives(db, dataset, "profile-own-owners", "dc-emea")
-        device = await _create(
+        device = await add_node(
             db=db, kind="TestDevice", name="device-own-owners", rack=dataset.rack, profiles=[profile]
         )
         await _write(
@@ -824,7 +816,7 @@ class TestProfileOwnerChanges:
         self, db: InfrahubDatabase, dataset: ChangesDataset
     ) -> None:
         profile = await self._profile_that_gives(db, dataset, "profile-removed", "dc-emea")
-        device = await _create(db=db, kind="TestDevice", name="device-removed", rack=dataset.rack, profiles=[profile])
+        device = await add_node(db=db, kind="TestDevice", name="device-removed", rack=dataset.rack, profiles=[profile])
         before = await _resolve(db=db, branch=dataset.branch, node_ids=[device.id])
 
         await _set_profiles(db=db, branch=dataset.branch, node_id=device.id, profiles=[])
@@ -843,7 +835,7 @@ class TestProfileOwnerChanges:
         self, db: InfrahubDatabase, dataset: ChangesDataset
     ) -> None:
         profile = await self._profile_that_gives(db, dataset, "profile-deleted", "dc-emea")
-        device = await _create(db=db, kind="TestDevice", name="device-deleted", rack=dataset.rack, profiles=[profile])
+        device = await add_node(db=db, kind="TestDevice", name="device-deleted", rack=dataset.rack, profiles=[profile])
         main = dataset.branch.name
         assert await _given_owner_edges(db=db, profile_id=profile.id) == [
             ("HAS_OWNER", dataset.groups["dc-emea"], main, "active", True),
@@ -869,7 +861,7 @@ class TestProfileOwnerChanges:
     async def test_write_reuses_the_set_that_another_branch_created(
         self, db: InfrahubDatabase, dataset: ChangesDataset
     ) -> None:
-        profile = await _create(db=db, kind=DEVICE_PROFILE, profile_name="profile-shared-set")
+        profile = await add_node(db=db, kind=DEVICE_PROFILE, profile_name="profile-shared-set")
         other_branch = await create_branch(branch_name="branch-shared-set", db=db)
         emea, security = dataset.groups["dc-emea"], dataset.groups["dc-security"]
 

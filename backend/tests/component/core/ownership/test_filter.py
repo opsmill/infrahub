@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -8,19 +8,18 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node
 from infrahub.core.ownership.constants import MAX_INHERITANCE_DEPTH, OWNERS_IDS_FILTER, OWNERS_ISNULL_FILTER
-from infrahub.core.ownership.models import NODE_HOLDER, StoredOwnerState
 from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.ownership.resolver import OwnershipResolver
-from infrahub.core.ownership.writer import OwnershipWriter
 from infrahub.core.query.node import NodeGetListQuery
 from infrahub.core.schema.schema_branch import SchemaBranch
-from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from tests.helpers.ownership import add_node, set_owners
 from tests.helpers.schema.ownership import OWNERSHIP_SCHEMA
 
-USER_ID = "test-user-id"
+if TYPE_CHECKING:
+    from infrahub.core.node import Node
+
 DEFAULT_BRANCH = "main"
 OTHER_BRANCH = "branch2"
 GROUPS = ("dc-emea", "network-emea", "security", "deleted-group")
@@ -28,21 +27,6 @@ KINDS = ("TestSite", "TestTenant", "TestRack", "TestDevice", "TestLocation")
 SITES_WITH_OWNERS = tuple(f"site-{level}" for level in range(MAX_INHERITANCE_DEPTH + 1))
 SITE_BEYOND_DEPTH_LIMIT = f"site-{MAX_INHERITANCE_DEPTH + 1}"
 PAGE_SIZE = 5
-
-
-async def _create(db: InfrahubDatabase, kind: str, name: str, **kwargs: Node) -> Node:
-    node = await Node.init(db=db, schema=kind)
-    await node.new(db=db, name=name, **kwargs)
-    await node.save(db=db)
-    return node
-
-
-async def _set_owners(db: InfrahubDatabase, branch: Branch, node_id: str, owner_ids: tuple[str, ...] | None) -> None:
-    node = await NodeManager.get_one(db=db, branch=branch, id=node_id, raise_on_error=True)
-    writer = OwnershipWriter(repository=OwnershipRepository(db=db, branch=branch, at=None))
-    await writer.apply(
-        node=node, holder=NODE_HOLDER, state=StoredOwnerState(owner_ids=owner_ids), at=Timestamp(), user_id=USER_ID
-    )
 
 
 @dataclass
@@ -239,15 +223,15 @@ class TestOwnerFilter:
 
         nodes: dict[str, Node] = {}
         for name in GROUPS:
-            nodes[name] = await _create(db=db, kind=InfrahubKind.ACCOUNTGROUP, name=name)
+            nodes[name] = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name=name)
 
-        nodes["site-0"] = await _create(db=db, kind="TestSite", name="site-0")
+        nodes["site-0"] = await add_node(db=db, kind="TestSite", name="site-0")
         for level in range(1, MAX_INHERITANCE_DEPTH + 2):
-            nodes[f"site-{level}"] = await _create(
+            nodes[f"site-{level}"] = await add_node(
                 db=db, kind="TestSite", name=f"site-{level}", parent=nodes[f"site-{level - 1}"]
             )
         for name in ("tenant-a", "tenant-without-owners", "tenant-of-deleted-group"):
-            nodes[name] = await _create(db=db, kind="TestTenant", name=name)
+            nodes[name] = await add_node(db=db, kind="TestTenant", name=name)
         racks = {
             "rack-a": "tenant-a",
             "rack-own-owners": "tenant-a",
@@ -256,7 +240,9 @@ class TestOwnerFilter:
             "rack-of-deleted-group": "tenant-of-deleted-group",
         }
         for name, tenant in racks.items():
-            nodes[name] = await _create(db=db, kind="TestRack", name=name, parent=nodes["site-0"], tenant=nodes[tenant])
+            nodes[name] = await add_node(
+                db=db, kind="TestRack", name=name, parent=nodes["site-0"], tenant=nodes[tenant]
+            )
         devices = {
             "device-a": "rack-a",
             "device-b": "rack-own-owners",
@@ -264,7 +250,7 @@ class TestOwnerFilter:
             "device-d": "rack-of-deleted-group",
         }
         for name, rack in devices.items():
-            nodes[name] = await _create(db=db, kind="TestDevice", name=name, rack=nodes[rack])
+            nodes[name] = await add_node(db=db, kind="TestDevice", name=name, rack=nodes[rack])
         ids = {name: node.id for name, node in nodes.items()}
 
         owners: dict[str, tuple[str, ...]] = {
@@ -275,7 +261,7 @@ class TestOwnerFilter:
             "rack-no-owner": (),
         }
         for name, group_names in owners.items():
-            await _set_owners(
+            await set_owners(
                 db=db, branch=branch, node_id=ids[name], owner_ids=tuple(ids[group] for group in group_names)
             )
 
@@ -285,9 +271,9 @@ class TestOwnerFilter:
         device = await NodeManager.get_one(db=db, branch=other_branch, id=ids["device-a"], raise_on_error=True)
         await device.rack.update(db=db, data=nodes["rack-own-owners"])
         await device.save(db=db)
-        await _set_owners(db=db, branch=other_branch, node_id=ids["tenant-a"], owner_ids=(ids["security"],))
-        await _set_owners(db=db, branch=other_branch, node_id=ids["rack-no-owner"], owner_ids=None)
-        await _set_owners(db=db, branch=other_branch, node_id=ids["site-0"], owner_ids=())
+        await set_owners(db=db, branch=other_branch, node_id=ids["tenant-a"], owner_ids=(ids["security"],))
+        await set_owners(db=db, branch=other_branch, node_id=ids["rack-no-owner"], owner_ids=None)
+        await set_owners(db=db, branch=other_branch, node_id=ids["site-0"], owner_ids=())
 
         return FilterDataset(branches={DEFAULT_BRANCH: branch, OTHER_BRANCH: other_branch}, ids=ids)
 
