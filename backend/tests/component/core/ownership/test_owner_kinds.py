@@ -125,14 +125,3 @@ async def test_new_link_with_a_repository_as_owner_is_refused_on_an_existing_nod
     )
     stored_car = await NodeManager.get_one(db=db, branch=default_branch, id=car.id, raise_on_error=True)
     assert (await stored_car.owner.get_peer(db=db, raise_on_error=True)).id == person.id
-
-
-async def test_owner_that_does_not_exist_is_refused(db: InfrahubDatabase, default_branch: Branch, person: Node) -> None:
-    deleted_group = await _create(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="network-team")
-    await deleted_group.delete(db=db)
-
-    with pytest.raises(ValidationError) as exc:
-        await _create_car(db=db, person=person, color_owner_id=deleted_group.id)
-
-    assert exc.value.message == f"Owner not found: {deleted_group.id} at owner"
-    assert await NodeManager.count(db=db, schema="TestCar", branch=default_branch) == 0

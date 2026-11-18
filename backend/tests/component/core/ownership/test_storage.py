@@ -314,7 +314,7 @@ async def test_branch_removes_an_owner_that_the_default_branch_deleted_before_th
     await verify_graph(db=db, kinds=["TestPerson", InfrahubKind.ACCOUNTGROUP])
 
 
-async def test_node_delete_closes_the_source_edges_of_a_node_without_owner(
+async def test_delete_of_a_node_with_a_source_on_an_attribute_closes_the_sources_of_the_node(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
@@ -329,6 +329,9 @@ async def test_node_delete_closes_the_source_edges_of_a_node_without_owner(
         owner_ids=_owner_ids(group_ids=group_ids, names=("dc-emea",)),
         holder=NODE_SOURCES_HOLDER,
     )
+    person = await NodeManager.get_one(db=db, branch=default_branch, id=person.id, raise_on_error=True)
+    person.name.source = group_ids["dc-emea"]
+    await person.save(db=db)
 
     await person.delete(db=db)
 
@@ -341,7 +344,7 @@ RETURN count(r) AS open_edges
         params={"node_id": person.id},
     )
     assert records[0]["open_edges"] == 0
-    await verify_graph(db=db, kinds=["TestPerson", InfrahubKind.ACCOUNTGROUP])
+    await verify_graph(db=db)
 
 
 async def test_write_on_node_that_is_not_active_raises(
@@ -351,17 +354,24 @@ async def test_write_on_node_that_is_not_active_raises(
     car_person_schema: SchemaBranch,
 ) -> None:
     group_ids = await _create_groups(db=db)
+    person = await _create_person(db=db, name="John")
+    await person.delete(db=db)
     repository = OwnershipRepository(db=db, branch=default_branch, at=None)
 
     with pytest.raises(QueryError):
         await repository.write(
-            node_id="unknown-id",
+            node_id=person.id,
             holder=NODE_HOLDER,
             state=StoredOwnerState(owner_ids=(group_ids["security"],)),
             write_branch=default_branch,
             at=Timestamp(),
             user_id=USER_ID,
         )
+
+    records = await db.execute_query(
+        query="MATCH (:Node {uuid: $node_id})-[r:HAS_OWNER]->() RETURN count(r) AS edges", params={"node_id": person.id}
+    )
+    assert records[0]["edges"] == 0
 
 
 async def test_owner_edges_win_over_no_owner_edge(

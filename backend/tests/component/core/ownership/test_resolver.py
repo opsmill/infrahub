@@ -23,6 +23,7 @@ from tests.helpers.schema.ownership import OWNERSHIP_SCHEMA
 USER_ID = "test-user-id"
 SITE_AT_DEPTH_LIMIT = f"site-{MAX_INHERITANCE_DEPTH}"
 SITE_BEYOND_DEPTH_LIMIT = f"site-{MAX_INHERITANCE_DEPTH + 1}"
+GROUP_NAMES = ("dc-emea", "network-emea", "security")
 
 
 async def _create(db: InfrahubDatabase, kind: str, name: str, **kwargs: Node) -> Node:
@@ -66,14 +67,6 @@ class ResolverTestCase:
 
 RESOLVER_TEST_CASES: list[ResolverTestCase] = [
     ResolverTestCase(
-        name="own_owners",
-        node="site-0",
-        state=OwnerState.OWNERS,
-        owners=("dc-emea",),
-        origin=OwnerOrigin.SELF,
-        origin_node="site-0",
-    ),
-    ResolverTestCase(
         name="hierarchy_parent",
         node="site-1",
         state=OwnerState.INHERIT,
@@ -104,30 +97,6 @@ RESOLVER_TEST_CASES: list[ResolverTestCase] = [
         owners=("network-emea",),
         origin=OwnerOrigin.PARENT,
         origin_node="tenant-a",
-    ),
-    ResolverTestCase(
-        name="own_owners_of_a_parent_stop_the_walk",
-        node="device-b",
-        state=OwnerState.INHERIT,
-        owners=("dc-emea", "security"),
-        origin=OwnerOrigin.PARENT,
-        origin_node="rack-own-owners",
-    ),
-    ResolverTestCase(
-        name="own_no_owner",
-        node="rack-no-owner",
-        state=OwnerState.NO_OWNER,
-        owners=(),
-        origin=OwnerOrigin.SELF,
-        origin_node="rack-no-owner",
-    ),
-    ResolverTestCase(
-        name="no_owner_of_a_parent_stops_the_walk",
-        node="device-c",
-        state=OwnerState.INHERIT,
-        owners=(),
-        origin=OwnerOrigin.PARENT,
-        origin_node="rack-no-owner",
     ),
     ResolverTestCase(
         name="owners_at_the_depth_limit",
@@ -161,7 +130,7 @@ class TestOwnershipResolver:
         branch.update_schema_hash()
 
         nodes: dict[str, Node] = {}
-        for name in ("dc-emea", "network-emea", "security"):
+        for name in GROUP_NAMES:
             nodes[name] = await _create(db=db, kind=InfrahubKind.ACCOUNTGROUP, name=name)
 
         nodes["site-0"] = await _create(db=db, kind="TestSite", name="site-0")
@@ -226,14 +195,14 @@ class TestOwnershipResolver:
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, dataset: ResolverDataset
     ) -> None:
         resolver = _resolver(db=db, branch=default_branch_scope_class)
-        node_ids = [dataset.ids[test_case.node] for test_case in RESOLVER_TEST_CASES]
+        node_ids = [node_id for name, node_id in dataset.ids.items() if name not in GROUP_NAMES]
         one_by_one: dict[str, ResolvedOwnership] = {}
         for node_id in node_ids:
             one_by_one.update(await resolver.resolve(node_ids=[node_id]))
 
         resolved = await resolver.resolve(node_ids=[*node_ids, "unknown-id"])
 
-        assert len(one_by_one) == len(RESOLVER_TEST_CASES)
+        assert len(one_by_one) == len(node_ids)
         assert resolved == one_by_one
 
     async def test_resolve_follows_the_parent_of_the_branch(

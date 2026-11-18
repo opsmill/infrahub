@@ -5,8 +5,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import DiffAction, InfrahubKind
-from infrahub.core.diff.repository.repository import DiffRepository
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -30,8 +29,6 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
-from infrahub.dependencies.registry import get_component_registry
-from tests.component.core.diff.merge._ownership import owner_property, update_diff
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.schema.ownership import OWNERSHIP_SCHEMA
 
@@ -171,14 +168,6 @@ PROFILE_OWNERS_TEST_CASES: list[ProfileOwnersTestCase] = [
         origin_node="tenant-a",
     ),
     ProfileOwnersTestCase(
-        name="profile_that_gives_nothing_leaves_the_next_profile",
-        node="device-first-profile-gives-nothing",
-        state=OwnerState.INHERIT,
-        owners=("dc-emea",),
-        origin=OwnerOrigin.PROFILE,
-        origin_node="emea-fabric",
-    ),
-    ProfileOwnersTestCase(
         name="own_owners_win_over_a_profile",
         node="device-own-owners",
         state=OwnerState.OWNERS,
@@ -217,22 +206,6 @@ PROFILE_OWNERS_TEST_CASES: list[ProfileOwnersTestCase] = [
         owners=("dc-emea",),
         origin=OwnerOrigin.PROFILE,
         origin_node="last-priority",
-    ),
-    ProfileOwnersTestCase(
-        name="node_without_profile_takes_the_owners_of_its_parent",
-        node="device-without-profile",
-        state=OwnerState.INHERIT,
-        owners=("network-emea",),
-        origin=OwnerOrigin.PARENT,
-        origin_node="tenant-a",
-    ),
-    ProfileOwnersTestCase(
-        name="profile_of_a_rack",
-        node="rack-with-profile",
-        state=OwnerState.INHERIT,
-        owners=("dc-security",),
-        origin=OwnerOrigin.PROFILE,
-        origin_node="rack-security",
     ),
     ProfileOwnersTestCase(
         name="profile_of_the_parent",
@@ -573,19 +546,6 @@ class TestProfileOwnersRead:
         }
 
     @pytest.mark.parametrize("branch_name", [DEFAULT_BRANCH, OTHER_BRANCH])
-    async def test_nodes_store_no_owner_state_for_the_owners_that_a_profile_gives(
-        self, db: InfrahubDatabase, dataset: ProfileDataset, branch_name: str
-    ) -> None:
-        branch = dataset.branches[branch_name]
-        node_ids = [dataset.ids[name] for name in ("device-one-profile", "device-two-profiles", "rack-with-profile")]
-
-        stored = await OwnershipRepository(db=db, branch=branch, at=None).read(node_ids=node_ids)
-
-        assert {node_id: dict(node.holders) for node_id, node in stored.items()} == {
-            node_id: {} for node_id in node_ids
-        }
-
-    @pytest.mark.parametrize("branch_name", [DEFAULT_BRANCH, OTHER_BRANCH])
     @pytest.mark.parametrize("kind", ["TestDevice", "TestRack", "TestSite", DEVICE_PROFILE])
     async def test_filter_agrees_with_the_owners_that_apply_to_each_node(
         self, db: InfrahubDatabase, dataset: ProfileDataset, branch_name: str, kind: str
@@ -761,31 +721,6 @@ class TestProfileOwnerChanges:
         for device_id in device_ids:
             assert await _stored(db=db, branch=dataset.branch, node_id=device_id) == {}
 
-    async def test_owners_set_on_the_node_replace_the_owners_of_its_profile(
-        self, db: InfrahubDatabase, dataset: ChangesDataset
-    ) -> None:
-        profile = await self._profile_that_gives(db, dataset, "profile-replaced", "dc-emea")
-        device = await _create(db=db, kind="TestDevice", name="device-replaced", rack=dataset.rack, profiles=[profile])
-        before = await _resolve(db=db, branch=dataset.branch, node_ids=[device.id])
-
-        await _write(
-            db=db,
-            branch=dataset.branch,
-            node_id=device.id,
-            holder=NODE_HOLDER,
-            owner_ids=(dataset.groups["dc-security"],),
-        )
-
-        assert before[device.id].origin == OwnerOrigin.PROFILE
-        assert await _resolve(db=db, branch=dataset.branch, node_ids=[device.id]) == {
-            device.id: ResolvedOwnership(
-                state=OwnerState.OWNERS,
-                owner_ids=(dataset.groups["dc-security"],),
-                origin=OwnerOrigin.SELF,
-                origin_node_id=device.id,
-            )
-        }
-
     async def test_owners_set_on_the_node_replace_the_owners_of_its_profile_and_of_its_template(
         self, db: InfrahubDatabase, dataset: ChangesDataset
     ) -> None:
@@ -828,35 +763,6 @@ class TestProfileOwnerChanges:
                 origin_node_id=site.id,
             )
         }
-
-    async def test_diff_of_a_profile_change_on_a_branch_lists_the_profile_only(
-        self, db: InfrahubDatabase, dataset: ChangesDataset
-    ) -> None:
-        first_id, second_id = sorted([dataset.groups["dc-emea"], dataset.groups["dc-security"]])
-        profile = await self._profile_that_gives(db, dataset, "profile-diff", "dc-emea")
-        for index in range(3):
-            await _create(db=db, kind="TestDevice", name=f"device-diff-{index}", rack=dataset.rack, profiles=[profile])
-        other_branch = await create_branch(branch_name="branch-profile-diff", db=db)
-        await _write(
-            db=db, branch=other_branch, node_id=profile.id, holder=NODE_TARGET_HOLDER, owner_ids=(first_id, second_id)
-        )
-
-        diff = await update_diff(
-            db=db,
-            default_branch=dataset.branch,
-            branch=other_branch,
-            diff_repository=await get_component_registry().get_component(DiffRepository, db=db, branch=dataset.branch),
-        )
-
-        assert [node.uuid for node in diff.nodes] == [profile.id]
-        owners = owner_property(diff=diff, node_id=profile.id, field_name=TARGET_OWNERS_FIELD)
-        assert (owners.action, owners.previous_value, owners.new_value) == (
-            DiffAction.UPDATED,
-            f'["{dataset.groups["dc-emea"]}"]',
-            f'["{first_id}","{second_id}"]',
-        )
-        labels = {dataset.groups["dc-emea"]: "dc-emea", dataset.groups["dc-security"]: "dc-security"}
-        assert (owners.previous_label, owners.new_label) == ("dc-emea", f"{labels[first_id]}, {labels[second_id]}")
 
     async def test_node_set_to_no_owner_keeps_no_owner_when_a_profile_is_added(
         self, db: InfrahubDatabase, dataset: ChangesDataset

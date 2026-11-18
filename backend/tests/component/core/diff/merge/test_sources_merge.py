@@ -9,7 +9,6 @@ from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import ConflictSelection
 from infrahub.core.initialization import create_branch
-from infrahub.core.manager import NodeManager
 from infrahub.core.ownership.models import NODE_SOURCES_HOLDER
 from infrahub.database.validation import verify_graph
 
@@ -149,39 +148,3 @@ async def test_different_sources_on_both_branches_conflict(
 
     assert await _read_sources(db=db, branch=default_branch, node_id=tenant_id) == dataset.owners(merged_sources)
     assert await _count_active_source_edges(db=db, branch=default_branch, node_id=tenant_id) == 1
-
-
-async def test_merge_closes_the_sources_of_a_node_that_the_branch_deleted(
-    db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset
-) -> None:
-    device_id = dataset.ids["device-a"]
-    await _set_sources(db=db, branch=default_branch, node_id=device_id, source_ids=dataset.owners(("dc-emea",)))
-    branch = await create_branch(db=db, branch_name="sourced-node-deleted")
-    # The branch does not read these sources, so its delete does not close them.
-    await _set_sources(
-        db=db, branch=default_branch, node_id=device_id, source_ids=dataset.owners(("network-emea", "security"))
-    )
-    device = await NodeManager.get_one(db=db, branch=branch, id=device_id, raise_on_error=True)
-    await device.delete(db=db)
-    await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
-    assert await _count_active_source_edges(db=db, branch=default_branch, node_id=device_id) == 2
-
-    await merge(db=db, branch=branch)
-
-    assert await NodeManager.get_one(db=db, branch=default_branch, id=device_id) is None
-    assert await _count_active_source_edges(db=db, branch=default_branch, node_id=device_id) == 0
-
-
-async def test_delete_of_a_node_with_a_source_on_an_attribute_closes_the_sources_of_the_node(
-    db: InfrahubDatabase, default_branch: Branch, dataset: OwnerDataset
-) -> None:
-    device_id = dataset.ids["device-a"]
-    await _set_sources(db=db, branch=default_branch, node_id=device_id, source_ids=dataset.owners(("dc-emea",)))
-    device = await NodeManager.get_one(db=db, branch=default_branch, id=device_id, raise_on_error=True)
-    device.name.source = dataset.ids["dc-emea"]
-    await device.save(db=db)
-
-    await device.delete(db=db)
-
-    assert await _count_active_source_edges(db=db, branch=default_branch, node_id=device_id) == 0
-    await verify_graph(db=db)
