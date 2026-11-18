@@ -1033,8 +1033,8 @@ class BulkMergeOwnershipEdgesQuery(Query):
     HAS_SOURCE edges to its sources.
 
     The edges of each type form a set for each holder: a deleted source edge closes the active target edge of the
-    same type to the same child, and an active source edge is created on target when the Node and a child Node are
-    alive there.
+    same type to the same child, and an active source edge is created on target when the Node is alive there. A
+    deleted owner or source stays in the list, so only the HAS_OWNER_SOURCE mark also needs a live template.
 
     `excluded_owner_holders` skips the holders whose owner conflict was resolved to BASE.
     """
@@ -1067,6 +1067,7 @@ class BulkMergeOwnershipEdgesQuery(Query):
             "source_branch": self.source_branch_name,
             "global_branch": GLOBAL_BRANCH_NAME,
             "excluded_node_uuids": self.excluded_node_uuids,
+            "template_mark_edge_type": DatabaseEdgeType.HAS_OWNER_SOURCE.value,
             "excluded_owner_holders": [
                 [
                     path.node_uuid,
@@ -1148,12 +1149,13 @@ CALL (n) {
 WITH holder, src, child, edge_type, parent_is_alive
 WHERE parent_is_alive = TRUE
 // -------------------------
-// A child that is a Node must also be alive on target
+// A deleted owner or source stays in the list, so only the template of a copy must be alive on target
 // -------------------------
-CALL (child) {
+CALL (child, edge_type) {
     OPTIONAL MATCH (child)-[c_ipo:IS_PART_OF]->(:Root)
     WHERE c_ipo.branch IN [$target_branch, $global_branch]
     AND child:Node
+    AND edge_type = $template_mark_edge_type
     RETURN (c_ipo IS NULL OR (c_ipo.status = "active" AND c_ipo.to IS NULL)) AS child_is_alive
     ORDER BY c_ipo.from DESC
     LIMIT 1

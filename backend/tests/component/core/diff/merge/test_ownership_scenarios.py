@@ -711,7 +711,6 @@ async def test_owner_removal_on_a_branch_is_merged(
         ),
     ],
 )
-@pytest.mark.xfail(strict=True, reason="the merge drops an owner that is deleted")
 async def test_owner_added_on_a_branch_and_then_deleted_stays_in_the_owners_after_the_merge(
     db: InfrahubDatabase,
     default_branch: Branch,
