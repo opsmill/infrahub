@@ -1,0 +1,27 @@
+backend/infrahub/computed_attribute/tasks.py
+  s_2fae1787d146ee::t_7fd6cdcb7d07fd 486-487,597-598
+backend/infrahub/display_labels/tasks.py
+  s_2fae1787d146ee::t_26cdf7679cb15f 106-107
+backend/infrahub/hfid/tasks.py
+  s_2fae1787d146ee::t_21079df6554277 91-92
+backend/infrahub/profiles/tasks.py
+  s_2fae1787d146ee::t_3f291c7046439f 8,61,74-75
+backend/tests/component/branch/test_setup_flows_on_branch_deleted.py
+  s_2fae1787d146ee::t_ac9e5b236100ef 1-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e0bf7854b288a0b92a45a1f2d2bdc05bf47c20ba",
+  "prompts": {},
+  "sessions": {
+    "s_2fae1787d146ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c38a01a-cf7a-4707-9e40-59d796ec98f5",
+        "model": "unknown"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}

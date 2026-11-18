@@ -1,0 +1,19 @@
+backend/infrahub/prefect_server/retention.py
+  s_fead087f95fb36::t_cadb20a49fd1ae 87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "736af72a3791a09ed395c6edfddeacff2728deac",
+  "prompts": {},
+  "sessions": {
+    "s_fead087f95fb36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76c6b40a-0c51-4467-aa31-a8d34687261e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}

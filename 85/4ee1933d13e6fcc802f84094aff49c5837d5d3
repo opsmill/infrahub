@@ -1,0 +1,24 @@
+docs/docs/release-notes/deprecation-guides/number-pool-ranges.mdx
+  s_74ac4acddd24a9::t_e7af892a81f9c3 178-182,248-249,260-261,269-271
+  s_74ac4acddd24a9::t_d337e087bdfae5 7,21,25-26,49,66-73,91-95,104,206
+docs/docs/schema/number-pool.mdx
+  s_74ac4acddd24a9::t_3d1dbb1bb029e1 17,43-44,102,104,135-136
+docs/docs/resource-manager/allocate-number.mdx
+  s_74ac4acddd24a9::t_3d1dbb1bb029e1 60-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "854ee1933d13e6fcc802f84094aff49c5837d5d3",
+  "prompts": {},
+  "sessions": {
+    "s_74ac4acddd24a9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8b22b3b-01aa-429a-b864-618f066bb59c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

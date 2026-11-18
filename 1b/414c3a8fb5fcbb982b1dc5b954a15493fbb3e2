@@ -1,0 +1,19 @@
+dev/specs/005-hz-frequency-formatter/opsmill-implement-report.md
+  s_7f89a04bbbc0ac::t_12ba88ec980b75 1-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1b414c3a8fb5fcbb982b1dc5b954a15493fbb3e2",
+  "prompts": {},
+  "sessions": {
+    "s_7f89a04bbbc0ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04daff80-3dbe-4c4d-8c7c-93a3bc731634",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+backend/infrahub/core/validators/relationship/peer.py
+  s_d5954718fc8fe8::t_df17b37c1a4537 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "089c901877c787ca70c12692f6d01603c9c02fcd",
+  "prompts": {},
+  "sessions": {
+    "s_d5954718fc8fe8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a34a3173-1903-4f83-9345-86078fd19342",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

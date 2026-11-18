@@ -1,0 +1,29 @@
+.vale/styles/spelling-exceptions.txt
+  s_2dcffc265e72b7::t_bdc094955613fb 33-34,238,268
+changelog/+resource-telemetry.added.md
+  s_2dcffc265e72b7::t_14b9de5b83a323 1-3
+changelog/+telemetry-cgroup-path-resolution.fixed.md
+  s_2dcffc265e72b7::t_95aadbc9373fb4 1
+changelog/+telemetry-probe-resources.added.md
+  s_2dcffc265e72b7::t_4ee77e81d1232a 1
+changelog/+telemetry-worker-count-scope.changed.md
+  s_2dcffc265e72b7::t_4cf5b60bddfdb0 1
+docs/docs/faq/faq.mdx
+  s_2dcffc265e72b7::t_1fc075ca8ed19b 237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "864a3fe3d0060f829c5683c031d246a365c17b74",
+  "prompts": {},
+  "sessions": {
+    "s_2dcffc265e72b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78aac985-d023-4ff2-aa1b-866be0dd0cde",
+        "model": "unknown"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

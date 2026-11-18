@@ -1,0 +1,23 @@
+backend/infrahub/graphql/types/__init__.py
+  46c821b8f62faae2 18,56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.3",
+  "base_commit_sha": "c39dcfa287400c946fe85fe1e4111d2b6b9a4d79",
+  "prompts": {
+    "46c821b8f62faae2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "134d26f4-94ee-4a06-b336-65b4142f4af5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 0,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}

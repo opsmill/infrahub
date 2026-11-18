@@ -1,0 +1,27 @@
+backend/tests/conftest.py
+  s_c37e68507bd16d::t_58eff384f0ff6f 796-803
+  s_c37e68507bd16d::t_06be5544f333ea 86,88
+backend/tests/component/pools/test_scoped_pool_fixtures.py
+  s_c37e68507bd16d::t_1aaf48e1fc3d08 1-48
+  s_c37e68507bd16d::t_3ac541af854ad5 49-50
+backend/tests/helpers/number_pool.py
+  s_c37e68507bd16d::t_cb3a6e8146c13b 4,11,13-17,20,24,86,91-92,150-262
+dev/specs/ifc-3185-scoped-number-pools/tasks.md
+  s_c37e68507bd16d::t_d9d65f05a20d9c 33,37,48,57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8be267d51ca9c17f1abee93572f1d8b1808b9dfa",
+  "prompts": {},
+  "sessions": {
+    "s_c37e68507bd16d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1ad7ee8-1d0e-4c64-aebc-c3a0119e98fb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

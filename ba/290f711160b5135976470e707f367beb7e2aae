@@ -1,0 +1,14 @@
+backend/tests/component/core/constraint_validators/test_number_pool_rename.py
+  h_bd00275aefc321 53-66,149-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ba290f711160b5135976470e707f367beb7e2aae",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

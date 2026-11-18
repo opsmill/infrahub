@@ -1,0 +1,33 @@
+.github/file-filters.yml
+  s_43d8e382eba497::t_c3888dcbaf9dfd 55-58
+.github/scripts/dependabot_autopilot/__init__.py
+  s_43d8e382eba497::t_6c1ec6b599f9e9 1
+.github/scripts/dependabot_autopilot/ports.py
+  s_43d8e382eba497::t_8e6e25954feefa 1-205
+.github/scripts/dependabot_autopilot/tests/conftest.py
+  s_43d8e382eba497::t_b0e8420536b4a4 1-7
+.github/scripts/dependabot_autopilot/tests/fakes.py
+  s_43d8e382eba497::t_3685d73ee9822c 1-222
+.github/scripts/dependabot_autopilot/tests/test_fakes.py
+  s_43d8e382eba497::t_4f5562b6bc2f90 1-81
+.github/workflows/ci.yml
+  s_43d8e382eba497::t_a5ee3ad5a7fc6a 61,344-369,590
+pyproject.toml
+  s_43d8e382eba497::t_3373c5a08a94db 803-807
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "41e9457af99c11ef989e41f380a5e5fb37d2e026",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+dev/specs/005-hz-frequency-formatter/checklists/requirements.md
+  s_7f89a04bbbc0ac::t_216fe823d5c103 1-34
+dev/specs/005-hz-frequency-formatter/spec.md
+  s_7f89a04bbbc0ac::t_d733ae2dfdea93 1-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dcb2230ba360b44abf79845445074c3b960d22be",
+  "prompts": {},
+  "sessions": {
+    "s_7f89a04bbbc0ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04daff80-3dbe-4c4d-8c7c-93a3bc731634",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

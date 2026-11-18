@@ -1,0 +1,19 @@
+dev/specs/ifc-999999-format-smoke-greeting/opsmill-implement-report.md
+  s_611b7f4190b749::t_dc0862be9b32f2 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "64d2c8f17ebf6de3b097a1b0c4825833d9043eaa",
+  "prompts": {},
+  "sessions": {
+    "s_611b7f4190b749": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ab64-b30a-7661-92af-ce83fd1d3c5e",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

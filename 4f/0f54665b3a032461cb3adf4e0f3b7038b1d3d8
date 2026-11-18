@@ -1,0 +1,19 @@
+backend/tests/component/graphql/queries/test_number_pool_surface.py
+  s_760cbcf248de37::t_fab70af6ed22d0 698
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4f0f54665b3a032461cb3adf4e0f3b7038b1d3d8",
+  "prompts": {},
+  "sessions": {
+    "s_760cbcf248de37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9796f03b-7c77-4706-bad0-f6d8a85686f0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

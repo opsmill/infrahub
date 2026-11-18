@@ -1,0 +1,24 @@
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
+  s_99e218bb2951ed::t_a61eb30c6cf72a 168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "845ce554aa5c39708dcef2660fc0c8b0680b39c9",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_99e218bb2951ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e86e0089-84dc-4d8c-85b5-db142b847f80",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

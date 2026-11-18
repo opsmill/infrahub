@@ -1,0 +1,22 @@
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_allocation_scope.py
+  s_9a65b7e7908928::t_28059565d09121 1,9,321-336
+  s_9a65b7e7908928::t_5329ebe6094e16 337
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
+  s_9a65b7e7908928::t_f565ad99bae680 7,80-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a17713c262b66ff9b25c7cc4b49feec8b532641",
+  "prompts": {},
+  "sessions": {
+    "s_9a65b7e7908928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "60976836-eea3-41a5-9ac8-f10bf4fbc0fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

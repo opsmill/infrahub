@@ -1,0 +1,23 @@
+pyproject.toml
+  s_1df8eb94da3d51::t_c5afe10ac7b345 51
+dev/specs/005-enterprise-licensing-infp-472/tasks.md
+  s_1df8eb94da3d51::t_3bd0aa1e26f797 31-32
+uv.lock
+  s_1df8eb94da3d51::t_c29a553eb18bc1 1522,1623,3451-3455
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b493fc8dcce6542f856dd81d8f8785b7cc5a5c50",
+  "prompts": {},
+  "sessions": {
+    "s_1df8eb94da3d51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6a82980-5a58-459a-a19c-297b9025dff8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

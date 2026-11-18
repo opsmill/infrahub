@@ -1,0 +1,22 @@
+.codex/hooks.json
+  s_fd720d10ce69fc::t_efbe9539d587ff 9
+.claude/settings.json
+  s_fd720d10ce69fc::t_8b1dae13a6d950 31
+  s_fd720d10ce69fc::t_78726f062687d4 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e6bbf3591e954052909d15e4539493fc91ead6db",
+  "prompts": {},
+  "sessions": {
+    "s_fd720d10ce69fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd1e6989-2412-46dc-874b-841d76996a2e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

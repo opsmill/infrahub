@@ -1,0 +1,19 @@
+backend/tests/component/core/migrations/schema/test_node_attribute_add.py
+  s_04e9c61d1d4032::t_4c3c35752d47ce 1100-1104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5122ef6a28d75f6a914b16d38a3e70e4e1c8d9c4",
+  "prompts": {},
+  "sessions": {
+    "s_04e9c61d1d4032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cd7a867-c728-45f2-af2b-cf1bc4f2f88a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

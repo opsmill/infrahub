@@ -1,0 +1,22 @@
+backend/infrahub/pools/schema_number_pool_upserter.py
+  s_f4cdafdd905485::t_71bcce0e851c3f 120-121
+  s_f4cdafdd905485::t_6898b08077109a 242-244
+backend/tests/component/pools/test_schema_number_pool_scope.py
+  s_f4cdafdd905485::t_c62c5d6da08221 184-242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1de0bbcbf41640f8546c8bcecf4b0c6fc143c112",
+  "prompts": {},
+  "sessions": {
+    "s_f4cdafdd905485": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d80b27f2-528a-4331-bd46-39778bf01130",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

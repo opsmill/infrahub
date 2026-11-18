@@ -1,0 +1,23 @@
+changelog/+profile-without-priority.fixed.md
+  s_2b1e801e7b575c::t_ecc6a30c598cf9 1
+backend/infrahub/profiles/queries/get_profile_data.py
+  s_2b1e801e7b575c::t_cc7399531b4e43 210-220,223-230
+backend/tests/component/core/profiles/test_node_applier.py
+  s_2b1e801e7b575c::t_69cd98eaa66bdf 93-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5e2bf62c38b035d6db4ff2cdb2c29b8f02eea2e4",
+  "prompts": {},
+  "sessions": {
+    "s_2b1e801e7b575c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "188d9ad4-2f02-4897-bb57-c4e26b308cb6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

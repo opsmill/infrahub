@@ -1,0 +1,20 @@
+docs/docs/artifact-file-storage/encryption.mdx
+  s_821332c5759ce5::t_2f8dcbce52ee09 13
+  s_821332c5759ce5::t_e01cb151350ddc 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4f6c8c4200c5fc3840b987e9d38870f2d0957cbe",
+  "prompts": {},
+  "sessions": {
+    "s_821332c5759ce5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "978508fd-8e9a-43e3-9b7b-f3ffdf9e8d47",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Simon AURA--SCUSSEL <simon@opsmill.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+changelog/+number-pool-id-in-schema-load.fixed.md
+  s_b70aaf1ad82ebf::t_80f1bf0163f515 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "021ba88ef86440861b088ada134197408120d0ee",
+  "prompts": {},
+  "sessions": {
+    "s_b70aaf1ad82ebf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d4c50c3-3133-4ad6-9b58-abb8cb8a1f07",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+frontend/app/src/shared/api/rest/error-message.test.ts
+  s_821332c5759ce5::t_5a88d03651bbb0 1-33
+frontend/app/src/entities/nodes/object-file/domain/use-cases/get-object-file.test.ts
+  s_821332c5759ce5::t_c5501fd8b7bf4f 1-41
+frontend/app/src/entities/artifacts/domain/use-cases/get-artifact-file.test.ts
+  s_821332c5759ce5::t_910aabea704432 1-39
+frontend/app/src/shared/api/rest/error-message.ts
+  s_821332c5759ce5::t_70ebff896f9e3e 1-10
+changelog/+artifact-file-error-message.fixed.md
+  s_821332c5759ce5::t_e9beb4c1a569e7 1
+frontend/app/src/entities/artifacts/domain/use-cases/get-artifact-file.ts
+  s_821332c5759ce5::t_fa4bb8fdc533af 1,12-13,25,32
+frontend/app/src/entities/nodes/object-file/domain/use-cases/get-object-file.ts
+  s_821332c5759ce5::t_bdb254adb383ad 1,13-14,29,36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8d66b834a4f08ee915434a8ca7bbb34ac8fed54e",
+  "prompts": {},
+  "sessions": {
+    "s_821332c5759ce5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "978508fd-8e9a-43e3-9b7b-f3ffdf9e8d47",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Simon AURA--SCUSSEL <simon@opsmill.com>"
+    }
+  }
+}

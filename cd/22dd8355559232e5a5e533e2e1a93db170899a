@@ -1,0 +1,23 @@
+development/docker-compose-deps-nats.yml
+  s_cfd0841cea4d76::t_110abae72ebfd3 34-36
+development/docker-compose-deps.yml
+  s_cfd0841cea4d76::t_110abae72ebfd3 32-34
+docker-compose.yml
+  s_cfd0841cea4d76::t_110abae72ebfd3 294-296
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cd22dd8355559232e5a5e533e2e1a93db170899a",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

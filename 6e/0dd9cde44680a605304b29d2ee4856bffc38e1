@@ -1,0 +1,19 @@
+backend/tests/unit/core/regeneration/helpers.py
+  s_fb819cbbe44071::t_b13b8b4bcd6233 12-19,30,39-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6e0dd9cde44680a605304b29d2ee4856bffc38e1",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

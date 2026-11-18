@@ -1,0 +1,23 @@
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_create.py
+  s_86fff168c93aab::t_d9957ded0543a3 195-321,323
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_immutable_fields.py
+  s_86fff168c93aab::t_f3f013ab95d6e6 347-441
+backend/tests/component/graphql/resource_manager/number_pools/test_schema_pools.py
+  s_86fff168c93aab::t_cf94b6b2e4f99d 29-153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b0574e527098cd536406ce06024cab116fca62b",
+  "prompts": {},
+  "sessions": {
+    "s_86fff168c93aab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cff568f-f1a2-413f-81d2-b41800811650",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

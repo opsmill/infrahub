@@ -1,0 +1,28 @@
+backend/infrahub/events/generator.py
+  s_760cbcf248de37::t_341a743835ffb1 33
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
+  s_760cbcf248de37::t_7eae77d9397651 237-238,247
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool_range.py
+  h_bd00275aefc321 132,177,180,184-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f8c5983fba2f087e2d0aa806890032a8e60d5377",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_760cbcf248de37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9796f03b-7c77-4706-bad0-f6d8a85686f0",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

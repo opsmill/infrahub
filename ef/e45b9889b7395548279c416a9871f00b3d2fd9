@@ -1,0 +1,26 @@
+backend/tests/component/core/constraint_validators/test_node_hierarchy_update.py
+  s_3f87105f1bb54d::t_b50c20847060b0 539,590,597
+backend/tests/component/conftest.py
+  s_3f87105f1bb54d::t_928227452da116 2123-2128,2208-2217,2232-2238,3080-3090,3147-3148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "efe45b9889b7395548279c416a9871f00b3d2fd9",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_3f87105f1bb54d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "630f8558-8e40-4fb7-9f40-2f7571d1fcc8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

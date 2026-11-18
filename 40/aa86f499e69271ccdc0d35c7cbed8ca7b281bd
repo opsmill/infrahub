@@ -1,0 +1,55 @@
+backend/tests/component/graphql/auth/query_permission_checker/test_default_branch_checker.py
+  s_6947b4d8b10fbd::t_249865e7669e1c 19,113,164,220,264,308
+backend/tests/unit/graphql/resolvers/test_read_requests.py
+  s_6947b4d8b10fbd::t_161f0fd54e49d1 4,110,112-113,119-120,123-124,129-130
+  s_6947b4d8b10fbd::t_88a6fa1490ce7a 1-3,5-109,111,114-118,121-122,125-128,131-295
+backend/infrahub/graphql/subscription/graphql_query.py
+  s_6947b4d8b10fbd::t_249865e7669e1c 13,56
+dev/specs/artifact-regeneration-poc/tasks.md
+  s_6947b4d8b10fbd::t_df4283aa2f9a29 78-86
+backend/infrahub/graphql/resolvers/read_requests.py
+  s_6947b4d8b10fbd::t_161f0fd54e49d1 167
+  s_6947b4d8b10fbd::t_1228d0b7d5319b 1-166,168-278
+backend/infrahub/graphql/resolvers/single_relationship.py
+  s_6947b4d8b10fbd::t_d8af41b92a056e 9-10,58-64,68-69,71-72,74,77-78,86,91,101,104,106
+  s_6947b4d8b10fbd::t_161f0fd54e49d1 13
+backend/tests/component/graphql/auth/query_permission_checker/test_super_admin_checker.py
+  s_6947b4d8b10fbd::t_249865e7669e1c 18,125
+backend/tests/component/graphql/test_graphql_read_rel_query.py
+  s_6947b4d8b10fbd::t_3ae9fbf86a1d90 1247
+backend/infrahub/core/query/read_plan/models.py
+  s_6947b4d8b10fbd::t_39d08250db500d 1-99
+backend/infrahub/graphql/resolvers/resolver.py
+  s_6947b4d8b10fbd::t_844b2af77d67c9 22,197-206,227-231,234,239,245
+backend/infrahub/graphql/resolvers/many_relationship.py
+  s_6947b4d8b10fbd::t_e2525595b1aa91 8-9,65-75,79-80,82-83,85,94
+backend/infrahub/graphql/resolvers/node_reader.py
+  s_6947b4d8b10fbd::t_9a21592af53ff4 352-353
+  s_6947b4d8b10fbd::t_bfdf2091a0851c 1-18,21-351,354-437
+  s_6947b4d8b10fbd::t_d08f101abbaf10 19-20
+backend/tests/component/graphql/auth/query_permission_checker/test_merge_operation_checker.py
+  s_6947b4d8b10fbd::t_249865e7669e1c 19,153
+backend/tests/component/graphql/metadata/test_midnight_special_case.py
+  s_6947b4d8b10fbd::t_f52038c72c5789 3
+dev/specs/artifact-regeneration-poc/data-model.md
+  s_6947b4d8b10fbd::t_aef9ad6ecadee3 14,16-17,22-25
+  s_6947b4d8b10fbd::t_5dcf4e01976838 26
+backend/infrahub/graphql/initialization.py
+  s_6947b4d8b10fbd::t_249865e7669e1c 16,28,46,144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "40aa86f499e69271ccdc0d35c7cbed8ca7b281bd",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

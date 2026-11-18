@@ -1,0 +1,93 @@
+.github/labels.yml
+  s_c19319699789b0::t_0ba5280e01a6c0 88-91
+.github/workflows/issue-triage-labeler.lock.yml
+  s_c19319699789b0::t_3cd66b0bb33300 1,287,289,294,296,298,300,342,344,348,563-565,571,1712
+.github/workflows/issue-triage-labeler.md
+  s_c19319699789b0::t_a7d8e0fc988a0d 42,66,99-101
+.github/workflows/issue-triage-sweep.lock.yml
+  s_c19319699789b0::t_86894ef3b77e37 1,273,275,280,282,284,286,328,330,334,549-551,557,1698
+.github/workflows/issue-triage-sweep.md
+  s_c19319699789b0::t_89e9c0ba732456 28,52
+.github/workflows/shared/issue-taxonomy.md
+  s_c19319699789b0::t_27847f63651f0b 6-7,58-62,79-80
+changelog/+search-surrounding-whitespace.fixed.md
+  s_c19319699789b0::t_d9b7ab6c8342d4 1
+docs/docs/branches/branch-agnostic-data.mdx
+  s_c19319699789b0::t_9cccffdaf51f33 24
+docs/docs/branches/create.mdx
+  s_c19319699789b0::t_2aebadd49e8020 5
+docs/docs/branches/delete.mdx
+  s_c19319699789b0::t_8fd97a73354e32 14-15
+docs/docs/branches/merge.mdx
+  s_c19319699789b0::t_f21312855d6307 5,13,15-17,19,29-44,46
+docs/docs/branches/overview.mdx
+  s_c19319699789b0::t_323525a1b97e8b 23,43,70,101,108-109,111,135-151,158,162-163,168-177
+docs/docs/branches/parallel-branches.mdx
+  s_c19319699789b0::t_b975c86e3709a3 1-111
+docs/docs/branches/rebase.mdx
+  s_c19319699789b0::t_40e42921181001 5-8,18-41,43,45-57,61-97,99-112,116-150,154-157
+docs/docs/branches/resolve-conflicts.mdx
+  s_c19319699789b0::t_ed38c904ccd29d 5,14,16-76,80,82,86-108,112-117,120-123
+docs/docs/deploy-manage/maintain-upgrade/upgrade/community.mdx
+  s_c19319699789b0::t_e9b724d1ac34ea 97
+docs/docs/deploy-manage/maintain-upgrade/upgrade/overview.mdx
+  s_c19319699789b0::t_a765fd7de9e579 28,122-127
+docs/docs/development-resources/graphql/queries-and-mutations.mdx
+  s_c19319699789b0::t_033d5e5bb7e832 250-254
+docs/docs/ipam/allocate-ips-and-prefixes.mdx
+  s_c19319699789b0::t_686ac1e422a8c6 30
+docs/docs/ipam/plan-changes-on-a-branch.mdx
+  s_c19319699789b0::t_291e7bea6cf421 15,19
+docs/docs/objects/convert-object-kind.mdx
+  s_c19319699789b0::t_66aa415c3e222f 7,60-62,64
+docs/docs/proposed-changes/overview.mdx
+  s_c19319699789b0::t_fb1bb78792e4a5 42,49-50,52,55-56,137-140,157
+docs/docs/proposed-changes/resolve-conflict.mdx
+  s_c19319699789b0::t_39372b711a18fc 13,20-24,28-31
+docs/docs/resource-manager/allocate-ip-address.mdx
+  s_c19319699789b0::t_4fe7a4cc0e9a36 149-151,175,195,215
+docs/docs/resource-manager/allocate-ip-prefix.mdx
+  s_c19319699789b0::t_d07c898bced673 148-150,191,221,228,246
+docs/docs/resource-manager/allocate-number.mdx
+  s_c19319699789b0::t_7259be2a2461d0 87
+docs/docs/resource-manager/overview.mdx
+  s_c19319699789b0::t_a46509117ef37f 81,88-90,106-112,118,131-163,167-168,175,180-182,184,244-262,269-272,275,281-288,292-313,393-394,412-415
+docs/docs/schema/branch-awareness.mdx
+  s_c19319699789b0::t_e4c1ff0cc138bd 11-12,22-39,57-76
+docs/docs/webhooks/overview.mdx
+  s_c19319699789b0::t_c52b2e5976035a 54-55,79-86
+docs/sidebars.ts
+  s_c19319699789b0::t_f20aa545943fca 259
+frontend/app/src/entities/nodes/object/ui/filters/filter-search-input.test.tsx
+  s_c19319699789b0::t_38d1105500c062 1-141
+frontend/app/src/entities/nodes/object/ui/filters/filter-search-input.tsx
+  s_c19319699789b0::t_4221e5a91832e2 28-29,31-35,44-45
+frontend/app/src/entities/nodes/relationships/ui/queries/get-relationships.query.test.tsx
+  s_c19319699789b0::t_8fa7db3a002c96 1-51
+frontend/app/src/entities/nodes/relationships/ui/queries/get-relationships.query.ts
+  s_c19319699789b0::t_c9c72ef059c5f0 52,61,70
+frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts
+  s_c19319699789b0::t_25fdcfbe6f4d64 19-20
+pyproject.toml
+  s_c19319699789b0::t_0c684713b15745 66
+python_testcontainers/uv.lock
+  s_c19319699789b0::t_1835ed00e9c737 389,391,393
+uv.lock
+  s_c19319699789b0::t_9415b08c5c7384 925,930-960,1102,1104,1106,1596
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7be45b88eec686c948b28a41a460a1c9533f2fc3",
+  "prompts": {},
+  "sessions": {
+    "s_c19319699789b0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3219b0cc-06d1-44a5-8f80-a2393e157ca2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

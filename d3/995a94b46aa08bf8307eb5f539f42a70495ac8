@@ -1,0 +1,23 @@
+backend/infrahub/graphql/queries/resource_manager.py
+  s_760cbcf248de37::t_54446d61dbf5c3 46-47
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_760cbcf248de37::t_561f75c59fa8a7 26227
+schema/schema.graphql
+  s_760cbcf248de37::t_7d8c1898462751 26616
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d3995a94b46aa08bf8307eb5f539f42a70495ac8",
+  "prompts": {},
+  "sessions": {
+    "s_760cbcf248de37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9796f03b-7c77-4706-bad0-f6d8a85686f0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

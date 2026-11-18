@@ -1,0 +1,30 @@
+backend/tests/component/core/query/read_plan/test_execution.py
+  s_6947b4d8b10fbd::t_7c3283e0c63177 3,8,10-12,15-16,18-23,25-26,29-30,35-40,43-44,50,56,61,65-72
+  s_6947b4d8b10fbd::t_b0fda812f20c11 622-923
+  s_6947b4d8b10fbd::t_37db9447363c7e 935
+  s_6947b4d8b10fbd::t_19a52eb270948c 57
+  s_6947b4d8b10fbd::t_c2e181c5cb2280 58-59,62
+  s_6947b4d8b10fbd::t_3309bfb575120f 324-326,617-619,952-972
+  s_6947b4d8b10fbd::t_82a04c608ffe20 90-93,108,110-113,115-117
+  s_6947b4d8b10fbd::t_3842611d4072c4 45-48,261-323,327-616,620-621,924-934,936-951,973-1069
+  s_6947b4d8b10fbd::t_280d4bb26318f7 17,52
+  s_6947b4d8b10fbd::t_f1e87823f41434 73
+dev/specs/artifact-regeneration-poc/tasks.md
+  s_6947b4d8b10fbd::t_c19577ba14e216 138-142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9b5a2e47bbc1ba0260f9d518e25be5ba02c67789",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

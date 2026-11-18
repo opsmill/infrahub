@@ -1,0 +1,33 @@
+.agents/skills/refactoring-incrementally/SKILL.md
+  s_11ab43874ad039::t_9bd90a3bb38dac 1-307
+.agents/skills/refactoring-incrementally/evals/evals.json
+  s_11ab43874ad039::t_91f4f9406ec3ec 1-63
+.agents/skills/refactoring-incrementally/references/forward-merge.md
+  s_11ab43874ad039::t_7ffca2335a7966 1-58
+.agents/skills/refactoring-incrementally/references/jira-tracking.md
+  s_11ab43874ad039::t_79bfad572845f3 1-41
+.agents/skills/refactoring-incrementally/references/plan-file.md
+  s_11ab43874ad039::t_74edeeada814d4 1-86
+.agents/skills/refactoring-incrementally/references/safe-step-patterns.md
+  s_11ab43874ad039::t_7987a49ec48da2 1-63
+.agents/skills/refactoring-incrementally/scripts/forward_conflicts.sh
+  s_11ab43874ad039::t_8ee7607dd03b10 1-51
+.agents/skills/refactoring-incrementally/scripts/touched_line_coverage.py
+  s_11ab43874ad039::t_f08fe1d4d011f8 1-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1b7f650f77d9464f9f54f3a3c0f046d1179e71c6",
+  "prompts": {},
+  "sessions": {
+    "s_11ab43874ad039": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14f295ea-eaaa-486b-aa0f-c1ed07b64b7a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

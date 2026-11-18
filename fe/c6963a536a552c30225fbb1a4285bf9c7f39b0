@@ -1,0 +1,24 @@
+docs/docs/development/git-best-practices.mdx
+  s_fd720d10ce69fc::t_e00854e740486d 224,241,255,259
+.claude/settings.json
+  s_fd720d10ce69fc::t_6496b0045b84dd 3-5
+dev/README.md
+  s_fd720d10ce69fc::t_ac0fd54ac72e10 143-145
+  s_fd720d10ce69fc::t_cecfb209861eb0 129-142,146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fec6963a536a552c30225fbb1a4285bf9c7f39b0",
+  "prompts": {},
+  "sessions": {
+    "s_fd720d10ce69fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd1e6989-2412-46dc-874b-841d76996a2e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

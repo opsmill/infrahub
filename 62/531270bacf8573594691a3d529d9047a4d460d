@@ -1,0 +1,40 @@
+backend/infrahub/proposed_change/tasks.py
+  s_04e9c61d1d4032::t_fe9d434ca590bb 72
+  s_04e9c61d1d4032::t_a542ad8d20f1f4 530-532
+backend/infrahub/dependencies/builder/constraint/schema/number_pool_scope.py
+  s_04e9c61d1d4032::t_0421ba389be1fd 16
+backend/tests/unit/core/schema/test_schema_branch_number_pool_scope.py
+  s_04e9c61d1d4032::t_a542ad8d20f1f4 14,205,211,218,221,235,240-242
+backend/infrahub/core/schema/schema_branch.py
+  s_04e9c61d1d4032::t_fe9d434ca590bb 98,741,794,1398,1427,1434-1435
+backend/infrahub/graphql/mutations/schema.py
+  s_04e9c61d1d4032::t_a542ad8d20f1f4 325-327
+  s_04e9c61d1d4032::t_fe9d434ca590bb 12
+backend/infrahub/api/schema.py
+  s_04e9c61d1d4032::t_fe9d434ca590bb 61
+  s_04e9c61d1d4032::t_a542ad8d20f1f4 227-229
+backend/infrahub/core/validators/pool/scope.py
+  s_04e9c61d1d4032::t_0421ba389be1fd 14,69,73,349
+backend/infrahub/core/validators/schema_branch/number_pool_scope_validator.py
+  s_04e9c61d1d4032::t_0feb2f2aaa3995 3,58-60,62-63,65-79
+backend/infrahub/core/schema/manager.py
+  s_04e9c61d1d4032::t_fe9d434ca590bb 35,188,232
+backend/tests/unit/core/validators/number_pool_scope/helpers.py
+  s_04e9c61d1d4032::t_0421ba389be1fd 240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62531270bacf8573594691a3d529d9047a4d460d",
+  "prompts": {},
+  "sessions": {
+    "s_04e9c61d1d4032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cd7a867-c728-45f2-af2b-cf1bc4f2f88a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

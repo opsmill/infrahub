@@ -1,0 +1,48 @@
+utilities/sync_pr/config.py
+  s_f9f34a44a3a084::t_3adf12ab0034ad 7,10,22,48-51
+utilities/sync_pr/tests/test_gate.py
+  s_f9f34a44a3a084::t_3adf12ab0034ad 1-434
+.github/sync-pr/config.yml
+  s_f9f34a44a3a084::t_3adf12ab0034ad 11-25,27
+utilities/sync_pr/models.py
+  s_f9f34a44a3a084::t_005c0f06c1210e 6,119-139
+  s_f9f34a44a3a084::t_dd6eb1f75e1ae0 140-141
+dev/knowledge/sync-pr-automation.md
+  s_f9f34a44a3a084::t_246b45d3df8b01 5,11,15,32-34,48-60,63,80,89,94
+utilities/sync_pr/tests/test_config.py
+  s_f9f34a44a3a084::t_3adf12ab0034ad 10,24-26,44-48
+  s_f9f34a44a3a084::t_f95f273c870ee7 49-50
+utilities/sync_pr/tests/builders.py
+  s_f9f34a44a3a084::t_3adf12ab0034ad 47-49
+utilities/sync_pr/summary.py
+  s_f9f34a44a3a084::t_a8caaa7b8a7478 7,13-14,143-173,185-187
+utilities/sync_pr/tests/test_manage.py
+  s_f9f34a44a3a084::t_086cbed84b9049 3,9-19,24,27,35-47,54,236-445
+utilities/sync_pr/tests/test_models.py
+  s_f9f34a44a3a084::t_3adf12ab0034ad 1-42
+utilities/sync_pr/gate.py
+  s_f9f34a44a3a084::t_3adf12ab0034ad 1-159
+utilities/sync_pr/manage.py
+  s_f9f34a44a3a084::t_8d0bdf23c1072c 10-11,23,26,45-56,81-84,211-217,229-230,241-254,268-271
+utilities/sync_pr/tests/test_summary.py
+  s_f9f34a44a3a084::t_120b8c9652228d 9,56-57,69-71,75-86,89-109
+.github/workflows/sync-pr-manage.yml
+  s_f9f34a44a3a084::t_d6b6a8022adc51 77,79
+  s_f9f34a44a3a084::t_ac756e6515ab25 80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fc0aadd5cd55f1590067124699dc825c70edac76",
+  "prompts": {},
+  "sessions": {
+    "s_f9f34a44a3a084": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50b9befc-1389-4d4c-99f9-321b275b2173",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

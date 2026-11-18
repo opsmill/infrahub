@@ -1,0 +1,19 @@
+backend/tests/unit/graphql/test_graphql_argument.py
+  s_fb819cbbe44071::t_686c86d0d7afd6 68-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "83b77cd8fec635153b8b1deb583239ddffb36824",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

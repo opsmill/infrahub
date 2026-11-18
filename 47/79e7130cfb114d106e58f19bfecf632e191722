@@ -1,0 +1,19 @@
+backend/tests/integration_docker/test_task_history_cleanup.py
+  s_cfd0841cea4d76::t_cc5faa77423b9f 7,27-34,97-150,203-204,208-220,309-359
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4779e7130cfb114d106e58f19bfecf632e191722",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

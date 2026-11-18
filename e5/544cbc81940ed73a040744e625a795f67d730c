@@ -1,0 +1,29 @@
+backend/tests/unit/pools/test_intent.py
+  s_2499241a5a10fa::t_8fa6779e8abdaf 176-195,197-202,205
+  s_2499241a5a10fa::t_5d2abf3e827bb9 1-75,77-80,82-95,97-100,102-105,107-130,132-175,196,203,206-271
+  s_2499241a5a10fa::t_19df30a0fffe6e 76,81,96,101,106,131,204
+backend/infrahub/pools/intent.py
+  s_2499241a5a10fa::t_19df30a0fffe6e 48-49,51,55,58
+  s_2499241a5a10fa::t_5d2abf3e827bb9 1-47,50,52-54,56-57,59-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e5544cbc81940ed73a040744e625a795f67d730c",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_2499241a5a10fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92729d40-159c-4d72-beb5-e9ff006e755a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

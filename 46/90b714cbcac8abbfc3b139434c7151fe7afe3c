@@ -1,0 +1,19 @@
+changelog/+ifc-3408-relationship-remove-mandatory-peer.fixed.md
+  s_f4cdafdd905485::t_12a8045add858c 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4690b714cbcac8abbfc3b139434c7151fe7afe3c",
+  "prompts": {},
+  "sessions": {
+    "s_f4cdafdd905485": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d80b27f2-528a-4331-bd46-39778bf01130",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+dev/specs/dependabot-autopilot/alignment-check.md
+  s_43d8e382eba497::t_e017ab60951d57 1-25
+dev/specs/dependabot-autopilot/tasks.md
+  s_43d8e382eba497::t_289d264115d160 1-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d513038c696710ab5dcacd724c63c021f315c74c",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

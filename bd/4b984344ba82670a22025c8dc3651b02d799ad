@@ -1,0 +1,23 @@
+backend/infrahub/telemetry/tasks.py
+  s_2dcffc265e72b7::t_a37528bdff097d 11,19-20,35,39,44-46,135-182,206-220,232-240
+backend/tests/component/telemetry/test_resources.py
+  s_2dcffc265e72b7::t_565277d1948b10 1-549
+backend/tests/unit/telemetry/test_tasks.py
+  s_2dcffc265e72b7::t_356c6877389e28 1-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bd4b984344ba82670a22025c8dc3651b02d799ad",
+  "prompts": {},
+  "sessions": {
+    "s_2dcffc265e72b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78aac985-d023-4ff2-aa1b-866be0dd0cde",
+        "model": "unknown"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

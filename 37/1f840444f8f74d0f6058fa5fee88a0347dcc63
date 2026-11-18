@@ -1,0 +1,25 @@
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_source.py
+  s_2fdf558427eaa2::t_45a6605d831339 102-107,383,409,435,465
+  h_7ec9b28dd2a5ab 108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "371f840444f8f74d0f6058fa5fee88a0347dcc63",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_2fdf558427eaa2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "abafed1e-c4e8-407e-9a07-14cf48e361b4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

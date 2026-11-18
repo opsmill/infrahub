@@ -1,0 +1,244 @@
+dev/specs/ifc-3185-number-pool-scopes/tasks.md
+  h_7ec9b28dd2a5ab 62,114-115,119-121
+backend/infrahub/api/schema.py
+  s_2fdf558427eaa2::t_55c8d341a6e24f 226
+backend/infrahub/core/migrations/schema/node_attribute_add.py
+  s_2fdf558427eaa2::t_ba071e6e87d7c3 91-92
+backend/infrahub/core/schema/attribute_parameters.py
+  s_2fdf558427eaa2::t_0aed3f40bbe0fb 247,249-251,253
+backend/infrahub/core/schema/definitions/internal.py
+  s_2fdf558427eaa2::t_169cb5108537a4 878
+backend/infrahub/core/schema/generated/relationship_schema.py
+  s_2fdf558427eaa2::t_411aa2876aeb5e 30
+backend/infrahub/core/schema/manager.py
+  s_2fdf558427eaa2::t_2c975a63e8709d 187,231
+backend/infrahub/core/schema/schema_branch.py
+  s_2fdf558427eaa2::t_2267ecd3280d10 61,72-75,740-745,748,792,801,1396-1406,1412-1450
+backend/infrahub/core/validators/__init__.py
+  s_2fdf558427eaa2::t_19d54f6c5a047b 57-59
+backend/infrahub/core/validators/enum.py
+  s_2fdf558427eaa2::t_cb3a33066365cb 14
+backend/infrahub/core/validators/pool/scope.py
+  s_2fdf558427eaa2::t_654c82432be2e8 3-4,9,11-15,17,23,34-37,41-85,100-102,105-106,108,122-125,143-156,158-160,162-164,180,182-184,253,256-280,282-299,301-302,305-312,314-405,407,409-434,436-448,450-457
+backend/infrahub/core/validators/pool/scope_dependency.py
+  s_2fdf558427eaa2::t_f6f3bcf516b0d2 73-81,83,88,90-91
+backend/infrahub/core/validators/schema_branch/number_pool_scope_validator.py
+  s_2fdf558427eaa2::t_ba34678f5a9b64 1-180
+backend/infrahub/dependencies/builder/constraint/schema/number_pool_scope.py
+  s_2fdf558427eaa2::t_c16e06d3ba3028 4-7,20-22
+backend/infrahub/graphql/mutations/schema.py
+  s_2fdf558427eaa2::t_c63fe103d8edc0 324
+backend/infrahub/pools/schema_number_pool_synchronizer.py
+  s_2fdf558427eaa2::t_7073bf4136c724 3,15,38-53,87,91,184,188,192,201,207-209,215,221-223,233,241,244-246,253-254,258,279-289,299
+backend/infrahub/pools/schema_number_pool_upserter.py
+  s_2fdf558427eaa2::t_7e648b41a1d69a 15,17,20,118-120,135-136,173-178,181-187,191-194,206,233-254
+backend/infrahub/pools/scoped_number_pool_reader.py
+  s_2fdf558427eaa2::t_b84f60dd68b74e 6,19,29,55-82,84-88,91,100
+backend/infrahub/pools/tasks.py
+  s_2fdf558427eaa2::t_10c664d82071ec 9,40-41,53-56
+backend/infrahub/proposed_change/tasks.py
+  s_2fdf558427eaa2::t_5daeedcbb826ee 529-531
+backend/tests/component/core/constraint_validators/test_number_pool_scope.py
+  s_2fdf558427eaa2::t_7965fd3cc81949 273-288
+backend/tests/component/core/migrations/schema/test_node_attribute_add.py
+  s_2fdf558427eaa2::t_2c999d3769d69c 58,1101-1225
+backend/tests/component/pools/schema_number_pool_synchronizer/helpers.py
+  s_2fdf558427eaa2::t_71acadd218ae90 1-70
+backend/tests/component/pools/schema_number_pool_synchronizer/test_declared_scope_provisioning.py
+  s_2fdf558427eaa2::t_2fc3f327a7f56a 1-118
+backend/tests/component/pools/schema_number_pool_synchronizer/test_range_reconciliation.py
+  s_2fdf558427eaa2::t_374d06d4c0e6b6 1-2,20
+backend/tests/component/pools/schema_number_pool_synchronizer/test_scope_name_refresh.py
+  s_2fdf558427eaa2::t_b09616ed494abd 1-179
+backend/tests/component/pools/test_schema_number_pool_scope.py
+  s_2fdf558427eaa2::t_ce883bdf97f0d2 1-183
+backend/tests/integration/schema_lifecycle/test_number_pool_scope_schema.py
+  s_2fdf558427eaa2::t_dee97b350fd1c2 10-21,167-356
+backend/tests/unit/core/schema/test_schema_branch_number_pool_scope.py
+  s_2fdf558427eaa2::t_1903e35c7ae32b 1-292
+backend/tests/unit/core/schema/test_schema_update_validation.py
+  s_2fdf558427eaa2::t_84fe0f02398d5c 1,4-5,129-187
+backend/tests/unit/core/validators/number_pool_scope/declared_scope/helpers.py
+  s_2fdf558427eaa2::t_42e0961d1b598c 1-207
+backend/tests/unit/core/validators/number_pool_scope/declared_scope/test_accepted_declarations.py
+  s_2fdf558427eaa2::t_5af499f44cd0f8 1-245
+backend/tests/unit/core/validators/number_pool_scope/declared_scope/test_refused_declarations.py
+  s_2fdf558427eaa2::t_3f17ca50606e6d 1-282
+backend/tests/unit/core/validators/number_pool_scope/declared_scope/test_reported_once.py
+  s_2fdf558427eaa2::t_3d73960326a5be 1-132
+backend/tests/unit/core/validators/number_pool_scope/helpers.py
+  s_2fdf558427eaa2::t_b37becc37f0cd3 16-19,178-179,184-195,241-243
+changelog/+ifc-3365-number-pool-form.changed.md
+  s_2fdf558427eaa2::t_5e6750873ea0aa 1
+dev/specs/ifc-3185-number-pool-scopes/contracts/number-pool-parameters.md
+  s_2fdf558427eaa2::t_19a9d37a06047a 30-34,38,46-47,50-51
+dev/specs/ifc-3185-number-pool-scopes/data-model.md
+  s_2fdf558427eaa2::t_9a394749346376 69
+dev/specs/ifc-3185-number-pool-scopes/plan.md
+  s_2fdf558427eaa2::t_6ad56bf797d0fb 9,78,165
+dev/specs/ifc-3185-number-pool-scopes/quickstart.md
+  s_2fdf558427eaa2::t_2795192ddbb464 55
+dev/specs/ifc-3185-number-pool-scopes/research.md
+  s_2fdf558427eaa2::t_38534c06a85af0 101
+dev/specs/ifc-3185-number-pool-scopes/spec.md
+  s_2fdf558427eaa2::t_e200bb01c56ff7 101,186,206
+dev/specs/ifc-3365-number-pool-form/checklists/requirements.md
+  s_2fdf558427eaa2::t_4bbb0ae416452d 1-36
+dev/specs/ifc-3365-number-pool-form/contracts/number-pool-form.md
+  s_2fdf558427eaa2::t_da760dc70a25d1 1-94
+dev/specs/ifc-3365-number-pool-form/data-model.md
+  s_2fdf558427eaa2::t_3b1734b854b875 1-61
+dev/specs/ifc-3365-number-pool-form/plan.md
+  s_2fdf558427eaa2::t_a3ba390783e37f 1-166
+dev/specs/ifc-3365-number-pool-form/quickstart.md
+  s_2fdf558427eaa2::t_3d5e9641482a4c 1-64
+dev/specs/ifc-3365-number-pool-form/research.md
+  s_2fdf558427eaa2::t_d01bfe263d8a87 1-150
+dev/specs/ifc-3365-number-pool-form/spec.md
+  s_2fdf558427eaa2::t_a6c7689156f2de 1-146
+dev/specs/ifc-3365-number-pool-form/tasks.md
+  s_2fdf558427eaa2::t_55387a2e8b6b81 1-323
+docs/docs/reference/schema/validator-migration.mdx
+  s_2fdf558427eaa2::t_8ada34c7e143ee 83
+docs/docs/resource-manager/allocate-number.mdx
+  s_2fdf558427eaa2::t_3479b4e33fa3db 43-49,63
+frontend/app/graphql.config.ts
+  s_2fdf558427eaa2::t_89fb7bbd43d3eb 23
+frontend/app/src/entities/nodes/object/api/create-object-from-api.ts
+  s_2fdf558427eaa2::t_75f9ad82b22283 4,12,21,49
+frontend/app/src/entities/nodes/object/api/update-object-from-api.ts
+  s_2fdf558427eaa2::t_8e3bb733e2d730 4,18,27,132
+frontend/app/src/entities/resource-manager/api/get-number-pool-from-api.ts
+  s_2fdf558427eaa2::t_9f1df6cf474fa1 31-45
+frontend/app/src/entities/resource-manager/api/number-pool-allocation.mappers.test.ts
+  s_2fdf558427eaa2::t_274bf351b379c0 8
+frontend/app/src/entities/resource-manager/api/number-pool-allocation.mappers.ts
+  s_2fdf558427eaa2::t_8276af13a5267c 17
+frontend/app/src/entities/resource-manager/api/number-pool-utilization.mappers.test.ts
+  s_2fdf558427eaa2::t_5ce06d1a867bc4 4,6,19
+frontend/app/src/entities/resource-manager/api/number-pool-utilization.mappers.ts
+  s_2fdf558427eaa2::t_e9a99470179cdb 12-15,26-28
+frontend/app/src/entities/resource-manager/api/number-pool.mappers.test.ts
+  s_2fdf558427eaa2::t_448c254ed96e8c 18,39,61,63-71,75,87-121
+frontend/app/src/entities/resource-manager/api/number-pool.mappers.ts
+  s_2fdf558427eaa2::t_09be287646c94b 25-44
+frontend/app/src/entities/resource-manager/domain/model/number-pool.ts
+  s_2fdf558427eaa2::t_a08d0052348425 21
+frontend/app/src/entities/resource-manager/domain/rules/can-number-pool-allocate-to.test.ts
+  s_2fdf558427eaa2::t_2148f7cb4b74a4 1-39
+frontend/app/src/entities/resource-manager/domain/rules/can-number-pool-allocate-to.ts
+  s_2fdf558427eaa2::t_9b9150543baae1 1-6
+frontend/app/src/entities/resource-manager/domain/rules/can-number-pool-be-scoped-by.test.ts
+  s_2fdf558427eaa2::t_b2bf60da2a6c63 1-90
+frontend/app/src/entities/resource-manager/domain/rules/can-number-pool-be-scoped-by.ts
+  s_2fdf558427eaa2::t_dabfa01896d93b 1-17
+frontend/app/src/entities/resource-manager/domain/rules/can-number-pool-have-allocation-scope.test.ts
+  s_2fdf558427eaa2::t_158a564edd31ee 1-28
+frontend/app/src/entities/resource-manager/domain/rules/can-number-pool-have-allocation-scope.ts
+  s_2fdf558427eaa2::t_fa2d6000413063 1-6
+frontend/app/src/entities/resource-manager/domain/rules/find-overlapping-ranges.test.ts
+  s_2fdf558427eaa2::t_62ef168623a9a5 1-69
+frontend/app/src/entities/resource-manager/domain/rules/find-overlapping-ranges.ts
+  s_2fdf558427eaa2::t_a9b92142b382fd 1-20
+frontend/app/src/entities/resource-manager/domain/use-cases/get-number-pool-allocation-count.test.ts
+  s_2fdf558427eaa2::t_d69bc53786294e 23
+frontend/app/src/entities/resource-manager/domain/use-cases/get-number-pool-allocation-count.ts
+  s_2fdf558427eaa2::t_6a0239853d6bff 17
+frontend/app/src/entities/resource-manager/domain/use-cases/get-number-pool.test.ts
+  s_2fdf558427eaa2::t_929a9d3bf9b8de 56
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-actions-menu.test.tsx
+  s_2fdf558427eaa2::t_c5b4f859c5cfad 8-12
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-allocations-card.test.tsx
+  s_2fdf558427eaa2::t_b3b688246fc629 6,9-11,17
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-allocations-card.tsx
+  s_2fdf558427eaa2::t_824b1046f2d411 7
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-allocations-table.test.tsx
+  s_2fdf558427eaa2::t_f602ba20f7aec7 12,16-17
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-allocations-table.tsx
+  s_2fdf558427eaa2::t_2a9e5d517b4f80 33-34
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-header.test.tsx
+  s_2fdf558427eaa2::t_c68b3584ed51a7 9-11,16,19
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-header.tsx
+  s_2fdf558427eaa2::t_17b3a8d914336a 19
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-ranges-card.test.tsx
+  s_2fdf558427eaa2::t_d7f2dbbe6a7a25 11-13
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-ranges-card.tsx
+  s_2fdf558427eaa2::t_7aef6d7f67f842 17
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-usage-bar.test.tsx
+  s_2fdf558427eaa2::t_a63549959ea790 4-6
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-allocates-input.test.tsx
+  s_2fdf558427eaa2::t_90233c0d4438ca 1-315
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-allocates-input.tsx
+  s_2fdf558427eaa2::t_b963ba90a0028e 1-159
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-allocation-scope-select.test.tsx
+  s_2fdf558427eaa2::t_1df70ca43a023d 1-193
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-allocation-scope-select.tsx
+  s_2fdf558427eaa2::t_65da668b0113f9 1-211
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-create-form.test.tsx
+  s_2fdf558427eaa2::t_7ea8eeba6bdd69 1-149
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-create-form.tsx
+  s_2fdf558427eaa2::t_c77b3506ebf931 1-48
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-edit-form.test.tsx
+  s_2fdf558427eaa2::t_5b710f312f30db 1-126
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-edit-form.tsx
+  s_2fdf558427eaa2::t_46d3323dfc5568 1-56
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-form.tsx
+  s_2fdf558427eaa2::t_40a8d6257ca767 2-3,5,8-23,26-28,31,33-43,46-54,56-77,79
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-node-attribute-select.test.tsx
+  s_2fdf558427eaa2::t_0b90a4c7d7f6da 1-32
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-node-attribute-select.tsx
+  s_2fdf558427eaa2::t_9f2a6a20b849ba 1-72
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-node-select.tsx
+  s_2fdf558427eaa2::t_c902cb807d7170 1-58
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-ranges-input.test.tsx
+  s_2fdf558427eaa2::t_2c26c160d34033 1-240
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-ranges-input.tsx
+  s_2fdf558427eaa2::t_3d905aa38a7008 1-237
+frontend/app/src/pages/resource-manager/number-pool-details.test.tsx
+  s_2fdf558427eaa2::t_3ff8552f8c1280 8,30
+frontend/app/src/pages/resource-manager/number-pool-details.tsx
+  s_2fdf558427eaa2::t_71d3042c14521f 10,14-15
+frontend/app/src/shared/api/graphql/client.ts
+  s_2fdf558427eaa2::t_6333a8b2e7bcc5 12,16,28-32
+frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts
+  s_2fdf558427eaa2::t_183b6e793f5b8b 112,133,140-142,148,151,154,163,169,199
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_2fdf558427eaa2::t_a9cc1d4863c8f2 15
+frontend/app/src/shared/components/container.tsx
+  s_2fdf558427eaa2::t_41a671ffd74e38 5,11
+frontend/app/src/shared/components/form/core-file-form.tsx
+  s_2fdf558427eaa2::t_b62d265135416e 103
+frontend/app/src/shared/components/form/object-form.tsx
+  s_2fdf558427eaa2::t_c8ad682810873b 30-31,105-111
+frontend/app/src/shared/components/ui/form.tsx
+  s_2fdf558427eaa2::t_66574fa4b4755b 7-8,21,23-25,27-29,32,41-42,69-70
+frontend/app/tests/fake/number-pool.ts
+  s_2fdf558427eaa2::t_8ca0f492039bda 20
+tests/e2e/object-template/test_template_with_number_pool.py
+  s_2fdf558427eaa2::t_9e7dedeb687eba 12,48-53
+tests/e2e/resource-manager/test_number_pool.py
+  s_2fdf558427eaa2::t_09cd35d5809c06 3-7,37-69,88-94,96-97,107-123,125-133,137-171,189-213
+tests/e2e/tutorial/guides/test_resource_manager_guide.py
+  s_2fdf558427eaa2::t_fda949b55df2f3 99-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bfbefe1fbb3c7433676cbbcf95f9cd5dea13819f",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_2fdf558427eaa2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "abafed1e-c4e8-407e-9a07-14cf48e361b4",
+        "model": "unknown"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

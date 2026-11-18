@@ -1,0 +1,35 @@
+backend/infrahub/pools/number_ranges.py
+  s_c47d1ff1b9fc75::t_a5a0502d15e3ad 1-129
+backend/tests/unit/pools/test_number_ranges.py
+  s_c47d1ff1b9fc75::t_479307166deea3 1-195
+dev/specs/ifc-3065-number-pool-ranges/data-model.md
+  s_c47d1ff1b9fc75::t_f08878cff80598 110-114,116,118-119
+dev/specs/ifc-3065-number-pool-ranges/research.md
+  s_c29bc2a8dbf032::t_951100de006cce 61
+dev/specs/ifc-3065-number-pool-ranges/tasks.md
+  s_c47d1ff1b9fc75::t_c4b1ac58d32835 150,161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7223be599c6a28311b1904ab31211b3bccc55cef",
+  "prompts": {},
+  "sessions": {
+    "s_c29bc2a8dbf032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79ee2d68-517a-4978-9862-3a65b01b3f78",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_c47d1ff1b9fc75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f01d1d66-69c7-480a-ae64-d43d74f85faf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+docs/docs/resource-manager/allocate-numbers-per-scope.mdx
+  s_b9c080bded1225::t_0480b881f556b0 10,136,148,162
+docs/docs/schema/number-pool.mdx
+  s_b9c080bded1225::t_0480b881f556b0 147
+docs/docs/resource-manager/allocate-number.mdx
+  s_b9c080bded1225::t_0480b881f556b0 42,192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "163b601ff9183a7428304d11ed7c975198354006",
+  "prompts": {},
+  "sessions": {
+    "s_b9c080bded1225": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "88f4486f-016d-4783-a6c1-a45974c006dc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

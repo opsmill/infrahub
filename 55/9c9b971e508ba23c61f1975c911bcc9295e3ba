@@ -1,0 +1,57 @@
+backend/infrahub/core/changelog/builder.py
+  s_bc9261dc1ecdb3::t_256bdf7f4c38cc 8,23-33,38,50
+backend/infrahub/core/manager.py
+  s_bc9261dc1ecdb3::t_ea49b97aaa43e2 47
+  s_bc9261dc1ecdb3::t_f2431313a0f8d4 1209-1226
+  s_bc9261dc1ecdb3::t_8521169a3c3e89 8,29-30
+  s_bc9261dc1ecdb3::t_01942707048217 1208
+dev/knowledge/backend/display-labels-and-hfid.md
+  s_bc9261dc1ecdb3::t_a289c95309470a 132
+  s_bc9261dc1ecdb3::t_00d45eb163bf82 125-131,202-203
+backend/infrahub/core/diff/payload_builder.py
+  s_bc9261dc1ecdb3::t_1c2b6ad947f43c 6,24-26,28-33
+backend/tests/unit/core/changelog/test_enrichment.py
+  s_bc9261dc1ecdb3::t_0c2a64fd250b9f 16-18,152-188,190-214,216-257
+  s_bc9261dc1ecdb3::t_ea49b97aaa43e2 15
+  s_bc9261dc1ecdb3::t_8dfb4dc1c18c9c 215
+  s_bc9261dc1ecdb3::t_20cd91cef712ca 189
+backend/tests/component/core/changelog/test_diff.py
+  s_bc9261dc1ecdb3::t_bdf0bcf03634ce 7
+  s_bc9261dc1ecdb3::t_20cd91cef712ca 42,112,246,309
+backend/infrahub/core/changelog/enrichment.py
+  s_bc9261dc1ecdb3::t_875bb8f068c925 10,19-21,87-98,108,114-121,124-125,132,134-139,141-149,153-157,159-163,183-185,188-195,197,200-202,205-212,250-266
+  s_bc9261dc1ecdb3::t_145b42cbc46322 128-130,140,151-152,158,186-187,203-204
+  s_bc9261dc1ecdb3::t_b245dfe40da9fe 131,133
+  s_bc9261dc1ecdb3::t_eaa1380f3b269f 150
+backend/infrahub/graphql/mutations/relationship.py
+  s_bc9261dc1ecdb3::t_256bdf7f4c38cc 10,181
+backend/tests/component/core/changelog/test_enrichment.py
+  s_bc9261dc1ecdb3::t_20cd91cef712ca 338,413,448,490,517,559
+  s_bc9261dc1ecdb3::t_8695eb2032ecfd 227
+  s_bc9261dc1ecdb3::t_b7b6b22db73ebe 15,37-42,48,50,185,190,194,200-202,206,211,215,218-226,228-246
+  s_bc9261dc1ecdb3::t_bdf0bcf03634ce 17
+backend/tests/component/core/test_node_stored_labels_query.py
+  s_bc9261dc1ecdb3::t_ea49b97aaa43e2 3
+  s_bc9261dc1ecdb3::t_e6dcee875dfe17 1-2,4-181
+backend/infrahub/core/query/node.py
+  s_bc9261dc1ecdb3::t_c8c193e3c28c78 1476-1478
+  s_bc9261dc1ecdb3::t_486b8f844b0ff1 1475
+  s_bc9261dc1ecdb3::t_6f69573c66ace6 1378-1380,1382-1398,1401,1404,1406,1415,1434,1436-1459,1464,1466-1467,1469-1471,1473,1479-1500
+  s_bc9261dc1ecdb3::t_1202e01db06e9d 17,19,1501
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "559c9b971e508ba23c61f1975c911bcc9295e3ba",
+  "prompts": {},
+  "sessions": {
+    "s_bc9261dc1ecdb3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0818cbd0-fdd5-4fe1-a906-3a515e96a4cf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

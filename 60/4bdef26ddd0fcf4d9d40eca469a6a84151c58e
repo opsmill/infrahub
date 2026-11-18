@@ -1,0 +1,53 @@
+backend/tests/adapters/task_history.py
+  s_cfd0841cea4d76::t_fb825094290faf 5,13-14,18-22,27,44,46-49,82
+backend/infrahub/prefect_server/task_history.py
+  s_cfd0841cea4d76::t_88db280f777484 28-29
+  s_cfd0841cea4d76::t_129b541090de99 210-211
+  s_cfd0841cea4d76::t_cde58dc56a47d7 6,46-48,190-195,238-240,249-251,295,297-300,302,309,316,322,327-328,330-334,540-541
+  s_cfd0841cea4d76::t_1d8440cd40a987 227,236-237,247-248
+  s_cfd0841cea4d76::t_cabdd0b873d116 380-383
+  s_cfd0841cea4d76::t_a0f4f14d4135fa 9
+  s_cfd0841cea4d76::t_723ca84c216f39 287,289-290,294,301,303,305,307,310,313-315,318,320-321,323,329,336,338-348,351-352
+  s_cfd0841cea4d76::t_d8537508423237 337
+  s_cfd0841cea4d76::t_a7560d133782bc 176-189
+  s_cfd0841cea4d76::t_13c12e50f11642 538-539
+  s_cfd0841cea4d76::t_3221c3760d3f3e 40-45
+  s_cfd0841cea4d76::t_de59298a0b3b63 14
+  s_cfd0841cea4d76::t_eefc514c758f98 335
+backend/infrahub/prefect_server/task_history_models.py
+  s_cfd0841cea4d76::t_ed141cf8451bda 66-69
+backend/tests/component/task_manager/test_task_history_cleanup.py
+  s_cfd0841cea4d76::t_15e890bdd2b418 177,182,191-197,199,204,207,213,222,227,236,241,250,255,269,283,292
+changelog/+flush-flow-runs.changed.md
+  s_cfd0841cea4d76::t_70f5e30bb9259c 1
+backend/infrahub/cli/tasks.py
+  s_cfd0841cea4d76::t_90bb1ddde2c5b4 214-215
+  s_cfd0841cea4d76::t_acaf74e2cb5876 180-183
+backend/tests/integration_docker/test_task_history_cleanup.py
+  s_cfd0841cea4d76::t_b93553f56381d6 403-404,410,415-418,424
+  s_cfd0841cea4d76::t_88db280f777484 97-98
+  s_cfd0841cea4d76::t_79b513b57efb71 214-216
+  s_cfd0841cea4d76::t_e8394d9826ea2f 28-30,79,95-96,105,247-251,254-258,453-469
+backend/tests/component/task_manager/test_task_history_routes.py
+  s_cfd0841cea4d76::t_3782dec1ec7e89 53,308
+backend/tests/helpers/task_history_api.py
+  s_cfd0841cea4d76::t_3782dec1ec7e89 38
+backend/tests/unit/cli/test_tasks_flush_flow_runs.py
+  s_cfd0841cea4d76::t_9720a9969f19c7 104,107,125,128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "604bdef26ddd0fcf4d9d40eca469a6a84151c58e",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

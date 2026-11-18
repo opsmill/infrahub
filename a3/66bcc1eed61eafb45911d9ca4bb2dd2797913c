@@ -1,0 +1,25 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a366bcc1eed61eafb45911d9ca4bb2dd2797913c",
+  "prompts": {},
+  "sessions": {
+    "s_0619dd48f992c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d34fe67-38d5-47d7-abf0-2a449e410f8f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_849d53d45b72cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33e8b1a5-ca5e-459e-81c0-5c7a3ca4db19",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

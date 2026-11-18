@@ -1,0 +1,19 @@
+backend/tests/unit/core/schema/test_schema_branch_deprecations.py
+  s_357d1238a1788b::t_32d10903fc4acd 1-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dcdc09fff93833010ec15ac5ef231111a049842e",
+  "prompts": {},
+  "sessions": {
+    "s_357d1238a1788b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c99efb5-9541-4e04-a56c-11acb79fd5a6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

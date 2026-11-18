@@ -1,0 +1,21 @@
+schema/openapi.json
+  s_1df8eb94da3d51::t_2ccd5647ae693b 4775,4947,6479
+frontend/app/src/shared/api/rest/types.generated.ts
+  s_1df8eb94da3d51::t_828f3b07b9cc4d 1513,1559,2269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb1d5a931ce7f0934b87f0e55579f38f89eb60b8",
+  "prompts": {},
+  "sessions": {
+    "s_1df8eb94da3d51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6a82980-5a58-459a-a19c-297b9025dff8",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}

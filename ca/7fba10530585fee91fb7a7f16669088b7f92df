@@ -1,0 +1,21 @@
+backend/tests/component/proposed_change/test_request_generator_definition_check.py
+  s_0749c4d5bfb929::t_d1d7acebdeac36 3,32,185-230,553-592
+backend/infrahub/proposed_change/tasks.py
+  s_0749c4d5bfb929::t_4a9851676acf5c 1111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ca7fba10530585fee91fb7a7f16669088b7f92df",
+  "prompts": {},
+  "sessions": {
+    "s_0749c4d5bfb929": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca8397f9-c882-4a5d-99a6-4c7998f4971c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

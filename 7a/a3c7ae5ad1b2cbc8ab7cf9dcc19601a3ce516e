@@ -1,0 +1,29 @@
+backend/infrahub/cli/__init__.py
+  s_2dcffc265e72b7::t_b4f99b49186ae4 30,49
+backend/infrahub/cli/telemetry.py
+  s_2dcffc265e72b7::t_7d9346f77e2334 1-116
+backend/tests/unit/cli/test_telemetry.py
+  s_2dcffc265e72b7::t_c33512cb849d39 1-182
+docs/docs/reference/infrahub-cli/infrahub-telemetry.mdx
+  s_2dcffc265e72b7::t_9e8ee5de5aa435 1-39
+docs/sidebars.ts
+  s_2dcffc265e72b7::t_811a354d1ff2a5 593
+tasks/docs.py
+  s_2dcffc265e72b7::t_fcc938f16c2e20 192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7aa3c7ae5ad1b2cbc8ab7cf9dcc19601a3ce516e",
+  "prompts": {},
+  "sessions": {
+    "s_2dcffc265e72b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78aac985-d023-4ff2-aa1b-866be0dd0cde",
+        "model": "unknown"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

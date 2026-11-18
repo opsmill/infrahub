@@ -1,0 +1,21 @@
+.agents/hooks/pr-review.sh
+  s_df383b2bb1b4ca::t_0e6f9dba9b1aa2 4-5,8
+dev/README.md
+  s_df383b2bb1b4ca::t_99cc8a345954d8 131-134,144-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4a82e5d24603f0e969862469adde276edfe9f51d",
+  "prompts": {},
+  "sessions": {
+    "s_df383b2bb1b4ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "494ea073-179d-476b-8597-501673d942fe",
+        "model": "unknown"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}

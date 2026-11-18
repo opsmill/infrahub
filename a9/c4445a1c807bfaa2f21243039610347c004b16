@@ -1,0 +1,36 @@
+backend/infrahub/dependencies/builder/constraint/schema/number_pool_rename.py
+  s_71e9cb725a3331::t_841932bea40c5c 1-15
+backend/tests/unit/core/validators/number_pool_scope/helpers.py
+  s_71e9cb725a3331::t_3223176ff02a8a 46,48
+backend/infrahub/pools/scoped_number_pool_reader.py
+  s_71e9cb725a3331::t_d5c29d091b8de2 44-55
+backend/tests/component/core/constraint_validators/test_number_pool_rename.py
+  s_71e9cb725a3331::t_a11611cea1fac8 1-138
+backend/infrahub/core/validators/pool/rename.py
+  s_71e9cb725a3331::t_6cb4cdd78df084 1-174
+  s_71e9cb725a3331::t_76b1c32651dc1d 175-177
+backend/tests/unit/core/validators/number_pool_rename/test_rename_checker.py
+  s_71e9cb725a3331::t_c25b724d5c406f 38
+  s_71e9cb725a3331::t_f5b0051cc9cc87 251,260,268-270,272-276,280,282-283
+  s_71e9cb725a3331::t_efcbaac1abb48c 1-37,39-250,252-259,261-267,271,277-279,281,284-307
+backend/infrahub/core/validators/__init__.py
+  s_71e9cb725a3331::t_9320cdee886e4c 18,50-51
+backend/infrahub/dependencies/builder/constraint/schema/aggregated.py
+  s_71e9cb725a3331::t_8fc972fed242d4 18,54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a9c4445a1c807bfaa2f21243039610347c004b16",
+  "prompts": {},
+  "sessions": {
+    "s_71e9cb725a3331": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be27b657-95ab-4970-a61b-cba64ba4ad18",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

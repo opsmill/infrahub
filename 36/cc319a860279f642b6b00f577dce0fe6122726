@@ -1,0 +1,28 @@
+dev/specs/005-hz-frequency-formatter/critiques/critique-20261105.md
+  s_7f89a04bbbc0ac::t_1a628ff23e7763 1-147
+dev/specs/005-hz-frequency-formatter/spec.md
+  s_7f89a04bbbc0ac::t_b6aba16bb48aa3 52-53
+  s_7f89a04bbbc0ac::t_7f6bfae33018fa 90-92
+dev/specs/005-hz-frequency-formatter/contracts/format_frequency.md
+  s_7f89a04bbbc0ac::t_c0eec9ff7f2016 16
+  s_7f89a04bbbc0ac::t_6bce16498ca976 13
+dev/specs/005-hz-frequency-formatter/plan.md
+  s_7f89a04bbbc0ac::t_bbfd4707e0dc88 86
+  s_7f89a04bbbc0ac::t_3efd6a8856f490 93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "36cc319a860279f642b6b00f577dce0fe6122726",
+  "prompts": {},
+  "sessions": {
+    "s_7f89a04bbbc0ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04daff80-3dbe-4c4d-8c7c-93a3bc731634",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

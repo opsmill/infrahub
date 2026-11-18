@@ -1,0 +1,39 @@
+.github/workflows/upgrade-agentic-workflows.yml
+  s_b5a172beeb66a5::t_4a06126644fe54 233-234
+  s_b5a172beeb66a5::t_296381df492a6e 29,31,34-38,66,92-105,107-109,112-115,119,124,129,131-136,138,140-178,192-193,197-203,213-214,222,225-227,237,240
+  s_b5a172beeb66a5::t_ce8c90f08567f6 205-206,215-218
+  s_9c5b6446126571::t_fa7904fb9802a2 204
+dev/knowledge/agentic-workflows.md
+  s_b5a172beeb66a5::t_6fb51404c7d899 25-27
+  s_b5a172beeb66a5::t_754ce811bc93b1 48-50
+  s_b5a172beeb66a5::t_8d3f81204013f4 80-96,99-100,103-104
+dev/guides/updating-agentic-workflows.md
+  s_b5a172beeb66a5::t_d1a0586755ca75 1-51
+  s_b5a172beeb66a5::t_8d7f3efc604c8d 52-54
+dev/README.md
+  s_b5a172beeb66a5::t_ed2351ff928320 115-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6b6e866b1e887e69f7c24291a3bbfd455987d5c6",
+  "prompts": {},
+  "sessions": {
+    "s_9c5b6446126571": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91f59d33-3322-493f-ad2a-f4f60dfe37db",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    },
+    "s_b5a172beeb66a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0a1e516-ac04-4c03-a92c-b70df2892d18",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}

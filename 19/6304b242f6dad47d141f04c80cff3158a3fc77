@@ -1,0 +1,465 @@
+backend/tests/component/core/constraint_validators/test_relationship_peer_update.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 8,12,133-137,185-189,208-212,236-240,278-282,312-316,368-372,402-406,459-463,490,521-647
+backend/infrahub/core/regeneration/predicates.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 10,57-58,63-68,72-75,93-94,96-98,106-108
+.github/workflows/chromatic.yml
+  s_3b635b8269392c::t_dc8e681cee2ef1 44
+backend/tests/component/core/regeneration/impact/helpers.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-22
+backend/infrahub/dependencies/builder/constraint/schema/node_hierarchy.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-8
+.github/workflows/update-sdk-compatibility-docs.yml
+  s_3b635b8269392c::t_dc8e681cee2ef1 21
+.github/workflows/release.yml
+  s_3b635b8269392c::t_dc8e681cee2ef1 38
+.pre-commit-config.yaml
+  s_3b635b8269392c::t_dc8e681cee2ef1 10-16,23-34
+frontend/app/src/entities/homepage/ui/getting-started.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 38,75
+frontend/app/src/entities/repository/ui/repository-menu-section.test.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 50,145
+backend/tests/component/graphql/auth/query_permission_checker/test_object_permission_checker.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 3,247-288,483-516
+  s_3b635b8269392c::t_3a03c9dfde19a4 517
+frontend/app/src/shared/components/inputs/list.test.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 25,41,99,120
+backend/tests/unit/graphql/reached_path_resolver/test_relationship_reads.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-150
+backend/tests/helpers/selective_regen.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 13,17-18,29-35,46-48,52
+docs/docs/deploy-manage/install-configure/production-deployment/overview.mdx
+  s_3b635b8269392c::t_dc8e681cee2ef1 5-6,135,139,143,146-147,169,173-174,184-257
+  s_3b635b8269392c::t_3242762959fe08 258
+backend/tests/unit/graphql/reached_path_resolver/helpers.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-136
+backend/infrahub/dependencies/builder/constraint/schema/attribute_number_pool.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-8
+backend/tests/component/graphql/test_query_analyzer.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 13,497-506,562-572
+frontend/app/src/shared/components/table/data-table.test.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 1,174-195
+  s_3b635b8269392c::t_ae1f6100791884 196-198
+docs/archive/guides/create-schema.mdx
+  s_3b635b8269392c::t_dc8e681cee2ef1 32
+.github/workflows/update-compose-file-and-chart.yml
+  s_3b635b8269392c::t_dc8e681cee2ef1 34
+frontend/app/src/entities/nodes/object/ui/object-help-button.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 17
+backend/infrahub/core/merge/selective_regen/impacted.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 5,7-8,15,28-36,40,47
+backend/infrahub/graphql/execution.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 86-88
+frontend/app/src/entities/nodes/relationships/domain/use-cases/get-relationships.test.ts
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+frontend/app/src/shared/components/form/fields/relationships/useCommonParentFilter.test.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 104-106
+backend/infrahub/core/regeneration/peer_query.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-53
+.github/workflows/publish-pypi.yml
+  s_3b635b8269392c::t_dc8e681cee2ef1 46
+backend/infrahub/graphql/mutations/graphql_query.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 4,11,47-52,56
+backend/infrahub/core/schema/definitions/core/check.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 29
+changelog/+check-definition-class-name.fixed.md
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+.github/workflows/uv-check.yml
+  s_3b635b8269392c::t_dc8e681cee2ef1 23
+dev/knowledge/backend/tls.md
+  s_3b635b8269392c::t_dc8e681cee2ef1 30-36
+frontend/app/src/entities/user-profile/ui/profile-tabs.test.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+pyproject.toml
+  s_3b635b8269392c::t_dc8e681cee2ef1 19-20
+backend/infrahub/core/schema/definitions/core/lineage.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 9,18
+docs/docs/release-notes/infrahub/release-1_8_0.mdx
+  s_3b635b8269392c::t_dc8e681cee2ef1 129
+backend/infrahub/core/diff/conflicts_enricher.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 5,24-33,94-97
+backend/infrahub/git/integrator.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 824-825,831-836,858-867,908,1208,1240-1260,1396,1919-1926,1950,2000-2002,2025
+docs/docs/overview/quickstart.mdx
+  s_3b635b8269392c::t_dc8e681cee2ef1 19
+.agents/rules/testing-python.md
+  s_3b635b8269392c::t_dc8e681cee2ef1 108-109,114-118
+.agents/skills/reviewing-pull-requests/SKILL.md
+  s_3b635b8269392c::t_dc8e681cee2ef1 6-8,14-16,18-30
+backend/infrahub/core/validators/relationship/peer.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 11,25-27,29,34,105-106,119-130,133,138-142
+backend/infrahub/graphql/resolvers/peer_filters.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-19
+docs/docs/learn/tutorials/build-your-first-schema.mdx
+  s_3b635b8269392c::t_dc8e681cee2ef1 34
+docs/docs/release-notes/infrahub/release-1_11_9.mdx
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-36
+frontend/app/src/entities/artifacts/domain/use-cases/get-artifact-file.test.ts
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+frontend/app/src/entities/authentication/ui/credentials-form.test.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+frontend/app/src/entities/nodes/relationships/ui/relationship-hierarchical-combobox-list.test.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+changelog/11166.fixed.md
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+frontend/app/src/entities/permission/domain/use-cases/has-global-permission.test.ts
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+backend/infrahub/core/schema/definitions/core/template.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 14,36
+docs/docs/overview/explore.mdx
+  s_3b635b8269392c::t_dc8e681cee2ef1 32
+CHANGELOG.md
+  s_3b635b8269392c::t_dc8e681cee2ef1 14-49
+schema/schema.graphql
+  s_3b635b8269392c::t_dc8e681cee2ef1 9982,9990,9998,10040,10076,10100,10126,10142,10150,10200,10274,10282,10314,10350,10368,10376,10392,10410,10444,10460,10484,10536,10592,10600,10632,10642,10658,10666,10676,10734,10742
+frontend/packages/ui/src/components/scroll-area/scroll-area.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 47-51
+frontend/app/src/entities/schema/ui/schema-help-menu.test.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-37
+backend/infrahub/core/schema/definitions/core/resource_pool.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 31,46,68,81,141,192
+frontend/app/src/entities/schema/domain/rules/is-hierarchical-schema.test.ts
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+backend/infrahub/core/schema/definitions/core/propose_change.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 28
+backend/infrahub/git/tasks.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 370
+backend/tests/component/core/constraint_validators/test_aggregated_checker_registration.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-15
+backend/infrahub/core/schema/definitions/core/repository.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 39,76,109
+backend/tests/component/graphql/test_core_account.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 14,62-80
+  s_3b635b8269392c::t_6cb094748ab734 81-82
+backend/tests/unit/git/test_transform_python_information.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 73-75,81,138-142
+backend/tests/unit/graphql/reached_path_resolver/test_hop_filters.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-189
+dev/README.md
+  s_3b635b8269392c::t_dc8e681cee2ef1 123-145
+docs/docs/release-notes/infrahub/release-1_11_8.mdx
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-40
+frontend/app/.betterer.results
+  s_3b635b8269392c::t_dc8e681cee2ef1 271-275,306-307
+backend/tests/unit/graphql/test_graphql_argument.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-109
+.github/workflows/ci.yml
+  s_3b635b8269392c::t_dc8e681cee2ef1 90,274,320,382,422,476,522,625,684,731,792,893,967,993,1020,1057,1095,1217,1305,1394,1414,1423
+frontend/app/src/entities/nodes/object/ui/object-help-button.test.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-38
+frontend/app/src/entities/nodes/relationships/domain/use-cases/remove-relationships.test.ts
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+frontend/app/src/entities/nodes/object/ui/object-details/object-data-display/object-data-display.test.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 56,167,189,233,328,568,605
+backend/tests/unit/core/regeneration/test_classifier_builder.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 12,60-65,74,134-243,305,311,313-314
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_3b635b8269392c::t_dc8e681cee2ef1 33,36-38,40
+backend/tests/component/graphql/test_relationship_reached_paths.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 3,9-10,20-27,54-87,94-107,109-202,205,208-211,274,277-279,282-304,321,330-554
+frontend/app/src/entities/repository/ui/check-connectivity-modal.test.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+backend/tests/integration/git/test_import_removed_definitions.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 3,12,16,23,68-94,107,125-147,149,171-173,199,201-205,331-442,476-607
+  s_3b635b8269392c::t_59e5f631d14e32 608
+.github/workflows/ci-docker-image.yml
+  s_3b635b8269392c::t_dc8e681cee2ef1 103,159,198,245
+.github/workflows/keyword-scan.yml
+  s_3b635b8269392c::t_dc8e681cee2ef1 19
+backend/infrahub/core/schema/definitions/core/artifact.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 24,51,114
+backend/infrahub/graphql/mutations/account.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 24,77
+backend/tests/component/computed_attribute/test_local_computation.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 14,21,42,149-199,235-275
+  s_3b635b8269392c::t_8ddd4fbd9138f9 276
+changelog/+schema-change-stored-data-checks.fixed.md
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+backend/tests/unit/core/regeneration/test_impact_classifier.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 17-23,65-76,152,159-170,327,346-347,355-371
+backend/tests/component/proposed_change/test_request_generator_definition_check.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 68,217,219-221,288-291,293,295,453
+backend/infrahub/proposed_change/tasks.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 86-87,462-472,820-825,1116-1121,1387-1397
+backend/tests/integration/shared.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 8-10
+.github/workflows/push-bench-image.yml
+  s_3b635b8269392c::t_dc8e681cee2ef1 30,89
+backend/infrahub/dependencies/builder/constraint/schema/aggregated.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 8-9,16,20-23,43-44,48-49
+backend/tests/component/core/diff/test_conflicts_enricher.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 7,1011-1049
+  s_3b635b8269392c::t_8ddbb198f32c64 1050
+backend/tests/component/core/regeneration/impact/test_root_and_relationship_reads.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-182
+backend/tests/component/proposed_change/test_merge_selective_regen.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 186
+dev/guides/frontend/writing-component-tests.md
+  s_3b635b8269392c::t_dc8e681cee2ef1 371
+docker-compose.yml
+  s_3b635b8269392c::t_dc8e681cee2ef1 282,315,361
+backend/tests/unit/core/regeneration/test_peer_filters.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-93
+docs/docs/git-integration/connect-repository.mdx
+  s_3b635b8269392c::t_dc8e681cee2ef1 485
+backend/infrahub/core/schema/definitions/core/transform.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 27,102,120
+backend/infrahub/config.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 925-928
+backend/tests/component/proposed_change/test_generator_regen_selection.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 269,273,277,632
+changelog/+python-transform-class-name.fixed.md
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+backend/infrahub/core/schema/definitions/core/generator.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 30,135
+frontend/app/src/entities/config/ui/about-modal.test.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+changelog/11232.fixed.md
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+frontend/app/src/entities/nodes/relationships/domain/use-cases/add-relationships.test.ts
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+backend/infrahub/core/manager.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 392,422
+frontend/app/src/entities/schema/domain/model/attribute-kind.ts
+  s_3b635b8269392c::t_dc8e681cee2ef1 29
+frontend/app/src/entities/schema/ui/schema-help-menu.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 18-20
+backend/infrahub/core/schema/definitions/core/ipam.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 30,71,201,282
+frontend/app/src/shared/api/graphql/generated/graphql-env.d.ts
+  s_3b635b8269392c::t_dc8e681cee2ef1 782-784,789,793,796,799,801-802,808,817-818,822,826,828-829,831,833,837,839,842,848,855-856,860-861,863-865,872-873
+frontend/app/src/shared/components/form/fields/relationship-many.field.test.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+backend/infrahub/dependencies/builder/constraint/schema/attribute_number.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-8
+backend/infrahub/core/regeneration/impact_classifier.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 12,75-77,91-92,102-104,111-113,121-123,142-148,150-153
+backend/infrahub/core/validators/attribute/number_pool.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 24,76-77,85
+.github/workflows/version-upgrade.yml
+  s_3b635b8269392c::t_dc8e681cee2ef1 61
+backend/tests/component/core/regeneration/impact/test_filtered_peer_reads.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-622
+backend/tests/component/proposed_change/test_artifact_regen_selection.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 176,203-224
+  s_3b635b8269392c::t_711ca38d78537e 225
+changelog/+hidden-table-scrollbars.fixed.md
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+changelog/11018.fixed.md
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+backend/infrahub/core/merge/selective_regen/definition_selector/base.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 77-79,84,110
+changelog/11036.fixed.md
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+docs/archive/guides/database-backup.mdx
+  s_3b635b8269392c::t_dc8e681cee2ef1 38,81,186,208,300
+frontend/app/src/entities/branches/ui/hooks/use-navigate-after-branch-removal.test.ts
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+frontend/app/vitest.config.ts
+  s_3b635b8269392c::t_dc8e681cee2ef1 1,57-60,76-78,80
+tests/e2e/schema/test_schema.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 51
+backend/infrahub/core/regeneration/derived_dependencies.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 91-92,97-98,111-119
+  s_3b635b8269392c::t_e57d68c3255acf 120-121
+backend/tests/unit/core/regeneration/helpers.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-96
+backend/infrahub/core/schema/definitions/core/webhook.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 31,123,148
+backend/infrahub/graphql/mutations/webhook.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 121
+backend/infrahub/core/regeneration/impact.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 12,15,21,45,56-59,65-67,76-106,116-118,121-122,132
+backend/infrahub/core/validators/node/hierarchy.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 10,25-26,31-32,44-45,50-51,104-105,136-137,155-157,159-160,169-174
+backend/tests/component/graphql/test_mutation_graphqlquery.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 7,304-376
+backend/tests/component/core/constraint_validators/test_node_hierarchy_update.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 6,74-80,97-103,123-129,193-199,270-276,358-364,421,448,473,500,509-622
+backend/tests/unit/graphql/reached_path_resolver/test_reached_paths.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-262
+docs/docs/development-resources/sbom.mdx
+  s_3b635b8269392c::t_dc8e681cee2ef1 28
+backend/tests/unit/core/regeneration/test_filtered_peers.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-470
+backend/infrahub/tasks/merge_watcher.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 9
+docs/docs/tutorials/getting-started/readme.mdx
+  s_3b635b8269392c::t_dc8e681cee2ef1 16
+backend/infrahub/core/merge/selective_regen/gate.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 6,12,35,45
+frontend/app/.gitignore
+  s_3b635b8269392c::t_dc8e681cee2ef1 8
+frontend/packages/graph/src/components/graph-controls/graph-controls.test.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+backend/infrahub/core/regeneration/classifier_builder.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 49,57-60,65,70-86,103-104,113,126-127
+.agents/skills/reviewing-pull-requests/agents/openai.yaml
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-7
+backend/infrahub/core/regeneration/filtered_peers.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-320
+backend/infrahub/graphql/resolvers/single_relationship.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 22,225
+docs/docs/deploy-manage/install-configure/production-deployment/private-ca.mdx
+  s_3b635b8269392c::t_dc8e681cee2ef1 41,63,276,278
+frontend/app/src/pages/global-preferences.test.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+backend/infrahub/actions/schema.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 33,96,137,168,197,239,286,338,385
+changelog/+check-definition-targets.fixed.md
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+backend/infrahub/core/validators/attribute/min_max.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 25,81-82
+backend/infrahub/dependencies/builder/constraint/schema/relationship_peer.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1,5-8
+  s_3b635b8269392c::t_c0c801836e3b4a 9-10
+backend/infrahub/graphql/manager.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 126-143,1176-1181,1256-1261
+backend/tests/unit/core/merge/selective_regen/definition_selector/test_base.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 16,19-20,91-97,109-111,115
+backend/tests/unit/workflows/test_catalogue.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 35-43
+dev/guidelines/backend/testing.md
+  s_3b635b8269392c::t_dc8e681cee2ef1 19-22,123,125-126,128-130,132-134,136,138,140
+frontend/.gitignore
+  s_3b635b8269392c::t_dc8e681cee2ef1 4
+backend/infrahub/core/relationship/model.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 402-415,425-427,435-441,601
+backend/infrahub/core/schema/definitions/core/profile.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 14
+backend/infrahub/locks/tasks.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 15
+backend/infrahub/graphql/mutations/ipam.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 97
+backend/tests/component/core/constraint_validators/test_determiner.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 19-20,401,409-411,417-418
+frontend/app/src/entities/nodes/object/ui/object-details/action-buttons/relationships-buttons.test.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+README.md
+  s_3b635b8269392c::t_dc8e681cee2ef1 60
+.agents/hooks/pr-review.sh
+  s_3b635b8269392c::t_dc8e681cee2ef1 2-5,12,14-15,47-59,63,68-103,133,136
+backend/tests/component/core/regeneration/test_peer_query.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-120
+backend/tests/component/core/constraint_validators/test_attribute_number_constraints.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 6,353-383
+backend/tests/component/core/constraint_validators/test_attribute_numberpool_constraints.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 6,213-242
+backend/infrahub/core/schema/definitions/core/menu.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 20,84
+backend/tests/unit/core/regeneration/test_relevant_node_changes.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 8,181-222
+changelog/11232.changed.md
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+backend/tests/component/conftest.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 15-16,2125-2128,2208-2217,2232-2238,3080-3090,3147-3148
+backend/tests/component/core/regeneration/impact/test_generic_owner_impact.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-243
+backend/tests/component/graphql/metadata/test_relationship_node_metadata.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-233
+backend/tests/fixtures/schemas/schema_01.json
+  s_3b635b8269392c::t_dc8e681cee2ef1 323-329
+  s_3b635b8269392c::t_379239ee663a5f 322
+backend/tests/component/core/regeneration/impact/test_field_level_impact.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-338
+backend/tests/component/git/test_git_repository.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1465-1470
+backend/tests/component/graphql/mutations/test_webhook.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 9,186-215,377-380
+  s_3b635b8269392c::t_2f872ea5a03275 381-384
+backend/infrahub/core/validators/renamed_kinds.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-35
+AGENTS.md
+  s_3b635b8269392c::t_dc8e681cee2ef1 11,13
+backend/infrahub/core/schema/definitions/core/account.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 31,45,71,118,139
+backend/tests/unit/core/merge/selective_regen/test_gate.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 28,46,65,130,137
+backend/tests/unit/core/regeneration/test_derived_dependencies.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 92-101,281-317
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_3b635b8269392c::t_dc8e681cee2ef1 21834,21843,21852,21897,21933,21960,21987,22005,22014,22068,22149,22158,22194,22230,22248,22257,22275,22293,22329,22347,22374,22428,22491,22500,22536,22545,22563,22572,22581,22644,22653
+.vale/styles/spelling-exceptions.txt
+  s_3b635b8269392c::t_dc8e681cee2ef1 33,83
+backend/tests/component/graphql/mutations/test_ipam.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 18,297
+backend/tests/component/proposed_change/test_validate_artifacts_generation_widening.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 40,117,121-122,147,165-166
+backend/infrahub/core/schema/definitions/core/graphql_query.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 28
+docs/docs/faq/faq.mdx
+  s_3b635b8269392c::t_dc8e681cee2ef1 44
+docs/docs/deploy-manage/maintain-upgrade/database-backup/backup-and-restore.mdx
+  s_3b635b8269392c::t_dc8e681cee2ef1 41,84,189,211,303
+backend/infrahub/core/regeneration/models.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 5,10-40,47-48,54-79,84-87
+frontend/app/package.json
+  s_3b635b8269392c::t_dc8e681cee2ef1 119-120,135-136
+backend/infrahub/core/schema/definitions/core/propose_change_comment.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 25,40,80,92,118,142,159,182
+backend/infrahub/graphql/analyzer.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 42-43,46,117-118,120-140,203,301-381,388-397,402-410,428-429,433,442-443,457-460,468-472,481,488-516,592-593,606-610,614-619,994,996,1033-1035,1039-1053,1065,1068-1070,1128,1136,1140-1169
+backend/infrahub/core/schema/definitions/core/group.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 30,76,92,108,124,153
+backend/infrahub/core/schema/definitions/core/file_object.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 12
+backend/infrahub/graphql/resolvers/many_relationship.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 25,132
+.claude/settings.json
+  s_3b635b8269392c::t_dc8e681cee2ef1 3-5,26-30
+backend/infrahub/graphql/resolvers/resolver.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 10,12,22,131,370-375,382,415,422-425
+changelog/+inapp-docs-links.fixed.md
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+docs/docs/reference/configuration.mdx
+  s_3b635b8269392c::t_dc8e681cee2ef1 50
+frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts
+  s_3b635b8269392c::t_dc8e681cee2ef1 29,32,35,38,41,44,47,50,53,56,59,62,65,68,71,74,77,80,83,86,89,92,95,98,101,104,107,110,113,116,119,122,125,128,131,134,137,140,143,146,149,152,155,158,161,164,167,170,173,176,179,182,185,188,191,194,197,200,203,206,209,212,215,218,221
+frontend/packages/graph/package.json
+  s_3b635b8269392c::t_dc8e681cee2ef1 48-49,58-59
+backend/infrahub/core/schema/definitions/core/permission.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 30,69,112,143,178
+frontend/app/src/entities/nodes/object/ui/object-table/toolbar/object-table-toolbar.test.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+frontend/app/src/entities/nodes/object-file/domain/use-cases/get-object-file.test.ts
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+frontend/app/src/shared/components/form/fields/relationships/generic-relationship.field.test.tsx
+  s_3b635b8269392c::t_dc8e681cee2ef1 1
+backend/tests/integration/schema_lifecycle/test_schema_validator_stored_data.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 1-314
+backend/tests/unit/core/regeneration/test_reached_resolver.py
+  s_3b635b8269392c::t_dc8e681cee2ef1 4,7,9,12-18,21-22,40,48-70,76,84-91,102,111-122,142,160,168-175,183,193-207,209,212-214,218-230
+.github/workflows/bug-agent-analyst.lock.yml
+  s_3b635b8269392c::t_6d30c6b0eb24a8 152,1191,1801
+.github/workflows/bug-agent-fix.lock.yml
+  s_3b635b8269392c::t_f6d265ec1f0e02 152,545,1364,1985
+.github/workflows/bug-agent-review.lock.yml
+  s_3b635b8269392c::t_0f5a91a2298c8e 164,1180,1856
+.github/workflows/bug-agent-test.lock.yml
+  s_3b635b8269392c::t_93dd80ddf9fbea 152,546,1371,1994
+.github/workflows/issue-triage-labeler.lock.yml
+  s_3b635b8269392c::t_833fb7ca422682 153,1109,1684
+.github/workflows/issue-triage-sweep.lock.yml
+  s_3b635b8269392c::t_6676767d3ca6f5 150,1095,1670
+frontend/pnpm-lock.yaml
+  s_3b635b8269392c::t_9e506e183de0b8 331-332,334-335,368,379-380,382-383,437-438,440-441,467-468,470-471,850-852,1679-1681,1780,1806-1807,1824-1825,1842-1843,1860-1861,1878-1879,1896-1897,1914-1915,1934-1935,1955-1956,1976-1977,1997-1998,2018-2019,2039-2040,2060-2061,2081-2082,2100-2101,2128-2129,2146-2147,2164-2165,2179-2180,2516-2517,2528-2529,2540-2541,2552-2553,2564-2565,2576-2577,2588-2589,2601-2602,2615-2616,2629-2630,2643-2644,2657-2658,2671-2672,2685-2686,2699-2700,2712-2713,2724-2725,2736-2737,2748-2749,4284-4289,4295-4299,4309-4317,4324-4331,4343-4353,4360-4362,4375-4382,4389-4391,4531-4533,4618-4621,5334-5336,6100-6102,6106-6108,6424-6427,6464-6465,6487-6488,6504-6505,6614-6617,6730-6731,7104-7106,7244-7247,7252-7255,7272-7275,7555-7568,7610-7650,7691-7695,7723-7734,8093-8094,9109-9110,9259,9268,9277,9286,9295,9304,9313,9322,9331,9340,9349,9358,9367,9376,9385,9394,9417,9426,9435,9444,9628,9634,9640,9646,9652,9658,9664,9670,9676,9682,9688,9694,9700,9706,9712,9718,9724,9730,9736,11251-11263,11281-11298,11314-11328,11347-11352,11361-11369,11378-11381,11400-11411,11424-11429,11576-11582,11657-11658,12359-12360,12639-12640,12790-12791,12798,12804,13070-13073,13080-13085,13089,13592-13593,13691-13713,13783,13790,13814-13834,13926-13927,14067,14079,14081-14082,14196,14530-14531,14654-14655,14658-14659,14671-14672,14746,14759,14942-14950,14981-15005,15035-15036,15055-15056
+python_testcontainers/uv.lock
+  s_3b635b8269392c::t_a1518e6c60a222 2,83,85,87,627,632,634,726-727,2017-2018
+uv.lock
+  s_3b635b8269392c::t_9d3c2246ed77e2 2,438,440,442,1123,1128,1130,1162,1164,1166,1608-1609,2315,2320,2322,2327,2332-2360,2823-2873
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "196304b242f6dad47d141f04c80cff3158a3fc77",
+  "prompts": {},
+  "sessions": {
+    "s_3b635b8269392c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc8480ff-3382-476d-aaa7-26d805ff3272",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+backend/infrahub/pools/attribute_pool_applier.py
+  s_2499241a5a10fa::t_6f8cacb9fab2fc 154,158,161,163,261-271
+  s_2499241a5a10fa::t_6fce8be6480c4b 144,151
+  s_2499241a5a10fa::t_281bedf4fa141e 272
+backend/tests/unit/graphql/mutations/test_attribute.py
+  s_2499241a5a10fa::t_6f8cacb9fab2fc 4,30-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c6cf58f7e4c03e858921381b4783b34958b63629",
+  "prompts": {},
+  "sessions": {
+    "s_2499241a5a10fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92729d40-159c-4d72-beb5-e9ff006e755a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

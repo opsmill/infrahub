@@ -1,0 +1,21 @@
+.github/scripts/dependabot_autopilot/tests/test_adapters.py
+  s_ce99ced981c340::t_781978183abca5 782-845
+.github/scripts/dependabot_autopilot/adapters.py
+  s_ce99ced981c340::t_51a8814085a5e6 378-384,402-404,428-434,436-437,439,441
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a3915b9870d4917a5a5d2ba4ea3e791d2f76be43",
+  "prompts": {},
+  "sessions": {
+    "s_ce99ced981c340": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75ecf758-799f-473b-a565-dc575a274ded",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

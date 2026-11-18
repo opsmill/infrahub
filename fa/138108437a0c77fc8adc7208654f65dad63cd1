@@ -1,0 +1,21 @@
+changelog/+changelog-peer-events.fixed.md
+  s_d9e4ea96a53151::t_f52d80ad071ec7 1
+changelog/9671.added.md
+  s_d9e4ea96a53151::t_f52d80ad071ec7 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa138108437a0c77fc8adc7208654f65dad63cd1",
+  "prompts": {},
+  "sessions": {
+    "s_d9e4ea96a53151": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92c4c7dc-848d-45d9-bb7c-4c7e6fa1833a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+dev/knowledge/backend/database-schema.md
+  s_0a922a91ee3351::t_5bf3683a692e8d 182-190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b2dcd74ec1afc2c4b3778ddd1a2b5f7145c0865d",
+  "prompts": {},
+  "sessions": {
+    "s_0a922a91ee3351": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e9a1dd6-0122-45ea-b55b-1aba39496ed1",
+        "model": "unknown"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

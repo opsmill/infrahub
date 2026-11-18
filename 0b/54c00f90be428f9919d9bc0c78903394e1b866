@@ -1,0 +1,65 @@
+backend/tests/unit/pools/test_number_pool_attribute_domain.py
+  s_c47d1ff1b9fc75::t_f8501320230691 1-26
+backend/infrahub/core/node/resource_manager/number_pool.py
+  s_c47d1ff1b9fc75::t_c13f1bec03996c 8,54,56,59,62-63,66-73,75-82
+backend/infrahub/graphql/queries/resource_manager.py
+  s_c47d1ff1b9fc75::t_73c9a2d0dd5e18 22,29,289-292,300-306,365-367,370-372
+backend/infrahub/pools/number.py
+  s_c47d1ff1b9fc75::t_a11170ee10a23c 14,23-28,30-31,33-38,43,50-59,65-68,71,75,79
+backend/infrahub/pools/number_pool_repository.py
+  s_c47d1ff1b9fc75::t_8894283a5e1775 5,18-20,23-24,27,32-72,117,177-183,185-187,192-193,200-202,204
+backend/tests/component/core/agnostic_retirement/test_on_node_delete.py
+  s_c47d1ff1b9fc75::t_795f4eb3ef33b2 46,91,418,445,452
+backend/tests/component/core/migrations/graph/m076_heal_missing_attribute_rows/conftest.py
+  s_c47d1ff1b9fc75::t_0d5c8f46f83327 20,234
+backend/tests/component/core/migrations/graph/test_066_consolidate_duplicate_number_pools.py
+  s_c47d1ff1b9fc75::t_0bc542e3077ca9 18,62
+backend/tests/component/core/node/test_template_pool_allocation.py
+  s_c47d1ff1b9fc75::t_7f1211c3bee33d 21,310,454
+backend/tests/component/core/resource_manager/conftest.py
+  s_c47d1ff1b9fc75::t_48baf5d330527e 13,50
+backend/tests/component/core/resource_manager/test_number_pool.py
+  s_c47d1ff1b9fc75::t_d75957a07f6d13 22,24,37,54,62,64,79,110,132-134,161-203,332,386,432,466,481,498,540,554-675
+backend/tests/component/core/resource_manager/test_number_pool_attribute_removal.py
+  s_c47d1ff1b9fc75::t_af629aa5df842a 17,51,76,79,94,124,127
+backend/tests/component/core/resource_manager/test_number_pool_attribute_rename.py
+  s_c47d1ff1b9fc75::t_593857e2d789f9 43,159,181,198,220,251,265,268,389,395,424,427,489
+backend/tests/component/core/resource_manager/test_number_pool_branch_liveness.py
+  s_c47d1ff1b9fc75::t_065ef28d5f26b3 22,40,75,84,87-90,101,107,110,140,145,151,154,211,214,234,238,250,254,257,270,276,279,291,295,298,316,319
+backend/tests/component/core/resource_manager/test_number_pool_is_reserved_retirement.py
+  s_c47d1ff1b9fc75::t_3b6b5a5b757564 41,98,188,208,252,271,301
+backend/tests/component/core/resource_manager/test_number_pool_object_conversion.py
+  s_c47d1ff1b9fc75::t_72e81825d78c0a 32,94,130,145,148,175,190,201,215,218,262,290
+backend/tests/component/core/resource_manager/test_number_pool_source.py
+  s_c47d1ff1b9fc75::t_7c641d5b2673b4 21,50,117-118,135,138
+backend/tests/component/graphql/queries/test_resource_pool.py
+  s_c47d1ff1b9fc75::t_5527628a1e087b 14-17,20,23,947-1055
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_ranges.py
+  s_c47d1ff1b9fc75::t_7480af95d9e25b 17,292,315
+backend/tests/component/graphql/resource_manager/test_number_pool_lookup_by_name.py
+  s_c47d1ff1b9fc75::t_a2f17e75a4ba08 14,78,235
+backend/tests/component/templates/test_template_applier.py
+  s_c47d1ff1b9fc75::t_6c9822d8dd1c94 20,499
+backend/tests/functional/templates/test_template_resource_pool.py
+  s_c47d1ff1b9fc75::t_30967f0dd32668 13,527,875,891
+backend/tests/helpers/number_pool.py
+  s_c47d1ff1b9fc75::t_0c20baf262452a 15,57-70,72,75-92
+dev/specs/ifc-3065-number-pool-ranges/tasks.md
+  s_c47d1ff1b9fc75::t_43acbb26df9fcc 152,154,163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0b54c00f90be428f9919d9bc0c78903394e1b866",
+  "prompts": {},
+  "sessions": {
+    "s_c47d1ff1b9fc75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f01d1d66-69c7-480a-ae64-d43d74f85faf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

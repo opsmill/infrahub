@@ -1,0 +1,19 @@
+backend/tests/component/core/changelog/test_diff.py
+  s_d8d04e3563f8e7::t_c34157d34d918b 349-353
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3596bc65ab35f16ed8f7f68931873b82bfd80cc3",
+  "prompts": {},
+  "sessions": {
+    "s_d8d04e3563f8e7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8325c94b-6cfb-4ca6-82b3-1550bdcfc284",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

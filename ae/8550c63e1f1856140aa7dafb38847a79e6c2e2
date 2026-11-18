@@ -1,0 +1,47 @@
+.github/scripts/dependabot_autopilot/jira_adapter.py
+  s_43d8e382eba497::t_ff3bf554e88936 1-193
+.github/scripts/dependabot_autopilot/slack_adapter.py
+  s_43d8e382eba497::t_757c609260a7b5 1-36
+.github/scripts/dependabot_autopilot/github_adapter.py
+  s_43d8e382eba497::t_5ab1a94be898ad 1-267
+.github/scripts/dependabot_autopilot/tests/fakes.py
+  s_43d8e382eba497::t_28474a51bbc764 6,12,36-37,315-339
+dev/specs/dependabot-autopilot/plan.md
+  s_43d8e382eba497::t_af5cd81bb4d2f2 97-100,113-115
+.github/scripts/dependabot_autopilot/tests/test_slack_adapter.py
+  s_43d8e382eba497::t_a7aafca94f5123 1-55
+.github/scripts/dependabot_autopilot/tests/test_fakes.py
+  s_43d8e382eba497::t_f0587bacef1114 7-8,19,49,96-106
+dev/specs/dependabot-autopilot/tasks.md
+  s_43d8e382eba497::t_af5cd81bb4d2f2 49-50,95,100,114
+dev/specs/dependabot-autopilot/opsmill-implement-report.md
+  s_43d8e382eba497::t_af5cd81bb4d2f2 41-104
+  s_43d8e382eba497::t_f0587bacef1114 289-290
+.github/scripts/dependabot_autopilot/tests/test_jira_adapter.py
+  s_43d8e382eba497::t_a7aafca94f5123 1-341
+.github/scripts/dependabot_autopilot/ports.py
+  s_43d8e382eba497::t_b9bb6caf92982d 209-233
+  s_43d8e382eba497::t_9ada4ca93630b2 234-235
+.github/scripts/dependabot_autopilot/tests/test_github_adapter.py
+  s_43d8e382eba497::t_a7aafca94f5123 1-501
+.github/scripts/dependabot_autopilot/http_transport.py
+  s_43d8e382eba497::t_c5dd8d306d9ba0 1-44
+.github/scripts/dependabot_autopilot/__main__.py
+  s_43d8e382eba497::t_5cf33b5a49ead0 13-14,18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ae8550c63e1f1856140aa7dafb38847a79e6c2e2",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

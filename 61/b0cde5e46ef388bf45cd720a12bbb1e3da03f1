@@ -1,0 +1,29 @@
+backend/infrahub/graphql/queries/number_pool.py
+  s_760cbcf248de37::t_3d553704194307 9,18,21,24-29,132-133,230-231,300-301,303,305
+backend/infrahub/pools/number.py
+  s_760cbcf248de37::t_adf501b9bee44c 39-42
+backend/infrahub/pools/number_pool_repository.py
+  s_760cbcf248de37::t_793d1c1b499981 177-181
+backend/infrahub/pools/number_pool_usage.py
+  s_760cbcf248de37::t_db0404a1a956de 1,5-6,9-19,22,24-30,32-34,37-38,44,47-48,51-53,56-57,59-60,62,65-69,72-76,79-80,82-83,87-88,93-94,97-100,103-106,109-111,113-119,122-123,125-128,130-131,133-137,139-145,147-148,150-167,170-210,212-258,260-284,286-291,293-326,328,330-389
+backend/tests/component/graphql/queries/test_number_pool_surface.py
+  s_760cbcf248de37::t_28fd731ee9241b 3-4,9-10,12-18,20-21,23-29,32-33,38-44,107-234,239-240,247-251,254,256-260,263,265-266,269,271-272,275,277-278,281,283-284,287-295,297-300,303,305-325,332,337-409,412-417,440-443,445-449,451-452,454-460,462-485,488-491,493-516,518-519,522,525-537,539-545,547-548,550-553,556-557,559-560,562,564-570,572-578,581-607,612-615,617-620,623-670,672-862
+dev/specs/ifc-3185-number-pool-scopes/contracts/graphql-number-pool-queries.md
+  s_760cbcf248de37::t_8d43eb50df9609 217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "61b0cde5e46ef388bf45cd720a12bbb1e3da03f1",
+  "prompts": {},
+  "sessions": {
+    "s_760cbcf248de37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9796f03b-7c77-4706-bad0-f6d8a85686f0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

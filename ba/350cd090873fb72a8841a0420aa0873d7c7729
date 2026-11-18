@@ -1,0 +1,19 @@
+dev/specs/ifc-3009-webhook-payload-enrichment/qa-checklist.md
+  s_2887adbd2ab9cd::t_5cf56d28f4b09c 15-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ba350cd090873fb72a8841a0420aa0873d7c7729",
+  "prompts": {},
+  "sessions": {
+    "s_2887adbd2ab9cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "00cc5421-4dde-4354-9581-8dd48dc8899e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+.github/workflows/dependabot-autopilot-act.yml
+  s_43d8e382eba497::t_db09ddf91177dd 34-35,152-239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7c383ba7ed76876e6e120d97a538a67586df68b3",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+dev/knowledge/backend/tls.md
+  s_27255c77800f21::t_4f8ee8d8cf2c4e 89-90
+frontend/app/src/shared/api/rate-limit/shed-envelope.ts
+  s_27255c77800f21::t_38840253f05e80 11-12
+backend/infrahub/git/global_config.py
+  s_27255c77800f21::t_a166fd39bbe0de 58-59
+backend/infrahub/core/query/branch_agnostic_retirement.py
+  s_27255c77800f21::t_69a951a7c20041 39-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "81ae9c29fcbd836e840e637f7d2e8ec97749a908",
+  "prompts": {},
+  "sessions": {
+    "s_27255c77800f21": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc719768-dfb4-4c2a-85fb-2d1bc2095d01",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

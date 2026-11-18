@@ -1,0 +1,23 @@
+.github/scripts/dependabot_autopilot/codeowners.py
+  s_43d8e382eba497::t_0f2b181489566e 1-105
+.github/scripts/dependabot_autopilot/tests/fixtures/CODEOWNERS
+  s_43d8e382eba497::t_9738c34e72be38 1-13
+.github/scripts/dependabot_autopilot/tests/test_codeowners.py
+  s_43d8e382eba497::t_f648ecd8a1fa31 1-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d989aa420b59f9bb719bdfff36b45cfb6419a9d0",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

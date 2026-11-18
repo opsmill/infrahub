@@ -1,0 +1,38 @@
+dev/guides/backend/creating-migrations.md
+  s_3b635b8269392c::t_fda7eb7bf9cfd6 176-177,182-186,189
+  s_3b635b8269392c::t_c6fb1cfab60404 178-181,187-188
+backend/AGENTS.md
+  s_3b635b8269392c::t_1f1b9563c13ccf 146
+.agents/skills/pre-ci/SKILL.md
+  s_3b635b8269392c::t_9725dbfe4f6f58 2-6
+AGENTS.md
+  s_3b635b8269392c::t_4367c4e2fb6df6 175
+.agents/skills/audit-docs/SKILL.md
+  s_3b635b8269392c::t_d4e0b1d271a608 4
+.agents/skills/pre-ci/agents/openai.yaml
+  s_cdba3b0ed98d88::t_49cb19ecd5746b 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d74ef193a7fc6aef948bb0eec1350e776de5360e",
+  "prompts": {},
+  "sessions": {
+    "s_3b635b8269392c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc8480ff-3382-476d-aaa7-26d805ff3272",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    },
+    "s_cdba3b0ed98d88": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d530ccd3-581f-4ced-bc35-4aa8ad4d3f80",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

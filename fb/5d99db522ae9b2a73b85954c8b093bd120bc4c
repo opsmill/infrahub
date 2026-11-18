@@ -1,0 +1,19 @@
+backend/tests/unit/core/merge/selective_regen/test_generator_output.py
+  s_9ab565af291b9a::t_cc48b0d156fb78 17,178-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fb5d99db522ae9b2a73b85954c8b093bd120bc4c",
+  "prompts": {},
+  "sessions": {
+    "s_9ab565af291b9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c6129b7-6134-49b1-8a6f-a7599ea0d463",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

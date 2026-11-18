@@ -1,0 +1,21 @@
+backend/infrahub/task_manager/flow_run/branch_cleanup.py
+  s_2fae1787d146ee::t_1a0cad5d5c3dce 45
+backend/infrahub/task_manager/flow_run/tags.py
+  s_2fae1787d146ee::t_cb59e07223b5be 13-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "93d88034088cf671e9f95bd176674ce07f26632f",
+  "prompts": {},
+  "sessions": {
+    "s_2fae1787d146ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c38a01a-cf7a-4707-9e40-59d796ec98f5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}

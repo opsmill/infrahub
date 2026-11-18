@@ -1,0 +1,23 @@
+backend/tests/component/core/query/read_plan/test_execution.py
+  s_6947b4d8b10fbd::t_bda895264d5621 1037-1061
+  s_6947b4d8b10fbd::t_8d92373de335a3 3,44,56
+  s_6947b4d8b10fbd::t_3ae010870c6371 1036,1062-1064
+backend/infrahub/core/regeneration/poc/query_runner.py
+  s_6947b4d8b10fbd::t_fe9c6fb630a918 206-208,287-303
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ab527d2bcc134274b098f0a1d5e558550092f623",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

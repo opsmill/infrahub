@@ -1,0 +1,19 @@
+dev/README.md
+  s_a0f57f88695bdd::t_e566cf36e60873 126-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9d7ce8a3dbc9f472550cf1fc28d96fb9ba41c3f5",
+  "prompts": {},
+  "sessions": {
+    "s_a0f57f88695bdd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f44d53b4-d1a2-4ce6-ad01-93cdf49d220d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

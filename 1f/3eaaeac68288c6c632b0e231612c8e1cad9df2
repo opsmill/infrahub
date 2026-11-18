@@ -1,0 +1,41 @@
+backend/tests/component/core/resource_manager/test_number_pool_scope_profiles.py
+  s_90d57abc1cfeb7::t_d90531038cc37d 1-31,33-34,37-67,69,71-80,82-128,130,136-137,146-147,149-184
+  s_90d57abc1cfeb7::t_c32cf9a4f52833 68,70,81
+  s_90d57abc1cfeb7::t_a1f70e3575ab9f 32,35-36,129,131-135,138-145,148
+backend/infrahub/profiles/node_applier.py
+  s_90d57abc1cfeb7::t_e622fe86c0f59e 3,21-26,28-31,238-239,241-244,254,256-259,262-263,266-287
+  s_90d57abc1cfeb7::t_adfe8c22dc5469 184-201,223,246,249-253,255,261,265,288-293
+  s_90d57abc1cfeb7::t_b3603644fecd73 27
+backend/tests/component/graphql/resource_manager/number_pools/test_scoped_pool_allocation.py
+  s_90d57abc1cfeb7::t_e622fe86c0f59e 3-4,12,48-59,147-228
+backend/tests/unit/pools/test_scope.py
+  s_90d57abc1cfeb7::t_e622fe86c0f59e 31,590-594
+backend/infrahub/pools/scope.py
+  s_90d57abc1cfeb7::t_e622fe86c0f59e 24,137,142-143,156-159,161-165,247
+backend/tests/component/core/profiles/test_node_applier.py
+  s_90d57abc1cfeb7::t_e622fe86c0f59e 17,52,78-79,82-88
+backend/infrahub/pools/division_reader.py
+  s_90d57abc1cfeb7::t_e622fe86c0f59e 53,57-63
+  s_90d57abc1cfeb7::t_fd29ccd4f40a2b 22-23,46,50,54-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1f3eaaeac68288c6c632b0e231612c8e1cad9df2",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_90d57abc1cfeb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98b28fc3-cccd-4e87-800f-1b76c5baaacf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

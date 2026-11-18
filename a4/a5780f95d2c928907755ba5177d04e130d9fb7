@@ -1,0 +1,25 @@
+dev/README.md
+  s_d03d43548f9236::t_f511a773e33f7b 71
+dev/knowledge/backend/observability.md
+  s_d03d43548f9236::t_f31d0a83cc161d 54,64-66
+  s_d03d43548f9236::t_c20d7e0ddb4d8e 93,95,97-98,123-124,133-134
+  s_d03d43548f9236::t_b88a9f8ebf06e6 1-53,55-63,67-92,94,96,99-122,125-132,135-144
+backend/AGENTS.md
+  s_d03d43548f9236::t_f511a773e33f7b 134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a4a5780f95d2c928907755ba5177d04e130d9fb7",
+  "prompts": {},
+  "sessions": {
+    "s_d03d43548f9236": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11fd0f89-7d67-4f27-b0d0-d2b6a4251de7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

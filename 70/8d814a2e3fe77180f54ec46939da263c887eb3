@@ -1,0 +1,21 @@
+backend/tests/unit/cli/test_upgrade_task_history.py
+  s_cfd0841cea4d76::t_46235287f96607 27-31,79-84,88,93,100-101,111-112,125
+backend/infrahub/cli/tasks.py
+  s_cfd0841cea4d76::t_46235287f96607 48,103-108,198-200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "708d814a2e3fe77180f54ec46939da263c887eb3",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

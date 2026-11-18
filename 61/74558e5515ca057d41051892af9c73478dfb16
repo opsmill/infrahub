@@ -1,0 +1,29 @@
+frontend/app/src/entities/navigation/ui/search-anywhere/search-nodes.test.tsx
+  b7d33b2a1890d280 1-31
+backend/infrahub/graphql/queries/search.py
+  b7d33b2a1890d280 119
+backend/tests/component/graphql/queries/test_search.py
+  b7d33b2a1890d280 5,9,72-137
+frontend/app/src/entities/navigation/ui/search-anywhere/search-nodes.tsx
+  b7d33b2a1890d280 23,70,72-83,89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "6174558e5515ca057d41051892af9c73478dfb16",
+  "prompts": {
+    "b7d33b2a1890d280": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21d17be5-72fe-49d2-8985-c793ec95e50a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 200,
+      "total_deletions": 5,
+      "accepted_lines": 200,
+      "overriden_lines": 0
+    }
+  }
+}

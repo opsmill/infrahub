@@ -1,0 +1,27 @@
+backend/infrahub/git/sync.py
+  s_2ab8629d5567d5::t_eba9b5083c5c6f 7,246,255-256,271-272
+backend/infrahub/git/tasks.py
+  s_2ab8629d5567d5::t_084fb1a35397ab 553-554,576-578,673-675,677
+backend/tests/component/git/test_fresh_clone_import.py
+  s_2ab8629d5567d5::t_ae392874276995 23,50,258,262-290,371-393
+backend/tests/component/git/test_git_rpc.py
+  s_2ab8629d5567d5::t_94b904cc21f702 130,135
+dev/knowledge/backend/git-sync.md
+  s_2ab8629d5567d5::t_bde04956a434de 405-407,413-414
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f18266988066279fa075fe334bec2e8c05debfd",
+  "prompts": {},
+  "sessions": {
+    "s_2ab8629d5567d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "377ca0ad-9cbc-42ab-9501-cb320aa0052f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}

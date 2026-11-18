@@ -1,0 +1,29 @@
+backend/tests/component/events/test_node_mutation_events.py
+  s_760cbcf248de37::t_9ce39f7a1efb9d 1-4,6-9,12-18,19-35,39-40,43-50
+  s_760cbcf248de37::t_9f2f262d778d23 1-4,6-9,12-18,19-35,39-40,43-50
+backend/tests/component/graphql/test_mutation_create_object_template.py
+  s_760cbcf248de37::t_bae423e71b9ecd 1,9,11-12,18-72
+  s_760cbcf248de37::t_3e9e100f3995ff 1,9,11-12,18-72
+backend/infrahub/events/generator.py
+  s_760cbcf248de37::t_b3ab81aaa46329 56-67
+  s_760cbcf248de37::t_d6f28065941919 56-67
+  s_760cbcf248de37::t_143937bbd7f351 49,52
+  s_760cbcf248de37::t_651ea3dca1898f 49,52
+  s_760cbcf248de37::t_9ace075ef10ab6 49,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e47ef2bef734d4e3c8e4fde67e9bd48c4dfd55cc",
+  "prompts": {},
+  "sessions": {
+    "s_760cbcf248de37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9796f03b-7c77-4706-bad0-f6d8a85686f0",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

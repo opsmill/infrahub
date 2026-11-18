@@ -1,0 +1,31 @@
+backend/infrahub/config.py
+  s_27255c77800f21::t_a42b7fa8d48d96 16,76-85,326,381,538,597,866,897,932,1376,1483,1823
+backend/tests/unit/config/test_tls_settings.py
+  s_27255c77800f21::t_5d5dab9fd928fb 9-21,93-143
+changelog/+blank-ca-bundle-setting.fixed.md
+  s_deb1a88485ad83::t_26514738b805f6 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e7757ce264dada27935013da9683798bcc46dea6",
+  "prompts": {},
+  "sessions": {
+    "s_27255c77800f21": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc719768-dfb4-4c2a-85fb-2d1bc2095d01",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_deb1a88485ad83": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b6e40e20-e3ee-47e4-947c-536631360821",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

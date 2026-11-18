@@ -1,0 +1,19 @@
+backend/infrahub/workers/infrahub_async.py
+  s_d1d97b4114dca4::t_973449ab1a1484 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e2b374df8ed04b96f7739b7eec971b388d598d9b",
+  "prompts": {},
+  "sessions": {
+    "s_d1d97b4114dca4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36eb8624-c6b8-4863-b2f1-62374db2a52a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

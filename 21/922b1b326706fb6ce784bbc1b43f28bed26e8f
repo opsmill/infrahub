@@ -1,0 +1,60 @@
+backend/infrahub/telemetry/database.py
+  s_b134b1501718e5::t_539d1ce8d676c7 86-129
+  s_b134b1501718e5::t_3932d50f3f5738 1-3
+  s_b134b1501718e5::t_71e1266f59e93e 146
+  s_b134b1501718e5::t_943de5f246e45a 22-28
+dev/specs/infp-631-resource-telemetry/contracts/telemetry-resources.md
+  s_b134b1501718e5::t_10a26e1affed91 69-71
+  s_b134b1501718e5::t_7024ce521de5e5 63
+  s_b134b1501718e5::t_d727d4218e68c0 26-27
+  s_a8a2cf071e3fde::t_55d49421ae1d89 136
+dev/adr/0021-resource-allocation-telemetry.md
+  s_b134b1501718e5::t_5c36de73f71df5 69
+  s_b134b1501718e5::t_9d44ef74bcbcb6 110-112
+  s_b134b1501718e5::t_86bd442230b17a 41-46
+  s_b134b1501718e5::t_2e07dc5d3d24b2 7
+  s_b134b1501718e5::t_94e232e17fd682 113-114
+changelog/+resource-telemetry.added.md
+  s_b134b1501718e5::t_5d2a791bdc9de8 1
+backend/tests/component/telemetry/test_resources.py
+  s_b134b1501718e5::t_2dee5464ef563e 12
+  s_b134b1501718e5::t_98177f109054e5 264,266-269,272-300,304,308-311,313,319,322,324-326
+  s_b134b1501718e5::t_438a3b546512d6 174-176
+dev/specs/infp-631-resource-telemetry/data-model.md
+  s_b134b1501718e5::t_33a45c3a115c0c 99
+  s_b134b1501718e5::t_8d987a7200b9f6 22,27,29,71,117
+  s_b134b1501718e5::t_8e4e0d60e2c295 100
+dev/specs/infp-631-resource-telemetry/research.md
+  s_b134b1501718e5::t_be3a375fcc2597 155-162
+backend/infrahub/telemetry/models.py
+  s_b134b1501718e5::t_d1ed09e1bc0ab7 61
+backend/tests/unit/telemetry/test_database.py
+  s_b134b1501718e5::t_47eff14d4e41c0 1,3-6,15,38-63
+dev/knowledge/backend/telemetry.md
+  s_b134b1501718e5::t_7ede1570ff8f9d 101-106
+  s_a8a2cf071e3fde::t_461e38ce741d0f 184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "21922b1b326706fb6ce784bbc1b43f28bed26e8f",
+  "prompts": {},
+  "sessions": {
+    "s_a8a2cf071e3fde": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d231458-0060-44ad-b475-96da42cba12f",
+        "model": "unknown"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    },
+    "s_b134b1501718e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94683ba3-7a9a-45ea-9335-07384e00b903",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

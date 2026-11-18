@@ -1,0 +1,27 @@
+backend/infrahub/core/regeneration/impact.py
+  s_fb819cbbe44071::t_e568328b2a6d97 12,85,91-96
+backend/infrahub/core/regeneration/impact_classifier.py
+  s_fb819cbbe44071::t_5df966dc30bbb1 12,91-92,102-104,111-113,121-123,142-148,150-153
+backend/infrahub/core/regeneration/predicates.py
+  s_fb819cbbe44071::t_973b0c01b755b9 10,72-75,93-94,103-108
+backend/tests/unit/core/regeneration/test_impact_classifier.py
+  s_fb819cbbe44071::t_9009bafbb50f60 17-23,327,346-347,355-371
+backend/tests/unit/core/regeneration/test_relevant_node_changes.py
+  s_fb819cbbe44071::t_686f645424300f 8,181-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "42991eea791f204015c125e1513c94fd77c3a182",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

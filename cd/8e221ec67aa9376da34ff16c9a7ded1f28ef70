@@ -1,0 +1,14 @@
+backend/infrahub/core/validators/pool/scope_dependency.py
+  h_bd00275aefc321 100,105-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cd8e221ec67aa9376da34ff16c9a7ded1f28ef70",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

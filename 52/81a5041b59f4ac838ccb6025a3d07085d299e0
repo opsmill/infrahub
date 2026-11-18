@@ -1,0 +1,24 @@
+backend/tests/unit/core/schema/test_number_pool_parameters.py
+  s_f4cdafdd905485::t_1b242158afb7e1 180-186,189-195,199,209-244
+  s_f4cdafdd905485::t_0cda02ff09412f 197-198,245-246
+  s_f4cdafdd905485::t_878669264f39aa 187-188,196,200-208
+backend/tests/unit/core/schema/test_schema_update_validation.py
+  s_f4cdafdd905485::t_3e6abf27919d50 6,189-315
+  s_f4cdafdd905485::t_9a9c3758401401 316
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5281a5041b59f4ac838ccb6025a3d07085d299e0",
+  "prompts": {},
+  "sessions": {
+    "s_f4cdafdd905485": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d80b27f2-528a-4331-bd46-39778bf01130",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

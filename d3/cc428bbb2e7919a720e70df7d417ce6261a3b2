@@ -1,0 +1,19 @@
+backend/tests/component/git/test_stopped_import_repair.py
+  s_2ab8629d5567d5::t_2366fcbd4c903c 15,123-152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d3cc428bbb2e7919a720e70df7d417ce6261a3b2",
+  "prompts": {},
+  "sessions": {
+    "s_2ab8629d5567d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "377ca0ad-9cbc-42ab-9501-cb320aa0052f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}

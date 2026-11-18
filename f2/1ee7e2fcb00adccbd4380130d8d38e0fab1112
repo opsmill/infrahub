@@ -1,0 +1,19 @@
+backend/tests/component/graphql/resource_manager/test_number_pool_mutation.py
+  s_849d53d45b72cc::t_a65e9d945dd977 642-649,651-676,678-703,705-717,719-725,727-745,747-756,758-763,765-768,770,1066-1296
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f21ee7e2fcb00adccbd4380130d8d38e0fab1112",
+  "prompts": {},
+  "sessions": {
+    "s_849d53d45b72cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33e8b1a5-ca5e-459e-81c0-5c7a3ca4db19",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

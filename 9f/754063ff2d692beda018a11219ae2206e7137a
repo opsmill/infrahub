@@ -1,0 +1,45 @@
+.github/workflows/bug-agent-test.md
+  s_b5a172beeb66a5::t_56e547b737d9dc 60
+  s_b5a172beeb66a5::t_b47556de14e54b 311,314
+  s_b5a172beeb66a5::t_36962af36f975a 47,49
+  s_b5a172beeb66a5::t_d012e01344ffb0 315
+  s_b5a172beeb66a5::t_ffa8cb438b4981 69
+.github/workflows/bug-agent-analyst.md
+  s_b5a172beeb66a5::t_1a13766ec24874 157-158
+  s_b5a172beeb66a5::t_94194539726923 153
+.github/workflows/bug-agent-fix.md
+  s_b5a172beeb66a5::t_1b2c472bb5f77a 67
+  s_b5a172beeb66a5::t_2f65814aa8d297 48-49
+  s_b5a172beeb66a5::t_a20b60aefe96d5 263-266
+  s_b5a172beeb66a5::t_d186c6c8a0c11b 54
+.github/workflows/bug-agent-review.md
+  s_b5a172beeb66a5::t_b8ead186303a09 92,94-97
+  s_b5a172beeb66a5::t_03886c7b971f2f 35,40-42
+  s_b5a172beeb66a5::t_54bfa83d644087 132-134
+  s_b5a172beeb66a5::t_265da322b17320 81-82
+  s_b5a172beeb66a5::t_22dd8fb20236e8 199-201
+.github/workflows/bug-agent-analyst.lock.yml
+  s_b5a172beeb66a5::t_39eb37f11f8146 1
+.github/workflows/bug-agent-fix.lock.yml
+  s_b5a172beeb66a5::t_565ceb6b55c590 1,632-633,638,651
+.github/workflows/bug-agent-review.lock.yml
+  s_b5a172beeb66a5::t_a53a0b4bb9b925 1,102-104,482-484,2122-2124,2164-2165,2175,2177-2180
+.github/workflows/bug-agent-test.lock.yml
+  s_b5a172beeb66a5::t_e8f0b9f41c2f6f 1,631,633,644,653
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9f754063ff2d692beda018a11219ae2206e7137a",
+  "prompts": {},
+  "sessions": {
+    "s_b5a172beeb66a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0a1e516-ac04-4c03-a92c-b70df2892d18",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}

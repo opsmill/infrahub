@@ -1,0 +1,21 @@
+dev/setup-environment.sh
+  s_f06bbbaaa1fc8d::t_00f9b520602527 118
+dev/test-setup-environment.sh
+  s_f06bbbaaa1fc8d::t_d2cdeb1f27a9b1 1-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "806864514ba54d699fc1583989ae280aecd20de9",
+  "prompts": {},
+  "sessions": {
+    "s_f06bbbaaa1fc8d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ab5d-2f63-79a0-8a1e-adde28285a1e",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}

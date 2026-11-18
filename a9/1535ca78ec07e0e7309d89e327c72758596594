@@ -1,0 +1,37 @@
+backend/infrahub/groups/ancestors.py
+  s_2fdf558427eaa2::t_8deee7ac3e5346 28
+  s_2fdf558427eaa2::t_b7d15b220d47fe 5
+backend/infrahub/graphql/resolvers/ipam.py
+  s_2fdf558427eaa2::t_09ab0d3b4f214d 21
+  s_2fdf558427eaa2::t_e00c48921d33f0 15,406-409,419
+backend/infrahub/core/manager.py
+  s_2fdf558427eaa2::t_4f15ef8904406a 387
+  s_2fdf558427eaa2::t_055d320c66a767 423
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_source_through_other_reads.py
+  s_2fdf558427eaa2::t_8d273689f399f9 1-141
+backend/infrahub/core/metadata/model.py
+  s_2fdf558427eaa2::t_9a8a3d99dfe8b5 18-22
+backend/infrahub/graphql/resolvers/resolver.py
+  s_2fdf558427eaa2::t_12959be674998c 10,12,406-413,420
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a91535ca78ec07e0e7309d89e327c72758596594",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_2fdf558427eaa2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "abafed1e-c4e8-407e-9a07-14cf48e361b4",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

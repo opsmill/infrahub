@@ -1,0 +1,95 @@
+dev/specs/005-enterprise-licensing-infp-472/spec.md
+  s_1df8eb94da3d51::t_e02ea7abfd9265 178,184
+  s_1df8eb94da3d51::t_5d7b8f1d6534a9 183,219
+  s_1df8eb94da3d51::t_b59f7d7b62b437 58
+frontend/app/src/entities/user-profile/ui/account-menu.test.tsx
+  s_1df8eb94da3d51::t_214ca5d0d57681 12,65
+frontend/app/src/entities/config/ui/about-modal.test.tsx
+  s_1df8eb94da3d51::t_32b69d85f0cb52 5,20-34,36-40,109-123
+  s_1df8eb94da3d51::t_520417b384a753 50,90-108
+  s_1df8eb94da3d51::t_c2fcd86119b537 10-13
+  s_1df8eb94da3d51::t_ac4bf50472006f 124
+frontend/app/src/entities/license/ui/license-about-rows.test.tsx
+  s_1df8eb94da3d51::t_ab2641b5a6615e 38,207-221
+  s_1df8eb94da3d51::t_cc4e3a3139325f 1-7,9-11,16-23,39,45-116,134-151,155-198,226-239
+  s_1df8eb94da3d51::t_c2fcd86119b537 12-15,152-154
+  s_1df8eb94da3d51::t_02ab72317adb58 203
+  s_1df8eb94da3d51::t_097fb5a43829a9 8,24-37,40-44,117-133,199-202,204-206,222-225
+frontend/app/src/entities/license/ui/license-about-rows.tsx
+  s_1df8eb94da3d51::t_9e0760263b468a 10,17,36
+  s_1df8eb94da3d51::t_72b298b279b7ed 1-3,5-9,11-13,21-35,37-74,79,81-85
+  s_1df8eb94da3d51::t_e6f94794ac30da 4,14-16,18-20,75,78
+  s_1df8eb94da3d51::t_ffe713ab82d3d1 76-77,80
+dev/specs/005-enterprise-licensing-infp-472/contracts/response-header.md
+  s_1df8eb94da3d51::t_e02ea7abfd9265 23-24
+frontend/app/src/entities/license/domain/model/license.ts
+  s_1df8eb94da3d51::t_844bfa65898fde 1-3
+backend/tests/unit/api/test_internal_license.py
+  s_1df8eb94da3d51::t_1b1db415fbc5e1 212-213,215,223
+  s_1df8eb94da3d51::t_6f395ed8c82c0b 1-9,11-22,24-206,208-211,214,216-220
+  s_1df8eb94da3d51::t_e9c2b2264ba4c9 10,23,207,221-222
+frontend/app/src/entities/config/ui/about-modal.tsx
+  s_1df8eb94da3d51::t_245fed27529913 6,11
+  s_1df8eb94da3d51::t_9e0760263b468a 46
+dev/specs/005-enterprise-licensing-infp-472/contracts/frontend-banner.md
+  s_1df8eb94da3d51::t_b59f7d7b62b437 10,50
+  s_1df8eb94da3d51::t_5d7b8f1d6534a9 46,49
+frontend/app/tests/fake/license.ts
+  s_1df8eb94da3d51::t_b8cd6f54c8fbcd 1-38
+dev/specs/005-enterprise-licensing-infp-472/plan.md
+  s_1df8eb94da3d51::t_b59f7d7b62b437 47
+dev/specs/005-enterprise-licensing-infp-472/contracts/upgrade-output.md
+  s_1df8eb94da3d51::t_5d7b8f1d6534a9 47
+backend/infrahub/api/internal.py
+  s_1df8eb94da3d51::t_b26896c3e841f1 24-29,37,62-64
+  s_1df8eb94da3d51::t_d5b6af03b64f32 81,83,94-95,105-107,130-133
+  s_1df8eb94da3d51::t_c4857365cdc435 4-5,30-31,33,55-61,65-80,82,84-93,96-101,134-143
+  s_1df8eb94da3d51::t_a3e666adf58726 129
+schema/openapi.json
+  s_1df8eb94da3d51::t_6145c7930828b6 2538-2554,4286-4287,4302-4303,4519-4703,6218-6235
+  s_1df8eb94da3d51::t_bfe8b87a2316bf 4288-4296
+frontend/app/src/shared/components/display/info-row.tsx
+  s_1df8eb94da3d51::t_b84846013b03f2 1-29
+frontend/app/src/entities/license/ui/hooks/use-format-license-day.ts
+  s_1df8eb94da3d51::t_de3538d899ffdf 9
+  s_1df8eb94da3d51::t_3be2443ab9f272 1-8,10-15
+dev/specs/005-enterprise-licensing-infp-472/tasks.md
+  s_1df8eb94da3d51::t_e02ea7abfd9265 103,107-110,134
+  s_1df8eb94da3d51::t_66f5cabd504c22 100,104-105,111,116-117
+dev/specs/005-enterprise-licensing-infp-472/data-model.md
+  s_1df8eb94da3d51::t_b59f7d7b62b437 112
+  s_1df8eb94da3d51::t_5d7b8f1d6534a9 113
+backend/tests/component/api/test_50_internals.py
+  s_1df8eb94da3d51::t_928c6014d6b1e5 131-138,140-150,152-154
+  s_1df8eb94da3d51::t_c3b846c4cc5e5c 70,73,76
+  s_1df8eb94da3d51::t_1b1db415fbc5e1 139,151
+  s_1df8eb94da3d51::t_baf5df62946374 114,117,121
+  s_1df8eb94da3d51::t_f37fcec6dd5a2a 2,14,17-18,83-113,115-116,118-120,122-130,155-169
+frontend/app/src/entities/license/domain/rules/license-dates.ts
+  s_1df8eb94da3d51::t_65f4590ad447cf 1-6
+dev/specs/005-enterprise-licensing-infp-472/research.md
+  s_1df8eb94da3d51::t_b59f7d7b62b437 38
+  s_1df8eb94da3d51::t_e02ea7abfd9265 33,39
+dev/specs/005-enterprise-licensing-infp-472/contracts/api-info.md
+  s_1df8eb94da3d51::t_e02ea7abfd9265 58
+  s_1df8eb94da3d51::t_5d7b8f1d6534a9 46,48-50,52
+  s_1df8eb94da3d51::t_b59f7d7b62b437 3,47,51
+frontend/app/src/shared/api/rest/types.generated.ts
+  s_1df8eb94da3d51::t_807fcc4da90a90 650-655,1378-1379,1479-1530,2230-2240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2304f59b9e8a6f659026f5194f8733806a3cb5e5",
+  "prompts": {},
+  "sessions": {
+    "s_1df8eb94da3d51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6a82980-5a58-459a-a19c-297b9025dff8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

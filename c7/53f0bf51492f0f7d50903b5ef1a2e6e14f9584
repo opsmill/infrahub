@@ -1,0 +1,106 @@
+backend/infrahub/core/schema/definitions/core/artifact.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 24,51,114
+backend/infrahub/graphql/queries/account.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 51-60
+.codex/hooks.json
+  s_6a5d5821c03c7e::t_162bab05a30c3a 1-15
+backend/infrahub/graphql/queries/search.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 135-139,141-160,162-164,168-184
+backend/infrahub/core/schema/definitions/core/check.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 29
+backend/infrahub/core/schema/definitions/core/propose_change_comment.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 25,40,80,92,118,142,159,182
+backend/infrahub/core/schema/definitions/core/graphql_query.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 28
+.github/workflows/update-sdk-compatibility-docs.yml
+  s_6a5d5821c03c7e::t_162bab05a30c3a 21
+backend/infrahub/core/schema/definitions/core/account.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 31,45,71,118,139
+backend/infrahub/core/schema/definitions/core/menu.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 20,84
+backend/AGENTS.md
+  s_6a5d5821c03c7e::t_162bab05a30c3a 124,152
+backend/infrahub/core/schema/definitions/core/repository.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 42,251,284
+backend/infrahub/core/schema/definitions/core/lineage.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 9,18
+backend/infrahub/graphql/queries/proposed_change.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 40-66
+.agents/skills/reviewing-pull-requests/agents/openai.yaml
+  s_6a5d5821c03c7e::t_162bab05a30c3a 1-7
+backend/infrahub/core/schema/definitions/core/template.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 14,36
+backend/infrahub/core/schema/definitions/core/file_object.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 12
+backend/infrahub/actions/schema.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 33,96,137,168,197,239,286,338,385
+backend/infrahub/git/integrator.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 1122
+backend/infrahub/core/schema/definitions/core/generator.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 30,135
+AGENTS.md
+  s_6a5d5821c03c7e::t_162bab05a30c3a 177
+  s_6a5d5821c03c7e::t_e7630cbdae94df 180-183
+backend/infrahub/graphql/queries/ipam.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 34-35,37-40,42-43,45-46,48-53,73-74,76-79,81-83,85-86
+backend/tests/component/graphql/queries/test_ipam.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 1081-1118
+.github/workflows/chromatic.yml
+  s_6a5d5821c03c7e::t_162bab05a30c3a 44
+.github/workflows/push-bench-image.yml
+  s_6a5d5821c03c7e::t_162bab05a30c3a 30,89
+backend/infrahub/graphql/mutations/ipam.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 97
+backend/infrahub/graphql/mutations/account.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 24,77
+backend/infrahub/core/schema/definitions/core/permission.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 30,69,112,143,178
+backend/infrahub/config.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 935-938
+backend/infrahub/graphql/queries/path.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 25,148-150,161,174-175,369-371,373-374,376-380,382-383,385-388,390-399,404-441,444-462
+backend/infrahub/graphql/queries/preferences.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 47-48,67-68,83-84
+.agents/skills/reviewing-pull-requests/SKILL.md
+  s_6a5d5821c03c7e::t_162bab05a30c3a 1-30
+backend/infrahub/core/schema/definitions/core/propose_change.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 28
+.agents/skills/audit-docs/SKILL.md
+  s_6a5d5821c03c7e::t_162bab05a30c3a 4
+backend/infrahub/graphql/mutations/webhook.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 121
+backend/infrahub/graphql/queries/reachable.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 92-94,96-97,99-100,102-109,111-120,124-180
+REVIEW.md
+  s_6a5d5821c03c7e::t_162bab05a30c3a 1-30
+.github/workflows/uv-check.yml
+  s_6a5d5821c03c7e::t_162bab05a30c3a 23
+backend/tests/component/graphql/mutations/test_webhook.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 9,186-215,377-380
+  s_6a5d5821c03c7e::t_bec6e6aec7c048 381-383
+backend/infrahub/core/schema/definitions/core/transform.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 27,102,120
+backend/infrahub/proposed_change/action_checker.py
+  s_6a5d5821c03c7e::t_162bab05a30c3a 20,30,40,55,70,87,99,105
+  s_6a5d5821c03c7e::t_3584efc027bad4 136,144,161,170
+.agents/hooks/pr-review.sh
+  s_6a5d5821c03c7e::t_162bab05a30c3a 1-139
+backend/infrahub/graphql/queries/resource_manager.py
+  s_6a5d5821c03c7e::t_c2bf38910073a5 110-111,113,115,129-151,154-183,185,187-202,204-206,208-210,212,214,233,244-251,253-262,264-269,271-333
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c753f0bf51492f0f7d50903b5ef1a2e6e14f9584",
+  "prompts": {},
+  "sessions": {
+    "s_6a5d5821c03c7e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8070733-e44d-4f54-9e15-7eda3b16d41f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

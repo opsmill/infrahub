@@ -1,0 +1,27 @@
+backend/infrahub/core/validators/__init__.py
+  s_9a65b7e7908928::t_6d9da12b3408aa 18,55-56
+backend/infrahub/dependencies/builder/constraint/schema/aggregated.py
+  s_9a65b7e7908928::t_eba6da9c0c1957 16,44
+backend/infrahub/dependencies/builder/constraint/schema/number_pool_scope.py
+  s_9a65b7e7908928::t_c42aa3d94046c4 1-10
+backend/tests/component/core/constraint_validators/test_number_pool_scope.py
+  s_9a65b7e7908928::t_f628f424c4892a 1-272
+backend/tests/integration/schema_lifecycle/test_number_pool_scope_schema.py
+  s_9a65b7e7908928::t_72f374ef2c7351 1-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9f78bea1d9fcd56c114ae8f8bd6de3a3606063e3",
+  "prompts": {},
+  "sessions": {
+    "s_9a65b7e7908928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "60976836-eea3-41a5-9ac8-f10bf4fbc0fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

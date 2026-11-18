@@ -1,0 +1,19 @@
+backend/tests/component/pools/test_number_pool_shorthand.py
+  s_849d53d45b72cc::t_6c0ae3ebe543e5 73,76-79,83,94,118-119,127,130,134,149-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "008203a1228a7dba5768e7596441c913f302b299",
+  "prompts": {},
+  "sessions": {
+    "s_849d53d45b72cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33e8b1a5-ca5e-459e-81c0-5c7a3ca4db19",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+schema/schema.graphql
+  h_7ec9b28dd2a5ab 12596
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6ddd30bdc49a026fabfb1719deee47589e22028",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

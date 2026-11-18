@@ -1,0 +1,21 @@
+dev/guidelines/backend/testing.md
+  s_266a416a4e6e0b::t_e3abc57d103d42 80-84
+dev/guides/backend/choosing-tests.md
+  s_266a416a4e6e0b::t_e3abc57d103d42 31-32,41-43,55,66-85,103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c9f5e0efd5109f5353902167abdb28bc3147b398",
+  "prompts": {},
+  "sessions": {
+    "s_266a416a4e6e0b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a196cc-5eaa-7b10-80d0-891e59b65801",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

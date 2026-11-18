@@ -1,0 +1,44 @@
+backend/tests/component/core/migrations/graph/m080_number_pool_ranges/test_migration.py
+  s_849d53d45b72cc::t_4f2a907d0c497c 1-2
+  s_849d53d45b72cc::t_65aa2e01f23f29 19,50,83,135-136
+  s_849d53d45b72cc::t_bc4243e72c9f8a 24,49,68,84,87,101,120,128-134
+  s_849d53d45b72cc::t_35cdd695b0ccff 137
+backend/infrahub/pools/number_pool_shorthand.py
+  s_849d53d45b72cc::t_8ac86fde0b9b96 46
+backend/tests/component/pools/test_number_pool_shorthand.py
+  s_849d53d45b72cc::t_38a089a7ea97b4 142-144,146-148
+  s_849d53d45b72cc::t_4afe7648b40bb9 12,36-42,55,60,65,74,120,128,145
+  s_849d53d45b72cc::t_6c0ae3ebe543e5 73,76-79,83,94,118-119,127,130,134,149-158
+dev/specs/ifc-3065-number-pool-ranges/plan.md
+  s_849d53d45b72cc::t_a88f3d39b4b1f0 115
+dev/specs/ifc-3065-number-pool-ranges/research.md
+  s_849d53d45b72cc::t_e644534c9445dc 36,51
+dev/specs/ifc-3065-number-pool-ranges/tasks.md
+  s_849d53d45b72cc::t_b1600d32f90afb 70
+backend/tests/component/core/resource_manager/test_number_pool_branch_liveness.py
+  s_849d53d45b72cc::t_c4699a0fca432d 62-66,71-75,97-101,137-141,205-209,226-230,249-253,269-273,292-296,312-316
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c434aa7bae952c4ae6fed2672f8c20a0de6bf279",
+  "prompts": {},
+  "sessions": {
+    "s_0bc59054fef4ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "373c6d27-fa2a-4490-8e9d-d14c775f400c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_849d53d45b72cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33e8b1a5-ca5e-459e-81c0-5c7a3ca4db19",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

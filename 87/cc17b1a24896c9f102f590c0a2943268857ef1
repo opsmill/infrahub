@@ -1,0 +1,26 @@
+backend/infrahub/pools/number_pool_range_reconciler.py
+  s_9704426f757b7f::t_0e36aab892bcda 54,92
+  s_9704426f757b7f::t_6d332b98abc0dc 1-18,20,22-23,27,31,33-53,55-56,60-69,71-75,77,79-85,87-88,90,94-100
+  s_9704426f757b7f::t_6e94cafc0042f7 19,21,24-26,28-30,32,57-59,70,76,78,86,89,91,93
+backend/infrahub/pools/schema_number_pool_synchronizer.py
+  s_9704426f757b7f::t_1fd643754e1482 15,103-104,127-130,136
+backend/tests/component/pools/test_number_pool_range_reconciler.py
+  s_9704426f757b7f::t_e3ecb8dc668ac0 1-43,47-50,55-69,74-120
+  s_9704426f757b7f::t_52a2e4aaeb5a74 44-46,51-54,70-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "87cc17b1a24896c9f102f590c0a2943268857ef1",
+  "prompts": {},
+  "sessions": {
+    "s_9704426f757b7f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b51a041-824a-4b66-836a-630cb843bdb9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

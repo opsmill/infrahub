@@ -1,0 +1,21 @@
+dev/specs/dependabot-autopilot/checklists/requirements.md
+  s_43d8e382eba497::t_f4fd151eac1176 1-34
+dev/specs/dependabot-autopilot/spec.md
+  s_43d8e382eba497::t_f4fd151eac1176 1-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "34c93cfb96e113124bf4d25f50e2c715e0b8b496",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

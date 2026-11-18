@@ -1,0 +1,19 @@
+changelog/+npm-security-resolution.security.md
+  s_15b06b32bc2714::t_f12e17492764d1 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ddfc68820a058febb29711101b7f8569197fa68c",
+  "prompts": {},
+  "sessions": {
+    "s_15b06b32bc2714": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cac6-9c2e-7101-bc91-45ca7d63cb5a",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}

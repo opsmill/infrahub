@@ -1,0 +1,19 @@
+backend/tests/component/api/test_11_artifact.py
+  s_28a24420e8443a::t_7f3933ba1a8f93 307-341
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1918fb1948dbe5cc50cb518b246279c10cf801e1",
+  "prompts": {},
+  "sessions": {
+    "s_28a24420e8443a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c428f6ff-8b5f-4e39-b549-3de1bb8fce8b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Simon AURA--SCUSSEL <simon@opsmill.com>"
+    }
+  }
+}

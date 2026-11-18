@@ -1,0 +1,21 @@
+docs/docs/schema/number-pool.mdx
+  s_74ac4acddd24a9::t_3d1dbb1bb029e1 17,43-44,102,104,135-136
+docs/docs/resource-manager/allocate-number.mdx
+  s_74ac4acddd24a9::t_3d1dbb1bb029e1 60-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9c4b005a7172493d6a210e74f8124afddd746653",
+  "prompts": {},
+  "sessions": {
+    "s_74ac4acddd24a9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8b22b3b-01aa-429a-b864-618f066bb59c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

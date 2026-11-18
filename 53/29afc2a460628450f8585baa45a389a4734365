@@ -1,0 +1,21 @@
+backend/infrahub/core/migrations/graph/m079_number_pool_ranges/migration.py
+  s_7d719d42034f96::t_aa65fa0a230af8 159,161
+  s_7d719d42034f96::t_366445cf660d27 142-144
+  s_7d719d42034f96::t_a8901823c8fc3d 157-158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5329afc2a460628450f8585baa45a389a4734365",
+  "prompts": {},
+  "sessions": {
+    "s_7d719d42034f96": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "703e70b0-5c2c-470f-aa75-61897706f918",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

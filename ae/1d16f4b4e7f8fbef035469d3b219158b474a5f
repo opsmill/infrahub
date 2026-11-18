@@ -1,0 +1,25 @@
+.github/workflows/upgrade-agentic-workflows.yml
+  s_9c5b6446126571::t_e8db0c898a587c 1-159
+AGENTS.md
+  s_9c5b6446126571::t_0d089681effeb8 155
+dev/README.md
+  s_9c5b6446126571::t_c44e26fa79befc 80-83
+dev/knowledge/agentic-workflows.md
+  s_9c5b6446126571::t_be110ebbf83d77 1-172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ae1d16f4b4e7f8fbef035469d3b219158b474a5f",
+  "prompts": {},
+  "sessions": {
+    "s_9c5b6446126571": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91f59d33-3322-493f-ad2a-f4f60dfe37db",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}

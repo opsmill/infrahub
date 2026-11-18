@@ -1,0 +1,26 @@
+dev/knowledge/backend/events.md
+  s_d9e4ea96a53151::t_ed3c77c263689d 208
+dev/knowledge/backend/webhooks.md
+  s_d9e4ea96a53151::t_f9dd1d69ed37cd 318
+dev/knowledge/backend/changelog-enrichment.md
+  s_d9e4ea96a53151::t_ed3c77c263689d 65
+  s_d9e4ea96a53151::t_aa9a2a8d22d38c 1-64,66-82
+backend/AGENTS.md
+  s_d9e4ea96a53151::t_ed3c77c263689d 124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "76b680666365c34fb33bc86b4368f7b7fc82fcd3",
+  "prompts": {},
+  "sessions": {
+    "s_d9e4ea96a53151": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92c4c7dc-848d-45d9-bb7c-4c7e6fa1833a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

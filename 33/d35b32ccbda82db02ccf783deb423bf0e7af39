@@ -1,0 +1,21 @@
+backend/infrahub/core/changelog/secondaries.py
+  s_d6bb76affb8018::t_c50b0872430fd3 1-106
+backend/infrahub/core/changelog/relationship_getter.py
+  s_d6bb76affb8018::t_986afced1ccb77 7,13-14,53-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "33d35b32ccbda82db02ccf783deb423bf0e7af39",
+  "prompts": {},
+  "sessions": {
+    "s_d6bb76affb8018": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c396dbd-8e86-4438-b25e-16e3fabccdb0",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

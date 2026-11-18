@@ -1,0 +1,22 @@
+.agents/hooks/speckit-python.sh
+  s_49a51a4d0c7bfa::t_eb988db94c53f5 7-17
+  s_49a51a4d0c7bfa::t_371f11f05d659b 1-6,18-22
+.claude/settings.json
+  s_49a51a4d0c7bfa::t_89dc2a2810f27f 16-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0373f704b82abeef8be4ec909b2e6cdf9bb45479",
+  "prompts": {},
+  "sessions": {
+    "s_49a51a4d0c7bfa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e7d51f1-c81d-40a7-9a00-6ff7ac07a921",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

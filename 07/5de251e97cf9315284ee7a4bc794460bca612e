@@ -1,0 +1,23 @@
+changelog/+branch-delete-purge-race.fixed.md
+  s_2fae1787d146ee::t_e8083ce322994a 1
+dev/knowledge/backend/async-tasks.md
+  s_2fae1787d146ee::t_bb4cd49377f949 195,197-213
+dev/knowledge/backend/events.md
+  s_2fae1787d146ee::t_918e7ee1474e8b 103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "075de251e97cf9315284ee7a4bc794460bca612e",
+  "prompts": {},
+  "sessions": {
+    "s_2fae1787d146ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c38a01a-cf7a-4707-9e40-59d796ec98f5",
+        "model": "unknown"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}

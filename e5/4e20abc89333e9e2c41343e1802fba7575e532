@@ -1,0 +1,35 @@
+docs/docs/deploy-manage/maintain-upgrade/upgrade/community.mdx
+  s_cfd0841cea4d76::t_3cb78c5248bb62 29-30,32-34,69-70,77-87,89-94
+  s_cfd0841cea4d76::t_b1d003bbff7fad 31,88
+  s_cfd0841cea4d76::t_13fa6417956bbd 95
+docs/docs/deploy-manage/run-observe/tasks.mdx
+  s_cfd0841cea4d76::t_9a8fd94454a719 28-63,65-89,91-98,100-106
+  s_cfd0841cea4d76::t_13a2a7de83cd35 64,90,99
+docs/docs/deploy-manage/run-observe/activity-log.mdx
+  s_cfd0841cea4d76::t_3c792e17c1009e 88,124-147
+docs/docs/deploy-manage/maintain-upgrade/upgrade/enterprise.mdx
+  s_cfd0841cea4d76::t_b1d003bbff7fad 28,85
+  s_cfd0841cea4d76::t_5ec333fe015d29 92
+  s_cfd0841cea4d76::t_3cb78c5248bb62 26-27,29-31,66-67,74-84,86-91
+docs/docs/deploy-manage/maintain-upgrade/upgrade/overview.mdx
+  s_cfd0841cea4d76::t_007e010a7795df 101,109
+  s_cfd0841cea4d76::t_bd66d7f8f62866 99-100,102,106-108,110-114,117-135
+  s_cfd0841cea4d76::t_cef83d1885b0fa 103-105,115-116
+  s_cfd0841cea4d76::t_f03ffd523b12df 19,23-29,31,35,38,64,67,70,74,77-85,97-98,142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e54e20abc89333e9e2c41343e1802fba7575e532",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

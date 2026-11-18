@@ -1,0 +1,19 @@
+changelog/+number-pool-start-end-range.deprecated.md
+  s_74ac4acddd24a9::t_407779fbdfdd46 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2ddc365131f6dbc89def780503231fecedcdcaed",
+  "prompts": {},
+  "sessions": {
+    "s_74ac4acddd24a9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8b22b3b-01aa-429a-b864-618f066bb59c",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

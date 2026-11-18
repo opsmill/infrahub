@@ -1,0 +1,36 @@
+dev/specs/ifc-999999-format-smoke-greeting/critiques/critique-20261105-162645.md
+  s_7d4e8346d5abcf::t_e657a26a5227a0 1-103
+dev/specs/ifc-999999-format-smoke-greeting/spec.md
+  s_7d4e8346d5abcf::t_c451c6be0c6da3 1-44
+dev/specs/ifc-999999-format-smoke-greeting/plan.md
+  s_7d4e8346d5abcf::t_0fc60538eee134 1-62
+dev/specs/ifc-999999-format-smoke-greeting/data-model.md
+  s_7d4e8346d5abcf::t_0fc60538eee134 1-4
+dev/specs/ifc-999999-format-smoke-greeting/tasks.md
+  s_7d4e8346d5abcf::t_b2e2450fdd8431 1-15,17-29
+  s_7d4e8346d5abcf::t_64c15b12f54810 16
+dev/specs/ifc-999999-format-smoke-greeting/research.md
+  s_7d4e8346d5abcf::t_0fc60538eee134 1-19
+dev/specs/ifc-999999-format-smoke-greeting/checklists/requirements.md
+  s_7d4e8346d5abcf::t_c451c6be0c6da3 1-34
+dev/specs/ifc-999999-format-smoke-greeting/quickstart.md
+  s_7d4e8346d5abcf::t_0fc60538eee134 1-10
+dev/specs/ifc-999999-format-smoke-greeting/alignment-check.md
+  s_7d4e8346d5abcf::t_a2f578e7a391eb 1-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6595ed37a18855c377407786e582246cee78c473",
+  "prompts": {},
+  "sessions": {
+    "s_7d4e8346d5abcf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ac85-a8f2-7ae0-af05-05d46532f327",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

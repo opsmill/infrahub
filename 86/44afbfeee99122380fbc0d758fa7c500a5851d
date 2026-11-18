@@ -1,0 +1,38 @@
+dev/specs/ifc-3185-number-pool-scopes/contracts/graphql-number-pool-queries.md
+  s_d14ee8e09be48f::t_3e2c2afb9601ec 191
+  s_d14ee8e09be48f::t_51c7f0dfbf974e 3,13,15,20,24,40-41,48,50,52,54,56,78,89-90,96,102,106,108,110,113-114,118-119,122,126,128,130,142,153,173-174,201,234,258
+dev/specs/ifc-3185-number-pool-scopes/alignment-check.md
+  s_d14ee8e09be48f::t_77a56c9f864ef0 29
+dev/specs/ifc-3185-number-pool-scopes/contracts/pool-allocation-scope.md
+  s_d14ee8e09be48f::t_2e6cecc5fea3a1 52
+dev/specs/ifc-3185-number-pool-scopes/data-model.md
+  s_d14ee8e09be48f::t_17bf76bd2c96e9 30,47,53
+dev/specs/ifc-3185-number-pool-scopes/opsmill-implement-report.md
+  s_d14ee8e09be48f::t_196ef9bef67614 1-115
+dev/specs/ifc-3185-number-pool-scopes/plan.md
+  s_d14ee8e09be48f::t_0314c3fcec188c 155,160
+dev/specs/ifc-3185-number-pool-scopes/quickstart.md
+  s_d14ee8e09be48f::t_f179e6a6d272d9 15,19
+dev/specs/ifc-3185-number-pool-scopes/research.md
+  s_d14ee8e09be48f::t_397e417a965a7e 30,32,38,84,125
+dev/specs/ifc-3185-number-pool-scopes/spec.md
+  s_d14ee8e09be48f::t_dc50671af4e0ed 36,130,152,160,226
+dev/specs/ifc-3185-number-pool-scopes/tasks.md
+  s_d14ee8e09be48f::t_6c847b9f1f544f 29-33,44,59-60,66,94,97,157,160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8644afbfeee99122380fbc0d758fa7c500a5851d",
+  "prompts": {},
+  "sessions": {
+    "s_d14ee8e09be48f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46741e2b-7bb3-43bf-b1c3-55d952eeba48",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

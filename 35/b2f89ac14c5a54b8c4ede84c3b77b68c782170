@@ -1,0 +1,32 @@
+docs/docs/resource-manager/track-existing-numbers.mdx
+  s_b9c080bded1225::t_67edb3e4dd1812 8
+docs/docs/resource-manager/overview.mdx
+  s_b9c080bded1225::t_8f16a2ff216dbf 82,247,419
+docs/docs/branches/parallel-branches.mdx
+  s_b9c080bded1225::t_8f16a2ff216dbf 50
+docs/docs/resource-manager/allocate-number.mdx
+  s_b9c080bded1225::t_8f16a2ff216dbf 10
+docs/docs/schema/number-pool.mdx
+  s_b9c080bded1225::t_8f16a2ff216dbf 123,136
+docs/docs/resource-manager/allocate-numbers-per-scope.mdx
+  s_b9c080bded1225::t_01ea34e25217c6 8
+  s_b9c080bded1225::t_67edb3e4dd1812 52-58
+  s_b9c080bded1225::t_8f16a2ff216dbf 10,14,16,18,23,27,31,36,38,48,115,136,138,140,152,154,166,168,170,193,210
+  s_b9c080bded1225::t_c7532683575887 25,224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "35b2f89ac14c5a54b8c4ede84c3b77b68c782170",
+  "prompts": {},
+  "sessions": {
+    "s_b9c080bded1225": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "88f4486f-016d-4783-a6c1-a45974c006dc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

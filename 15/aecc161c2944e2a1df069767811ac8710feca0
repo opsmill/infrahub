@@ -1,0 +1,21 @@
+dev/README.md
+  s_1b3f7535e78400::t_dd365fe01668db 106-109
+dev/guides/dependabot-autopilot.md
+  s_1b3f7535e78400::t_a6b85dcd468ddf 1-191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "15aecc161c2944e2a1df069767811ac8710feca0",
+  "prompts": {},
+  "sessions": {
+    "s_1b3f7535e78400": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a457f139d870fd0f9",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

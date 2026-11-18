@@ -1,0 +1,30 @@
+backend/infrahub/core/validators/attribute/number_pool.py
+  s_cd4a2edbf12382::t_a22e91fc20b046 31,33
+backend/tests/component/core/constraint_validators/test_attribute_numberpool_constraints.py
+  s_cd4a2edbf12382::t_a22e91fc20b046 1-2,28-43,236,243-256
+  s_cd4a2edbf12382::t_100161358c419d 257-258
+backend/infrahub/core/schema/attribute_parameters.py
+  s_cd4a2edbf12382::t_c262655418f1ed 11,210
+  s_cd4a2edbf12382::t_a22e91fc20b046 188-191,197-206,214,217,304,310-311,319,324-325,329-330
+backend/tests/unit/core/schema/test_number_pool_parameters.py
+  s_cd4a2edbf12382::t_c262655418f1ed 113
+  s_cd4a2edbf12382::t_a22e91fc20b046 15,26,28,31,33,36,38-42,45-49,105-112,114,153-188,191-193,217,222
+backend/tests/unit/core/schema/test_schema_update_validation.py
+  s_cd4a2edbf12382::t_0b7ae95e6cb3de 281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b087ab7ce7ec4e011b0c2dd17cfd97bbfce4713e",
+  "prompts": {},
+  "sessions": {
+    "s_cd4a2edbf12382": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ce0cb49-e396-4200-916d-01f7c39a1bb0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

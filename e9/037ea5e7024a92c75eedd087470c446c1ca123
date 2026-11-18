@@ -1,0 +1,26 @@
+backend/infrahub/graphql/queries/resource_manager.py
+  s_fe96a376afe301::t_c96f9570dfdfc5 354
+backend/tests/functional/pools/test_numberpool_branch.py
+  s_fe96a376afe301::t_c96f9570dfdfc5 234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e9037ea5e7024a92c75eedd087470c446c1ca123",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_fe96a376afe301": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2f27833-94fa-4027-a2dd-b7db0790e578",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

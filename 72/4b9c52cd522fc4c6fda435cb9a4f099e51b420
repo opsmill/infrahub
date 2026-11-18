@@ -1,0 +1,23 @@
+.github/workflows/ci.yml
+  cb37beae7e69e79d 1415
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "724b9c52cd522fc4c6fda435cb9a4f099e51b420",
+  "prompts": {
+    "cb37beae7e69e79d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40fe615f-3e23-4bb8-8327-de79b2082217",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 2,
+      "accepted_lines": 5939,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -1,0 +1,19 @@
+dev/specs/ifc-3065-number-pool-ranges/tasks.md
+  s_7d719d42034f96::t_40309b95189e41 67-68,72-74,76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5697327f358753d2a2b1ab2dc14d5a93ddee5c80",
+  "prompts": {},
+  "sessions": {
+    "s_7d719d42034f96": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "703e70b0-5c2c-470f-aa75-61897706f918",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

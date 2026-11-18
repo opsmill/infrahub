@@ -1,0 +1,35 @@
+backend/tests/unit/core/validators/number_pool_scope/test_supported_constraints.py
+  s_9a65b7e7908928::t_5ab9626eae5472 1-77
+backend/tests/unit/core/validators/number_pool_scope/test_refused_changes.py
+  s_9a65b7e7908928::t_5ab9626eae5472 1-299
+backend/tests/unit/core/validators/number_pool_scope/test_unloaded_branch.py
+  s_9a65b7e7908928::t_5ab9626eae5472 1-25,29-76
+  s_9a65b7e7908928::t_c84d6957617e9b 26-28
+backend/tests/unit/core/validators/number_pool_scope/test_candidate_on_destination.py
+  s_9a65b7e7908928::t_5ab9626eae5472 1-59
+backend/tests/unit/core/validators/number_pool_scope/test_accepted_changes.py
+  s_9a65b7e7908928::t_5ab9626eae5472 1-8,10-199
+  s_9a65b7e7908928::t_b3ea91c39ec635 9
+backend/tests/unit/core/validators/number_pool_scope/helpers.py
+  s_9a65b7e7908928::t_5ab9626eae5472 1-252
+backend/infrahub/core/validators/enum.py
+  s_9a65b7e7908928::t_f3ef2d986356b5 14
+backend/infrahub/core/validators/pool/scope.py
+  s_9a65b7e7908928::t_7d45abb9d74d70 1-305
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "56545a8bbb862b6f6fed92ba9f79794855f3f647",
+  "prompts": {},
+  "sessions": {
+    "s_9a65b7e7908928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "60976836-eea3-41a5-9ac8-f10bf4fbc0fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+backend/infrahub/events/generator.py
+  h_bd00275aefc321 68,70
+backend/tests/component/events/test_node_mutation_events.py
+  h_bd00275aefc321 1-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "caff0b09e8154cf3d01f7e7ffdcca455493ad28d",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

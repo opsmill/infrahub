@@ -1,0 +1,49 @@
+.github/scripts/dependabot_autopilot/github_adapter.py
+  s_43d8e382eba497::t_1d43b73d2aa4c9 1-267
+.github/scripts/dependabot_autopilot/tests/fixtures/check_runs.json
+  s_43d8e382eba497::t_872c800ca52796 1-89
+.github/scripts/dependabot_autopilot/tests/fixtures/check_runs_in_progress.handcrafted.json
+  s_43d8e382eba497::t_f302e6de60e49b 1-26
+.github/scripts/dependabot_autopilot/tests/fixtures/commit.json
+  s_43d8e382eba497::t_9a954ba87708bd 1-15
+.github/scripts/dependabot_autopilot/tests/fixtures/pull.json
+  s_43d8e382eba497::t_1ce3a6c83ee222 1-71
+.github/scripts/dependabot_autopilot/tests/fixtures/pull_commits.handcrafted.json
+  s_43d8e382eba497::t_c66325865241e1 1-18
+.github/scripts/dependabot_autopilot/tests/fixtures/pull_files.json
+  s_43d8e382eba497::t_61cee3007f60fb 1-18
+.github/scripts/dependabot_autopilot/tests/fixtures/pulls_open.handcrafted.json
+  s_43d8e382eba497::t_66aabed150f3c0 1-24
+.github/scripts/dependabot_autopilot/tests/fixtures/reviews.json
+  s_43d8e382eba497::t_66fadc525cdb6a 1-32
+.github/scripts/dependabot_autopilot/tests/fixtures/run_artifacts.json
+  s_43d8e382eba497::t_144ab56ffaa21b 1-18
+.github/scripts/dependabot_autopilot/tests/fixtures/status.json
+  s_43d8e382eba497::t_fbb412421f4098 1-6
+.github/scripts/dependabot_autopilot/tests/fixtures/status_entries.handcrafted.json
+  s_43d8e382eba497::t_23ce738d7dda58 1-25
+.github/scripts/dependabot_autopilot/tests/fixtures/workflow_runs.json
+  s_43d8e382eba497::t_dfeaf86956b0d4 1-137
+.github/scripts/dependabot_autopilot/tests/fixtures/workflow_runs_queued.json
+  s_43d8e382eba497::t_9ed445dd9e2694 1-38
+.github/scripts/dependabot_autopilot/tests/test_fakes.py
+  s_43d8e382eba497::t_f2a4e80043c8c2 7,10,43-48
+.github/scripts/dependabot_autopilot/tests/test_github_adapter.py
+  s_43d8e382eba497::t_b08b07b31cddc3 1-501
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cdbf7a6a39da8bd9bc28eae0cc0a89a378b39c30",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+backend/tests/component/graphql/queries/test_search.py
+  376fa329e2185481 24,73,78,106,117-121,123,132-197
+schema/schema.graphql
+  376fa329e2185481 10620-10621
+dev/specs/005-search-display-label/tasks.md
+  376fa329e2185481 39
+frontend/app/src/entities/navigation/api/search.ts
+  376fa329e2185481 14
+frontend/app/src/entities/navigation/ui/search-anywhere/search-nodes.tsx
+  376fa329e2185481 23,60,71-109
+backend/infrahub/graphql/queries/search.py
+  376fa329e2185481 24,120-122
+frontend/app/src/shared/api/graphql/graphql-cache.d.ts
+  376fa329e2185481 30-31
+frontend/app/src/shared/api/graphql/graphql-env.d.ts
+  376fa329e2185481 916
+frontend/app/.betterer.results
+  376fa329e2185481 190-194
+frontend/app/src/entities/navigation/domain/search-anywhere.ts
+  376fa329e2185481 8
+frontend/app/src/entities/navigation/ui/search-anywhere/search-nodes.test.tsx
+  376fa329e2185481 1-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "83855e4eef05d1e35a836d71d936109ff13261cd",
+  "prompts": {
+    "376fa329e2185481": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a172657-500c-482b-bb9b-84b163488428",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 2329,
+      "total_deletions": 80,
+      "accepted_lines": 270,
+      "overriden_lines": 0
+    }
+  }
+}

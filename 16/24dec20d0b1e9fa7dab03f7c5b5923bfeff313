@@ -1,0 +1,28 @@
+backend/infrahub/graphql/mutations/main.py
+  s_2fdf558427eaa2::t_eabb835d1ba168 450-456,487-492
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_upsert.py
+  s_2fdf558427eaa2::t_b633721d4e0c12 32,49-64,81
+  s_2fdf558427eaa2::t_0d4f6cbb3d14bd 29-30,38,43,70-75,79
+  s_2fdf558427eaa2::t_4a2004d4aa8737 1-28,31,33-37,39-42,44-48,65-69,76-78,80,82-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1624dec20d0b1e9fa7dab03f7c5b5923bfeff313",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_2fdf558427eaa2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "abafed1e-c4e8-407e-9a07-14cf48e361b4",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

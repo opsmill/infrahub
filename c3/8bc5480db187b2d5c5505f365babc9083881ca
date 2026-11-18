@@ -1,0 +1,27 @@
+.github/workflows/jev-triage-tests.yml
+  s_aafacfc47dd310::t_9cac539c9d153d 1-32
+pyproject.toml
+  s_aafacfc47dd310::t_0da0a2b1fc60f4 1201-1204
+utilities/jev_triage/pytest.ini
+  s_aafacfc47dd310::t_ac3d2a39c17fd3 1-2
+utilities/jev_triage/taxonomy.py
+  s_aafacfc47dd310::t_281ec0382deeb8 1-81
+utilities/jev_triage/tests/test_taxonomy.py
+  s_aafacfc47dd310::t_a3559daecc3198 1-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c38bc5480db187b2d5c5505f365babc9083881ca",
+  "prompts": {},
+  "sessions": {
+    "s_aafacfc47dd310": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c7a6fe13-0b0a-40f8-ba25-e5fae68a98a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+backend/tests/component/core/regeneration/test_impact.py
+  s_30ef62c88955ec::t_91a937c03e10f8 68-81
+  s_30ef62c88955ec::t_74cb6266f341eb 312-342
+backend/tests/component/graphql/test_query_analyzer.py
+  s_30ef62c88955ec::t_fba8cb2fd87771 434-461
+  s_30ef62c88955ec::t_8a14f7c654fe45 360-381
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2702440a43aefc178bab04ff2cdc8dd46dad5efa",
+  "prompts": {},
+  "sessions": {
+    "s_30ef62c88955ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2db79d2-d750-4a19-bc6a-ee1269cbfbe3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+backend/tests/component/graphql/resource_manager/number_pool_attach/helpers.py
+  s_6747e5638cb09c::t_4b7956d3c6ef7d 175-180
+backend/infrahub/core/attribute.py
+  s_6747e5638cb09c::t_18d0245133ced9 154,381-384,542-550
+  s_6747e5638cb09c::t_ce02937c3c38fa 767
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_attach.py
+  s_6747e5638cb09c::t_4b7956d3c6ef7d 31,220-222,244-246,380-382
+backend/infrahub/core/query/node.py
+  s_6747e5638cb09c::t_18d0245133ced9 96-97,1026-1028
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e9791b21c957fe92eb5001091ba860ef42d9ae28",
+  "prompts": {},
+  "sessions": {
+    "s_6747e5638cb09c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c900acae-cd69-4e24-aa3f-be5ec5b87789",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

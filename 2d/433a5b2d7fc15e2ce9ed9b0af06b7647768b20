@@ -1,0 +1,19 @@
+python_sdk
+  s_357d1238a1788b::t_f17284d8b5cd3f 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d433a5b2d7fc15e2ce9ed9b0af06b7647768b20",
+  "prompts": {},
+  "sessions": {
+    "s_357d1238a1788b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c99efb5-9541-4e04-a56c-11acb79fd5a6",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

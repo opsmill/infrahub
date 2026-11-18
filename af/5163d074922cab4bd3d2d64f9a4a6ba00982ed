@@ -1,0 +1,49 @@
+dev/specs/artifact-regeneration-poc/tasks.md
+  s_6947b4d8b10fbd::t_85e6286d17d6ed 187
+  s_6947b4d8b10fbd::t_ccaabd934bea94 225,227-229,231
+  s_6947b4d8b10fbd::t_9dae71e0be5d3c 128
+dev/specs/artifact-regeneration-poc/plan.md
+  s_6947b4d8b10fbd::t_d8fbfc827ee43a 72
+  s_6947b4d8b10fbd::t_e9d65335b7fae5 208,211
+  s_6947b4d8b10fbd::t_bae9940a21c558 54-55
+  s_6947b4d8b10fbd::t_fea752a2fc4110 203
+  s_6947b4d8b10fbd::t_8e7e610ba4b736 195
+  s_6947b4d8b10fbd::t_50543da743cfab 94
+  s_6947b4d8b10fbd::t_e2e30075c7bd39 45-46
+  s_6947b4d8b10fbd::t_c8593f752178a2 335-342
+  s_6947b4d8b10fbd::t_53cd5e57076e16 265-279
+  s_6947b4d8b10fbd::t_c5bacefa89100f 152,154-155
+dev/specs/artifact-regeneration-poc/research.md
+  s_6947b4d8b10fbd::t_8728d7199015b5 393-394
+  s_6947b4d8b10fbd::t_2395a5371b4847 395-397
+  s_6947b4d8b10fbd::t_7bfe4e2ad81e49 217
+  s_6947b4d8b10fbd::t_ebe97db5382426 391-392
+  s_6947b4d8b10fbd::t_4fc903553703dc 218-219
+  s_6947b4d8b10fbd::t_f26a922430a8df 270-271
+  s_6947b4d8b10fbd::t_ea9fbc7e3d25a5 374-379
+dev/specs/artifact-regeneration-poc/test-inventory.md
+  s_6947b4d8b10fbd::t_0746000b3863e7 27
+  s_6947b4d8b10fbd::t_4933922b4321f7 56
+  s_6947b4d8b10fbd::t_d01a80dea2e15f 150-152
+dev/specs/artifact-regeneration-poc/quickstart.md
+  s_6947b4d8b10fbd::t_4df2619f173040 43-44
+  s_6947b4d8b10fbd::t_4e001bc4654788 69-70
+  s_6947b4d8b10fbd::t_0761962dc56378 58-60,66
+  s_6947b4d8b10fbd::t_5b63b71100b076 67-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "af5163d074922cab4bd3d2d64f9a4a6ba00982ed",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

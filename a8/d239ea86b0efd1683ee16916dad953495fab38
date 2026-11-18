@@ -1,0 +1,44 @@
+backend/infrahub/health/__init__.py
+  973c97c87529260a 18,25,106-119,135
+backend/tests/unit/health/test_health.py
+  973c97c87529260a 20,155-181,191-192,195,209-210,216,221,233-234,280,285
+backend/infrahub/services/adapters/workflow/local.py
+  973c97c87529260a 42-44
+backend/infrahub/services/adapters/workflow/__init__.py
+  973c97c87529260a 57-62
+backend/infrahub/services/adapters/workflow/worker.py
+  973c97c87529260a 5,86-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "a8d239ea86b0efd1683ee16916dad953495fab38",
+  "prompts": {
+    "3edafa15285bdbf7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1d0c90c5-13fb-4cdd-8ab0-b85610e945e3",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 12,
+      "overriden_lines": 0
+    },
+    "973c97c87529260a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81871f43-251e-43fe-a5c9-f0f9f4294e29",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 72,
+      "total_deletions": 2,
+      "accepted_lines": 74,
+      "overriden_lines": 0
+    }
+  }
+}

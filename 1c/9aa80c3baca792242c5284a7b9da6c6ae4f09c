@@ -1,0 +1,21 @@
+backend/infrahub/graphql/resolvers/resolver.py
+  s_fb819cbbe44071::t_4b106243a93edf 22,131,382
+backend/infrahub/graphql/resolvers/single_relationship.py
+  s_fb819cbbe44071::t_390193e205f009 22,225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1c9aa80c3baca792242c5284a7b9da6c6ae4f09c",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

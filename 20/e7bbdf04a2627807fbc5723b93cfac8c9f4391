@@ -1,0 +1,23 @@
+.claude/hooks/review_new_pr.py
+  s_fd720d10ce69fc::t_178f5b9cab7568 2-64
+  s_fd720d10ce69fc::t_313d01a91a4598 1
+.claude/settings.json
+  s_fd720d10ce69fc::t_add2176783ea56 14-20,22-24
+  s_fd720d10ce69fc::t_977018fe0dfd4d 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "20e7bbdf04a2627807fbc5723b93cfac8c9f4391",
+  "prompts": {},
+  "sessions": {
+    "s_fd720d10ce69fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd1e6989-2412-46dc-874b-841d76996a2e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

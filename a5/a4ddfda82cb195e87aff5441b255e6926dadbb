@@ -1,0 +1,30 @@
+backend/tests/component/core/regeneration/poc/test_generation_state.py
+  s_6947b4d8b10fbd::t_616a718f8ea856 977-1016
+backend/infrahub/core/regeneration/poc/run.py
+  s_6947b4d8b10fbd::t_5e90ad71ce8833 1,67,96,98-101,150,154-160,271,293,297-300,303-309
+backend/tests/component/core/regeneration/poc/renderer.py
+  s_6947b4d8b10fbd::t_e3ba5de0c2e714 30-32
+  s_6947b4d8b10fbd::t_5f8f7684dd2698 33
+backend/tests/unit/core/regeneration/poc/test_run.py
+  s_6947b4d8b10fbd::t_aec3231ff0e5c8 898-946
+backend/infrahub/core/regeneration/poc/state.py
+  s_6947b4d8b10fbd::t_ed0dbd8fd3c4da 78,89
+backend/tests/component/core/regeneration/poc/harness.py
+  s_6947b4d8b10fbd::t_29839953abf56e 297,501
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a5a4ddfda82cb195e87aff5441b255e6926dadbb",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

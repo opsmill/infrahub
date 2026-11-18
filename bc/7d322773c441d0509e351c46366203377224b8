@@ -1,0 +1,22 @@
+dev/specs/infp-507-task-history-retention/opsmill-implement-report.md
+  s_cfd0841cea4d76::t_d83277f712df7a 1-41,43-58,60-98,100-110,112-120,122-202
+  s_cfd0841cea4d76::t_500e2fca93c3c8 42,59,99,111,121
+dev/specs/infp-507-task-history-retention/tasks.md
+  s_cfd0841cea4d76::t_d83277f712df7a 165-166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc7d322773c441d0509e351c46366203377224b8",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

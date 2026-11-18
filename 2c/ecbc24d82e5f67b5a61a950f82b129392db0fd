@@ -1,0 +1,27 @@
+backend/infrahub/core/regeneration/derived_dependencies.py
+  s_fb819cbbe44071::t_1eb11e60dadd9f 91-92,97-98,111-121
+backend/tests/unit/core/regeneration/test_classifier_builder.py
+  s_fb819cbbe44071::t_3be308585177ca 177-243
+backend/tests/unit/core/regeneration/test_derived_dependencies.py
+  s_fb819cbbe44071::t_1de69f949f7376 92-101,281-317
+changelog/+regen-generic-derived-reads.changed.md
+  s_fb819cbbe44071::t_584b07a16bf589 1
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_fb819cbbe44071::t_87ac890434fdce 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2cecbc24d82e5f67b5a61a950f82b129392db0fd",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

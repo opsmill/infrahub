@@ -1,0 +1,41 @@
+dev/specs/ifc-3185-number-pool-scopes/alignment-check.md
+  s_a8a133dd3a7907::t_c6922d65f8782a 1,5-12,16,18,23-37,41
+dev/specs/ifc-3185-number-pool-scopes/checklists/requirements.md
+  s_a8a133dd3a7907::t_2b77fa2b69e762 1,4,9,16-17,22-23,34-36
+dev/specs/ifc-3185-number-pool-scopes/contracts/graphql-number-pool-queries.md
+  s_a8a133dd3a7907::t_7d216bc14d16c3 1,3,5,7-11,13-15,18-43,46-56,58,60,64-133,135-201,205,207-210,212,214,216-223,225,229-230,232-240,242,246-248,250-257
+dev/specs/ifc-3185-number-pool-scopes/contracts/number-pool-parameters.md
+  s_a8a133dd3a7907::t_d5feeee21bf95a 1-44
+dev/specs/ifc-3185-number-pool-scopes/contracts/pool-allocation-scope.md
+  s_a8a133dd3a7907::t_ec74a7e9dd861b 1,3,5,8-16,20,22-24,26,28,30-35,37,39,41,43-52,54,56-58,60,62,64-66
+dev/specs/ifc-3185-number-pool-scopes/critiques/critique-20261008.md
+  s_a8a133dd3a7907::t_474488180bd468 1,3,6,12,22,28-29,35,41-42,48,58-60,66,72,78-79,85,91,97-98,106-107,115-116,118-119,128-139,147-149,153-154,158-160,172
+dev/specs/ifc-3185-number-pool-scopes/data-model.md
+  s_a8a133dd3a7907::t_ede6a64f079740 1-82
+dev/specs/ifc-3185-number-pool-scopes/plan.md
+  s_a8a133dd3a7907::t_38bfec5fb0a7f4 1,3,5,9,11,15,17,19,21,23,25,27,29,31,35,37-45,47,54,56-59,61-64,67,72-78,80-90,93-103,106,108,110,112-115,117-122,124,126-130,132-139,141
+dev/specs/ifc-3185-number-pool-scopes/quickstart.md
+  s_a8a133dd3a7907::t_af0cb2293d7edd 1-73
+dev/specs/ifc-3185-number-pool-scopes/research.md
+  s_a8a133dd3a7907::t_c12ee57ab1f4a0 1-127
+dev/specs/ifc-3185-number-pool-scopes/spec.md
+  s_a8a133dd3a7907::t_66bfa2832732e1 1,3,5,9,11,13,15,17,19-23,25,27,29,31,33,37-46,50,52,54,56,60-65,69,71,73,75,79-83,87,89,91,93,97-100,104,106-117,119,121,123,125-132,134,136-142,144,146-152,154,156-159,161,163-164,166,168-170,174-178,184-190,194-201,205-217
+dev/specs/ifc-3185-number-pool-scopes/tasks.md
+  s_a8a133dd3a7907::t_f0df10704904ac 1,3,5-21,25-27,29-33,35,37,39-44,46,50-72,76-78,80,82,84-86,88-118,122-196,199-221,225-230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1d6448d528214a42589eda89dccd7553dc0d295b",
+  "prompts": {},
+  "sessions": {
+    "s_a8a133dd3a7907": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "125da3d6-bd83-4066-a232-ce4d6528c3d7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

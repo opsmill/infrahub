@@ -1,0 +1,19 @@
+dev/specs/dependabot-autopilot/critiques/critique-20260923.md
+  s_43d8e382eba497::t_4ec0e7cccce5fc 1-167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "281df662e74535f91c370d15e3ae39feeed9c749",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

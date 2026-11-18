@@ -1,0 +1,41 @@
+backend/tests/component/core/regeneration/poc/test_window_changes.py
+  s_6947b4d8b10fbd::t_95826f80038724 1-123,127-128,132-222,226-343,345-382,384-416
+  s_6947b4d8b10fbd::t_d58cfd602265f7 344,383
+  s_6947b4d8b10fbd::t_63cd22e2d436aa 124-126,129-131,223-225
+dev/specs/artifact-regeneration-poc/data-model.md
+  s_6947b4d8b10fbd::t_332ca922a9454e 112
+backend/tests/unit/core/regeneration/poc/test_selector.py
+  s_6947b4d8b10fbd::t_275fc81cb98f5a 234-235,344,351,358,370
+  s_6947b4d8b10fbd::t_a3a65975f42e8b 403,410,421,436,451,466,488,508,526
+backend/infrahub/core/regeneration/poc/window_changes.py
+  s_6947b4d8b10fbd::t_2aee6315ba7d9c 185-190,193-194,196-202
+  s_6947b4d8b10fbd::t_b90fd49b693b35 205
+  s_6947b4d8b10fbd::t_25c475cf2cdd91 229-230,244
+  s_6947b4d8b10fbd::t_6a2b7a56fd0de5 1-164,166-184,191-192,195,203-204,206-219,223-228,231-243,245-308
+  s_6947b4d8b10fbd::t_20697434486f75 165
+  s_6947b4d8b10fbd::t_63cd22e2d436aa 220-222
+backend/infrahub/core/regeneration/poc/changes.py
+  s_6947b4d8b10fbd::t_aeecf10e782de7 1,29,37,40,43,70,117
+backend/tests/unit/core/regeneration/poc/test_changes.py
+  s_6947b4d8b10fbd::t_ccb911f3c38a0d 210,273,280,346,411
+backend/tests/unit/core/regeneration/poc/test_run.py
+  s_6947b4d8b10fbd::t_3a746604968291 199,355
+dev/specs/artifact-regeneration-poc/tasks.md
+  s_6947b4d8b10fbd::t_e3dc7aee1d5678 215-216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5ddbe4882bda7003340da2f7d0dff3da4476a12a",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

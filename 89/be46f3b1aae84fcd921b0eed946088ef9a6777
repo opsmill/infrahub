@@ -1,0 +1,39 @@
+docs/docs/release-notes/deprecation-guides/number-pool-ranges.mdx
+  s_74ac4acddd24a9::t_903c18890bca9b 11,13-22
+  s_74ac4acddd24a9::t_613f75be8faacf 195-197
+  s_74ac4acddd24a9::t_836b79d4ade2dc 367
+  s_74ac4acddd24a9::t_9ee13931d047af 91,206-207,215,376,388
+  s_74ac4acddd24a9::t_9bb385bd4170d3 7,23-25,29-30,47,80-87,209-214,216-217,296-348,353-364,372-375,377-386,389-390,437,439-446
+  s_74ac4acddd24a9::t_f91df8efbf2074 193,293-294
+  s_74ac4acddd24a9::t_0dc13c8c6e75c9 31-32
+  s_74ac4acddd24a9::t_251df569ea2e4d 450-455
+  s_74ac4acddd24a9::t_9a2d477b628aa7 10,295
+  s_74ac4acddd24a9::t_4c80c7e10de184 365-366,370-371
+  s_74ac4acddd24a9::t_42a7d6f2d3e38d 350-351,368-369
+  s_74ac4acddd24a9::t_f05d79b096b686 88-89
+  s_74ac4acddd24a9::t_1d291259b11aa6 9,12,35,37
+  s_74ac4acddd24a9::t_46c7ebef3547be 204
+  s_74ac4acddd24a9::t_069330ed8c0bd0 33-34,36,38-39
+  s_74ac4acddd24a9::t_08ac3616ea92fb 8
+  s_74ac4acddd24a9::t_45c504d7e31233 90
+  s_74ac4acddd24a9::t_99294abf833e28 205
+  s_74ac4acddd24a9::t_fe1b5b13db1c4f 208
+  s_74ac4acddd24a9::t_f633fb7dc1390b 352
+  s_74ac4acddd24a9::t_b4b90692993d2d 387
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "89be46f3b1aae84fcd921b0eed946088ef9a6777",
+  "prompts": {},
+  "sessions": {
+    "s_74ac4acddd24a9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8b22b3b-01aa-429a-b864-618f066bb59c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

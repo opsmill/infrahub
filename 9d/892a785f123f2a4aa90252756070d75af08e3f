@@ -1,0 +1,14 @@
+backend/tests/unit/core/validators/number_pool_scope/declared_scope/test_accepted_declarations.py
+  h_bd00275aefc321 5,10,42,44-60,62-71,80,89-95,97-106,108-109,111-112,120-125,127,129-131,137-138,154,156-174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9d892a785f123f2a4aa90252756070d75af08e3f",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

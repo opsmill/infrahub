@@ -1,0 +1,35 @@
+backend/tests/component/graphql/queries/test_resource_pool.py
+  s_86fff168c93aab::t_62578a74dc4fa2 18,822-823
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
+  s_86fff168c93aab::t_59b81d41cf76b1 15-16,20,35,65,88-132
+backend/infrahub/pools/number_pool_range_validation.py
+  s_86fff168c93aab::t_0654c8bcc20ce4 9,50-60
+backend/infrahub/pools/number_pool_repository.py
+  s_86fff168c93aab::t_ac4edc63af8c4b 7,42-50
+backend/tests/component/graphql/resource_manager/number_pools/helpers.py
+  s_86fff168c93aab::t_2b726546bd57e2 2-10,17-18,106,116-139
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_create.py
+  s_86fff168c93aab::t_8236c91ca5ade6 5,7,11,13,17,19-22,27-31,34,38-64,140-147,158-160,179,184-186,188-190,192,200-203,205-223,226-233,235-269,271,278-324
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_immutable_fields.py
+  s_86fff168c93aab::t_e51595922129c3 6,14-21,50-54,258-282
+backend/tests/unit/pools/test_number_pool_range_validation.py
+  s_86fff168c93aab::t_b126cfadcf7a20 10,72-110
+dev/specs/ifc-3065-number-pool-ranges/tasks.md
+  s_86fff168c93aab::t_9744629b8b2290 98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "15cd160384d791d81f519e7ec2a4da065a0f9393",
+  "prompts": {},
+  "sessions": {
+    "s_86fff168c93aab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cff568f-f1a2-413f-81d2-b41800811650",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

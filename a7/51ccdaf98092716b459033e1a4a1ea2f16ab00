@@ -1,0 +1,21 @@
+schema/schema.graphql
+  s_cb8d5b5c690ff9::t_97129ffd636cc0 11860,11863,11866
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_cb8d5b5c690ff9::t_97129ffd636cc0 23954,23956,23958
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a751ccdaf98092716b459033e1a4a1ea2f16ab00",
+  "prompts": {},
+  "sessions": {
+    "s_cb8d5b5c690ff9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5252a46-7f14-4df9-b210-2800cf5fa7a1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

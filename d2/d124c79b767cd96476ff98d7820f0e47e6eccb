@@ -1,0 +1,111 @@
+backend/tests/component/core/migrations/schema/test_node_attribute_add.py
+  s_0e6589ba6b4589::t_84049567b254eb 17,35,547,603-606,622-626
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_upsert.py
+  s_0e6589ba6b4589::t_84049567b254eb 1-88
+dev/specs/ifc-3184-pool-number-attach/contracts/effective-space.md
+  s_0e6589ba6b4589::t_84049567b254eb 126-127
+backend/infrahub/core/query/resource_manager.py
+  s_0e6589ba6b4589::t_84049567b254eb 15,24-31,1034-1036,1048,1055,1065,1106,1130-1143,1151-1167
+backend/tests/integration/schema_lifecycle/test_number_pool_branch_merge.py
+  s_0e6589ba6b4589::t_84049567b254eb 9,14,583-587,785-789
+dev/specs/ifc-3184-pool-number-attach/quickstart.md
+  s_0e6589ba6b4589::t_84049567b254eb 170-172
+backend/infrahub/groups/ancestors.py
+  s_0e6589ba6b4589::t_84049567b254eb 5,28
+backend/infrahub/graphql/resolvers/many_relationship.py
+  s_0e6589ba6b4589::t_84049567b254eb 172,177-178
+backend/tests/functional/templates/test_template_resource_pool.py
+  s_0e6589ba6b4589::t_84049567b254eb 587-589,593-596
+backend/tests/component/core/migrations/graph/test_066_consolidate_duplicate_number_pools.py
+  s_0e6589ba6b4589::t_84049567b254eb 132,135-139,141-145
+backend/tests/unit/graphql/test_metadata.py
+  s_0e6589ba6b4589::t_84049567b254eb 1-133
+dev/knowledge/backend/templates.md
+  s_0e6589ba6b4589::t_84049567b254eb 135
+backend/infrahub/core/node/create.py
+  s_0e6589ba6b4589::t_84049567b254eb 12,21,278
+backend/infrahub/core/node/__init__.py
+  s_0e6589ba6b4589::t_84049567b254eb 19,30,690-692
+dev/specs/ifc-3184-pool-number-attach/research.md
+  s_0e6589ba6b4589::t_84049567b254eb 195-198
+backend/infrahub/pools/number_pool_attribute_allocator.py
+  s_0e6589ba6b4589::t_84049567b254eb 5,71-74,88,92
+backend/tests/component/core/node/test_template_pool_allocation.py
+  s_0e6589ba6b4589::t_84049567b254eb 11,18,406-409,443-444,671-742
+backend/infrahub/core/attribute.py
+  s_0e6589ba6b4589::t_84049567b254eb 20,52,151,371,628-631,666-671,754-758
+dev/specs/ifc-3184-pool-number-attach/contracts/graphql-pool-query.md
+  s_0e6589ba6b4589::t_84049567b254eb 105,107,115-118,125-132,138-142
+backend/tests/component/graphql/resource_manager/number_pool_attach/helpers.py
+  s_0e6589ba6b4589::t_84049567b254eb 2,13,44-49,91,93,183-206,209
+backend/infrahub/graphql/resolvers/single_relationship.py
+  s_0e6589ba6b4589::t_84049567b254eb 142-143,150-151,173-174
+backend/infrahub/graphql/metadata.py
+  s_0e6589ba6b4589::t_84049567b254eb 3,5,7-11,34-36,46-48,52,71-72,79-103,108-109,117-119,127-129
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_attach.py
+  s_0e6589ba6b4589::t_84049567b254eb 23,30-31,86-88,224-225,247-248,382-385,483-484,501-502,540-543,553-555
+backend/tests/component/core/migrations/graph/m081_reanchor_number_pool_reservations/test_migration.py
+  s_0e6589ba6b4589::t_84049567b254eb 17,19-20,929-944
+  s_0e6589ba6b4589::t_a634c5d5390883 945
+dev/specs/ifc-3184-pool-number-attach/spec.md
+  s_0e6589ba6b4589::t_84049567b254eb 336-343,483,521-523,726-732,749-750,773-774
+dev/specs/ifc-3184-pool-number-attach/tasks.md
+  s_0e6589ba6b4589::t_84049567b254eb 605-609,697-698
+backend/infrahub/graphql/mutations/node_getter/by_default_filter.py
+  s_0e6589ba6b4589::t_84049567b254eb 6,46
+backend/infrahub/pools/attribute_pool_applier.py
+  s_0e6589ba6b4589::t_84049567b254eb 8,64-67,225,275,277-278,297
+backend/tests/component/core/migrations/graph/m076_heal_missing_attribute_rows/test_number_pool.py
+  s_0e6589ba6b4589::t_84049567b254eb 122-124,133-137
+backend/infrahub/graphql/resolvers/resolver.py
+  s_0e6589ba6b4589::t_84049567b254eb 10,12,254-255,406-413,420
+backend/tests/unit/pools/test_attribute_pool_applier.py
+  s_0e6589ba6b4589::t_84049567b254eb 12,66-67,86-88,98,176,237,249-262,294,312
+dev/specs/ifc-3184-pool-number-attach/plan.md
+  s_0e6589ba6b4589::t_84049567b254eb 301-305,309-310,312-313
+backend/infrahub/graphql/mutations/main.py
+  s_0e6589ba6b4589::t_84049567b254eb 12,433-438,454-460,491-496
+backend/infrahub/core/metadata/model.py
+  s_0e6589ba6b4589::t_84049567b254eb 18-22
+backend/infrahub/graphql/resolvers/ipam.py
+  s_0e6589ba6b4589::t_84049567b254eb 15,21,406-409,419
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_source.py
+  s_0e6589ba6b4589::t_84049567b254eb 1-245
+backend/infrahub/core/constants/__init__.py
+  s_0e6589ba6b4589::t_84049567b254eb 402-405,419
+backend/infrahub/graphql/mutations/node_getter/by_hfid.py
+  s_0e6589ba6b4589::t_84049567b254eb 4,34,78
+backend/infrahub/core/manager.py
+  s_0e6589ba6b4589::t_84049567b254eb 9,387,423,467,478,489,1096-1110,1154-1158,1165
+backend/tests/component/core/migrations/graph/m081_reanchor_number_pool_reservations/conftest.py
+  s_0e6589ba6b4589::t_84049567b254eb 419-420
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_source_through_other_reads.py
+  s_0e6589ba6b4589::t_84049567b254eb 1-141
+backend/tests/component/core/test_node_query.py
+  s_0e6589ba6b4589::t_84049567b254eb 1-4,10,13,25-26,35,37,42-43,620-675
+backend/tests/unit/core/test_manager.py
+  s_0e6589ba6b4589::t_84049567b254eb 1-64
+dev/knowledge/backend/database-schema.md
+  s_0e6589ba6b4589::t_84049567b254eb 199-210
+dev/specs/ifc-3184-pool-number-attach/data-model.md
+  s_0e6589ba6b4589::t_84049567b254eb 195
+backend/infrahub/core/query/node.py
+  s_0e6589ba6b4589::t_84049567b254eb 24,40,60-61,120,758,761-765,769-771,782-787,797,809,833-865,1001,1071-1078
+  s_0e6589ba6b4589::t_af65f996b4ea19 1079
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d2d124c79b767cd96476ff98d7820f0e47e6eccb",
+  "prompts": {},
+  "sessions": {
+    "s_0e6589ba6b4589": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1057a2bb-95a9-4b87-a22a-785993e193b1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

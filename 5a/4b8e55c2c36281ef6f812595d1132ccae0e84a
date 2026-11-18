@@ -1,0 +1,30 @@
+backend/infrahub/graphql/subscription/websocket.py
+  s_307fcf09196e2d::t_34b292b78d16dd 1-259
+  s_307fcf09196e2d::t_edfa2a1333361d 260-262
+backend/infrahub/graphql/api/endpoints.py
+  s_307fcf09196e2d::t_7fb3aeaec645c0 8,14,28
+backend/infrahub/graphql/app.py
+  s_307fcf09196e2d::t_b26497aca4b862 29,51-52,335,338-345,347-348
+backend/infrahub/graphql/manager.py
+  s_307fcf09196e2d::t_acd7a7191227d6 5,144-145,200
+backend/tests/component/graphql/test_websocket_authentication.py
+  s_307fcf09196e2d::t_f7b6bf3379fa97 14
+backend/tests/component/graphql/test_websocket_authorization.py
+  s_307fcf09196e2d::t_6b07c6e5b33299 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5a4b8e55c2c36281ef6f812595d1132ccae0e84a",
+  "prompts": {},
+  "sessions": {
+    "s_307fcf09196e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "522eb074-c19f-4858-9fe6-217c57dac947",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}

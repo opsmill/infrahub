@@ -1,0 +1,20 @@
+frontend/app/src/entities/ipam/ipam-tree/ui/ipam-tree.test.tsx
+  s_42a9f0e92a3fcb::t_45e0120800201e 17,26-46,83-85,114-115,117-130,132,136-142,149
+  s_42a9f0e92a3fcb::t_e9a4ef913a8ff6 86-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "922551ed5f8b05f6f68201522fbb06d7ac34991d",
+  "prompts": {},
+  "sessions": {
+    "s_42a9f0e92a3fcb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0db4ee63-fcec-431e-8644-e99c364f69c2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}

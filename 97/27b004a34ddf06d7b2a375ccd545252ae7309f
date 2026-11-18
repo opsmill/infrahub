@@ -1,0 +1,24 @@
+backend/infrahub/core/regeneration/poc/window_changes.py
+  s_6947b4d8b10fbd::t_da32705ec9c2f3 249
+  s_6947b4d8b10fbd::t_aee03471e24399 241,246-248,250
+  s_6947b4d8b10fbd::t_30d1f5f93c8ddf 225-226
+backend/tests/component/core/regeneration/poc/test_window_changes.py
+  s_6947b4d8b10fbd::t_3bd3a13d8a808b 28,328-345
+  s_6947b4d8b10fbd::t_0fa1426358e150 346-347
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9727b004a34ddf06d7b2a375ccd545252ae7309f",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

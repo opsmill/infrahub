@@ -1,0 +1,26 @@
+backend/infrahub/profiles/node_applier.py
+  s_ef73b5c53fd520::t_e2daa42cc57745 223,230,241-242,253-254
+backend/infrahub/core/node/__init__.py
+  s_ef73b5c53fd520::t_5182643421fb6b 108-112,506,1485
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cf85911f7f42e8554f46a9d04d758d21937124c6",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_ef73b5c53fd520": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c03c1b3-13e1-4aab-86e6-b289baf17cf6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

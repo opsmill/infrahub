@@ -1,0 +1,20 @@
+tests/e2e/objects/test_object_details_delete.py
+  s_17c98467bdcc5a::t_85774fd656c04e 57-63
+  s_17c98467bdcc5a::t_5f1387a56a0c31 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a24e9215b845d61e5dd850d83670d9cef3b468ac",
+  "prompts": {},
+  "sessions": {
+    "s_17c98467bdcc5a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17b3f36d-f430-4370-9c5b-08eb6ad72aa9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

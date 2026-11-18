@@ -1,0 +1,368 @@
+backend/infrahub/pools/number_pool_attribute_allocator.py
+  s_ef73b5c53fd520::t_d0769710b16455 35,51,56-57,73
+backend/infrahub/serve/worker.py
+  s_ef73b5c53fd520::t_d0769710b16455 9-10,43-46
+dev/specs/ifc-3371-number-pool-field-tabs/opsmill-implement-report.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-94
+frontend/app/src/entities/repository/ui/repository-activity-card/elapsed-time.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 1-38
+frontend/app/src/entities/repository/ui/repository-activity-card/repository-lock-row.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 1-37
+backend/tests/component/telemetry/test_resources.py
+  s_ef73b5c53fd520::t_d0769710b16455 1-327
+frontend/app/src/shared/components/form/fields/number.field.test.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 5,35-36,43,122,124-192,197,200,202-203,212-260,263,271,275,294-325,327
+backend/tests/component/core/node/test_create_node_field_names.py
+  s_ef73b5c53fd520::t_d0769710b16455 1-53
+frontend/app/src/shared/components/inputs/pool-select.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 5,18-19,367-428,431
+  s_ef73b5c53fd520::t_98a5da79ceae94 429-430
+frontend/app/src/entities/repository/ui/repository-activity-card/repository-activity.view.test.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-72
+backend/infrahub/core/convert_object_type/object_conversion.py
+  s_ef73b5c53fd520::t_d0769710b16455 196
+dev/specs/ifc-3371-number-pool-field-tabs/research.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-100
+frontend/app/src/shared/components/form/type.ts
+  s_ef73b5c53fd520::t_d0769710b16455 91-99
+backend/infrahub/tasks/recurring.py
+  s_ef73b5c53fd520::t_d0769710b16455 17-20
+frontend/app/src/entities/nodes/object/ui/objects-manager.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 5,14,17,29
+frontend/app/src/entities/repository/api/repository-activity.mappers.test.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-65
+frontend/app/src/entities/repository/ui/repository-activity-card/activity-markers.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 1-39
+frontend/app/tests/fake/repository-activity.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-42
+backend/infrahub/workers/dependencies.py
+  s_ef73b5c53fd520::t_d0769710b16455 14,24,179-181
+dev/specs/ifc-3371-number-pool-field-tabs/alignment-check.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-29
+docs/src/components/HomePage/linkGroup.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 1-44
+frontend/app/src/shared/components/form/pool-allocation-panel.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 7,27-29,60-62
+  s_ef73b5c53fd520::t_d02a5e21ee9c20 63
+dev/guidelines/backend/checklist.md
+  s_ef73b5c53fd520::t_d0769710b16455 138-158
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_immutable_fields.py
+  s_ef73b5c53fd520::t_d0769710b16455 60,104,153,178,210,260,299,335
+frontend/app/src/entities/repository/domain/rules/get-push-actions.test.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-27
+dev/specs/infp-631-resource-telemetry/spec.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-117
+frontend/app/src/entities/repository/domain/use-cases/get-repository-push-state.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-47
+docs/src/components/HomePage/styles.module.css
+  s_ef73b5c53fd520::t_d0769710b16455 15,19-61,64-65,67-68,71-72,101-182
+  s_ef73b5c53fd520::t_02e5cef9332b19 183
+frontend/app/src/entities/repository/domain/rules/repository-column-surface.test.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-58
+frontend/app/src/entities/repository/api/repository-activity.mappers.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-27
+backend/tests/component/graphql/auth/query_permission_checker/test_default_branch_checker.py
+  s_ef73b5c53fd520::t_d0769710b16455 19,113,164,220,264,308
+docs/docs/faq/faq.mdx
+  s_ef73b5c53fd520::t_d0769710b16455 237-239
+frontend/app/src/entities/repository/domain/model/repository.ts
+  s_ef73b5c53fd520::t_d0769710b16455 2,92-103
+dev/specs/ifc-3371-number-pool-field-tabs/quickstart.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-31
+frontend/app/src/entities/repository/ui/queries/get-repository-push-state.query.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-39
+backend/tests/component/core/test_attribute.py
+  s_ef73b5c53fd520::t_d0769710b16455 23,1511,1556
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_update.py
+  s_ef73b5c53fd520::t_d0769710b16455 124,145-149,170,198,220,236,252,275-279,301,325,361,396-400,423,452,474-478,500,524,558
+changelog/+ifc-3399-repository-activity-card.added.md
+  s_ef73b5c53fd520::t_d0769710b16455 1
+docs/docs/release-notes/infrahub/release-1_11_7.mdx
+  s_ef73b5c53fd520::t_d0769710b16455 1-27
+frontend/app/src/entities/repository/ui/repository-activity-card/repository-last-runs.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 1-69
+frontend/app/src/entities/repository/domain/use-cases/get-repository-push-state.test.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-141
+backend/infrahub/pools/attribute_pool_applier.py
+  s_ef73b5c53fd520::t_d0769710b16455 54-60,64-65,240-244,283,292-295,306-311
+frontend/app/src/shared/components/form/utils/mutations/getCreateMutationFromFormData.test.ts
+  s_ef73b5c53fd520::t_d0769710b16455 298-385
+frontend/app/src/entities/repository/ui/hooks/use-refresh-after-repository-run.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-43
+frontend/app/src/shared/components/form/utils/updateFormFieldValue.test.ts
+  s_ef73b5c53fd520::t_d0769710b16455 6,396-462
+  s_ef73b5c53fd520::t_b502e2e12c45ef 463
+backend/tests/unit/pools/test_attribute_pool_applier.py
+  s_ef73b5c53fd520::t_d0769710b16455 58-59,72-79,88,187-189,202-207,312-314,375-377
+dev/adr/README.md
+  s_ef73b5c53fd520::t_d0769710b16455 29
+docs/src/components/HomePage/header.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 14,19-24,28,45,56-61
+frontend/app/src/entities/repository/ui/repository-activity-card/repository-activity.view.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-70
+tests/e2e/resource-manager/test_number_pool.py
+  s_ef73b5c53fd520::t_d0769710b16455 340-399
+docs/docs/resource-manager/allocate-number.mdx
+  s_ef73b5c53fd520::t_d0769710b16455 43-46,60-61,87
+frontend/app/src/shared/components/form/fields/common.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 24,100-104
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_create.py
+  s_ef73b5c53fd520::t_d0769710b16455 17,73-74,78-79,105-109,126,153,173-177,204,227,245-249,272,377,404,424
+frontend/app/src/entities/repository/api/get-repository-activity-from-api.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-73
+frontend/app/src/entities/repository/ui/repository-activity-card/elapsed-time.test.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-14
+frontend/app/src/shared/components/form/utils/getFieldDefaultValue.ts
+  s_ef73b5c53fd520::t_d0769710b16455 25,189-206,208
+frontend/app/src/shared/components/form/utils/getFieldDefaultValue.test.ts
+  s_ef73b5c53fd520::t_d0769710b16455 669-697
+dev/specs/infp-631-resource-telemetry/contracts/telemetry-resources.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-158
+frontend/app/src/shared/components/form/utils/mutations/getUpdateMutationFromFormData.ts
+  s_ef73b5c53fd520::t_d0769710b16455 4-7,10-11,17-21,34,40-53,77-82,140-141,144-147
+dev/adr/0021-resource-allocation-telemetry.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-190
+frontend/app/src/entities/repository/domain/rules/count-branch-outcomes.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-14
+docs/docs/home.mdx
+  s_ef73b5c53fd520::t_d0769710b16455 9,17-18,22-24,27-29,32-34,37-39,41-44,48,51-89,93,96-132,136,142,148,151-153
+backend/infrahub/telemetry/models.py
+  s_ef73b5c53fd520::t_d0769710b16455 6-14,60-72,104-105
+frontend/app/src/shared/components/form/utils/mutations/buildFromPoolMutationValue.ts
+  s_ef73b5c53fd520::t_d0769710b16455 51-67
+backend/infrahub/serve/processes.py
+  s_ef73b5c53fd520::t_d0769710b16455 1-14
+dev/specs/ifc-3371-number-pool-field-tabs/contracts/form-submission.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-32
+frontend/app/src/shared/components/form/fields/number.field.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 6,8,13-14,31-35,46-49,63,65-67,75-77
+dev/knowledge/backend/testing.md
+  s_ef73b5c53fd520::t_d0769710b16455 277
+frontend/app/src/entities/repository/ui/repository-object-details.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 5-6,11-12,14,16,34-41,64-69
+backend/tests/component/graphql/test_graphql_query.py
+  s_ef73b5c53fd520::t_d0769710b16455 10,1615-1673
+  s_ef73b5c53fd520::t_a2636134c1be1a 1674-1675
+frontend/app/src/entities/repository/ui/queries/reimport-last-commit.mutation.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1,10,23,31-37
+dev/specs/infp-631-resource-telemetry/tasks.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-155
+dev/specs/ifc-3371-number-pool-field-tabs/tasks.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-196
+frontend/app/src/entities/repository/ui/repository-object-details-render-failure.test.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 20-22
+backend/tests/unit/telemetry/test_resources.py
+  s_ef73b5c53fd520::t_d0769710b16455 1-537
+frontend/app/src/entities/repository/domain/rules/count-branch-outcomes.test.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-25
+frontend/app/src/entities/repository/ui/queries/repository-polling.ts
+  s_ef73b5c53fd520::t_d0769710b16455 4-7
+frontend/app/src/entities/repository/ui/repository-push-to-remote-card.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 1-99
+frontend/app/src/entities/repository/ui/hooks/use-refresh-after-repository-run.test.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-141
+tests/e2e/objects/test_object_details_delete.py
+  s_ef73b5c53fd520::t_d0769710b16455 13,57-63
+dev/specs/infp-631-resource-telemetry/EXTRACTED.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-39
+dev/specs/infp-631-resource-telemetry/checklists/requirements.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-37
+frontend/app/src/entities/repository/domain/rules/repository-column-surface.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-9
+backend/tests/component/conftest.py
+  s_ef73b5c53fd520::t_d0769710b16455 92,1856-1863
+  s_ef73b5c53fd520::t_1885237b4662aa 1864-1865
+dev/specs/infp-631-resource-telemetry/research.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-154
+frontend/app/src/shared/components/form/utils/mutations/buildFromPoolMutationValue.test.ts
+  s_ef73b5c53fd520::t_d0769710b16455 3-6,100-128
+  s_ef73b5c53fd520::t_07258dbf466fe6 129
+backend/infrahub/services/component.py
+  s_ef73b5c53fd520::t_d0769710b16455 3,7,15-20,31-45,53,55,101-103,107-112,114-120,192-193,196-259,267-268,281-282
+frontend/app/src/entities/repository/domain/model/repository-push-state.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-51
+dev/knowledge/frontend/entities-structure.md
+  s_ef73b5c53fd520::t_d0769710b16455 361-366
+backend/tests/component/pools/test_number_pool_range_reconciler.py
+  s_ef73b5c53fd520::t_d0769710b16455 8,30,58
+frontend/app/src/entities/repository/ui/repository-activity-card/last-run-row.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 1-130
+backend/infrahub/graphql/manager.py
+  s_ef73b5c53fd520::t_d0769710b16455 49,395-396
+dev/specs/infp-631-resource-telemetry/quickstart.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-79
+backend/infrahub/services/scheduler.py
+  s_ef73b5c53fd520::t_d0769710b16455 11,58-60
+  s_ef73b5c53fd520::t_0c0bf05ef2e57f 61
+backend/tests/component/telemetry/test_cgroup_kernels.py
+  s_ef73b5c53fd520::t_d0769710b16455 1-282
+backend/infrahub/graphql/subscription/graphql_query.py
+  s_ef73b5c53fd520::t_d0769710b16455 13,56
+frontend/app/src/shared/components/form/utils/updateFormFieldValue.ts
+  s_ef73b5c53fd520::t_d0769710b16455 84-125
+backend/tests/adapters/machine.py
+  s_ef73b5c53fd520::t_d0769710b16455 1-25
+frontend/app/.betterer.results
+  s_ef73b5c53fd520::t_d0769710b16455 187,205,269,278,280
+docs/src/components/HomePage/card.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 10,16,22
+frontend/app/src/entities/repository/api/repository-commits.mappers.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1
+backend/infrahub/core/node/__init__.py
+  s_ef73b5c53fd520::t_dae2cadeb5e519 1013,1020-1028,1037,1064
+  s_ef73b5c53fd520::t_d0769710b16455 1016-1019,1029-1032,1035-1036,1041-1054,1056,1058,1062-1063
+  s_ef73b5c53fd520::t_e4fd5cd55b1230 1014-1015
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_attach.py
+  s_ef73b5c53fd520::t_d0769710b16455 8,15,301-322
+  s_ef73b5c53fd520::t_8fda0d4a489b5d 323
+frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts
+  s_ef73b5c53fd520::t_d0769710b16455 251-253,263-265
+dev/specs/infp-631-resource-telemetry/critiques/critique-20260721-121437.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-84
+changelog/+resource-telemetry.added.md
+  s_ef73b5c53fd520::t_d0769710b16455 1
+docs/docs/git-integration/connect-repository.mdx
+  s_ef73b5c53fd520::t_d0769710b16455 374,403-405
+backend/tests/unit/services/test_scheduler.py
+  s_ef73b5c53fd520::t_d0769710b16455 10,63,67-70
+frontend/app/src/entities/repository/api/date-time.mappers.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-11
+dev/specs/infp-631-resource-telemetry/data-model.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-117
+docker-compose.yml
+  s_ef73b5c53fd520::t_d0769710b16455 284,317,363
+dev/specs/ifc-3371-number-pool-field-tabs/spec.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-236
+dev/specs/ifc-3371-number-pool-field-tabs/checklists/requirements.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-37
+backend/tests/component/graphql/auth/query_permission_checker/test_super_admin_checker.py
+  s_ef73b5c53fd520::t_d0769710b16455 18,125
+backend/infrahub/telemetry/database.py
+  s_ef73b5c53fd520::t_d0769710b16455 17-19,40-75,91
+frontend/app/src/entities/repository/domain/rules/is-push-state-attribute.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-6
+frontend/app/src/entities/repository/ui/repository-object-details.test.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 24-26,338-416
+backend/tests/component/core/resource_manager/test_number_pool_branch_liveness.py
+  s_ef73b5c53fd520::t_d0769710b16455 12,17,193-206,208,216-218,224-229,231-234,238-240
+dev/specs/ifc-3371-number-pool-field-tabs/data-model.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-36
+frontend/app/src/entities/repository/ui/repository-activity-card/active-run-row.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 1-35
+frontend/app/src/shared/components/form/utils/mutations/getCreateMutationFromFormData.ts
+  s_ef73b5c53fd520::t_d0769710b16455 7-10,13,40-44
+  s_ef73b5c53fd520::t_cd7b0177052d6f 45
+frontend/app/src/shared/components/form/utils/mutations/getUpdateMutationFromFormData.test.ts
+  s_ef73b5c53fd520::t_d0769710b16455 394-528
+frontend/app/src/entities/repository/domain/rules/get-push-actions.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-13
+dev/knowledge/frontend/column-visibility.md
+  s_ef73b5c53fd520::t_d0769710b16455 74-76
+frontend/app/src/entities/repository/api/get-repository-push-state-from-api.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-46
+backend/infrahub/core/attribute.py
+  s_ef73b5c53fd520::t_d0769710b16455 584,627-632,655-662,664-667
+dev/knowledge/backend/async-tasks.md
+  s_ef73b5c53fd520::t_d0769710b16455 446-451
+backend/tests/unit/telemetry/test_database.py
+  s_ef73b5c53fd520::t_d0769710b16455 1-36
+dev/specs/infp-631-resource-telemetry/alignment-check.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-24
+dev/README.md
+  s_ef73b5c53fd520::t_d0769710b16455 103
+backend/infrahub/telemetry/resources.py
+  s_ef73b5c53fd520::t_d0769710b16455 1-517
+changelog/+number-pool-field-attach.added.md
+  s_ef73b5c53fd520::t_d0769710b16455 1
+dev/knowledge/backend/telemetry.md
+  s_ef73b5c53fd520::t_d0769710b16455 35-36,41,55-133,173,178-182,204-208
+dev/specs/ifc-3371-number-pool-field-tabs/critiques/critique-20261009.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-115
+frontend/app/src/entities/repository/ui/queries/get-repository-activity.query.test.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-34
+dev/specs/ifc-3371-number-pool-field-tabs/plan.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-176
+backend/tests/unit/serve/test_processes.py
+  s_ef73b5c53fd520::t_d0769710b16455 1-35
+frontend/app/src/entities/repository/ui/repository-activity-card/repository-activity-card.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 1-94
+frontend/app/src/pages/objects/object-items.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 8-10,24-29
+pyproject.toml
+  s_ef73b5c53fd520::t_d0769710b16455 40
+frontend/app/src/entities/nodes/object/ui/object-details/object-details.test.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 14-16
+backend/tests/unit/telemetry/test_tasks.py
+  s_ef73b5c53fd520::t_d0769710b16455 1-95
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_source.py
+  s_ef73b5c53fd520::t_d0769710b16455 1-3,11,59-118,271,303-313,321-467
+dev/specs/infp-631-resource-telemetry/plan.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-154
+frontend/app/src/shared/components/form/pool-backed-field.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 36,63,69
+CHANGELOG.md
+  s_ef73b5c53fd520::t_d0769710b16455 14-20
+dev/specs/infp-631-resource-telemetry/opsmill-implement-report.md
+  s_ef73b5c53fd520::t_d0769710b16455 1-76
+backend/infrahub/graphql/resolvers/object_by_id.py
+  s_ef73b5c53fd520::t_d0769710b16455 1-73
+dev/specs/ifc-3184-pool-number-attach/contracts/graphql-pool-query.md
+  s_ef73b5c53fd520::t_d0769710b16455 128-131
+dev/specs/ifc-3220-writeback-failure-handling/tasks.md
+  s_ef73b5c53fd520::t_d0769710b16455 394,398,403
+backend/tests/unit/services/test_component.py
+  s_ef73b5c53fd520::t_d0769710b16455 1-250
+frontend/app/src/entities/repository/ui/queries/get-repository-activity.query.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-38
+frontend/app/src/entities/repository/ui/repository-activity-card/repository-activity-card.test.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 1-206
+frontend/app/src/entities/repository/ui/repository-push-to-remote-card.test.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 1-181
+backend/tests/component/graphql/resource_manager/number_pool_attach/test_provenance.py
+  s_ef73b5c53fd520::t_d0769710b16455 172,184-186
+backend/infrahub/core/node/create.py
+  s_ef73b5c53fd520::t_dae2cadeb5e519 498,500,583,585,588
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_allocation_scope.py
+  s_ef73b5c53fd520::t_d0769710b16455 333
+frontend/app/src/entities/repository/domain/model/repository-activity.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-40
+backend/tests/component/graphql/auth/query_permission_checker/test_merge_operation_checker.py
+  s_ef73b5c53fd520::t_d0769710b16455 19,153
+frontend/app/src/entities/repository/ui/queries/import-current-commit.mutation.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1,10,23,31-37
+backend/infrahub/graphql/initialization.py
+  s_ef73b5c53fd520::t_d0769710b16455 16,45,143
+frontend/app/src/entities/repository/ui/repository-activity-card/idle-row.tsx
+  s_ef73b5c53fd520::t_d0769710b16455 1-31
+backend/infrahub/core/node/resource_manager/number_pool.py
+  s_ef73b5c53fd520::t_d0769710b16455 40,44-45,54
+backend/infrahub/telemetry/tasks.py
+  s_ef73b5c53fd520::t_d0769710b16455 18,31-32,38,131-159,183-190,204,206-207
+frontend/app/src/entities/repository/domain/use-cases/get-repository-activity.ts
+  s_ef73b5c53fd520::t_d0769710b16455 1-18
+frontend/app/src/entities/repository/ui/queries/repository.query-keys.ts
+  s_ef73b5c53fd520::t_d0769710b16455 21-24,34-37,57,59
+uv.lock
+  s_ef73b5c53fd520::t_56846e18012f34 1519,1619
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f16ef6fb532f4b34281c55ec11df30b21177b87b",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_ef73b5c53fd520": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c03c1b3-13e1-4aab-86e6-b289baf17cf6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

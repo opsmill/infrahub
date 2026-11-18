@@ -1,0 +1,22 @@
+backend/infrahub/graphql/queries/resource_manager.py
+  s_6a5d5821c03c7e::t_28741073896944 122,124
+  s_6a5d5821c03c7e::t_46320860d0d314 224-228
+AGENTS.md
+  s_6a5d5821c03c7e::t_0046b3c6ea23f2 178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f89f2e03080257c01911b0d381833bf776af0f04",
+  "prompts": {},
+  "sessions": {
+    "s_6a5d5821c03c7e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8070733-e44d-4f54-9e15-7eda3b16d41f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

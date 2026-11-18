@@ -1,0 +1,19 @@
+backend/infrahub/graphql/mutations/resource_manager.py
+  s_091afb78717613::t_7e0a7515b93067 205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "19edced08f1923dbb8d97f7166bd41ca23cb9057",
+  "prompts": {},
+  "sessions": {
+    "s_091afb78717613": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc6c6a5d-68b8-4b05-8cde-82de16b7cae5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

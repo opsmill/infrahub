@@ -1,0 +1,36 @@
+backend/infrahub/telemetry/constants.py
+  s_1df8eb94da3d51::t_5bb82ad21c0b07 4
+dev/specs/005-enterprise-licensing-infp-472/tasks.md
+  s_1df8eb94da3d51::t_5bb82ad21c0b07 201,249
+  s_1df8eb94da3d51::t_b439abfb1b53ee 257
+dev/specs/005-enterprise-licensing-infp-472/research.md
+  s_1df8eb94da3d51::t_5bb82ad21c0b07 44,47
+dev/specs/005-enterprise-licensing-infp-472/checklists/release-gate.md
+  s_1df8eb94da3d51::t_5bb82ad21c0b07 11
+dev/specs/005-enterprise-licensing-infp-472/spec.md
+  s_1df8eb94da3d51::t_5bb82ad21c0b07 217-218
+dev/specs/005-enterprise-licensing-infp-472/contracts/telemetry-license-block.md
+  s_1df8eb94da3d51::t_5bb82ad21c0b07 3
+dev/specs/005-enterprise-licensing-infp-472/plan.md
+  s_1df8eb94da3d51::t_5bb82ad21c0b07 145-146
+dev/specs/005-enterprise-licensing-infp-472/opsmill-implement-report.md
+  s_1df8eb94da3d51::t_b439abfb1b53ee 3,13,151-157
+dev/knowledge/backend/telemetry.md
+  s_1df8eb94da3d51::t_5bb82ad21c0b07 84-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0e9ab5f24e2e8e279f09f2d1b923ef69f4eae3f7",
+  "prompts": {},
+  "sessions": {
+    "s_1df8eb94da3d51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6a82980-5a58-459a-a19c-297b9025dff8",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}

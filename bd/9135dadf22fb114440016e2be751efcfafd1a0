@@ -1,0 +1,25 @@
+backend/infrahub/git/sync.py
+  s_2ab8629d5567d5::t_c4598d09565c7a 263-264
+backend/infrahub/git/tasks.py
+  s_2ab8629d5567d5::t_9c8030ad21effc 618-619,640-641,655,657-658
+backend/tests/component/git/test_fresh_clone_import.py
+  s_2ab8629d5567d5::t_29eac377beaacd 6,19,263-329
+dev/knowledge/backend/git-sync.md
+  s_2ab8629d5567d5::t_113e921ca229c0 402-404
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bd9135dadf22fb114440016e2be751efcfafd1a0",
+  "prompts": {},
+  "sessions": {
+    "s_2ab8629d5567d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "377ca0ad-9cbc-42ab-9501-cb320aa0052f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}

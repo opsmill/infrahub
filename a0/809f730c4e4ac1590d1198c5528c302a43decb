@@ -1,0 +1,19 @@
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_bf22b52c194546::t_1fded32d7069e6 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a0809f730c4e4ac1590d1198c5528c302a43decb",
+  "prompts": {},
+  "sessions": {
+    "s_bf22b52c194546": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27b65c4c-e855-4360-9c0e-6521b8efb461",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+backend/tests/component/core/constraint_validators/test_attribute_numberpool_constraints.py
+  s_ad197cc66a0fdb::t_8f47aa5cf692f4 62-67,406,426
+  s_ad197cc66a0fdb::t_ab896938ab31f0 48
+  s_ad197cc66a0fdb::t_d44cfc35fe7d90 1,13,22-23,383-405,407-425,427-429
+backend/infrahub/core/validators/attribute/number_pool.py
+  s_ad197cc66a0fdb::t_a46157a00a524d 77
+backend/infrahub/core/validators/interface.py
+  s_ad197cc66a0fdb::t_a745f72864c448 16-18
+backend/infrahub/core/validators/tasks.py
+  s_ad197cc66a0fdb::t_6947b3683a2f14 13,23,25,39-40,42,60-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4abc6d10d0135283fbcfccb0e3b046470f8787ba",
+  "prompts": {},
+  "sessions": {
+    "s_ad197cc66a0fdb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c556b63e-8935-4f29-9e96-fc27ab9f511a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

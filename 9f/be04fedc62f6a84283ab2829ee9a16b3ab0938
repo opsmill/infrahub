@@ -1,0 +1,24 @@
+backend/tests/component/core/resource_manager/test_number_pool.py
+  s_c47d1ff1b9fc75::t_82a2c9f6f62018 81
+  s_c47d1ff1b9fc75::t_a97aae549721da 104
+backend/tests/component/core/migrations/graph/m081_reanchor_number_pool_reservations/conftest.py
+  s_c47d1ff1b9fc75::t_0baec85ee207f8 33,110
+backend/tests/component/core/migrations/graph/m081_reanchor_number_pool_reservations/test_migration.py
+  s_c47d1ff1b9fc75::t_aa505afae58138 23-24,170,181-192,195-196,198,201-203,205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9fbe04fedc62f6a84283ab2829ee9a16b3ab0938",
+  "prompts": {},
+  "sessions": {
+    "s_c47d1ff1b9fc75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f01d1d66-69c7-480a-ae64-d43d74f85faf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

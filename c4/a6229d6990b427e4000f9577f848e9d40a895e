@@ -1,0 +1,17 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c4a6229d6990b427e4000f9577f848e9d40a895e",
+  "prompts": {},
+  "sessions": {
+    "s_b9c080bded1225": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "88f4486f-016d-4783-a6c1-a45974c006dc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

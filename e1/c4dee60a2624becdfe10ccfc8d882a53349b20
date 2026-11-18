@@ -1,0 +1,21 @@
+backend/infrahub/graphql/mutations/computed_attribute.py
+  s_9fb2844a4c70ac::t_15e856e7f14a12 109
+backend/infrahub/graphql/mutations/display_label.py
+  s_9fb2844a4c70ac::t_32173812352813 100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e1c4dee60a2624becdfe10ccfc8d882a53349b20",
+  "prompts": {},
+  "sessions": {
+    "s_9fb2844a4c70ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e99ffdbe-347d-498e-b8d1-63f456d31c13",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

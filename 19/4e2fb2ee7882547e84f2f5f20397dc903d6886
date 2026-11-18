@@ -1,0 +1,25 @@
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_ranges_relationship_edits.py
+  s_f4cdafdd905485::t_37a39bcba536ac 1-88
+backend/infrahub/graphql/mutations/relationship.py
+  s_f4cdafdd905485::t_a6fcb9ec19af87 282,578-607
+backend/tests/component/graphql/mutations/relationship/test_relationship_remove.py
+  s_f4cdafdd905485::t_8f621d9c8b5799 3,8,168-304
+changelog/+ifc-3408-relationship-remove-mandatory-peer.fixed.md
+  s_f4cdafdd905485::t_7285bd05db0531 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "194e2fb2ee7882547e84f2f5f20397dc903d6886",
+  "prompts": {},
+  "sessions": {
+    "s_f4cdafdd905485": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d80b27f2-528a-4331-bd46-39778bf01130",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

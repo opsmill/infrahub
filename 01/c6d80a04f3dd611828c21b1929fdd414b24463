@@ -1,0 +1,1643 @@
+utilities/branch_details_scenarios/verify.mjs
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-158
+development/Dockerfile
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 134-135,139
+frontend/app/src/entities/branches/ui/queries/create-branch.mutation.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-59
+backend/tests/unit/core/merge/selective_regen/definition_selector/test_artifact_selector.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 42,50
+backend/tests/unit/test_trace_tls.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 231-233,290-292
+frontend/app/src/entities/nodes/relationships/ui/queries/get-relationships.query.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-51
+frontend/app/src/entities/tasks/ui/branch-tasks/branch-tasks-card.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-87
+backend/infrahub/git/state/factory.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-23
+backend/infrahub/message_bus/messages/__init__.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3-4,7,16-17,20,30-31,38-39
+backend/infrahub/proposed_change/action_checker.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 9-11,105-119,221
+dev/specs/infp-671-branch-details-repos/spec.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-259
+frontend/app/src/entities/branches/ui/branch-details/branch-details-header.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-41
+backend/infrahub/git/divergence/models.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 88-95
+  s_5a60cfb15e3716::t_4cff4fa5664bc7 87
+backend/infrahub/git/refs_check/gateway.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-207
+changelog/10498.changed.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1
+frontend/app/src/entities/nodes/object/ui/object-table/cells/table-column-header.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 24,61-62,70-71,74-76,85-86,97-98,103-111,118-119,126-127,145-146,174-175,182-183,194-200,219-220,262-264,273-274,292-303,354-358,360-364
+backend/tests/component/graphql/mutations/test_repository_delivery_retry.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-377
+frontend/app/src/entities/tasks/api/check-task-details-from-api.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3-4,27-30,34
+frontend/app/src/entities/repository/ui/repository-object-details-render-failure.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-116
+backend/infrahub/message_bus/operations/git/branch_heads.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-30
+backend/tests/adapters/cache.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 2,4,37-90
+  s_5a60cfb15e3716::t_c547b816494d72 91-92
+frontend/app/src/entities/repository/domain/model/repository.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-15,20-21,25-90
+frontend/app/src/shared/components/buttons/refresh-button.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-107
+frontend/app/src/entities/repository/domain/use-cases/get-import-task-error-message.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-18
+dev/specs/005-git-status-header-ifc-3199/research.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-163
+backend/infrahub/core/merge/regeneration_barrier.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-299
+dev/specs/infp-671-cross-branch-repo-status/critiques/critique-2026-09-03.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-281
+frontend/app/src/entities/repository/ui/repository-commits-manager.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-810
+backend/tests/component/graphql/queries/test_repository_git_state.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-2108
+backend/tests/helpers/repository_sync.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 9-10,19,30,35,94,96-109,162-172
+dev/specs/infp-671-branch-details-repos/data-model.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-117
+frontend/app/src/entities/branches/ui/branch-tabs.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 12
+docs/docs/reference/error-catalogue.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 7,522-551
+  s_5a60cfb15e3716::t_a73c66fd579b13 552-558
+frontend/app/src/entities/repository/api/get-repository-names-from-api.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-39
+dev/knowledge/frontend/entities-structure.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 278-309
+frontend/app/src/shared/utils/table-pagination.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-78
+backend/infrahub/config.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 34,575-577,881-886,1978
+dev/specs/infp-671-branch-details-repos/critiques/critique-2026-09-29.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-122
+frontend/app/src/entities/branches/ui/hooks/use-refresh-branch-git-status-on-task-end.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-50
+frontend/app/src/entities/nodes/object/ui/object-details/object-details-tabs.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-57
+frontend/app/src/entities/repository/ui/repository-branches-card/repository-branches-card-boundary.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-29
+frontend/app/src/entities/tasks/ui/tasks-table/tasks-table.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-78
+docs/docs/objects/convert-object-kind.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 7,60-62,64
+frontend/app/src/entities/repository/ui/repository-menu-section.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 12,16,31,41,67,98
+backend/infrahub/message_bus/messages/git_commit_log_get.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-50
+backend/infrahub/services/adapters/message_bus/__init__.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 66-78
+backend/tests/unit/graphql/test_error_formatter.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 9,29,197-218,222-224
+  s_5a60cfb15e3716::t_c251530a284ced 225-226
+dev/knowledge/backend/git-push-queue.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-450
+dev/specs/ifc-3201-branches-table-git/contracts/graphql.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-79
+frontend/app/src/entities/branch-git-status/api/repository-branch-status.mappers.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-29
+frontend/app/src/entities/branches/ui/branches-table/branch-table-row.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-18
+frontend/app/src/entities/repository/ui/queries/get-branch-repositories.query.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-98
+frontend/app/src/entities/repository/ui/queries/get-branch-repository-health.query.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-38
+backend/tests/unit/git/writeback/test_classifier.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-515
+docs/docs/resource-manager/allocate-number.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 89
+backend/tests/protocols.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 19,578-586
+dev/specs/ifc-3201-branches-table-git/contracts/ui-cells.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-73
+docs/docs/resource-manager/overview.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 81,88-90,106-112,118,131-163,167-168,175,180-182,184,244-262,269-272,275,281-288,292-313,393-394,412-415
+frontend/app/src/entities/branch-git-status/domain/rules/summarize-branch-git-statuses.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-122
+frontend/app/src/entities/branch-git-status/domain/use-cases/get-repository-branch-status.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-28
+backend/infrahub/core/merge/regeneration_release.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-349
+frontend/app/src/entities/branches/ui/hooks/use-refresh-branch-git-status-on-task-end.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-65
+dev/specs/ifc-3210-history-rewrite-reconciliation/tasks.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 524-526,567,577-581,583,585,590-591,645,673,678-680
+backend/infrahub/message_bus/operations/git/repository.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 6-7,11,49,59-75
+  s_5a60cfb15e3716::t_18df133cd05231 76-77
+backend/tests/component/git/writeback/test_git_adapter.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-70
+frontend/app/src/entities/navigation/ui/app-header.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 6,26-27
+backend/tests/integration/git/test_readonly_refs_check.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-355
+backend/infrahub/git/divergence/store.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 6,9-10,20-64,81-89
+backend/tests/component/computed_attribute/test_scoped_recompute_python.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3-4,9,17-18,151-235
+frontend/app/src/entities/nodes/filters/ui/hooks/use-filters.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1,6-9,12,14,17,29-31
+frontend/app/src/entities/repository/api/branch-repository.mappers.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-45
+dev/specs/infp-671-cross-branch-repo-status/contracts/graphql-repository-branch-status.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-240
+backend/infrahub/core/merge/builder.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3-5,8,16,24-27,34-38,42-47,53,56-61,120-123,148-153,168-170,179-266
+backend/infrahub/git/refs_check/checker.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-464
+frontend/app/src/entities/nodes/object/ui/object-details/object-details-header.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 2-3,11,45
+frontend/app/src/entities/repository/api/get-repository-sync-counts-from-api.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-38
+frontend/app/src/entities/repository/domain/use-cases/get-branch-repository-health.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-127
+backend/tests/unit/graphql/queries/test_repository_activity_schema.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-66
+backend/tests/adapters/repository_record_store.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5,55-61
+docs/docs/branches/create.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5
+backend/tests/helpers/test_app.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 43,328-338
+  s_5a60cfb15e3716::t_38dafe46bb7324 339-340
+backend/tests/unit/git/test_bounded_command.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-148
+frontend/app/src/entities/branches/ui/branches-table/branches-data-table.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-97
+backend/tests/component/git/test_git_branch_create.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3,13-14,17-18,20-25,92,103-260
+docs/docs/proposed-changes/overview.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 42,49-50,52,66-67,135-138,155
+frontend/app/src/entities/repository/domain/use-cases/get-repository-branch-status.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-86
+frontend/app/src/entities/tasks/domain/use-cases/is-task-finished.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-16
+frontend/app/src/shared/hooks/use-table-pagination.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-136
+frontend/app/src/shared/hooks/use-table-pagination.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-65
+dev/specs/infp-671-branch-details-repos/checklists/requirements.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-36
+dev/specs/ifc-3130-repository-branches-card/spec.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-247
+frontend/app/src/entities/branches/ui/queries/create-branch.mutation.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5,28-29
+backend/infrahub/errors/payloads.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 80-85
+backend/infrahub/git/refs_check/models.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-120
+backend/infrahub/git/constants.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-3,8-23,29-35
+  s_5a60cfb15e3716::t_1ebff61ae8d846 36
+frontend/app/src/entities/nodes/object/ui/object-details/object-details.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 15-16,32-44
+frontend/app/src/entities/repository/domain/rules/is-read-only-repository.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-6
+frontend/app/src/entities/branch-git-status/ui/queries/branch-git-status.query-keys.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-10
+dev/specs/005-git-status-header-ifc-3199/checklists/requirements.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-64
+backend/infrahub/git/state/branch_heads_wire.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-86
+backend/tests/unit/core/merge/test_regeneration_dispatcher.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 4-6,14,17,28-29,38,50-53,209,224,251-279,284,286,291-298,333,356,369,384,399,412,436,462,482,500,519,562,570-873
+frontend/app/src/entities/repository/domain/rules/repository-syncing.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-13
+frontend/app/src/entities/repository/ui/branch-repositories/import-error-band.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-69
+frontend/app/src/shared/hooks/useCopyToClipboard.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1,8,13,23,99-182
+dev/specs/ifc-3130-repository-branches-card/critiques/critique-2026-09-16.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-159
+backend/tests/component/git/writeback/test_store.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-937
+backend/tests/component/graphql/test_query_analyzer.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 344-461
+backend/tests/component/git/writeback/test_import_deferral.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-475
+frontend/app/src/shared/components/display/commit-hash.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-15
+dev/specs/ifc-3201-branches-table-git/spec.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-228
+frontend/app/src/entities/branches/ui/branch-merge-button.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 12-15,38,53,66-69
+frontend/app/src/entities/branches/ui/branches-table/get-grid-template-columns.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-23
+frontend/app/src/entities/repository/ui/repository-commits-manager.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-173
+frontend/app/tests/components/render.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 22-23
+frontend/app/src/entities/repository/ui/repository-commits.view.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-584
+backend/infrahub/git/writeback/git_adapter.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-298
+frontend/app/src/entities/branch-git-status/ui/hooks/use-get-branch-git-statuses.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-87
+backend/infrahub/git/refs_check/constants.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-31
+backend/tests/unit/git/state/test_commit_log_wire.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-67
+backend/tests/unit/workflows/test_catalogue.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 10-11,43-45
+  s_5a60cfb15e3716::t_e7d0fa6e0160a4 46-47
+docs/docs/deploy-manage/maintain-upgrade/upgrade/community.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 97
+frontend/app/src/entities/branches/ui/routing/branch-urls.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-44
+frontend/app/src/entities/nodes/object/ui/object-details/object-details-tabs.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 11,46
+frontend/app/src/entities/repository/ui/branch-repositories/repository-error-bands.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-76
+dev/specs/infp-671-branch-details-repos/design/README.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-13
+frontend/app/src/entities/repository/api/get-branch-repositories-from-api.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-93
+backend/infrahub/core/merge/selective_regen/definition_selector/artifact_selector.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 95
+backend/tests/unit/services/adapters/message_bus/test_rpc_timeout.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-215
+dev/specs/ifc-3101-repo-commit-visibility/checklists/requirements.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-52
+backend/infrahub/exceptions.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 10,70-80,103-106,134-147,168-174,485-552,612-669
+  s_5a60cfb15e3716::t_65099c136ed530 670-671
+backend/infrahub/git/writeback/abandoner.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-140
+frontend/app/src/entities/repository/domain/use-cases/get-repository-names.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-13
+backend/infrahub/core/merge/recompute_coalescing.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5,8-9,12,25-26,38-39,149,153-230,634,643,648,651-652,661,666-681,689,697,702,715,749,754,792
+.github/workflows/issue-triage-sweep.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 28,52
+backend/tests/unit/git/writeback/test_models.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-761
+dev/knowledge/backend/async-tasks.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 228,460,468
+frontend/app/src/entities/repository/ui/queries/get-repository-names.query.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-24
+frontend/app/src/entities/branches/ui/queries/delete-branch.mutation.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-39
+changelog/11059.fixed.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1
+frontend/app/src/entities/repository/api/get-repository-branch-status-from-api.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-68
+frontend/app/src/entities/tasks/domain/model/task-list-item.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-13
+frontend/app/src/entities/repository/ui/queries/get-branch-repositories.query.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-68
+changelog/+repository-branch-status-query.added.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1
+dev/specs/infp-671-cross-branch-repo-status/plan.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-335
+backend/infrahub/git/state/reader.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-40
+backend/tests/adapters/delivery_state.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-10
+backend/tests/component/git/test_import_failure_containment.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 20,24,50-58,71-79,84-87,98-106,110-112,118-127,143,146-147,150-155,173,175-177,180-181
+frontend/app/src/entities/nodes/object/ui/filters/attribute-filter-form.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-85
+backend/infrahub/git/state/models.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-206
+.github/workflows/issue-triage-labeler.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 42,66,99-101
+dev/specs/ifc-3101-repo-commit-visibility/contracts/repository_git_state.graphql
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-185
+backend/infrahub/git/divergence/gateway.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 38-44,47,61-63,92-94,128
+docs/docs/artifacts/overview.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 37,94-204
+  s_5a60cfb15e3716::t_a18849cc694102 205
+frontend/app/src/entities/repository/ui/branch-repositories/repository-error-bands.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-379
+.github/workflows/chromatic.yml
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 37,44
+frontend/app/src/entities/tasks/domain/rules/get-workflow-label.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-26
+dev/knowledge/backend/computed-attributes.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 56,110
+docs/docs/branches/merge.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5,13,15-17,19-30,40-55,57
+backend/tests/component/git/writeback/test_repository_conversion.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-264
+frontend/app/src/entities/tasks/domain/use-cases/get-branch-tasks.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-19
+frontend/app/src/entities/tasks/ui/queries/tasks.query-keys.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 2,6,13-16,22
+backend/infrahub/git/base.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 4-5,32,34-44,48,55-56,84-122,342,362,365-367,369,375,464-468,472-475,509-515,535,537,545,548-550,555,574,577,659-673,677-683,841,844-846,849-850,858-863,867-882,942-949,958,966-995,1272,1295-1306,1322-1326,1333-1335,1350-1372,1391
+frontend/app/src/entities/branches/ui/branch-details.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-125
+frontend/app/src/shared/components/table/column-meta.d.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-7
+frontend/app/tests/fake/repository-refs-check.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-29
+frontend/app/src/entities/nodes/object/ui/filters/filter-search-input.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-141
+frontend/app/src/shared/components/a11y/copied-announcement.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-13
+frontend/app/src/entities/branches/ui/branches-table/branches-data-table.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5,7,11-12,43-45
+backend/tests/component/computed_attribute/test_coalesced_recompute_python.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 14-15,43,55,215-220,403-405,408-418,424
+backend/tests/unit/core/regeneration/test_classifier_builder.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 31,113-127,130
+  s_5a60cfb15e3716::t_09823498d53ab4 128-129,131-132
+backend/tests/integration/git/test_git_live_remote.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 8,10-12,14-15,19,22-23,26-27,29,31-32,39,46,52,55-61,63-65,68-80,99,101,103,106,108,110-112,114,118-140,198-435,491-511,514-515,519,522-523,525-527,529-552,835,837,840,842-844,846,848-850,853,856-857,861,863,865-868,870,872-874,876,880-882,884,886-888,891,894-895,899-900,902,904-934,936,938-939,942,944-945,947-948,950-964,966,968-970,974-978,980,982,984-985,988,990-991,993-1005,1007-1015,1017,1019-1021,1024-1034,1036-1060,1064-1094,1096,1098,1100,1102-1104,1106-1114,1116-1122,1124-1132,1134-1149,1151-1152,1154-1173,1175-1183,1185-1196,1198-1199,1201-1216,1218-1249,1251-1262,1264-1265,1267-1288,1293-1295,1297-1310,1312-1316,1319-1320,1322-1350,1352-1371,1373,1375-1386,1388-1413,1417-1419,1421-1428,1431-1436,1438-1448,1450-1451,1453-1459,1461-1462,1464-1471,1473-1474,1476-1483,1485-1506,1508-1510,1512-1552,1554-1602,1604-1621,1623-1625,1627-1640,1642,1646-1648,1650-1658,1660,1662-1672,1674-1675,1677-1679,1681-1732,1735-1738,1740-1743,1745-1750,1752-1758,1760-1786,1788-1790,1792-1810,1875-1880,1917,2198,2205-2208,2210-2228,2234,2240,2242,2249-2268,2543-2650
+backend/tests/unit/git/test_git_repository.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5,8,10,17,32-33,38,40-41,601-602,604-607,609-634,637,639,641-643,649-662,668,685-698,704-887,890-970,975-1043,1046-1049,1052-1172,1185,1230,1254-1256,1270,1307-1312,1327-1335,1358-1363,1378-1382,1461-1463,1482-1484,1500-1502,1560-1562,1576-1577
+frontend/app/tests/fake/branch-git-status.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-52
+frontend/app/src/entities/nodes/filters/ui/hooks/use-search.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 4-6,8,11
+frontend/app/src/entities/branch-git-status/domain/rules/get-unknown-sync-status.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-19
+backend/infrahub/core/merge/selective_regen/definition_selector/generator_selector.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3,21-23,35-53
+  s_5a60cfb15e3716::t_632118f9503cc5 54
+dev/specs/infp-671-cross-branch-repo-status/research.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-414
+frontend/app/src/entities/repository/ui/repository-branches-card/cells/sync-status-cell.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-19
+backend/tests/component/message_bus/operations/git/test_commit_log.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-845
+backend/tests/component/git/test_import_objects_activity.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-123
+backend/tests/unit/core/merge/test_regeneration_barrier.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-1046
+frontend/app/src/entities/repository/domain/use-cases/get-remote-check-task.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-22
+frontend/app/src/entities/branches/ui/branches-table/cells/branch-git-state-cell.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-103
+frontend/app/src/entities/repository/ui/repository-branches-card/repository-branches-toolbar.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-47
+backend/infrahub/git/repository.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5,11,23,32,34,36-37,45,55,57,60,79-114,139,147-150,212-220,283-287,417,436-438,466,503,552-554,592,668,718,723,743,821,849-942,1110-1141,1144-1148,1151,1163-1167,1169-1170,1175-1178,1186,1188-1189,1198-1199,1204-1205,1208,1294,1310,1315-1316,1329-1333,1338-1372,1375-1410
+backend/tests/component/git/writeback/conftest.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-164
+frontend/app/src/entities/branch-git-status/ui/queries/get-branch-git-repositories.query.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-16
+dev/specs/ifc-3130-repository-branches-card/plan.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-774
+frontend/app/src/entities/repository/ui/branch-repositories/unreachable-band.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-30
+backend/tests/unit/git/test_tasks.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-3,21,26-40,144-145,149,151,154-156,159-161,163-165,167,170-175,187,193-194,196,200,215-279
+  s_5a60cfb15e3716::t_6a480cfe905e55 280-281
+backend/tests/integration_docker/test_computed_attributes.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 568-601
+changelog/+repository-rewrite-record.added.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1
+dev/specs/ifc-3220-writeback-failure-handling/contracts/internal-interfaces.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 21-26,29,40,52,75-76,80-87,90-107,112,114,116,118,120,122-123,127,129-130,139-141,152-155,157-171,181,199-202,205,211-221,229-234,239-240,243-249,251-256,259-260,270-273,276-277,301,304,308-314,332-339,348-352,356-369,396-402,421,423,426,434-454,469,481-486,489-501,504-505,588-595,609,629-633,644-649,661,663,665-668,671-673,676,681-683
+frontend/app/src/entities/repository/api/branch-repository.mappers.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-84
+.github/CODEOWNERS
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 8-10,12-19,23-24
+backend/infrahub/message_bus/messages/refresh_git_clone.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-12
+backend/infrahub/workers/submission.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-81
+backend/tests/component/graphql/queries/test_repository_branch_status.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-2293
+frontend/app/src/shared/api/graphql/generated/graphql-env.d.ts
+  s_5a60cfb15e3716::t_15cecdf0e1070f 793,1177
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 460,763-765,1182,1198-1225
+backend/infrahub/git/state/bus_reader.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-53
+frontend/app/src/entities/repository/ui/queries/check-remote-refs.mutation.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-17
+backend/tests/unit/core/regeneration/test_definitions.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3,6-7,9,129-163
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 13032-13049,18614-18652,20306,20310-20313,22016-22020,22037-22046,26313-26320,30074-30118,35429-35482,38865-38895,39712-39717,39828-40107
+backend/tests/component/core/merge/test_repository_merge_dispatcher.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5,7-8,10,14-17,25-26,56-81,134-157,180,183,186,189-193,224-226
+backend/infrahub/lock.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 9,77-99
+  s_5a60cfb15e3716::t_37a767df15ecd7 100-101
+frontend/app/src/entities/tasks/ui/queries/is-task-finished.query.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-53
+docs/docs/branches/parallel-branches.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-112
+frontend/app/src/entities/branch-git-status/domain/use-cases/get-branch-git-repositories.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-58
+dev/specs/ifc-3101-repo-commit-visibility/opsmill-implement-report.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-150
+frontend/app/src/entities/repository/ui/repository-sync-status.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-79
+backend/tests/helpers/repository_git_state.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-52
+dev/specs/infp-671-branch-details-repos/tasks.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-247
+.github/workflows/ci-docker-image.yml
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 134,149,274
+dev/specs/infp-671-cross-branch-repo-status/contracts/graphql-repository-branch-status.graphql
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-75
+backend/tests/integration/git/test_repository_commits_query.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-129
+frontend/app/src/entities/branch-git-status/api/branch-git-repository.mappers.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-40
+frontend/app/src/entities/branches/ui/branch-list-item/branch-status-badge.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 56-69
+docs/docs/deploy-manage/maintain-upgrade/upgrade/overview.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 28,122-127
+frontend/app/src/entities/repository/ui/queries/get-repository-import-error.query.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-176
+frontend/app/src/entities/repository/ui/queries/repository-commits.constants.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-4
+frontend/app/src/shared/components/buttons/copy-to-clipboard-button.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5,13,16-30
+frontend/app/src/entities/tasks/domain/use-cases/is-task-finished.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-39
+utilities/branch_details_scenarios/fixtures/base/README.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-3
+utilities/branch_details_scenarios/seed.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-654
+backend/infrahub/core/regeneration/classifier_builder.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 23,29-31,50-53
+backend/tests/unit/git/writeback/test_credentials.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-99
+.github/workflows/shared/issue-taxonomy.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 6-7,58-62,79-80
+backend/tests/component/message_bus/operations/git/test_branch_heads.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-623
+.github/workflows/update-sdk-compatibility-docs.yml
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 32
+dev/specs/005-git-status-header-ifc-3199/tasks.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-198
+frontend/app/src/entities/repository/ui/repository-branches-card/columns.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-233
+frontend/app/src/entities/repository/ui/repository-branches-card/columns.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-115
+backend/infrahub/repositories/create_repository.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 69-71,84-100
+dev/specs/ifc-3220-writeback-failure-handling/data-model.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 34,52-53,109-130,163-164,182-184,207-210,237,241-243,263-264,299,301,304,326-330,337-339,357,359,364,378-380,382-384
+frontend/app/src/entities/branches/ui/queries/merge-branch.mutation.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-41
+frontend/app/src/entities/nodes/object/ui/filters/field-filter-form.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 7,13,17,20-26,37-41
+frontend/app/src/entities/repository/domain/rules/repository-failures.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-149
+frontend/app/src/entities/repository/domain/use-cases/get-branch-repositories.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-138
+frontend/app/src/shared/components/layout/details-layout.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 11-13
+backend/infrahub/core/convert_object_type/repository_conversion.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-2,5,17-18,31,36-42,44-58,60,62-69,71-72,74-93,95-97,99-108
+tests/e2e/tutorial/tutorials/test_tutorial_1_object_create_update_diff_and_merge.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 126,142-145
+backend/infrahub/git/writeback/recovery.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-106
+backend/tests/integration/workers/test_submission_window.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-116
+frontend/app/src/entities/repository/api/get-import-task-logs-from-api.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-32
+frontend/app/src/entities/repository/ui/repository-object-details.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-335
+frontend/app/src/entities/repository/ui/repository-commits-manager-load-more.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-129
+backend/tests/unit/adapters/test_lock.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-4,24,27,34-85
+  s_5a60cfb15e3716::t_cb071ba80ea679 86-87
+frontend/app/src/shared/components/table/paged-table-card.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-198
+frontend/app/src/entities/repository/domain/rules/repository-failures.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-64
+frontend/app/src/entities/repository/domain/rules/should-retry-git-unavailable.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-5
+frontend/app/tests/fake/repository-commit.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-197
+tests/e2e/branches/test_branch_details.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 56-57,67-68,80-82,95-96,99-102,119,171-192
+  s_5a60cfb15e3716::t_760efcb3bcf174 193-194
+dev/specs/infp-671-cross-branch-repo-status/spec.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-200
+frontend/app/src/entities/repository/domain/rules/should-retry-git-unavailable.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-21
+frontend/app/src/entities/repository/ui/branch-repositories/git-state-pill.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-69
+dev/specs/ifc-3101-repo-commit-visibility/quickstart.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-278
+docs/docs/resource-manager/allocate-ip-address.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 149-151,175,195,215
+dev/specs/ifc-3201-branches-table-git/critiques/critique-2026-09-30.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-187
+backend/tests/unit/core/merge/test_coalesced_python_family.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 10-12,34-43,58,63-70,101,122,147,167,185,208
+frontend/app/src/entities/repository/ui/queries/repository.query-keys.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-51
+utilities/branch_details_scenarios/fixtures/change/CHANGES.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-3
+frontend/app/tests/fake/branch-repositories.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-180
+backend/infrahub/core/query/repository.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-339
+backend/tests/component/merge_recompute_coalescing/test_bulk_recompute_writer.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5-6,11,34,46,51,62-71,85,433,456,483,515,545,575
+frontend/app/src/entities/nodes/object/ui/filters/attribute-filter-form.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 13-14,22,26-30,34-40,42-44,52-55,97-98,112
+dev/specs/infp-671-cross-branch-repo-status/opsmill-implement-report-phase5.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-285
+backend/infrahub/core/branch/filters.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 29-30
+backend/infrahub/services/adapters/message_bus/rabbitmq.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 12,95,97-99,101-107,217-222,224-225,234-257
+backend/infrahub/core/repository_branch_status/reader.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-61
+frontend/app/src/shared/components/errors/no-data-found.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 6,14,19
+backend/tests/functional/convert_object_type/test_convert_repositories.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 125-141,345,397,493,534
+changelog/+repository-sync-status-indicator.added.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-3
+frontend/app/src/entities/repository/api/get-latest-repository-import-task-from-api.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-85
+frontend/app/src/entities/repository/domain/rules/get-last-error-line.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-87
+frontend/app/src/entities/tasks/ui/logs.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 18
+dev/specs/005-git-status-header-ifc-3199/plan.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-293
+frontend/app/src/entities/tasks/ui/queries/get-branch-tasks.query.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-67
+frontend/app/src/entities/repository/ui/queries/get-repository-sync-health.query.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-11
+frontend/app/src/shared/components/buttons/copy-to-clipboard-button.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-51
+frontend/app/src/shared/utils/table-pagination.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-170
+backend/tests/component/graphql/mutations/test_repository_delivery_abandon.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-334
+backend/tests/component/graphql/mutations/test_repository.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 20,24,30,294-470
+  s_5a60cfb15e3716::t_1667f8814ebd21 471-472
+tests/e2e/branches/test_branches_git_columns.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-80
+frontend/app/src/shared/components/table/table-pagination.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-167
+backend/infrahub/git/sync.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 7-8,12,23,29,37-38,142,144,146-148,155-171,173,175,177-180,225,232,249-253,264-265,274,280,285,301,307,313-341
+backend/tests/unit/git/test_sync_status.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-175
+backend/infrahub/core/merge/python_target_sources.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 50,54,100,131,182,214-221
+  s_5a60cfb15e3716::t_b108ce731dbbe3 222
+backend/tests/unit/git/writeback/test_store.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-94
+dev/specs/ifc-3101-repo-commit-visibility/spec.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-357
+frontend/app/tests/fake/repository.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-94
+frontend/app/src/entities/branches/ui/branches-table/get-grid-template-columns.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-12
+frontend/app/src/entities/repository/ui/get-repository-commits-columns.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-90
+backend/infrahub/graphql/queries/repository_branch_status/resolver.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-263
+frontend/app/src/entities/tasks/domain/rules/get-related-node-ids.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-5
+frontend/app/src/entities/repository/ui/repository-branches-card/cells/branch-name-cell.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-33
+dev/specs/ifc-3101-repo-commit-visibility/research.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-500
+frontend/app/src/entities/nodes/object/ui/object-table/cells/table-column-header-simple.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 13,16-20,28
+frontend/app/src/entities/repository/ui/branch-repositories/repository-row.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-70
+dev/specs/infp-671-cross-branch-repo-status/opsmill-implement-report.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-491
+backend/tests/helpers/repository_activity.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-54
+dev/specs/ifc-3101-repo-commit-visibility/tasks.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-583
+backend/tests/component/git/test_read_only_import_reaches_the_pool.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-133
+frontend/app/src/entities/branches/ui/branches-table/cells/branch-repositories-cell.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-271
+frontend/app/src/entities/branches/ui/queries/delete-branch.mutation.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 6,32
+dev/specs/ifc-3130-repository-branches-card/data-model.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-303
+frontend/app/src/entities/repository/ui/repository-commit-row-actions.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-88
+docs/docs/git-integration/branch-synchronization.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 248-497
+tests/e2e/branches/test_merge_branch.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 39,41-44,50-51
+backend/infrahub/core/protocols.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 19,562-570
+backend/tests/component/core/regeneration/test_impact.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 10,54-81,285-347
+  s_5a60cfb15e3716::t_6c2155eb380c5c 348
+docs/docs/development-resources/graphql/queries-and-mutations.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 250-254
+backend/tests/component/message_bus/operations/git/test_refresh_git_fetch.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 4,8-9,80-182
+  s_5a60cfb15e3716::t_709b6005f2098a 183-184
+frontend/app/src/entities/tasks/domain/rules/get-workflow-label.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-19
+frontend/app/src/entities/repository/domain/model/repository-git-unavailable-error.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-16
+dev/specs/ifc-3130-repository-branches-card/contracts/repository-branch-status-ui.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-234
+frontend/app/src/entities/repository/ui/routing/repository-urls.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-30
+backend/infrahub/git/tasks.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-2,5,27-29,31-32,34-36,38,40,48-49,51,53,56,89-91,96,103,107-108,112,121-139,150,152-159,197-202,207,209-240,263-264,266-281,283-286,288,322-340,342-353,355,377,393,430,436-441,447,450-457,459-474,476-484,489-490,492-494,496-497,500-503,534-538,544-545,553-555,560,574-576,578-580,588-589,594-597,601-606,618-622,677,698,755-760,772-782,784-814,822,828,830-843,859,862-880,882-890,893-919,954-974,994-999,1004,1007-1012,1178,1183-1186,1188-1210,1212-1217,1219-1227,1244-1245,1252,1256,1258-1277,1279-1285,1287-1288,1290,1294-1317,1319,1321-1446,1451-1452,1454-1457,1459-1463,1466-1472,1474-1492,1500-1502,1504-1532,1545,1547-1677,1679-1714,2025-2026,2029-2031,2035,2038
+tests/e2e/branches/broken_repository.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-10
+backend/tests/unit/git/state/test_bus_reader.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-283
+dev/specs/ifc-3201-branches-table-git/quickstart.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-84
+frontend/app/src/entities/repository/domain/use-cases/get-latest-repository-import-task.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-31
+frontend/app/src/entities/repository/domain/use-cases/check-remote-refs.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-22
+dev/specs/infp-671-branch-details-repos/alignment-check.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-43
+backend/infrahub/core/regeneration/definitions.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 120-131
+backend/infrahub/git/writeback/store.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-439
+frontend/app/src/entities/nodes/filters/ui/filter-scope-context.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-51
+dev/specs/ifc-3130-repository-branches-card/research.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-225
+docs/docs/branches/delete.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 14-15,22
+frontend/app/src/entities/nodes/sort/ui/hooks/use-sort.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1,3-6,30,32,35,40,42-45
+frontend/app/src/entities/repository/ui/branch-repositories/repository-error-band.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-60
+frontend/app/src/entities/repository/ui/queries/get-repository-commits.query.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-86
+backend/tests/unit/git/test_git_error_enrichment.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1,3-5,8-9,11-12,14,19-20,22,24-36,39-54,102-153,155-157,164-165,173,181,188,196,205,213,221,309-549
+frontend/app/src/entities/nodes/object/ui/filters/filter-picker.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 19,25-27,31,35,45-47,83,112-116
+frontend/app/src/shared/api/errors/index.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 275
+frontend/app/src/entities/repository/ui/repository-commits-header.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-127
+frontend/app/src/entities/tasks/api/get-task-list-from-api.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 42-50,54
+backend/infrahub/core/merge/repository_merge_dispatcher.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3,12-14,19-21,24-25,44-45,48-54,59-60,63-65,67,90-108,110-118,120-124,126-153,155-159,161-202
+frontend/app/src/entities/branches/ui/hooks/use-navigate-after-branch-removal.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 41,56,71,86-100
+frontend/app/src/shared/utils/clipboard.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-37
+backend/infrahub/proposed_change/tasks.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 79,218-223
+frontend/app/src/entities/repository/domain/use-cases/get-branch-repositories.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-35
+backend/infrahub/git/activity/factory.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-39
+docs/docs/release-notes/infrahub/release-1_11_6.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-32
+backend/infrahub/git/divergence/protocols.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 8-18
+backend/infrahub/graphql/queries/repository_git_state.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-663
+changelog/+repository-sync-operational-status.fixed.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1
+frontend/app/src/entities/repository/api/repository-commits.mappers.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-50
+dev/specs/ifc-3210-history-rewrite-reconciliation/spec.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 231-236
+frontend/app/src/entities/repository/domain/use-cases/get-import-task-error-message.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-53
+schema/error-catalogue.json
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 354-382
+backend/infrahub/git/state/__init__.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1
+changelog/+branches-list-git-columns.added.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1
+dev/specs/ifc-3201-branches-table-git/data-model.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-123
+frontend/app/src/entities/branch-git-status/api/get-branch-git-repositories-from-api.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-41
+frontend/app/src/entities/branches/ui/queries/rebase-branch.mutation.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3,14,17
+.github/workflows/ci.yml
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 121,157,200,241,516,927,1053,1091,1275,1417,1426
+backend/infrahub/graphql/manager.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 78,87-90,282-285,289-292
+backend/tests/component/git/writeback/test_schema_contract.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-48
+frontend/app/src/entities/repository/domain/rules/get-repository-location.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-23
+backend/tests/component/git/test_sync_repository.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1,6,17,20-21,38-39,49-51,54-56,58,61,65,69,80,210-219,496-503,534-538,575-579,600-603,617,673-679,691,709-758,792,813-816,850-851,902-911,967-976,1001-1050,1078,1081-1082,1085-1086,1095-1098,1116-1119,1161-1417
+CHANGELOG.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 14-42
+dev/knowledge/backend/permissions.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 154-169
+backend/infrahub/workflows/catalogue.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 234-256,506-522,762-763,775-776,783
+dev/specs/ifc-3220-writeback-failure-handling/tasks.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 39-42,75,78,80-81,88,93,95,99-100,102-107,111-114,117,122,125,131,139-142,150-153,158-160,167-176,180-184,186,190-193,196-200,203,211-214,216,220-230,232-236,239-247,267,271-274,278,281,284,293,307,313,315,321-323,331,336-339,344,350,355,357,363,365-374,382,385-388,420-421,425,432-433,436,440-441,443,469,472,475,478,482,489,496,502,510,512-515,520,522,524,529,531,548,550-559,567,579,581-583,586,588,608-609,618,622,627-629,631,635-636,660-663,670,681-686,694-697,699,785,794
+docs/docs/reference/configuration.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 94,166
+backend/infrahub/core/merge/start_gate.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-37
+frontend/app/src/entities/branches/ui/branches-list.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-3,8,11-14,24-25,27-36,43-44,76
+dev/knowledge/backend/query-pattern.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 258-298
+frontend/app/src/entities/nodes/object/ui/object-table/object-table-skeleton.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 9-12,15-21,23-28,34,36,41
+backend/infrahub/git/activity/recorder.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-224
+backend/tests/integration/services/adapters/message_bus/test_rabbitmq.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 334-341
+  s_5a60cfb15e3716::t_acd85c2b8b3263 332-333
+dev/specs/ifc-3130-repository-branches-card/quickstart.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-248
+docs/sidebars.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 259
+changelog/+ifc-3101-bounded-worker-rpc.changed.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1
+dev/specs/infp-671-branch-details-repos/contracts/graphql-queries.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-156
+docs/docs/menu/overview.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 182-262
+backend/tests/unit/test_exceptions.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 7,15,19,23,83-99,134-252
+  s_5a60cfb15e3716::t_f0af49d80d6e05 253-254
+frontend/app/src/entities/repository/domain/use-cases/get-repository-branch-status.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-36
+frontend/app/src/entities/repository/ui/repository-branches-card/repository-branches-empty.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-27
+frontend/app/src/entities/repository/ui/repository-object-details.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-53
+frontend/app/src/entities/tasks/api/get-task-list-from-api.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-39
+frontend/app/src/shared/api/keep-previous-data-within.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-59
+backend/infrahub/core/branch/tasks.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 18-24,37-41,53,197,472,693,696-698,703,706-713
+tests/e2e/repository/test_repository_sync_status.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-60
+backend/infrahub/git/ref_resolution.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-30
+frontend/app/src/entities/repository/api/get-import-task-logs-from-api.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-33
+backend/tests/unit/git/writeback/fakes.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-459
+frontend/app/src/entities/repository/api/get-latest-repository-import-task-from-api.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-50
+backend/tests/integration/git/test_sync_branch_flag.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 10,59
+frontend/app/src/entities/repository/ui/queries/get-repository-branch-status.query.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-38
+schema/schema.graphql
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5974-6003,9247-9288,10247,10251-10258,17601-17645,23238-23291,26809-26855,27705-27709,27811-28115
+  s_5a60cfb15e3716::t_82a704ca6b14fe 28116
+frontend/app/src/shared/components/display/commit-hash.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-33
+.github/workflows/push-bench-image.yml
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 67,79
+backend/infrahub/graphql/queries/__init__.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 16-20,42-44
+backend/tests/unit/git/test_branch_reconciliation.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 7-8,24,26,33,190-192,214-216,233-235,261-262,281-282,300-301,317-320,334-336,352-353,375-376,382,409-411,435-437,462-464,469,497-499,517-518,542-544,570-572,578,597-599,604,634-636,664-666,681-685,701-704,721-723,747-749,755,762,809-811,919-922,943,966-969,976,996-999,1021-1024,1030,1043-1046,1068-1071,1079-1082,1100-1103,1122-1125,1133-1136,1158,1198,1212,1231,1238-1438
+frontend/app/src/entities/repository/domain/model/repository-branch-status.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-90
+backend/AGENTS.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 131,140
+frontend/app/src/shared/components/display/color-display.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3,9,12-13,15-16,25-31
+  s_5a60cfb15e3716::t_5a7c9e0cb43c3b 32
+utilities/branch_details_scenarios/fixtures/broken/.infrahub.yml
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-6
+changelog/+info-severity-color.fixed.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1
+dev/specs/infp-671-branch-details-repos/plan.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-197
+dev/specs/005-git-status-header-ifc-3199/quickstart.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-95
+backend/tests/helpers/regeneration_barrier.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-25
+changelog/+infp-671-branch-details-repositories.added.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1
+frontend/app/src/entities/repository/api/get-branch-repository-health-from-api.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-85
+frontend/app/src/entities/tasks/ui/queries/is-task-finished.query.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-27
+backend/infrahub/core/constants/__init__.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3,233,237-273,282-304
+  s_5a60cfb15e3716::t_faa50cd6bd52fa 305-306
+backend/infrahub/git/state/warm_up.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-107
+dev/specs/infp-671-branch-details-repos/quickstart.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-53
+frontend/app/src/entities/repository/domain/rules/get-commit-web-url.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-48
+frontend/app/src/entities/branch-git-status/api/get-repository-branch-status-from-api.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-42
+frontend/app/src/entities/repository/domain/rules/partition-fields-by-branch-support.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-167
+frontend/app/src/entities/repository/ui/repository-branches-card/repository-branches-card.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-1096
+frontend/app/src/entities/branch-git-status/domain/model/repository-branch-git-status.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-12
+frontend/app/src/entities/branches/ui/branches-table/cells/branch-repositories-cell.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-133
+backend/tests/unit/git/state/test_models.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-152
+dev/specs/ifc-3201-branches-table-git/research.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-156
+frontend/app/src/entities/repository/domain/model/repository-branch-status.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-120
+backend/infrahub/core/recompute/dispatch.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 7,76-77,87
+backend/infrahub/computed_attribute/models.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 94,97
+frontend/app/src/shared/components/buttons/refresh-button.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-78
+frontend/app/src/entities/repository/ui/repository-check-remote-button.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-84
+utilities/branch_details_scenarios/fixtures/generators/generators/scn_generators.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-14
+frontend/app/src/entities/repository/ui/queries/get-remote-check-task.query.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-80
+frontend/app/src/entities/branch-git-status/domain/rules/sync-status-severity.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-26
+frontend/app/src/entities/generators/ui/generator-run-button.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 11,37
+frontend/app/src/entities/repository/ui/repository-check-remote-button.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-335
+backend/infrahub/git/sync_status.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3-5,7,9-10,18-89,101-102,112-161,163-164,166
+backend/infrahub/computed_attribute/tasks.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 15-16,743,757,769-771,810-818,824-825
+backend/infrahub/core/repository_branch_status/factory.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-26
+backend/tests/conftest.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1326-1331
+backend/tests/unit/git/writeback/test_service.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-1230
+frontend/app/src/entities/nodes/object/ui/filters/filter-search-input.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 13-17,20-25,27,33,38-39,41-45,54-55
+tests/e2e/branches/test_branch_details_repositories.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-83
+frontend/app/src/entities/nodes/sort/ui/hooks/use-sort.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5,190-211
+  s_5a60cfb15e3716::t_b0982abb2a4ba6 212
+frontend/app/src/entities/repository/domain/rules/is-read-only-repository.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-30
+frontend/app/src/entities/tasks/domain/model/task.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 27-28,36-40
+  s_5a60cfb15e3716::t_63e3c7b8873093 41-42
+frontend/app/src/entities/repository/domain/rules/get-repository-location.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-8
+frontend/app/src/entities/repository/ui/branch-repositories/branch-repositories-card.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-78
+pyproject.toml
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 66
+backend/infrahub/graphql/types/__init__.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 31-35,58-60
+backend/infrahub/graphql/types/repository_branch_status.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-58
+backend/tests/component/graphql/mutations/test_ipam.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1,3,7,12,1488-1547
+changelog/+ifc-3101-readonly-refs-check.added.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-5
+dev/specs/ifc-3101-repo-commit-visibility/contracts/message_bus.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-119
+backend/infrahub/git/models.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3-4,10,14-22,45-48,169-190,216-254,369,380-381,383
+changelog/+readonly-repository-moved-tag-follow.fixed.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1
+backend/infrahub/graphql/mutations/repository.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 7-17,19,22-28,31,33-34,37,39-40,45,49,53-54,68,291-297,307-310,375-580
+docs/docs/branches/rebase.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5-8,18-41,43,45-57,61-97,99-112,116-150,154-157
+frontend/app/src/entities/branch-git-status/domain/rules/to-branch-git-status-error.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-51
+frontend/app/src/entities/tasks/domain/rules/get-task-related-label.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-17
+backend/tests/component/git/test_readonly_rewrite.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-485
+backend/tests/unit/test_lock.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5,11,16-17,43-87
+  s_5a60cfb15e3716::t_5523b35107cee0 88-89
+frontend/app/src/entities/tasks/api/get-task-count-from-api.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3-4,25-28,32
+frontend/app/src/entities/tasks/domain/model/workflow-labels.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-44
+frontend/app/src/entities/tasks/ui/tasks-homepage/task-homepage-item.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 14,31
+frontend/app/src/entities/repository/ui/repository-branches-card/repository-branches-card.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-192
+frontend/app/src/shared/api/graphql/error-handling.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-2,9,67-94
+  s_5a60cfb15e3716::t_cd29245d15ecb1 95
+frontend/app/src/shared/components/errors/unauthorized-screen.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 11,16-21,34
+frontend/app/src/shared/components/table/data-table.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 26,34-42,45-57,76-102,110,112,114-116,118,127,151-168,173-179,183-188,199-210,212-219,222-242,244
+frontend/app/src/entities/branches/ui/branches-table/cells/branch-git-state-cell.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-51
+backend/infrahub/core/merge/regeneration_dispatcher.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3-4,7-9,11,13-15,17-18,24,28,34-35,39-47,49-53,55-57,62-78,82-89,91,93-100,108,114,123,125-130,133-136,140-143,150-153,161-163,167-170,173-238,245-246,248-252,265-276,278-288,297-300,303-304,309-311,315,320-321,323,340,358-360,367,370-398,400-402,405-407,409-472
+backend/tests/component/git/test_check_refs.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-1456
+changelog/+repository-sync-single-read.changed.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1
+dev/specs/ifc-3220-writeback-failure-handling/plan.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 24-25,59-63,66,136-137,141,166-167,193,214,276,295,314
+docs/docs/branches/resolve-conflicts.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5,14,16-76,80,82,86-108,112-117,120-123
+frontend/app/src/entities/branch-git-status/ui/queries/branch-git-status-stale-time.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-2
+frontend/app/src/entities/branches/ui/branches-table/branches-table.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 4,6,18,20-22,24-25,38
+frontend/app/src/entities/nodes/sort/ui/sort-editor.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 30-31,33,38-40,55-61
+changelog/+ifc-3130-repository-branches-card.added.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-14
+frontend/app/src/entities/branches/ui/queries/delete-branches.mutation.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 6,33
+frontend/app/src/entities/repository/domain/rules/partition-fields-by-branch-support.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-49
+frontend/app/src/shared/api/keep-previous-data-within.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-18
+utilities/branch_details_scenarios/README.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-118
+frontend/app/src/entities/branches/ui/branches-table/branch-table-row.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-39
+backend/tests/adapters/lock/timeline.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 13-14,67-70
+  s_5a60cfb15e3716::t_917e5d5121bdbc 71
+frontend/app/src/entities/tasks/domain/rules/get-task-related-label.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-57
+frontend/app/src/entities/repository/domain/rules/get-pending-import-count.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-35
+frontend/app/src/entities/repository/ui/branch-repositories/git-state-pill.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-26
+frontend/app/src/entities/branches/ui/branch-details.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 13-14,19,36,40-42,51-52
+dev/specs/005-git-status-header-ifc-3199/critiques/critique-20260915.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-186
+frontend/app/src/entities/branches/ui/branches-table/cells/branch-name-cell.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 32
+dev/specs/infp-671-branch-details-repos/design/05-handoff.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-219
+backend/infrahub/git/writeback/factory.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-150
+frontend/app/src/pages/branches/details.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1,6,13,46,48-53
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3,9,19-21,23,26,30,36-39,59-60,66-86,97-98,105-112,125-129,132,135-137
+frontend/app/src/entities/branch-git-status/api/branch-git-repository.mappers.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-13
+backend/tests/unit/workers/test_reservations.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-108
+backend/tests/component/git/test_import_failure_logs.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 18,31,39,48,128-149,155,163,169,175,181,187,193,199,205,213-237,261-278,289,344-347,349-351,386,395,397-398,402-403,411-417,421,423-424,449,476-482,507-513,643-645,717-727,729-739
+frontend/app/src/entities/repository/api/get-repository-commits-from-api.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-70
+frontend/app/src/entities/tasks/ui/queries/get-branch-tasks.query.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-99
+backend/infrahub/core/query/branch.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 314-318,324-331,375
+docs/docs/ipam/allocate-ips-and-prefixes.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 30
+frontend/app/src/entities/repository/ui/queries/repository-polling.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-3
+backend/infrahub/git/writeback/runs.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-82
+backend/infrahub/graphql/mutations/convert_object_type.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-2,9,17,98-102
+  s_5a60cfb15e3716::t_e852a2097e8396 103
+docker-compose.yml
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 55,107,284,317,363
+docs/docs/git-integration/overview.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 55-56,150,179-186,192-193
+frontend/app/src/entities/repository/ui/repository-branches-card/messages.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-12
+frontend/app/src/entities/repository/ui/repository-commits-tab.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-48
+frontend/app/src/shared/components/table/data-table.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 2-3,231-283
+  s_5a60cfb15e3716::t_55a8cbea0b51d3 284-285
+backend/infrahub/core/merge/orchestrator.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 35,54,71,86
+frontend/app/src/shared/components/table/table-pagination.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-109
+backend/tests/component/computed_attribute/test_gather.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 8,599-623
+  s_5a60cfb15e3716::t_52c8d10464f2e3 624-625
+backend/infrahub/core/merge/selective_regen/definition_selector/base.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 141-144
+dev/specs/infp-671-branch-details-repos/research.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-237
+development/docker-compose.yml
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 36,82
+frontend/app/src/entities/repository/domain/model/branch-repository.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-68
+frontend/app/src/entities/repository/domain/use-cases/get-branch-repository-health.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-46
+dev/specs/infp-671-cross-branch-repo-status/checklists/requirements.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-45
+backend/infrahub/graphql/analyzer.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 399-427
+  s_5a60cfb15e3716::t_14cc44732c3ef9 398
+backend/infrahub/graphql/queries/repository_branch_status/payload.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-59
+backend/tests/unit/git/test_integrator.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-3,22-24,127-195
+  s_5a60cfb15e3716::t_2c686bcbbc5e87 196-197
+frontend/app/src/entities/branch-git-status/domain/rules/sync-status-severity.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-24
+dev/specs/infp-671-cross-branch-repo-status/opsmill-implement-report-phase4.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-354
+frontend/app/src/entities/branch-git-status/domain/rules/summarize-branch-git-statuses.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-213
+backend/infrahub/graphql/types/repository.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-288
+backend/tests/integration/proposed_change/test_proposed_change_repository_import_status.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 7,39,195-211,373-412
+frontend/app/src/shared/components/menu/copy-to-clipboard-menu-item.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 9,14,19-25
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-header.tsx
+  s_5a60cfb15e3716::t_e3bebc1f19045c 7,26-27,162
+backend/infrahub/generators/tasks.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 16,153-157,171-178
+backend/tests/unit/workers/test_submission.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-231
+frontend/app/src/entities/branch-git-status/domain/rules/get-unknown-sync-status.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-33
+backend/infrahub/core/repository_branch_status/models.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-56
+backend/infrahub/workflows/constants.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 39
+changelog/+git-remote-writeback-failure-handling.added.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-7
+frontend/app/src/entities/branches/ui/branches-list.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-140
+dev/specs/ifc-3201-branches-table-git/opsmill-implement-report.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-136
+backend/infrahub/git/state/commit_log_wire.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-102
+backend/tests/adapters/lock/registry.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 17,33-43
+docs/docs/proposed-changes/resolve-conflict.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 13,20-24,28-31
+frontend/app/src/entities/branch-git-status/ui/hooks/use-get-branch-git-statuses.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-224
+dev/specs/infp-671-cross-branch-repo-status/data-model.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-204
+frontend/app/src/entities/branches/ui/routing/branch-urls.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 2,18-21
+  s_5a60cfb15e3716::t_917256d76fa442 22
+frontend/app/src/entities/nodes/object/ui/objects-manager-toolbar.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 9,43
+backend/infrahub/core/repository_branch_status/interface.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-40
+backend/tests/component/git/writeback/test_delivery_retry.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-68
+frontend/app/src/entities/repository/api/get-branch-repository-health-from-api.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-124
+frontend/app/src/entities/repository/domain/rules/repository-syncing.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-35
+dev/specs/infp-671-cross-branch-repo-status/tasks.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-398
+backend/tests/integration/services/adapters/workflow/test_workflow_execution.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 7,12,19,82-100
+backend/tests/unit/core/merge/test_regeneration_release.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-947
+frontend/app/src/entities/branch-git-status/domain/model/branch-git-status.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-52
+docs/docs/branches/branch-agnostic-data.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 24
+frontend/app/src/entities/branches/ui/queries/merge-branch.mutation.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3,14,17
+backend/infrahub/git/writeback/ports.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-254
+backend/tests/unit/message_bus/test_mappings.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 30-31
+backend/tests/component/message_bus/operations/event/test_branch.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 15,49
+frontend/app/src/entities/nodes/object/ui/object-details/object-details.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-109
+frontend/app/src/shared/components/ui/pulse.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5-18,21-28
+backend/infrahub/message_bus/operations/git/__init__.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1,3
+backend/tests/integration/message_bus/operations/request/test_proposed_change.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 40,46,114,116-117
+dev/specs/ifc-3201-branches-table-git/checklists/requirements.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-39
+dev/knowledge/frontend/shared-components.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 123-128,135-136,149-150
+frontend/app/src/entities/nodes/filters/ui/active-filter-tags.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 19,53-54,62,202-206
+frontend/app/src/entities/repository/ui/repository-branches-card/to-repository-branch-arguments.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-84
+backend/infrahub/git/writeback/constants.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-35
+backend/tests/unit/git/writeback/test_git_adapter.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-364
+frontend/app/src/entities/branches/ui/branch-details/branch-details-header.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-116
+frontend/app/src/entities/branch-git-status/domain/rules/format-branch-git-status.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-107
+frontend/app/src/entities/branch-git-status/ui/queries/get-repository-branch-status.query.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-45
+frontend/app/src/entities/tasks/ui/branch-tasks/branch-tasks-card.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-388
+backend/infrahub/git/bounded_command.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-85
+frontend/app/src/entities/generators/ui/generator-definition-run-button.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 20,54
+backend/tests/unit/git/writeback/test_single_writer.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-96
+frontend/app/src/entities/branches/ui/queries/delete-branches.mutation.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-39
+frontend/app/src/entities/repository/ui/repository-sync-status.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-368
+changelog/+ifc-3101-repository-commits-tab.added.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-3
+backend/tests/component/core/diff/test_refresh_diff.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 13,105-106
+backend/infrahub/git/state/classification.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-52
+backend/infrahub/git/writeback/models.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-767
+dev/knowledge/backend/message-bus.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 53-67
+backend/tests/component/git/writeback/test_enqueue.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-1166
+.github/labels.yml
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 88-91
+backend/infrahub/graphql/error_formatter.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3,30,44,105-108
+backend/infrahub/services/adapters/message_bus/nats.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 15,98,100-102,104-110,292-297,299-300,311-334
+changelog/+ifc-3101-repository-commits-api.added.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1
+docs/docs/ipam/plan-changes-on-a-branch.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 15,19,21
+backend/tests/component/repositories/test_create_repository.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-81
+dev/specs/ifc-3201-branches-table-git/plan.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-167
+frontend/app/src/entities/branches/ui/branch-details/branch-attributes.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1,27-28
+frontend/app/src/entities/branches/ui/hooks/use-navigate-after-branch-removal.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1,8,15
+docs/docs/git-integration/connect-repository.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 382-383
+frontend/app/src/entities/nodes/sort/ui/sort-picker.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 12-13,16,27
+frontend/app/src/entities/repository/domain/rules/get-last-error-line.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-53
+docs/docs/development-resources/developer-guide.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 61
+frontend/app/src/shared/components/layout/header-container.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-12
+frontend/app/src/entities/repository/ui/repository-branches-card/to-repository-branch-arguments.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-112
+backend/tests/component/git/test_sync_lock_scope.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 10,13,34,37-38
+frontend/app/src/entities/repository/domain/use-cases/get-repository-commits.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-38
+backend/infrahub/git/writeback/credentials.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-18
+backend/tests/component/graphql/auth/test_repository_git_state_permissions.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-727
+frontend/app/src/entities/repository/ui/queries/get-repository-names.query.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-40
+backend/tests/component/core/test_branch.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 7,11,545-581
+backend/infrahub/core/merge/repository_import_guard.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-42
+dev/README.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 67
+frontend/app/src/entities/branches/ui/branches-table/branches-table.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-222
+docs/docs/release-notes/infrahub/release-1_11_5.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-37
+backend/tests/component/core/query/test_repository_branch_attributes.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-406
+frontend/app/src/entities/branch-git-status/domain/rules/to-branch-git-status-error.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-21
+frontend/app/src/entities/repository/ui/repository-commit-state-badges.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-20
+tests/e2e/repository/test_repository_check_remote.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-163
+backend/infrahub/git/activity/models.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-57
+backend/infrahub/git/utils.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1,17,20-21,24,27-28,31-32,38-50,52-53,56-97,99-106,108-124,127-133,254-257
+backend/tests/component/git/test_sync_status_reader.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-98
+dev/specs/ifc-3220-writeback-failure-handling/research.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 199-216,264,359-362,381,397-399,496,520,526-527,531-532,534,536,547-553,556-574,578-581,598-603,611,617-619,627-628,636-667,681-687,772-773,833-834,845-849,983,1014-1025,1050-1051,1062,1072-1074,1109-1110,1143-1148,1150-1151,1196-1204,1215-1217,1257-1258,1418-1423,1449-1455,1465-1474,1499-1507,1520-1524
+frontend/app/src/entities/tasks/ui/tasks-table/tasks-table.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-111
+backend/infrahub/services/adapters/workflow/worker.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5,9,12,87-98,100-102
+frontend/app/src/shared/utils/clipboard.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-125
+backend/tests/unit/graphql/queries/test_repository_branch_status.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-381
+backend/infrahub/git/state/cache_keys.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-65
+backend/infrahub/git/writeback/service.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-649
+frontend/app/src/entities/branch-git-status/domain/use-cases/get-repository-branch-status.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-49
+changelog/+repository-import-task-branch.fixed.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1
+backend/tests/unit/git/writeback/test_abandoner.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-538
+utilities/branch_details_scenarios/fixtures/generators/queries/scn_device.gql
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-12
+dev/specs/ifc-3210-history-rewrite-reconciliation/contracts/internal-interfaces.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 639-656,669-671
+frontend/app/src/entities/repository/api/check-remote-refs-from-api.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-31
+frontend/app/src/entities/repository/ui/branch-repositories/branch-repositories-card.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-448
+dev/specs/infp-671-branch-details-repos/contracts/ui-components.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-100
+backend/tests/helpers/git.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 4,180-181,215-217
+  s_5a60cfb15e3716::t_9961057634ea98 218
+frontend/app/src/entities/repository/domain/use-cases/get-repository-commits.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-166
+frontend/app/src/entities/repository/domain/use-cases/get-repository-sync-health.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-21
+backend/tests/unit/git/writeback/test_retry_and_recovery.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-1006
+backend/infrahub/git/branch_mapping.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-57
+backend/tests/unit/git/test_branch_mapping.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-169
+frontend/app/src/entities/branches/ui/branch-rebase-button.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 10,22
+frontend/app/src/entities/nodes/object/ui/filters/get-filter-picker-count.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3,6-10
+dev/knowledge/backend/git-sync.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3,5-9,78-94,97-112,127-205,220-227,232-238,271-275,279-287,306-307,316-323,345-431,454,457-463
+dev/knowledge/backend/git-integration.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3,119,122,127-133,142-145,153,155-162,164-167,169-171,173-178,180-182,186-188,192-194,202-207,212-233,245,259-271,309-343,350-351,353-354,379-388
+frontend/app/src/entities/repository/api/repository-commits.mappers.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-75
+dev/specs/005-git-status-header-ifc-3199/spec.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-360
+frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts
+  s_5a60cfb15e3716::t_15cecdf0e1070f 29,32,35,38,41,44,47,50,53,56,59,62,65,68,71,74,77,80,83,86,89,92,95,98,101,104,107,110,113,116,119,122,125,128,131,134,137,140,143,146,149,152,155,158,161,164,167,170,173-185,188,191,194,197,200,203,206,209,212,215,218,221,224,227,230,233,236,239,242,245,248,251,254,257,260,263,266,269,272,275,278
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 30-31,51-52,123-124,126-127,129-130,132-133,135-136,156-157,165-166,198-199,201-202,249-250,252-253,255-256
+backend/tests/adapters/message_bus.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1,3-4,9-10,17-22,47-52,56-64,110-115,131-254
+backend/infrahub/graphql/queries/repository_branch_status/field.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-51
+backend/tests/integration/git/test_repository_warm_up.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-587
+frontend/app/src/shared/hooks/useCopyToClipboard.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3,9-11,13-18,21-32
+frontend/app/src/entities/tasks/ui/routing/task-urls.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-21
+utilities/branch_details_scenarios/fixtures/base/.infrahub.yml
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-3
+frontend/app/src/app/router.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 151-153,376-379
+  s_5a60cfb15e3716::t_0eeecb413041ec 150,380
+frontend/app/src/entities/branch-git-status/api/repository-branch-status.mappers.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-41
+frontend/app/src/entities/tasks/domain/use-cases/check-task-details.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5,9-13
+frontend/app/src/entities/repository/domain/rules/get-repository-list-kind.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-10
+docs/docs/reference/message-bus-events.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 17-67,118-134,248-298
+  s_5a60cfb15e3716::t_017e35b8387ddf 299
+frontend/app/src/entities/repository/api/get-remote-check-task-from-api.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-24
+frontend/app/src/entities/repository/api/get-repository-branch-status-from-api.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-61
+backend/infrahub/graphql/schema.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 34-41,61-63,75,113-116,120,159,162-171
+frontend/app/src/entities/tasks/domain/use-cases/get-branch-tasks.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-80
+backend/infrahub/git/refs_check/ref_missing.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-192
+dev/specs/ifc-3101-repo-commit-visibility/plan.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-481
+frontend/app/src/entities/branch-git-status/domain/rules/format-branch-git-status.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-39
+frontend/app/src/entities/nodes/object/ui/filters/get-filter-picker-count.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 4,28,42,57,76,90,105
+backend/tests/helpers/flow_run_reservations.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-16
+frontend/app/src/entities/navigation/ui/app-header.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-52
+frontend/app/src/entities/nodes/object/ui/filters/filter-form-layout.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 14,25,40
+frontend/app/src/entities/repository/ui/queries/get-repository-commits.query.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-296
+backend/infrahub/git/writeback/classifier.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-115
+backend/tests/unit/git/activity/test_recorder.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-339
+frontend/app/src/entities/repository/ui/repository-branches-card/branch-row-fields.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-71
+backend/tests/unit/git/test_refs_check.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-489
+frontend/app/src/entities/repository/ui/repository-commit-row-actions.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-63
+backend/tests/component/graphql/queries/test_proposed_change_actions.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 4-6,8,93,149,209,296-387,394
+frontend/app/src/entities/branches/ui/branches-table/get-branch-table-columns.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3-4,6,10,14,22,24-25,27,45,47,50-51,54,62-75,78-80,85-87,92-94,99-100,104,107,113-114
+backend/infrahub/git/state/log_reader.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-495
+backend/tests/component/core/merge/test_held_regeneration.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-1031
+backend/infrahub/git/writeback/queries.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-31
+docs/docs/resource-manager/allocate-ip-prefix.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 148-150,191,221,228,246
+frontend/app/src/entities/repository/domain/use-cases/get-repository-sync-health.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-99
+backend/tests/unit/git/state/test_cache_keys.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-49
+backend/infrahub/core/merge/post_merge.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 42,60,68,86-90,185
+frontend/app/src/entities/branch-git-status/domain/use-cases/get-branch-git-repositories.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-23
+backend/infrahub/graphql/mutations/ipam.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 160-174
+backend/tests/adapters/workflow.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5-6,11,15-16,78-154
+backend/tests/integration/git/test_sync_merged_branch.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 12,67
+dev/knowledge/backend/task-workers.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-96
+frontend/app/src/entities/branches/ui/queries/rebase-branch.mutation.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-41
+frontend/app/src/entities/repository/api/get-branch-repositories-from-api.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-85
+frontend/app/src/entities/repository/ui/branch-repositories/branch-repositories-table.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-56
+frontend/app/src/entities/repository/ui/repository-commits-notice.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-11
+backend/tests/component/git/test_git_read_only_repository.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 59-98,109-135
+dev/specs/005-git-status-header-ifc-3199/data-model.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-92
+.gitignore
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 40-42
+backend/tests/adapters/python_target_sources.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 77-79,102-103
+  s_5a60cfb15e3716::t_2932776b46389d 104
+backend/tests/unit/git/state/test_classification.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-253
+changelog/+repository-import-check.added.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1
+backend/tests/helpers/graphql.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 22,95,104
+dev/specs/ifc-3130-repository-branches-card/plan-synthesis.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-261
+frontend/app/.betterer.results
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 50,171-172
+frontend/app/src/entities/repository/domain/use-cases/get-latest-repository-import-task.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-71
+frontend/app/src/entities/repository/ui/repository-commits.view.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-225
+dev/specs/infp-671-cross-branch-repo-status/quickstart.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-202
+backend/tests/unit/git/writeback/test_constants.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-24
+dev/specs/ifc-3130-repository-branches-card/checklists/requirements.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-58
+dev/specs/ifc-3220-writeback-failure-handling/contracts/repository_delivery.graphql
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 24,27,30,33,36,39,42,45,48
+dev/specs/ifc-3220-writeback-failure-handling/spec.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 195-197,303-308,459-461,747-751,763-765
+docs/docs/reference/menu.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 11-12
+frontend/app/src/entities/repository/api/get-repository-commits-from-api.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-52
+frontend/app/src/entities/nodes/object/ui/filters/filter-condition-select.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 65-66,86-101,112-115
+backend/tests/unit/core/query/test_repository.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-103
+dev/specs/infp-671-cross-branch-repo-status/contracts/core-primitive.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-141
+backend/infrahub/message_bus/messages/git_branch_heads_get.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-47
+backend/tests/helpers/permissions.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 23-34
+backend/infrahub/git/integrator.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 8,73-74,227-271,420-421,426,467-471,473-485,489-490,544-546,552-555,560,564-565,577,586,592,598,606,610,616,625,633,645,663,666-667,676,678,684
+changelog/+merge-after-force-push.fixed.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1
+docs/docs/branches/overview.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 23,43,70,101,108-109,111,135-151,158,162-163,168-177
+frontend/app/src/entities/repository/ui/queries/get-branch-repository-health.query.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-41
+frontend/app/src/entities/repository/ui/queries/get-repository-import-error.query.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-72
+backend/infrahub/graphql/queries/repository_branch_status/paging.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-68
+dev/specs/ifc-3130-repository-branches-card/design.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-573
+frontend/app/src/entities/nodes/object/ui/object-details/object-details-card.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 17-19,28-29,31-33,38-43,45-53
+frontend/app/src/entities/repository/ui/repository-branches-card/repository-branches-card-boundary.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-77
+frontend/app/src/entities/repository/ui/repository-commits-tab.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-163
+docs/docs/schema/branch-awareness.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 11-12,22-39,57-75
+  s_5a60cfb15e3716::t_c9a54d1548e093 76
+frontend/app/src/entities/repository/api/get-repository-sync-counts-from-api.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-78
+frontend/app/src/entities/tasks/api/task-list.mappers.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-26
+frontend/app/src/entities/branches/ui/branch-list-item/branch-status-badge.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-25
+backend/tests/component/proposed_change/test_merge_selective_regen.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3,5,11,19,25-26,284-296,303
+frontend/app/src/entities/branch-git-status/domain/model/branch-git-repository.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-12
+backend/infrahub/core/graph/index.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 18
+backend/infrahub/core/merge/python_target_resolution.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 29,48,55,223,245-257
+  s_5a60cfb15e3716::t_f76de80d9164ad 258-259
+backend/tests/component/conftest.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5-6,37,51,58,68,92,3309-3479
+backend/infrahub/workers/infrahub_async.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5,31,34,46-47,51-53,57-60,125,184-187,231-270
+  s_5a60cfb15e3716::t_567e59ef2fa6fc 271
+backend/tests/unit/permissions/test_resolver.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 272-304
+frontend/app/src/entities/artifacts/ui/artifact-header.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-2,9,23
+dev/specs/ifc-3220-writeback-failure-handling/quickstart.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 32-33,40
+dev/specs/ifc-3130-repository-branches-card/tasks.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-704
+frontend/app/src/entities/nodes/relationships/ui/queries/get-relationships.query.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 52,61,70
+backend/tests/component/git/test_ref_missing_store.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-140
+frontend/app/src/entities/tasks/ui/task-items.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 4,23,27-28,109,174-177
+frontend/app/src/shared/components/buttons/clipboard.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 22-26
+backend/infrahub/git/refs_check/tracked_commit.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-38
+frontend/app/tests/helpers/expect-server-driven-change.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-33
+backend/infrahub/git/refs_check/factory.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-130
+backend/infrahub/graphql/queries/repository_branch_status/kind_dispatch.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-69
+backend/infrahub/graphql/queries/repository_branch_status/permissions.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-82
+backend/tests/unit/core/merge/test_python_read_set_source.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 24-25,41-42,52-55
+dev/knowledge/backend/merge-recompute.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3,11,19,53,69-78,131-132
+backend/tests/query_benchmark/test_repository_branch_attributes.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-116
+backend/tests/helpers/merge_recompute/dataset.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 199-216
+backend/tests/component/git/test_git_rpc.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3-4,7,21-22,25-26,37,42,44,46-47,49-58,62,68-70,153-154,163-165,170,175-177,180-187,202,215,320-325,401,403,432,434,473-474,478-694
+frontend/app/src/entities/branch-git-status/ui/queries/get-repository-branch-status.query.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-46
+dev/specs/ifc-3201-branches-table-git/tasks.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-336
+backend/infrahub/errors/catalogue.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 17,41,207-217
+  s_5a60cfb15e3716::t_5ce2dd73abac9f 218-219
+backend/infrahub/message_bus/operations/__init__.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 18-19,22
+backend/infrahub/message_bus/operations/git/commit_log.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-30
+backend/tests/component/git/test_utils.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-2,5,7-12,16,19,21-46,79-81,87-89,108,112,127,134-136,143,150-152,155-270
+backend/tests/unit/core/merge/test_start_gate.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-95
+frontend/app/src/entities/nodes/object/ui/filters/relationship-filter-form.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 11,22,32,87
+backend/infrahub/workers/reservations.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-37
+frontend/app/src/entities/branches/ui/branches-table/branch-field-schemas.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 6-21,59-60
+backend/infrahub/core/branch/models.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 171,182-201
+frontend/app/src/entities/nodes/object/ui/object-details/object-details-card.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-144
+backend/infrahub/git/writeback/content.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-158
+frontend/app/src/entities/nodes/object/ui/object-items-header.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5,7,10,25
+frontend/app/src/entities/repository/api/get-repository-names-from-api.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-74
+frontend/app/src/entities/repository/domain/rules/branch-repositories-error.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-18
+frontend/app/src/entities/repository/domain/rules/get-commit-web-url.test.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-68
+frontend/app/src/entities/repository/domain/rules/get-pending-import-count.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-13
+backend/tests/component/proposed_change/test_definition_run_repository_filter.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-154
+frontend/app/src/entities/repository/ui/repository-branches-card/cells/branch-name-cell.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-44
+changelog/+import-failure-step-summary.added.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1
+backend/infrahub/services/adapters/message_bus/local.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 45-50
+frontend/app/src/pages/objects/object-details/repository-commits.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-20
+dev/specs/ifc-3101-repo-commit-visibility/critiques/critique-20260903-1439.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-780
+docs/docs/webhooks/overview.mdx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 54-55,79-83
+  s_5a60cfb15e3716::t_f91b95eb3963f4 84-86
+frontend/app/src/shared/api/graphql/error-handling.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1,23-44
+  s_5a60cfb15e3716::t_aa9b6a74f61e4f 45
+frontend/app/src/shared/components/table/style.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 19-21
+changelog/+repository-activity-query.added.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1
+utilities/branch_details_scenarios/fixtures/generators/.infrahub.yml
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-21
+backend/infrahub/core/schema/definitions/core/repository.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 6-7,11,59-230,411-419
+backend/tests/component/core/merge/test_post_merge.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 3-5,9,21,25,44-46,49-59,65
+backend/tests/component/git/test_git_repository.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 6,27,34,56,59-61,63-64,66,71-86,88,626,651,661-668,674-676,678-681,683-685,688-737,740-787,789-795,797-801,810,812-813,919,921-923,931-970,1802-1917
+frontend/app/src/shared/components/table/paged-table-card.test.tsx
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-235
+dev/specs/ifc-3101-repo-commit-visibility/data-model.md
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-371
+tests/e2e/branches/conftest.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-121
+backend/tests/component/core/query/test_repository_branch_values.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-368
+frontend/app/src/entities/tasks/domain/use-cases/get-task-count.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 5,9-12,14-15
+frontend/app/tests/fake/dropdown.ts
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-23
+utilities/branch_details_scenarios/githttp.py
+  s_5a60cfb15e3716::t_eeb655e78dbcaa 1-78
+.github/workflows/bug-agent-analyst.lock.yml
+  s_5a60cfb15e3716::t_e8d654a9afb53b 458,565,582,1126,1204,1244,1291,1467,1547,1646,1788,1839
+.github/workflows/bug-agent-fix.lock.yml
+  s_5a60cfb15e3716::t_541cdf2839fa29 464,632,676,697,1299,1378,1418,1465,1643,1723,1822,1966,1979,2041
+.github/workflows/bug-agent-review.lock.yml
+  s_5a60cfb15e3716::t_1f99c71f22fe63 439,554,571,1114,1193,1233,1280,1436,1516,1615,1843,1894
+.github/workflows/bug-agent-test.lock.yml
+  s_5a60cfb15e3716::t_a9977802236b0f 465,635,679,700,1306,1385,1425,1472,1650,1730,1829,1975,1988,2050
+.github/workflows/issue-triage-labeler.lock.yml
+  s_5a60cfb15e3716::t_0d1feafc06aa25 1,287,289,294,296,298,300,342,344,348,410,518,537,563-565,571,1046,1122,1162,1209,1365,1445,1544,1671,1712,1722
+.github/workflows/issue-triage-sweep.lock.yml
+  s_5a60cfb15e3716::t_1254d872953e68 1,273,275,280,282,284,286,328,330,334,396,504,523,549-551,557,1032,1108,1148,1195,1351,1431,1530,1657,1698,1708
+frontend/app/src/shared/api/errors/catalogue.generated.ts
+  s_5a60cfb15e3716::t_24025f72018d26 74-79,96,120,141
+python_sdk
+  s_5a60cfb15e3716::t_f1f483e4bebd10 1
+python_testcontainers/uv.lock
+  s_5a60cfb15e3716::t_9bca066a297e8d 389,391,393
+uv.lock
+  s_5a60cfb15e3716::t_3f520ca24b322c 925,930-960,1102,1104,1106,1596,1990,1995,1997,2161-2251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "01c6d80a04f3dd611828c21b1929fdd414b24463",
+  "prompts": {},
+  "sessions": {
+    "s_5a60cfb15e3716": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6710babd-edeb-44ca-b967-dddae7185f86",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

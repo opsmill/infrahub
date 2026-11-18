@@ -1,0 +1,98 @@
+backend/infrahub/core/schema/schema_branch_computed/python_transform.py
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 16,18-19
+backend/infrahub/graphql/mutations/ipam.py
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 160-174
+backend/tests/unit/computed_attribute/test_read_sets.py
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 9,11-13,62,64-66,75,77-81
+docs/docs/development-resources/developer-guide.mdx
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 61
+backend/tests/component/graphql/test_relationship_reached_paths.py
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 9-12,73-76,99,101-105,149-152,154-155
+backend/infrahub/core/merge/selective_regen/orchestrator.py
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 6,8-9,28,30-34,70,78-96,107,117-132,199,207-210
+dev/knowledge/backend/selective-merge-regeneration.md
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 34,38-43,105,107-109
+CHANGELOG.md
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 14-25
+backend/infrahub/computed_attribute/tasks.py
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 19-27,116-153
+backend/tests/unit/core/regeneration/test_classifier_builder.py
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 9,15-17,35-38,83,86-88,124-146
+docker-compose.yml
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 284,317,363
+docs/docs/release-notes/infrahub/release-1_11_6.mdx
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 1-32
+.github/workflows/push-bench-image.yml
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 67,79
+backend/infrahub/core/regeneration/derived_dependencies.py
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 4,6-8,57,73-85
+backend/tests/component/core/regeneration/test_impact.py
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 54-81,259,261-262,273,275-276,288-291,295-359,464,466-467,478,480-482,495-498
+.github/workflows/update-sdk-compatibility-docs.yml
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 32
+backend/infrahub/core/regeneration/classifier_builder.py
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 5-8,15,19-24,34-37,44-49,62,69-79
+backend/infrahub/core/regeneration/impact.py
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 6,15-25,33,36-38,44,65-76,85,115-184
+backend/tests/unit/core/merge/selective_regen/test_orchestrator.py
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 29,31-32,127,132-135,328-365,384,389-392
+frontend/app/src/entities/tasks/ui/logs.tsx
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 18
+changelog/+info-severity-color.fixed.md
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 1
+.github/workflows/ci.yml
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 121,157,200,241,927,1053,1091,1275,1417,1426
+backend/infrahub/graphql/analyzer.py
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 399-427
+  s_7ced54e14e4dfe::t_7c924645f9d44d 398
+docs/docs/ipam/plan-changes-on-a-branch.mdx
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 21
+.github/workflows/ci-docker-image.yml
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 134,149,274
+.github/workflows/chromatic.yml
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 37,44
+changelog/11059.fixed.md
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 1
+docs/docs/menu/overview.mdx
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 182-262
+backend/tests/component/graphql/mutations/test_ipam.py
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 1,3,7,12,1488-1547
+backend/tests/component/graphql/test_query_analyzer.py
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 344-461
+backend/tests/unit/test_trace_tls.py
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 231-233,290-292
+docs/docs/reference/menu.mdx
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 11-12
+backend/tests/unit/core/regeneration/test_derived_dependencies.py
+  s_7ced54e14e4dfe::t_d8f06e9266f3af 10,13-16,289,291-293
+.github/workflows/bug-agent-analyst.lock.yml
+  s_7ced54e14e4dfe::t_b56bb77acb2ee2 458,565,582,1126,1204,1244,1291,1467,1547,1646,1788,1839
+.github/workflows/bug-agent-fix.lock.yml
+  s_7ced54e14e4dfe::t_abb127baabe141 464,632,676,697,1299,1378,1418,1465,1643,1723,1822,1966,1979,2041
+.github/workflows/bug-agent-review.lock.yml
+  s_7ced54e14e4dfe::t_f1ffe18e8ebe65 439,554,571,1114,1193,1233,1280,1436,1516,1615,1843,1894
+.github/workflows/bug-agent-test.lock.yml
+  s_7ced54e14e4dfe::t_a35a5dcf667e36 465,635,679,700,1306,1385,1425,1472,1650,1730,1829,1975,1988,2050
+.github/workflows/issue-triage-labeler.lock.yml
+  s_7ced54e14e4dfe::t_783de56cc3f649 410,518,537,1046,1122,1162,1209,1365,1445,1544,1671,1722
+.github/workflows/issue-triage-sweep.lock.yml
+  s_7ced54e14e4dfe::t_fe1772cea5833f 396,504,523,1032,1108,1148,1195,1351,1431,1530,1657,1708
+uv.lock
+  s_7ced54e14e4dfe::t_6f7bec2031b8dd 1990,1995,1997,2161-2251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bfcea73ca06237e0df271f39d4d704b525aa5b20",
+  "prompts": {},
+  "sessions": {
+    "s_7ced54e14e4dfe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce0e6da8-8aca-4971-b228-0817be6ca04e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

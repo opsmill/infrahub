@@ -1,0 +1,23 @@
+backend/tests/component/core/constraint_validators/test_node_uniqueness.py
+  s_0969bd9f84836e::t_34989269c60e7c 5,10,107-138
+backend/tests/unit/core/test_attribute.py
+  s_0969bd9f84836e::t_34989269c60e7c 2,6,11,132-165
+backend/infrahub/core/attribute.py
+  s_0969bd9f84836e::t_7152f80c8d84cc 650-652
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a139811575219d8334c0ecfef1f93c3024c7ff4",
+  "prompts": {},
+  "sessions": {
+    "s_0969bd9f84836e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e7ae019-4f15-4890-b15c-b09ce70f6220",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+backend/tests/component/core/changelog/test_models.py
+  s_20e0c986f2472f::t_868065acc8c69c 510,584,640,758,859
+  s_20e0c986f2472f::t_840d13461bf5d7 5,178,319,427
+backend/infrahub/core/changelog/builder.py
+  s_20e0c986f2472f::t_ae6a097c75e367 10-11,13,38-39,41-45
+backend/infrahub/core/changelog/peer_labels.py
+  s_20e0c986f2472f::t_136f887064e6b5 1-67
+backend/infrahub/core/changelog/reciprocal.py
+  s_20e0c986f2472f::t_87d46b0473184b 1-121
+backend/infrahub/core/changelog/relationship_getter.py
+  s_20e0c986f2472f::t_ec11fd8619793c 7,22-24,36-43,46-48,61-62,65-67,72,87,97,100,108,113,122,126,132,135,147,153-164,166,176,180,184-185,187-194
+backend/infrahub/core/changelog/secondary_merger.py
+  s_20e0c986f2472f::t_7c59689304479e 1-48
+backend/tests/component/core/changelog/test_enrichment.py
+  s_20e0c986f2472f::t_af6e33db47da5e 15,23-24,26,165-167,183-185,209-213,235-237
+backend/tests/unit/core/changelog/test_models.py
+  s_20e0c986f2472f::t_caed4e28b7573d 7
+backend/tests/unit/core/changelog/test_peer_labels.py
+  s_20e0c986f2472f::t_dd585cfcfd1a0c 1-100
+backend/tests/unit/core/changelog/test_reciprocal.py
+  s_20e0c986f2472f::t_d5c1c258e4c2a5 1-235
+backend/tests/unit/core/changelog/test_secondary_merger.py
+  s_20e0c986f2472f::t_cbc8e2d0eb175e 9,28,56,67-92,101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dc2a274bc0a2d884c779f65f81384206d4f2df3b",
+  "prompts": {},
+  "sessions": {
+    "s_20e0c986f2472f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fee2ac3d-8227-4aa5-ba94-9bd97fe8b12f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

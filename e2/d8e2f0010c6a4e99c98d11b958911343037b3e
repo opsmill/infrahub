@@ -1,0 +1,27 @@
+backend/infrahub/core/validators/__init__.py
+  s_71e9cb725a3331::t_9320cdee886e4c 18,50-51
+backend/infrahub/pools/scoped_number_pool_reader.py
+  s_71e9cb725a3331::t_d5c29d091b8de2 44-55
+backend/infrahub/dependencies/builder/constraint/schema/number_pool_rename.py
+  s_71e9cb725a3331::t_841932bea40c5c 1-15
+backend/tests/component/core/constraint_validators/test_number_pool_rename.py
+  s_71e9cb725a3331::t_a11611cea1fac8 1-138
+backend/infrahub/dependencies/builder/constraint/schema/aggregated.py
+  s_71e9cb725a3331::t_8fc972fed242d4 18,54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e2d8e2f0010c6a4e99c98d11b958911343037b3e",
+  "prompts": {},
+  "sessions": {
+    "s_71e9cb725a3331": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be27b657-95ab-4970-a61b-cba64ba4ad18",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

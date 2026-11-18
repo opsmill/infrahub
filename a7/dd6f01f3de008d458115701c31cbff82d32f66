@@ -1,0 +1,21 @@
+dev/specs/ifc-3185-scoped-number-pools/plan.md
+  s_19ed5fb88e64ca::t_82b29b490fcba5 295
+dev/specs/ifc-3185-scoped-number-pools/tasks.md
+  s_19ed5fb88e64ca::t_414e0e298fa2dd 215,219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a7dd6f01f3de008d458115701c31cbff82d32f66",
+  "prompts": {},
+  "sessions": {
+    "s_19ed5fb88e64ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61926aa9-d5d8-4686-a1ea-3cd71d6c8848",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

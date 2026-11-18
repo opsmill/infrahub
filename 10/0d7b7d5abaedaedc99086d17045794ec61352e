@@ -1,0 +1,21 @@
+.agents/skills/opsmill-dev-analyzing-dependency-bumps/SKILL.md
+  s_43d8e382eba497::t_74e2f8c6a49627 1-115
+skills-lock.json
+  s_43d8e382eba497::t_a665eb57401fad 4-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "100d7b7d5abaedaedc99086d17045794ec61352e",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

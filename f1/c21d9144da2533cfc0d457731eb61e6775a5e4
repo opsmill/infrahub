@@ -1,0 +1,24 @@
+backend/tests/unit/core/changelog/test_peer_labels.py
+  s_86fff168c93aab::t_c52f48caa6ab69 83-97
+backend/tests/component/core/changelog/test_diff.py
+  s_86fff168c93aab::t_265f873e2212c2 8,43,108,237,295
+  s_86fff168c93aab::t_0ab94b59b98b53 327-328
+backend/tests/component/core/changelog/test_enrichment.py
+  s_86fff168c93aab::t_afe8b0b5992387 104-114,127,406,435,468
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f1c21d9144da2533cfc0d457731eb61e6775a5e4",
+  "prompts": {},
+  "sessions": {
+    "s_86fff168c93aab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cff568f-f1a2-413f-81d2-b41800811650",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

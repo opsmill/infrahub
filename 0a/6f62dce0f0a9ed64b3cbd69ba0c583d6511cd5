@@ -1,0 +1,27 @@
+backend/tests/unit/test_utils.py
+  s_7f89a04bbbc0ac::t_eeff5f0b20d7d9 164
+  s_7f89a04bbbc0ac::t_e6fdab1f23acb8 7
+  s_7f89a04bbbc0ac::t_8612540434f4cb 159-163,165-192
+backend/infrahub/utils.py
+  s_7f89a04bbbc0ac::t_0fffd150ac4faf 4
+  s_7f89a04bbbc0ac::t_eeff5f0b20d7d9 62-63
+  s_7f89a04bbbc0ac::t_3b8a10e5129327 64-84
+dev/specs/005-hz-frequency-formatter/tasks.md
+  s_7f89a04bbbc0ac::t_eeff5f0b20d7d9 34,38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0a6f62dce0f0a9ed64b3cbd69ba0c583d6511cd5",
+  "prompts": {},
+  "sessions": {
+    "s_7f89a04bbbc0ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04daff80-3dbe-4c4d-8c7c-93a3bc731634",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

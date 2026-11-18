@@ -1,0 +1,35 @@
+backend/infrahub/graphql/queries/number_pool.py
+  s_f79f241964f1cc::t_143fe5d6b10b66 5,245
+backend/infrahub/pools/number_pool_mock.py
+  s_f79f241964f1cc::t_b5a9cb6963428d 66,147-149,154,157-158,160-161,283-285,448
+backend/tests/component/graphql/queries/test_number_pool_surface.py
+  s_f79f241964f1cc::t_60b25f3960f606 9,185-186,192-194,198,204,206-208
+backend/tests/unit/graphql/snapshots/number_pool_surface.graphql
+  s_f79f241964f1cc::t_ce7d1f3f15dbcc 15-16,172
+backend/tests/unit/pools/test_number_pool_mock.py
+  s_f79f241964f1cc::t_17d8fd3c3af991 3-4,75,77-80,105,136,138-139,141-142,152-153,155-158,179,198,310,323-341
+frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts
+  s_f79f241964f1cc::t_e256ea433003c2 29,32,35,38,41,44,47,50,53,56,59,62,65,68,71,74,77,80,83,86,89,92,95,98,101,104,107,110,113,116,119,122,125,128,131,134,137,140,143,146,149,152,155,158,161,164,167,170,173,176,179,182,185,188,191,194,197,200,203,206,209,212,215,218,221
+frontend/app/src/shared/api/graphql/generated/graphql-env.d.ts
+  s_f79f241964f1cc::t_fe4d7708649b95 995,1005
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_f79f241964f1cc::t_4dde1b8fc17aab 23814-23815
+schema/schema.graphql
+  s_f79f241964f1cc::t_bb9ccfa8b176e5 11724-11725,26202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "40a622b4dd7a2def2d6d84dd50be151563aceffe",
+  "prompts": {},
+  "sessions": {
+    "s_f79f241964f1cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a94f430-9532-473e-8415-d7b8aa7f8024",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

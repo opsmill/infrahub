@@ -1,0 +1,39 @@
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
+  s_760cbcf248de37::t_d8f73ba01c8f0a 3,10-11,13,25,110-119,121,137,201-240,242,453
+  s_760cbcf248de37::t_71fb1a413fd1df 25,111,113,115-116,118,240,242
+backend/infrahub/pools/number_pool_shorthand.py
+  s_760cbcf248de37::t_cac4a86e622d48 16-22,53-55
+  s_760cbcf248de37::t_173a363d667e06 16-22,53-55
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_create.py
+  s_760cbcf248de37::t_f489990adc5c8d 440-461
+  s_760cbcf248de37::t_8f7dff50234a94 440-461
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_range_events.py
+  s_760cbcf248de37::t_fe0055cd63c7f0 1-392
+  s_760cbcf248de37::t_072050bd4feb4e 48,55-67,69,86-92,140,180-188,193-202,207-217,223,239,241,243-246,266-275,282-293,306-310,312-316,331,333-334,341-350,357-360,381
+  s_760cbcf248de37::t_77090978f8027c 1,9,49-54,68,70-85,126-127,130-135,138-139,141-165,249-257,260-262,264-265,276-278,280-281,294-296,298-304,317,325-326,328-330,335-340,351-356,361-362,365-366,372,374-380,387-388,390,392
+  s_760cbcf248de37::t_fc448223ef5941 172,179
+backend/infrahub/events/generator.py
+  s_760cbcf248de37::t_e202b1a57e5d02 4-9,30-43,105-110,124-127
+  s_760cbcf248de37::t_f62c334e2ff092 138
+backend/tests/component/events/test_node_mutation_events.py
+  s_760cbcf248de37::t_c5a925aad3c922 12,20-38,56,59,68-97
+  s_760cbcf248de37::t_ee46d31166e597 5,10-11,98-122
+backend/tests/component/core/node/test_template_pool_allocation.py
+  s_760cbcf248de37::t_43b0b4719ef51b 509
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a3c47bd09901569203ca48c06914125e67bce7f6",
+  "prompts": {},
+  "sessions": {
+    "s_760cbcf248de37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9796f03b-7c77-4706-bad0-f6d8a85686f0",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

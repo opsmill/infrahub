@@ -1,0 +1,22 @@
+backend/tests/unit/graphql/queries/test_resolver_session_convention.py
+  s_4ee8bbf15c67e8::t_a7b9c793051770 11,16-17,20-29,31
+  s_4ee8bbf15c67e8::t_11a83b8c71dbd9 53
+  s_4ee8bbf15c67e8::t_e47252e9de08b3 72
+  s_4ee8bbf15c67e8::t_2077d1f02b87ae 1-10,12-15,18-19,30,32-52,54-71,73-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "45c825e2cb639a6d4d792cdcb339b7c79c88efe7",
+  "prompts": {},
+  "sessions": {
+    "s_4ee8bbf15c67e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d4d9e36-bf4c-4835-8c8e-775a7be9c746",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

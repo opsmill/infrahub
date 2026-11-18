@@ -1,0 +1,21 @@
+backend/tests/component/core/regeneration/poc/test_coverage.py
+  s_6947b4d8b10fbd::t_db52158c7c254f 41,45,47,65,380-394,397,404-406,787-856
+dev/specs/artifact-regeneration-poc/tasks.md
+  s_6947b4d8b10fbd::t_1534b83f832c97 269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4dfd97f01f85baf57959c6dbadeea732074e38e8",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

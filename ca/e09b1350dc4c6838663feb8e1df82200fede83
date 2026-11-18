@@ -1,0 +1,14 @@
+backend/infrahub/pools/scoped_number_pool_reader.py
+  h_bd00275aefc321 66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cae09b1350dc4c6838663feb8e1df82200fede83",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

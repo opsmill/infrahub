@@ -1,0 +1,21 @@
+backend/tests/unit/graphql/resolvers/test_read_requests.py
+  s_6947b4d8b10fbd::t_a80658c1283577 8,27,31,36-46,48-49,54-59
+dev/specs/artifact-regeneration-poc/tasks.md
+  s_6947b4d8b10fbd::t_edcc0a9d94a862 252-253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "95c76b26f25f18e70f0575fc0e37d03c00d821bb",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

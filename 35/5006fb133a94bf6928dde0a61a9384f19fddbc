@@ -1,0 +1,21 @@
+backend/AGENTS.md
+  s_2ab8629d5567d5::t_026b89c72863ee 144
+dev/knowledge/backend/git-sync.md
+  s_2ab8629d5567d5::t_fe619d6429a202 477,550-584
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "355006fb133a94bf6928dde0a61a9384f19fddbc",
+  "prompts": {},
+  "sessions": {
+    "s_2ab8629d5567d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "377ca0ad-9cbc-42ab-9501-cb320aa0052f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}

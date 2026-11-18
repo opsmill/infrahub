@@ -1,0 +1,19 @@
+changelog/+websocket-query-authorization.security.md
+  s_fead087f95fb36::t_5d360ff9c53aa0 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f7c93298d7dd57b2ae61348d965f79001dd77ee0",
+  "prompts": {},
+  "sessions": {
+    "s_fead087f95fb36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76c6b40a-0c51-4467-aa31-a8d34687261e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "opsmill-bot <github-bot@opsmill.com>"
+    }
+  }
+}

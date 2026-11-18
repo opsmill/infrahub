@@ -1,0 +1,19 @@
+changelog/+delete-check-reads-only-deleted-nodes.changed.md
+  s_a762eba1b4d089::t_9b1d92e5056949 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62d8bd91752fbed3135187af3656c2bd6fe38f68",
+  "prompts": {},
+  "sessions": {
+    "s_a762eba1b4d089": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6ced372d-9570-42c5-bdf8-f823409729f9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Patrick Ogenstad <patrick@ogenstad.com>"
+    }
+  }
+}

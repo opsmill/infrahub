@@ -1,0 +1,47 @@
+.github/scripts/dependabot_autopilot/http_transport.py
+  s_43d8e382eba497::t_230d84930ad0a6 1-44
+.github/scripts/dependabot_autopilot/jira_adapter.py
+  s_43d8e382eba497::t_9de9670da7d592 1-193
+.github/scripts/dependabot_autopilot/ports.py
+  s_43d8e382eba497::t_6e6fc1e398019c 10,207-263
+.github/scripts/dependabot_autopilot/slack_adapter.py
+  s_43d8e382eba497::t_153173e1196d29 1-36
+.github/scripts/dependabot_autopilot/tests/fakes.py
+  s_43d8e382eba497::t_b603426ad56f77 6,12,19-21,28,33,36-37,232-339
+.github/scripts/dependabot_autopilot/tests/fixtures/jira_comments_page1.handcrafted.json
+  s_43d8e382eba497::t_e8d974d921a708 1-44
+.github/scripts/dependabot_autopilot/tests/fixtures/jira_comments_page2.handcrafted.json
+  s_43d8e382eba497::t_0e980ad4569588 1-27
+.github/scripts/dependabot_autopilot/tests/fixtures/jira_create_issue.handcrafted.json
+  s_43d8e382eba497::t_38de3774eb169c 1-5
+.github/scripts/dependabot_autopilot/tests/fixtures/jira_search_digest.handcrafted.json
+  s_43d8e382eba497::t_3e2aed2600876f 1-35
+.github/scripts/dependabot_autopilot/tests/fixtures/jira_search_jql_empty.handcrafted.json
+  s_43d8e382eba497::t_16273a4be1728d 1-4
+.github/scripts/dependabot_autopilot/tests/fixtures/jira_search_jql_page1.handcrafted.json
+  s_43d8e382eba497::t_09f30f8547ef84 1-21
+.github/scripts/dependabot_autopilot/tests/fixtures/jira_search_jql_page2.handcrafted.json
+  s_43d8e382eba497::t_b0e74a9b457c6f 1-14
+.github/scripts/dependabot_autopilot/tests/test_fakes.py
+  s_43d8e382eba497::t_e0b34f6f2e4db3 8,12,17,19,24-25,96-106
+.github/scripts/dependabot_autopilot/tests/test_jira_adapter.py
+  s_43d8e382eba497::t_f39bfdca80d55a 1-341
+.github/scripts/dependabot_autopilot/tests/test_slack_adapter.py
+  s_43d8e382eba497::t_ac40741e51d321 1-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "52ec9c4f9e972f870be1d92fe3d9d616c78e97f5",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

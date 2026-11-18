@@ -1,0 +1,62 @@
+backend/infrahub/core/schema/queries.py
+  s_2b1e801e7b575c::t_725701ce908458 341-342,346-353
+  s_2b1e801e7b575c::t_74667d915a95ee 4,9
+backend/infrahub/core/query/relationship.py
+  s_2b1e801e7b575c::t_39323eabf9dcc9 1105,1111
+  s_2b1e801e7b575c::t_41f961bdb5a3e1 1076-1077,1081-1083,1085-1087
+  s_2b1e801e7b575c::t_a2614f75b9e01f 1531,1534
+  s_2b1e801e7b575c::t_f422067fd17476 1093,1098
+  s_2b1e801e7b575c::t_609af855718be2 1055
+  s_2b1e801e7b575c::t_ab72056d8cf2ed 1183-1188
+backend/infrahub/core/query/node.py
+  s_2b1e801e7b575c::t_688f72ab11c2a9 615,626,628
+  s_2b1e801e7b575c::t_de845d087bdc61 2861,2866
+  s_2b1e801e7b575c::t_ba42e443d0bc47 1046
+  s_2b1e801e7b575c::t_401671948a294f 1389-1391,1397,1402,1406,1411
+backend/infrahub/core/account.py
+  s_2b1e801e7b575c::t_168fb53cc4a928 157-159,287-291,387-389,494-498
+backend/infrahub/core/migrations/graph/m059_fix_hfid_display_label_nulls.py
+  s_2b1e801e7b575c::t_683e1d74013115 114
+backend/infrahub/core/node/standard.py
+  s_2b1e801e7b575c::t_eb439c0726dcf3 204
+backend/infrahub/core/query/ipam.py
+  s_2b1e801e7b575c::t_9361e0a229792f 320,702-703,1144
+backend/infrahub/core/relationship/model.py
+  s_2b1e801e7b575c::t_1fdfbf311f9c36 478-479
+backend/infrahub/core/validators/attribute/choices.py
+  s_2b1e801e7b575c::t_c55b078616680f 71
+backend/infrahub/core/validators/attribute/enum.py
+  s_2b1e801e7b575c::t_3fbed066b93acd 59
+backend/infrahub/core/validators/attribute/length.py
+  s_2b1e801e7b575c::t_d33cd8ef47774e 58
+backend/infrahub/core/validators/attribute/min_max.py
+  s_2b1e801e7b575c::t_489847bdf20fab 67
+backend/infrahub/core/validators/attribute/number_pool.py
+  s_2b1e801e7b575c::t_e5362d0332e5a6 61
+backend/infrahub/core/validators/attribute/optional.py
+  s_2b1e801e7b575c::t_2ec8d3540b2bae 53
+backend/infrahub/core/validators/attribute/regex.py
+  s_2b1e801e7b575c::t_ac303178a97110 56
+backend/infrahub/core/validators/attribute/unique.py
+  s_2b1e801e7b575c::t_5fa761aa155b7b 69,77-78
+backend/infrahub/core/validators/query.py
+  s_2b1e801e7b575c::t_b7996e272ba97a 45
+backend/infrahub/core/validators/relationship/optional.py
+  s_2b1e801e7b575c::t_dcb37a8029af82 70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "356a8bc4d3b2871f3845797813f9954fefc9ffd1",
+  "prompts": {},
+  "sessions": {
+    "s_2b1e801e7b575c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "188d9ad4-2f02-4897-bb57-c4e26b308cb6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

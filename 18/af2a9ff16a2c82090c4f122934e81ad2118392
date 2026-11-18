@@ -1,0 +1,23 @@
+backend/infrahub/core/changelog/secondary_merger.py
+  s_d6bb76affb8018::t_eb2c782e3a98e9 11-12,15-17,19-45
+backend/infrahub/core/changelog/relationship_getter.py
+  s_d6bb76affb8018::t_bcb0c9e2d6b4b3 15,96
+backend/tests/unit/core/changelog/test_secondary_merger.py
+  s_d6bb76affb8018::t_a96fd545f83744 9,28,57,75,89,104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "18af2a9ff16a2c82090c4f122934e81ad2118392",
+  "prompts": {},
+  "sessions": {
+    "s_d6bb76affb8018": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c396dbd-8e86-4438-b25e-16e3fabccdb0",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,132 @@
+dev/specs/ifc-3471-repo-branches-sync-filter/data-model.md
+  s_d4b119a8ce2b52::t_214df95b603c60 1-16
+backend/infrahub/core/node/__init__.py
+  s_d4b119a8ce2b52::t_214df95b603c60 20,28,174,392-396
+  s_d4b119a8ce2b52::t_002917d2aad2c5 397
+dev/specs/ifc-3471-repo-branches-sync-filter/research.md
+  s_d4b119a8ce2b52::t_214df95b603c60 1-45
+backend/tests/component/graphql/test_mutation_create_simple.py
+  s_d4b119a8ce2b52::t_214df95b603c60 1-118
+dev/knowledge/backend/git-sync.md
+  s_d4b119a8ce2b52::t_214df95b603c60 357-363
+backend/infrahub/events/generator.py
+  s_d4b119a8ce2b52::t_214df95b603c60 4-11,30-51,60,69-84,86,88-98,101-114,122,127-130,136,141,168
+backend/tests/component/graphql/test_mutation_create_object_template.py
+  s_d4b119a8ce2b52::t_214df95b603c60 1-452
+frontend/app/src/entities/repository/ui/repository-branches-card/to-repository-branch-arguments.test.ts
+  s_d4b119a8ce2b52::t_214df95b603c60 91-141
+dev/specs/ifc-3471-repo-branches-sync-filter/plan.md
+  s_d4b119a8ce2b52::t_214df95b603c60 1-105
+frontend/app/src/entities/repository/ui/repository-branches-card/to-repository-branch-arguments.ts
+  s_d4b119a8ce2b52::t_214df95b603c60 17,21,48-53,78,89-92,94-96
+dev/specs/ifc-3471-repo-branches-sync-filter/checklists/requirements.md
+  s_d4b119a8ce2b52::t_214df95b603c60 1-34
+dev/specs/ifc-3471-repo-branches-sync-filter/spec.md
+  s_d4b119a8ce2b52::t_214df95b603c60 1-115
+backend/infrahub/pools/number_pool_shorthand.py
+  s_d4b119a8ce2b52::t_214df95b603c60 16-22,53,59-63
+backend/infrahub/core/relationship/model.py
+  s_d4b119a8ce2b52::t_214df95b603c60 30,37,645
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool_range.py
+  s_d4b119a8ce2b52::t_214df95b603c60 7,78,109,127,135-141,166,177,188-206
+frontend/app/src/entities/repository/ui/repository-branches-card/branch-row-fields.ts
+  s_d4b119a8ce2b52::t_214df95b603c60 10,41-57,59-65,67-68
+frontend/app/src/entities/repository/ui/repository-branches-card/repository-branches-card.tsx
+  s_d4b119a8ce2b52::t_214df95b603c60 169
+dev/specs/ifc-3471-repo-branches-sync-filter/quickstart.md
+  s_d4b119a8ce2b52::t_214df95b603c60 1-26
+backend/tests/component/graphql/test_mutation_create_uniqueness.py
+  s_d4b119a8ce2b52::t_214df95b603c60 1-197
+changelog/+ifc-3130-repository-branches-card.added.md
+  s_d4b119a8ce2b52::t_214df95b603c60 7-9
+dev/specs/ifc-3471-repo-branches-sync-filter/contracts/branches-section-filter.md
+  s_d4b119a8ce2b52::t_214df95b603c60 1-30
+backend/infrahub/pools/default_allocator.py
+  s_d4b119a8ce2b52::t_214df95b603c60 5-6,47
+frontend/app/tests/fake/repository.ts
+  s_d4b119a8ce2b52::t_214df95b603c60 7,12-13,98-133
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_create.py
+  s_d4b119a8ce2b52::t_214df95b603c60 496-517
+backend/tests/component/graphql/test_mutation_create_relationships.py
+  s_d4b119a8ce2b52::t_214df95b603c60 1-667
+backend/infrahub/git/tasks.py
+  s_d4b119a8ce2b52::t_214df95b603c60 543,554-562,596,621-623,787
+tests/e2e/repository/test_repository_branches_sync_filter.py
+  s_d4b119a8ce2b52::t_214df95b603c60 1-93
+frontend/app/src/entities/repository/api/get-repository-branch-status-from-api.ts
+  s_d4b119a8ce2b52::t_214df95b603c60 12,22
+frontend/app/src/entities/repository/ui/repository-branches-card/repository-branches-card.test.tsx
+  s_d4b119a8ce2b52::t_214df95b603c60 27,44,103-108,695-794,923-959,1097-1121
+  s_d4b119a8ce2b52::t_c7f7d3d0aabce2 1122
+changelog/+ifc-3458-new-repository-commit.fixed.md
+  s_d4b119a8ce2b52::t_214df95b603c60 1
+dev/specs/ifc-3471-repo-branches-sync-filter/critiques/critique-20261020.md
+  s_d4b119a8ce2b52::t_214df95b603c60 1-43
+backend/tests/component/git/test_import_failure_logs.py
+  s_d4b119a8ce2b52::t_214df95b603c60 724
+backend/infrahub/core/node/create.py
+  s_d4b119a8ce2b52::t_214df95b603c60 13,19,300,350,486,496,521,597,607,631
+backend/tests/component/git/writeback/test_import_deferral.py
+  s_d4b119a8ce2b52::t_214df95b603c60 99-109,362,369-371,405-448,480
+  s_d4b119a8ce2b52::t_d5f7bf72aada57 98
+dev/knowledge/backend/events.md
+  s_d4b119a8ce2b52::t_214df95b603c60 105-124,218,229
+frontend/app/src/entities/nodes/filters/ui/active-filter-tags.test.ts
+  s_d4b119a8ce2b52::t_214df95b603c60 19-28,32,36,44,48,53-97,124-142
+  s_d4b119a8ce2b52::t_43af9da5b5257c 143
+backend/infrahub/graphql/execution.py
+  s_d4b119a8ce2b52::t_214df95b603c60 78-88
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_range_events.py
+  s_d4b119a8ce2b52::t_214df95b603c60 1-533
+backend/tests/component/graphql/test_mutation_create_attributes.py
+  s_d4b119a8ce2b52::t_214df95b603c60 1-553
+backend/tests/component/core/node/test_template_pool_allocation.py
+  s_d4b119a8ce2b52::t_214df95b603c60 143-147,509,547-548
+tests/e2e/objects/test_object_filters.py
+  s_d4b119a8ce2b52::t_214df95b603c60 48,54,60,66,202,215
+dev/knowledge/backend/mutations.md
+  s_d4b119a8ce2b52::t_214df95b603c60 28,85-95
+  s_d4b119a8ce2b52::t_d77c3ffc1956a3 96
+backend/infrahub/graphql/mutations/main.py
+  s_d4b119a8ce2b52::t_214df95b603c60 43,59,61-64,78,236-237,244
+backend/tests/component/events/test_node_mutation_events.py
+  s_d4b119a8ce2b52::t_214df95b603c60 1-249
+dev/specs/ifc-3471-repo-branches-sync-filter/tasks.md
+  s_d4b119a8ce2b52::t_214df95b603c60 1-102
+backend/tests/unit/graphql/test_execution.py
+  s_d4b119a8ce2b52::t_214df95b603c60 1-71
+frontend/app/src/entities/repository/ui/repository-branches-card/columns.test.tsx
+  s_d4b119a8ce2b52::t_214df95b603c60 183-194
+frontend/app/src/entities/repository/ui/repository-branches-card/columns.tsx
+  s_d4b119a8ce2b52::t_214df95b603c60 10,15,32-38,80
+frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts
+  s_d4b119a8ce2b52::t_f6a0c26fbaa955 260
+  s_d4b119a8ce2b52::t_214df95b603c60 261-262
+frontend/app/src/entities/repository/api/get-repository-branch-status-from-api.test.ts
+  s_d4b119a8ce2b52::t_214df95b603c60 25-27,46-57
+  s_d4b119a8ce2b52::t_04c6c50f60832a 58-59
+frontend/app/src/entities/repository/ui/repository-branches-card/repository-branches-toolbar.tsx
+  s_d4b119a8ce2b52::t_214df95b603c60 13,16,18,20,34,44
+backend/infrahub/core/mutation_context.py
+  s_d4b119a8ce2b52::t_214df95b603c60 1-55
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
+  s_d4b119a8ce2b52::t_214df95b603c60 3,11-12,14,16-19,30,32-34,119-128,130,146,211-254,256,464,565-570
+frontend/app/src/entities/nodes/filters/ui/active-filter-tags.tsx
+  s_d4b119a8ce2b52::t_214df95b603c60 28,31,35,39,44-47,273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db4cebe8dc1d7b9b98a406e19dc7daf38fe0c5dd",
+  "prompts": {},
+  "sessions": {
+    "s_d4b119a8ce2b52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24c277eb-45ea-420c-960a-16bb0ad66d33",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

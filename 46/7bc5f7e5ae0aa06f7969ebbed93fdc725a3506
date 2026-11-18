@@ -1,0 +1,28 @@
+backend/infrahub/database/__init__.py
+  s_e9f9432ba904ca::t_975764151528aa 53
+  s_e9f9432ba904ca::t_9d2d6690605364 612-619
+  s_e9f9432ba904ca::t_fc459fd79bc52a 7
+  s_e9f9432ba904ca::t_4812574e9e4ca2 620-621
+backend/infrahub/graphql/mutations/resource_manager/number_pools/common.py
+  s_e9f9432ba904ca::t_987b2e69501fa5 14
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool_range.py
+  s_e9f9432ba904ca::t_bd5011daed4288 9,15
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
+  s_e9f9432ba904ca::t_eb97ec4ca0dc5d 11,22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "467bc5f7e5ae0aa06f7969ebbed93fdc725a3506",
+  "prompts": {},
+  "sessions": {
+    "s_e9f9432ba904ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a193993-fdd2-4e6d-9438-486a1a88d0d9",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

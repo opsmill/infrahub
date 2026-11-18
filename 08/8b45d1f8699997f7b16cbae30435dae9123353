@@ -1,0 +1,248 @@
+dev/knowledge/backend/permissions.md
+  s_d52982193a4de3::t_870be50d303b79 55-59
+docs/docs/deploy-manage/install-configure/install/enterprise.mdx
+  s_d52982193a4de3::t_870be50d303b79 118,124,136,142,145-146,149-183,245-252
+frontend/app/.betterer.results
+  s_d52982193a4de3::t_870be50d303b79 20,43-52
+docs/AGENTS.md
+  s_d52982193a4de3::t_870be50d303b79 78
+backend/tests/component/core/diff/repository/test_diff_repository.py
+  s_d52982193a4de3::t_870be50d303b79 3-4,27-29,44-55,800-904,1140-1190
+  s_d52982193a4de3::t_ce307b8f58c8a4 1191-1192
+.agents/rules/testing-python.md
+  s_d52982193a4de3::t_870be50d303b79 34-35,74-78
+.github/workflows/chromatic.yml
+  s_d52982193a4de3::t_870be50d303b79 44
+backend/tests/component/query/test_node_agnostic_retirement_query.py
+  s_d52982193a4de3::t_870be50d303b79 18,28,91-95,103-110,113,468-502
+CHANGELOG.md
+  s_d52982193a4de3::t_870be50d303b79 14-52
+dev/documentation-architecture.md
+  s_d52982193a4de3::t_870be50d303b79 9-10,14,16-17,19,21-27,30-31,38-55,60-62,69-70,72,78-80,84-85,92-93,97-99
+changelog/+large-branch-diff-update.fixed.md
+  s_d52982193a4de3::t_870be50d303b79 1
+dev/guidelines/backend/exceptions.md
+  s_d52982193a4de3::t_870be50d303b79 31,45-54,120-134
+  s_d52982193a4de3::t_bdece9a3a4615a 135
+dev/guidelines/repository-organization.md
+  s_d52982193a4de3::t_870be50d303b79 589-595
+docs/docs/overview/next-steps.mdx
+  s_d52982193a4de3::t_870be50d303b79 11
+dev/guidelines/backend/typing.md
+  s_d52982193a4de3::t_870be50d303b79 5-6,9
+changelog/+blank-ca-bundle-setting.fixed.md
+  s_d52982193a4de3::t_870be50d303b79 1
+.agents/rules/python-module-layout.md
+  s_d52982193a4de3::t_870be50d303b79 11-12,14,26-28
+changelog/10616.fixed.md
+  s_d52982193a4de3::t_870be50d303b79 1
+backend/tests/component/core/diff/diff_calculator/test_base_updates.py
+  s_d52982193a4de3::t_870be50d303b79 6,1180-1279
+backend/infrahub/core/diff/calculator.py
+  s_d52982193a4de3::t_870be50d303b79 14,89,199,201-202,205
+changelog/+diff-base-peer-added-and-removed-before-window.fixed.md
+  s_d52982193a4de3::t_870be50d303b79 1
+dev/guides/backend/creating-async-tasks.md
+  s_d52982193a4de3::t_870be50d303b79 72,304
+changelog/+s3-syslog-tls-insecure.added.md
+  s_d52982193a4de3::t_870be50d303b79 1
+backend/CLAUDE.md
+  s_d52982193a4de3::t_870be50d303b79 1
+.agents/skills/audit-docs/SKILL.md
+  s_d52982193a4de3::t_870be50d303b79 35,57
+backend/infrahub/core/branch/tasks.py
+  s_d52982193a4de3::t_870be50d303b79 19,50,241-242,244-245,529
+changelog/+diff-base-scope-empty-branch.fixed.md
+  s_d52982193a4de3::t_870be50d303b79 1
+.agents/skills/migrate-feature-page/SKILL.md
+  s_d52982193a4de3::t_870be50d303b79 327
+backend/tests/unit/config/test_tls_settings.py
+  s_d52982193a4de3::t_870be50d303b79 5,10-25,97-149,197-215,280-292,299-303
+dev/specs/ifc-2843-retire-agnostic-edges/plan.md
+  s_d52982193a4de3::t_870be50d303b79 280,520,523-528
+backend/infrahub/storage.py
+  s_d52982193a4de3::t_870be50d303b79 21-22,54
+dev/guidelines/backend/component-design.md
+  s_d52982193a4de3::t_870be50d303b79 1-129
+backend/infrahub/core/graph/index.py
+  s_d52982193a4de3::t_870be50d303b79 21-26
+dev/knowledge/backend/async-tasks.md
+  s_d52982193a4de3::t_870be50d303b79 75,106-134,466
+backend/infrahub/config.py
+  s_d52982193a4de3::t_870be50d303b79 16,76-85,326,336-345,349,352,360-364,396,428-436,553,612,881,912,947,1395,1502,1506-1513,1541-1545,1855
+backend/infrahub/computed_attribute/tasks.py
+  s_d52982193a4de3::t_870be50d303b79 9,141
+backend/tests/component/core/diff/diff_calculator/test_nodes.py
+  s_d52982193a4de3::t_870be50d303b79 10,441-480
+changelog/+rebase-agnostic-retirement.fixed.md
+  s_d52982193a4de3::t_870be50d303b79 1
+backend/tests/unit/config/test_log_forwarding.py
+  s_d52982193a4de3::t_870be50d303b79 64-81
+dev/knowledge/backend/query-pattern.md
+  s_d52982193a4de3::t_870be50d303b79 120-121,283-287,298-301,397
+docs/docs/deploy-manage/install-configure/production-deployment/private-ca.mdx
+  s_d52982193a4de3::t_870be50d303b79 198
+backend/infrahub/core/query/diff.py
+  s_d52982193a4de3::t_870be50d303b79 135-136,282-284,286-288,291-299,444-446,448-450,664-666,668-670,923,927-928,938-955
+  s_d52982193a4de3::t_23393743b7280a 956-957
+dev/specs/ifc-2843-retire-agnostic-edges/tasks.md
+  s_d52982193a4de3::t_870be50d303b79 188-191,314
+development/grafana/CLAUDE.md
+  s_d52982193a4de3::t_870be50d303b79 1
+backend/infrahub/transformations/tasks.py
+  s_d52982193a4de3::t_870be50d303b79 4,35,55
+backend/tests/component/api/test_admission_middleware.py
+  s_d52982193a4de3::t_870be50d303b79 722-786
+dev/specs/ifc-2843-retire-agnostic-edges/spec.md
+  s_d52982193a4de3::t_870be50d303b79 279-281,283-285,429-432
+development/docker-compose.yml
+  s_d52982193a4de3::t_870be50d303b79 130
+backend/tests/component/core/agnostic_retirement/test_on_rebase.py
+  s_d52982193a4de3::t_870be50d303b79 5-6,22,25-28,30-31,34,53,61-62,68,74,77-96,189-279
+  s_d52982193a4de3::t_eeb7c218cc7eba 280
+backend/tests/component/core/test_attribute.py
+  s_d52982193a4de3::t_870be50d303b79 2,9,376-493
+  s_d52982193a4de3::t_7e65d2c122561f 494-495
+dev/guidelines/backend/python.md
+  s_d52982193a4de3::t_870be50d303b79 23,25,29-41,55,59-74,201-207,329,373-374,376,378-382,442-443
+frontend/app/src/entities/diff/ui/content-diff/collapsed-lines.test.ts
+  s_d52982193a4de3::t_870be50d303b79 1-213
+README.md
+  s_d52982193a4de3::t_870be50d303b79 83
+changelog/+diff-save-large-nodes.fixed.md
+  s_d52982193a4de3::t_870be50d303b79 1
+frontend/app/src/entities/diff/ui/content-diff/content-diff.test.tsx
+  s_d52982193a4de3::t_870be50d303b79 1-66
+backend/infrahub/core/diff/query/save.py
+  s_d52982193a4de3::t_870be50d303b79 89-140,142-147,167,323-342,523
+backend/tests/helpers/db_session_tracker.py
+  s_d52982193a4de3::t_870be50d303b79 1-64
+docs/sidebars.ts
+  s_d52982193a4de3::t_870be50d303b79 25,31,43
+dev/guidelines/code-doc-style.md
+  s_d52982193a4de3::t_870be50d303b79 1-53
+docs/CLAUDE.md
+  s_d52982193a4de3::t_870be50d303b79 1
+docs/docs/deploy-manage/run-observe/log-forwarding/overview.mdx
+  s_d52982193a4de3::t_870be50d303b79 183
+docker-compose.yml
+  s_d52982193a4de3::t_870be50d303b79 74,183,282,315,361
+docs/docs/reference/configuration.mdx
+  s_d52982193a4de3::t_870be50d303b79 140,384,427
+frontend/app/src/entities/diff/ui/content-diff/collapsed-lines.ts
+  s_d52982193a4de3::t_870be50d303b79 1-83
+backend/infrahub/git/integrator.py
+  s_d52982193a4de3::t_870be50d303b79 47,1942-1951,2048-2051,2136,2146,2199,2207
+dev/README.md
+  s_d52982193a4de3::t_870be50d303b79 53,103-104,115-128
+frontend/app/src/entities/diff/ui/artifact-diff/artifact-content-diff.tsx
+  s_d52982193a4de3::t_870be50d303b79 4,14,300,307-312,314-315
+dev/knowledge/backend/architecture.md
+  s_d52982193a4de3::t_870be50d303b79 3
+dev/knowledge/backend/api-backpressure.md
+  s_d52982193a4de3::t_870be50d303b79 87,115-119,292-298
+dev/knowledge/backend/testing.md
+  s_d52982193a4de3::t_870be50d303b79 3
+frontend/app/src/entities/diff/ui/content-diff/content-diff.tsx
+  s_d52982193a4de3::t_870be50d303b79 1-176
+backend/tests/unit/test_storage.py
+  s_d52982193a4de3::t_870be50d303b79 91-103,133-152
+  s_d52982193a4de3::t_d3b8da77e373c5 153
+docs/docs/deploy-manage/run-observe/log-forwarding/configure-log-forwarding.mdx
+  s_d52982193a4de3::t_870be50d303b79 115-116
+backend/infrahub/core/attribute.py
+  s_d52982193a4de3::t_870be50d303b79 450-451,455-457,459,461,648-650
+tests/e2e/branches/test_branch_details.py
+  s_d52982193a4de3::t_870be50d303b79 6-11,22-23,33-34,39-46,190-264
+backend/AGENTS.md
+  s_d52982193a4de3::t_870be50d303b79 33-34,44-45,47-49,51,72-75,85,106-112,146
+backend/infrahub/core/diff/coordinator.py
+  s_d52982193a4de3::t_870be50d303b79 9,484-513,517,519,527,570,580
+.agents/skills/creating-changelog-entries/SKILL.md
+  s_d52982193a4de3::t_870be50d303b79 27-31
+changelog/+diff-update-result-overhead.fixed.md
+  s_d52982193a4de3::t_870be50d303b79 1
+backend/infrahub/core/diff/repository/repository.py
+  s_d52982193a4de3::t_870be50d303b79 1-2,51-56,285-306,308,317-353,419-422
+AGENTS.md
+  s_d52982193a4de3::t_870be50d303b79 138,140,143,169,175,209
+backend/tests/helpers/db_query_failer.py
+  s_d52982193a4de3::t_870be50d303b79 1-54
+backend/tests/unit/core/test_attribute.py
+  s_d52982193a4de3::t_870be50d303b79 2,6,11,132-165
+.github/workflows/ci-docker-image.yml
+  s_d52982193a4de3::t_870be50d303b79 99,111,156
+backend/infrahub/core/query/node_agnostic_retirement.py
+  s_d52982193a4de3::t_870be50d303b79 78-123
+changelog/+transform-data-input-walk.fixed.md
+  s_d52982193a4de3::t_870be50d303b79 1
+dev/guidelines/backend/testing.md
+  s_d52982193a4de3::t_870be50d303b79 17,31,58-59,62-86,243-244,246-247,384,444-445,460,465-466
+dev/guidelines/documentation.md
+  s_d52982193a4de3::t_870be50d303b79 3,102,124-125
+dev/knowledge/backend/database-schema.md
+  s_d52982193a4de3::t_870be50d303b79 304-305
+dev/knowledge/backend/tls.md
+  s_d52982193a4de3::t_870be50d303b79 15-16,47,49,71-75
+docs/redirects-pending/learn-labs.yml
+  s_d52982193a4de3::t_870be50d303b79 1-21
+frontend/app/src/entities/diff/ui/file-diff/file-content-diff.tsx
+  s_d52982193a4de3::t_870be50d303b79 3-6,8,11,14,16-17,20-21,321,328-333,335-336
+.agents/skills/harvesting-review/SKILL.md
+  s_d52982193a4de3::t_870be50d303b79 183,317
+backend/infrahub/webhook/models.py
+  s_d52982193a4de3::t_870be50d303b79 14,417
+backend/infrahub/core/diff/query_parser.py
+  s_d52982193a4de3::t_870be50d303b79 331,356,539-545,552-559,618
+changelog/+no-shedding-page-loads.fixed.md
+  s_d52982193a4de3::t_870be50d303b79 1
+.github/workflows/push-bench-image.yml
+  s_d52982193a4de3::t_870be50d303b79 27,47,86
+changelog/6938.fixed.md
+  s_d52982193a4de3::t_870be50d303b79 1
+docs/docs/release-notes/infrahub/release-1_11_3.mdx
+  s_d52982193a4de3::t_870be50d303b79 1-60
+frontend/app/AGENTS.md
+  s_d52982193a4de3::t_870be50d303b79 57,59-62
+backend/tests/component/core/constraint_validators/test_node_uniqueness.py
+  s_d52982193a4de3::t_870be50d303b79 1-2,7,12,15-17,142-179
+frontend/app/src/unidiff.d.ts
+  s_d52982193a4de3::t_870be50d303b79 1-8
+backend/tests/component/core/diff/diff_calculator/test_base_scope.py
+  s_d52982193a4de3::t_870be50d303b79 1-55
+backend/infrahub/api/admission/middleware.py
+  s_d52982193a4de3::t_870be50d303b79 30-31,46-48,92-97,135-148
+  s_d52982193a4de3::t_3b86062deb1e3b 149-150
+changelog/+diff-base-relationship-removal-before-window.fixed.md
+  s_d52982193a4de3::t_870be50d303b79 1
+docs/docs/deploy-manage/install-configure/install/community.mdx
+  s_d52982193a4de3::t_870be50d303b79 192,198,201-202,205-238,243,249,314-321
+.agents/rules/backend-component-design.md
+  s_d52982193a4de3::t_870be50d303b79 11-23
+dev/specs/ifc-2843-retire-agnostic-edges/research.md
+  s_d52982193a4de3::t_870be50d303b79 88-89,125-135,498
+dev/guidelines/backend/prefect-payloads.md
+  s_d52982193a4de3::t_870be50d303b79 1-61
+.agents/rules/code-doc-style.md
+  s_d52982193a4de3::t_870be50d303b79 5-9,11
+.github/workflows/issue-triage-labeler.lock.yml
+  s_d52982193a4de3::t_2939b046d11c73 166,1180
+.github/workflows/issue-triage-sweep.lock.yml
+  s_d52982193a4de3::t_1bb265d20e74cb 163,1166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "088b45d1f8699997f7b16cbae30435dae9123353",
+  "prompts": {},
+  "sessions": {
+    "s_d52982193a4de3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56f21911-e56e-4ea4-a675-cca05f6cbad4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

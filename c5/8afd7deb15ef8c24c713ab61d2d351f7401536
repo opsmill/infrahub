@@ -1,0 +1,60 @@
+backend/infrahub/core/migrations/graph/missing_attribute_rows/migration_base.py
+  s_8503d8e93620b6::t_689048be0e2b7b 1-108
+backend/tests/component/core/migrations/graph/m082_heal_missing_number_pool_rows/test_number_pool.py
+  s_8503d8e93620b6::t_2048f8891ee341 12,89,103,186,216,297,333-398
+  s_8503d8e93620b6::t_a88983d532eb59 16
+  s_8503d8e93620b6::t_9466a166105e74 23
+backend/tests/component/core/migrations/graph/m076_heal_missing_attribute_rows/test_default_branch.py
+  s_8503d8e93620b6::t_9466a166105e74 20
+backend/infrahub/core/migrations/graph/m082_heal_missing_number_pool_rows/migration.py
+  s_8503d8e93620b6::t_8073785eb4c8e9 6-7,14
+  s_8503d8e93620b6::t_cd8f5f53fd0d3a 8-9,18,28,38-40
+  s_8503d8e93620b6::t_9466a166105e74 42
+  s_8503d8e93620b6::t_1783694d95bd58 1-5,10-13,15-17,19-27,29-37,41
+backend/infrahub/core/migrations/graph/missing_attribute_rows/healer.py
+  s_8503d8e93620b6::t_5578df67df6c09 1-183,185-201,203-223,225-279
+  h_7ec9b28dd2a5ab 184,202,224
+backend/tests/component/core/migrations/graph/m076_heal_missing_attribute_rows/test_branches.py
+  s_8503d8e93620b6::t_9466a166105e74 17
+backend/infrahub/core/migrations/graph/m076_heal_missing_attribute_rows/migration.py
+  s_8503d8e93620b6::t_270ab5e2000f46 9,20-22,24-25
+  s_8503d8e93620b6::t_452a879923db2b 15,26,36-37
+  s_8503d8e93620b6::t_8073785eb4c8e9 5-6,11
+  s_8503d8e93620b6::t_7a8a5852487b1f 12
+backend/infrahub/core/migrations/graph/m082_heal_missing_number_pool_rows/__init__.py
+  s_8503d8e93620b6::t_20574e5485f0ea 1-3
+backend/infrahub/core/migrations/graph/missing_attribute_rows/repairers.py
+  s_8503d8e93620b6::t_bda080327f979e 1-169
+backend/infrahub/core/graph/__init__.py
+  s_8503d8e93620b6::t_dccd9dc65fdc16 1
+backend/tests/component/core/migrations/graph/m076_heal_missing_attribute_rows/test_detection.py
+  s_8503d8e93620b6::t_2048f8891ee341 8
+  s_8503d8e93620b6::t_9466a166105e74 11
+backend/tests/component/core/migrations/graph/m076_heal_missing_attribute_rows/conftest.py
+  s_8503d8e93620b6::t_45031d7522e365 5,8
+backend/tests/component/core/migrations/graph/m080_number_pool_ranges/test_migration.py
+  s_8503d8e93620b6::t_e50e8219af3451 19
+backend/tests/helpers/attribute_rows.py
+  s_8503d8e93620b6::t_56b7d19cb93c25 1-348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c58afd7deb15ef8c24c713ab61d2d351f7401536",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_8503d8e93620b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae33603c-acc2-472a-b0a8-12a5d9248fe8",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

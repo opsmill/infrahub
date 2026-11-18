@@ -1,0 +1,21 @@
+.github/workflows/dependabot-autopilot-analyze.lock.yml
+  s_43d8e382eba497::t_f24273239406e6 1-1764
+.github/workflows/dependabot-autopilot-analyze.md
+  s_43d8e382eba497::t_cacac3a3a13772 1-163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "77788b335bf0357d9f8837690f307576e9387e4f",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

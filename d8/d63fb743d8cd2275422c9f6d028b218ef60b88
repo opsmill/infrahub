@@ -1,0 +1,19 @@
+backend/tests/component/core/migrations/graph/m080_number_pool_ranges/test_migration.py
+  s_849d53d45b72cc::t_b54abf95d0675f 114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d8d63fb743d8cd2275422c9f6d028b218ef60b88",
+  "prompts": {},
+  "sessions": {
+    "s_849d53d45b72cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33e8b1a5-ca5e-459e-81c0-5c7a3ca4db19",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+.github/scripts/dependabot_autopilot/report.py
+  s_43d8e382eba497::t_ae87ed56a76ffb 1-265
+.github/scripts/dependabot_autopilot/tests/test_report.py
+  s_43d8e382eba497::t_813f3436296271 1-260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "04570798599f4c7757f03b8351cf5d76afc22c77",
+  "prompts": {},
+  "sessions": {
+    "s_43d8e382eba497": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d288a0bb-7df4-4ee1-b88a-fe98a898883d",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

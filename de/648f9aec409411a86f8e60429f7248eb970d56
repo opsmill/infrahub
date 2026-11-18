@@ -1,0 +1,19 @@
+backend/infrahub/core/migrations/graph/m080_number_pool_ranges/migration.py
+  s_0d92a50dcb5402::t_7943975bce96a3 41-42,46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de648f9aec409411a86f8e60429f7248eb970d56",
+  "prompts": {},
+  "sessions": {
+    "s_0d92a50dcb5402": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fbecb5ab-e110-4f7f-88ed-b15c0a72cad0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

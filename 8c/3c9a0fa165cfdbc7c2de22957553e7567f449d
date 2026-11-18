@@ -1,0 +1,19 @@
+changelog/10719.fixed.md
+  s_943a848a58bfba::t_94b0fc851213e4 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8c3c9a0fa165cfdbc7c2de22957553e7567f449d",
+  "prompts": {},
+  "sessions": {
+    "s_943a848a58bfba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e018b55-d978-47ae-b33b-2a3425d3caa6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}

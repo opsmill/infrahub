@@ -1,0 +1,19 @@
+dev/specs/archive/infp-556-auto-create-groups/contracts/events.md
+  s_4ddbf968377247::t_46332bc373215e 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d04c96a09d7152e094e998a674330c54d50b060d",
+  "prompts": {},
+  "sessions": {
+    "s_4ddbf968377247": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "849dbee9-89d4-409c-b636-f853557ba577",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

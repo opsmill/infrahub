@@ -1,0 +1,21 @@
+dev/knowledge/backend/async-tasks.md
+  s_b134b1501718e5::t_0bf7ff3c2a1780 449-452
+dev/adr/0021-resource-allocation-telemetry.md
+  s_b134b1501718e5::t_512899aa482e62 69-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4f0709a054389274ce44504e5d1d4292c3617baa",
+  "prompts": {},
+  "sessions": {
+    "s_b134b1501718e5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94683ba3-7a9a-45ea-9335-07384e00b903",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

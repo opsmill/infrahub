@@ -1,0 +1,19 @@
+python_sdk
+  s_cd4a2edbf12382::t_203ff230b7e9cf 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "049e73ff01df4e64f822cc8ef8420745e9ba42fd",
+  "prompts": {},
+  "sessions": {
+    "s_cd4a2edbf12382": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ce0cb49-e396-4200-916d-01f7c39a1bb0",
+        "model": "unknown"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

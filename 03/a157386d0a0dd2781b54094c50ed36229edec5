@@ -1,0 +1,80 @@
+frontend/app/src/entities/resource-manager/domain/model/number-pool.ts
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 21,25,35
+  s_f4804ce89d1616::t_e636de23ab0af1 26,30,37
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-divisions-list.test.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 133-134,136-143,147-154,156-158
+  s_f9d981cbf05479::t_6f1a8ee2b33af0 155
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-usage-bar.test.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 41,43,50-51,53-54,56-57,92
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-usage-bar.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 20-23
+frontend/app/src/entities/resource-manager/domain/rules/sort-ranges-by-fill-order.test.ts
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 55-58,61-66,68-69,71-72
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-edit-form.test.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 111-148
+frontend/app/src/entities/resource-manager/api/number-pool.mappers.test.ts
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 122,124-144
+frontend/app/src/entities/resource-manager/api/number-pool.mappers.ts
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 35-36,38-39,43
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-ranges-input.test.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 13,45-71,182-188,222-230,232-237,239-240,271-286,288,290
+  s_f4804ce89d1616::t_54b6880696f5f1 287,289
+frontend/app/src/entities/resource-manager/ui/number-pool/form/number-pool-ranges-input.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 17-18,25-32,38-40,48-51,54-56,65-66,85-87,120-121,124,130-131,134
+frontend/app/src/entities/resource-manager/api/number-pool-utilization.mappers.ts
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 28
+frontend/app/src/entities/resource-manager/api/get-number-pool-utilization-from-api.ts
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 18
+frontend/app/tests/fake/number-pool.ts
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 39,55
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-ranges-card.test.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 12-13,15-16,64-65,70,72-73,76-79,81-86,103
+  s_f4804ce89d1616::t_1ab0afe2906f3f 14
+  s_f4804ce89d1616::t_8d60b50529b6b9 74-75
+frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts
+  s_f4804ce89d1616::t_4cf249a149fede 189-190
+frontend/app/src/entities/resource-manager/api/number-pool-utilization.mappers.test.ts
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 15,19-21,23,25-28
+  s_f4804ce89d1616::t_e3b18012352a66 22,24,41,43,50-52,54-60,62-68,70-91
+  s_f4804ce89d1616::t_e9f46d328c6fa3 92-93
+frontend/app/src/pages/resource-manager/number-pool-details.test.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 189,313
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-allocations-table.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 150,270
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-allocations-table.test.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 110,262
+frontend/app/src/entities/resource-manager/ui/number-pool/details/number-pool-ranges-card.tsx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 46
+changelog/+ifc-3365-number-pool-form.changed.md
+  s_f4804ce89d1616::t_d05cfb56b137f9 1
+docs/docs/schema/number-pool.mdx
+  s_f4804ce89d1616::t_720cb0555089a3 116
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 17,43-45,95-115,117-120,129,162-164
+docs/docs/resource-manager/allocate-number.mdx
+  s_f4804ce89d1616::t_7b1ff5be15c1d9 44-47,61,127-145
+  s_f4804ce89d1616::t_b0f78ebeebda44 146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "03a157386d0a0dd2781b54094c50ed36229edec5",
+  "prompts": {},
+  "sessions": {
+    "s_f4804ce89d1616": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3055b56a-6f63-4403-9864-1ac7a9372a6a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_f9d981cbf05479": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b33e4e2-d0e1-4ffc-b7c6-f07dfe57f803",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+backend/tests/integration/workers/test_infrahubasync.py
+  s_1df8eb94da3d51::t_93ce16527e79ef 3,15,144-150,155,160,167
+  s_1df8eb94da3d51::t_61a2a7c103bce5 161-166
+backend/tests/helpers/log.py
+  s_1df8eb94da3d51::t_93ce16527e79ef 41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5bbe9df8aa41350353cdc819968f89b5947af3b9",
+  "prompts": {},
+  "sessions": {
+    "s_1df8eb94da3d51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6a82980-5a58-459a-a19c-297b9025dff8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

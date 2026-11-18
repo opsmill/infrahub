@@ -1,0 +1,22 @@
+backend/tests/unit/core/test_model_hashable.py
+  s_04e9c61d1d4032::t_97c95280f966f9 344-351
+backend/infrahub/core/models.py
+  s_04e9c61d1d4032::t_a988e0d7655b31 459,461
+  s_04e9c61d1d4032::t_ea68e5115a9b74 460
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "41e9ceed7422f0e58902ea8a483cd53468222cbb",
+  "prompts": {},
+  "sessions": {
+    "s_04e9c61d1d4032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cd7a867-c728-45f2-af2b-cf1bc4f2f88a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

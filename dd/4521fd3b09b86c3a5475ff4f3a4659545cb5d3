@@ -1,0 +1,24 @@
+backend/infrahub/core/migrations/schema/node_attribute_add.py
+  s_04e9c61d1d4032::t_54b932f020385c 91
+  s_04e9c61d1d4032::t_47a27fbc99b313 92
+backend/tests/component/core/migrations/schema/test_node_attribute_add.py
+  s_04e9c61d1d4032::t_240e03397c439c 1097-1140,1147,1149-1151,1153-1160,1162-1167,1169-1172,1175,1181,1195,1197,1199-1203,1205,1212-1215
+  s_04e9c61d1d4032::t_4ac8c54dadc034 56,1174,1176-1180,1182-1183,1185-1187,1190,1192-1194,1206-1207,1209-1211
+  s_04e9c61d1d4032::t_0376738f3b109e 1184,1188-1189,1208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dd4521fd3b09b86c3a5475ff4f3a4659545cb5d3",
+  "prompts": {},
+  "sessions": {
+    "s_04e9c61d1d4032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cd7a867-c728-45f2-af2b-cf1bc4f2f88a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

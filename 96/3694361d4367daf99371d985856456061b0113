@@ -1,0 +1,19 @@
+backend/tests/component/pools/test_number_pool_repository.py
+  s_d14ee8e09be48f::t_19b2966f702408 254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "963694361d4367daf99371d985856456061b0113",
+  "prompts": {},
+  "sessions": {
+    "s_d14ee8e09be48f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46741e2b-7bb3-43bf-b1c3-55d952eeba48",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

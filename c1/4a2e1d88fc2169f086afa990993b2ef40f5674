@@ -1,0 +1,21 @@
+backend/infrahub/core/query/resource_manager.py
+  s_1b659ceedf2b91::t_2b85704f4c2977 8,333,335
+  s_1b659ceedf2b91::t_55dda9e4cf7b60 334,336
+  s_1b659ceedf2b91::t_672eb3fded930e 337
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c14a2e1d88fc2169f086afa990993b2ef40f5674",
+  "prompts": {},
+  "sessions": {
+    "s_1b659ceedf2b91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41971668-9608-4279-954f-681ac371c4e7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+.github/workflows/sync-pr-resolve-conflicts.md
+  s_f9f34a44a3a084::t_aa4311509a3d7e 1-64,67,70-118,123-128,133-145,151-152
+  s_f9f34a44a3a084::t_08dd647b9df359 119-122,129-132,146-150
+  s_f9f34a44a3a084::t_e6f72056ab9649 65-66,68-69
+.github/workflows/sync-pr-resolve-conflicts.lock.yml
+  s_f9f34a44a3a084::t_a32e7a2162fa27 1-1831
+dev/specs/sync-pr-automation/tasks.md
+  s_f9f34a44a3a084::t_8983c9f455f6fa 253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc2096f5ab77bb366658989dc2270bdeac5d08b9",
+  "prompts": {},
+  "sessions": {
+    "s_f9f34a44a3a084": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50b9befc-1389-4d4c-99f9-321b275b2173",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

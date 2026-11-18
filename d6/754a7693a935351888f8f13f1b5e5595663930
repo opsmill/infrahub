@@ -1,0 +1,30 @@
+dev/specs/ifc-999999-format-smoke-greeting/opsmill-implement-report.md
+  s_7d4e8346d5abcf::t_41e09ac3ee343c 23-24
+  s_7d4e8346d5abcf::t_1730c5963cba1e 4
+  s_611b7f4190b749::t_bab7c1d864d32d 5,12,43-44,49-50
+  s_7d4e8346d5abcf::t_838a7dc7ab2a58 1-3,6-11,13-22,25-42,45-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6754a7693a935351888f8f13f1b5e5595663930",
+  "prompts": {},
+  "sessions": {
+    "s_611b7f4190b749": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ab64-b30a-7661-92af-ce83fd1d3c5e",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_7d4e8346d5abcf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ac85-a8f2-7ae0-af05-05d46532f327",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

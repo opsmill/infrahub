@@ -1,0 +1,58 @@
+backend/infrahub/core/validators/renamed_kinds.py
+  s_3f87105f1bb54d::t_44bb1bd8f5feec 1-35
+backend/infrahub/core/validators/node/hierarchy.py
+  s_3f87105f1bb54d::t_aa18f60ddbb4e2 10,25-26,31-32,44-45,50-51,104-105,155-157,159-160,169-172
+  s_3f87105f1bb54d::t_892a8da9f2154b 136-137
+  s_3f87105f1bb54d::t_8564c437dba75e 173-174
+backend/infrahub/core/validators/attribute/min_max.py
+  s_3f87105f1bb54d::t_736356d6735883 81-82
+backend/tests/component/core/constraint_validators/test_determiner.py
+  s_3f87105f1bb54d::t_7e6a5dab1a20eb 19-20,401,409-411,417-418
+backend/tests/integration/schema_lifecycle/test_schema_validator_stored_data.py
+  s_3f87105f1bb54d::t_8cc99eb251b416 295,301-305
+  s_3f87105f1bb54d::t_e4e79cca8dd582 289-294,296-300,306-309
+backend/tests/component/core/constraint_validators/test_relationship_peer_update.py
+  s_3f87105f1bb54d::t_98cfa1331b639e 137,189,212,240,282,316,372,406,463
+  s_3f87105f1bb54d::t_78215662f43cf4 133-136,185-188,208-211,236-239,278-281,312-315,368-371,402-405,459-462,490
+  s_3f87105f1bb54d::t_8c5a6b19de0901 8,521-523,525-541
+  s_3f87105f1bb54d::t_35c2946ba93c9a 542-551,560,564-569,571-572,574-592,594-611
+  s_3f87105f1bb54d::t_2aa2904bb0e401 12,524,552-559,561-563,570,573,593,612,614-615,620-647
+  s_3f87105f1bb54d::t_3fcfa0865b0491 613,616-619
+backend/tests/component/conftest.py
+  s_3f87105f1bb54d::t_63b911c0c47342 2123,2186-2190,2215-2218,2222
+  s_3f87105f1bb54d::t_35c2946ba93c9a 2219-2221
+  s_3f87105f1bb54d::t_10a95121f9d1a3 2223-2224
+backend/infrahub/core/validators/relationship/peer.py
+  s_3f87105f1bb54d::t_c2a9db1e27d4c6 105-106
+  s_3f87105f1bb54d::t_44bb1bd8f5feec 11,129
+  s_3f87105f1bb54d::t_98cfa1331b639e 25-26,34,119,125-128,133,142
+  s_3f87105f1bb54d::t_22a2adf188f9b5 27,120-124,138-141
+  s_3f87105f1bb54d::t_cf330106d2391f 29,130
+backend/tests/component/core/constraint_validators/test_node_hierarchy_update.py
+  s_3f87105f1bb54d::t_638a35d73d0c8f 74-80,97-103,123-129,193-199,270-276,358-364,421,448,473,500
+  s_3f87105f1bb54d::t_35c2946ba93c9a 530-540,544-584
+  s_3f87105f1bb54d::t_3fcfa0865b0491 586,593-596
+  s_3f87105f1bb54d::t_2aa2904bb0e401 512,541-543,585,587-592,597-622
+  s_3f87105f1bb54d::t_8c5a6b19de0901 6,509-511,513-529
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8a17ed4807f049ca592fcc012fee25d60534fc44",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_3f87105f1bb54d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "630f8558-8e40-4fb7-9f40-2f7571d1fcc8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

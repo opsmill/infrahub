@@ -1,0 +1,80 @@
+backend/infrahub/prefect_server/task_history.py
+  s_cfd0841cea4d76::t_2670e1763f458a 23,31,33
+  s_cfd0841cea4d76::t_79fe727235b2d2 449-450
+  s_cfd0841cea4d76::t_2447d723050dbf 291-292,294-295,301-316
+  s_cfd0841cea4d76::t_60ba9934b0c3c7 489-498
+  s_cfd0841cea4d76::t_0eb03cad9fc59a 155-160,164-165,168-169,173-183,187-194,197,201-204,206,208-209,220-223,225-235,244
+  s_cfd0841cea4d76::t_c8c9305d86e735 296-298
+  s_cfd0841cea4d76::t_bca4b5eab98955 32,214-215,217-218
+  s_cfd0841cea4d76::t_9dcbaf2fb892c7 219
+backend/tests/component/task_manager/test_task_history_cleanup.py
+  s_cfd0841cea4d76::t_a40d7a5b6a7a75 128-132,138-139,141-142,149,152-164,172-177,181,184-188,193,196-197,199-200,208,211,215,223-231,235
+backend/tests/helpers/task_history_api.py
+  s_cfd0841cea4d76::t_3c1b891ad7596a 14,35-36
+dev/specs/infp-507-task-history-retention/spec.md
+  s_cfd0841cea4d76::t_fda83dc8952bb3 227
+  s_cfd0841cea4d76::t_d3c3d8982a5540 28,32,36-37,39,41,102-106,108-109,111,138,140,142-144,174-175,183,192,206,215,219-226,228,234,240,243
+dev/specs/infp-507-task-history-retention/tasks.md
+  s_cfd0841cea4d76::t_f807be1eab0664 45,53,59,61-65,72,152,159
+dev/specs/infp-507-task-history-retention/contracts/cli.md
+  s_cfd0841cea4d76::t_c7c5bcbd26c09e 10,12,14-15,34-37
+backend/infrahub/cli/upgrade.py
+  s_cfd0841cea4d76::t_1d85383cfe7305 47,164,177,181,188,192,198,200-201,203
+dev/specs/infp-507-task-history-retention/plan.md
+  s_cfd0841cea4d76::t_a623e0a2971008 11,92,115,142,153,160
+  s_cfd0841cea4d76::t_f807be1eab0664 147
+dev/specs/infp-507-task-history-retention/quickstart.md
+  s_cfd0841cea4d76::t_4112b6d128e5ff 15-17,20
+  s_cfd0841cea4d76::t_f7a718add4832f 41
+backend/tests/component/task_manager/test_task_history_routes.py
+  s_cfd0841cea4d76::t_1e69eb60b8c5f0 41,45-53,143-144,152,154,166-167,169,175,179-180,182,184-185,189,191,196-198,201,204,206-207,213,217-220,250,252,284,289,299,305-306,311-320
+backend/infrahub/cli/tasks.py
+  s_cfd0841cea4d76::t_cbf599586c8812 13,24,47,99-100,103-108,111-114,117,123,129-132,134-135,137-138,141,144,155-163,165-171,177-181,183,195-196
+  s_cfd0841cea4d76::t_34b21eae207fcc 3,48-49,102
+  s_cfd0841cea4d76::t_457cf5fda289db 96-98,101
+dev/specs/infp-507-task-history-retention/research.md
+  s_cfd0841cea4d76::t_4112b6d128e5ff 35-40,42,45-46,66
+backend/tests/unit/cli/test_upgrade_task_history.py
+  s_cfd0841cea4d76::t_457cf5fda289db 4,8,12-13,15-16,18-19,27,31,37-40,44-45,47-53,57-117
+backend/infrahub/task_manager/flow_run/cleanup.py
+  s_cfd0841cea4d76::t_34b21eae207fcc 14,23,134-143
+  s_cfd0841cea4d76::t_6b5e9d25f219bc 144-145
+backend/tests/integration_docker/test_task_history_cleanup.py
+  s_cfd0841cea4d76::t_2f461059a50489 22,34-38,66-67,76,79,81,88-89,98-127,187,189,191,201-207,237-241,245-275,339-353,358,365,371,375,377,382,384-388,391,393,396-398,414-416,419,422-425
+  s_cfd0841cea4d76::t_0ec90d9c074dc6 395
+dev/specs/infp-507-task-history-retention/data-model.md
+  s_cfd0841cea4d76::t_2c1a24eb257ac4 49,53-55,59,62-70
+dev/specs/infp-507-task-history-retention/contracts/task-manager-api.md
+  s_cfd0841cea4d76::t_ed398e556d4239 13,18,21,30-33,37-46
+  s_cfd0841cea4d76::t_2e5dab58d4a818 47
+changelog/+flush-flow-runs.changed.md
+  s_cfd0841cea4d76::t_9ca9faf382b3b3 1
+changelog/+task-manager-retention.added.md
+  s_cfd0841cea4d76::t_9ca9faf382b3b3 5
+backend/infrahub/prefect_server/task_history_models.py
+  s_cfd0841cea4d76::t_e9272a6281415f 15,19,38,46,52-53,56-61,67-72
+backend/tests/unit/cli/test_tasks_flush_flow_runs.py
+  s_cfd0841cea4d76::t_bda6977f26fb61 131
+  s_cfd0841cea4d76::t_3c1b891ad7596a 44,50-51,65,67,69,83,89-90,94-95,98-100,102,104-106,123-126,130,132-142,144,154,184,229-230,232,239-240,242,245,247-248,250-255,267,269,271-272,287,299
+backend/tests/adapters/task_history.py
+  s_cfd0841cea4d76::t_7bfe69035d10ea 34,70
+  s_cfd0841cea4d76::t_891b88b6702618 11,13,16-18,20-21,26-29,32,35-36,38-40,63-66,73
+backend/tests/unit/task_manager/flow_run/test_cleanup.py
+  s_cfd0841cea4d76::t_b3138a90e42413 89,92,107,123,189,191,193,206,214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "43accf1147f05f1f03391a8ec046f9de6e3d111a",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

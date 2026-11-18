@@ -1,0 +1,23 @@
+backend/tests/component/conftest.py
+  s_4e7f701e8c4e49::t_5c6cb9c6dabcc3 135-138
+backend/tests/functional/conftest.py
+  s_4e7f701e8c4e49::t_7de21cf3125394 1,12-15
+backend/tests/integration/conftest.py
+  s_4e7f701e8c4e49::t_2b650eb16cbce1 121-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "01e51346fa3d4c143d085d24ae5d3f34e0f167c2",
+  "prompts": {},
+  "sessions": {
+    "s_4e7f701e8c4e49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9386701a-7e1e-47e7-8072-02959e13c3a7",
+        "model": "unknown"
+      },
+      "human_author": "Fatih Acar <fatih@opsmill.com>"
+    }
+  }
+}

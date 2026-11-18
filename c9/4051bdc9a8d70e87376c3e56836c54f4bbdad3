@@ -1,0 +1,33 @@
+backend/tests/unit/pools/test_number_pool_lookup.py
+  s_19d862ad1ee813::t_a3883927559cb8 15-16
+  s_19d862ad1ee813::t_bcc0d0c29f6a6d 73
+backend/tests/unit/pools/helpers.py
+  s_19d862ad1ee813::t_cb979fe504fce1 20-22
+  s_19d862ad1ee813::t_d472ed97b941d0 1-19,23-35
+backend/infrahub/pools/attribute_pool_applier.py
+  s_19d862ad1ee813::t_a3883927559cb8 13,17,28
+backend/tests/unit/pools/test_attribute_pool_applier.py
+  s_19d862ad1ee813::t_a3883927559cb8 18-19,22,31,53
+  s_19d862ad1ee813::t_b64134d3a6d0f3 60-61,82-88,100,105-106,116,127,147,153,156,188,200
+backend/infrahub/pools/number_pool_attribute_allocator.py
+  s_19d862ad1ee813::t_cb979fe504fce1 11
+  s_19d862ad1ee813::t_a3883927559cb8 36
+backend/infrahub/pools/number_pool_lookup.py
+  s_19d862ad1ee813::t_5765142d1b5bb5 22,26,36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c94051bdc9a8d70e87376c3e56836c54f4bbdad3",
+  "prompts": {},
+  "sessions": {
+    "s_19d862ad1ee813": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e358822-026e-4e6f-b17b-43375764d869",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

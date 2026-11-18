@@ -1,0 +1,19 @@
+docs/docs/git-integration/connect-repository.mdx
+  s_bf22b52c194546::t_38f44138f87a23 416
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ac15ce5ebb57ced90bca8b2db374c12195b431cf",
+  "prompts": {},
+  "sessions": {
+    "s_bf22b52c194546": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27b65c4c-e855-4360-9c0e-6521b8efb461",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

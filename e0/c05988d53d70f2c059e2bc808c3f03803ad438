@@ -1,0 +1,19 @@
+dev/specs/005-user-greeting/critiques/critique-2026-11-06.md
+  s_4a76b7eb5788e6::t_bfc32608075003 1-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e0c05988d53d70f2c059e2bc808c3f03803ad438",
+  "prompts": {},
+  "sessions": {
+    "s_4a76b7eb5788e6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1b0eb-5c40-79c0-b93c-01fd910c0d75",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

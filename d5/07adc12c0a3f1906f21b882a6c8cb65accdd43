@@ -1,0 +1,37 @@
+dev/specs/artifact-regeneration-poc/results.md
+  s_6947b4d8b10fbd::t_b380af3f709656 89-96
+  s_6947b4d8b10fbd::t_260aa78ce7c3c9 387-434,436,444,448-461,467,470-472,475-496,514-520,525-533,536-545,549-617
+  s_6947b4d8b10fbd::t_8f17817bc66f83 226-230
+  s_6947b4d8b10fbd::t_14cb6e9a38d50b 462-466
+  s_6947b4d8b10fbd::t_351c1b3c03bdfa 618-629
+  s_6947b4d8b10fbd::t_bbb00f3a8fe196 497-513
+  s_6947b4d8b10fbd::t_d47bd2696c0c38 468-469
+  s_6947b4d8b10fbd::t_47bbcf1c6296da 23-25
+  s_6947b4d8b10fbd::t_02a093a0e25619 26,34-37
+  s_6947b4d8b10fbd::t_410035ad50ddff 435,437-443,445-447
+  s_6947b4d8b10fbd::t_4344ffaf90c8fd 473-474
+  s_6947b4d8b10fbd::t_9485723f3d07d6 119-123
+  s_6947b4d8b10fbd::t_197b703bd82b16 521-524
+  s_6947b4d8b10fbd::t_6ccdaaf01776fb 534-535
+  s_6947b4d8b10fbd::t_d46355282adc8c 546-548
+  s_6947b4d8b10fbd::t_f4d63b2bec0339 384-385
+  s_6947b4d8b10fbd::t_eb6b0351eb24f6 386
+dev/specs/artifact-regeneration-poc/tasks.md
+  s_6947b4d8b10fbd::t_1fc5d027863272 282
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d507adc12c0a3f1906f21b882a6c8cb65accdd43",
+  "prompts": {},
+  "sessions": {
+    "s_6947b4d8b10fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f330e4e0-d1ab-40fa-9661-f23fc609aa20",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

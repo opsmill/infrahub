@@ -1,0 +1,29 @@
+backend/infrahub/branch/tasks.py
+  s_2fae1787d146ee::t_990c76f42fbaf1 39
+backend/tests/unit/task_manager/flow_run/test_branch_cleanup.py
+  s_2fae1787d146ee::t_59a6a1faba441f 176-183
+backend/tests/component/branch/test_purge_deleted_branch_tasks.py
+  s_2fae1787d146ee::t_e2888c5283fa16 38,41,47-54
+  s_2fae1787d146ee::t_0ae3acd90a37c4 28
+dev/knowledge/backend/async-tasks.md
+  s_2fae1787d146ee::t_69d0b5dbd744a5 211
+  s_2fae1787d146ee::t_ec2cbff122dba4 195
+backend/infrahub/task_manager/flow_run/branch_cleanup.py
+  s_2fae1787d146ee::t_b455fe701e3f52 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6a604ec4335f47ba3fc22b526919b06cf65343a3",
+  "prompts": {},
+  "sessions": {
+    "s_2fae1787d146ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c38a01a-cf7a-4707-9e40-59d796ec98f5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}

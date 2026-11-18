@@ -1,0 +1,21 @@
+backend/infrahub/core/changelog/relationship_getter.py
+  s_d9c9cfeacbdf92::t_0ce25fc7982024 139-140
+backend/tests/unit/core/changelog/test_relationship_getter.py
+  s_d9c9cfeacbdf92::t_eaf27dacc9064a 10,84-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d2b33b9dc66e7084da8154f9ab58a3be0af35c33",
+  "prompts": {},
+  "sessions": {
+    "s_d9c9cfeacbdf92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc6df814-10d0-4c40-aaf4-3a9b7ae558a9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

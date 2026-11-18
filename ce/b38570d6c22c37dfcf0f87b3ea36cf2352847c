@@ -1,0 +1,25 @@
+backend/tests/component/core/resource_manager/conftest.py
+  s_0e6589ba6b4589::t_151728ff1f2720 113
+  s_0e6589ba6b4589::t_a99d11dfc5121b 116-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ceb38570d6c22c37dfcf0f87b3ea36cf2352847c",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_0e6589ba6b4589": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1057a2bb-95a9-4b87-a22a-785993e193b1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

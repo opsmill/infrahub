@@ -1,0 +1,37 @@
+backend/infrahub/core/validators/pool/scope.py
+  s_9a65b7e7908928::t_4e912ba6da77f6 3-136,138-157,160-163,165-166,168-281
+  s_9a65b7e7908928::t_c8214a3513be98 137,158-159,164,167
+  s_9a65b7e7908928::t_04480a9a49cdf0 1-2
+backend/tests/unit/core/validators/number_pool_scope/test_accepted_changes.py
+  s_9a65b7e7908928::t_7e084e30a73dd0 16-88,91,95-97,100,103-106,109-111,115-116,124,142,145,147-148,153-154,160,166
+  s_9a65b7e7908928::t_c313d42d5be19c 1-15,89-90,92-94,98-99,101-102,107-108,112-114,117-123,125-141,143-144,146,149-152,155-159,161-165,167-210
+backend/tests/unit/core/validators/number_pool_scope/test_refused_changes.py
+  s_9a65b7e7908928::t_7e084e30a73dd0 38-66,156,161,178,183,250,254
+  s_9a65b7e7908928::t_38f8c644dbdfdf 1-37,67-155,157-160,162-177,179-182,184-249,251-253,255-281
+backend/infrahub/core/validators/enum.py
+  s_9a65b7e7908928::t_389a22b12dcb2c 14
+backend/tests/unit/core/validators/number_pool_scope/helpers.py
+  s_9a65b7e7908928::t_e07f3806a7f19e 1-242
+backend/tests/unit/core/validators/number_pool_scope/test_candidate_on_destination.py
+  s_9a65b7e7908928::t_22346b2fb0b8c8 1-59
+backend/tests/unit/core/validators/number_pool_scope/test_supported_constraints.py
+  s_9a65b7e7908928::t_ca161177bd7f1e 1-77
+backend/tests/unit/core/validators/number_pool_scope/test_unloaded_branch.py
+  s_9a65b7e7908928::t_d3dca57b619f65 1-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1cf5360eee2ad3fa1f8c13f3095f456b3a3ee5ff",
+  "prompts": {},
+  "sessions": {
+    "s_9a65b7e7908928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "60976836-eea3-41a5-9ac8-f10bf4fbc0fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

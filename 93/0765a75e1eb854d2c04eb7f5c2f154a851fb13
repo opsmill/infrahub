@@ -1,0 +1,25 @@
+frontend/app/src/entities/schema/ui/field-schema-icon.tsx
+  bf331ef3bb1997ab 30
+schema/schema.graphql
+  bf331ef3bb1997ab 10735-10757
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.3",
+  "base_commit_sha": "930765a75e1eb854d2c04eb7f5c2f154a851fb13",
+  "prompts": {
+    "bf331ef3bb1997ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b38a521-5e78-4977-b5d4-467f30c10107",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 24,
+      "total_deletions": 0,
+      "accepted_lines": 24,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -1,0 +1,14 @@
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_update.py
+  h_bd00275aefc321 298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "132689dabe92efa189f1607159bc3a6c75c4f485",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

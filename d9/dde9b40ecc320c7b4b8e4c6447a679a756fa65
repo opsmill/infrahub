@@ -1,0 +1,25 @@
+backend/infrahub/core/changelog/builder.py
+  s_9fb2844a4c70ac::t_b8ef279a46e7ce 40-41
+backend/infrahub/core/merge/orchestrator.py
+  s_9fb2844a4c70ac::t_b651c046b016db 52,54,247,249
+backend/tests/component/core/changelog/test_enrichment.py
+  s_9fb2844a4c70ac::t_f641697fd416e2 388
+backend/tests/component/core/merge/test_orchestrator.py
+  s_9fb2844a4c70ac::t_1698146da5be13 182,302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d9dde9b40ecc320c7b4b8e4c6447a679a756fa65",
+  "prompts": {},
+  "sessions": {
+    "s_9fb2844a4c70ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e99ffdbe-347d-498e-b8d1-63f456d31c13",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

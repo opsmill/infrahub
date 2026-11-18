@@ -1,0 +1,19 @@
+docs/docs/development/backend.mdx
+  s_9c5b6446126571::t_b00a351a51fba1 92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "10c1ac5d9ca56250e7e4eeabf05059542f722895",
+  "prompts": {},
+  "sessions": {
+    "s_9c5b6446126571": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91f59d33-3322-493f-ad2a-f4f60dfe37db",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

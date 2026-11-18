@@ -1,0 +1,54 @@
+backend/infrahub/pools/number.py
+  s_42b74b2708abe7::t_ad4dd88e46692e 14,23-28,30-31,33-38,43,50-59,65-68
+  s_42b74b2708abe7::t_054800808581bc 71,75,79
+backend/tests/helpers/number_pool.py
+  s_42b74b2708abe7::t_375fcfa2f2decf 67
+  s_42b74b2708abe7::t_df120833fe2505 54-66
+  s_42b74b2708abe7::t_8defe22819e590 69,72-89
+backend/infrahub/core/node/resource_manager/number_pool.py
+  s_42b74b2708abe7::t_5bee7df28e1456 55,57,60,63,65,68-80
+backend/infrahub/graphql/queries/resource_manager.py
+  s_42b74b2708abe7::t_a8177a07e799d4 22,29,289-292,300-306,365-367,370-372
+backend/infrahub/pools/number_pool_repository.py
+  s_42b74b2708abe7::t_390c8d792e2597 5,17-19,22-23,31-61,70,81-89,91-93,98-99,106-108,110
+backend/tests/component/core/agnostic_retirement/test_on_node_delete.py
+  s_42b74b2708abe7::t_adfc2f78bd910b 46,91,418,445,452
+backend/tests/component/core/migrations/graph/m076_heal_missing_attribute_rows/conftest.py
+  s_42b74b2708abe7::t_1aaaac00be6117 20,234
+backend/tests/component/core/migrations/graph/test_066_consolidate_duplicate_number_pools.py
+  s_42b74b2708abe7::t_c6f911eb0acfa4 18,62
+backend/tests/component/core/resource_manager/conftest.py
+  s_42b74b2708abe7::t_6e2fa18ca6c57a 10,47
+backend/tests/component/core/resource_manager/test_number_pool.py
+  s_42b74b2708abe7::t_9d0e6c745bad45 19,23,36,53,61,63,78,109,131-133,288,342,388,422,437,454,494-614
+backend/tests/component/core/resource_manager/test_number_pool_attribute_removal.py
+  s_42b74b2708abe7::t_df79dbc86488be 17,51,76,79,94,124,127
+backend/tests/component/core/resource_manager/test_number_pool_attribute_rename.py
+  s_42b74b2708abe7::t_50dc39c2b4431a 28,150,171,188,209,240,254,257
+backend/tests/component/core/resource_manager/test_number_pool_branch_liveness.py
+  s_42b74b2708abe7::t_d47e2ea1631471 21,39,70-71,78,82-84,92,98-101,128,140,151,158
+backend/tests/component/core/resource_manager/test_number_pool_object_conversion.py
+  s_42b74b2708abe7::t_87c3571464f026 18,80,132,155,158,183,205,216,230,233
+backend/tests/component/core/resource_manager/test_number_pool_source.py
+  s_42b74b2708abe7::t_aa40245520d62e 21,50,117-118,135,138
+backend/tests/component/templates/test_template_applier.py
+  s_42b74b2708abe7::t_c84672acd4dd90 20,499
+dev/specs/ifc-3065-number-pool-ranges/tasks.md
+  s_42b74b2708abe7::t_c8be71b65389af 90,92,98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a78d39033e18fa62472ff98eec067ec37ce866a3",
+  "prompts": {},
+  "sessions": {
+    "s_42b74b2708abe7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc83edeb-4a31-4a75-aa76-de0ccd8856b9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

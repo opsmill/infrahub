@@ -1,0 +1,37 @@
+backend/tests/helpers/number_pool.py
+  s_0e6589ba6b4589::t_81c7ce68fe889c 304-305,308,312-315,320,324
+  s_0e6589ba6b4589::t_86205083838ee6 15
+  s_0e6589ba6b4589::t_57243848a5dee8 257-290
+  s_0e6589ba6b4589::t_d5365156e85ba8 392-418
+backend/tests/component/core/resource_manager/test_number_pool_scope.py
+  s_0e6589ba6b4589::t_5cc5f63394a73a 18,22,37-38,121-148
+  s_0e6589ba6b4589::t_78f22146ddda91 149-150
+backend/tests/component/core/resource_manager/conftest.py
+  s_0e6589ba6b4589::t_151728ff1f2720 16-22,112-117
+  s_0e6589ba6b4589::t_a99d11dfc5121b 118-120
+backend/tests/component/core/resource_manager/test_number_pool_scope_allocation.py
+  s_0e6589ba6b4589::t_31aff5d4e01fb4 6,24,185-212,215-233,237-242
+  s_0e6589ba6b4589::t_e23cdde4d8646d 213-214,234-236
+  s_0e6589ba6b4589::t_8d0f8c640a62e2 243-244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "caf341a6e74f52beb3322717f90ed724444aa1d5",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_0e6589ba6b4589": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1057a2bb-95a9-4b87-a22a-785993e193b1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

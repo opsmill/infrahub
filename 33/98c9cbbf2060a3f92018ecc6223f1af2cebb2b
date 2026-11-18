@@ -1,0 +1,27 @@
+backend/tests/component/pools/test_schema_number_pool_synchronizer.py
+  s_9a65b7e7908928::t_8500cd5b7cc7b1 7,21-22,211-254,256,258-330,332-335
+  s_9a65b7e7908928::t_55d426af953bf0 331
+  s_9a65b7e7908928::t_6caca36362bc0a 19,255,257
+backend/infrahub/pools/schema_number_pool_synchronizer.py
+  s_9a65b7e7908928::t_8f0159e9f9d329 15,19,74,77-101
+  s_9a65b7e7908928::t_55d426af953bf0 102
+  s_9a65b7e7908928::t_ad992d455fadff 103
+dev/specs/ifc-3185-number-pool-scopes/tasks.md
+  s_9a65b7e7908928::t_152e36b0bab094 138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3398c9cbbf2060a3f92018ecc6223f1af2cebb2b",
+  "prompts": {},
+  "sessions": {
+    "s_9a65b7e7908928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "60976836-eea3-41a5-9ac8-f10bf4fbc0fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

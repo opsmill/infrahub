@@ -1,0 +1,14 @@
+backend/tests/component/events/test_node_mutation_events.py
+  h_bd00275aefc321 222-249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dbac9cd20a3880da2de0fbbf3b26ee7b9743d968",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

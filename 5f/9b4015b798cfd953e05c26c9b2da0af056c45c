@@ -1,0 +1,31 @@
+backend/infrahub/pools/scope_declaration.py
+  s_9a65b7e7908928::t_270728986291f1 18,37
+  s_9a65b7e7908928::t_170e5a5e250882 1-17,19-36,38-81
+backend/tests/unit/core/schema/test_schema_branch_number_pool_scope.py
+  s_9a65b7e7908928::t_5e74e341d09806 1-134,137-178,181-182,185-192
+  s_9a65b7e7908928::t_face6790e049ea 135-136
+  s_9a65b7e7908928::t_bf1d5c9e9b54d1 179-180,183-184
+backend/infrahub/core/schema/attribute_parameters.py
+  s_9a65b7e7908928::t_f28f704eddaf3f 247,249-250,252
+backend/infrahub/core/schema/schema_branch.py
+  s_9a65b7e7908928::t_cc299a026701f2 61,74
+  s_9a65b7e7908928::t_ef1283bea91221 1389-1394,1400-1417
+dev/specs/ifc-3185-number-pool-scopes/tasks.md
+  s_9a65b7e7908928::t_c8f9fc8d214d03 114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5f9b4015b798cfd953e05c26c9b2da0af056c45c",
+  "prompts": {},
+  "sessions": {
+    "s_9a65b7e7908928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "60976836-eea3-41a5-9ac8-f10bf4fbc0fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

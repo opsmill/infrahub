@@ -1,0 +1,24 @@
+utilities/sync_pr/jira.py
+  s_f9f34a44a3a084::t_08260eb1c8ae7a 1-272
+utilities/sync_pr/tests/test_jira.py
+  s_f9f34a44a3a084::t_08260eb1c8ae7a 1-306
+utilities/sync_pr/tests/conftest.py
+  s_f9f34a44a3a084::t_08260eb1c8ae7a 6,29-37,42-45,217-331,337-339
+  s_f9f34a44a3a084::t_2d889646889c50 340-341
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9f24b05f9b15541447253dd4258f12a46d663646",
+  "prompts": {},
+  "sessions": {
+    "s_f9f34a44a3a084": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50b9befc-1389-4d4c-99f9-321b275b2173",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

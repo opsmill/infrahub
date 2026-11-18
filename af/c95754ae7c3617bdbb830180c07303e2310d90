@@ -1,0 +1,23 @@
+backend/infrahub/core/regeneration/filtered_peers.py
+  s_fb819cbbe44071::t_8e4421cd8e9244 18,125-145
+backend/infrahub/core/regeneration/models.py
+  s_fb819cbbe44071::t_d5173dbbef1af4 65-74
+backend/tests/unit/core/regeneration/test_filtered_peers.py
+  s_fb819cbbe44071::t_df81eb293cb3f8 9-13,189-292
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "afc95754ae7c3617bdbb830180c07303e2310d90",
+  "prompts": {},
+  "sessions": {
+    "s_fb819cbbe44071": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65a68a98-fa9c-4142-8730-a06dd94f203b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

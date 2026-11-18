@@ -1,0 +1,19 @@
+backend/infrahub/health.py
+  s_2f147521a27904::t_1e08f6dbcfbd7f 62,66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "892cd90c7c012076d41f04ce6c47f681012101f1",
+  "prompts": {},
+  "sessions": {
+    "s_2f147521a27904": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc19b123-f090-4700-8cfd-ea1e0e3530bf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Bearchitek <benoit@opsmill.com>"
+    }
+  }
+}

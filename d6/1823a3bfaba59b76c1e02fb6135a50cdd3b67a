@@ -1,0 +1,105 @@
+backend/infrahub/core/validators/attribute/min_max.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 24,27-30,86-87
+backend/infrahub/core/validators/attribute/number_pool.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 23,26-29,80-81,89
+backend/infrahub/dependencies/builder/constraint/schema/aggregated.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 8-11,19,24-27,47-50,55-56
+backend/tests/component/core/constraint_validators/test_aggregated_checker_registration.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 1-15
+backend/infrahub/dependencies/builder/constraint/schema/attribute_number.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 1-8
+backend/tests/integration/schema_lifecycle/test_schema_validator_stored_data.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 1-314
+backend/tests/fixtures/schemas/schema_01.json
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 323-329
+  s_212ae4398f1724::t_b2763a62d0b080 322
+backend/tests/integration/git/test_import_removed_definitions.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 3,12,16,23,68-94,107,125-147,149,171-173,199,201-205,331-442,476-607
+  s_212ae4398f1724::t_8f888438fe3cde 608
+backend/infrahub/git/tasks.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 828
+backend/infrahub/dependencies/builder/constraint/schema/node_hierarchy.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 1-8
+backend/infrahub/git/integrator.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 1043-1044,1050-1055,1077-1086,1433,1467-1487,1631,2164-2171,2195,2245-2247,2270
+backend/tests/component/core/constraint_validators/test_attribute_numberpool_constraints.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 8,345-374
+backend/infrahub/locks/tasks.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 15
+backend/infrahub/core/relationship/model.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 403-416,426-428,436-442,602
+backend/infrahub/graphql/execution.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 78,87-96
+backend/infrahub/core/validators/renamed_kinds.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 1-35
+backend/tests/component/core/constraint_validators/test_attribute_number_constraints.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 6,353-383
+backend/infrahub/dependencies/builder/constraint/schema/relationship_peer.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 1,5-8
+  s_212ae4398f1724::t_a9246ea1c51487 9-10
+backend/infrahub/tasks/merge_watcher.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 9
+backend/infrahub/core/validators/node/hierarchy.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 10,25-26,31-32,44-45,50-51,104-105,136-137,155-157,159-160,169-174
+backend/tests/integration/shared.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 8-10
+backend/tests/component/core/constraint_validators/test_determiner.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 19-20,401,409-411,417-418
+backend/tests/unit/git/test_transform_python_information.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 84-86,92,204-208
+backend/tests/component/core/constraint_validators/test_node_hierarchy_update.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 6,74-80,97-103,123-129,193-199,270-276,358-364,421,448,473,500,509-622
+backend/tests/component/core/constraint_validators/test_relationship_peer_update.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 8,12,133-137,185-189,208-212,236-240,278-282,312-316,368-372,402-406,459-463,490,521-647
+backend/infrahub/core/validators/relationship/peer.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 11,25,31-35,37,42,113-114,127-138,141,146-150
+backend/tests/component/git/test_git_repository.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 1748-1753
+backend/tests/component/computed_attribute/test_local_computation.py
+  s_d5954718fc8fe8::t_e11ade0d4b1f59 14,21,42,149-199,235-275
+  s_212ae4398f1724::t_6253b020c2de7e 276
+backend/tests/unit/workflows/test_catalogue.py
+  s_212ae4398f1724::t_b9c62bac732d17 35-43
+changelog/+check-definition-class-name.fixed.md
+  s_212ae4398f1724::t_c89b5a790e6345 1
+changelog/+check-definition-targets.fixed.md
+  s_212ae4398f1724::t_327893d222e9ac 1
+changelog/+python-transform-class-name.fixed.md
+  s_212ae4398f1724::t_dae1f74be4c9a0 1
+changelog/+schema-change-stored-data-checks.fixed.md
+  s_212ae4398f1724::t_d160be54d75209 1
+changelog/11018.fixed.md
+  s_212ae4398f1724::t_6f0c3226c9a7b6 1
+changelog/11036.fixed.md
+  s_212ae4398f1724::t_0b9e4fec97b558 1
+changelog/11166.fixed.md
+  s_212ae4398f1724::t_b5d74b3dc3d635 1
+python_testcontainers/uv.lock
+  s_212ae4398f1724::t_0b7857691867c4 2,627,632,634,726-727,2017-2018
+uv.lock
+  s_212ae4398f1724::t_734a6886287501 2,1123,1128,1130,1162,1168-1174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d61823a3bfaba59b76c1e02fb6135a50cdd3b67a",
+  "prompts": {},
+  "sessions": {
+    "s_212ae4398f1724": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4cd85630-d1e5-415c-afc0-a0f50613c26e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    },
+    "s_d5954718fc8fe8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a34a3173-1903-4f83-9345-86078fd19342",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

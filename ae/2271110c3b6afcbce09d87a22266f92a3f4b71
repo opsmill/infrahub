@@ -1,0 +1,38 @@
+backend/infrahub/core/schema/attribute_parameters.py
+  s_f4cdafdd905485::t_86726fc3110eef 6,209-210,259-271,273-274,280
+backend/tests/unit/core/schema/test_schema_update_validation.py
+  s_f4cdafdd905485::t_3e6abf27919d50 6,189-315
+  s_f4cdafdd905485::t_9a9c3758401401 316
+schema/openapi.json
+  s_f4cdafdd905485::t_902da86d836e73 7196-7206
+backend/tests/unit/core/schema/test_number_pool_parameters.py
+  s_f4cdafdd905485::t_1b242158afb7e1 180-186,189-195,199,209-244
+  s_f4cdafdd905485::t_0cda02ff09412f 197-198,245-246
+  s_f4cdafdd905485::t_878669264f39aa 187-188,196,200-208
+frontend/app/src/shared/api/rest/types.generated.ts
+  s_f4cdafdd905485::t_b9396e5b9d69be 2720
+tasks/backend.py
+  s_f4cdafdd905485::t_eff0eaa59eddc7 1016-1018,1020
+  s_f4cdafdd905485::t_3313ac0b9f0d56 1232-1234
+  s_f4cdafdd905485::t_e3129d07ba095a 1015,1019,1021
+  s_f4cdafdd905485::t_cb4890ec0eb20a 980-983
+  s_f4cdafdd905485::t_8ecaf7e6ba59a6 998
+python_sdk
+  s_f4cdafdd905485::t_241b5ed366d74c 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ae2271110c3b6afcbce09d87a22266f92a3f4b71",
+  "prompts": {},
+  "sessions": {
+    "s_f4cdafdd905485": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d80b27f2-528a-4331-bd46-39778bf01130",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

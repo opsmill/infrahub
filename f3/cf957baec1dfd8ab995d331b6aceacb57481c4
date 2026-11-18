@@ -1,0 +1,41 @@
+dev/specs/ifc-3185-number-pool-scopes/contracts/graphql-number-pool-queries.md
+  s_a8a133dd3a7907::t_9463c7bca2cd5f 88-90
+  s_a8a133dd3a7907::t_35c64b8d06f6b5 34
+  s_a8a133dd3a7907::t_09d153f03b9bb9 233
+  s_a8a133dd3a7907::t_1a7206b0a3d903 255
+  s_a8a133dd3a7907::t_122573408bcf5f 11-12,14
+  s_a8a133dd3a7907::t_f1c703202c798c 259
+  s_a8a133dd3a7907::t_b2c8a708b0fe8a 211
+  s_a8a133dd3a7907::t_0976181310286c 227
+dev/specs/ifc-3185-number-pool-scopes/spec.md
+  s_a8a133dd3a7907::t_63c7cf464aec05 3,9,17,24-28,52-53,67,73,79,89,92-93,107,109,119-120,122,125,129,139,141,144,149,151,154,156,160-166,170-173,177-178,182-184,188,190-192,200,208-211,213,215,224,230-233
+dev/specs/ifc-3185-number-pool-scopes/research.md
+  s_a8a133dd3a7907::t_f2b8341be884e1 103
+  s_a8a133dd3a7907::t_06ab55d546af8c 3,7,9,13,15,19,21,25,30,32,37-38,42,44,48-49,53,55,57,61-62,69,73,78,82,84,92,94,98-99,105,109,115,117,121,125,127,131,133
+dev/specs/ifc-3185-number-pool-scopes/contracts/pool-allocation-scope.md
+  s_a8a133dd3a7907::t_790cb0edf44d7d 3,37,54-55,60-64,66-68
+dev/specs/ifc-3185-number-pool-scopes/quickstart.md
+  s_a8a133dd3a7907::t_d220123030ff16 7,15-27,31,49,51-55,59-63
+dev/specs/ifc-3185-number-pool-scopes/data-model.md
+  s_a8a133dd3a7907::t_9f389f4e88bd78 11,14,28,34,40,42,44-47,53-54,57,63,65,73-76,79,85-86
+dev/specs/ifc-3185-number-pool-scopes/plan.md
+  s_a8a133dd3a7907::t_f64ba2c560948e 3,9,11,19,21,29,39-40,42,45,64,70-71,75-90,92-100,102-108,111-126,129-131,134,140-144,148-154,158-160,162-163,165,167-170
+dev/specs/ifc-3185-number-pool-scopes/contracts/number-pool-parameters.md
+  s_a8a133dd3a7907::t_c2949187598e70 24,32-46,54-55,58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f3cf957baec1dfd8ab995d331b6aceacb57481c4",
+  "prompts": {},
+  "sessions": {
+    "s_a8a133dd3a7907": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "125da3d6-bd83-4066-a232-ce4d6528c3d7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

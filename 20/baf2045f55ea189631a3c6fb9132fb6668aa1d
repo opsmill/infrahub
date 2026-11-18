@@ -1,0 +1,21 @@
+changelog/11100.fixed.md
+  s_e334a8acd54e5c::t_08172eb54f3b6a 1
+changelog/11100.changed.md
+  s_e334a8acd54e5c::t_0482bb68d45a66 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "20baf2045f55ea189631a3c6fb9132fb6668aa1d",
+  "prompts": {},
+  "sessions": {
+    "s_e334a8acd54e5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a35e15a-d1c7-45b9-805f-1a51227935c9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

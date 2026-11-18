@@ -1,0 +1,19 @@
+dev/guides/backend/choosing-tests.md
+  s_266a416a4e6e0b::t_e2ebd8902b57e6 41-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "24fdb8a0b84e708782b6f473ea5320a2e5ebf016",
+  "prompts": {},
+  "sessions": {
+    "s_266a416a4e6e0b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a196cc-5eaa-7b10-80d0-891e59b65801",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
