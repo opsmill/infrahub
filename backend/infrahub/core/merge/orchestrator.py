@@ -74,7 +74,9 @@ class ChangelogCollector(Protocol):
 class ChangelogCollectorFactory(Protocol):
     """Builds a changelog collector for a diff, reading the graph through the given database and branch."""
 
-    def __call__(self, *, diff: EnrichedDiffRoot, db: InfrahubDatabase, branch: Branch) -> ChangelogCollector: ...
+    def __call__(
+        self, *, diff: EnrichedDiffRoot, db: InfrahubDatabase, branch: Branch, merge_at: Timestamp
+    ) -> ChangelogCollector: ...
 
 
 class BranchMergeOrchestrator:
@@ -228,6 +230,7 @@ class BranchMergeOrchestrator:
             branch_diff=branch_diff,
             schema_diff=schema_diff,
             schema_hash=schema_updated_hash,
+            merge_at=merge_at,
         )
 
     async def _run_post_merge(
@@ -239,13 +242,14 @@ class BranchMergeOrchestrator:
         branch_diff: EnrichedDiffRoot,
         schema_diff: SchemaDiff | None,
         schema_hash: str | None,
+        merge_at: Timestamp,
     ) -> None:
         """Run the follow-ups and dispatch the events of a merge that is committed and unprotected."""
         # Persisted only past the point of no return, so a rolled-back merge leaves no entry behind.
         merge_diff_cache_key = await self._cache_diff_summary(branch_diff=branch_diff)
 
         # Collect changelogs only after write protection is lifted.
-        node_events = await self._collect_node_events(branch_diff=branch_diff)
+        node_events = await self._collect_node_events(branch_diff=branch_diff, merge_at=merge_at)
 
         await self.post_merge_dispatcher.run_follow_ups(
             branch=self.source_branch,
@@ -264,11 +268,13 @@ class BranchMergeOrchestrator:
             schema_hash=schema_hash,
         )
 
-    async def _collect_node_events(self, branch_diff: EnrichedDiffRoot) -> Sequence[tuple[DiffAction, NodeChangelog]]:
+    async def _collect_node_events(
+        self, branch_diff: EnrichedDiffRoot, merge_at: Timestamp
+    ) -> Sequence[tuple[DiffAction, NodeChangelog]]:
         """Collect the node changelogs from the merged branch's enriched diff."""
         # The merged branch sees the destination only as of its branch point, so changelogs are read on the destination.
         changelog_collector = self.changelog_collector_factory(
-            diff=branch_diff, db=self.db, branch=self.destination_branch
+            diff=branch_diff, db=self.db, branch=self.destination_branch, merge_at=merge_at
         )
         with trace.get_tracer(__name__).start_as_current_span("merge.collect_changelogs") as span:
             node_events = await changelog_collector.collect_changelogs()

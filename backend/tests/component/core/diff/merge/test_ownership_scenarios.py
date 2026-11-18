@@ -30,6 +30,7 @@ from infrahub.core.ownership.models import (
     field_holder,
 )
 from infrahub.core.ownership.repository import OwnershipRepository
+from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
 from infrahub.exceptions import ValidationError
 
@@ -388,8 +389,11 @@ async def _merge_changelogs(
     db: InfrahubDatabase, default_branch: Branch, branch: Branch, diff: EnrichedDiffRoot
 ) -> Sequence[tuple[DiffAction, NodeChangelog]]:
     """Merge the branch and return the changelogs that the merge of this diff records on the default branch."""
-    await merge(db=db, branch=branch)
-    return await build_diff_changelog_collector(diff=diff, db=db, branch=default_branch).collect_changelogs()
+    merge_at = Timestamp()
+    await merge(db=db, branch=branch, at=merge_at)
+    return await build_diff_changelog_collector(
+        diff=diff, db=db, branch=default_branch, merge_at=merge_at
+    ).collect_changelogs()
 
 
 S1_HOLDERS = [
@@ -486,11 +490,17 @@ async def test_same_owner_change_on_both_branches_gives_no_conflict_and_the_merg
     await verify_graph(db=db)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="the merge changelog records the change of the branch, also when the default branch holds the same owners",
+@pytest.mark.parametrize(
+    "holder",
+    [
+        *_params([holder for holder in ALL_HOLDERS if holder is not LINK_OWNER_PROPERTY]),
+        pytest.param(
+            LINK_OWNER_PROPERTY,
+            id=LINK_OWNER_PROPERTY.name,
+            marks=pytest.mark.xfail(strict=True, reason="develop behavior, tracked separately"),
+        ),
+    ],
 )
-@pytest.mark.parametrize("holder", _params(ALL_HOLDERS))
 async def test_merge_of_the_same_owner_change_on_both_branches_records_no_owner_change(
     db: InfrahubDatabase,
     default_branch: Branch,

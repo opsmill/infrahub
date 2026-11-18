@@ -48,6 +48,9 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
 - The merge copies an owner edge or a source edge of the branch also when its owner or source is deleted, so the
   default branch reads the same list as the branch and the diff. Only the `HAS_OWNER_SOURCE` mark needs a live
   template.
+- The changelog of a merge records no change for an owner list or a source list that the default branch held just
+  before the merge (`DiffChangelogCollector`). An attribute value and the owner of one link have no such check: the
+  changelog records them also when the default branch holds the same value.
 
 ## Writes
 
