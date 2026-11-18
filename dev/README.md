@@ -71,6 +71,7 @@ Backend architecture documentation in [knowledge/backend/](knowledge/backend/):
 - [observability.md](knowledge/backend/observability.md) - Traces, logs and metrics: trace propagation, sampling, span masking and the multiprocess metric rules
 - [telemetry.md](knowledge/backend/telemetry.md) - Anonymous usage telemetry (categories, windowing, retention, degradation)
 - [graphql-execution.md](knowledge/backend/graphql-execution.md) - Sync vs async field completion and why middleware must stay synchronous
+- [ownership.md](knowledge/backend/ownership.md) - How owners and sources of nodes and fields are stored, written, inherited and filtered
 - [tls.md](knowledge/backend/tls.md) - How the CA bundle of every outbound TLS connection is resolved and where each component applies it
 - [repository-git-state.md](knowledge/backend/repository-git-state.md) - How the API server reads a repository's commit log from a worker's clone
 
