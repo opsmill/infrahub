@@ -972,3 +972,42 @@ async def test_an_edit_after_an_agnostic_rename_on_a_user_branch_is_read_on_that
     reloaded = await NodeManager.get_one(db=db, id=widgets[0].id, branch=branch)
     assert reloaded is not None
     assert reloaded.get_attribute(name="serial_number").value == 42
+
+
+SECOND_RUN_CASES_BY_NAME = {case.name: case for case in SECOND_RUN_CASES}
+KIND_UPDATE_READS: list[tuple[str, str, str]] = [
+    ("attribute_kind_update", "TestCar", "color"),
+    ("agnostic_attribute_kind_update", WIDGET_KIND, "notes"),
+]
+
+
+# Not strict: which of the two tied edges the read elects depends on the query plan, so the test sometimes passes.
+@pytest.mark.xfail(
+    strict=False,
+    raises=AssertionError,
+    reason=(
+        "the kind update writes the deleted and the new value edge with the same branch level and timestamp, and the "
+        "attribute read does not prefer the active edge, so the branch can read the attribute's default value"
+    ),
+)
+@pytest.mark.parametrize(
+    ("case", "kind", "attribute_name"),
+    [
+        pytest.param(SECOND_RUN_CASES_BY_NAME[case_name], kind, attribute_name, id=case_name)
+        for case_name, kind, attribute_name in KIND_UPDATE_READS
+    ],
+)
+async def test_a_kind_update_on_a_user_branch_keeps_the_values_read_on_that_branch(
+    db: InfrahubDatabase, default_branch: Branch, case_data: None, case: SecondRunCase, kind: str, attribute_name: str
+) -> None:
+    branch = await get_migration_branch(db=db, default_branch=default_branch, branch_kind=BranchKind.USER)
+
+    async def read_values() -> dict[str, object]:
+        nodes = await NodeManager.query(db=db, schema=kind, branch=branch)
+        return {node.id: node.get_attribute(name=attribute_name).value for node in nodes}
+
+    before = await read_values()
+    migrations = await build_migrations(db=db, branch=branch, case=case)
+    await run_migrations(db=db, branch=branch, migrations=migrations, at=Timestamp(), user_id=FIRST_RUN_USER_ID)
+
+    assert await read_values() == before
