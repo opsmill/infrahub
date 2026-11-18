@@ -28,6 +28,7 @@ When the branch changed the schema since it was created or last rebased, Infrahu
 - A mandatory relationship added
 - The kind of an attribute changed, for example from `Text` to `Number`
 - A regular expression, an enum or a length limit added or changed
+- Profiles turned off for a kind (`generate_profile` set to `false`) while Profiles of that kind exist
 - An element of a number pool's allocation scope removed or made optional while the pool exists; see [Schema changes refused while a pool uses an element](../resource-manager/allocate-numbers-per-scope.mdx#schema-changes-refused-while-a-pool-uses-an-element)
 
 The error message lists each violation. It names the kind, each object that does not comply and, for a check that reads a value, the value:
@@ -42,6 +43,9 @@ These checks have limits:
 
 - A dropdown choice removed on the branch is not checked against the objects created on the default branch after the branch was created or last rebased.
 - A schema change made on the default branch after the branch was created or last rebased is not always checked against the objects of the branch.
+- When the branch and the default branch both changed the same attribute after the branch was created or last rebased, the checks can refuse a merge that would be valid. The checks use the branch's value for each property of that attribute, so a property that only the default branch changed is checked with its value from before that change.
+- When the branch renamed an attribute, the checks of that attribute do not read the objects created on the default branch after the branch was created or last rebased, because those objects store the value under the old name. For example, a regular expression added to the renamed attribute, or the renamed attribute made mandatory, is not checked against those objects.
+- When the only schema changes on the branch are changes to generics, for example a uniqueness constraint added to a generic, the merge does not check them. A rebase checks them, so rebase the branch before you merge it.
 - The **Schema Integrity** check of a Proposed Change reads the default branch as it was when the branch was created or last rebased, so it can pass while the merge is refused.
 
 ## Before the merge starts: repository imports
