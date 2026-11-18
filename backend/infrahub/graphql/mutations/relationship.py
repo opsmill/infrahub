@@ -281,6 +281,13 @@ class RelationshipAdd(Mutation):
                     if peer := nodes.get(rel.get_peer_id()):
                         rel.set_peer(value=peer)
                     await rel.save(db=db, user_id=graphql_context.assigned_user_id)
+                    # The save creates nothing when another request deleted the peer after the validation read.
+                    if not rel.id:
+                        raise NodeNotFoundError(
+                            branch_name=graphql_context.branch.name,
+                            node_type=rel_schema.peer,
+                            identifier=rel.get_peer_id(),
+                        )
                     relationship_modified = True
 
             # peers that need to have their profile source cleared
