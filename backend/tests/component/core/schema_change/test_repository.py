@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.schema_change.enums import (
     SchemaChangeEdgeType,
@@ -13,12 +15,15 @@ from infrahub.core.schema_change.enums import (
 )
 from infrahub.core.schema_change.factory import build_schema_change_history_reader, build_schema_change_repository
 from infrahub.core.schema_change.operations import SchemaOperation
+from infrahub.core.schema_change.repository import AppliedSchemaChangeVersion
 from infrahub.core.timestamp import Timestamp
+from infrahub.exceptions import QueryError
 from tests.helpers.schema_change import (
     BranchHistorySeed,
     MigrationSeed,
     attribute_migration,
     count_schema_change_record_edges_to_root,
+    count_schema_change_records,
     read_applications_with_migrations,
     seed_schema_change_history,
 )
@@ -27,6 +32,10 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 BRANCH_NAME = "main"
+OTHER_BRANCH_NAME = "other-branch"
+MISSING_APPLICATION_ID = "5c8e1f2d-7a3b-4e96-8d10-b2f4a6c9e357"
+FAILURE_ERROR = "The migration attribute.kind.update failed on 3 nodes"
+MIGRATION_ERROR = "Unable to convert the value of 2 nodes"
 EDGE_PROPERTIES_OF_BRANCH_AWARE_GRAPH = frozenset({"branch", "from", "to", "status"})
 
 
@@ -397,4 +406,115 @@ async def test_set_migration_records_status_changes_only_the_records_named(
         (0, SchemaChangeMigrationStatus.FAILED, 3, ["first error", "second error"]),
         (1, SchemaChangeMigrationStatus.WAITING, None, []),
         (2, SchemaChangeMigrationStatus.FAILED, 3, ["first error", "second error"]),
+    ]
+
+
+async def test_create_migration_records_of_a_missing_application_raises_and_creates_nothing(
+    db: InfrahubDatabase, empty_database: None
+) -> None:
+    repository = build_schema_change_repository(db=db)
+
+    with pytest.raises(QueryError, match=r"Unable to execute the CYPHER query\."):
+        await repository.create_migration_records(
+            application_id=MISSING_APPLICATION_ID, migrations=[attribute_migration()]
+        )
+
+    assert await count_schema_change_records(db=db) == 0
+
+
+async def test_mark_failed_closes_each_migration_record_by_its_status(
+    db: InfrahubDatabase, empty_database: None
+) -> None:
+    statuses_before = [
+        SchemaChangeMigrationStatus.APPLIED,
+        SchemaChangeMigrationStatus.FAILED,
+        SchemaChangeMigrationStatus.RUNNING,
+        SchemaChangeMigrationStatus.WAITING,
+    ]
+    history = await seed_schema_change_history(
+        db=db,
+        branches=[
+            BranchHistorySeed(
+                branch=BRANCH_NAME,
+                changes=[SchemaChangeStatus.RUNNING],
+                migrations=[
+                    MigrationSeed(
+                        migration=attribute_migration(field_name=f"field{position}"),
+                        status=status,
+                        errors=(MIGRATION_ERROR,) if status == SchemaChangeMigrationStatus.FAILED else (),
+                    )
+                    for position, status in enumerate(statuses_before)
+                ],
+            )
+        ],
+    )
+    schema_change = history.schema_changes[0]
+
+    await build_schema_change_repository(db=db).mark_failed(
+        schema_change_id=schema_change.id,
+        application_id=schema_change.application_id,
+        error=FAILURE_ERROR,
+        user_id=SYSTEM_USER_ID,
+    )
+
+    applications = await read_applications_with_migrations(db=db, schema_change_ids=[schema_change.id])
+    [application] = applications[schema_change.id]
+    assert (application.application.status.value, application.application.error) == ("failed", FAILURE_ERROR)
+    assert [(migration.position, migration.status, list(migration.errors)) for migration in application.migrations] == [
+        (0, SchemaChangeMigrationStatus.ROLLED_BACK, []),
+        (1, SchemaChangeMigrationStatus.FAILED, [MIGRATION_ERROR]),
+        (2, SchemaChangeMigrationStatus.FAILED, [FAILURE_ERROR]),
+        (3, SchemaChangeMigrationStatus.CANCELLED, []),
+    ]
+
+
+async def test_highest_applied_version_ignores_the_schema_changes_that_are_not_applied_and_other_branches(
+    db: InfrahubDatabase, empty_database: None
+) -> None:
+    history = await seed_schema_change_history(
+        db=db,
+        branches=[
+            BranchHistorySeed(
+                branch=BRANCH_NAME,
+                changes=[
+                    SchemaChangeStatus.APPLIED,
+                    SchemaChangeStatus.APPLIED,
+                    SchemaChangeStatus.FAILED,
+                    SchemaChangeStatus.RUNNING,
+                ],
+            ),
+            BranchHistorySeed(
+                branch=OTHER_BRANCH_NAME,
+                changes=[SchemaChangeStatus.APPLIED, SchemaChangeStatus.APPLIED, SchemaChangeStatus.APPLIED],
+            ),
+        ],
+    )
+    repository = build_schema_change_repository(db=db)
+
+    assert await repository.get_highest_applied_version(branch=BRANCH_NAME) == AppliedSchemaChangeVersion(
+        schema_change_id=history.applied_on_branch(BRANCH_NAME)[1].id, version=2
+    )
+    assert await repository.get_highest_applied_version(branch="branch-without-schema-change") is None
+
+
+async def test_highest_applied_version_at_counts_the_schema_changes_applied_at_or_before_the_time(
+    db: InfrahubDatabase, empty_database: None
+) -> None:
+    before_first = Timestamp()
+    history = await seed_schema_change_history(
+        db=db,
+        branches=[
+            BranchHistorySeed(branch=BRANCH_NAME, changes=[SchemaChangeStatus.APPLIED, SchemaChangeStatus.APPLIED])
+        ],
+    )
+    first, second = history.applied_on_branch(BRANCH_NAME)
+    repository = build_schema_change_repository(db=db)
+
+    assert [
+        await repository.get_highest_applied_version_at(branch=BRANCH_NAME, at=at)
+        for at in (before_first, first.at, second.at)
+    ] == [
+        None,
+        AppliedSchemaChangeVersion(schema_change_id=first.id, version=1),
+        AppliedSchemaChangeVersion(schema_change_id=second.id, version=2),
     ]

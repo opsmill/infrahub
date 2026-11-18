@@ -1,16 +1,24 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.schema_change.repository import SchemaChangeRepository
+    from infrahub.core.schema_change.repository import AppliedSchemaChangeVersion
 
 FIRST_SCHEMA_CHANGE_VERSION = 1
 """The version of the first applied schema change of a branch that starts from no applied schema change."""
+
+
+class AppliedVersionReader(Protocol):
+    async def get_highest_applied_version(self, *, branch: str) -> AppliedSchemaChangeVersion | None: ...
+
+    async def get_highest_applied_version_at(
+        self, *, branch: str, at: Timestamp
+    ) -> AppliedSchemaChangeVersion | None: ...
 
 
 @dataclass(frozen=True)
@@ -25,7 +33,7 @@ class SchemaChangeVersionResolver:
     The caller holds the schema lock, so the result is still correct when the caller writes it.
     """
 
-    def __init__(self, repository: SchemaChangeRepository, default_branch_name: str) -> None:
+    def __init__(self, repository: AppliedVersionReader, default_branch_name: str) -> None:
         self.repository = repository
         self.default_branch_name = default_branch_name
 

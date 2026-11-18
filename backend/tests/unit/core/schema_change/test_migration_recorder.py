@@ -11,7 +11,7 @@ from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema_change.application_migration_recorder import ApplicationMigrationRecorder
 from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus
-from infrahub.core.schema_change.factory import build_schema_change_repository
+from infrahub.core.schema_change.factory import build_migration_recorder, build_schema_change_repository
 from infrahub.exceptions import DatabaseError, QueryError
 from tests.helpers.log import find_logged_events
 from tests.unit.core.schema_change.helpers import (
@@ -140,6 +140,80 @@ async def test_migration_ended_logs_a_failure_to_update_the_record_and_does_not_
 
 CREATE_QUERY_NAME = "schema-change-migration-create"
 STATUS_QUERY_NAME = "schema-change-migration-status-update"
+
+
+@dataclass(frozen=True)
+class MigrationEndedCase:
+    name: str
+    errors: list[str]
+    expected_status: SchemaChangeMigrationStatus
+
+
+MIGRATION_ENDED_CASES = [
+    MigrationEndedCase(
+        name="without_errors_sets_applied", errors=[], expected_status=SchemaChangeMigrationStatus.APPLIED
+    ),
+    MigrationEndedCase(
+        name="with_errors_sets_failed", errors=[MIGRATION_ERROR], expected_status=SchemaChangeMigrationStatus.FAILED
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in MIGRATION_ENDED_CASES])
+async def test_migration_ended_sets_the_status_from_the_errors_of_the_result(test_case: MigrationEndedCase) -> None:
+    store = FailingMigrationRecordStore(failing_methods=frozenset())
+    recorder = ApplicationMigrationRecorder(store=store, application_id=APPLICATION_ID)
+    await recorder.register(migrations=MIGRATIONS)
+    result = SchemaMigrationPathResponseData(
+        migration_name=MIGRATIONS[1].migration_name,
+        schema_path=MIGRATIONS[1].path,
+        nbr_migrations_executed=0,
+        errors=test_case.errors,
+    )
+
+    await recorder.migration_ended(position=1, result=result)
+
+    assert store.calls == [
+        CREATE_CALL,
+        MigrationRecordStoreCall(
+            method=SET_MIGRATION_RECORDS_STATUS,
+            arguments={
+                "application_id": APPLICATION_ID,
+                "positions": [1],
+                "status": test_case.expected_status,
+                "nbr_migrations_executed": 0,
+                "errors": test_case.errors,
+            },
+        ),
+    ]
+
+
+async def test_migrations_whose_records_were_not_created_write_nothing() -> None:
+    store = FailingMigrationRecordStore(failing_methods=frozenset({CREATE_MIGRATION_RECORDS}))
+    recorder = ApplicationMigrationRecorder(store=store, application_id=APPLICATION_ID)
+    await recorder.register(migrations=MIGRATIONS)
+    result = SchemaMigrationPathResponseData(
+        migration_name=MIGRATIONS[0].migration_name, schema_path=MIGRATIONS[0].path, nbr_migrations_executed=1
+    )
+
+    await recorder.migration_started(position=0)
+    await recorder.migration_ended(position=0, result=result)
+
+    assert store.calls == [CREATE_CALL]
+
+
+async def test_recorder_without_application_writes_nothing() -> None:
+    db = TransientFailingDatabase(failing_query_name=CREATE_QUERY_NAME, nbr_failures=0)
+    recorder = build_migration_recorder(db=db, application_id=None)
+    result = SchemaMigrationPathResponseData(
+        migration_name=MIGRATIONS[0].migration_name, schema_path=MIGRATIONS[0].path, nbr_migrations_executed=1
+    )
+
+    await recorder.register(migrations=MIGRATIONS)
+    await recorder.migration_started(position=0)
+    await recorder.migration_ended(position=0, result=result)
+
+    assert db.write_names == []
 
 
 @dataclass(frozen=True)

@@ -19,14 +19,15 @@ from infrahub.core.schema import (
 from infrahub.core.schema_change.application_runner import ApplicationRecorder, SchemaUpdateExecutor
 from infrahub.core.schema_change.applier import SchemaChangeApplier
 from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder, SchemaOperationBuildResult
-from infrahub.core.schema_change.recorder import SchemaChangeRecording
+from infrahub.core.schema_change.recorder import SchemaChangeRecording, SchemaChangeRecordStore
+from infrahub.core.schema_change.version_resolver import AppliedVersionReader
 from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode
 from infrahub.exceptions import DatabaseError
 from tests.constants import TestKind
 from tests.helpers.schema import DEVICE, INTERFACE, INTERFACE_HOLDER, PHYSICAL_INTERFACE, SFP, TAG, VIRTUAL_INTERFACE
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable, Mapping, Sequence
 
     from pydantic import JsonValue
 
@@ -38,6 +39,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema.update_coordinator import SchemaUpdateFinalStep
     from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus
     from infrahub.core.schema_change.operations import SchemaOperation
+    from infrahub.core.schema_change.repository import AppliedSchemaChangeVersion, CreatedSchemaChange
     from infrahub.core.timestamp import Timestamp
 
 TAG_STATUS_ATTRIBUTE = "status"
@@ -318,6 +320,117 @@ class FailingMigrationRecordStore:
     def _raise_if_failing(self, method: str) -> None:
         if method in self.failing_methods:
             raise self.error
+
+
+CREATE_SCHEMA_CHANGE = "create_schema_change"
+MARK_APPLIED = "mark_applied"
+MARK_FAILED = "mark_failed"
+GET_HIGHEST_APPLIED_VERSION = "get_highest_applied_version"
+GET_HIGHEST_APPLIED_VERSION_AT = "get_highest_applied_version_at"
+
+
+@dataclass(frozen=True)
+class SchemaChangeRepositoryCall:
+    method: str
+    arguments: dict[str, object]
+
+
+class RecordingSchemaChangeRepository(SchemaChangeRecordStore, AppliedVersionReader):
+    """A schema change repository that records each call and returns the records it was given.
+
+    `create_schema_change` returns the items of `created` in turn. The version reads return the
+    version given for the branch, or None.
+    """
+
+    def __init__(
+        self,
+        created: Sequence[CreatedSchemaChange] = (),
+        highest_versions: Mapping[str, AppliedSchemaChangeVersion] | None = None,
+        highest_versions_at: Mapping[str, AppliedSchemaChangeVersion] | None = None,
+    ) -> None:
+        self._created = list(created)
+        self.highest_versions = dict(highest_versions or {})
+        self.highest_versions_at = dict(highest_versions_at or {})
+        self.calls: list[SchemaChangeRepositoryCall] = []
+
+    @override
+    async def create_schema_change(
+        self, *, branch: str, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
+    ) -> CreatedSchemaChange:
+        self._record(CREATE_SCHEMA_CHANGE, branch=branch, operations=list(operations), at=at, user_id=user_id)
+        return self._created.pop(0)
+
+    @override
+    async def mark_applied(
+        self,
+        *,
+        schema_change_id: str,
+        application_id: str,
+        version: int,
+        parent_id: str | None,
+        applied_at: Timestamp,
+        user_id: str,
+    ) -> None:
+        self._record(
+            MARK_APPLIED,
+            schema_change_id=schema_change_id,
+            application_id=application_id,
+            version=version,
+            parent_id=parent_id,
+            applied_at=applied_at,
+            user_id=user_id,
+        )
+
+    @override
+    async def mark_failed(self, *, schema_change_id: str, application_id: str, error: str, user_id: str) -> None:
+        self._record(
+            MARK_FAILED, schema_change_id=schema_change_id, application_id=application_id, error=error, user_id=user_id
+        )
+
+    @override
+    async def get_highest_applied_version(self, *, branch: str) -> AppliedSchemaChangeVersion | None:
+        self._record(GET_HIGHEST_APPLIED_VERSION, branch=branch)
+        return self.highest_versions.get(branch)
+
+    @override
+    async def get_highest_applied_version_at(self, *, branch: str, at: Timestamp) -> AppliedSchemaChangeVersion | None:
+        self._record(GET_HIGHEST_APPLIED_VERSION_AT, branch=branch, at=at)
+        return self.highest_versions_at.get(branch)
+
+    def _record(self, method: str, **arguments: object) -> None:
+        self.calls.append(SchemaChangeRepositoryCall(method=method, arguments=arguments))
+
+
+class FailingSchemaChangeRepository(RecordingSchemaChangeRepository):
+    """A schema change repository that records each call, and raises a database error from `mark_applied` and `mark_failed`."""
+
+    @override
+    async def mark_applied(
+        self,
+        *,
+        schema_change_id: str,
+        application_id: str,
+        version: int,
+        parent_id: str | None,
+        applied_at: Timestamp,
+        user_id: str,
+    ) -> None:
+        await super().mark_applied(
+            schema_change_id=schema_change_id,
+            application_id=application_id,
+            version=version,
+            parent_id=parent_id,
+            applied_at=applied_at,
+            user_id=user_id,
+        )
+        raise DatabaseError(message=FAILING_STORE_ERROR)
+
+    @override
+    async def mark_failed(self, *, schema_change_id: str, application_id: str, error: str, user_id: str) -> None:
+        await super().mark_failed(
+            schema_change_id=schema_change_id, application_id=application_id, error=error, user_id=user_id
+        )
+        raise DatabaseError(message=FAILING_STORE_ERROR)
 
 
 TRANSIENT_ERROR = "Deadlock detected while trying to acquire locks"

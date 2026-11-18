@@ -1,18 +1,37 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from infrahub.core.branch import Branch
     from infrahub.core.schema_change.operations import SchemaOperation
-    from infrahub.core.schema_change.repository import SchemaChangeRepository
+    from infrahub.core.schema_change.repository import CreatedSchemaChange
     from infrahub.core.schema_change.version_resolver import SchemaChangeVersionResolver
     from infrahub.core.timestamp import Timestamp
 
 EMPTY_OPERATIONS_ERROR = "A schema change needs at least one operation"
+
+
+class SchemaChangeRecordStore(Protocol):
+    async def create_schema_change(
+        self, *, branch: str, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
+    ) -> CreatedSchemaChange: ...
+
+    async def mark_applied(
+        self,
+        *,
+        schema_change_id: str,
+        application_id: str,
+        version: int,
+        parent_id: str | None,
+        applied_at: Timestamp,
+        user_id: str,
+    ) -> None: ...
+
+    async def mark_failed(self, *, schema_change_id: str, application_id: str, error: str, user_id: str) -> None: ...
 
 
 @dataclass(frozen=True)
@@ -31,7 +50,7 @@ class SchemaChangeRecorder:
     the resolver returns is still free when it is written.
     """
 
-    def __init__(self, repository: SchemaChangeRepository, version_resolver: SchemaChangeVersionResolver) -> None:
+    def __init__(self, repository: SchemaChangeRecordStore, version_resolver: SchemaChangeVersionResolver) -> None:
         self.repository = repository
         self.version_resolver = version_resolver
 
