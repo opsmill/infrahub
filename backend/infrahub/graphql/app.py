@@ -415,7 +415,7 @@ class InfrahubGraphQLApp:
             pass
         finally:
             if subscriptions:
-                await asyncio.gather(*(subscription.aclose() for _, subscription in subscriptions.items()))
+                await asyncio.gather(*(subscription.aclose() for subscription in subscriptions.values()))
 
     async def _handle_websocket_message(
         self,
