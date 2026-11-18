@@ -895,20 +895,15 @@ class RelationshipValidatorList:
         self._relationship_ids.discard(id(value))
         self._relationships_count -= 1
 
-<<<<<<< HEAD
-    def as_list(self) -> Sequence[Relationship]:
-||||||| b71e735525
-    def as_list(self) -> list[Relationship]:
-=======
     def remove_peers(self, peer_ids: Collection[str]) -> None:
         kept = [rel for rel in self._relationships if rel.get_peer_id() not in peer_ids]
         if self.min_count and len(kept) < self.min_count:
             self._raise_too_few()
         self._relationships[:] = kept
+        self._relationship_ids = {id(rel) for rel in kept}
         self._relationships_count = len(kept)
 
-    def as_list(self) -> list[Relationship]:
->>>>>>> origin/stable
+    def as_list(self) -> Sequence[Relationship]:
         return self._relationships
 
     def _raise_too_few(self) -> None:
