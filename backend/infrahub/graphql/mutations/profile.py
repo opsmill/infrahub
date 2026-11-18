@@ -101,7 +101,7 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
             # A copy, so that the templates do not join the peers held by the manager.
             related_nodes = list(await obj.related_nodes.get_relationships(db=db))  # type: ignore[attr-defined]
             if hasattr(obj, "related_templates"):
-                related_nodes.extend(await obj.related_templates.get_relationships(db=db))  # type: ignore[attr-defined]
+                related_nodes.extend(await obj.related_templates.get_relationships(db=db))
             node_ids = [rel.peer_id for rel in related_nodes]
         if node_ids:
             await submit_profile_refresh(

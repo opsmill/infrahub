@@ -137,7 +137,7 @@ class CoreIPPrefixPool(Node):
             weighted_resources = list(resources.values())
 
         for resource in weighted_resources:
-            resource_prefix = ipaddress.ip_network(resource.prefix.value)  # type: ignore[attr-defined]
+            resource_prefix = ipaddress.ip_network(resource.prefix.value)
             next_available = await allocator.get_next_prefix(
                 ip_prefix=resource_prefix, target_prefix_length=prefixlen, parent_uuid=resource.id
             )

@@ -155,14 +155,14 @@ a separate change, and say so in the PR.
 
 ## A change that makes a type real retires its suppressions
 
-CI runs mypy without `--warn-unused-ignores`, so a `# type: ignore[code]` that no longer suppresses
-anything stays, and later hides a real error on the same line. ty checks only the ignores it reads
-(a bare `# type: ignore`, a `ty:` code, a `# ty: ignore`), and counts only the rules enabled for the
-file, so a rule that a `[[tool.ty.overrides]]` block turns off does not keep an ignore in use. When a
-change lets the checker see a type it could not before, run
-`uv run mypy --warn-unused-ignores backend` and delete every ignore it reports as unused, including
-in files the change does not otherwise touch. Then run `uv run ty check .`: a bare ignore, or one
-that carries a `ty:` code, can still suppress a ty error, so restore any deletion that ty fails on.
+`pyproject.toml` sets `warn_unused_ignores = true`, so `uv run mypy backend` fails on a
+`# type: ignore[code]` that no longer suppresses anything, including in files a change does not
+otherwise touch. Delete each ignore it reports. ty checks only the ignores it reads (a bare
+`# type: ignore`, a `ty:` code, a `# ty: ignore`), and counts only the rules enabled for the file, so
+a rule that a `[[tool.ty.overrides]]` block turns off does not keep an ignore in use. Then run
+`uv run ty check .`: a deleted bare ignore, or one that carried a `ty:` code, can have suppressed a ty
+error, so when ty fails on that line, add a `# ty: ignore[rule]` for the rule ty reports instead of
+restoring the mypy ignore.
 
 ## Name the mypy error code in every `# type: ignore`
 
@@ -170,7 +170,7 @@ Never write a bare `# type: ignore`: ty reads it as its own blanket ignore, so i
 error on that line. ty skips a `# type: ignore[code]` whose codes have no `ty:` prefix, so the coded
 form acts on mypy only. A line that needs both checkers silenced takes a separate `# ty: ignore[rule]`
 comment, placed after the mypy one: mypy reads `# type: ignore` only when it is the first comment on
-the line. mypy reports a `ty:` code inside its own brackets as unused when `--warn-unused-ignores` is on.
+the line. mypy reports a `ty:` code inside its own brackets as an unused ignore.
 
 ```python
 # ❌ Bad - hides every mypy and ty error on the line

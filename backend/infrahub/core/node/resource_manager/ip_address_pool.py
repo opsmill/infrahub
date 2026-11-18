@@ -127,7 +127,7 @@ class CoreIPAddressPool(Node):
             weighted_resources = list(resources.values())
 
         for resource in weighted_resources:
-            ip_prefix = ipaddress.ip_network(resource.prefix.value)  # type: ignore[attr-defined]
+            ip_prefix = ipaddress.ip_network(resource.prefix.value)
             prefix_length = prefixlen or ip_prefix.prefixlen
 
             if not ip_prefix.prefixlen <= prefix_length <= ip_prefix.max_prefixlen:
@@ -135,7 +135,7 @@ class CoreIPAddressPool(Node):
 
             next_address = await allocator.get_next_address(
                 ip_prefix=ip_prefix,
-                is_pool=resource.is_pool.value,  # type: ignore[attr-defined]
+                is_pool=resource.is_pool.value,
             )
 
             if next_address:

@@ -114,4 +114,4 @@ class InfrahubSetPreferences(Mutation):
 
                 await repository.save(preference, actor_id=actor_id)
 
-        return cls(ok=True, date_format=preference.date_format, timezone=preference.timezone)  # type: ignore[call-arg]
+        return cls(ok=True, date_format=preference.date_format, timezone=preference.timezone)

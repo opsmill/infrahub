@@ -76,7 +76,7 @@ class TestIpamRebaseReconcile(TestIpamReconcileBase):
         assert success is True
 
         updated_address = await NodeManager.get_one(db=db, branch=branch.name, id=new_address.id)
-        parent_rels = await updated_address.ip_prefix.get_relationships(db=db)  # type: ignore[union-attr]
+        parent_rels = await updated_address.ip_prefix.get_relationships(db=db)
         assert len(parent_rels) == 1
         assert parent_rels[0].peer_id == initial_dataset["net140"].id
 
@@ -114,27 +114,27 @@ class TestIpamRebaseReconcile(TestIpamReconcileBase):
         assert deleted_prefix is None
         new_prefix_branch = await NodeManager.get_one(db=db, branch=branch.name, id=new_prefix_id)
         assert new_prefix_branch.is_top_level.value is True
-        parent_rels = await new_prefix_branch.parent.get_relationships(db=db)  # type: ignore[union-attr]
+        parent_rels = await new_prefix_branch.parent.get_relationships(db=db)
         assert len(parent_rels) == 0
-        children_rels = await new_prefix_branch.children.get_relationships(db=db)  # type: ignore[union-attr]
+        children_rels = await new_prefix_branch.children.get_relationships(db=db)
         assert len(children_rels) == 1
         assert {child.peer_id for child in children_rels} == {initial_dataset["net146"].id}
-        address_rels = await new_prefix_branch.ip_addresses.get_relationships(db=db)  # type: ignore[union-attr]
+        address_rels = await new_prefix_branch.ip_addresses.get_relationships(db=db)
         assert len(address_rels) == 0
 
         net_146_prefix_branch = await NodeManager.get_one(db=db, branch=branch.name, id=initial_dataset["net146"].id)
         assert net_146_prefix_branch.is_top_level.value is False
-        parent_rels = await net_146_prefix_branch.parent.get_relationships(db=db)  # type: ignore[union-attr]
+        parent_rels = await net_146_prefix_branch.parent.get_relationships(db=db)
         assert len(parent_rels) == 1
         assert parent_rels[0].peer_id == new_prefix_id
-        children_rels = await net_146_prefix_branch.children.get_relationships(db=db)  # type: ignore[union-attr]
+        children_rels = await net_146_prefix_branch.children.get_relationships(db=db)
         assert len(children_rels) == 3
         assert {child.peer_id for child in children_rels} == {
             initial_dataset["net142"].id,
             initial_dataset["net144"].id,
             initial_dataset["net145"].id,
         }
-        address_rels = await net_146_prefix_branch.ip_addresses.get_relationships(db=db)  # type: ignore[union-attr]
+        address_rels = await net_146_prefix_branch.ip_addresses.get_relationships(db=db)
         assert len(address_rels) == 1
         assert address_rels[0].peer_id == initial_dataset["address10"].id
 
@@ -217,32 +217,32 @@ class TestIpamRebaseReconcile(TestIpamReconcileBase):
 
         # 10.10.0.0/7
         net_10_0_0_0_7_check = await NodeManager.get_one(db=db, branch=branch.name, id=net_10_0_0_0_7_id)
-        parent_rels = await net_10_0_0_0_7_check.parent.get_relationships(db=db)  # type: ignore[union-attr]
+        parent_rels = await net_10_0_0_0_7_check.parent.get_relationships(db=db)
         assert len(parent_rels) == 0
-        child_rels = await net_10_0_0_0_7_check.children.get_relationships(db=db)  # type: ignore[union-attr]
+        child_rels = await net_10_0_0_0_7_check.children.get_relationships(db=db)
         assert len(child_rels) == 1
         assert child_rels[0].peer_id == initial_dataset["net146"].id
         # 10.10.0.0/8
         net146_branch = await NodeManager.get_one(db=db, branch=branch.name, id=initial_dataset["net146"].id)
-        parent_rels = await net146_branch.parent.get_relationships(db=db)  # type: ignore[union-attr]
+        parent_rels = await net146_branch.parent.get_relationships(db=db)
         assert len(parent_rels) == 1
         assert parent_rels[0].peer_id == net_10_0_0_0_7_id
-        child_rels = await net146_branch.children.get_relationships(db=db)  # type: ignore[union-attr]
+        child_rels = await net146_branch.children.get_relationships(db=db)
         assert len(child_rels) == 2
         assert {c.peer_id for c in child_rels} == {net_10_0_0_0_15_id, initial_dataset["net140"].id}
         # 10.10.0.0/15
         net_10_0_0_0_15_check = await NodeManager.get_one(db=db, branch=branch.name, id=net_10_0_0_0_15_id)
-        parent_rels = await net_10_0_0_0_15_check.parent.get_relationships(db=db)  # type: ignore[union-attr]
+        parent_rels = await net_10_0_0_0_15_check.parent.get_relationships(db=db)
         assert len(parent_rels) == 1
         assert parent_rels[0].peer_id == initial_dataset["net146"].id
-        child_rels = await net_10_0_0_0_15_check.children.get_relationships(db=db)  # type: ignore[union-attr]
+        child_rels = await net_10_0_0_0_15_check.children.get_relationships(db=db)
         assert len(child_rels) == 0
         # 10.10.0.0/16
         net140_branch = await NodeManager.get_one(db=db, branch=branch.name, id=initial_dataset["net140"].id)
-        parent_rels = await net140_branch.parent.get_relationships(db=db)  # type: ignore[union-attr]
+        parent_rels = await net140_branch.parent.get_relationships(db=db)
         assert len(parent_rels) == 1
         assert parent_rels[0].peer_id == initial_dataset["net146"].id
-        child_rels = await net140_branch.children.get_relationships(db=db)  # type: ignore[union-attr]
+        child_rels = await net140_branch.children.get_relationships(db=db)
         assert len(child_rels) == 4
         assert {c.peer_id for c in child_rels} == {
             initial_dataset["net142"].id,
@@ -250,16 +250,16 @@ class TestIpamRebaseReconcile(TestIpamReconcileBase):
             initial_dataset["net145"].id,
             net_10_10_8_0_22_id,
         }
-        child_addr_rels = await net140_branch.ip_addresses.get_relationships(db=db)  # type: ignore[union-attr]
+        child_addr_rels = await net140_branch.ip_addresses.get_relationships(db=db)
         assert len(child_addr_rels) == 1
         assert child_addr_rels[0].peer_id == initial_dataset["address10"].id
         # 10.10.1.1
         address11_branch = await NodeManager.get_one(db=db, branch=branch, id=initial_dataset["address11"].id)
-        prefix_rels = await address11_branch.ip_prefix.get_relationships(db=db)  # type: ignore[union-attr]
+        prefix_rels = await address11_branch.ip_prefix.get_relationships(db=db)
         assert len(prefix_rels) == 1
         assert prefix_rels[0].peer_id == initial_dataset["net143"].id
         # 10.10.1.2
         address_10_10_1_2_branch = await NodeManager.get_one(db=db, branch=branch, id=address_10_10_1_2_id)
-        prefix_rels = await address_10_10_1_2_branch.ip_prefix.get_relationships(db=db)  # type: ignore[union-attr]
+        prefix_rels = await address_10_10_1_2_branch.ip_prefix.get_relationships(db=db)
         assert len(prefix_rels) == 1
         assert prefix_rels[0].peer_id == initial_dataset["net143"].id

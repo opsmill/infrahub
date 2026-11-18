@@ -57,7 +57,7 @@ class TestPeerRelativesConstraint(TestInfrahubApp):
             interfaces_1.append(interface)
             interfaces_1_ids.append(interface.id)
 
-        await device_1.interfaces.update(db=db, data=interfaces_1)  # type: ignore[attr-defined]
+        await device_1.interfaces.update(db=db, data=interfaces_1)
         await device_1.save(db=db)
 
         device_2 = await Node.init(db=db, schema=TestKind.DEVICE)
@@ -72,7 +72,7 @@ class TestPeerRelativesConstraint(TestInfrahubApp):
             interfaces_2.append(interface)
             interfaces_2_ids.append(interface.id)
 
-        await device_2.interfaces.update(db=db, data=interfaces_2)  # type: ignore[attr-defined]
+        await device_2.interfaces.update(db=db, data=interfaces_2)
         await device_2.save(db=db)
 
         return {"device_1": device_1, "device_2": device_2}
@@ -87,7 +87,7 @@ class TestPeerRelativesConstraint(TestInfrahubApp):
             kind=TestKind.LAG_INTERFACE,
             name="ae0",
             device=device,
-            members=[i.peer for i in device.interfaces],  # type: ignore[attr-defined]
+            members=[i.peer for i in device.interfaces],
             branch=default_branch.name,
         )
         await lag.save()
@@ -107,7 +107,7 @@ class TestPeerRelativesConstraint(TestInfrahubApp):
             kind=TestKind.LAG_INTERFACE,
             name="ae1",
             device=device_1,
-            members=[i.peer for i in list(device_1.interfaces)[:-1] + list(device_2.interfaces)],  # type: ignore[attr-defined]
+            members=[i.peer for i in list(device_1.interfaces)[:-1] + list(device_2.interfaces)],
             branch=default_branch.name,
         )
 
@@ -130,7 +130,7 @@ class TestPeerRelativesConstraint(TestInfrahubApp):
             kind=TestKind.LAG_INTERFACE,
             name="ae0",
             device=device,
-            members=[i.peer for i in device.interfaces],  # type: ignore[attr-defined]
+            members=[i.peer for i in device.interfaces],
             branch=branch.name,
         )
         await lag.save()
@@ -152,7 +152,7 @@ class TestPeerRelativesConstraint(TestInfrahubApp):
             kind=TestKind.LAG_INTERFACE,
             name="ae1",
             device=device_2,
-            members=[i.peer for i in list(device_1.interfaces)[:-1] + list(device_2.interfaces)[:-1]],  # type: ignore[attr-defined]
+            members=[i.peer for i in list(device_1.interfaces)[:-1] + list(device_2.interfaces)[:-1]],
             branch=branch.name,
         )
 

@@ -37,7 +37,7 @@ class TestWorker(TestWorkerInfrahubAsync):
         # Schedule the execution of the deployment from the server
         flow: FlowRun = await run_deployment(
             name=DUMMY_FLOW.full_name, parameters={"data": DummyInput(firstname="John", lastname="Doe")}, timeout=0
-        )  # type: ignore[return-value, misc]
+        )  # type: ignore[misc]
 
         # Prepare the execution of the flow, pull the information about the deployment
         assert flow.deployment_id
@@ -74,7 +74,7 @@ class TestWorker(TestWorkerInfrahubAsync):
         # Schedule the execution of the deployment from the server
         flow: FlowRun = await run_deployment(
             name=DUMMY_FLOW.full_name, parameters={"data": DummyInput(firstname="John", lastname="Doe")}, timeout=0
-        )  # type: ignore[return-value, misc]
+        )  # type: ignore[misc]
 
         result_worker = await self.worker_run_flow(worker=prefect_worker, client=prefect_client, flow=flow)
         assert result_worker.status_code == 0
@@ -102,7 +102,7 @@ class TestWorker(TestWorkerInfrahubAsync):
             name=DUMMY_FLOW_BROKEN.full_name,
             parameters={"data": DummyInput(firstname="John", lastname="Doe")},
             timeout=0,
-        )  # type: ignore[return-value, misc]
+        )  # type: ignore[misc]
 
         result_worker = await self.worker_run_flow(worker=prefect_worker, client=prefect_client, flow=flow)
         assert result_worker.status_code == 0

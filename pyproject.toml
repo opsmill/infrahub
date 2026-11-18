@@ -175,6 +175,7 @@ plugins = ["pydantic.mypy"]
 pretty = true
 ignore_missing_imports = true
 disallow_untyped_defs = true
+warn_unused_ignores = true
 exclude = [
     "^backend/tests/fixtures/repos/*", # To avoid 'Duplicate module named "transforms"'
     "^backend/tests/scale",
