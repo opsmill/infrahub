@@ -19,13 +19,8 @@ from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from infrahub import config
 from infrahub.core.timestamp import current_timestamp
-<<<<<<< HEAD
-from infrahub.exceptions import InitializationError
-||||||| b71e735525
-=======
-from infrahub.exceptions import LockError, LockWaitTimeoutError
+from infrahub.exceptions import InitializationError, LockError, LockWaitTimeoutError
 from infrahub.locks.shared_holders.factory import build_shared_holder_store
->>>>>>> origin/stable
 from infrahub.log import get_logger
 from infrahub.redis_connection import build_cache_connection_string, build_redis_connection
 from infrahub.worker import WORKER_IDENTITY
