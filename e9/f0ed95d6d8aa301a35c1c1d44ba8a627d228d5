@@ -12,6 +12,8 @@ backend/infrahub/core/node/create.py
   s_92ce1f25dbe045::t_a893caa3eeb647 605-606
   s_92ce1f25dbe045::t_619876521bd859 30,34,51-55,490,524,541-604,640-642,646,647,649-650,664-670,825-826,881-888
   s_92ce1f25dbe045::t_b958fc8046af46 14
+  s_92ce1f25dbe045::t_11eca24ebedf5d 648
+  s_92ce1f25dbe045::t_bef35cc1cc3369 630,877
 dev/knowledge/backend/mutations.md
   s_92ce1f25dbe045::t_3c1c658c81f8cd 356-363
   s_92ce1f25dbe045::t_1a21299c58f4de 371-372
