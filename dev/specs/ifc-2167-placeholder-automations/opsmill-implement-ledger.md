@@ -197,3 +197,28 @@ T039 regression run (existing suite, not modified):
 | Test id | Type (unit/integration/e2e) | Run command | Passed at (ISO 8601) | Environment context | Verbatim pass line |
 |---------|-----------------------------|-------------|----------------------|---------------------|--------------------|
 | backend/tests/integration_docker/test_computed_attributes.py | integration (docker stack) | `uv run pytest backend/tests/integration_docker/test_computed_attributes.py -q` | 2026-11-19T17:11:26Z | Infrahub stack started by testcontainers through the local Docker daemon, macOS, Python 3.14. The image comes from `INFRAHUB_TESTING_IMAGE_VER` (read in `python_sdk/infrahub_sdk/testing/docker.py`); this run did not check whether the containers ran this branch's code or a published image. | `================= 11 passed, 17 warnings in 225.51s (0:03:45) ==================` |
+
+## Chunk: Phase 7: Polish and cross-cutting concerns (second pass, T038 and T041)
+
+| Task | Outcome | Reason when not done |
+|------|---------|----------------------|
+| T038 | ⚠️ partial | The query plan was measured (below), but it cannot be recorded in the PR description because no PR exists for this branch. The database held synthetic records written through the repository, not a loaded schema of 50 kinds. |
+| T041 | ❌ blocked | Needs a local stack built from this branch, a second stack on the previous release for the SC-005 comparison, and a PR description to record the results in. Not runnable inside this unattended chunk. |
+
+Decisions worth flagging:
+
+- T038 measurement: a throwaway component test on the testcontainers Neo4j (`neo4j:2026.10.1-enterprise`) created 3 branches besides `main`, wrote 480 `TemplateFingerprint` records through `TemplateFingerprintRepository.upsert` (2 families × 4 branches × 60 kinds), then ran `EXPLAIN` and `PROFILE` on the text and parameters rendered by `TemplateFingerprintGetByFamilyQuery(family="human_friendly_id").render()`, through the Neo4j driver session. Run at 2026-11-19T17:13:45Z, `1 passed, 17 warnings in 19.10s`.
+- Rendered query:
+
+  ```cypher
+  MATCH (f:TemplateFingerprint { family: $family })
+  RETURN f.branch AS branch,f.kind AS kind,f.fingerprint AS fingerprint
+  ORDER BY branch,kind
+  ```
+
+- `PROFILE` plan, from the leaf up: `NodeByLabelScan f:TemplateFingerprint` (rows 480, dbHits 481), `Filter f.family = $family` (rows 240, dbHits 480), `CacheProperties cache[f.branch], cache[f.kind]` (rows 240, dbHits 480), `Projection` (dbHits 0), `Sort branch ASC, kind ASC` (dbHits 0), `Projection f.fingerprint` (rows 240, dbHits 480), `ProduceResults` (rows 240). The `EXPLAIN` plan has the same operators. The read scans every record of the label and filters on `family`, about 4 database hits per record. This is the label scan that research Decision 3 expects, so no index is proposed. An index on `family` would remove only the filter on the other family's records.
+- The throwaway test file could not be deleted: `rm` and edits to git's exclude file need an approval nobody could give. Its content was replaced with an empty file, `backend/tests/component/core/template_fingerprint/tmp_explain_check.py`. Delete it before opening the PR; if the workflow commits it, remove it in a follow-up commit.
+
+Lint and format: no source or test code changed in this pass; not run.
+
+No new or modified tests in this chunk.
