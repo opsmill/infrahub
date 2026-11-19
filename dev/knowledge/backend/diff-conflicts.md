@@ -56,5 +56,5 @@ and writes a log line.
 The sources of a node show as the attribute `node_metadata__sources`, with one `HAS_SOURCE` property
 that holds the whole list of sources. The rules of an owner list apply to it: the conflict rule, the
 two resolutions of the merge, and the block of the rebase. `is_list_property` in
-`backend/infrahub/core/diff/ownership_fields.py` tells this property apart from the `HAS_SOURCE`
+`backend/infrahub/core/ownership/fields.py` tells this property apart from the `HAS_SOURCE`
 property of an attribute, which keeps one source ID.
