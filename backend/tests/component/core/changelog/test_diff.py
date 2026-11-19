@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
+import ujson
 
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.builder import build_diff_changelog_collector
@@ -286,6 +287,9 @@ async def test_direct_write_and_merge_record_the_same_attribute_owner_change(
         for changelog in (person_branch.node_changelog, merge_changelog)
     )
     assert write_changes == merge_changes
+    assert merge_changes == (
+        {"owner": (None, first_account.id)} if owner_count == 1 else {"owners": (None, ujson.dumps(sorted(owner_ids)))}
+    )
 
 
 class TestConflict:
