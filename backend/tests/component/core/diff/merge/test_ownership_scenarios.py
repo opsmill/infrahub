@@ -160,7 +160,7 @@ class TemplateCopyHolder(OwnerListHolder):
     """Own owners of a site, which start as a copy of the owners that its object template gives."""
 
     async def prepare(self, db: InfrahubDatabase, default_branch: Branch, dataset: OwnerDataset, start: Names) -> str:
-        assert start, "a template copy needs owners to copy"
+        assert start is not None, "a template that inherits gives no owners to copy"
         template = await Node.init(db=db, schema="TemplateTestSite")
         await template.new(db=db, template_name="emea-site")
         await template.save(db=db)
@@ -506,11 +506,13 @@ def _selection_params() -> list[Any]:
                         reason="the changelog of a link property ignores a selection of the default branch",
                     )
                 )
-            params.append(pytest.param(holder, selection, id=f"{holder.name}-{name}", marks=marks))
+            params.append(pytest.param(holder, selection, OTHER, id=f"{holder.name}-{name}", marks=marks))
+            if holder is RELATIONSHIP_MANY:
+                params.append(pytest.param(holder, selection, (), id=f"{holder.name}-{name}-no_owner_on_default"))
     return params
 
 
-@pytest.mark.parametrize(("holder", "selection"), _selection_params())
+@pytest.mark.parametrize(("holder", "selection", "other"), _selection_params())
 async def test_different_owner_changes_on_both_branches_conflict_and_the_merge_applies_the_selection(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -518,11 +520,12 @@ async def test_different_owner_changes_on_both_branches_conflict_and_the_merge_a
     dataset: OwnerDataset,
     holder: OwnerListHolder,
     selection: ConflictSelection,
+    other: Names,
 ) -> None:
     after = _branch_change(holder)
     node_id = await holder.prepare(db=db, default_branch=default_branch, dataset=dataset, start=START)
     branch = await create_branch(db=db, branch_name="different-change")
-    await holder.write(db=db, branch=default_branch, dataset=dataset, node_id=node_id, names=OTHER)
+    await holder.write(db=db, branch=default_branch, dataset=dataset, node_id=node_id, names=other)
     await holder.write(db=db, branch=branch, dataset=dataset, node_id=node_id, names=after)
 
     diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
@@ -534,7 +537,7 @@ async def test_different_owner_changes_on_both_branches_conflict_and_the_merge_a
     conflict = owners.conflict
     assert conflict is not None
     assert (conflict.base_branch_value, conflict.diff_branch_value) == (
-        holder.diff_value(dataset=dataset, names=OTHER),
+        holder.diff_value(dataset=dataset, names=other),
         holder.diff_value(dataset=dataset, names=after),
     )
     assert [found.uuid for found in diff.get_all_conflicts().values()] == [conflict.uuid]
@@ -543,7 +546,7 @@ async def test_different_owner_changes_on_both_branches_conflict_and_the_merge_a
 
     changelogs = await _merge_changelogs(db=db, default_branch=default_branch, branch=branch, diff=diff)
 
-    merged = after if selection is ConflictSelection.DIFF_BRANCH else OTHER
+    merged = after if selection is ConflictSelection.DIFF_BRANCH else other
     assert await holder.read(db=db, branch=default_branch, node_id=node_id) == dataset.owners(merged)
     assert await holder.read(db=db, branch=branch, node_id=node_id) == dataset.owners(after)
     assert await count_active_holder_edges(db=db, branch=default_branch, node_id=node_id) == _edge_count(merged)
@@ -600,6 +603,7 @@ REMOVAL_TEST_CASES: list[RemovalTestCase] = [
     ),
     RemovalTestCase(name="no_owner_set", start=("dc-emea",), after=(), action=DiffAction.UPDATED),
     RemovalTestCase(name="inherit_set", start=("dc-emea",), after=None, action=DiffAction.REMOVED),
+    RemovalTestCase(name="no_owner_replaced", start=(), after=START, action=DiffAction.UPDATED),
 ]
 S6_HOLDERS = [
     RELATIONSHIP_ONE,
@@ -617,7 +621,7 @@ def _removal_params() -> list[Any]:
     params = []
     for holder in S6_HOLDERS:
         for test_case in REMOVAL_TEST_CASES:
-            if test_case.after == () and not holder.no_owner:
+            if () in (test_case.start, test_case.after) and not holder.no_owner:
                 continue
             if test_case.name == "owner_removed" and (holder.single or holder is SOURCES):
                 continue
