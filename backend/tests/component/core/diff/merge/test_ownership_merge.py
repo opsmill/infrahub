@@ -927,12 +927,14 @@ async def test_merge_keeps_the_global_owner_edges_of_a_branch_agnostic_node(
     group_id = dataset.ids["security"]
     await set_owners(db=db, branch=default_branch, node_id=group_id, owner_ids=dataset.owners(("dc-emea",)))
     branch = await create_branch(db=db, branch_name="global-owner-merge")
-    await set_owners(db=db, branch=default_branch, node_id=group_id, owner_ids=dataset.owners(("network-emea",)))
+    await set_owners(db=db, branch=branch, node_id=group_id, owner_ids=dataset.owners(("network-emea",)))
     await set_owners(db=db, branch=branch, node_id=dataset.ids["tenant-a"], owner_ids=dataset.owners(("dc-emea",)))
     edges = await holder_edges(db=db, node_id=group_id)
     assert {(edge[5], edge[1]) for edge in edges} == {(GLOBAL_BRANCH_NAME, "active"), (GLOBAL_BRANCH_NAME, "deleted")}
+    assert await read_owners(db=db, branch=default_branch, node_id=group_id) == dataset.owners(("network-emea",))
 
-    await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+    assert [node.uuid for node in diff.nodes if node.uuid == group_id] == []
     await merge(db=db, branch=branch)
 
     assert await holder_edges(db=db, node_id=group_id) == edges
