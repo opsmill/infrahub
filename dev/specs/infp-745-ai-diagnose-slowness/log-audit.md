@@ -10,7 +10,8 @@ address or a URL query string reaches one of these three stores, and what was do
 ## Result
 
 - 5 findings are confirmed and fixed in the code that writes the line (rows 1 to 5).
-- 1 finding is confirmed and not fixed: the webhook payload line (row 6). It needs a decision.
+- 1 finding is confirmed and not changed: the webhook payload line (row 6). Daniel decided on
+  2026-11-19 to keep the line, so the docs must name it as data that reaches the AI model provider.
 - 1 finding is in the Python SDK (row 7). It is not fixed in this repository.
 - No value was found in a log stream that Infrahub does not write, so no Alloy `drop` rule was added
   and no stream is named in the docs under FR-022a.
@@ -74,7 +75,7 @@ Each location is a file under `backend/infrahub/` and a function or symbol.
 | 4 | `auth/auth.py::get_groups_from_provider` (Google, with `fetch_groups` on) | The email address of the user, in the URL query string that row 3 wrote on a failed request | INFO or WARNING, on a failed request only | Loki | Confirmed in the code. Fixed. Checked with a unit test, not on the running stack (no identity provider) | The email address is sent as a request parameter (`params`), a new optional argument of the `get` method of the HTTP adapter, so the URL that the adapter logs does not hold it. Test: `backend/tests/unit/auth/test_google_group_lookup.py`. This branch |
 | 5 | `auth/auth.py::validate_auth_response` and `auth/auth.py::safe_get_response_body` | The URL of the identity provider's answer, with its query string if the configured URL has one | ERROR, when the provider answers with an error or an empty body | Loki | Possible in research R8. Confirmed for the URL by calling the functions with a provider answer; not checked on the running stack. Fixed | The `url` field is written without its query string. Test: `backend/tests/unit/auth/test_auth_response.py`. This branch |
 | 5a | `auth/auth.py::validate_auth_response`, field `body` | The body of the provider's error answer, written in full. A provider can put a client ID or a user name in `error_description` | ERROR, when the provider answers with an error | Loki | Not checked: no real provider answer was available. Not changed | None. Check with the answers of the supported providers (Google, Keycloak, Entra ID) before the release |
-| 6 | `webhook/log_formatter.py::WebhookLogFormatter.outgoing_request`, the `Payload:` block (and `full_payload` at DEBUG) | The event payload: the values of the node that changed. For an account, the user name (its human-friendly ID) and its label. For any node, whatever its attributes hold, such as an email address | INFO for the first 2048 characters, written by default. DEBUG for the full payload | Loki and the Prefect server | Possible in research R8. Confirmed on the running stack: the task worker stream holds the marker user name (1 line) and the marker label (5 lines), and the Grafana MCP server returns them | Not fixed. See "Decision needed" below |
+| 6 | `webhook/log_formatter.py::WebhookLogFormatter.outgoing_request`, the `Payload:` block (and `full_payload` at DEBUG) | The event payload: the values of the node that changed. For an account, the user name (its human-friendly ID) and its label. For any node, whatever its attributes hold, such as an email address | INFO for the first 2048 characters, written by default. DEBUG for the full payload | Loki and the Prefect server | Possible in research R8. Confirmed on the running stack: the task worker stream holds the marker user name (1 line) and the marker label (5 lines), and the Grafana MCP server returns them | Not changed, decided by Daniel on 2026-11-19. The docs must name it (FR-026). See "Decision: the webhook payload line" below |
 | 7 | Python SDK: `infrahub_sdk/retry.py::prepare_retry` and the HTTP 429 lines of `infrahub_sdk/rate_limit.py`, used by the task workers | The API URL with its query string. No SDK call puts a token in it. `query_gql_query` puts the variables of a stored GraphQL query in it, and a variable can hold personal data | WARNING, then ERROR after a long retry. Written on a transient failure only | Loki and the Prefect server | Possible in research R8. Confirmed by reading the SDK code; no retry happened on the running stack | Not fixed here: the line is in `opsmill/infrahub-sdk-python`. It needs a change there, an SDK release and an update of the `python_sdk` submodule |
 | 8 | Flow run parameters, stored by the Prefect server for each flow run | The repository location with its user and password (`git-repository-check-connectivity`), the webhook URL with its query string (`Configure webhook`), the webhook payload with node values (`Send webhook`) | Stored for every flow run | The Prefect server's database only. Not Loki, Tempo or Prometheus | Confirmed on the running stack (5 flow runs hold `secret-value`). The Grafana MCP server cannot read it | None in this work. It is outside SC-004. Reported to Daniel as a separate finding for anyone who can read the Prefect API or its database |
 
@@ -152,21 +153,30 @@ Helm: not checked (task T045, in `opsmill/infrahub-helm`).
 `test_exported_attribute` and `test_exported_event_attribute`). No test was added. On the running
 stack, the Grafana MCP server returned no marker from Tempo.
 
-## Decision needed: the webhook payload line (row 6)
+## Decision: the webhook payload line (row 6)
 
 The INFO line of a webhook delivery writes the first 2048 characters of the payload. The payload is
 the changed node, so it can hold any value that a user stored in Infrahub. The line exists so that a
 user can view what was sent, in the task logs of the web interface.
 
-Options:
+**Decision** (Daniel, 2026-11-19): the line stays as it is. The work of INFP-745 does not change the
+current behavior of the stack, and writing the payload only at DEBUG would remove it from the task
+logs that users view today.
 
-1. Write the payload only at DEBUG. The INFO line keeps the target, the headers and the size of the
-   payload. This is the fix "where the line is written" that FR-023 asks for. It removes the payload
-   from the task logs that users view today.
-2. Keep the line, and add an Alloy `drop` rule for the payload lines, so that they reach the Prefect
-   server and not Loki. The lines have no common prefix after the first one, so the rule needs a
-   multi-line stage. FR-023 says that Infrahub fixes lines where they are written, so this option
-   changes that decision.
-3. Keep the line, and name it in the docs (FR-026) as data that reaches the AI model provider.
+**What follows from the decision:**
 
-Not decided. SC-007 requires one of these before the release.
+- The docs page of the Grafana MCP server names this line as data that reaches the AI model provider:
+  the values of a node that a webhook sends, for the events that the webhook is subscribed to
+  (FR-026, task T058). Not written yet.
+- The spec needs an update, because it does not allow this case today. FR-023 says that each log line
+  that the audit lists is fixed where it is written. FR-022a and SC-004 allow a docs entry only for a
+  stream that Infrahub does not write. SC-007 has the same limit. Not updated yet: the main session
+  owns the spec.
+- An operator who does not want these values to reach the AI model provider has no setting for it
+  today.
+
+Options that were not chosen:
+
+1. Write the payload only at DEBUG. Not chosen: it changes what users view in the task logs.
+2. An Alloy `drop` rule for the payload lines, so that they reach the Prefect server and not Loki. Not
+   chosen: it changes what the stack sends to Loki.
