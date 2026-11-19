@@ -63,6 +63,63 @@ async def test_branch_made_before_a_global_owner_change_of_an_attribute_reads_th
     await verify_graph(db=db)
 
 
+# An earlier release closed a global owner edge without a `deleted` edge.
+CLOSE_GLOBAL_OWNER_EDGE = """
+MATCH ()-[r:HAS_OWNER {branch: $global_branch}]->(:Node {uuid: $owner_id})
+WHERE r.to IS NULL
+SET r.to = $at
+"""
+
+
+@pytest.mark.parametrize(
+    "holder",
+    [SEATS_HOLDER, NODE_HOLDER, HolderKey(kind=HolderKind.FIELD_SET, identifier="thing__peer", direction="outbound")],
+    ids=["attribute", "node", "field_set"],
+)
+async def test_branch_write_keeps_the_end_time_of_a_global_owner_edge_that_an_earlier_release_closed(
+    db: InfrahubDatabase, default_branch: Branch, groups: list[str], holder: HolderKey
+) -> None:
+    person = await add_node(db=db, kind="TestPerson", name="person-a")
+    thing = await add_node(db=db, kind="TestCar", name="car-a", nbr_seats=4, is_electric=False, owner=person)
+    global_branch = registry.get_global_branch()
+    await OwnershipRepository(db=db, branch=default_branch, at=None).write(
+        node_id=thing.id,
+        holder=holder,
+        state=StoredOwnerState((groups[0],)),
+        write_branch=global_branch,
+        at=Timestamp(),
+        user_id=USER_ID,
+    )
+    branch = await create_branch(db=db, branch_name="before-global-close")
+    await db.execute_query(
+        query=CLOSE_GLOBAL_OWNER_EDGE,
+        params={"global_branch": global_branch.name, "owner_id": groups[0], "at": Timestamp().to_string()},
+    )
+    after_close = Timestamp()
+
+    if holder == SEATS_HOLDER:
+        branch_thing = await NodeManager.get_one(db=db, branch=branch, id=thing.id, raise_on_error=True)
+        branch_thing.nbr_seats.owner = groups[1]
+        await branch_thing.save(db=db)
+    else:
+        await OwnershipRepository(db=db, branch=branch, at=None).write(
+            node_id=thing.id,
+            holder=holder,
+            state=StoredOwnerState((groups[1],)),
+            write_branch=global_branch,
+            at=Timestamp(),
+            user_id=USER_ID,
+        )
+
+    stored = await OwnershipRepository(db=db, branch=default_branch, at=after_close).read(
+        node_ids=[thing.id], attributes=True
+    )
+    assert stored[thing.id].get(holder) == StoredOwnerState(None)
+    for read_branch in (default_branch, branch):
+        assert await _stored(db, read_branch, thing.id, holder) == StoredOwnerState((groups[1],))
+    await verify_graph(db=db)
+
+
 @dataclass
 class GlobalWriteTestCase:
     name: str
