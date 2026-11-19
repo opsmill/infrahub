@@ -21,9 +21,9 @@ class RollbackScope(Enum):
     callers that run every operation to revert at known timestamps while other writers may still
     be active on the branch — a range would revert those unrelated writes too.
 
-    SINCE_TIMESTAMP reverses every write stamped at or after the earliest of the operation's timestamps. It is only
-    safe when the caller owns all writes on the target branch from that point on (the merge
-    write-block guarantees this for the merge window).
+    SINCE_TIMESTAMP reverses every write stamped at or after the earliest of the operation's
+    timestamps. It is only safe when the caller owns all writes on the target branch from that
+    point on (the merge write-block guarantees this for the merge window).
     """
 
     AT_TIMESTAMP = "at_timestamp"
@@ -48,14 +48,18 @@ def _rollback_branches(target_branch: Branch, rollback_scope: RollbackScope) -> 
     return branches
 
 
+def _timestamp_params(ats: Sequence[Timestamp]) -> dict[str, Any]:
+    """The operation's timestamps as strings, and the earliest of them."""
+    as_strings = [t.to_string() for t in ats]
+    return {"ats": as_strings, "earliest_at": min(as_strings)}
+
+
 def _render_restore_metadata_pipeline() -> str:
     """Restore the metadata snapshots of the vertices an edge reversal touched.
 
     Matches the operation's exact timestamps on every pass, independent of branch and scope.
-    All ``updated_at`` properties on ``:Node``, ``:Attribute``, and ``:Relationship`` vertexes
-    are assumed to be updated at the exact timestamp if changed on the default/global branches.
-    The exact timestamp match also ensures that metadata is only restored one time and never
-    attempts multiple restores, which would lead to NULL updated_at/by.
+    Vertices are stamped at one of the operation's timestamps. A restored vertex no longer holds one
+    of them because the writers keep the value from before the operation, so a later restore skips it.
     """
     return """
     UNWIND [src, dst] AS endpoint
@@ -98,8 +102,7 @@ class RollbackReopenEdgesQuery(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
-            "ats": [t.to_string() for t in self.rollback_ats],
-            "earliest_at": min(t.to_string() for t in self.rollback_ats),
+            **_timestamp_params(self.rollback_ats),
             "rollback_branches": _rollback_branches(target_branch=self.target_branch, rollback_scope=self.scope),
         }
         query = """
@@ -145,8 +148,7 @@ class RollbackDeleteEdgesQuery(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
-            "ats": [t.to_string() for t in self.rollback_ats],
-            "earliest_at": min(t.to_string() for t in self.rollback_ats),
+            **_timestamp_params(self.rollback_ats),
             "rollback_branches": _rollback_branches(target_branch=self.target_branch, rollback_scope=self.scope),
         }
         query = """

@@ -20,7 +20,7 @@ class MigrationSelectionQuery(Query):
 
     selected_node: ClassVar[str] = "active_node"
 
-    def __init__(self, operation_ats: Sequence[Timestamp] = (), **kwargs: Any) -> None:
+    def __init__(self, *, operation_ats: Sequence[Timestamp] = (), **kwargs: Any) -> None:
         self.operation_ats = list(operation_ats)
         super().__init__(**kwargs)
 
