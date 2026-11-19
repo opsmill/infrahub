@@ -1296,7 +1296,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             lookup=OwnershipRepository(db=db, branch=self._branch, at=None), owner_ids=owner_ids
         )
 
-    async def _check_changed_owner_kinds(self, db: InfrahubDatabase, at: Timestamp, fields: list[str] | None) -> None:
+    async def _check_changed_owner_kinds(
+        self, db: InfrahubDatabase, at: Timestamp, fields: list[str] | None, user_id: str
+    ) -> None:
         """Refuse the update before any write when it gives an attribute or a link an owner of another kind.
 
         An owner that the database already holds is not checked again, so an owner that was deleted later does not
@@ -1304,6 +1306,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         Raises:
             ValidationError: When a new owner is not found, or is not an account or an account group.
+            NodeNotFoundError: When the peer of a link with an owner, given by HFID or by pool, is not found.
 
         """
         owner_ids: dict[str, list[str]] = {}
@@ -1332,6 +1335,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             links = [rel for rel in manager._relationships if rel.owner_id]
             if (fields and name not in fields) or not links:
                 continue
+            # The comparison with the database needs the ID of each peer, also of a peer given by HFID or by pool.
+            await manager.resolve(db=db, user_id=user_id)
             details = await manager.refresh_update_details(
                 db=db, branch_agnostic=manager.schema.branch is BranchSupportType.AGNOSTIC
             )
@@ -1362,7 +1367,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         """Update the node in the database if needed."""
         update_at = Timestamp(at)
         node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
-        await self._check_changed_owner_kinds(db=db, at=update_at, fields=fields)
+        await self._check_changed_owner_kinds(db=db, at=update_at, fields=fields, user_id=user_id)
 
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
