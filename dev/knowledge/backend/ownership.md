@@ -306,13 +306,21 @@ holds, so it runs before the upgrade.
   It cannot show that the origin of the owners changed from `TEMPLATE` to `SELF`.
 - An event stores the owners of an attribute as the `owner` or the `owners` property of the attribute, in its payload
   only.
-- The merge does not copy the `HAS_OWNER` edge of a link to a deleted owner. The default branch then reads no owner
-  on the link, and the branch reads the deleted owner.
+- The owner of one link (the `HAS_OWNER` edge of a `Relationship` vertex) keeps the behavior of `develop` at a merge.
+  Three tests in `test_ownership_scenarios.py` mark these cases as expected failures:
+  - The changelog of the merge records the owner of a link also when the default branch already holds the same
+    owner, for example after the same change on both branches.
+  - The changelog of the merge records the branch value of a link owner when the conflict selects the default
+    branch.
+  - The merge does not copy the `HAS_OWNER` edge of a link to a deleted owner. The default branch then reads no
+    owner on the link, and the branch reads the deleted owner.
 - The global edges of an `OwnerSet` that a schema change hides never close. The retirement of branch-agnostic data
   (`core/query/agnostic_retention.py`) reads only `Attribute` and `Relationship` vertices.
 - A `HAS_OWNER_SOURCE` edge of the global branch stays open after the delete of a branch-aware object template.
   This is the mark of a branch-agnostic attribute of a branch-aware node. Its owners still read as a copy from the
   template.
+- On a branch other than the default branch, an owner write does not change `updated_at` and `updated_by` on the
+  node vertex. The vertex holds them for the default and the global branch only.
 - After a rename of an attribute on a branch other than the default branch, a write of owners on that branch cannot
   replace the owners that a branch-agnostic profile or object template gives to the attribute. The write goes to
   the global branch and the copy of the rename is on the branch.
