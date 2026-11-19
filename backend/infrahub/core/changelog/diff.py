@@ -8,7 +8,6 @@ from opentelemetry import trace
 
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
-from infrahub.core.constants.schema import NodeProperty
 from infrahub.core.diff.model.path import ConflictSelection
 from infrahub.core.diff.ownership_differ import OwnershipDiffer
 from infrahub.core.diff.ownership_fields import (
@@ -17,8 +16,8 @@ from infrahub.core.diff.ownership_fields import (
     stored_owner_ids,
 )
 from infrahub.core.ownership.fields import (
-    ATTRIBUTE_OWNERS_PROPERTY,
     OWNERS_CHANGELOG_KIND,
+    attribute_owners_change,
     owner_list_value,
     stored_holder_field_name,
 )
@@ -361,23 +360,11 @@ class DiffChangelogCollector:
 
 
 def _add_owners_property(attribute: AttributeChangelog, diff_property: EnrichedDiffProperty) -> None:
-    """Record the change of the owners of an attribute.
-
-    A change between one owner and none gives the `owner` property with the owner ID. Any other change gives the
-    `owners` property with the owner lists.
-    """
-    current_ids, previous_ids = (
-        stored_owner_ids(value=value) for value in (diff_property.new_value, diff_property.previous_value)
+    name, value, value_previous = attribute_owners_change(
+        owner_ids=stored_owner_ids(value=diff_property.new_value),
+        previous_owner_ids=stored_owner_ids(value=diff_property.previous_value),
     )
-    if all(ids is None or len(ids) == 1 for ids in (current_ids, previous_ids)):
-        current, previous = (ids[0] if ids else None for ids in (current_ids, previous_ids))
-        attribute.add_property(name=NodeProperty.OWNER.value, value_current=current, value_previous=previous)
-        return
-    attribute.add_property(
-        name=ATTRIBUTE_OWNERS_PROPERTY,
-        value_current=owner_list_value(owner_ids=current_ids),
-        value_previous=owner_list_value(owner_ids=previous_ids),
-    )
+    attribute.add_property(name=name, value_current=value, value_previous=value_previous)
 
 
 def _keep_branch_update(diff_property: EnrichedDiffProperty) -> bool:

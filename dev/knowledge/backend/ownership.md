@@ -96,7 +96,9 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
 
 - It writes nothing when the holder already stores the state.
 - It adds the old and the new owner IDs to the changelog of the node. The reserved field names are in
-  [Diff Conflicts](diff-conflicts.md).
+  [Diff Conflicts](diff-conflicts.md). For the owners of an attribute, the write and the merge use the same rule
+  (`attribute_owners_change`): a change between one owner and none gives the `owner` property with the owner IDs, as
+  the save of the `owner` property does. Any other change gives the `owners` property with the owner lists.
 - It records `updated_at` and `updated_by` on the node vertex only when the write branch is the default branch or
   the global branch.
 - `copy_from_template` gives a new node the owners that its object template gives, with the `HAS_OWNER_SOURCE` mark.
@@ -234,7 +236,8 @@ holds, so it runs before the upgrade.
   lock, the migration still gives the node a set with active edges.
 - A rebase stops on a conflict of owners or sources until both branches hold the same list. See
   [Diff Conflicts](diff-conflicts.md).
-- An event stores the owners of an attribute as the `owners` property of the attribute, in its payload only.
+- An event stores the owners of an attribute as the `owner` or the `owners` property of the attribute, in its payload
+  only.
 - The merge does not copy the `HAS_OWNER` edge of a link to a deleted owner. The default branch then reads no owner
   on the link, and the branch reads the deleted owner.
 - The global edges of an `OwnerSet` that a schema change hides never close. The retirement of branch-agnostic data

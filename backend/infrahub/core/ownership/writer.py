@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from infrahub.core.changelog.models import AttributeChangelog
 from infrahub.core.timestamp import Timestamp
 
-from .fields import ATTRIBUTE_OWNERS_PROPERTY, OWNERS_CHANGELOG_KIND, owner_list_value, stored_holder_field_name
+from .fields import OWNERS_CHANGELOG_KIND, attribute_owners_change, owner_list_value, stored_holder_field_name
 from .models import INHERIT, NODE_HOLDER, HolderKind, StoredOwnerState
 from .repository import OwnershipRepository
 
@@ -96,13 +96,15 @@ class OwnershipWriter:
     ) -> None:
         if not node.has_changelog:
             return
-        value, value_previous = owner_list_value(owner_ids=state.owner_ids), owner_list_value(previous.owner_ids)
         if holder.kind == HolderKind.ATTRIBUTE:
             attribute = node.get_attribute(name=str(holder.attribute))
             changelog = node.node_changelog.attributes.get(attribute.name) or AttributeChangelog(
                 name=attribute.name, kind=attribute.schema.kind, value=attribute.value, value_previous=attribute.value
             )
-            changelog.add_property(name=ATTRIBUTE_OWNERS_PROPERTY, value_current=value, value_previous=value_previous)
+            prop_name, value, value_previous = attribute_owners_change(
+                owner_ids=state.owner_ids, previous_owner_ids=previous.owner_ids
+            )
+            changelog.add_property(name=prop_name, value_current=value, value_previous=value_previous)
             await node.add_changelog_attribute(db=self.repository.db, attribute=changelog)
             return
         name = stored_holder_field_name(
@@ -115,7 +117,10 @@ class OwnershipWriter:
         await node.add_changelog_attribute(
             db=self.repository.db,
             attribute=AttributeChangelog(
-                name=name, kind=OWNERS_CHANGELOG_KIND, value=value, value_previous=value_previous
+                name=name,
+                kind=OWNERS_CHANGELOG_KIND,
+                value=owner_list_value(owner_ids=state.owner_ids),
+                value_previous=owner_list_value(owner_ids=previous.owner_ids),
             ),
         )
 
