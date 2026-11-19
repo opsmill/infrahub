@@ -1,0 +1,24 @@
+backend/infrahub/locks/shared_holders/redis.py
+  s_92ce1f25dbe045::t_155ba2a4126cd0 49-68
+backend/tests/component/services/adapters/redis/test_lock_shared.py
+  s_92ce1f25dbe045::t_a01aabd9d40695 1-2,5,9,107-140
+  s_92ce1f25dbe045::t_7e78c284730a60 141-142
+dev/knowledge/backend/mutations.md
+  s_92ce1f25dbe045::t_15a29aa39056aa 275-276
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6bbf59d41b019ec0486de05b124acedecc800986",
+  "prompts": {},
+  "sessions": {
+    "s_92ce1f25dbe045": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4d35956-d350-4d16-acf4-30ed14df1414",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
