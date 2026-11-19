@@ -2,6 +2,9 @@ backend/infrahub/core/migrations/schema/attribute_kind_update.py
   s_3bd2720ce5c828::t_6a974674c59931 53-55
   s_3bd2720ce5c828::t_d7c5cc39b43ba2 16-18,21,23-24,26-27,30-41,43,47-50,56-74,76-78,80-83,87,139-141,143-144,182-183,185-196,197
   s_3bd2720ce5c828::t_13d8652b9c561b 45
+  s_3bd2720ce5c828::t_de55e0cfaf4bbc 142,145-149,184,198
+  s_3bd2720ce5c828::t_9076f3544cdc53 150-181
+  s_3bd2720ce5c828::t_cb22d76b7d7c00 25
 changelog/+attribute-kind-update-value-lookup.changed.md
   s_3bd2720ce5c828::t_1bfd7d4139d630 1
 backend/tests/component/core/migrations/schema/test_attribute_kind_update.py
