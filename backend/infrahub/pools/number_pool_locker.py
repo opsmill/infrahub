@@ -22,6 +22,14 @@ RESOURCE_POOL_LOCK_NAMESPACE = "resource_pool"
 UNSCOPED_PICKING_KEY = "all"
 
 
+class NumberPoolHeldError(ValidationError):
+    """Raised when writes still hold a number pool once the wait for holding it alone ends."""
+
+    def __init__(self, pool_name: str) -> None:
+        super().__init__(input_value=f"Numbers are still being allocated from the pool {pool_name}; retry the change.")
+        self.pool_name = pool_name
+
+
 def picking_lock_name(pool_id: str, division_key: str | None) -> str:
     """Return the name of the lock that allocations from the same pool and division take to pick a number."""
     return f"{RESOURCE_POOL_LOCK_NAMESPACE}.{pool_id}.{division_key or UNSCOPED_PICKING_KEY}"
@@ -34,7 +42,7 @@ class NumberPoolLocker(Protocol):
         Inside a transaction the pool is held until the transaction commits or rolls back, not until the block ends.
 
         Raises:
-            ValidationError: When writes still read the ranges once the wait limit passes.
+            NumberPoolHeldError: When writes still read the ranges once the wait limit passes.
 
         """
         ...
@@ -76,7 +84,7 @@ class NumberPoolLock:
         Inside a transaction the pool is held until the transaction commits or rolls back, not until the block ends.
 
         Raises:
-            ValidationError: When writes still read the ranges once the wait limit passes.
+            NumberPoolHeldError: When writes still read the ranges once the wait limit passes.
 
         """
         exclusive = self._held_alone(pool_id=pool_id, pool_name=pool_name)
@@ -92,7 +100,7 @@ class NumberPoolLock:
         """Take the pool's lock exclusively until the block ends.
 
         Raises:
-            ValidationError: When writes still read the ranges once the wait limit passes.
+            NumberPoolHeldError: When writes still read the ranges once the wait limit passes.
 
         """
         pool_lock = self._pool_lock(pool_id=pool_id)
@@ -100,9 +108,7 @@ class NumberPoolLock:
             await pool_lock.acquire_exclusive()
         except LockWaitTimeoutError as exc:
             log.warning(exc.message, pool_id=pool_id)
-            raise ValidationError(
-                input_value=f"Numbers are still being allocated from the pool {pool_name}; retry the change."
-            ) from exc
+            raise NumberPoolHeldError(pool_name=pool_name) from exc
         try:
             yield
         finally:

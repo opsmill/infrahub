@@ -304,8 +304,14 @@ the new pool before its transaction commits, so no write can hold it.
 - **The schema-pool synchronizer locks only the pools it changes.** It runs on every schema load and
   every merge, so it first reads a pool's ranges and shorthand without the lock, and skips the pool when
   both match the declaration.
-- **The schema-pool synchronizer reports a range change it could not apply** and moves on to the other
-  pools; the flow raises the refusals once every pool was processed.
+- **The schema-pool synchronizer tries a change to a held pool again, then reports it.** When writes still
+  hold a pool after the wait limit, `NumberPoolLock` raises `NumberPoolHeldError`, and the synchronizer
+  runs the range change, the scope rename or the deletion of that pool up to `HELD_POOL_CHANGE_RETRIES`
+  more times. When the last attempt is refused too, it reports that the pool keeps its previous ranges,
+  scope names or existence until the next schema change or merge, because loading the same schema again
+  changes nothing and so does not run the synchronizer. It then moves on to the other pools; the flow
+  raises the refusals once every pool was processed. A range change made through a mutation still fails
+  with a message asking to retry it.
 - **Not covered:** the IP prefix and IP address pool `GetResource` mutations run without a transaction,
   so a number drawn by the IP node they create is released before its write.
 

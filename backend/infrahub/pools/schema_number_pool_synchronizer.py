@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import partial
 from typing import TYPE_CHECKING, cast
 
 from infrahub.core.constants import SYSTEM_USER_ID, InfrahubKind, NumberPoolType
@@ -12,12 +13,14 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import within_transaction
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
+from infrahub.pools.number_pool_locker import NumberPoolHeldError
 from infrahub.pools.number_pool_range_reconciler import NumberPoolRangeReconciler
 from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror, is_mirrored
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 from infrahub.pools.scope import AllocationScopeResolver
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
     from logging import Logger, LoggerAdapter
 
     from structlog.stdlib import BoundLogger
@@ -30,9 +33,13 @@ if TYPE_CHECKING:
     from infrahub.pools.number_pool_locker import NumberPoolLocker
     from infrahub.pools.number_pool_repository import NumberPoolRangeStoreFactory
     from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
-    from infrahub.pools.scoped_number_pool_reader import ScopedNumberPoolReader
+    from infrahub.pools.scope import AllocationScope
+    from infrahub.pools.scoped_number_pool_reader import ScopedNumberPool, ScopedNumberPoolReader
 
 default_log = get_logger()
+
+HELD_POOL_CHANGE_RETRIES = 2
+"""How many more times a change to a pool runs after writes held the pool for the whole lock wait."""
 
 
 @dataclass(frozen=True)
@@ -133,18 +140,44 @@ class SchemaNumberPoolSynchronizer:
             if refreshed == pool.scope:
                 continue
             try:
-                async with self.pool_locker.changing(pool_id=pool.id, pool_name=pool.name):
-                    number_pool = await NodeManager.get_one(
-                        db=self.db, id=pool.id, kind=CoreNumberPool, raise_on_error=True
-                    )
-                    self.log.info(
-                        f"Renaming the allocation scope of NumberPool={pool.id} to {list(refreshed.element_names)}"
-                    )
-                    number_pool.allocation_scope.value = refreshed.to_stored()
-                    await number_pool.save(db=self.db, user_id=user_id)
+                await self._retry_while_held(
+                    change=partial(self._rename_scope, pool=pool, refreshed=refreshed, user_id=user_id),
+                    pool_name=pool.name,
+                    kept="it keeps its previous scope names",
+                )
             except ValidationError as exc:
                 refused_changes.append(f"{pool.kind}.{pool.tracked_attribute}: {exc.message}")
         return refused_changes
+
+    async def _rename_scope(self, pool: ScopedNumberPool, refreshed: AllocationScope, user_id: str) -> None:
+        async with self.pool_locker.changing(pool_id=pool.id, pool_name=pool.name):
+            number_pool = await NodeManager.get_one(db=self.db, id=pool.id, kind=CoreNumberPool, raise_on_error=True)
+            self.log.info(f"Renaming the allocation scope of NumberPool={pool.id} to {list(refreshed.element_names)}")
+            number_pool.allocation_scope.value = refreshed.to_stored()
+            await number_pool.save(db=self.db, user_id=user_id)
+
+    async def _retry_while_held(self, change: Callable[[], Awaitable[None]], pool_name: str, kept: str) -> None:
+        """Run `change`, and run it again while writes hold the pool, up to `HELD_POOL_CHANGE_RETRIES` more times.
+
+        Raises:
+            ValidationError: When writes still hold the pool after the last attempt, saying what the pool keeps
+                until the next schema change or merge runs the synchronization again.
+
+        """
+        for retry in range(HELD_POOL_CHANGE_RETRIES + 1):
+            try:
+                await change()
+            except NumberPoolHeldError as exc:
+                if retry == HELD_POOL_CHANGE_RETRIES:
+                    raise ValidationError(
+                        input_value=(
+                            f"Numbers were still being allocated from the pool {pool_name}, so {kept} until the "
+                            "next schema change or merge."
+                        )
+                    ) from exc
+                self.log.info(f"Numbers are still being allocated from the pool {pool_name}; trying again")
+            else:
+                return
 
     async def _sync_existing_pools_with_schema(self, user_id: str) -> list[str]:
         """Update or delete existing pools based on current schema definitions.
@@ -165,12 +198,24 @@ class SchemaNumberPoolSynchronizer:
             defined_on_branches = get_branches_with_schema_number_pool(kind=kind, attribute_name=attribute_name)
             try:
                 if registry.default_branch in defined_on_branches:
-                    await self._update_pool_from_schema(schema_number_pool, user_id=user_id)
+                    await self._retry_while_held(
+                        change=partial(
+                            self._update_pool_from_schema,
+                            schema_number_pool,
+                            user_id=user_id,
+                        ),
+                        pool_name=schema_number_pool.name.value,
+                        kept="it keeps its previous ranges",
+                    )
                 elif not defined_on_branches:
                     self.log.info(
                         f"Deleting number pool (id={schema_number_pool.id}) as it is no longer defined in the schema"
                     )
-                    await self._delete_pool(schema_number_pool, user_id=user_id)
+                    await self._retry_while_held(
+                        change=partial(self._delete_pool, schema_number_pool, user_id=user_id),
+                        pool_name=schema_number_pool.name.value,
+                        kept="it is kept",
+                    )
             except ValidationError as exc:
                 refused_changes.append(f"{kind}.{attribute_name}: {exc.message}")
         return refused_changes

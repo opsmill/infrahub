@@ -7,7 +7,10 @@ import pytest
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSyncResult
 
 NOT_CREATED = "TestingCounter.counter on branch-1: the scope does not resolve"
-NOT_CHANGED = "TestingTicket.ticket: Numbers are still being allocated from the pool tickets; retry the change."
+NOT_CHANGED = (
+    "TestingTicket.ticket: Numbers were still being allocated from the pool tickets, so it keeps its previous ranges "
+    "until the next schema change or merge."
+)
 
 
 @dataclass

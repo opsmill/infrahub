@@ -36,6 +36,9 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
+WRITE_OUTLASTING_THE_WAIT_LIMIT_SECONDS = 1.5
+"""Longer than the one-second wait limit the short_exclusive_lock_wait fixture sets, and shorter than two of them."""
+
 
 @asynccontextmanager
 async def held_by_a_write(pool_id: str) -> AsyncGenerator[None]:
@@ -63,8 +66,8 @@ async def pool_name_of(db: InfrahubDatabase, pool_id: str) -> str:
     return pool.name.value
 
 
-def retry_refusal(pool_name: str) -> str:
-    return f"Numbers are still being allocated from the pool {pool_name}; retry the change."
+def held_refusal(pool_name: str, kept: str) -> str:
+    return f"Numbers were still being allocated from the pool {pool_name}, so {kept} until the next schema change or merge."
 
 
 async def test_a_range_change_to_a_pool_held_by_a_write_is_reported_and_the_other_pools_are_provisioned(
@@ -92,7 +95,7 @@ async def test_a_range_change_to_a_pool_held_by_a_write_is_reported_and_the_othe
         db=db, schema=CoreNumberPool, filters={"node__value": "TestingTicket"}, branch_agnostic=True
     )
     assert result.refused_changes == [
-        f"{COUNTER_KIND}.counter: {retry_refusal(pool_name=await pool_name_of(db=db, pool_id=pool_id))}"
+        f"{COUNTER_KIND}.counter: {held_refusal(pool_name=await pool_name_of(db=db, pool_id=pool_id), kept='it keeps its previous ranges')}"
     ]
     assert [(item.start.value, item.end.value) for item in ranges] == [(1, 100)]
     assert len(ticket_pools) == 1
@@ -134,6 +137,37 @@ async def test_a_scope_rename_on_a_pool_held_by_a_write_is_reported_and_the_othe
     async with held_by_a_write(pool_id=held_pool_id):
         result = await run_synchronizer(db=db)
 
-    assert result.refused_changes == [f"{SCOPED_DEVICE.kind}.vlan_id: {retry_refusal(pool_name='vlan-per-site')}"]
+    assert result.refused_changes == [
+        f"{SCOPED_DEVICE.kind}.vlan_id: {held_refusal(pool_name='vlan-per-site', kept='it keeps its previous scope names')}"
+    ]
     assert await stored_scope_of(db=db, pool_id=held_pool_id) == [{"id": site_id, "name": "site"}]
     assert await stored_scope_of(db=db, pool_id=free_pool_id) == [{"id": site_id, "name": "location"}]
+
+
+async def test_a_range_change_refused_while_a_write_held_the_pool_is_applied_once_the_write_commits(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    short_exclusive_lock_wait: None,
+) -> None:
+    pool_id = await provision_pool(
+        db=db, branch=default_branch, parameters=NumberPoolParameters(start_range=1, end_range=100)
+    )
+    registry.schema.register_schema(
+        schema=counter_schema(parameters=NumberPoolParameters(start_range=1, end_range=50)), branch=default_branch.name
+    )
+    held = asyncio.Event()
+
+    async def write_outlasting_the_wait_limit() -> None:
+        async with lock.registry.get_shared(name=pool_id, namespace=RESOURCE_POOL_LOCK_NAMESPACE).shared():
+            held.set()
+            await asyncio.sleep(WRITE_OUTLASTING_THE_WAIT_LIMIT_SECONDS)
+
+    write = asyncio.create_task(write_outlasting_the_wait_limit())
+    await asyncio.wait_for(held.wait(), timeout=LOCK_WAIT_TIMEOUT_SECONDS)
+    result = await run_synchronizer(db=db)
+    await asyncio.wait_for(write, timeout=LOCK_WAIT_TIMEOUT_SECONDS)
+
+    ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
+    assert result.refused_changes == []
+    assert [(item.start.value, item.end.value) for item in ranges] == [(1, 50)]
