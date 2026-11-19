@@ -107,7 +107,7 @@ async def set_owners(
     holder: HolderKey = NODE_HOLDER,
     at: Timestamp | None = None,
 ) -> None:
-    """Write the owners of one holder of the node through the owner writer, which checks the kind of each owner."""
+    """Write the owners of one holder of the node through the owner writer, which does not check the owner kinds."""
     node = await NodeManager.get_one(db=db, branch=branch, id=node_id, raise_on_error=True)
     writer = OwnershipWriter(repository=OwnershipRepository(db=db, branch=branch, at=None))
     await writer.apply(

@@ -49,6 +49,13 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
   vertex to that node, and the `HAS_SOURCE` edges from an `Attribute` vertex. The `HAS_OWNER` edges from a `Node`,
   `Attribute` or `OwnerSet` vertex and the `HAS_SOURCE` edges from a `Node` vertex stay, so that a list shows a
   deleted owner or a deleted source.
+- A read applies one of two rules to the `HAS_OWNER` and `HAS_SOURCE` edges of a vertex:
+  - From a `Node`, `Attribute` or `OwnerSet` vertex, the read takes the latest edge for each peer, so several
+    owners can be active together (`NodeOwnerStateReadQuery`, and the `owner` property in
+    `NodeListGetAttributeQuery`). The `HAS_SOURCE` edges of a `Node` vertex use this rule too.
+  - From a `Relationship` vertex, the read takes the latest edge for each edge type, so the link has one owner and
+    one source at most (`core/query/relationship.py`). The `HAS_SOURCE` edge of an `Attribute` vertex uses this rule
+    too (`NodeListGetAttributeQuery`).
 - The merge copies an owner edge or a source edge of the branch also when its owner or source is deleted, so the
   default branch reads the same list as the branch and the diff. Only the `HAS_OWNER_SOURCE` mark needs a live
   template.
@@ -143,8 +150,10 @@ rules are in `core/ownership/resolution.py`.
 - The walk and the read of one node find the parent with two different Cypher patterns. So the resolver checks the
   result: when a parent or a profile that the rules need is not in the result, the resolver reads it with one more
   query for each level (`_needed`). The results are then the same if the walk misses a node.
-- A change of the rules must reach four places: `core/ownership/resolution.py`, the walk, `_needed`, and
-  `OwnerFilter`.
+- A change of the rules must reach four places: `core/ownership/resolution.py`, `_needed`, `OwnerFilter`, and the
+  walk. The first three give the result. The walk only reads ahead: it copies the rules so that one query reads all
+  the nodes. When the walk misses a node that the rules need, `_needed` reads that node with one more query, so a
+  walk that does not follow a change of the rules costs queries but does not change the result.
 
 The owners that apply to a node come from the first level that has a state:
 
@@ -238,6 +247,8 @@ holds, so it runs before the upgrade.
   lock, the migration still gives the node a set with active edges.
 - A rebase stops on a conflict of owners or sources until both branches hold the same list. See
   [Diff Conflicts](diff-conflicts.md).
+- The diff shows a holder that lost only its `HAS_OWNER_SOURCE` mark as an update with the same list at both ends.
+  It cannot show that the origin of the owners changed from `TEMPLATE` to `SELF`.
 - An event stores the owners of an attribute as the `owner` or the `owners` property of the attribute, in its payload
   only.
 - The merge does not copy the `HAS_OWNER` edge of a link to a deleted owner. The default branch then reads no owner
@@ -256,6 +267,7 @@ holds, so it runs before the upgrade.
 | File | Content |
 |---|---|
 | `core/ownership/models.py` | Holders, states and the resolved result |
+| `core/ownership/constants.py` | The depth limit, the node limit of the walk, the names of the list filters and the ID of the `NoOwner` vertex |
 | `core/ownership/queries.py` | The read query, the write query and the close query |
 | `core/ownership/repository.py` | `OwnershipRepository`: the reads and writes as one branch does them |
 | `core/ownership/resolver.py`, `resolution.py` | The owners that apply |
@@ -265,3 +277,4 @@ holds, so it runs before the upgrade.
 | `core/ownership/fields.py` | The reserved field names and the value of an owner list, for the changelog and the diff |
 | `core/ownership/report.py` | The data of `infrahub db ownership-report` |
 | `core/diff/ownership_differ.py`, `core/diff/ownership_fields.py` | The owner lists in the diff |
+| `core/migrations/query/owner_set_attribute.py` | `OwnerSetKeyMigrationQuery`: the `OwnerSet` keys at a rename or a removal of a field |
