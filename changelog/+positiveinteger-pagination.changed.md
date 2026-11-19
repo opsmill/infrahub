@@ -1,0 +1,1 @@
+Added the `PositiveInteger` GraphQL scalar (0 through 2,147,483,647) for pagination arguments on branch, event, task, search, relationship, account-token and diff-tree queries, retained `Int` arguments with resolver-level validation for resource-pool allocation queries to preserve SDK compatibility, and allowed `InfrahubBranch(limit: 0)` to return all branches.

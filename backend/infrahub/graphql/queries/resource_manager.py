@@ -18,6 +18,7 @@ from infrahub.core.query.resource_manager import (
 )
 from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.resolvers.resolver import validate_offset_and_limit
 from infrahub.graphql.types.enums import PoolRecordProvenance
 from infrahub.pools.number import NumberUtilizationGetter, UtilizationFigures
 from infrahub.pools.number_pool_repository import NumberPoolRepository
@@ -106,6 +107,7 @@ class PoolAllocated(ObjectType):
         offset: int = 0,
         limit: int = 10,
     ) -> dict:
+        validate_offset_and_limit(offset=offset, limit=limit)
         graphql_context: GraphqlContext = info.context
         async with graphql_context.db.start_session(read_only=True) as db:
             pool = await NodeManager.get_one(id=pool_id, db=db, branch=graphql_context.branch)

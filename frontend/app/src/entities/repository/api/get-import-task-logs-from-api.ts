@@ -1,7 +1,7 @@
 import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
 
 const GET_IMPORT_TASK_LOGS = graphql(`
-  query GET_IMPORT_TASK_LOGS($taskId: String!, $logLimit: Int!) {
+  query GET_IMPORT_TASK_LOGS($taskId: String!, $logLimit: PositiveInteger!) {
     InfrahubTask(ids: [$taskId], log_limit: $logLimit) {
       edges {
         node {

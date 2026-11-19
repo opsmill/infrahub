@@ -1,5 +1,6 @@
 from typing import Any
 
+from graphene import Scalar
 from graphene.types.generic import GenericScalar
 from graphene.types.scalars import MAX_INT, MIN_INT
 from graphql.language.ast import (
@@ -12,6 +13,67 @@ from graphql.language.ast import (
     ValueNode,
     VariableNode,
 )
+
+from infrahub.exceptions import ValidationError
+
+
+class PositiveInteger(Scalar):
+    """A GraphQL scalar for pagination arguments such as `limit` and `offset`.
+
+    It accepts non-negative integers within the signed 32-bit range (and
+    whole-number floats, matching the built-in Int scalar) and rejects other values by raising
+    ValidationError, which the executor wraps with the argument type name and
+    source location. Zero is allowed because `offset: 0` is the first page.
+    """
+
+    @staticmethod
+    def serialize(value: int | None) -> int | None:
+        """Serialize the value for output."""
+        return PositiveInteger._validate(value)
+
+    @staticmethod
+    def parse_value(value: Any) -> int | None:
+        """Parse a value supplied through query variables."""
+        return PositiveInteger._validate(value)
+
+    @staticmethod
+    def parse_literal(node: ValueNode, _variables: dict[str, Any] | None = None) -> int | None:
+        """Parse a value supplied as an inline literal in the query.
+
+        Raises:
+            ValidationError: If the literal is outside the non-negative signed 32-bit range.
+
+        """
+        if isinstance(node, IntValueNode):
+            return PositiveInteger._validate(int(node.value))
+        raise ValidationError("Value must be a non-negative integer")
+
+    @staticmethod
+    def _validate(value: Any) -> int | None:
+        """Validate that the value is a non-negative signed 32-bit integer.
+
+        Booleans, strings and fractional floats are rejected so that variable
+        inputs are validated as strictly as inline integer literals.
+
+        Raises:
+            ValidationError: If the value is outside the non-negative signed 32-bit range.
+
+        """
+        if value is None:
+            return None
+
+        is_integer = isinstance(value, int) and not isinstance(value, bool)
+        is_whole_float = isinstance(value, float) and value.is_integer()
+        if not (is_integer or is_whole_float):
+            raise ValidationError("Value must be a non-negative integer")
+
+        value = int(value)
+        if value < 0:
+            raise ValidationError("Value must be a non-negative integer")
+        if value > MAX_INT:
+            raise ValidationError(f"Value must be less than or equal to {MAX_INT}")
+
+        return value
 
 
 class FixedGenericScalar(GenericScalar):

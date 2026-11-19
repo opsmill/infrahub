@@ -233,7 +233,7 @@ class TestBranchQuery(TestInfrahubApp):
             branch_map[branch_name] = branch_id
 
         query = """
-            query($offset: Int, $limit: Int, $name: String, $ids: [ID!]) {
+            query($offset: PositiveInteger, $limit: PositiveInteger, $name: String, $ids: [ID!]) {
                 InfrahubBranch(offset: $offset, limit: $limit, name__value: $name, ids: $ids) {
                     count
                     edges {
@@ -367,11 +367,14 @@ class TestBranchQuery(TestInfrahubApp):
         )
         assert all_branches.errors
         assert len(all_branches.errors)
-        assert all_branches.errors[0].message == "offset must be >= 0"
+        assert (
+            all_branches.errors[0].message
+            == "Expected value of type 'PositiveInteger', found -1; Value must be a non-negative integer"
+        )
 
         query = """
             query {
-                InfrahubBranch(offset: 0, limit: 0) {
+                InfrahubBranch(offset: 0, limit: -5) {
                     count
                     edges {
                         node {
@@ -392,7 +395,38 @@ class TestBranchQuery(TestInfrahubApp):
         )
         assert all_branches.errors
         assert len(all_branches.errors)
-        assert all_branches.errors[0].message == "limit must be >= 1"
+        assert (
+            all_branches.errors[0].message
+            == "Expected value of type 'PositiveInteger', found -5; Value must be a non-negative integer"
+        )
+
+        query = """
+            query {
+                InfrahubBranch(offset: 0, limit: 0) {
+                    count
+                    edges {
+                        node {
+                            graph_version {
+                                value
+                            }
+                        }
+                    }
+                }
+            }
+        """
+        zero_limit_branches = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={},
+        )
+        assert zero_limit_branches.errors is None
+        assert zero_limit_branches.data
+        # limit: 0 is accepted and applies no limit, so every branch is returned
+        count = zero_limit_branches.data["InfrahubBranch"]["count"]
+        assert count >= 1
+        assert len(zero_limit_branches.data["InfrahubBranch"]["edges"]) == count
 
     async def test_paginated_branch_query_meta_data(
         self,
@@ -1182,7 +1216,7 @@ class TestBranchQuery(TestInfrahubApp):
         # Query with status filter and pagination
         past_time = (datetime.now(UTC) - timedelta(days=1)).isoformat()
         query = """
-        query($status: BranchStatus, $after: DateTime, $limit: Int, $offset: Int) {
+        query($status: BranchStatus, $after: DateTime, $limit: PositiveInteger, $offset: PositiveInteger) {
             InfrahubBranch(
                 status__value: $status,
                 node_metadata__created_at__after: $after,

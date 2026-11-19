@@ -33,6 +33,15 @@ export type Scalars = {
    * String, Boolean, Int, Float, List or Object.
    */
   GenericScalar: { input: any; output: any; }
+  /**
+   * A GraphQL scalar for pagination arguments such as `limit` and `offset`.
+   *
+   * It accepts non-negative integers within the signed 32-bit range (and
+   * whole-number floats, matching the built-in Int scalar) and rejects other values by raising
+   * ValidationError, which the executor wraps with the argument type name and
+   * source location. Zero is allowed because `offset: 0` is the first page.
+   */
+  PositiveInteger: { input: number; output: number; }
 };
 
 export type AccountGlobalPermissionEdge = {
@@ -38743,9 +38752,9 @@ export type QueryDiffTreeArgs = {
   filters?: InputMaybe<DiffTreeQueryFilters>;
   from_time?: InputMaybe<Scalars['DateTime']['input']>;
   include_parents?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['PositiveInteger']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
-  offset?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['PositiveInteger']['input']>;
   proposed_change_id?: InputMaybe<Scalars['String']['input']>;
   root_node_uuids?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   to_time?: InputMaybe<Scalars['DateTime']['input']>;
@@ -38769,8 +38778,8 @@ export type QueryFieldsMappingTypeConversionArgs = {
 
 
 export type QueryInfrahubAccountTokenArgs = {
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  offset?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['PositiveInteger']['input']>;
+  offset?: InputMaybe<Scalars['PositiveInteger']['input']>;
 };
 
 
@@ -38778,14 +38787,14 @@ export type QueryInfrahubBranchArgs = {
   branched_from__after?: InputMaybe<Scalars['DateTime']['input']>;
   branched_from__before?: InputMaybe<Scalars['DateTime']['input']>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['PositiveInteger']['input']>;
   name__value?: InputMaybe<Scalars['String']['input']>;
   node_metadata__created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
-  offset?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['PositiveInteger']['input']>;
   order?: InputMaybe<MetadataOrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   status__value?: InputMaybe<BranchStatus>;
@@ -38800,8 +38809,8 @@ export type QueryInfrahubEventArgs = {
   has_children?: InputMaybe<Scalars['Boolean']['input']>;
   ids?: InputMaybe<Array<Scalars['String']['input']>>;
   level?: InputMaybe<Scalars['Int']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  offset?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['PositiveInteger']['input']>;
+  offset?: InputMaybe<Scalars['PositiveInteger']['input']>;
   order?: InputMaybe<EventSortOrder>;
   parent__ids?: InputMaybe<Array<Scalars['String']['input']>>;
   primary_node__ids?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -38901,7 +38910,7 @@ export type QueryInfrahubResourcePoolUtilizationArgs = {
 
 export type QueryInfrahubSearchAnywhereArgs = {
   case_sensitive?: InputMaybe<Scalars['Boolean']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['PositiveInteger']['input']>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   q: Scalars['String']['input'];
 };
@@ -38910,10 +38919,10 @@ export type QueryInfrahubSearchAnywhereArgs = {
 export type QueryInfrahubTaskArgs = {
   branch?: InputMaybe<Scalars['String']['input']>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  log_limit?: InputMaybe<Scalars['Int']['input']>;
-  log_offset?: InputMaybe<Scalars['Int']['input']>;
-  offset?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['PositiveInteger']['input']>;
+  log_limit?: InputMaybe<Scalars['PositiveInteger']['input']>;
+  log_offset?: InputMaybe<Scalars['PositiveInteger']['input']>;
+  offset?: InputMaybe<Scalars['PositiveInteger']['input']>;
   q?: InputMaybe<Scalars['String']['input']>;
   related_node__ids?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   state?: InputMaybe<Array<InputMaybe<StateType>>>;
@@ -39651,8 +39660,8 @@ export type QueryProfileIpamNamespaceArgs = {
 export type QueryRelationshipArgs = {
   excluded_namespaces?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids: Array<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  offset?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['PositiveInteger']['input']>;
+  offset?: InputMaybe<Scalars['PositiveInteger']['input']>;
 };
 
 /**

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 
+import pytest
 from graphene.types.scalars import MAX_INT, MIN_INT
 from graphql.language.ast import (
     BooleanValueNode,
@@ -15,7 +16,8 @@ from graphql.language.ast import (
     VariableNode,
 )
 
-from infrahub.graphql.scalars import FixedGenericScalar
+from infrahub.exceptions import ValidationError
+from infrahub.graphql.scalars import FixedGenericScalar, PositiveInteger
 
 
 class TestFixedGenericScalarParseLiteral:
@@ -79,3 +81,69 @@ class TestFixedGenericScalarParseLiteral:
             ]
         )
         assert FixedGenericScalar.parse_literal(ast, _variables={"val": 99}) == {"key": 99}
+
+
+class TestPositiveIntegerParseValue:
+    @pytest.mark.parametrize("value", [2147483647, 2147483647.0])
+    def test_maximum_integer(self, value: float) -> None:
+        assert PositiveInteger.parse_value(value) == 2147483647
+
+    @pytest.mark.parametrize("value", [2147483648, 2147483648.0, 9223372036854775808])
+    def test_integer_above_maximum(self, value: float) -> None:
+        with pytest.raises(ValidationError, match=r"^Value must be less than or equal to 2147483647$"):
+            PositiveInteger.parse_value(value)
+
+    def test_positive_integer(self) -> None:
+        assert PositiveInteger.parse_value(5) == 5
+
+    def test_zero(self) -> None:
+        assert PositiveInteger.parse_value(0) == 0
+
+    def test_whole_float(self) -> None:
+        assert PositiveInteger.parse_value(2.0) == 2
+
+    def test_none(self) -> None:
+        assert PositiveInteger.parse_value(None) is None
+
+    def test_negative_integer(self) -> None:
+        with pytest.raises(ValidationError, match=r"^Value must be a non-negative integer$"):
+            PositiveInteger.parse_value(-1)
+
+    def test_fractional_float(self) -> None:
+        with pytest.raises(ValidationError, match=r"^Value must be a non-negative integer$"):
+            PositiveInteger.parse_value(1.9)
+
+    def test_boolean(self) -> None:
+        with pytest.raises(ValidationError, match=r"^Value must be a non-negative integer$"):
+            PositiveInteger.parse_value(True)
+
+    def test_numeric_string(self) -> None:
+        with pytest.raises(ValidationError, match=r"^Value must be a non-negative integer$"):
+            PositiveInteger.parse_value("1")
+
+
+class TestPositiveIntegerParseLiteral:
+    def test_maximum_integer_literal(self) -> None:
+        assert PositiveInteger.parse_literal(IntValueNode(value="2147483647")) == 2147483647
+
+    @pytest.mark.parametrize("value", ["2147483648", "9223372036854775808"])
+    def test_integer_literal_above_maximum(self, value: str) -> None:
+        with pytest.raises(ValidationError, match=r"^Value must be less than or equal to 2147483647$"):
+            PositiveInteger.parse_literal(IntValueNode(value=value))
+
+    def test_positive_integer_literal(self) -> None:
+        assert PositiveInteger.parse_literal(IntValueNode(value="5")) == 5
+
+    def test_zero_literal(self) -> None:
+        assert PositiveInteger.parse_literal(IntValueNode(value="0")) == 0
+
+    def test_negative_integer_literal(self) -> None:
+        with pytest.raises(ValidationError, match=r"^Value must be a non-negative integer$"):
+            PositiveInteger.parse_literal(IntValueNode(value="-1"))
+
+    def test_non_integer_literal(self) -> None:
+        with pytest.raises(ValidationError, match=r"^Value must be a non-negative integer$"):
+            PositiveInteger.parse_literal(StringValueNode(value="5"))
+
+    def test_accepts_variables_argument(self) -> None:
+        assert PositiveInteger.parse_literal(IntValueNode(value="7"), _variables={"foo": "bar"}) == 7
