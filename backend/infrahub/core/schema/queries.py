@@ -365,12 +365,12 @@ class SchemaElementIdsQuery(Query):
 
     The query has no branch or time filter, so a vertex counts whether it is active, deleted or
     only present on another branch. EXPLAIN shows a NodeIndexSeek on the ``Node(uuid)`` range index.
+    The results are ordered so that each page of a paged read continues where the previous one ended.
     """
 
     name: str = "schema_element_ids"
     type: QueryType = QueryType.READ
     insert_return: bool = False
-    insert_limit: bool = False
 
     def __init__(self, ids: list[str], **kwargs: Any) -> None:
         self.ids = ids
@@ -384,6 +384,7 @@ MATCH (n:Node)
 WHERE n.uuid IN $ids
   AND (n:SchemaNode OR n:SchemaGeneric OR n:SchemaAttribute OR n:SchemaRelationship)
 RETURN DISTINCT n.uuid AS uuid
+ORDER BY uuid
             """
         )
         self.update_return_labels(["uuid"])

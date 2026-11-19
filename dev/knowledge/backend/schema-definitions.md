@@ -222,8 +222,8 @@ change; CI fails if the generated artifact is stale.
 
 A schema load and a schema check pass the submitted files through
 `backend/infrahub/core/schema/submitted_ids/resolver.py::SubmittedSchemaIdResolver` before
-merging them into the branch schema, so the merge and the save only ever see IDs the branch
-holds. The merge pairs elements by a shared `id` (that is how a file renames an element), and the
+merging them into a copy of the branch schema, which only a load then saves, so the merge and the
+save only ever see IDs the branch holds. The merge pairs elements by a shared `id` (that is how a file renames an element), and the
 save looks up each element's vertex by its `id`; an `id` from another instance or another branch
 would otherwise reach the save and fail it. For the `id` of each node, generic, attribute and
 relationship, the resolver checks, in this order:
@@ -249,9 +249,10 @@ relationship, the resolver checks, in this order:
 The branch's IDs come from the in-memory registry (`SchemaBranch.get_schema_element_ids`); the
 "ever held" lookup is one `SchemaElementIdsQuery` for all the remaining IDs, through the
 `SchemaElementIdLookup` protocol. A refusal is a 422 raised before anything is written.
-Warnings join the response's `warnings`, typed `deprecation` because that is the only type the SDK accepts. The
-fields of a skipped node or generic are skipped with it. A load in which no element carries an `id`
-skips the check.
+Warnings join the response's `warnings`, typed `deprecation` because that is the only type the
+SDK accepts. The fields of a skipped node or generic are skipped with it, unless a field repeats
+an `id` given to another element, which still refuses the load. A load in which no element carries
+an `id` skips the check.
 
 ## Key Locations
 

@@ -117,5 +117,14 @@ class TestSchemaElementIdsQuery:
         )
         assert found == {ids.node_id, ids.name_attr_id, ids.tags_rel_id, ids.serial_attr_id, ids.color_attr_id}
 
+    @pytest.mark.usefixtures("query_limit_of_one")
+    async def test_returns_every_match_when_the_matches_span_several_pages(
+        self, db: InfrahubDatabase, ids: IdSetup
+    ) -> None:
+        found = await SchemaElementRepository(db=db).get_existing_ids(
+            [ids.node_id, ids.name_attr_id, ids.tags_rel_id, ids.serial_attr_id, ids.color_attr_id, ids.unknown_id]
+        )
+        assert found == {ids.node_id, ids.name_attr_id, ids.tags_rel_id, ids.serial_attr_id, ids.color_attr_id}
+
     async def test_empty_input_returns_empty_set(self, db: InfrahubDatabase, ids: IdSetup) -> None:
         assert await SchemaElementRepository(db=db).get_existing_ids([]) == set()
