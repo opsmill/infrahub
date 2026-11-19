@@ -151,6 +151,14 @@ PROFILE_OWNERS_TEST_CASES: list[ProfileOwnersTestCase] = [
         origin_node="security",
     ),
     ProfileOwnersTestCase(
+        name="profile_that_gives_nothing_is_skipped",
+        node="device-first-profile-gives-nothing",
+        state=OwnerState.INHERIT,
+        owners=("dc-emea",),
+        origin=OwnerOrigin.PROFILE,
+        origin_node="emea-fabric",
+    ),
+    ProfileOwnersTestCase(
         name="own_owners_of_a_profile_do_not_reach_its_nodes",
         node="device-profile-gives-nothing",
         state=OwnerState.INHERIT,
