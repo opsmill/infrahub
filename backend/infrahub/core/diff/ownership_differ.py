@@ -61,7 +61,7 @@ class OwnershipDiffer:
         """Return the holders whose owners changed on the diff branch, with the field name of each."""
         return await self._get_changes(
             schema_branch=self.db.schema.get_schema_branch(name=request.diff_branch.name),
-            branch_name=request.diff_branch.name,
+            branch=request.diff_branch,
             from_time=request.from_time,
             to_time=request.to_time,
             node_uuids=sorted(request.node_uuids) if request.node_uuids is not None else None,
@@ -100,7 +100,7 @@ class OwnershipDiffer:
             return
         base_changes = await self._get_changes(
             schema_branch=schema_branch,
-            branch_name=request.base_branch.name,
+            branch=request.base_branch,
             from_time=request.branch_from_time,
             to_time=request.to_time,
             node_uuids=candidate_uuids,
@@ -125,7 +125,7 @@ class OwnershipDiffer:
     async def _get_changes(
         self,
         schema_branch: SchemaBranch,
-        branch_name: str,
+        branch: Branch,
         from_time: Timestamp,
         to_time: Timestamp,
         node_uuids: list[str] | None,
@@ -142,7 +142,7 @@ class OwnershipDiffer:
         for node_batch in node_batches:
             query = await DiffOwnerHoldersQuery.init(
                 db=self.db,
-                branch_name=branch_name,
+                branch=branch,
                 from_time=from_time,
                 to_time=to_time,
                 node_uuids=node_batch,
