@@ -1,6 +1,7 @@
 import asyncio
 import ipaddress
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any
 
 import pytest
@@ -288,26 +289,34 @@ mutation NamespaceDelete($namespace_name: String!) {
 """
 
 
+class NamespaceLookup(StrEnum):
+    ID = "id"
+    HFID = "hfid"
+    NAME_AS_ID = "name-as-id"
+
+
 @dataclass(frozen=True)
 class NamespaceDeleteCase:
     name: str
-    by_hfid: bool
+    lookup: NamespaceLookup
     on_user_branch: bool
 
 
 NAMESPACE_DELETE_CASES: list[NamespaceDeleteCase] = [
-    NamespaceDeleteCase(name="by-id", by_hfid=False, on_user_branch=False),
-    NamespaceDeleteCase(name="by-hfid", by_hfid=True, on_user_branch=False),
-    NamespaceDeleteCase(name="by-id-user-branch", by_hfid=False, on_user_branch=True),
-    NamespaceDeleteCase(name="by-hfid-user-branch", by_hfid=True, on_user_branch=True),
+    NamespaceDeleteCase(name="by-id", lookup=NamespaceLookup.ID, on_user_branch=False),
+    NamespaceDeleteCase(name="by-hfid", lookup=NamespaceLookup.HFID, on_user_branch=False),
+    NamespaceDeleteCase(name="by-name-as-id", lookup=NamespaceLookup.NAME_AS_ID, on_user_branch=False),
+    NamespaceDeleteCase(name="by-id-user-branch", lookup=NamespaceLookup.ID, on_user_branch=True),
+    NamespaceDeleteCase(name="by-hfid-user-branch", lookup=NamespaceLookup.HFID, on_user_branch=True),
+    NamespaceDeleteCase(name="by-name-as-id-user-branch", lookup=NamespaceLookup.NAME_AS_ID, on_user_branch=True),
 ]
 
 
 async def _delete_ipnamespace(
-    db: InfrahubDatabase, branch: Branch, namespace_id: str, namespace_name: str, by_hfid: bool
+    db: InfrahubDatabase, branch: Branch, namespace_id: str, namespace_name: str, lookup: NamespaceLookup
 ) -> ExecutionResult:
     gql_params = await prepare_graphql_params(db=db, branch=branch)
-    if by_hfid:
+    if lookup == NamespaceLookup.HFID:
         return await graphql(
             schema=gql_params.schema,
             source=DELETE_IPNAMESPACE_BY_HFID,
@@ -318,7 +327,7 @@ async def _delete_ipnamespace(
         schema=gql_params.schema,
         source=DELETE_IPNAMESPACE_BY_ID,
         context_value=gql_params.context,
-        variable_values={"namespace_id": namespace_id},
+        variable_values={"namespace_id": namespace_name if lookup == NamespaceLookup.NAME_AS_ID else namespace_id},
     )
 
 
@@ -335,7 +344,7 @@ async def test_protected_default_ipnamespace(
         branch=branch,
         namespace_id=registry.default_ipnamespace,
         namespace_name=DEFAULT_IP_NAMESPACE,
-        by_hfid=case.by_hfid,
+        lookup=case.lookup,
     )
 
     assert result.errors
@@ -356,7 +365,7 @@ async def test_delete_regular_ipnamespace(
     branch = await create_branch(branch_name=f"delete-ns-{case.name}", db=db) if case.on_user_branch else default_branch
     branch.update_schema_hash()
     result = await _delete_ipnamespace(
-        db=db, branch=branch, namespace_id=ns1.id, namespace_name="ns1", by_hfid=case.by_hfid
+        db=db, branch=branch, namespace_id=ns1.id, namespace_name="ns1", lookup=case.lookup
     )
 
     assert not result.errors

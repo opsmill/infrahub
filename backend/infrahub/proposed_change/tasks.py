@@ -194,6 +194,15 @@ async def _record_schema_integrity_failure(
         await recorder.record_conflicts(proposed_change_id=proposed_change_id, conflicts=schema_conflicts)
 
 
+async def _clear_schema_integrity_failure(
+    database: InfrahubDatabase, proposed_change_id: str, recorded_before: Timestamp
+) -> None:
+    """Replace a failure of the Schema Integrity validator completed before `recorded_before` with a passing result."""
+    async with database.start_transaction() as db:
+        recorder = _build_schema_integrity_validator_recorder(db=db)
+        await recorder.clear_failure(proposed_change_id=proposed_change_id, recorded_before=recorded_before)
+
+
 async def _merge_branch_for_proposed_change(
     db: InfrahubDatabase,
     proposed_change: InternalCoreProposedChange,
@@ -529,6 +538,8 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
 
 @flow(name="proposed-changed-schema-integrity", flow_run_name="Process schema integrity")
 async def run_proposed_change_schema_integrity_check(model: RequestProposedChangeSchemaIntegrity) -> None:
+    # A merge refused after this point checked newer data than this run, so its failure must be kept.
+    check_started_at = Timestamp()
     # For now, we retrieve the latest schema for each branch from the registry
     # In the future it would be good to generate the object SchemaUpdateValidationResult from message.branch_diff
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
@@ -581,6 +592,9 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     constraints = merger.merge(candidate_schema, constraints_from_data_diff, constraints_from_schema_diff)
 
     if not constraints:
+        await _clear_schema_integrity_failure(
+            database=database, proposed_change_id=model.proposed_change, recorded_before=check_started_at
+        )
         return
 
     # ----------------------------------------------------------
@@ -588,7 +602,7 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     # ----------------------------------------------------------
     responses = await schema_validate_migrations(
         message=SchemaValidateMigrationData(
-            branch=source_branch, schema_branch=candidate_schema, constraints=constraints
+            branch=source_branch, schema_branch=candidate_schema, constraints=constraints, is_isolated=True
         )
     )
 
@@ -1215,6 +1229,8 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
 
 @flow(name="proposed-changed-pipeline", flow_run_name="Execute proposed changed pipeline")
 async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, context: InfrahubContext) -> None:
+    # A merge refused after this point checked newer data than this run, so its failure must be kept.
+    pipeline_started_at = Timestamp()
     client = get_client()
     client.request_context = context.to_request_context()
     repositories = await _get_proposed_change_repositories(model=model, client=client)
@@ -1320,9 +1336,14 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
             parameters={"model": model_proposed_change_repo_checks},
         )
 
-    if model.check_type in [CheckType.ALL, CheckType.SCHEMA] and has_data_changes(
+    if model.check_type in [CheckType.ALL, CheckType.SCHEMA] and not has_data_changes(
         diff_summary=diff_summary, branch=model.source_branch
     ):
+        # A merge refused for this proposed change records a failure that no later check would replace.
+        await _clear_schema_integrity_failure(
+            database=database, proposed_change_id=model.proposed_change, recorded_before=pipeline_started_at
+        )
+    elif model.check_type in [CheckType.ALL, CheckType.SCHEMA]:
         await get_workflow().submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
             context=context,
