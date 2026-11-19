@@ -6,6 +6,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.graph.m084_hide_replaced_branch_attribute_owners import Migration084
 from infrahub.core.migrations.graph.m085_close_repository_owner_edges import (
     HideGlobalRepositoryOwnersQuery,
     Migration085,
@@ -208,6 +209,38 @@ async def test_branch_made_before_the_upgrade_reads_no_repository_owner_after_th
     hidden = [(edge["owner_id"], edge["branch"]) for edge in edges_after if edge["status"] == "deleted"]
     assert hidden == [(repository.id, branch.name)] * 3
     assert len([edge for edge in edges_after if edge["status"] == "active"]) == 4
+
+
+async def test_branch_that_replaced_an_account_owner_with_a_repository_reads_no_owner_after_the_upgrade(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+) -> None:
+    repository = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
+    await repository.new(db=db, name="repo01", location="git@github.com:user/repo01.git")
+    await repository.save(db=db)
+    account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await account.new(db=db, name="network-admin", password="unused-password")
+    await account.save(db=db)
+    person = await Node.init(db=db, schema="TestPerson")
+    await person.new(db=db, name="John")
+    await person.save(db=db)
+    car = await create_car(db=db, name="replaced-by-repository", person=person, owner_id=account.id)
+    branch = await create_branch(db=db, branch_name="branch1")
+    # An owner write of an earlier release on a branch left the owner edge of the default branch open.
+    await add_owner_edge(db=db, query=ADD_ATTRIBUTE_OWNER, branch=branch, node_id=car.id, owner_id=repository.id)
+    before_upgrade = Timestamp()
+    assert await _color_owner_ids(db=db, branch=branch, node_id=car.id) == {account.id, repository.id}
+
+    # The upgrade runs the migrations in their order.
+    for migration in (Migration084(), Migration085()):
+        result = await migration.execute(migration_input=MigrationInput(db=db))
+        assert result.errors == []
+
+    assert await _color_owner_ids(db=db, branch=branch, node_id=car.id) is None
+    assert await _color_owner_ids(db=db, branch=branch, node_id=car.id, at=before_upgrade) == {repository.id}
+    assert await _color_owner_ids(db=db, branch=default_branch, node_id=car.id) == {account.id}
 
 
 async def _name_owner_ids(
