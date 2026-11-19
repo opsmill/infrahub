@@ -1,0 +1,1 @@
+Added a temporary mitigation for CVE-2026-114938 (a Java Base64 bug on x86-64 hosts with AVX-512 VBMI) to the Neo4j service in the Docker Compose file, which restarts Neo4j when you apply it; if you run your own Compose file or Neo4j, add the option `-XX:-UseBASE64Intrinsics` to its Java options yourself.
