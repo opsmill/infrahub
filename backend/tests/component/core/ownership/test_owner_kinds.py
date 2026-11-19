@@ -59,14 +59,14 @@ async def test_account_and_account_group_are_accepted_as_owner_of_an_attribute_a
     assert await _owner_ids(db=db, branch=default_branch, car_id=car.id) == (account.id, group.id)
 
 
-@pytest.mark.parametrize("holder", ["color_owner_id", "link_owner_id"])
+@pytest.mark.parametrize(("holder", "path"), [("color_owner_id", "color.owner"), ("link_owner_id", "owner.owner")])
 async def test_create_with_a_repository_as_owner_is_refused(
-    db: InfrahubDatabase, default_branch: Branch, person: Node, repository: Node, holder: str
+    db: InfrahubDatabase, default_branch: Branch, person: Node, repository: Node, holder: str, path: str
 ) -> None:
     with pytest.raises(ValidationError) as exc:
         await _create_car(db=db, person=person, **{holder: repository.id})
 
-    assert exc.value.message == f"Only an account or an account group can be an owner, not: {repository.id} at owner"
+    assert exc.value.message == f"Only an account or an account group can be an owner, not: {repository.id} at {path}"
     assert await NodeManager.count(db=db, schema="TestCar", branch=default_branch) == 0
 
 
@@ -84,6 +84,33 @@ async def test_update_of_an_attribute_owner_to_a_repository_is_refused(
         f"Only an account or an account group can be an owner, not: {repository.id} at color.owner"
     )
     assert await _owner_ids(db=db, branch=default_branch, car_id=car.id) == (group.id, group.id)
+
+
+async def test_refused_owner_of_one_field_stops_the_writes_of_the_other_fields(
+    db: InfrahubDatabase, default_branch: Branch, person: Node, repository: Node
+) -> None:
+    group = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="network-team")
+    account = await add_node(db=db, kind=InfrahubKind.ACCOUNT, name="jane", password="a-password")
+    car = await _create_car(db=db, person=person, color_owner_id=group.id, link_owner_id=group.id)
+    car.name.value = "bolt"
+    car.name.owner = account
+    car.color.owner = repository
+
+    with pytest.raises(ValidationError) as exc:
+        await car.save(db=db)
+
+    assert exc.value.message == (
+        f"Only an account or an account group can be an owner, not: {repository.id} at color.owner"
+    )
+    stored_car = await NodeManager.get_one(
+        db=db, branch=default_branch, id=car.id, include_metadata=MetadataOptions.OWNER, raise_on_error=True
+    )
+    assert (stored_car.name.value, stored_car.name.owner_id, stored_car.color.owner_id) == ("volt", None, group.id)
+    result = await db.execute_query(
+        query="MATCH ()-[edge:HAS_OWNER]->(:Node {uuid: $account_id}) RETURN count(edge) AS edges",
+        params={"account_id": account.id},
+    )
+    assert result[0]["edges"] == 0
 
 
 async def test_update_of_a_link_owner_to_a_repository_is_refused(
@@ -109,10 +136,8 @@ async def test_new_link_with_a_repository_as_owner_is_refused_on_an_existing_nod
     other_person = await add_node(db=db, kind="TestPerson", name="Jane")
 
     await car.owner.update(db=db, data={"id": other_person.id, "_relation__owner": repository.id})
-    # The save removes the old link before it writes the new one, so the refusal needs the transaction of a mutation.
     with pytest.raises(ValidationError) as exc:
-        async with db.start_transaction() as dbt:
-            await car.save(db=dbt)
+        await car.save(db=db)
 
     assert exc.value.message == (
         f"Only an account or an account group can be an owner, not: {repository.id} at owner.owner"

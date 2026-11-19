@@ -80,12 +80,31 @@ async def check_owner_kinds(
         ValidationError: When a node is not found, or is not of a kind of the rule.
 
     """
-    labels = await lookup.read_labels(node_ids=owner_ids) if owner_ids else {}
-    for owner_id in owner_ids:
-        if owner_id not in labels:
-            raise ValidationError({path: f"{rule.name.capitalize()} not found: {owner_id}"})
-        if not rule.kinds & labels[owner_id]:
-            raise ValidationError({path: f"{rule.refusal}, not: {owner_id}"})
+    await check_field_owner_kinds(lookup=lookup, owner_ids={path: owner_ids}, rule=rule)
+
+
+async def check_field_owner_kinds(
+    lookup: OwnerLookup, owner_ids: Mapping[str, list[str]], rule: ReferenceRule = OWNER_RULE
+) -> None:
+    """Refuse the nodes that several fields give with one read, and name the path of the field in the error.
+
+    Args:
+        lookup: The reader of the labels of the nodes.
+        owner_ids: The IDs of the nodes that each path gives.
+        rule: The kinds of node that the fields can refer to.
+
+    Raises:
+        ValidationError: When a node is not found, or is not of a kind of the rule.
+
+    """
+    all_ids = list(dict.fromkeys(owner_id for ids in owner_ids.values() for owner_id in ids))
+    labels = await lookup.read_labels(node_ids=all_ids) if all_ids else {}
+    for path, ids in owner_ids.items():
+        for owner_id in ids:
+            if owner_id not in labels:
+                raise ValidationError({path: f"{rule.name.capitalize()} not found: {owner_id}"})
+            if not rule.kinds & labels[owner_id]:
+                raise ValidationError({path: f"{rule.refusal}, not: {owner_id}"})
 
 
 class OwnerInputParser:
