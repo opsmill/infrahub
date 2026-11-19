@@ -14,11 +14,6 @@ from infrahub.core.convert_object_type.object_conversion import convert_and_vali
 from infrahub.core.convert_object_type.repository_conversion import convert_repository_type
 from infrahub.core.convert_object_type.schema_mapping import get_schema_mapping
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node
-from infrahub.core.ownership.models import HolderKind, field_holder
-from infrahub.core.ownership.repository import OwnershipRepository
-from infrahub.core.ownership.writer import store_owner_states
-from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.repositories.create_repository import RepositoryFinalizer
@@ -89,34 +84,6 @@ class ConvertObjectType(Mutation):
             if mapping_value.source_field_name is not None and field_name not in fields_mapping:
                 fields_mapping[field_name] = ConversionFieldInput(source_field=mapping_value.source_field_name)
 
-        # The conversion deletes the node, and the delete closes its owner edges.
-        stored = await OwnershipRepository(db=graphql_context.db, branch=graphql_context.branch, at=None).read(
-            node_ids=[node_to_convert.id], attributes=True
-        )
-        holders = stored[node_to_convert.id].holders if node_to_convert.id in stored else {}
-        # A field of the new kind takes the owners of the field that its value comes from.
-        owner_states = {
-            holder: state
-            for holder, state in holders.items()
-            if holder.kind not in (HolderKind.ATTRIBUTE, HolderKind.FIELD_SET)
-        }
-        for field_name, field_input in fields_mapping.items():
-            if field_input.source_field is None:
-                continue
-            source_holder = field_holder(schema=source_schema, field_name=field_input.source_field)
-            target_holder = field_holder(schema=target_schema, field_name=field_name)
-            if source_holder is not None and target_holder is not None and source_holder in holders:
-                owner_states[target_holder] = holders[source_holder]
-
-        async def after_create(dbt: InfrahubDatabase, node: Node) -> None:
-            await store_owner_states(
-                db=dbt,
-                branch=graphql_context.branch,
-                node=node,
-                owner_states=owner_states,
-                user_id=graphql_context.assigned_user_id,
-            )
-
         if target_schema.kind in {REPOSITORY, READONLYREPOSITORY}:
             new_node = await convert_repository_type(
                 repository=node_to_convert,  # type: ignore[arg-type]
@@ -135,7 +102,7 @@ class ConvertObjectType(Mutation):
                     default_branch=registry.get_branch_from_registry(branch=registry.default_branch),
                     clock=partial(datetime.now, tz=UTC),
                 ),
-                after_create=after_create,
+                user_id=graphql_context.assigned_user_id,
             )
         else:
             new_node = await convert_and_validate_object_type(
@@ -144,7 +111,7 @@ class ConvertObjectType(Mutation):
                 mapping=fields_mapping,
                 branch=graphql_context.branch,
                 db=graphql_context.db,
-                after_create=after_create,
+                user_id=graphql_context.assigned_user_id,
             )
 
         dict_node = await new_node.to_graphql(db=graphql_context.db, fields={})
