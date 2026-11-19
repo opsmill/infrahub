@@ -22,7 +22,9 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core import registry
+from infrahub.core.diff.model.path import ConflictSelection
 from infrahub.core.initialization import create_branch
+from infrahub.core.ownership.fields import owner_list_value
 from infrahub.core.ownership.models import NODE_HOLDER, NODE_SOURCES_HOLDER, HolderKey, HolderKind, field_holder
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
@@ -173,4 +175,50 @@ async def test_target_branch_migration_owners(
         await count_active_holder_edges(db=db, branch=default_branch, node_id=car_id, edge_types=SET_EDGE_TYPES)
         == set_edges
     )
+    await verify_graph(db=db)
+
+
+@pytest.mark.parametrize("selection", [ConflictSelection.DIFF_BRANCH, ConflictSelection.BASE_BRANCH])
+@pytest.mark.parametrize(
+    "holder",
+    [
+        pytest.param(NODE_HOLDER, id="node-owner"),
+        pytest.param(NODE_SOURCES_HOLDER, id="node-source"),
+        pytest.param("driver", id="field-set"),
+        pytest.param("color", id="attribute-owner"),
+    ],
+)
+async def test_target_branch_migration_owner_conflict(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    diff_repository: DiffRepository,
+    holder: HolderKey | str,
+    selection: ConflictSelection,
+) -> None:
+    """Different owner changes on the migrated default branch and on the branch conflict."""
+    groups = await create_groups(db=db)
+    if isinstance(holder, str):
+        car_schema = registry.schema.get(name="TestCar", branch=default_branch, duplicate=False)
+        field = field_holder(schema=car_schema, field_name=holder)
+        assert field is not None
+        holder = field
+    car_id = car_accord_main.id
+    branch = await create_branch(db=db, branch_name="tgt-migration-owner-conflict")
+    await migrate_testcar_to_test2newcar(db=db, target_branch=default_branch, delete_old_schema=True)
+    await set_owners(db=db, branch=default_branch, node_id=car_id, owner_ids=(groups["security"],), holder=holder)
+    await set_owners(db=db, branch=branch, node_id=car_id, owner_ids=(groups["dc-emea"],), holder=holder)
+
+    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+    conflicts = list(diff.get_all_conflicts().values())
+    assert [(conflict.base_branch_value, conflict.diff_branch_value) for conflict in conflicts] == [
+        (owner_list_value((groups["security"],)), owner_list_value((groups["dc-emea"],)))
+    ]
+    await diff_repository.update_conflict_by_id(conflict_id=conflicts[0].uuid, selection=selection)
+
+    await merge(db=db, branch=branch)
+
+    merged = groups["dc-emea"] if selection is ConflictSelection.DIFF_BRANCH else groups["security"]
+    assert await read_owners(db=db, branch=default_branch, node_id=car_id, holder=holder) == (merged,)
+    assert await count_active_holder_edges(db=db, branch=default_branch, node_id=car_id) == 1
     await verify_graph(db=db)

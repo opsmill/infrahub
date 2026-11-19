@@ -48,7 +48,8 @@ The owners of a relationship field, and the owners that a profile or an object t
 its nodes or to one field, show as an attribute with a reserved name: `<relationship>__owners`,
 `node_metadata__target_owners` and `<field>__target_owners`. The schema of the diff branch gives
 the field name from the key of the `OwnerSet`, so a set whose field the schema lacks is not in the
-diff. The merge reads the edges and not the diff, so it still merges that set.
+diff. For a change of the base branch on a kind that the schema of the diff branch does not have, for
+example after a kind migration on the base branch, the schema of the base branch gives the name. The merge reads the edges and not the diff, so it still merges that set.
 `MergeExclusionPlanBuilder` needs the schema of the source branch to find the set of a resolved
 conflict from its reserved name. When that schema lacks the field, the merge skips the resolution
 and writes a log line.

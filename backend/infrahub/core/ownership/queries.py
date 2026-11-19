@@ -464,10 +464,11 @@ CALL (h) {
             "direction": self.holder.direction,
         }
         self.params["set_key"] = {name: value for name, value in key.items() if value is not None}
-        # The set is looked for on all branches, so that the node keeps one set after the merges.
+        # The set is looked for on all branches and on each vertex of the UUID, so that the node keeps one set after
+        # the merges, also when a kind migration on one branch gives the node a new vertex.
         return """
 CALL (n) {
-    OPTIONAL MATCH (n)-[:%(set_edge)s]->(s:OwnerSet)
+    OPTIONAL MATCH (:Node {uuid: n.uuid})-[:%(set_edge)s]->(s:OwnerSet)
     WHERE %(same_key)s
     RETURN s
     ORDER BY elementId(s)
