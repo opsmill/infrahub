@@ -517,6 +517,15 @@ CALL (n, h) {
                 "write_is_global": self.write_branch.is_global,
                 "at": self.at.to_string(),
                 "user_id": self.user_id,
+                # An isolated branch reads its origin branch at the branch start, so a later delete there is hidden.
+                "later_branches": sorted(
+                    {
+                        name
+                        for names, time in self.branch.get_branches_and_times_to_query_global(at=self.at).items()
+                        if time == self.at.to_string()
+                        for name in names
+                    }
+                ),
             }
         )
         query = """
@@ -533,6 +542,11 @@ ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
 LIMIT 1
 WITH n, r
 WHERE r.status = "active"
+AND NOT EXISTS {
+    // A delete that commits while the write waits for the lock can have a later time than the write
+    MATCH (n)-[later:IS_PART_OF {status: "deleted"}]->(:Root)
+    WHERE later.branch IN $later_branches AND later.from > $at
+}
 WITH n
 %(holders)s
 CALL (n, h) {
