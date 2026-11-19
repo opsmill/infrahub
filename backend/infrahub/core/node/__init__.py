@@ -1366,6 +1366,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None, fields: list[str] | None = None
     ) -> NodeChangelog:
         """Update the node in the database if needed."""
+        # A delete locks the node before its attributes, so a write that locks an attribute first can deadlock.
+        lock_query = await NodeLockQuery.init(db=db, node=self)
+        await lock_query.execute(db=db)
         update_at = Timestamp(at)
         node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
         await self._check_changed_owner_kinds(db=db, at=update_at, fields=fields, user_id=user_id)

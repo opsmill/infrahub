@@ -1,4 +1,5 @@
 import asyncio
+from typing import Any
 
 import pytest
 
@@ -276,6 +277,39 @@ async def test_owner_writes_of_two_attributes_and_node_delete_in_open_transactio
 
     # Both writes run to their end, so a failed one leaves no open transaction for the next test.
     results = await asyncio.gather(write_owners(), delete_node(), return_exceptions=True)
+
+    assert results == [None, None]
+    await verify_graph(db=db, kinds=["TestPerson"])
+
+
+@pytest.mark.parametrize("on_branch", [False, True], ids=["default-branch", "branch"])
+async def test_node_update_and_node_delete_in_open_transactions_do_not_deadlock(
+    db: InfrahubDatabase, default_branch: Branch, person: Node, on_branch: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    branch = await create_branch(db=db, branch_name="update-and-delete") if on_branch else default_branch
+    attribute_is_written = asyncio.Event()
+
+    async def pause_after_the_attributes(*args: Any, **kwargs: Any) -> None:
+        attribute_is_written.set()
+        # The delete starts while this transaction holds the attribute and has not written the node.
+        await asyncio.sleep(SECONDS_BEFORE_FIRST_COMMIT)
+
+    monkeypatch.setattr(Node, "_recompute_local_jinja2", pause_after_the_attributes)
+
+    async def update_node() -> None:
+        async with db.start_session() as session_db, session_db.start_transaction() as dbt:
+            node = await NodeManager.get_one(db=dbt, branch=branch, id=person.id, raise_on_error=True)
+            node.name.value = "Jane"
+            await node.save(db=dbt)
+
+    async def delete_node() -> None:
+        await attribute_is_written.wait()
+        async with db.start_session() as session_db, session_db.start_transaction() as dbt:
+            node = await NodeManager.get_one(db=dbt, branch=branch, id=person.id, raise_on_error=True)
+            await node.delete(db=dbt)
+
+    # Both writes run to their end, so a failed one leaves no open transaction for the next test.
+    results = await asyncio.gather(update_node(), delete_node(), return_exceptions=True)
 
     assert results == [None, None]
     await verify_graph(db=db, kinds=["TestPerson"])
