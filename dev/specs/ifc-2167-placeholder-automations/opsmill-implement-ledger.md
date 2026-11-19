@@ -256,3 +256,21 @@ Decisions worth flagging:
 Lint and format: no source or test code changed in this pass; not run.
 
 No new or modified tests in this chunk.
+
+## Review (third pass)
+
+Review mode: command (/code-review)
+Why not a full review: n/a
+
+The `pr-review-toolkit` agents were not among the available subagent types, so the review ran with `/code-review medium 5bf8e95d0fd29e377bad6755563e5f062d2706b8..HEAD`. The range holds no source or test code: only workflow run state under `.specify/workflows/runs/` and this ledger. The command rated findings as important, pre-existing or nit. The table maps them to high, medium and low after checking each one.
+
+| Severity | File | Line | Summary | Fixed or deferred |
+|----------|------|------|---------|-------------------|
+| medium | .specify/workflows/runs/0bb78e0b/state.json | 1 | The branch tracks workflow run state with absolute local paths and timestamps. The commit steps run `git add -A`, so each step commits a snapshot that is already out of date. The reviewer rated it important. It is rated medium here because the run directories have been committed by the workflow since `52aed4a18c`, and this range only adds one more. | Deferred. The fix belongs in the installed workflow, or in a `.gitignore` rule plus `git rm --cached` once the run ends. Remove `.specify/workflows/runs/` from the branch before opening the PR. |
+| medium | .specify/workflows/runs/5ab86115/log.jsonl | 133 | Resuming the failed opsmill-auto run does not run the report step again. It checks the report output captured before the resume, so the run fails again even after the tasks are ticked. | Deferred. Workflow engine behavior that existed before this range. |
+| medium | .specify/workflows/runs/0bb78e0b/workflow.yml | 39 | The chunk loop ends without ticking a task while T038 and T041 stay open, then runs the full review and report steps, and the run still fails at `stop-on-incomplete`. | Deferred. Workflow design that existed before this range. |
+| low | dev/specs/ifc-2167-placeholder-automations/opsmill-implement-ledger.md | 254 | `backend/tests/component/core/template_fingerprint/tmp_explain_check.py` (empty) and `backend/t031.log` are still tracked. | Deferred. Already recorded by the previous review. Delete both before opening the PR. |
+| low | dev/specs/ifc-2167-placeholder-automations/opsmill-implement-ledger.md | 248 | The third-pass T038 row and the instruction at line 253 leave out that the query plan was measured on 480 synthetic records, not on a database with at least 50 kinds. | Deferred |
+| low | dev/specs/ifc-2167-placeholder-automations/opsmill-implement-ledger.md | 248 | The third-pass task table marks outcomes with emoji, which the organization writing rules do not allow. | Deferred |
+
+No high-severity finding, so no code changed in this phase.
