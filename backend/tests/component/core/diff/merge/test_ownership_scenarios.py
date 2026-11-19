@@ -507,7 +507,10 @@ async def test_same_owner_change_on_both_branches_gives_no_conflict_and_the_merg
         pytest.param(
             LINK_OWNER_PROPERTY,
             id=LINK_OWNER_PROPERTY.name,
-            marks=pytest.mark.xfail(strict=True, reason="develop behavior, tracked separately"),
+            marks=pytest.mark.xfail(
+                strict=True,
+                reason="the merge changelog records the owner of a link also when the default branch already holds it",
+            ),
         ),
     ],
 )
@@ -547,22 +550,13 @@ def _selection_params() -> list[Any]:
             (ConflictSelection.DIFF_BRANCH, "branch_selected"),
             (ConflictSelection.BASE_BRANCH, "default_branch_selected"),
         ):
-            marks = []
-            if holder is LINK_OWNER_PROPERTY and selection is ConflictSelection.BASE_BRANCH:
-                marks.append(
-                    pytest.mark.xfail(
-                        strict=True,
-                        reason="the changelog of a link property ignores a selection of the default branch",
-                    )
-                )
-            params.append(pytest.param(holder, selection, OTHER, id=f"{holder.name}-{name}", marks=marks))
+            params.append(pytest.param(holder, selection, OTHER, id=f"{holder.name}-{name}"))
             if holder is RELATIONSHIP_MANY:
                 params.append(pytest.param(holder, selection, (), id=f"{holder.name}-{name}-no_owner_on_default"))
     return params
 
 
-@pytest.mark.parametrize(("holder", "selection", "other"), _selection_params())
-async def test_different_owner_changes_on_both_branches_conflict_and_the_merge_applies_the_selection(
+async def _merge_selected_conflict(
     db: InfrahubDatabase,
     default_branch: Branch,
     diff_repository: DiffRepository,
@@ -570,7 +564,11 @@ async def test_different_owner_changes_on_both_branches_conflict_and_the_merge_a
     holder: OwnerListHolder,
     selection: ConflictSelection,
     other: Names,
-) -> None:
+) -> tuple[str, Branch, Sequence[tuple[DiffAction, NodeChangelog]]]:
+    """Make different owner changes on both branches, select one side of the conflict and merge.
+
+    Return the node, the branch and the changelogs of the merge.
+    """
     after = _branch_change(holder)
     node_id = await holder.prepare(db=db, default_branch=default_branch, dataset=dataset, start=START)
     branch = await create_branch(db=db, branch_name="different-change")
@@ -594,6 +592,29 @@ async def test_different_owner_changes_on_both_branches_conflict_and_the_merge_a
     diff = await diff_repository.get_one(diff_branch_name=branch.name, diff_id=diff.uuid)
 
     changelogs = await _merge_changelogs(db=db, default_branch=default_branch, branch=branch, diff=diff)
+    return node_id, branch, changelogs
+
+
+@pytest.mark.parametrize(("holder", "selection", "other"), _selection_params())
+async def test_different_owner_changes_on_both_branches_conflict_and_the_merge_applies_the_selection(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    diff_repository: DiffRepository,
+    dataset: OwnerDataset,
+    holder: OwnerListHolder,
+    selection: ConflictSelection,
+    other: Names,
+) -> None:
+    after = _branch_change(holder)
+    node_id, branch, changelogs = await _merge_selected_conflict(
+        db=db,
+        default_branch=default_branch,
+        diff_repository=diff_repository,
+        dataset=dataset,
+        holder=holder,
+        selection=selection,
+        other=other,
+    )
 
     merged = after if selection is ConflictSelection.DIFF_BRANCH else other
     assert await holder.read(db=db, branch=default_branch, node_id=node_id) == dataset.owners(merged)
@@ -603,12 +624,34 @@ async def test_different_owner_changes_on_both_branches_conflict_and_the_merge_a
         await count_active_holder_edges(db=db, branch=default_branch, node_id=node_id, edge_types=SET_EDGE_TYPES)
         == holder.set_edges
     )
-    assert holder.changelog(changelogs=changelogs, node_id=node_id) == (
-        holder.expected_changelog(dataset=dataset, before=START, after=after)
-        if selection is ConflictSelection.DIFF_BRANCH
-        else None
-    )
+    # The next test checks the changelog of a link owner when the default branch is selected.
+    if holder is not LINK_OWNER_PROPERTY or selection is ConflictSelection.DIFF_BRANCH:
+        assert holder.changelog(changelogs=changelogs, node_id=node_id) == (
+            holder.expected_changelog(dataset=dataset, before=START, after=after)
+            if selection is ConflictSelection.DIFF_BRANCH
+            else None
+        )
     await verify_graph(db=db)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="the merge changelog records the branch value of a link owner when the conflict selects the default branch",
+)
+async def test_merge_changelog_of_a_link_owner_conflict_that_selects_the_default_branch_records_no_change(
+    db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset
+) -> None:
+    node_id, _, changelogs = await _merge_selected_conflict(
+        db=db,
+        default_branch=default_branch,
+        diff_repository=diff_repository,
+        dataset=dataset,
+        holder=LINK_OWNER_PROPERTY,
+        selection=ConflictSelection.BASE_BRANCH,
+        other=OTHER,
+    )
+
+    assert LINK_OWNER_PROPERTY.changelog(changelogs=changelogs, node_id=node_id) is None
 
 
 @pytest.mark.parametrize("holder", _params(ALL_HOLDERS))
@@ -726,24 +769,14 @@ async def test_owner_removal_on_a_branch_is_merged(
     await verify_graph(db=db)
 
 
-@pytest.mark.parametrize(
-    "holder",
-    [
-        *_params([holder for holder in ALL_HOLDERS if holder is not LINK_OWNER_PROPERTY]),
-        pytest.param(
-            LINK_OWNER_PROPERTY,
-            id=LINK_OWNER_PROPERTY.name,
-            marks=pytest.mark.xfail(strict=True, reason="the merge does not copy a link owner that is deleted"),
-        ),
-    ],
-)
-async def test_owner_added_on_a_branch_and_then_deleted_stays_in_the_owners_after_the_merge(
+async def _merge_owner_deleted_after_the_branch_change(
     db: InfrahubDatabase,
     default_branch: Branch,
     diff_repository: DiffRepository,
     dataset: OwnerDataset,
     holder: OwnerListHolder,
-) -> None:
+) -> tuple[str, Branch]:
+    """Add an owner on a branch, delete that owner and merge, and return the node and the branch."""
     after = _branch_change(holder)
     node_id = await holder.prepare(db=db, default_branch=default_branch, dataset=dataset, start=START)
     branch = await create_branch(db=db, branch_name="owner-deleted")
@@ -762,7 +795,43 @@ async def test_owner_added_on_a_branch_and_then_deleted_stays_in_the_owners_afte
     )
 
     await merge(db=db, branch=branch)
+    return node_id, branch
 
-    for read_branch in (default_branch, branch):
-        assert await holder.read(db=db, branch=read_branch, node_id=node_id) == dataset.owners(after)
+
+@pytest.mark.parametrize("holder", _params(ALL_HOLDERS))
+async def test_owner_added_on_a_branch_and_then_deleted_stays_in_the_owners_after_the_merge(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    diff_repository: DiffRepository,
+    dataset: OwnerDataset,
+    holder: OwnerListHolder,
+) -> None:
+    node_id, branch = await _merge_owner_deleted_after_the_branch_change(
+        db=db, default_branch=default_branch, diff_repository=diff_repository, dataset=dataset, holder=holder
+    )
+
+    # The next test checks the owner of a link on the default branch.
+    read_branches = (branch,) if holder is LINK_OWNER_PROPERTY else (default_branch, branch)
+    for read_branch in read_branches:
+        assert await holder.read(db=db, branch=read_branch, node_id=node_id) == dataset.owners(_branch_change(holder))
     await verify_graph(db=db)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="the merge does not copy the owner edge of a link to a deleted owner, so the default branch reads no owner",
+)
+async def test_link_owner_added_on_a_branch_and_then_deleted_stays_on_the_default_branch_after_the_merge(
+    db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset
+) -> None:
+    node_id, _ = await _merge_owner_deleted_after_the_branch_change(
+        db=db,
+        default_branch=default_branch,
+        diff_repository=diff_repository,
+        dataset=dataset,
+        holder=LINK_OWNER_PROPERTY,
+    )
+
+    assert await LINK_OWNER_PROPERTY.read(db=db, branch=default_branch, node_id=node_id) == dataset.owners(
+        _branch_change(LINK_OWNER_PROPERTY)
+    )
