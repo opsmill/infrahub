@@ -40,7 +40,8 @@ class DeleteAfterTimeQuery(Query):
                 WITH p, q
                 UNWIND [p, q] AS maybe_orphan
                 WITH maybe_orphan
-                WHERE NOT exists((maybe_orphan)--())
+                // every "no owner" write on any branch ends at the NoOwner vertex
+                WHERE NOT exists((maybe_orphan)--()) AND NOT maybe_orphan:NoOwner
                 DELETE maybe_orphan
             }
             """
