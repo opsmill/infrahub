@@ -17,6 +17,7 @@ from infrahub.core.migrations.schema.node_attribute_remove import NodeAttributeR
 from infrahub.core.migrations.schema.node_relationship_remove import NodeRelationshipRemoveMigration
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
+from infrahub.core.node.create import create_node
 from infrahub.core.ownership.fields import stored_holder_field_name
 from infrahub.core.ownership.models import HolderKey, HolderKind, StoredOwnerState, field_holder
 from infrahub.core.ownership.repository import OwnershipRepository
@@ -27,7 +28,8 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import GraphCheck, collect_graph_violations, verify_graph
 from infrahub.dependencies.registry import get_component_registry
 from tests.component.core.diff.merge.conftest import get_diff_coordinator, get_diff_merger
-from tests.helpers.ownership import USER_ID
+from tests.conftest import do_car_person_schema_unregistered
+from tests.helpers.ownership import USER_ID, set_owners
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -41,34 +43,56 @@ NEW_ATTRIBUTE = "seats"
 RELATIONSHIP = "owner"
 NEW_RELATIONSHIP = "keeper"
 
-Holders = dict[str, dict[HolderKey, tuple[str, ...] | None]]
-"""The owners that each holder of the car and of the profile stores, by node name."""
+Holders = dict[str, dict[HolderKey, tuple[tuple[str, ...] | None, str | None]]]
+"""The owners that each holder stores and the template that they are a copy from, by node name."""
+
+COPY_FROM_TEMPLATE = "car-from-template"
+FIELD_GROUPS: dict[str, tuple[bool, str | None, str | None]] = {
+    "car": (False, "dc-emea", "security"),
+    "profile": (True, None, "network-emea"),
+    "template": (True, "security", "dc-emea"),
+    COPY_FROM_TEMPLATE: (False, "security", "dc-emea"),
+}
+"""For each node: whether it gives owners to other nodes, then the group of the attribute and of the relationship.
+
+None is "no owner". The car made from the template holds a copy of the owners that the template gives.
+"""
+
+
+@pytest.fixture
+def car_person_schema_unregistered(db: InfrahubDatabase, node_group_schema: None, data_schema: None) -> SchemaRoot:
+    schema = do_car_person_schema_unregistered()
+    # The template of a car needs the template of its parent kind.
+    for node in schema.nodes:
+        node.generate_template = True
+    return schema
 
 
 @dataclass
 class FieldOwners:
-    """A car and a car profile. Each one holds owners for the attribute `nbr_seats` and for the relationship `owner`."""
+    """A car, a car profile, a car template and a car made from the template, with owners for two fields of each.
+
+    The fields are the attribute `nbr_seats` and the relationship `owner`.
+    """
 
     group_ids: dict[str, str]
     node_ids: dict[str, str]
-    """The ID of the car and of the profile."""
+    """The ID of each node, by name."""
 
     def holders(
         self, branch: Branch, attribute: str | None = ATTRIBUTE, relationship: str | None = RELATIONSHIP
     ) -> Holders:
         """Return the owners that the fields hold when the schema of the branch names them so. None is a removed field."""
         schema = registry.schema.get(name=CAR_KIND, branch=branch, duplicate=False)
-        expected: Holders = {"car": {}, "profile": {}}
-        for field_name, car_group, profile_group in (
-            (attribute, "dc-emea", "network-emea"),
-            (relationship, "security", "dc-emea"),
-        ):
-            if field_name is None:
-                continue
-            for name, group, target in (("car", car_group, False), ("profile", profile_group, True)):
+        expected: Holders = {name: {} for name in FIELD_GROUPS}
+        for name, (target, attribute_group, relationship_group) in FIELD_GROUPS.items():
+            template_id = self.node_ids["template"] if name == COPY_FROM_TEMPLATE else None
+            for field_name, group in ((attribute, attribute_group), (relationship, relationship_group)):
+                if field_name is None:
+                    continue
                 holder = field_holder(schema=schema, field_name=field_name, target=target)
                 assert holder is not None
-                expected[name][holder] = (self.group_ids[group],)
+                expected[name][holder] = (() if group is None else (self.group_ids[group],), template_id)
         return expected
 
 
@@ -85,9 +109,24 @@ async def _read(db: InfrahubDatabase, branch: Branch, field_owners: FieldOwners)
         node_ids=list(field_owners.node_ids.values()), attributes=True
     )
     return {
-        name: {holder: state.owner_ids for holder, state in stored[node_id].holders.items()}
+        name: {holder: (state.owner_ids, state.template_id) for holder, state in stored[node_id].holders.items()}
         for name, node_id in field_owners.node_ids.items()
     }
+
+
+async def _open_edges_of_detached_sets(db: InfrahubDatabase) -> int:
+    """Count the open owner edges and template marks of the sets of owners that no node holds."""
+    query = """
+    MATCH (s:OwnerSet)-[r:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE]->()
+    WHERE r.status = "active" AND r.to IS NULL
+    AND NOT EXISTS {
+        MATCH (:Node)-[held:HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(s)
+        WHERE held.status = "active" AND held.to IS NULL
+    }
+    RETURN count(r) AS total
+    """
+    results = await db.execute_query(query=query)
+    return results[0]["total"]
 
 
 @pytest.fixture
@@ -95,6 +134,7 @@ async def field_owners(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
+    person_john_main: Node,
     car_accord_main: Node,
     car_profile1_main: Node,
 ) -> FieldOwners:
@@ -104,13 +144,30 @@ async def field_owners(
         await group.new(db=db, name=name)
         await group.save(db=db)
         group_ids[name] = group.id
-    data = FieldOwners(group_ids=group_ids, node_ids={"car": car_accord_main.id, "profile": car_profile1_main.id})
+    person_template = await Node.init(db=db, schema="TemplateTestPerson")
+    await person_template.new(db=db, template_name="person-template")
+    await person_template.save(db=db)
+    template = await Node.init(db=db, schema=f"Template{CAR_KIND}")
+    await template.new(db=db, template_name="car-template", owner=person_template)
+    await template.save(db=db)
+    data = FieldOwners(
+        group_ids=group_ids,
+        node_ids={"car": car_accord_main.id, "profile": car_profile1_main.id, "template": template.id},
+    )
     for name, holders in data.holders(branch=default_branch).items():
-        for holder, owner_ids in holders.items():
-            assert owner_ids is not None
-            await _write(
-                db=db, branch=default_branch, node_id=data.node_ids[name], holder=holder, owner_id=owner_ids[0]
+        if name == COPY_FROM_TEMPLATE:
+            continue
+        for holder, (owner_ids, _) in holders.items():
+            await set_owners(
+                db=db, branch=default_branch, node_id=data.node_ids[name], owner_ids=owner_ids, holder=holder
             )
+    copy = await create_node(
+        data={"name": COPY_FROM_TEMPLATE, "owner": {"id": person_john_main.id}, "object_template": {"id": template.id}},
+        db=db,
+        branch=default_branch,
+        schema=registry.schema.get_node_schema(name=CAR_KIND, branch=default_branch),
+    )
+    data.node_ids[COPY_FROM_TEMPLATE] = copy.id
     assert await _read(db=db, branch=default_branch, field_owners=data) == data.holders(branch=default_branch)
     return data
 
@@ -248,6 +305,7 @@ async def test_owners_of_a_field_follow_a_rename_and_end_with_a_removal(
     result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
     assert not result.errors
     assert await _read(db=db, branch=default_branch, field_owners=field_owners) == after
+    assert await _open_edges_of_detached_sets(db=db) == 0
     await verify_graph(db=db)
 
 
@@ -287,7 +345,7 @@ async def test_owners_of_a_relationship_follow_its_rename(
             owner_id=field_owners.group_ids["network-emea"],
         )
         await _merge(db=db, default_branch=default_branch, branch=branch)
-        after["car"][car_holder] = (field_owners.group_ids["network-emea"],)
+        after["car"][car_holder] = ((field_owners.group_ids["network-emea"],), None)
         assert await _read(db=db, branch=default_branch, field_owners=field_owners) == after
     await verify_graph(db=db)
 
