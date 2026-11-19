@@ -1,0 +1,37 @@
+backend/infrahub/trigger/tasks.py
+  s_2866c7294b1217::t_07ec6303313094 27
+  s_2866c7294b1217::t_3434117d4bf16b 9-11,19,51-55,57
+  s_2866c7294b1217::t_ea8e0e3c7ccb67 56
+backend/tests/unit/trigger/test_placeholder_carry_over.py
+  s_2866c7294b1217::t_f80435c566a7b4 1-2,4-29,31-34,36-54,62-63,149-150,154
+  s_2866c7294b1217::t_cd505201a95ab8 3,30,35,55-61,64-148,151-153,155
+backend/infrahub/hfid/tasks.py
+  s_2866c7294b1217::t_7e9363b0e96de5 119-120,122
+  s_2866c7294b1217::t_656440bfed93bb 20
+  s_2866c7294b1217::t_9f9c8dc6058a29 103,107
+backend/tests/component/trigger/test_placeholder_carry_over.py
+  s_2866c7294b1217::t_3d23817fde8e9a 1-138,140,143-146
+  s_2866c7294b1217::t_1b53c477ed1129 139,141-142,147
+backend/infrahub/display_labels/tasks.py
+  s_2866c7294b1217::t_d3a2771eb861d2 117,121,135-136,138
+  s_2866c7294b1217::t_877942e967090d 23
+backend/infrahub/trigger/placeholder_carry_over.py
+  s_2866c7294b1217::t_85550d1748456b 1-67,70-96
+  s_2866c7294b1217::t_b5193f0a7b93df 68-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7aa90f94de92490ea29066221b5b216ee24035b4",
+  "prompts": {},
+  "sessions": {
+    "s_2866c7294b1217": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0793723-a3dd-4c2b-8a4d-2c13093e79f2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

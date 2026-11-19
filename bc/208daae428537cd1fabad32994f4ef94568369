@@ -1,0 +1,31 @@
+dev/specs/ifc-2167-placeholder-automations/tasks.md
+  s_dc0b6c2fee3221::t_5e4905388bc7d4 196
+  s_dc0b6c2fee3221::t_0ff7a23246ed23 192
+  s_dc0b6c2fee3221::t_46825fcd7d1c60 200
+backend/tests/component/display_labels/test_setup.py
+  s_dc0b6c2fee3221::t_9f9873645f8e85 70,74-77,84
+  s_dc0b6c2fee3221::t_ef00634a347c86 16-23,26,28,30
+  s_dc0b6c2fee3221::t_26cc80b2b4d706 63-69,71-73,78-83
+dev/specs/ifc-2167-placeholder-automations/contracts/fingerprint-store.md
+  s_dc0b6c2fee3221::t_b3460a93b5cc56 16-18
+dev/specs/ifc-2167-placeholder-automations/opsmill-implement-ledger.md
+  s_dc0b6c2fee3221::t_fff5cb0f4aecbd 142-166
+backend/tests/component/branch/test_template_fingerprint_cleanup.py
+  s_dc0b6c2fee3221::t_a5e937b27326fc 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc208daae428537cd1fabad32994f4ef94568369",
+  "prompts": {},
+  "sessions": {
+    "s_dc0b6c2fee3221": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2da40565-0ebc-41d9-9103-c7dfa878f851",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

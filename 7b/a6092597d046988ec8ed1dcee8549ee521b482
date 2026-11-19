@@ -1,0 +1,25 @@
+dev/specs/ifc-2167-placeholder-automations/opsmill-implement-report.md
+  s_6980d179b8dd9f::t_79d26b405d4fc4 194
+  s_6980d179b8dd9f::t_a93b44f9d2d29f 3-6,10-11,14,17,21,24,27,29-31,33,35,38-41,43,45,50,53-54,57,59,62-63,65,67,69,74,76,80,86,88,92,95,98-106,108-109,113-116,140,142,144,150-152,158,165-175,177-179,182-190,195-200
+  s_6980d179b8dd9f::t_ec482328ebdf61 176
+.specify/workflows/runs/0bb78e0b/log.jsonl
+  s_6980d179b8dd9f::t_4e16f947588667 18-19
+.specify/workflows/runs/0bb78e0b/state.json
+  s_6980d179b8dd9f::t_a868db510f52bf 7-8,149-162,167,374-391,394-395
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7ba6092597d046988ec8ed1dcee8549ee521b482",
+  "prompts": {},
+  "sessions": {
+    "s_6980d179b8dd9f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54f3255a-d943-42a0-b949-d3d0d6e8331c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
