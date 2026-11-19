@@ -403,7 +403,7 @@ class TestNodeRemoveMetadata:
         async def _run_rollback() -> None:
             await GraphRollbacker(db=db).rollback(
                 target_branch=removal.branch,
-                at=removal.migration_time,
+                ats=[removal.migration_time],
                 scope=RollbackScope.SINCE_TIMESTAMP,
             )
 

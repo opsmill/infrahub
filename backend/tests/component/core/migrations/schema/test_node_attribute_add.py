@@ -393,7 +393,7 @@ class TestNodeAttributeAddMetadata:
         async def _run_rollback() -> None:
             await GraphRollbacker(db=db).rollback(
                 target_branch=context.branch,
-                at=context.migration_time,
+                ats=[context.migration_time],
                 scope=RollbackScope.SINCE_TIMESTAMP,
             )
 
