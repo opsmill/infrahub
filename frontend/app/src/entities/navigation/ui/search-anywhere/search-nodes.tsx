@@ -35,8 +35,18 @@ export const SearchNodes = () => {
   const queryDebounced = useDebounce(query.trim(), 300);
   const caseSensitive = useAtomValue(searchCaseSensitiveAtom);
 
-  const { data, isPending, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage, error } =
-    useGetSearchAnywhere({ search: queryDebounced, caseSensitive }, { enabled: !!queryDebounced });
+  const {
+    data,
+    isPending,
+    isFetching,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    isFetchNextPageError,
+  } = useGetSearchAnywhere(
+    { search: queryDebounced, caseSensitive },
+    { enabled: !!queryDebounced }
+  );
 
   const rows = data?.matchingObjects ?? [];
 
@@ -64,14 +74,14 @@ export const SearchNodes = () => {
       ))}
 
       <InfiniteTrigger
-        hasNextPage={hasNextPage && !isFetching && !error}
+        hasNextPage={hasNextPage && !isFetching && !isFetchNextPageError}
         onLoadMore={fetchNextPage}
       />
 
       <SearchNodesListEnd
         isLoadingMore={isFetchingNextPage}
         hasMore={hasNextPage}
-        hasFailed={!!error}
+        hasFailed={isFetchNextPageError}
         count={rows.length}
       />
     </SearchAnywhereGroup>
