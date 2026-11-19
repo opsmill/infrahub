@@ -423,12 +423,13 @@ def neo4j(
         },
     )
 
-    yield {
-        PORT_BOLT_NEO4J: get_exposed_port(container, PORT_BOLT_NEO4J),
-        PORT_HTTP_NEO4J: get_exposed_port(container, PORT_HTTP_NEO4J),
-    }
-
-    container.stop()
+    try:
+        yield {
+            PORT_BOLT_NEO4J: get_exposed_port(container, PORT_BOLT_NEO4J),
+            PORT_HTTP_NEO4J: get_exposed_port(container, PORT_HTTP_NEO4J),
+        }
+    finally:
+        container.stop()
 
 
 @pytest.fixture(scope="session")
@@ -447,12 +448,13 @@ def rabbitmq_container(load_settings_before_session: None) -> Generator[dict[int
     container.start()
     wait_for_logs(container, "Server startup complete;")  # wait_container_is_ready does not seem to be enough
 
-    yield {
-        PORT_CLIENT_RABBITMQ: get_exposed_port(container, PORT_CLIENT_RABBITMQ),
-        PORT_HTTP_RABBITMQ: get_exposed_port(container, PORT_HTTP_RABBITMQ),
-    }
-
-    container.stop()
+    try:
+        yield {
+            PORT_CLIENT_RABBITMQ: get_exposed_port(container, PORT_CLIENT_RABBITMQ),
+            PORT_HTTP_RABBITMQ: get_exposed_port(container, PORT_HTTP_RABBITMQ),
+        }
+    finally:
+        container.stop()
 
 
 @pytest.fixture(scope="module")
@@ -484,9 +486,10 @@ def redis_container(load_settings_before_session: None) -> Generator[dict[int, i
     container.start()
     wait_for_logs(container, "Ready to accept connections tcp")  # wait_container_is_ready does not seem to be enough
 
-    yield {PORT_REDIS: get_exposed_port(container, PORT_REDIS)}
-
-    container.stop()
+    try:
+        yield {PORT_REDIS: get_exposed_port(container, PORT_REDIS)}
+    finally:
+        container.stop()
 
 
 @pytest.fixture(scope="module")
@@ -541,9 +544,10 @@ def memgraph(load_settings_before_session: None) -> Generator[dict[int, int] | N
     # Note we still need to call wait_for_memgraph_ready to be sure the container is fully started.
     wait_for_memgraph_ready(host="localhost", port=container.get_exposed_port(PORT_MEMGRAPH))
 
-    yield {PORT_MEMGRAPH: get_exposed_port(container, PORT_MEMGRAPH)}
-
-    container.stop()
+    try:
+        yield {PORT_MEMGRAPH: get_exposed_port(container, PORT_MEMGRAPH)}
+    finally:
+        container.stop()
 
 
 @pytest.fixture(scope="session")

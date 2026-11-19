@@ -78,9 +78,10 @@ def neo4j_small_thread_pool() -> Generator[int, None, None]:
         extra_env={"NEO4J_server_bolt_thread__pool__max__size": "10"},
     )
 
-    yield get_exposed_port(container, PORT_BOLT_NEO4J)
-
-    container.stop()
+    try:
+        yield get_exposed_port(container, PORT_BOLT_NEO4J)
+    finally:
+        container.stop()
 
 
 @pytest.fixture(scope="module")
