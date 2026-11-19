@@ -4,9 +4,12 @@ from infrahub.cli.db_commands.ownership_report import ownership_report
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
+from infrahub.core.migrations.query.node_duplicate import NodeDuplicateQuery, SchemaNodeInfo
 from infrahub.core.node import Node
 from infrahub.core.ownership.report import (
     OwnershipReport,
+    ProtectedValueRow,
+    RepositoryOwnerRow,
     build_ownership_report,
 )
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -100,3 +103,63 @@ async def test_command_prints_each_section_with_its_rows(
         "Attributes with values that have is_protected set (is_protected is deprecated): 1",
         "  TestCar.color, branch main: 1",
     ]
+
+
+async def test_report_skips_a_deleted_node(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, car_person_schema: None
+) -> None:
+    repository = await add_node(
+        db=db, kind=InfrahubKind.REPOSITORY, name="repo01", location="git@github.com:user/repo01.git"
+    )
+    person = await add_node(db=db, kind="TestPerson", name="John")
+    car = await _create_car(db=db, name="deleted-car", person=person, is_protected=True)
+    await add_owner_edge(
+        db=db, query=ADD_ATTRIBUTE_OWNER, branch=default_branch, node_id=car.id, owner_id=repository.id
+    )
+
+    await car.delete(db=db)
+
+    report = await build_ownership_report(db=db)
+    assert report == OwnershipReport(repository_owners=[], other_owners=[], link_owners=[], protected_values=[])
+
+
+async def test_report_skips_the_vertex_that_a_kind_migration_replaced(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, car_person_schema: None
+) -> None:
+    repository = await add_node(
+        db=db, kind=InfrahubKind.REPOSITORY, name="repo01", location="git@github.com:user/repo01.git"
+    )
+    person = await add_node(db=db, kind="TestPerson", name="John")
+    car = await _create_car(db=db, name="migrated-car", person=person, is_protected=True)
+    await add_owner_edge(
+        db=db, query=ADD_ATTRIBUTE_OWNER, branch=default_branch, node_id=car.id, owner_id=repository.id
+    )
+    # The migration gives the attributes to a new vertex of the new kind, and closes the edges of the old vertex.
+    migration = await NodeDuplicateQuery.init(
+        db=db,
+        branch=default_branch,
+        kind_updates_map={
+            "TestCar": SchemaNodeInfo(name="Vehicle", namespace="Test", labels=["TestVehicle"], kind="TestVehicle")
+        },
+    )
+    await migration.execute(db=db)
+
+    report = await build_ownership_report(db=db)
+
+    assert report == OwnershipReport(
+        repository_owners=[
+            RepositoryOwnerRow(
+                repository_id=repository.id,
+                repository_kind=InfrahubKind.REPOSITORY,
+                node_kind="TestVehicle",
+                attribute_name="color",
+                branch=default_branch.name,
+                nb_attributes=1,
+            )
+        ],
+        other_owners=[],
+        link_owners=[],
+        protected_values=[
+            ProtectedValueRow(node_kind="TestVehicle", attribute_name="color", branch=default_branch.name, nb_values=1)
+        ],
+    )
