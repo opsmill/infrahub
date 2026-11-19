@@ -33,8 +33,8 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
 | one or more `HAS_OWNER` | `OWNERS`. They win over a `HAS_NO_OWNER` edge that a merge leaves active |
 | `HAS_OWNER` and `HAS_OWNER_SOURCE` | a copy from an object template. The state reads as `INHERIT`, the origin is `TEMPLATE` |
 
-- Every `HAS_NO_OWNER` edge ends at the one `NoOwner` vertex (`uuid: "no-owner"`). The first start of a new
-  database and the graph migration `m086` create it. The write query also has a `MERGE` for a database without it.
+- Every `HAS_NO_OWNER` edge ends at the one `NoOwner` vertex (`uuid: "no-owner"`). The creation of the `Root`
+  vertex (`create_root_node`) and the graph migration `m086` create it. The write query also has a `MERGE` for a database without it.
   The delete of a branch and the rebase of a branch delete each vertex that keeps no edge, but not this vertex.
 - `HAS_OWNER_SOURCE` ends at the object template. Without a `HAS_OWNER` edge, the mark gives no state.
   The delete of the template, and the merge of a branch that deletes it, close the mark. The copied `HAS_OWNER`

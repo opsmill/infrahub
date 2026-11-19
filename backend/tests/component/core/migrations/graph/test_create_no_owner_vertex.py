@@ -10,7 +10,13 @@ async def _no_owner_uuids(db: InfrahubDatabase) -> list[str]:
     return [record["uuid"] for record in await db.execute_query(query="MATCH (n:NoOwner) RETURN n.uuid AS uuid")]
 
 
+async def test_new_database_has_one_no_owner_vertex(db: InfrahubDatabase, default_branch: Branch) -> None:
+    assert await _no_owner_uuids(db=db) == [NO_OWNER_VERTEX_UUID]
+
+
 async def test_upgrade_creates_one_no_owner_vertex(db: InfrahubDatabase, default_branch: Branch) -> None:
+    # A database of the release before has no such vertex.
+    await db.execute_query(query="MATCH (n:NoOwner) DELETE n")
     assert await _no_owner_uuids(db=db) == []
 
     result = await Migration086().execute(migration_input=MigrationInput(db=db))

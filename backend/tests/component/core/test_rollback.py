@@ -48,10 +48,11 @@ async def assert_no_changes_at_or_after(db: InfrahubDatabase, branch: Branch, at
 async def assert_no_orphan_vertices(db: InfrahubDatabase) -> None:
     """Assert that no vertex is left without a single connection.
 
-    The rollback's edge deletions must take the vertices they orphan down with them.
+    The rollback's edge deletions must take the vertices they orphan down with them. The `NoOwner` vertex exists
+    also without edges.
     """
     result = await db.execute_query(
-        query="MATCH (n) WHERE NOT exists((n)--()) RETURN count(n) AS orphan_count",
+        query="MATCH (n) WHERE NOT exists((n)--()) AND NOT n:NoOwner RETURN count(n) AS orphan_count",
     )
     assert result[0].get("orphan_count") == 0
 

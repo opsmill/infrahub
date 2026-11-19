@@ -223,6 +223,9 @@ async def initialization(db: InfrahubDatabase, add_database_indexes: bool = Fals
 async def create_root_node(db: InfrahubDatabase) -> Root:
     root = Root(graph_version=GRAPH_VERSION, default_branch=config.SETTINGS.initial.default_branch)
     await root.save(db=db)
+    # Every "no owner" write ends at this vertex, so it must exist before two writes can each create one.
+    no_owner_query = await NoOwnerVertexCreateQuery.init(db=db)
+    await no_owner_query.execute(db=db)
     log.info(f"Generated instance ID : {root.uuid} (v{GRAPH_VERSION})")
 
     registry.id = root.id
@@ -561,8 +564,6 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     await create_root_node(db=db)
     default_branch = await create_default_branch(db=db)
     await create_global_branch(db=db)
-    no_owner_query = await NoOwnerVertexCreateQuery.init(db=db)
-    await no_owner_query.execute(db=db)
 
     # --------------------------------------------------
     # Load the internal and core schema in the database
