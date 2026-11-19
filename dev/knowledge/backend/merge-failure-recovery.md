@@ -117,10 +117,12 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
 - Any pre-`MERGED` step (a new follow-on, or IPAM/repository sync moved back before `MERGED`) starts
   mutating default-branch graph state — recovery would leave it partially applied.
 - A step stamps vertex metadata at a merge timestamp without receiving the earlier steps'
-  timestamps in `operation_ats` — a vertex changed by several steps would save the earlier step's
-  stamp as its previous value, and the rollback would restore that stamp instead of the value from
-  before the operation. The schema migration flow above `MigrationInput` does not pass
-  `operation_ats`, so its migrations see only their own `at`.
+  timestamps in `operation_ats` — the vertex saves the earlier step's stamp as its previous value.
+  When the rollback is given both timestamps, the restore matches the vertex again after it
+  restored the earlier step's stamp (in the other pass, or in a later batch of the same pass), and
+  the metadata ends up unset. When only one pass restores it, it ends up with the earlier step's
+  stamp. Neither is the value from before the operation. The schema migration flow above
+  `MigrationInput` does not pass `operation_ats`, so its migrations see only their own `at`.
 - A merge-window writer bumps vertex `updated_at`/`updated_by` to the merge `$at` without
   co-writing `previous_*` — the restore still fires on those vertices and writes whatever
   `previous_*` holds (unset, or a leftover snapshot from an older operation), silently corrupting
