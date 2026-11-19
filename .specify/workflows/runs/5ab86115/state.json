@@ -5,7 +5,7 @@
   "installed_registry_root": null,
   "status": "running",
   "current_step_index": 1,
-  "current_step_id": "chunks:chunk:3",
+  "current_step_id": "chunks:commit-chunk:3",
   "step_results": {
     "prep": {
       "type": "workflow",
@@ -53,7 +53,7 @@
   },
   "workflow_dir": "/Users/Pol/Documents/OpsMill/infrahub/stable/infrahub-speckit-pr48/.specify/workflows/opsmill-auto",
   "created_at": "2026-11-19T14:20:44.755413+00:00",
-  "updated_at": "2026-11-19T15:21:10.975139+00:00",
+  "updated_at": "2026-11-19T16:05:47.140147+00:00",
   "error": null,
   "inputs": {
     "spec": "https://opsmill.atlassian.net/browse/IFC-2167",
@@ -1043,11 +1043,42 @@
                                   "error": null
                                 },
                                 {
-                                  "phase": "ready",
-                                  "active": true
+                                  "phase": "done",
+                                  "active": false,
+                                  "result": {
+                                    "type": "command",
+                                    "integration": "claude",
+                                    "model": null,
+                                    "options": {},
+                                    "input": {
+                                      "args": "specs/ifc-2167-placeholder-automations"
+                                    },
+                                    "output": {
+                                      "command": "speckit.opsmill.implement-chunk",
+                                      "integration": "claude",
+                                      "model": null,
+                                      "options": {},
+                                      "input": {
+                                        "args": "specs/ifc-2167-placeholder-automations"
+                                      },
+                                      "integration_args": [],
+                                      "integration_options": {},
+                                      "exit_code": 0,
+                                      "stdout": "",
+                                      "stderr": "",
+                                      "dispatched": true
+                                    },
+                                    "status": "completed",
+                                    "error": null,
+                                    "integration_args": [],
+                                    "integration_options": {}
+                                  },
+                                  "outcome": "completed",
+                                  "error": null
                                 },
                                 {
-                                  "phase": "ready"
+                                  "phase": "ready",
+                                  "active": true
                                 },
                                 {
                                   "phase": "ready"
