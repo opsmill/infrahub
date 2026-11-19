@@ -200,3 +200,29 @@ class TestSearchAnywhere:
 
         # THEN
         await expect(objects).to_have_count(0)
+
+    async def test_a_repeated_search_starts_from_the_first_batch(
+        self, page: Page, branch_with_matching_tags: tuple[str, str]
+    ) -> None:
+        branch, search = branch_with_matching_tags
+        # GIVEN
+        await page.set_viewport_size({"width": 1280, "height": 720})
+        await page.goto(f"/?branch={branch}")
+        await page.get_by_test_id("search-anywhere-trigger").click()
+        await page.get_by_test_id("search-anywhere-input").fill(search)
+        dialog = page.get_by_test_id("search-anywhere")
+        objects = dialog.get_by_role("group", name=re.compile(r"^Objects "))
+        results = objects.get_by_role("option", name=search)
+        await expect(results).to_have_count(SEARCH_FIRST_BATCH)
+        await results.last.scroll_into_view_if_needed()
+        await expect(results).to_have_count(MATCHING_TAGS)
+        await page.keyboard.press("Escape")
+        await expect(dialog).not_to_be_visible()
+
+        # WHEN
+        await page.get_by_test_id("search-anywhere-trigger").click()
+        await page.get_by_test_id("search-anywhere-input").fill(search)
+
+        # THEN
+        await expect(objects).to_have_accessible_name(f"Objects {SEARCH_FIRST_BATCH}+")
+        await expect(results).to_have_count(SEARCH_FIRST_BATCH)

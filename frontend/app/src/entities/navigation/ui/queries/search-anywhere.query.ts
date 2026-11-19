@@ -23,6 +23,7 @@ export function searchAnywhereQueryOptions(params: SearchObjectsKeyParams) {
     maxPages: 1, // Each page already holds every row loaded so far.
     select: (data) => data.pages[0],
     refetchOnWindowFocus: false,
+    gcTime: 0, // A repeated search starts again from the first batch instead of every row loaded before.
   });
 }
 
