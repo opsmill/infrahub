@@ -2,9 +2,16 @@
 title: IP Address Management
 ---
 
-With IP address management (IPAM) in Infrahub, you record your IP namespaces, prefixes and addresses in the same graph as your devices, interfaces and services. You need it when you have to know which address space is assigned to what and where free space remains, and when an addressing change has to be reviewed on a branch together with the rest of a change. Infrahub supports IPv4 and IPv6.
+With IP address management (IPAM) in Infrahub, you record your IP namespaces, prefixes and addresses in the same graph as the devices, interfaces and services that use them. From the values of these prefixes and addresses, Infrahub works out which prefix contains which, and how much of each prefix is in use. Infrahub supports IPv4 and IPv6.
 
-Infrahub records the addressing plan. It does not configure addresses on the network: it is not a DHCP or DNS server, and it does not discover addresses by scanning the network.
+Network teams use IPAM in Infrahub to:
+
+- find available address space when they add a subnet to a site
+- allocate loopback addresses and point-to-point subnets from a pool when a Generator creates the devices and interfaces of a new data center or customer service
+- review changes to prefixes and addresses in the same Proposed Change as the device changes that depend on them
+- record customer networks whose address ranges overlap, each in its own namespace
+
+IPAM in Infrahub is a record of the address plan, not a network service: Infrahub does not configure addresses on devices, it is not a DHCP or DNS server, and it does not discover addresses by scanning the network.
 
 Before you can create prefixes and addresses, load a schema that defines them. The Marketplace schema `infrahub/ipam` defines `IpamPrefix` and `IpamIPAddress`, and the examples in this section use those kinds. See [Build your IPAM schema](./build-your-ipam-schema.mdx) to load it or define your own.
 
@@ -26,9 +33,9 @@ Three built-in generics, `BuiltinIPNamespace`, `BuiltinIPPrefix` and `BuiltinIPA
 
 To store a single IP value on another node without these behaviors, such as the address of a syslog server, use the `IPAddress`, `IPHost` or `IPNetwork` attribute kinds instead. See [Build your IPAM schema](./build-your-ipam-schema.mdx#iphost-ipnetwork-and-ipaddress-attribute-kinds) for when to choose each.
 
-## What Infrahub changes when you add or delete a prefix
+## What Infrahub changes when you create, change or delete a prefix
 
-You set the value of a prefix or an address, and Infrahub sets its parent. After each create, update or delete, Infrahub updates the tree of the namespace:
+You set the value of a prefix or an address, and Infrahub sets its parent. Creating, changing or deleting a prefix also changes the parents of other prefixes and addresses in that namespace:
 
 - When you create a prefix, Infrahub moves the existing prefixes and addresses it contains under it.
 - When you delete a prefix, Infrahub moves its child prefixes and addresses up to its parent. It does not delete them.
@@ -37,11 +44,13 @@ You set the value of a prefix or an address, and Infrahub sets its parent. After
 
 ![Creating 10.0.0.0/17 inside 10.0.0.0/16 moves 10.0.0.0/24 and 10.0.1.0/24 under the new prefix, and 10.0.128.0/24 stays under 10.0.0.0/16. Deleting 10.0.0.0/17 moves the two prefixes back under 10.0.0.0/16.](../media/ipam/ipam-reparenting.svg)
 
-The `parent`, `children`, `ancestors` and `descendants` relationships of a prefix, and the `ip_prefix` relationship of an address, are read-only. The read-only `is_top_level` attribute is `true` on a prefix that has no parent. See [Manage prefixes and addresses](./manage-prefixes-and-addresses.mdx) for each operation.
+Because Infrahub sets the parents, the `parent` and `children` relationships of a prefix and the `ip_prefix` relationship of an address are read-only. To read the tree, see [Query IPAM data](./query-ipam-data.mdx). For each operation, see [Manage prefixes and addresses](./manage-prefixes-and-addresses.mdx).
 
 ## Utilization depends on the member type
 
-Set the member type of each prefix to match what it holds: `prefix` for a prefix that contains other prefixes, `address` for a subnet that holds addresses. A new prefix has the member type `address` unless you set it.
+Before adding a subnet or a site, check the utilization of each prefix to find the blocks with available space and the subnets that are nearly full.
+
+Set the member type of each prefix to match what it contains: `prefix` for a prefix that contains other prefixes, `address` for a subnet that contains addresses. A new prefix has the member type `address` unless you set it.
 
 Infrahub computes the read-only `utilization` attribute of a prefix from its direct children, with a formula that depends on the member type:
 
@@ -78,19 +87,19 @@ When you delete a namespace, Infrahub deletes every prefix and address in it. Th
 
 ## IPAM in the web interface
 
-Select **IPAM** → **IP Prefixes** in the menu to view the prefixes of one namespace, and **IP Addresses** to view its addresses. Choose the namespace in the **IP Namespace** selector above the tree. The tree on the left shows the prefix hierarchy, and the table lists each prefix with its member type, its utilization and its parent.
+In the web interface, view the address plan one namespace at a time under **IPAM** in the menu: the prefix tree, and a table of the prefixes with the member type, utilization and parent of each. Choose the namespace in the **IP Namespace** selector above the tree.
 
 ![The IPAM page for the default namespace: the prefix tree on the left, and a table of prefixes with their member type and utilization.](../media/ipam/ipam-prefix-tree.png)
 
-On the page of a prefix, list the free blocks between its existing children, and create a prefix or an address in one of them. See [Manage prefixes and addresses](./manage-prefixes-and-addresses.mdx#create-a-prefix-or-an-address-in-free-space) for the steps.
+Open a prefix to view its child prefixes together with the available blocks inside it, and select an available block to create a prefix or an address in it. See [Manage prefixes and addresses](./manage-prefixes-and-addresses.mdx#create-a-prefix-or-an-address-in-available-space) for the steps.
 
 ## Changes on a branch
 
-You can create, update and delete namespaces, prefixes and addresses on any branch. Infrahub updates the tree of the branch after each change. When you merge or rebase the branch, Infrahub updates the tree of the target branch for the prefixes and addresses that changed. See [Plan changes on a branch](./plan-changes-on-a-branch.mdx) for the review workflow, and for what happens when two branches create the same prefix.
+Prepare an addressing change, such as a subnet split or the prefixes of a new site, on a branch, and review it in a Proposed Change together with the device and service changes that depend on it. You can create, change and delete namespaces, prefixes and addresses on any branch. Infrahub updates the tree of the branch after each change. When you merge or rebase the branch, Infrahub updates the tree of the target branch for the prefixes and addresses that changed. See [Plan changes on a branch](./plan-changes-on-a-branch.mdx) for the review workflow, and for what happens when two branches create the same prefix.
 
 ## Allocate addresses and prefixes
 
-To assign addresses and prefixes from automation, such as a Generator that builds a new site, allocate them from a Resource Manager pool. A pool takes IPAM prefixes as its resources, returns the next free address or prefix in them, and returns the same allocation when you repeat a request with the same identifier. See [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx) for the steps.
+When a Generator creates the devices and interfaces of a new data center, site or customer service, write it to allocate their addresses and prefixes from a Resource Manager pool, and do the same in a provisioning script. Add IPAM prefixes to the pool as its resources. Each time the Generator or script requests an address or a prefix from the pool, Infrahub creates the next available one in those prefixes and reserves it on every branch, so two requests with different identifiers never receive the same value. When a request repeats an identifier, Infrahub returns the address or prefix it already allocated for that identifier, so the Generator or script can run again without allocating a second one. See [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx) for the steps.
 
 ## In this section
 

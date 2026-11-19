@@ -5,7 +5,7 @@ title: Allocate IPs and prefixes
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-A Resource Manager pool assigns the next free address or prefix from IPAM prefixes you choose. It creates the address or prefix, and returns the same one when a request repeats an identifier. Allocate from a pool when something other than a person assigns the address: a provisioning pipeline that creates devices, a Generator that builds a site, a CI/CD job that reserves space for a new service. If you only record and query IP data that already exists, the IPAM nodes are enough on their own.
+Allocate addresses and prefixes from a Resource Manager pool when a Generator, a provisioning pipeline or a CI/CD job creates the devices and interfaces that need them, such as those of a new data center or a customer service. Add IPAM prefixes to the pool as its resources. For each request, Infrahub creates the next available address or prefix in those prefixes, and returns the existing one when a request repeats an identifier. To record and query IP data that already exists, a pool is not needed.
 
 ## How a pool uses your prefixes
 
@@ -124,4 +124,4 @@ Use a pool for production workflows. Use these queries only to look up a value w
 ## Next
 
 - [Query IPAM data](./query-ipam-data.mdx) — Check utilization and the tree after allocating
-- [Plan changes on a branch](./plan-changes-on-a-branch.mdx) — Allocate on a branch and review the result before it is merged
+- [Plan changes on a branch](./plan-changes-on-a-branch.mdx) — Review an addressing change before it is merged

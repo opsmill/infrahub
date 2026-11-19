@@ -5,7 +5,9 @@ title: Manage prefixes and addresses
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-Create, change and delete the prefixes and addresses of your address plan in the web interface, with GraphQL, or with the Python SDK. You set the value and the namespace of each prefix and address, and Infrahub sets its parent. When you change one prefix, Infrahub can therefore move other prefixes and addresses in the tree.
+Create, change and delete the prefixes and addresses of your address plan in the web interface, with GraphQL, or with the Python SDK. Create them this way to record addressing that already exists, or to plan the subnets of a new site. Write your Generators and provisioning scripts to allocate them from a pool instead, as described in [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx).
+
+Set the value and the namespace of each prefix and address, and Infrahub sets its parent. Creating, changing or deleting one prefix can therefore change the parent of other prefixes and addresses.
 
 The examples use the Marketplace kinds `IpamPrefix` and `IpamIPAddress`, described in [Build your IPAM schema](./build-your-ipam-schema.mdx), and the `default` namespace. To work in another namespace, see [Use namespaces](./use-namespaces.mdx#create-a-prefix-or-an-address-in-a-namespace).
 
