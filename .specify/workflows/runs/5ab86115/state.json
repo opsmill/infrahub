@@ -5,11 +5,11 @@
   "installed_registry_root": null,
   "status": "running",
   "current_step_index": 0,
-  "current_step_id": "commit-critique",
+  "current_step_id": "commit-tasks",
   "step_results": {},
   "workflow_dir": "/Users/Pol/Documents/OpsMill/infrahub/stable/infrahub-speckit-pr48/.specify/workflows/opsmill-auto",
   "created_at": "2026-11-19T14:20:44.755413+00:00",
-  "updated_at": "2026-11-19T14:36:12.280084+00:00",
+  "updated_at": "2026-11-19T14:39:57.207031+00:00",
   "error": null,
   "inputs": {
     "spec": "https://opsmill.atlassian.net/browse/IFC-2167",
@@ -156,8 +156,8 @@
                           "error": null
                         },
                         {
-                          "phase": "children",
-                          "active": true,
+                          "phase": "done",
+                          "active": false,
                           "result": {
                             "type": "do-while",
                             "integration": null,
@@ -306,15 +306,96 @@
                                   "error": null
                                 },
                                 {
+                                  "phase": "done",
+                                  "active": false,
+                                  "result": {
+                                    "type": "shell",
+                                    "integration": null,
+                                    "model": null,
+                                    "options": {},
+                                    "input": {},
+                                    "output": {
+                                      "exit_code": 0,
+                                      "stdout": "",
+                                      "stderr": ""
+                                    },
+                                    "status": "completed",
+                                    "error": null
+                                  },
+                                  "outcome": "completed",
+                                  "error": null
+                                }
+                              ]
+                            }
+                          ],
+                          "outcome": "completed",
+                          "error": null
+                        },
+                        {
+                          "phase": "children",
+                          "active": true,
+                          "result": {
+                            "type": "if",
+                            "integration": null,
+                            "model": null,
+                            "options": {},
+                            "input": {},
+                            "output": {
+                              "condition_result": true
+                            },
+                            "status": "completed",
+                            "error": null
+                          },
+                          "children": [
+                            {
+                              "source": "- id: tasks\n  command: speckit.tasks\n  integration: '{{ inputs.integration }}'\n- id: commit-tasks\n  type: shell\n  run: 'git add -A && (git diff --cached --quiet || git commit -q -m ''tasks: generate\n    the tasks'')'\n- id: check-tasks\n  type: shell\n  run: 'python3 -c \"import json, pathlib, sys; d = pathlib.Path(json.loads(pathlib.Path(''.specify/feature.json'').read_text())[''feature_directory'']);\n    sys.exit(0 if (d / ''tasks.md'').is_file() else ''BLOCKED: the tasks phase wrote\n    no tasks.md. The output of that phase says why, often a tool that Claude Code\n    refused'')\"'\n- id: align\n  command: speckit.opsmill.prep-align\n  integration: '{{ inputs.integration }}'\n  capture: true\n  timeout: 1800\n  input:\n    args: '{{ inputs.spec }}'\n- id: commit-align\n  type: shell\n  run: 'git add -A && (git diff --cached --quiet || git commit -q -m ''alignment:\n    check the spec against the request'')'\n",
+                              "nodes": [
+                                {
+                                  "phase": "done",
+                                  "active": false,
+                                  "result": {
+                                    "type": "command",
+                                    "integration": "claude",
+                                    "model": null,
+                                    "options": {},
+                                    "input": {},
+                                    "output": {
+                                      "command": "speckit.tasks",
+                                      "integration": "claude",
+                                      "model": null,
+                                      "options": {},
+                                      "input": {},
+                                      "integration_args": [],
+                                      "integration_options": {},
+                                      "exit_code": 0,
+                                      "stdout": "",
+                                      "stderr": "",
+                                      "dispatched": true
+                                    },
+                                    "status": "completed",
+                                    "error": null,
+                                    "integration_args": [],
+                                    "integration_options": {}
+                                  },
+                                  "outcome": "completed",
+                                  "error": null
+                                },
+                                {
                                   "phase": "ready",
                                   "active": true
+                                },
+                                {
+                                  "phase": "ready"
+                                },
+                                {
+                                  "phase": "ready"
+                                },
+                                {
+                                  "phase": "ready"
                                 }
                               ]
                             }
                           ]
-                        },
-                        {
-                          "phase": "ready"
                         }
                       ]
                     }
