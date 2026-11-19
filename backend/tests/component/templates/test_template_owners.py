@@ -192,6 +192,29 @@ async def test_node_created_from_a_template_gets_the_deleted_owners_that_the_tem
     assert await _resolve(db, dataset, device.id) == {device.id: _from_template(template, owner_ids)}
 
 
+async def test_copy_of_a_deleted_owner_on_a_branch_made_after_the_delete_is_a_valid_graph(
+    db: InfrahubDatabase, dataset: TemplateDataset
+) -> None:
+    owner_ids = dataset.owners("dc-emea")
+    template = await _device_template(db=db, dataset=dataset, name="emea-leaf", owners=owner_ids)
+    group = await NodeManager.get_one(db=db, branch=dataset.branch, id=dataset.groups["dc-emea"], raise_on_error=True)
+    await group.delete(db=db)
+    branch = await create_branch(db=db, branch_name="after-delete")
+
+    device = await create_node(
+        data={"name": "leaf-1", "object_template": {"id": template.id}},
+        db=db,
+        branch=branch,
+        schema=registry.schema.get_node_schema(name=TestKind.DEVICE, branch=branch),
+    )
+
+    stored = await OwnershipRepository(db=db, branch=branch, at=None).read(node_ids=[device.id])
+    assert dict(stored[device.id].holders) == {
+        NODE_HOLDER: StoredOwnerState(owner_ids=owner_ids, template_id=template.id)
+    }
+    await verify_graph(db=db)
+
+
 async def test_profile_replaces_the_owners_that_came_from_a_template(
     db: InfrahubDatabase, dataset: TemplateDataset
 ) -> None:

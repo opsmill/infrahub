@@ -132,8 +132,8 @@ END AS delete_time
 MATCH (n)-[added_e]-(peer)
 WHERE added_e.from > delete_time
 AND type(added_e) <> "IS_PART_OF"
-// a deleted owner or source stays in the list of its holder, so a later write can hide the edge to it
-AND NOT (added_e.status = "deleted" AND type(added_e) IN ["HAS_OWNER", "HAS_SOURCE"] AND endNode(added_e) = n)
+// a deleted owner or source stays in the list of its holder, so a later write can copy or hide the edge to it
+AND NOT (type(added_e) IN ["HAS_OWNER", "HAS_SOURCE"] AND endNode(added_e) = n)
 // ------------
 // if the node was deleted on a branch (delete_branch_level > 1), and then updated on main/global (added_e.branch_level = 1), we can ignore it
 // ------------
