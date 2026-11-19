@@ -37,6 +37,15 @@ class SchemaFingerprints:
     family: TemplateFamily
     by_branch: dict[str, dict[str, str]]
 
+    def as_records(self) -> list[RecordedFingerprint]:
+        return [
+            RecordedFingerprint(
+                key=FingerprintKey(family=self.family, branch=branch, kind=kind), fingerprint=fingerprint
+            )
+            for branch, fingerprints in self.by_branch.items()
+            for kind, fingerprint in fingerprints.items()
+        ]
+
 
 @dataclass(frozen=True)
 class FingerprintDecision:

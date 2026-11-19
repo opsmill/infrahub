@@ -131,7 +131,9 @@ class InfrahubServices:
             # after workflow instantiation.
             await self.component.refresh_heartbeat()
             is_primary = await self.component.is_primary_gunicorn_worker()
-            await self.workflow.initialize(component_is_primary_server=is_primary, is_initial_setup=is_initial_setup)
+            await self.workflow.initialize(
+                database=self.database, component_is_primary_server=is_primary, is_initial_setup=is_initial_setup
+            )
 
     @property
     def component(self) -> InfrahubComponent:

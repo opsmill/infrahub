@@ -14,6 +14,7 @@ from infrahub.exceptions import WorkflowOrchestrationError
 from infrahub.workers.submission import SUBMISSION_WINDOW_CAPACITY
 from infrahub.workers.utils import inject_context_parameter
 from infrahub.workflows.initialization import (
+    seed_template_fingerprints,
     setup_task_manager,  # noqa: TID251 - worker startup owns the setup
     setup_task_manager_identifiers,
 )
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
     from prefect.client.schemas.objects import FlowRun
 
     from infrahub.context import InfrahubContext
+    from infrahub.database import InfrahubDatabase
     from infrahub.events.models import EventContext
     from infrahub.tls.registry import TlsContextRegistry
     from infrahub.workflows.constants import WorkflowPriority
@@ -55,10 +57,14 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         return follower
 
     @staticmethod
-    async def initialize(component_is_primary_server: bool, is_initial_setup: bool = False) -> None:
+    async def initialize(
+        database: InfrahubDatabase, component_is_primary_server: bool, is_initial_setup: bool = False
+    ) -> None:
         if is_initial_setup:
             await WorkflowWorkerExecution._setup_task_manager()
             await setup_task_manager_identifiers()
+            async with database.start_session() as db:
+                await seed_template_fingerprints(db=db)
         elif component_is_primary_server:
             await WorkflowWorkerExecution._setup_task_manager()
 

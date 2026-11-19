@@ -2,19 +2,25 @@ from __future__ import annotations
 
 from infrahub_sdk.template.exceptions import JinjaTemplateError
 from prefect import flow
+from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 
+from infrahub import lock
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core.constants.schema import DISPLAY_LABEL_ATTRIBUTE_NAME
 from infrahub.core.recompute.bulk_write import AttributeValueWrite
 from infrahub.core.recompute.dispatch import build_bulk_recompute_dispatcher
 from infrahub.core.registry import registry
+from infrahub.core.template_fingerprint.collector import collect_schema_fingerprints
+from infrahub.core.template_fingerprint.models import TemplateFamily
+from infrahub.core.template_fingerprint.refresher import TemplateFingerprintRefresher
+from infrahub.core.template_fingerprint.repository import TemplateFingerprintRepository
 from infrahub.display_labels.graphql_queries import DisplayLabelNodeIDQuery
 from infrahub.events import BranchDeletedEvent
 from infrahub.events.limits import get_submission_chunk_size
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
-from infrahub.trigger.setup import setup_triggers_specific
+from infrahub.trigger.setup import setup_triggers
 from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
 from infrahub.workflows.catalogue import DISPLAY_LABELS_PROCESS_JINJA2, TRIGGER_UPDATE_DISPLAY_LABELS
 from infrahub.workflows.constants import WorkflowTag
@@ -23,7 +29,6 @@ from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 from .gather import gather_trigger_display_labels_jinja2
 from .models import (
     DisplayLabelJinja2GraphQL,
-    DisplayLabelTriggerDefinition,
 )
 
 
@@ -108,45 +113,35 @@ async def display_labels_setup_jinja2(
             component = await get_component()
             await wait_for_schema_to_converge(branch_name=branch_name, component=component, db=db, log=log)
 
-        report: TriggerSetupReport = await setup_triggers_specific(
-            gatherer=gather_trigger_display_labels_jinja2, trigger_type=TriggerType.DISPLAY_LABEL_JINJA2
+        refresher = TemplateFingerprintRefresher(
+            family=TemplateFamily.DISPLAY_LABEL_JINJA2,
+            default_branch=registry.default_branch,
+            repository=TemplateFingerprintRepository(db=db),
+            workflow=get_workflow(),
+            recompute_workflow=TRIGGER_UPDATE_DISPLAY_LABELS,
         )
-
-        # Configure all DisplayLabelTriggerDefinitions in Prefect
-        all_triggers = report.triggers_with_type(trigger_type=DisplayLabelTriggerDefinition)
-        direct_target_triggers = [
-            display_report
-            for display_report in report.modified_triggers_with_type(trigger_type=DisplayLabelTriggerDefinition)
-            if display_report.target_kind
-        ]
-
-        for display_report in direct_target_triggers:
-            if event_name != BranchDeletedEvent.event_name and display_report.branch == branch_name:
-                if branch_name != registry.default_branch:
-                    default_branch_triggers = [
-                        trigger
-                        for trigger in all_triggers
-                        if trigger.branch == registry.default_branch
-                        and trigger.target_kind == display_report.target_kind
-                    ]
-                    if (
-                        default_branch_triggers
-                        and len(default_branch_triggers) == 1
-                        and default_branch_triggers[0].template_hash == display_report.template_hash
-                    ):
-                        log.debug(
-                            f"Skipping display label updates for {display_report.target_kind} [{branch_name}], schema is identical to default branch"
-                        )
-                        continue
-
-                await get_workflow().submit_workflow(
-                    workflow=TRIGGER_UPDATE_DISPLAY_LABELS,
-                    context=context,
-                    parameters={
-                        "branch_name": display_report.branch,
-                        "kind": display_report.target_kind,
-                    },
+        async with lock.registry.get(
+            name=f"configure-action-rules-{TriggerType.DISPLAY_LABEL_JINJA2.value}",
+            namespace="trigger-rules",
+            local=False,
+        ):
+            triggers = await gather_trigger_display_labels_jinja2()
+            async with get_prefect_client(sync_client=False) as prefect_client:
+                report: TriggerSetupReport = await setup_triggers(
+                    client=prefect_client, triggers=triggers, trigger_type=TriggerType.DISPLAY_LABEL_JINJA2
                 )
+            decision = await refresher.refresh(
+                schema=collect_schema_fingerprints(family=TemplateFamily.DISPLAY_LABEL_JINJA2),
+                event_branch=branch_name,
+                branch_deleted=event_name == BranchDeletedEvent.event_name,
+                context=context,
+            )
+
+        if decision.skipped_identical:
+            log.debug(
+                f"Skipping display label updates for {decision.skipped_identical} [{branch_name}], "
+                "template identical to default branch"
+            )
 
         log.info(f"{report.in_use_count} Display labels for Jinja2 automation configuration completed")
 

@@ -11,7 +11,7 @@ from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema  # noqa: TC001
 from infrahub.events import NodeUpdatedEvent
 from infrahub.events.constants import NODE_ORIGIN_LABEL, NodeMutationOrigin
-from infrahub.trigger.constants import NAME_SEPARATOR, TRIGGER_PLACEHOLDER_FIELD
+from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import (
     EventTrigger,
     ExecuteWorkflow,
@@ -48,20 +48,6 @@ class DisplayLabelTriggerDefinition(TriggerBranchDefinition):
     ) -> list[DisplayLabelTriggerDefinition]:
         """This function is used to create a trigger definition for a display labels of type Jinja2."""
         definitions: list[DisplayLabelTriggerDefinition] = []
-
-        for node_kind, template_label in display_labels.get_template_nodes().items():
-            definitions.append(
-                cls.new(
-                    branch=branch,
-                    node_kind=node_kind,
-                    target_kind=node_kind,
-                    fields=[
-                        TRIGGER_PLACEHOLDER_FIELD
-                    ],  # Triggers for the nodes themselves are only used to determine if all nodes should be regenerated
-                    template_hash=template_label.get_hash(),
-                    branches_out_of_scope=branches_out_of_scope,
-                )
-            )
 
         for related_kind, relationship_trigger in display_labels.get_related_trigger_nodes().items():
             definitions.extend(
