@@ -85,9 +85,9 @@ description: "Task list for recording template fingerprints in the database inst
 
 ### Tests for User Story 1
 
-- [ ] T011 [P] [US1] Update `backend/tests/component/computed_attribute/test_gather.py`: `gather_trigger_computed_attribute_jinja2` returns no trigger definition for a `targets_self` trigger node, and still returns the definitions for trigger nodes that read a peer, including for a computed attribute that reads both its own node and a peer (spec, Edge Cases)
-- [ ] T012 [P] [US1] Replace the placeholder-field assertions in `backend/tests/functional/computed_attributes/test_local_computation.py` (the test that expects `TestingTShirt` triggers to use `TRIGGER_PLACEHOLDER_FIELD`, and the one that checks the constant is absent from peer fields) with assertions that no self-targeting trigger definition is gathered and that peer trigger definitions keep their real fields
-- [ ] T013 [P] [US1] Update `backend/tests/component/computed_attribute/test_scoped_recompute_jinja2.py` and add cases with a `WorkflowRecorder` from `backend/tests/adapters/workflow.py`:
+- [X] T011 [P] [US1] Update `backend/tests/component/computed_attribute/test_gather.py`: `gather_trigger_computed_attribute_jinja2` returns no trigger definition for a `targets_self` trigger node, and still returns the definitions for trigger nodes that read a peer, including for a computed attribute that reads both its own node and a peer (spec, Edge Cases)
+- [X] T012 [P] [US1] Replace the placeholder-field assertions in `backend/tests/functional/computed_attributes/test_local_computation.py` (the test that expects `TestingTShirt` triggers to use `TRIGGER_PLACEHOLDER_FIELD`, and the one that checks the constant is absent from peer fields) with assertions that no self-targeting trigger definition is gathered and that peer trigger definitions keep their real fields
+- [X] T013 [P] [US1] Update `backend/tests/component/computed_attribute/test_scoped_recompute_jinja2.py` and add cases with a `WorkflowRecorder` from `backend/tests/adapters/workflow.py`:
   - with `changed_elements`, only the computed attributes selected by `RecomputeScoper` are submitted;
   - without `changed_elements`, every self-targeting computed attribute of the event branch is submitted;
   - on a branch whose template equals the default branch template, nothing is submitted for that attribute (spec, User Story 2 scenario 5);
@@ -97,14 +97,14 @@ description: "Task list for recording template fingerprints in the database inst
 
 ### Implementation for User Story 1
 
-- [ ] T014 [US1] In `backend/infrahub/computed_attribute/gather.py::gather_trigger_computed_attribute_jinja2`, skip trigger nodes with `targets_self` instead of copying them with `TRIGGER_PLACEHOLDER_FIELD`, and remove the now unused import of `TRIGGER_PLACEHOLDER_FIELD`. Make T011 and T012 pass
-- [ ] T015 [US1] In `backend/infrahub/computed_attribute/tasks.py::computed_attribute_setup_jinja2`, stop reading self-targeting triggers from the setup report:
+- [X] T014 [US1] In `backend/infrahub/computed_attribute/gather.py::gather_trigger_computed_attribute_jinja2`, skip trigger nodes with `targets_self` instead of copying them with `TRIGGER_PLACEHOLDER_FIELD`, and remove the now unused import of `TRIGGER_PLACEHOLDER_FIELD`. Make T011 and T012 pass
+- [X] T015 [US1] In `backend/infrahub/computed_attribute/tasks.py::computed_attribute_setup_jinja2`, stop reading self-targeting triggers from the setup report:
   - build the candidates from the `targets_self` entries of `registry.schema.get_schema_branch(name=branch_name).computed_attributes.get_jinja2_trigger_nodes()`, and only when `branch_name` is the default branch or is returned by `registry.get_altered_schema_branches()`; otherwise the candidate list is empty;
   - keep the `changed_elements` scoping through `RecomputeScoper` and the fallback to every candidate when `changed_elements` is `None`;
   - compare the branch template hash with `computed_attribute.attribute.computed_attribute.get_hash()` of the same kind and attribute in the default branch schema, instead of the `template_hash` of the default branch automation;
   - keep `setup_triggers_specific` for the peer automations, and submit the same workflow with the same parameters as today.
   Make T013 pass (depends on T014)
-- [ ] T016 [US1] Add a component test in `backend/tests/component/computed_attribute/test_placeholder_removal.py` that runs the computed attribute setup flow on the Prefect test server and checks that no automation of the `computed_attr_jinja2` family has a trigger matching `_trigger_placeholder`, and that a placeholder automation created by the previous release (built with `ComputedAttrJinja2TriggerDefinition.from_computed_attribute` and a trigger node whose attributes are `[TRIGGER_PLACEHOLDER_FIELD]`) is deleted (spec, User Story 1 scenario 2, User Story 3 scenario 1) (depends on T015)
+- [X] T016 [US1] Add a component test in `backend/tests/component/computed_attribute/test_placeholder_removal.py` that runs the computed attribute setup flow on the Prefect test server and checks that no automation of the `computed_attr_jinja2` family has a trigger matching `_trigger_placeholder`, and that a placeholder automation created by the previous release (built with `ComputedAttrJinja2TriggerDefinition.from_computed_attribute` and a trigger node whose attributes are `[TRIGGER_PLACEHOLDER_FIELD]`) is deleted (spec, User Story 1 scenario 2, User Story 3 scenario 1) (depends on T015)
 
 **Checkpoint**: `uv run pytest backend/tests/component/computed_attribute/ backend/tests/functional/computed_attributes/test_local_computation.py` passes. User Story 1 is complete for Jinja2 computed attributes; display labels and HFIDs follow in Phase 4.
 

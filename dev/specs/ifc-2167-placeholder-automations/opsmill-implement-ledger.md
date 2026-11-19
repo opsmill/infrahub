@@ -44,3 +44,32 @@ Lint and format: `uv run ruff format` (1 file reformatted) and `uv run ruff chec
 | backend/tests/unit/core/template_fingerprint/test_decision.py (12 tests) | unit | `cd backend && uv run pytest tests/unit/core/template_fingerprint/ tests/component/core/template_fingerprint/ -v` | 2026-11-19T14:49:57Z | macOS, Python 3.14 | `======================= 25 passed, 17 warnings in 17.39s =======================` |
 | backend/tests/unit/core/template_fingerprint/test_collector.py (6 tests) | unit | same command | 2026-11-19T14:49:57Z | macOS, Python 3.14 | `======================= 25 passed, 17 warnings in 17.39s =======================` |
 | backend/tests/component/core/template_fingerprint/test_repository.py (7 tests) | integration (component, Neo4j) | same command | 2026-11-19T14:49:57Z | Neo4j started by testcontainers through the local Docker daemon | `======================= 25 passed, 17 warnings in 17.39s =======================` |
+
+## Chunk: Phase 3: User Story 1 - Keep the task manager free of automations that never run (Priority: P1), Jinja2 computed attributes
+
+| Task | Outcome | Reason when not done |
+|------|---------|----------------------|
+| T011 | ✅ done | |
+| T012 | ✅ done | |
+| T013 | ✅ done | |
+| T014 | ✅ done | |
+| T015 | ✅ done | |
+| T016 | ✅ done | |
+
+Decisions worth flagging:
+
+- T011: `test_gather_trigger_computed_attribute_jinja2_only_main` became `..._skips_template_reading_only_its_node` (the `car_person_schema_computed_attr` template reads only its own node, so the gather now returns an empty list). The branch test keeps only the `TestPerson` peer automation, and asserts its field filter `["name", "owner"]`, which is what the gather produced before this change for that peer.
+- T013: the new cases are in `TestScopedRecomputeJinja2`: a `BranchDeletedEvent` run, a branch that does not own its schema (`same-schema`), and a branch that loads the same schema with another `local_tag` template (`diverging-tag`). The diverging case covers scenarios 5 and 6 in one run: `local_label` and `remote_label` have the default branch template and are not submitted, `local_tag` is submitted on that branch only. These cases passed on the code before T015 too; they pin the submissions that T015 must keep (FR-012). The two `changed_elements` cases already existed (`JINJA2_CASES`) and were kept.
+- T015: the default-branch comparison is `_has_default_branch_template` in `computed_attribute/tasks.py`. It returns false when the default branch lacks the kind, the attribute or its computed attribute, so the attribute is submitted, as before when the default branch had no automation for it. A `BranchDeletedEvent` now empties the candidate list after scoping instead of being checked inside the submission loop; the submissions are the same.
+- T016 is in `TestPlaceholderRemoval` and uses the `COLOR`/`TSHIRT` schema (a template that reads its own node and a peer). It creates the previous-release state with `setup_triggers` (peer automation + placeholder built with `TRIGGER_PLACEHOLDER_FIELD`), runs the setup flow, and asserts that only the peer automation remains and that `description` is submitted once.
+- Bite checks: T011 and T012 failed on the code before T014 (3 failures, run at 2026-11-19 around 14:58Z). T016 was run with the previous `gather.py` restored from git: it failed with the placeholder automation `computed_attr_jinja2::main::TestingTShirt_description::kind::TestingTShirt` still present, then `gather.py` was restored.
+- A WIP commit was made before the bite check (to protect the work); `git reset --soft` needed an approval that nobody could give in this run, so the checkpoint commit amends or follows it.
+
+Lint and format: `uv run ruff format` (1 file reformatted) and `uv run ruff check --fix` ("All checks passed!") on the 6 changed files. `uv run ty check` on the same files: "All checks passed!". `uv run mypy` on `computed_attribute/gather.py`, `computed_attribute/tasks.py`, `test_scoped_recompute_jinja2.py` and `test_placeholder_removal.py`: "Success: no issues found in 4 source files". `uv run mypy tests/component/computed_attribute/test_gather.py` reports 6 `union-attr`/`attr-defined` errors on lines this chunk did not change (212, 258, 287, 337, 516, 563); the full `uv run invoke backend.mypy` with the project configuration runs in T040.
+
+| Test id | Type (unit/integration/e2e) | Run command | Passed at (ISO 8601) | Environment context | Verbatim pass line |
+|---------|-----------------------------|-------------|----------------------|---------------------|--------------------|
+| backend/tests/component/computed_attribute/test_gather.py (jinja2 tests modified) | integration (component, Neo4j) | `cd backend && uv run pytest tests/component/computed_attribute/ tests/functional/computed_attributes/test_local_computation.py -q` | 2026-11-19T15:15:31Z | Neo4j and Prefect test server started by testcontainers through the local Docker daemon, macOS, Python 3.14 | `================= 70 passed, 17 warnings in 662.21s (0:11:02) ==================` |
+| backend/tests/functional/computed_attributes/test_local_computation.py::TestJinja2ComputedAttributeWithRelationship (2 tests modified) | integration (functional) | same command | 2026-11-19T15:15:31Z | same | `================= 70 passed, 17 warnings in 662.21s (0:11:02) ==================` |
+| backend/tests/component/computed_attribute/test_placeholder_removal.py::TestPlaceholderRemoval::test_setup_deletes_placeholder_and_keeps_peer_automation | integration (component, Prefect test server) | same command | 2026-11-19T15:15:31Z | same | `================= 70 passed, 17 warnings in 662.21s (0:11:02) ==================` |
+| backend/tests/component/computed_attribute/test_scoped_recompute_jinja2.py (3 new tests; file edited after the run above for a mypy fix) | integration (component, Prefect test server) | `cd backend && uv run pytest tests/component/computed_attribute/test_scoped_recompute_jinja2.py -q` | 2026-11-19T15:18:32Z | same | `================== 8 passed, 17 warnings in 167.42s (0:02:47) ==================` |

@@ -192,13 +192,12 @@ async def test_gather_trigger_computed_attribute_jinja2_empty(register_core_mode
     assert len(triggers) == 0
 
 
-async def test_gather_trigger_computed_attribute_jinja2_only_main(car_person_schema_computed_attr: None) -> None:
+async def test_gather_trigger_computed_attribute_jinja2_skips_template_reading_only_its_node(
+    car_person_schema_computed_attr: None,
+) -> None:
+    """A template that reads only the fields of its own node gets no automation: the setup flow recomputes it."""
     triggers = await gather_trigger_computed_attribute_jinja2()
-    assert len(triggers) == 1
-    trigger = triggers[0]
-    assert trigger.name == "TestCar_computed_desc::kind::TestCar"
-    assert trigger.generate_name() == "computed_attr_jinja2::main::TestCar_computed_desc::kind::TestCar"
-    assert "infrahub.branch.name" not in trigger.trigger.match
+    assert triggers == []
 
 
 async def test_gather_trigger_computed_attribute_jinja2_different_branch(
@@ -216,28 +215,17 @@ async def test_gather_trigger_computed_attribute_jinja2_different_branch(
     schema_branch.set(name="TestCar", schema=car_schema)
     await commit_schema_branch(db=db, branch=branch, schema_branch=schema_branch)
 
-    name_main = "computed_attr_jinja2::main::TestCar_computed_desc::kind::TestCar"
-    name_branch_first = "computed_attr_jinja2::branch2::TestCar_computed_desc::kind::TestCar"
-    name_branch_second = "computed_attr_jinja2::branch2::TestCar_computed_desc::kind::TestPerson"
+    # The branch template reads its own node and the owner peer: only the peer automation is created.
+    name_branch_peer = "computed_attr_jinja2::branch2::TestCar_computed_desc::kind::TestPerson"
 
     triggers = await gather_trigger_computed_attribute_jinja2()
     triggers_by_name = {trigger.generate_name(): trigger for trigger in triggers}
-    assert set(triggers_by_name.keys()) == {name_main, name_branch_first, name_branch_second}
+    assert set(triggers_by_name.keys()) == {name_branch_peer}
 
-    trigger_main = triggers_by_name[name_main]
-    assert "infrahub.branch.name" not in trigger_main.trigger.match
-    assert {
-        "prefect.resource.role": "infrahub.branch",
-        "infrahub.resource.label": "!branch2",
-    } in trigger_main.trigger.match_related
-
-    trigger_branch = triggers_by_name[name_branch_first]
-    assert "infrahub.branch.name" in trigger_branch.trigger.match
+    trigger_branch = triggers_by_name[name_branch_peer]
     assert trigger_branch.trigger.match["infrahub.branch.name"] == "branch2"
-
-    trigger_branch = triggers_by_name[name_branch_second]
-    assert "infrahub.branch.name" in trigger_branch.trigger.match
-    assert trigger_branch.trigger.match["infrahub.branch.name"] == "branch2"
+    assert trigger_branch.trigger_kind == "TestPerson"
+    assert _field_filter(trigger_branch) == ["name", "owner"]
 
 
 async def test_gather_trigger_computed_attribute_python(
