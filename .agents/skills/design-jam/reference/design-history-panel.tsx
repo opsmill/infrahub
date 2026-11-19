@@ -614,7 +614,7 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame, prUrl
       {open && knobsOpen && knobs.length > 0 && (
         <div className="djh-knobs">
           {knobs.map((k, i) => (
-            <label
+            <div
               key={k.key}
               className={
                 i === inherited.length && own.length > 0
@@ -625,10 +625,11 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame, prUrl
               {i === inherited.length && own.length > 0 && (
                 <span className="djh-knob-group">{variant.label} only</span>
               )}
-              <span>{k.label}</span>
+              <label htmlFor={`djh-knob-${k.key}`}>{k.label}</label>
               {k.type === "range" && (
                 <span className="djh-knob-range">
                   <input
+                    id={`djh-knob-${k.key}`}
                     type="range"
                     min={k.min}
                     max={k.max}
@@ -643,6 +644,7 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame, prUrl
               )}
               {k.type === "color" && (
                 <input
+                  id={`djh-knob-${k.key}`}
                   type="color"
                   value={String(values[k.key])}
                   onChange={(e) => setValues({ ...values, [k.key]: e.target.value })}
@@ -650,6 +652,7 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame, prUrl
               )}
               {k.type === "toggle" && (
                 <input
+                  id={`djh-knob-${k.key}`}
                   type="checkbox"
                   checked={Boolean(values[k.key])}
                   onChange={(e) => setValues({ ...values, [k.key]: e.target.checked })}
@@ -657,6 +660,7 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame, prUrl
               )}
               {k.type === "select" && (
                 <select
+                  id={`djh-knob-${k.key}`}
                   value={String(values[k.key])}
                   onChange={(e) => setValues({ ...values, [k.key]: e.target.value })}
                 >
@@ -667,7 +671,7 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame, prUrl
                   ))}
                 </select>
               )}
-            </label>
+            </div>
           ))}
           <button
             type="button"
@@ -1250,7 +1254,7 @@ const css = `
 .djh-knob {
   display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 10px;
 }
-.djh-knob > span { color: #a1a1aa; min-width: 0; }
+.djh-knob > span, .djh-knob > label { color: #a1a1aa; min-width: 0; }
 .djh-knob input, .djh-knob select { justify-self: end; }
 /* A visible seam, so it is obvious which controls belong to this direction alone. */
 .djh-knob--first-own { margin-top: 5px; padding-top: 11px; border-top: 1px solid #3a3a42; }
