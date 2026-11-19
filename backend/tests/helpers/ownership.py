@@ -4,15 +4,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
+from unittest.mock import patch
 
 import ujson
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
+from infrahub.core.ownership.constants import OWNERS_IDS_FILTER, OWNERS_ISNULL_FILTER
 from infrahub.core.ownership.models import (
     NODE_HOLDER,
     NODE_TARGET_HOLDER,
@@ -29,6 +30,8 @@ from infrahub.core.timestamp import Timestamp
 from tests.helpers.schema.ownership import OWNERSHIP_SCHEMA
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
@@ -126,33 +129,42 @@ async def resolve_owners(db: InfrahubDatabase, branch: Branch, node_id: str) -> 
     return (await resolver.resolve(node_ids=[node_id]))[node_id]
 
 
-async def count_active_owner_edges(
-    db: InfrahubDatabase,
-    branch: Branch,
-    node_id: str,
-    edge_types: tuple[str, ...] = (DatabaseEdgeType.HAS_OWNER.value, DatabaseEdgeType.HAS_NO_OWNER.value),
-) -> int:
-    """Count the open edges of these types that the node vertex holds on one branch."""
-    query = """
-    MATCH (n:Node {uuid: $node_id})-[r]->()
-    WHERE type(r) IN $edge_types AND r.branch = $branch_name AND r.status = "active" AND r.to IS NULL
-    RETURN count(r) AS total
-    """
-    results = await db.execute_query(
-        query=query, params={"node_id": node_id, "branch_name": branch.name, "edge_types": list(edge_types)}
-    )
-    return results[0]["total"]
+async def assert_filter_agrees_with_resolver(
+    db: InfrahubDatabase, branch: Branch, kind: str, live_groups: Mapping[str, str]
+) -> None:
+    """Check that the owner filters list each node of the kind with the owners that the resolver gives it.
 
+    The resolver runs with the walk to the parents in one query, and with one query for each level of parents.
 
-async def owner_edges(db: InfrahubDatabase, node_id: str) -> list[tuple[str, str, str, str, str | None]]:
-    """Return the branch, the status, the peer, `from` and `to` of each owner edge of the node vertex."""
-    query = """
-    MATCH (n:Node {uuid: $node_id})-[r:HAS_OWNER|HAS_NO_OWNER]->(peer)
-    RETURN r.branch AS branch, r.status AS status, peer.uuid AS peer_id, r.from AS from_time, r.to AS to_time
-    ORDER BY from_time, peer_id, status
+    Args:
+        live_groups: The name of each account group that is not deleted, by ID. A deleted owner does not count.
+
     """
-    results = await db.execute_query(query=query, params={"node_id": node_id})
-    return [(row["branch"], row["status"], row["peer_id"], row["from_time"], row["to_time"]) for row in results]
+    filters: dict[str, dict[str, Any]] = {
+        "no owner": {OWNERS_ISNULL_FILTER: True},
+        "an owner": {OWNERS_ISNULL_FILTER: False},
+        **{name: {OWNERS_IDS_FILTER: [group_id]} for group_id, name in live_groups.items()},
+    }
+    listed: dict[str, list[str]] = {}
+    for name, owner_filter in filters.items():
+        nodes = await NodeManager.query(db=db, schema=kind, branch=branch, filters=owner_filter)
+        listed[name] = sorted(node.id for node in nodes)
+    node_ids = sorted(node.id for node in await NodeManager.query(db=db, schema=kind, branch=branch))
+    assert len(node_ids) > 0
+
+    for walk_limit in (len(node_ids), 0):
+        with patch("infrahub.core.ownership.resolver.MAX_NODES_FOR_LINEAGE_WALK", walk_limit):
+            resolved = await OwnershipResolver(repository=OwnershipRepository(db=db, branch=branch, at=None)).resolve(
+                node_ids=node_ids
+            )
+        expected: dict[str, list[str]] = {name: [] for name in filters}
+        for node_id in node_ids:
+            groups = [live_groups[owner_id] for owner_id in resolved[node_id].owner_ids if owner_id in live_groups]
+            for name in groups or ["no owner"]:
+                expected[name].append(node_id)
+            if groups:
+                expected["an owner"].append(node_id)
+        assert listed == expected, f"walk limit {walk_limit}"
 
 
 async def site_template(db: InfrahubDatabase, default_branch: Branch, dataset: OwnerDataset) -> Node:

@@ -9,12 +9,10 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.ownership.constants import MAX_INHERITANCE_DEPTH, OWNERS_IDS_FILTER, OWNERS_ISNULL_FILTER
-from infrahub.core.ownership.repository import OwnershipRepository
-from infrahub.core.ownership.resolver import OwnershipResolver
 from infrahub.core.query.node import NodeGetListQuery
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from tests.helpers.ownership import add_node, set_owners
+from tests.helpers.ownership import add_node, assert_filter_agrees_with_resolver, set_owners
 from tests.helpers.schema.ownership import OWNERSHIP_SCHEMA
 
 if TYPE_CHECKING:
@@ -307,32 +305,10 @@ class TestOwnerFilter:
     async def test_filter_agrees_with_the_owners_that_apply_to_each_node(
         self, db: InfrahubDatabase, dataset: FilterDataset, branch_name: str, kind: str
     ) -> None:
-        branch = dataset.branches[branch_name]
         live_groups = {dataset.ids[name]: name for name in GROUPS if name != "deleted-group"}
-        node_ids = [node.id for node in await NodeManager.query(db=db, schema=kind, branch=branch)]
-        resolved = await OwnershipResolver(repository=OwnershipRepository(db=db, branch=branch, at=None)).resolve(
-            node_ids=node_ids
+        await assert_filter_agrees_with_resolver(
+            db=db, branch=dataset.branches[branch_name], kind=kind, live_groups=live_groups
         )
-        expected: dict[str, list[str]] = {name: [] for name in (*live_groups.values(), "no owner", "an owner")}
-        for node_id in sorted(node_ids):
-            groups = [live_groups[owner_id] for owner_id in resolved[node_id].owner_ids if owner_id in live_groups]
-            for name in groups or ["no owner"]:
-                expected[name].append(node_id)
-            if groups:
-                expected["an owner"].append(node_id)
-
-        listed: dict[str, list[str]] = {}
-        filters: dict[str, dict[str, Any]] = {
-            "no owner": {OWNERS_ISNULL_FILTER: True},
-            "an owner": {OWNERS_ISNULL_FILTER: False},
-            **{name: {OWNERS_IDS_FILTER: [group_id]} for group_id, name in live_groups.items()},
-        }
-        for name, owner_filter in filters.items():
-            nodes = await NodeManager.query(db=db, schema=kind, branch=branch, filters=owner_filter)
-            listed[name] = sorted(node.id for node in nodes)
-
-        assert len(node_ids) > 0
-        assert listed == expected
 
     async def test_filter_applies_before_pagination(self, db: InfrahubDatabase, dataset: FilterDataset) -> None:
         branch = dataset.branches[DEFAULT_BRANCH]

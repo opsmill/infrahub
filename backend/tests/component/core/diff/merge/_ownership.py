@@ -83,9 +83,12 @@ async def profile_with_device(db: InfrahubDatabase, dataset: OwnerDataset) -> tu
 
 
 async def holder_edges(
-    db: InfrahubDatabase, branch: Branch, node_id: str
-) -> list[tuple[str, str, str, str, str | None]]:
-    """Return the type, the status, the peer, `from` and `to` of each edge of each holder of the node on one branch."""
+    db: InfrahubDatabase, node_id: str, branch: Branch | None = None
+) -> list[tuple[str, str, str, str, str | None, str]]:
+    """Return the type, the status, the peer, `from`, `to` and the branch of each edge of each holder of the node.
+
+    Without a branch, the edges of all branches.
+    """
     query = """
     MATCH (n:Node {uuid: $node_id})
     CALL (n) {
@@ -102,16 +105,22 @@ async def holder_edges(
         RETURN DISTINCT r, peer
     }
     WITH DISTINCT r, peer
-    WHERE r.branch = $branch_name
-    RETURN type(r) AS edge_type, r.status AS status, elementId(peer) AS peer_id, r.from AS from_time, r.to AS to_time
-    ORDER BY edge_type, from_time, peer_id, status
+    WHERE $branch_name IS NULL OR r.branch = $branch_name
+    RETURN type(r) AS edge_type, r.status AS status, elementId(peer) AS peer_id, r.from AS from_time, r.to AS to_time,
+        r.branch AS branch_name
+    ORDER BY edge_type, from_time, peer_id, status, branch_name
     """
-    results = await db.execute_query(query=query, params={"node_id": node_id, "branch_name": branch.name})
-    return [(row["edge_type"], row["status"], row["peer_id"], row["from_time"], row["to_time"]) for row in results]
+    params = {"node_id": node_id, "branch_name": None if branch is None else branch.name}
+    results = await db.execute_query(query=query, params=params)
+    return [
+        (row["edge_type"], row["status"], row["peer_id"], row["from_time"], row["to_time"], row["branch_name"])
+        for row in results
+    ]
 
 
 async def count_active_holder_edges(
     db: InfrahubDatabase, branch: Branch, node_id: str, edge_types: tuple[str, ...] = OWNER_EDGE_TYPES
 ) -> int:
+    """Count the open edges of these types of each holder of the node on one branch."""
     edges = await holder_edges(db=db, branch=branch, node_id=node_id)
     return sum(1 for edge in edges if edge[0] in edge_types and edge[1] == "active" and edge[4] is None)

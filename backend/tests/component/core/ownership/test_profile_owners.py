@@ -10,7 +10,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
-from infrahub.core.ownership.constants import OWNERS_IDS_FILTER, OWNERS_ISNULL_FILTER
+from infrahub.core.ownership.constants import OWNERS_IDS_FILTER
 from infrahub.core.ownership.models import (
     NODE_HOLDER,
     NODE_TARGET_HOLDER,
@@ -30,7 +30,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
-from tests.helpers.ownership import TARGET_OWNERS_FIELD, USER_ID, add_node
+from tests.helpers.ownership import TARGET_OWNERS_FIELD, USER_ID, add_node, assert_filter_agrees_with_resolver
 from tests.helpers.schema.ownership import OWNERSHIP_SCHEMA
 
 DEFAULT_BRANCH = "main"
@@ -542,30 +542,10 @@ class TestProfileOwnersRead:
     async def test_filter_agrees_with_the_owners_that_apply_to_each_node(
         self, db: InfrahubDatabase, dataset: ProfileDataset, branch_name: str, kind: str
     ) -> None:
-        branch = dataset.branches[branch_name]
         live_groups = {dataset.ids[name]: name for name in GROUPS if name != "deleted-group"}
-        node_ids = [node.id for node in await NodeManager.query(db=db, schema=kind, branch=branch)]
-        resolved = await _resolve(db=db, branch=branch, node_ids=node_ids)
-        expected: dict[str, list[str]] = {name: [] for name in (*live_groups.values(), "no owner", "an owner")}
-        for node_id in sorted(node_ids):
-            groups = [live_groups[owner_id] for owner_id in resolved[node_id].owner_ids if owner_id in live_groups]
-            for name in groups or ["no owner"]:
-                expected[name].append(node_id)
-            if groups:
-                expected["an owner"].append(node_id)
-
-        listed: dict[str, list[str]] = {}
-        filters: dict[str, dict[str, Any]] = {
-            "no owner": {OWNERS_ISNULL_FILTER: True},
-            "an owner": {OWNERS_ISNULL_FILTER: False},
-            **{name: {OWNERS_IDS_FILTER: [group_id]} for group_id, name in live_groups.items()},
-        }
-        for name, owner_filter in filters.items():
-            nodes = await NodeManager.query(db=db, schema=kind, branch=branch, filters=owner_filter)
-            listed[name] = sorted(node.id for node in nodes)
-
-        assert len(node_ids) > 0
-        assert listed == expected
+        await assert_filter_agrees_with_resolver(
+            db=db, branch=dataset.branches[branch_name], kind=kind, live_groups=live_groups
+        )
 
     async def test_filter_lists_the_nodes_that_take_the_owner_from_a_profile(
         self, db: InfrahubDatabase, dataset: ProfileDataset

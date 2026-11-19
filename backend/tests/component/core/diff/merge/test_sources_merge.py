@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.initialization import create_branch
@@ -14,7 +12,6 @@ from tests.helpers.ownership import (
     SOURCES_FIELD,
     OwnerDataset,
     add_node,
-    load_owner_dataset,
     read_owners,
     set_owners,
 )
@@ -27,12 +24,6 @@ if TYPE_CHECKING:
     from infrahub.core.diff.model.path import EnrichedDiffProperty, EnrichedDiffRoot
     from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.database import InfrahubDatabase
-
-
-@pytest.fixture
-async def dataset(db: InfrahubDatabase, default_branch: Branch) -> OwnerDataset:
-    """The account groups of the data set are the sources of the tests."""
-    return await load_owner_dataset(db=db, default_branch=default_branch)
 
 
 async def _set_sources(db: InfrahubDatabase, branch: Branch, node_id: str, source_ids: tuple[str, ...] | None) -> None:
