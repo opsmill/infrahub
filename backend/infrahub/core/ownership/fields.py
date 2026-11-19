@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 
 import ujson
 
+from infrahub.core.constants.schema import NodeProperty
+
 from .models import NODE_HOLDER, NODE_SOURCES_HOLDER, NODE_TARGET_HOLDER, HolderKey, HolderKind, holder_field
 
 if TYPE_CHECKING:
@@ -82,3 +84,20 @@ def owner_list_value(owner_ids: tuple[str, ...] | None) -> str | None:
     if owner_ids is None:
         return None
     return ujson.dumps(sorted(owner_ids))
+
+
+def attribute_owners_change(
+    owner_ids: tuple[str, ...] | None, previous_owner_ids: tuple[str, ...] | None
+) -> tuple[str, str | None, str | None]:
+    """Return the property, the value and the previous value that a changelog records for the owners of an attribute.
+
+    A change between one owner and none gives the `owner` property with the owner IDs, as the save of the `owner`
+    property does. Any other change gives the `owners` property with the owner lists.
+    """
+    if all(ids is None or len(ids) == 1 for ids in (owner_ids, previous_owner_ids)):
+        return (
+            NodeProperty.OWNER.value,
+            owner_ids[0] if owner_ids else None,
+            previous_owner_ids[0] if previous_owner_ids else None,
+        )
+    return ATTRIBUTE_OWNERS_PROPERTY, owner_list_value(owner_ids=owner_ids), owner_list_value(previous_owner_ids)

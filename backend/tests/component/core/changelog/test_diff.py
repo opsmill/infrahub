@@ -17,6 +17,9 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.ownership.models import HolderKey, HolderKind, StoredOwnerState
+from infrahub.core.ownership.repository import OwnershipRepository
+from infrahub.core.ownership.writer import OwnershipWriter
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -237,6 +240,52 @@ async def test_merge_changelog_reads_an_attribute_owner_that_an_earlier_release_
         name: (prop.value_previous, prop.value) for name, prop in changelog.attributes["name"].properties.items()
     }
     assert owner_changes == {"owner": (first_account.id, second_account.id)}
+
+
+@pytest.mark.parametrize("owner_count", [pytest.param(1, id="one_owner"), pytest.param(2, id="two_owners")])
+async def test_direct_write_and_merge_record_the_same_attribute_owner_change(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_simplified_proposed_change_schema: SchemaBranch,
+    car_person_schema: None,
+    first_account: Node,
+    second_account: Node,
+    owner_count: int,
+) -> None:
+    owner_ids = (first_account.id, second_account.id)[:owner_count]
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="John", height=180)
+    await person.save(db=db)
+    branch = await create_branch(db=db, branch_name="branch_owner_write")
+    person_branch = await NodeManager.get_one(db=db, id=person.id, branch=branch, raise_on_error=True)
+    await person_branch.save(db=db)
+    writer = OwnershipWriter(repository=OwnershipRepository(db=db, branch=branch, at=None))
+    await writer.apply(
+        node=person_branch,
+        holder=HolderKey(kind=HolderKind.ATTRIBUTE, attribute="name"),
+        state=StoredOwnerState(owner_ids=owner_ids),
+        at=Timestamp(),
+        user_id=first_account.id,
+    )
+    component_registry = get_component_registry()
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+    await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+    diff = await diff_repository.get_one(diff_branch_name=branch.name)
+    at = Timestamp()
+    diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch)
+    await diff_merger.merge_graph(at=at)
+
+    changelogs = await build_diff_changelog_collector(
+        diff=diff, db=db, branch=default_branch, merge_at=at
+    ).collect_changelogs()
+
+    merge_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == person.id)
+    write_changes, merge_changes = (
+        {name: (prop.value_previous, prop.value) for name, prop in changelog.attributes["name"].properties.items()}
+        for changelog in (person_branch.node_changelog, merge_changelog)
+    )
+    assert write_changes == merge_changes
 
 
 class TestConflict:
