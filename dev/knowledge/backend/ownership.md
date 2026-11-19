@@ -251,6 +251,9 @@ the same order of profiles, and a deleted owner does not count.
   conversion, before the delete, and writes them on the new node. The owners of an attribute or of a relationship go
   to each field of the new kind that the mapping fills from it. A field that the mapping fills with a value or with
   the default gets no owner state. The owners of a relationship that fills no field of the new kind are not copied.
+  The conversion does not copy the `HAS_OWNER_SOURCE` mark, because the object template is of the old kind. So the
+  new node reads the owners of a template copy as its own owners: the state `OWNERS` with the origin `SELF`, as
+  after the delete of the template.
 
 ## Upgrade
 

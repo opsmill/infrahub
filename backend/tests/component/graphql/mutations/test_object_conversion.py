@@ -12,10 +12,14 @@ from infrahub.core.ownership.models import (
     NODE_SOURCES_HOLDER,
     HolderKey,
     HolderKind,
+    OwnerOrigin,
+    OwnerState,
+    ResolvedOwnership,
     StoredOwnerState,
     field_holder,
 )
 from infrahub.core.ownership.repository import OwnershipRepository
+from infrahub.core.ownership.resolver import OwnershipResolver
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.timestamp import Timestamp
@@ -246,6 +250,53 @@ async def test_convert_object_type_keeps_the_deleted_owners_of_the_node(
 
     stored = await OwnershipRepository(db=db, branch=default_branch, at=None).read(node_ids=[new_id])
     assert stored[new_id].get(NODE_HOLDER) == StoredOwnerState(owner_ids=owner_ids)
+
+
+async def test_convert_object_type_gives_the_owners_of_a_template_copy_as_own_owners(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    schemas_conversion: dict[str, Any],
+) -> None:
+    nodes = [
+        {**node, "generate_template": True} if node["name"] == "Person1" else node
+        for node in schemas_conversion["nodes"]
+    ]
+    registry.schema.register_schema(
+        schema=SchemaRoot(**{**schemas_conversion, "nodes": nodes}), branch=default_branch.name
+    )
+    default_branch.update_schema_hash()
+    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group.new(db=db, name="dc-emea")
+    await group.save(db=db)
+    template = await Node.init(db=db, schema="TemplateTestconvPerson1")
+    await template.new(db=db, template_name="person-template")
+    await template.save(db=db)
+    person = await Node.init(db=db, schema="TestconvPerson1")
+    await person.new(db=db, name="template-copy")
+    await person.save(db=db)
+    name_holder = HolderKey(kind=HolderKind.ATTRIBUTE, attribute="name")
+    copied = StoredOwnerState(owner_ids=(group.id,), template_id=template.id)
+    await _write_owners(
+        db=db, branch=default_branch, node_id=person.id, states={NODE_HOLDER: copied, name_holder: copied}
+    )
+
+    new_id = await _convert_person(
+        db=db,
+        branch=default_branch,
+        node_id=person.id,
+        fields_mapping={"name": {"source_field": "name"}, "age": {"data": {"attribute_value": 30}}},
+    )
+
+    repository = OwnershipRepository(db=db, branch=default_branch, at=None)
+    stored = await repository.read(node_ids=[new_id], attributes=True)
+    own = StoredOwnerState(owner_ids=(group.id,))
+    assert dict(stored[new_id].holders) == {NODE_HOLDER: own, name_holder: own}
+    assert await OwnershipResolver(repository=repository).resolve(node_ids=[new_id]) == {
+        new_id: ResolvedOwnership(
+            state=OwnerState.OWNERS, owner_ids=(group.id,), origin=OwnerOrigin.SELF, origin_node_id=new_id
+        )
+    }
 
 
 async def test_convert_object_type_gives_the_owners_that_the_node_holds_when_its_transaction_starts(

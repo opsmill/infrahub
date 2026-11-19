@@ -8,7 +8,7 @@ from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import SYSTEM_USER_ID, BranchSupportType, RelationshipCardinality
 from infrahub.core.manager import NodeManager
 from infrahub.core.node.create import create_node
-from infrahub.core.ownership.models import HolderKind, field_holder
+from infrahub.core.ownership.models import HolderKind, StoredOwnerState, field_holder
 from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.ownership.writer import store_owner_states
 from infrahub.core.query.relationship import GetAllPeersIds
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.convert_object_type import ConversionFieldInput, ConversionFieldValue
 
     from infrahub.core.node import Node
-    from infrahub.core.ownership.models import HolderKey, StoredOwnerState
+    from infrahub.core.ownership.models import HolderKey
     from infrahub.database import InfrahubDatabase
 
 
@@ -162,7 +162,11 @@ async def _converted_owner_states(
 ) -> dict[HolderKey, StoredOwnerState]:
     """Return the owner state of each holder of the new node, from the owner states of the node it replaces."""
     stored = await OwnershipRepository(db=db, branch=branch, at=None).read(node_ids=[node.id], attributes=True)
-    holders = stored[node.id].holders if node.id in stored else {}
+    # The new node holds the copied owners as its own, as a delete of the template leaves them.
+    holders = {
+        holder: StoredOwnerState(owner_ids=state.owner_ids)
+        for holder, state in (stored[node.id].holders.items() if node.id in stored else ())
+    }
     # A field of the new kind takes the owners of the field that its value comes from.
     owner_states = {
         holder: state
