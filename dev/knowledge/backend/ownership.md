@@ -205,7 +205,7 @@ the same order of profiles, and a deleted owner does not count.
 | Migration | What it does |
 |---|---|
 | `m084` | Adds a `deleted` edge for each attribute owner of the default branch that a branch replaced, also when the default branch closed the owner edge after the start of the branch. The `deleted` edge starts at the first edge of the branch to another owner, so a read at a time between two owner writes of the branch gives one owner |
-| `m085` | Closes the `HAS_OWNER` edges from attributes to repositories, on every branch. A branch still reads an edge of the default branch that was open at the start of the branch, so the migration adds a `deleted` edge for it on the branch, at the time of the upgrade. For such an edge of the global branch, the `deleted` edge goes on the global branch, as a write of owners on the global branch does. It deletes nothing |
+| `m085` | Closes the `HAS_OWNER` edges from attributes to repositories, on every branch. A branch still reads an edge of the default branch that was open at the start of the branch, so the migration adds a `deleted` edge for it on the branch, at the time of the upgrade. For such an edge of the global branch, the `deleted` edge goes on the global branch, as a write of owners on the global branch does. It deletes nothing, and prints the number of closed edges for each repository |
 | `m086` | Creates the `NoOwner` vertex |
 
 `infrahub db ownership-report` (`core/ownership/report.py`) reads only vertices and edges that the release before

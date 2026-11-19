@@ -1,3 +1,5 @@
+from rich.console import Console
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, MetadataOptions
@@ -91,13 +93,23 @@ async def test_repository_owners_are_closed_and_readable_before_the_upgrade(
     assert await _color_owner_id(db=db, branch=default_branch, node_id=repository_car.id) == repository.id
     assert await _color_owner_id(db=db, branch=branch, node_id=branch_car.id) == repository.id
 
-    result = await Migration085().execute(migration_input=MigrationInput(db=db))
+    console = Console(width=1000, log_time=False, log_path=False)
+    with console.capture() as capture:
+        result = await Migration085().execute(migration_input=MigrationInput(db=db, console=console))
     edges_after = await _owner_edges(db=db)
-    second_result = await Migration085().execute(migration_input=MigrationInput(db=db))
+    with console.capture() as second_capture:
+        second_result = await Migration085().execute(migration_input=MigrationInput(db=db, console=console))
 
     assert result.errors == []
     assert second_result.errors == []
     assert await _owner_edges(db=db) == edges_after
+    assert [line.rstrip() for line in capture.get().splitlines()] == [
+        "Closed 2 owner edge(s) from attributes to repositories.",
+        f"  repository {repository.id} (CoreRepository): 2",
+    ]
+    assert [line.rstrip() for line in second_capture.get().splitlines()] == [
+        "Closed 0 owner edge(s) from attributes to repositories."
+    ]
 
     assert await _color_owner_id(db=db, branch=default_branch, node_id=repository_car.id) is None
     assert await _color_owner_id(db=db, branch=branch, node_id=branch_car.id) is None
