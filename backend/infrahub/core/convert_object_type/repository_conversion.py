@@ -4,7 +4,7 @@ from contextlib import nullcontext
 from typing import TYPE_CHECKING
 
 from infrahub import lock
-from infrahub.core.constants import InfrahubKind, RepositoryDeliveryStatus
+from infrahub.core.constants import SYSTEM_USER_ID, InfrahubKind, RepositoryDeliveryStatus
 from infrahub.core.convert_object_type.object_conversion import (
     convert_object_type,
     validate_conversion,
@@ -21,7 +21,6 @@ if TYPE_CHECKING:
     from infrahub_sdk.convert_object_type import ConversionFieldInput
 
     from infrahub.core.branch import Branch
-    from infrahub.core.node.create import AfterSave
     from infrahub.core.schema import NodeSchema
     from infrahub.database import InfrahubDatabase
     from infrahub.git.writeback.ports import DeliveryStatePort
@@ -36,12 +35,12 @@ async def convert_repository_type(
     db: InfrahubDatabase,
     repository_post_creator: RepositoryFinalizer,
     delivery_state: DeliveryStatePort,
-    after_create: AfterSave | None = None,
+    user_id: str = SYSTEM_USER_ID,
 ) -> Node:
     """Delete the node and return the new created one. If creation fails, the node is not deleted, and raise an error.
 
     An extra check is performed on input node peers relationships to make sure they are still valid.
-    `after_create` runs after the new repository is saved, in the transaction of the conversion.
+    `user_id` is the user of the write of the owner states that the new repository takes.
 
     Raises:
         ValidationError: The mapping sets a read-only attribute of the target kind.
@@ -99,7 +98,7 @@ async def convert_repository_type(
                     mapping=mapping,
                     branch=branch,
                     db=dbt,
-                    after_create=after_create,
+                    user_id=user_id,
                 )
 
                 for user_validator in user_validators:

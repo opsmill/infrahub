@@ -20,6 +20,7 @@ from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.graphql.mutations import convert_object_type as convert_object_type_mutation
 from tests.helpers.graphql import graphql
 
 if TYPE_CHECKING:
@@ -206,6 +207,55 @@ async def test_convert_object_type_keeps_node_owners_and_sources(
         name: (stored[node_id].get(NODE_HOLDER).owner_ids, stored[node_id].get(NODE_SOURCES_HOLDER).owner_ids)
         for name, node_id in new_ids.items()
     } == {"with-owners": ((group.id,), (group.id,)), "without-owner": ((), None)}
+
+
+async def test_convert_object_type_gives_the_owners_that_the_node_holds_when_its_transaction_starts(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    schemas_conversion: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    registry.schema.register_schema(schema=SchemaRoot(**schemas_conversion), branch=default_branch.name)
+    default_branch.update_schema_hash()
+    group_ids = []
+    for name in ("dc-emea", "dc-security"):
+        group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+        await group.new(db=db, name=name)
+        await group.save(db=db)
+        group_ids.append(group.id)
+    person = await Node.init(db=db, schema="TestconvPerson1")
+    await person.new(db=db, name="owners-changed")
+    await person.save(db=db)
+    await _write_owners(
+        db=db,
+        branch=default_branch,
+        node_id=person.id,
+        states={NODE_HOLDER: StoredOwnerState(owner_ids=(group_ids[0],))},
+    )
+    convert = convert_object_type_mutation.convert_and_validate_object_type
+
+    async def convert_after_another_write(**kwargs: Any) -> Node:
+        # Another request changes the owners after the mutation read the node.
+        await _write_owners(
+            db=db,
+            branch=default_branch,
+            node_id=person.id,
+            states={NODE_HOLDER: StoredOwnerState(owner_ids=(group_ids[1],))},
+        )
+        return await convert(**kwargs)
+
+    monkeypatch.setattr(convert_object_type_mutation, "convert_and_validate_object_type", convert_after_another_write)
+
+    new_id = await _convert_person(
+        db=db,
+        branch=default_branch,
+        node_id=person.id,
+        fields_mapping={"name": {"source_field": "name"}, "age": {"data": {"attribute_value": 30}}},
+    )
+
+    stored = await OwnershipRepository(db=db, branch=default_branch, at=None).read(node_ids=[new_id])
+    assert stored[new_id].get(NODE_HOLDER).owner_ids == (group_ids[1],)
 
 
 async def test_convert_object_type_keeps_the_owners_of_mapped_attributes(
