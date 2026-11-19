@@ -1,0 +1,20 @@
+backend/infrahub/core/node/create.py
+  s_92ce1f25dbe045::t_e7353f8cdb2415 321,348,362-368,379,386,400,420,431,506,525-530,546,574,593,603,607,656
+  s_92ce1f25dbe045::t_ad47b93920f1c9 662,664,667,672,679,698-699,716,812,826,851
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fd3228ea570a6d6e07a90c86da043ae0fb2418fc",
+  "prompts": {},
+  "sessions": {
+    "s_92ce1f25dbe045": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4d35956-d350-4d16-acf4-30ed14df1414",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
