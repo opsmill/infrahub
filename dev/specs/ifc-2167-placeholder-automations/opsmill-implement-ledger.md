@@ -240,3 +240,19 @@ The `pr-review-toolkit` agents were not among the available subagent types, so t
 | low | backend/tests/component/core/template_fingerprint/tmp_explain_check.py | 1 | An empty scratch module left from the T038 query-plan check was committed. Delete it before opening the PR. | Deferred |
 
 Checks after the fix: `ruff format`, `ruff check`, `mypy` and `ty check` pass on the edited modules. The display label and HFID setup tests, the carry-over tests (unit and component), the seed test and the fingerprint unit tests ran with `78 passed, 17 warnings in 623.05s`. No test asserts that `trigger_configure_all` or the seed hold the lock.
+
+## Chunk: Phase 7: Polish and cross-cutting concerns (third pass, T038 and T041)
+
+| Task | Outcome | Reason when not done |
+|------|---------|----------------------|
+| T038 | ⚠️ partial | Unchanged since the second pass. The query plan is measured and recorded in this ledger, but the task asks to record it in the PR description, and no PR exists for this branch. Opening a PR publishes the branch and needs an approval that this unattended run cannot get. |
+| T041 | ❌ blocked | Unchanged since the second pass. Needs a local stack built from this branch, a second stack on the previous release for the SC-005 comparison, and a PR description to record the results in. |
+
+Decisions worth flagging:
+
+- This pass ticks no task, so the workflow loop can end. T038 and T041 must be finished by hand: open the PR, copy the T038 plan from the second-pass section into its description, then run the quickstart scenarios 1 to 4 and the SC-005 timing on live stacks.
+- A new attempt to delete `backend/tests/component/core/template_fingerprint/tmp_explain_check.py` with `git rm` was refused because it needs approval. The file is still empty and tracked. Delete it, and `backend/t031.log`, before opening the PR.
+
+Lint and format: no source or test code changed in this pass; not run.
+
+No new or modified tests in this chunk.
