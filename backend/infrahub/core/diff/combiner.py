@@ -4,6 +4,7 @@ from dataclasses import dataclass, field, replace
 
 from infrahub.core.constants import NULL_VALUE, DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.core.ownership.fields import is_list_property, stored_owner_ids
 
 from .model.path import (
     EnrichedDiffAttribute,
@@ -16,7 +17,6 @@ from .model.path import (
     EnrichedDiffSingleRelationship,
     NodeIdentifier,
 )
-from .ownership_fields import is_list_property, stored_owner_ids
 
 
 @dataclass

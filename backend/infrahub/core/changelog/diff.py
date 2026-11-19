@@ -10,16 +10,14 @@ from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import ConflictSelection
 from infrahub.core.diff.ownership_differ import OwnershipDiffer
-from infrahub.core.diff.ownership_fields import (
-    is_list_property,
-    is_owners_field_name,
-    stored_owner_ids,
-)
 from infrahub.core.ownership.fields import (
     OWNERS_CHANGELOG_KIND,
     attribute_owners_change,
+    is_list_property,
+    is_owners_field_name,
     owner_list_value,
     stored_holder_field_name,
+    stored_owner_ids,
 )
 from infrahub.core.ownership.models import INHERIT, HolderKind
 from infrahub.exceptions import SchemaNotFoundError

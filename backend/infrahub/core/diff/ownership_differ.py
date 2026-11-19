@@ -6,12 +6,11 @@ from typing import TYPE_CHECKING
 
 from infrahub import config
 from infrahub.core.constants import DiffAction
-from infrahub.core.ownership.fields import owner_list_value, stored_holder_field_name
+from infrahub.core.ownership.fields import list_property_type, owner_list_value, stored_holder_field_name
 from infrahub.core.ownership.models import INHERIT, HolderKind
 from infrahub.core.ownership.repository import OwnershipRepository
 
 from .model.path import DiffAttribute, DiffNode, DiffProperty, DiffRoot, NodeIdentifier
-from .ownership_fields import list_property_type
 from .query.ownership import DiffOwnerHoldersQuery, OwnerHolderChange
 
 if TYPE_CHECKING:
