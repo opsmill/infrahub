@@ -22,8 +22,9 @@ first line of `04-review.md`.
 - **Tidy**: check repeated items (cards in a row, rows in a list) as one object: same
   padding, edges and baselines. In the full review, if the findings keep pointing at
   spacing or hierarchy across the screen, invoke `emil-design-foundations` once.
-- **Stress**: `break-ui` adds a *Demo data / Worst case* toggle to the screen. Mark it with
-  the `PROTOTYPE design-jam <slug>` comment like every other prototype-only line.
+- **Stress**: `break-ui` asks for a *Demo data / Worst case* toggle on the screen. Do not
+  add it: put each dataset it builds (worst case, empty, one row, many rows) as an option
+  of the panel's *Data* knob, because the panel is the only control on a prototype.
 - **By hand**: no skill checks these.
   - Tab from the top: the order makes sense and the focus ring shows.
   - Look at dark mode.

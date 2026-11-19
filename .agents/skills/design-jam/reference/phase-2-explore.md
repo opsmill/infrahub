@@ -12,7 +12,9 @@ and colour, they are one direction.
   the content area, mount inside the app layout and pass the panel `frame`. If any
   direction changes the shell (navigation, header, a global banner), mount at a top-level
   route without layout and have each revision render its own shell.
-- Read [`revisions.md`](revisions.md), then add the history panel, driving `dj.variant`. Every direction is `dj.rev=1` in this phase.
+- Read [`revisions.md`](revisions.md), then add the history panel, driving `dj.variant`.
+  Every direction is `dj.rev=1` in this phase. The panel's picker replaces the picker that
+  `prototype` and `emil-prototype` build: draw no other switcher on the screen.
 - Build from `@infrahub/ui`; justify anything new in `01-system.md` first.
 - Mark every prototype-only file, and every line added to shared config, with a
   `PROTOTYPE design-jam <slug>` comment when you create it. Teardown searches for it.

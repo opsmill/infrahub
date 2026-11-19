@@ -33,6 +33,10 @@ design PR exists, pass its URL as `prUrl`, which turns on the *Design PR* sectio
 
   Only one button is primary: *Copy gh command* when `prUrl` is set, *Copy all notes*
   before. Do not add other sections or a full-width bar.
+- **Be the only control on the prototype.** Directions, revisions, datasets and screen
+  states are switched from the panel (the picker or a knob), never from a bar or toggle
+  drawn on the screen, even when a skill such as `break-ui` or `emil-prototype` asks for
+  one: a second control covers the design and shows up in screenshots.
 
 Keys: `←` `→` step revisions, `L` latest, `C` compare, `K` knobs, `A` annotate, `H` hide,
 `Esc` disarm.
