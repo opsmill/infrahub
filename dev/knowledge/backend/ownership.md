@@ -62,6 +62,8 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
 - The changelog of a merge records no change for an owner list or a source list that the default branch held just
   before the merge (`DiffChangelogCollector`). An attribute value and the owner of one link have no such check: the
   changelog records them also when the default branch holds the same value.
+- The diff reads the default branch changes of each node whose owners or sources changed on the branch
+  (`DiffCalculator`). So a delete of the node on the default branch gives a node conflict that cannot be resolved.
 
 ## Writes
 

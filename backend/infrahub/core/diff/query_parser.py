@@ -529,6 +529,9 @@ class DiffQueryParser:
             return self._final_diff_root_by_branch[branch]
         return DiffRoot(from_time=self.from_time, to_time=self.to_time, uuid=str(uuid4()), branch=branch, nodes=[])
 
+    def add_node_field_specifier(self, node_uuid: str, kind: str, field_name: str) -> None:
+        self._diff_node_field_specifiers.add_entry(node_uuid=node_uuid, kind=kind, field_name=field_name)
+
     def get_new_node_field_specifiers(self) -> NodeFieldSpecifierMap:
         return self._diff_node_field_specifiers - self._previous_node_field_specifiers
 

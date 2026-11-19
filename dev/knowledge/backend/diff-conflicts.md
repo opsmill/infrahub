@@ -33,7 +33,10 @@ branch added would stay otherwise.
 The diff reads the owners of an attribute as one list, like the owners of a node:
 `DiffQueryParser` skips the `HAS_OWNER` paths of attributes, and `OwnershipDiffer` adds one
 `HAS_OWNER` property with the whole list to the attribute. The `HAS_OWNER` property of a
-relationship link keeps one owner ID.
+relationship link keeps one owner ID. `DiffCalculator` reads the owner changes of the branch before
+the queries of the default branch, and adds each changed node to their scope. So a node that the
+default branch deletes gives a node conflict, also when the branch changed only its owners or
+sources.
 
 A holder can lose the `HAS_OWNER_SOURCE` mark of a copy from an object template and keep its
 owners. The diff shows this holder as an update with the same list at both ends, because the merge

@@ -57,16 +57,21 @@ class OwnershipDiffer:
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
 
-    async def add_owner_changes(self, request: OwnerDiffRequest, branch_root: DiffRoot, base_root: DiffRoot) -> None:
-        schema_branch = self.db.schema.get_schema_branch(name=request.diff_branch.name)
-        branch_changes = await self._get_changes(
-            schema_branch=schema_branch,
+    async def get_branch_changes(self, request: OwnerDiffRequest) -> FieldNames:
+        """Return the holders whose owners changed on the diff branch, with the field name of each."""
+        return await self._get_changes(
+            schema_branch=self.db.schema.get_schema_branch(name=request.diff_branch.name),
             branch_name=request.diff_branch.name,
             from_time=request.from_time,
             to_time=request.to_time,
             node_uuids=sorted(request.node_uuids) if request.node_uuids is not None else None,
             node_kinds=request.node_kinds,
         )
+
+    async def add_owner_changes(
+        self, request: OwnerDiffRequest, branch_root: DiffRoot, base_root: DiffRoot, branch_changes: FieldNames
+    ) -> None:
+        schema_branch = self.db.schema.get_schema_branch(name=request.diff_branch.name)
         # A rebase moves the edges of the branch to the time that the branch starts from, so the owners that the
         # branch starts with are the owners of the base branch.
         is_full_diff = request.from_time == request.branch_from_time
