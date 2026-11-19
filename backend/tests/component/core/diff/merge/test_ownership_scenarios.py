@@ -835,3 +835,58 @@ async def test_link_owner_added_on_a_branch_and_then_deleted_stays_on_the_defaul
     assert await LINK_OWNER_PROPERTY.read(db=db, branch=default_branch, node_id=node_id) == dataset.owners(
         _branch_change(LINK_OWNER_PROPERTY)
     )
+
+
+DELETED_NODE_HOLDERS = [
+    ATTRIBUTE_OWNER_PROPERTY,
+    ATTRIBUTE,
+    NODE,
+    RELATIONSHIP_ONE,
+    PROFILE,
+    SOURCES,
+    LINK_OWNER_PROPERTY,
+]
+
+
+def _deleted_node_params() -> list[Any]:
+    """Return each holder with an owner on the default branch before the branch, and with no owner before."""
+    params = []
+    for holder in DELETED_NODE_HOLDERS:
+        changes = [(_branch_change(holder), "owner")]
+        if holder is NODE:
+            changes.append(((), "no_owner"))
+        for after, change_name in changes:
+            for start, start_name in ((START, "owner_before_the_branch"), (None, "first_owner_on_the_branch")):
+                params.append(pytest.param(holder, start, after, id=f"{holder.name}-{change_name}-{start_name}"))
+    return params
+
+
+@pytest.mark.parametrize(("holder", "start", "after"), _deleted_node_params())
+async def test_node_deleted_on_the_default_branch_conflicts_with_an_owner_change_on_a_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    diff_repository: DiffRepository,
+    dataset: OwnerDataset,
+    holder: OwnerListHolder,
+    start: Names,
+    after: Names,
+) -> None:
+    node_id = await holder.prepare(db=db, default_branch=default_branch, dataset=dataset, start=start)
+    branch = await create_branch(db=db, branch_name="deleted-node")
+    await holder.write(db=db, branch=branch, dataset=dataset, node_id=node_id, names=after)
+    node = await NodeManager.get_one(db=db, branch=default_branch, id=node_id, raise_on_error=True)
+    await node.delete(db=db)
+
+    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+    conflict = get_one_diff_node(diff_root=diff, node_uuid=node_id).conflict
+    assert conflict is not None, list(diff.get_all_conflicts())
+    assert (conflict.base_branch_action, conflict.diff_branch_action, conflict.resolvable) == (
+        DiffAction.REMOVED,
+        DiffAction.UPDATED,
+        False,
+    )
+    assert [found.uuid for found in diff.get_all_conflicts().values()] == [conflict.uuid]
+
+    await merge(db=db, branch=branch)
+
+    assert await NodeManager.get_one(db=db, branch=default_branch, id=node_id) is None

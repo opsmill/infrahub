@@ -1031,7 +1031,13 @@ async def test_owner_diff_of_more_nodes_than_the_query_size_limit_reads_the_node
             DiffRoot(from_time=request.from_time, to_time=request.to_time, uuid=name, branch=name)
             for name in (branch.name, default_branch.name)
         ]
-        await OwnershipDiffer(db=db).add_owner_changes(request=request, branch_root=roots[0], base_root=roots[1])
+        differ = OwnershipDiffer(db=db)
+        await differ.add_owner_changes(
+            request=request,
+            branch_root=roots[0],
+            base_root=roots[1],
+            branch_changes=await differ.get_branch_changes(request=request),
+        )
         return [sorted(root.nodes, key=lambda node: node.uuid) for root in roots]
 
     expected = await owner_diff(query_size_limit=len(node_ids))
