@@ -146,6 +146,12 @@ class Migration085(ArbitraryMigration):
                 db=db, at=migration_input.at, user_id=migration_input.user_id
             )
             await close_query.execute(db=db)
+            # The close commits in batches, so its counts are printed before a later query can fail.
+            closed_edges = close_query.get_closed_edges()
+            nb_closed = sum(nb_edges for _, _, nb_edges in closed_edges)
+            migration_input.console.log(f"Closed {nb_closed} owner edge(s) from attributes to repositories.")
+            for repository_id, repository_kind, nb_edges in closed_edges:
+                migration_input.console.log(f"  repository {repository_id} ({repository_kind}): {nb_edges}")
             # The hide queries read the `to` times that the first query sets.
             for query_class in (HideRepositoryOwnersOnBranchesQuery, HideGlobalRepositoryOwnersQuery):
                 query = await query_class.init(db=db, at=migration_input.at, user_id=migration_input.user_id)
@@ -153,9 +159,4 @@ class Migration085(ArbitraryMigration):
         # reported through the result so the runner prints it against this migration
         except Exception as exc:  # noqa: BLE001
             return MigrationResult(errors=[str(exc)])
-        closed_edges = close_query.get_closed_edges()
-        nb_closed = sum(nb_edges for _, _, nb_edges in closed_edges)
-        migration_input.console.log(f"Closed {nb_closed} owner edge(s) from attributes to repositories.")
-        for repository_id, repository_kind, nb_edges in closed_edges:
-            migration_input.console.log(f"  repository {repository_id} ({repository_kind}): {nb_edges}")
         return MigrationResult(nbr_migrations_executed=nb_closed)
