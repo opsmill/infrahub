@@ -48,6 +48,11 @@ export const router = createBrowserRouter([
                 index: true,
                 lazy: () => import("@/pages/homepage"),
               },
+              // PROTO search-spike: start (dev-only, delete after decision)
+              ...(import.meta.env.DEV
+                ? [{ path: "/proto/search-spike", lazy: () => import("@/proto/search-spike") }]
+                : []),
+              // PROTO search-spike: end
               {
                 path: "/branches",
                 children: [
@@ -317,6 +322,24 @@ export const router = createBrowserRouter([
               {
                 path: "/path-traversal",
                 lazy: () => import("@/pages/path-traversal"),
+              },
+              {
+                path: "/rack-elevation",
+                lazy: () => import("@/pages/rack-elevation/layout"),
+                children: [
+                  {
+                    index: true,
+                    lazy: () => import("@/pages/rack-elevation"),
+                  },
+                  {
+                    path: "new",
+                    lazy: () => import("@/pages/rack-elevation/new"),
+                  },
+                  {
+                    path: ":mappingId/edit",
+                    lazy: () => import("@/pages/rack-elevation/edit"),
+                  },
+                ],
               },
               {
                 path: "/schema",
