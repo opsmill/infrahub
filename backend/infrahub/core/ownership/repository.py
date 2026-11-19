@@ -101,14 +101,19 @@ class OwnershipRepository:
         write_branch: Branch,
         at: Timestamp,
         user_id: str,
-    ) -> None:
+        skip_inactive: bool = False,
+    ) -> bool:
         """Replace the owner state of one holder, or the sources of the node for the holder of the sources.
 
         Args:
             write_branch: The branch that gets the edge changes: the global branch for a node that all branches share.
+            skip_inactive: Write nothing, and raise no error, when the node is not active at the write time.
+
+        Returns:
+            False when the node is not active at the write time, else True.
 
         Raises:
-            QueryError: When the node is not active at the write time.
+            QueryError: When the node is not active at the write time, and `skip_inactive` is False.
 
         """
         query_class = NodeSourcesWriteQuery if holder == NODE_SOURCES_HOLDER else OwnerStateWriteQuery
@@ -123,7 +128,9 @@ class OwnershipRepository:
             template_id=state.template_id,
             write_branch=write_branch,
         )
+        query.raise_error_if_empty = not skip_inactive
         await query.execute(db=self.db)
+        return bool(query.results)
 
     async def record_node_update(self, node_id: str, write_branch: Branch, at: Timestamp, user_id: str) -> None:
         """Record the time and the author of an update on the node vertex.
