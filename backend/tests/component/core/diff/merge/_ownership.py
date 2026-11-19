@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.database import InfrahubDatabase
 
-OWNER_EDGE_TYPES = ("HAS_OWNER", "HAS_NO_OWNER", "HAS_SOURCE")
+OWNER_EDGE_TYPES = ("HAS_OWNER", "HAS_NO_OWNER", "HAS_SOURCE", "HAS_OWNER_SOURCE")
 
 
 async def update_diff(
