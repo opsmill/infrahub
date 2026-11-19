@@ -1,0 +1,21 @@
+development/Dockerfile
+  s_92ce1f25dbe045::t_f335b77a89d413 171
+docs/docs/deploy-manage/install-configure/production-deployment/non-root.mdx
+  s_92ce1f25dbe045::t_567b4248ea6352 175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "099a01ac478e262c34305d4b5a013f7663f5034a",
+  "prompts": {},
+  "sessions": {
+    "s_92ce1f25dbe045": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4d35956-d350-4d16-acf4-30ed14df1414",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
