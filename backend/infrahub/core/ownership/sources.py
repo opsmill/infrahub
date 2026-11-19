@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.constants.database import DatabaseEdgeType
 
 from .models import StoredOwnerState
-from .queries import ActiveEdgeFilter, OwnerStateWriteQuery
+from .queries import OwnerStateWriteQuery
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -39,36 +39,3 @@ class NodeSourcesWriteQuery(OwnerStateWriteQuery):
 
     def _holders_query(self, branch_filter: str) -> str:  # noqa: ARG002
         return "WITH n, n AS h"
-
-
-class SourceFilter(ActiveEdgeFilter):
-    """Build the Cypher of the source filter of a list of nodes of one kind."""
-
-    params_prefix = "source_filter_"
-
-    def render(self, kind: str, source_ids: list[str], bound: bool) -> tuple[str, dict[str, Any]]:
-        """Return the Cypher that binds `n` one time to each node that has one of the sources, and its parameters.
-
-        The Cypher checks that the source edges are active. It does not check that `n` and the sources are active.
-
-        Args:
-            kind: The kind of the nodes of the list.
-            source_ids: The sources to look for.
-            bound: True when the query already binds `n`. Else the Cypher starts from the sources, so its cost
-                follows the number of nodes of the sources, not the number of nodes of the kind.
-
-        """
-        _, params = self.branch.get_query_filter_path(at=self.at, params_prefix=self.params_prefix)
-        params[f"{self.params_prefix}ids"] = source_ids
-        active = self._active("sourced", f"(n)-[%s:{SOURCE_EDGE_TYPE}]->(source)")
-        if bound:
-            match = f"MATCH (n)-[sourced:{SOURCE_EDGE_TYPE}]->(source:Node)"
-        else:
-            # Without the hint, the planner can scan the index of all node IDs, or start from all nodes of the kind.
-            match = f"MATCH (source:Node)<-[sourced:{SOURCE_EDGE_TYPE}]-(n:{kind})\nUSING INDEX SEEK source:Node(uuid)"
-        query = f"""
-{match}
-WHERE source.uuid IN ${self.params_prefix}ids AND {active}
-WITH DISTINCT n
-"""
-        return query, params

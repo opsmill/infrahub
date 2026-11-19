@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
-from unittest.mock import patch
 
 import ujson
 
@@ -13,7 +12,6 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
-from infrahub.core.ownership.constants import OWNERS_IDS_FILTER, OWNERS_ISNULL_FILTER
 from infrahub.core.ownership.models import (
     NODE_HOLDER,
     NODE_TARGET_HOLDER,
@@ -30,8 +28,6 @@ from infrahub.core.timestamp import Timestamp
 from tests.helpers.schema.ownership import OWNERSHIP_SCHEMA
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
-
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
@@ -127,44 +123,6 @@ async def resolve_owners(db: InfrahubDatabase, branch: Branch, node_id: str) -> 
     """Return the owners that apply to the node, own or inherited, as the branch reads them."""
     resolver = OwnershipResolver(repository=OwnershipRepository(db=db, branch=branch, at=None))
     return (await resolver.resolve(node_ids=[node_id]))[node_id]
-
-
-async def assert_filter_agrees_with_resolver(
-    db: InfrahubDatabase, branch: Branch, kind: str, live_groups: Mapping[str, str]
-) -> None:
-    """Check that the owner filters list each node of the kind with the owners that the resolver gives it.
-
-    The resolver runs with the walk to the parents in one query, and with one query for each level of parents.
-
-    Args:
-        live_groups: The name of each account group that is not deleted, by ID. A deleted owner does not count.
-
-    """
-    filters: dict[str, dict[str, Any]] = {
-        "no owner": {OWNERS_ISNULL_FILTER: True},
-        "an owner": {OWNERS_ISNULL_FILTER: False},
-        **{name: {OWNERS_IDS_FILTER: [group_id]} for group_id, name in live_groups.items()},
-    }
-    listed: dict[str, list[str]] = {}
-    for name, owner_filter in filters.items():
-        nodes = await NodeManager.query(db=db, schema=kind, branch=branch, filters=owner_filter)
-        listed[name] = sorted(node.id for node in nodes)
-    node_ids = sorted(node.id for node in await NodeManager.query(db=db, schema=kind, branch=branch))
-    assert len(node_ids) > 0
-
-    for walk_limit in (len(node_ids), 0):
-        with patch("infrahub.core.ownership.resolver.MAX_NODES_FOR_LINEAGE_WALK", walk_limit):
-            resolved = await OwnershipResolver(repository=OwnershipRepository(db=db, branch=branch, at=None)).resolve(
-                node_ids=node_ids
-            )
-        expected: dict[str, list[str]] = {name: [] for name in filters}
-        for node_id in node_ids:
-            groups = [live_groups[owner_id] for owner_id in resolved[node_id].owner_ids if owner_id in live_groups]
-            for name in groups or ["no owner"]:
-                expected[name].append(node_id)
-            if groups:
-                expected["an owner"].append(node_id)
-        assert listed == expected, f"walk limit {walk_limit}"
 
 
 async def site_template(db: InfrahubDatabase, default_branch: Branch, dataset: OwnerDataset) -> Node:
