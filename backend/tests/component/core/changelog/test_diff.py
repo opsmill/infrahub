@@ -8,6 +8,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.changelog.builder import build_diff_changelog_collector
 from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog, RelationshipCardinalityOneChangelog
 from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipCardinality
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 from infrahub.core.diff.merger.merger import DiffMerger
@@ -20,6 +21,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
+from tests.component.core.diff.get_one_node import get_one_diff_node
 from tests.helpers.diff_factories import (
     EnrichedNodeFactory,
     EnrichedRelationshipElementFactory,
@@ -181,6 +183,60 @@ async def test_merge_diff_changelogs(
     assert c2_changelog.relationships["owner"].properties["owner"].value_previous is None
     assert c2_changelog.relationships["owner"].properties["source"].value == p1.id
     assert c2_changelog.relationships["owner"].properties["source"].value_previous is None
+
+
+async def test_merge_changelog_reads_an_attribute_owner_that_an_earlier_release_stored_in_the_diff(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_simplified_proposed_change_schema: SchemaBranch,
+    car_person_schema: None,
+    first_account: Node,
+    second_account: Node,
+) -> None:
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name={"value": "John", "owner": first_account}, height=180)
+    await person.save(db=db)
+    branch = await create_branch(db=db, branch_name="branch_old_diff")
+    person_branch = await NodeManager.get_one(db=db, id=person.id, branch=branch)
+    person_branch.name.owner = second_account
+    await person_branch.save(db=db)
+    component_registry = get_component_registry()
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+    await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+    # An earlier release stored the owner ID alone, not a list of owner IDs.
+    await db.execute_query(
+        query="""
+        MATCH (:DiffNode {uuid: $node_id})-[:DIFF_HAS_ATTRIBUTE]->(:DiffAttribute {name: "name"})
+            -[:DIFF_HAS_PROPERTY]->(owner:DiffProperty {property_type: "HAS_OWNER"})
+        SET owner.previous_value = $previous, owner.new_value = $new
+        """,
+        params={"node_id": person.id, "previous": first_account.id, "new": second_account.id},
+    )
+    person_branch = await NodeManager.get_one(db=db, id=person.id, branch=branch)
+    person_branch.height.value = 181
+    await person_branch.save(db=db)
+    await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+    diff = await diff_repository.get_one(diff_branch_name=branch.name)
+    owner_property = (
+        get_one_diff_node(diff_root=diff, node_uuid=person.id)
+        .get_attribute(name="name")
+        .get_property(property_type=DatabaseEdgeType.HAS_OWNER)
+    )
+    assert owner_property.new_value == second_account.id
+
+    at = Timestamp()
+    diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch)
+    await diff_merger.merge_graph(at=at)
+    changelogs = await build_diff_changelog_collector(
+        diff=diff, db=db, branch=default_branch, merge_at=at
+    ).collect_changelogs()
+
+    changelog = next(changelog for _, changelog in changelogs if changelog.node_id == person.id)
+    owner_changes = {
+        name: (prop.value_previous, prop.value) for name, prop in changelog.attributes["name"].properties.items()
+    }
+    assert owner_changes == {"owner": (first_account.id, second_account.id)}
 
 
 class TestConflict:

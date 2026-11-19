@@ -89,3 +89,12 @@ def owner_ids_from_value(value: str | None) -> list[str] | None:
     if value is None or not value.startswith("["):
         return None
     return list(ujson.loads(value))
+
+
+def stored_owner_ids(value: str | None) -> tuple[str, ...] | None:
+    """Return the owner IDs of the diff value of an owner list, and None when the value is None."""
+    if value is None:
+        return None
+    owner_ids = owner_ids_from_value(value=value)
+    # A diff that a release with one owner for each attribute stored holds the owner ID alone.
+    return (value,) if owner_ids is None else tuple(owner_ids)
