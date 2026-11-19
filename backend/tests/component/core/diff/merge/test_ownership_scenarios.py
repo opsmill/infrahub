@@ -21,15 +21,19 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
+from infrahub.core.ownership.fields import OWNERS_CHANGELOG_KIND
 from infrahub.core.ownership.models import (
     NODE_HOLDER,
     NODE_SOURCES_HOLDER,
     NODE_TARGET_HOLDER,
     HolderKey,
     HolderKind,
+    OwnerOrigin,
+    ResolvedOwnership,
     field_holder,
 )
 from infrahub.core.ownership.repository import OwnershipRepository
+from infrahub.core.ownership.resolution import resolve_field_ownership
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
 from infrahub.exceptions import ValidationError
@@ -40,11 +44,14 @@ from tests.helpers.ownership import (
     OwnerDataset,
     load_owner_dataset,
     read_owners,
+    resolve_owners,
     set_owners,
 )
 
 from ..get_one_node import get_one_diff_node
 from ._ownership import (
+    PROFILE_DEVICE_NAME,
+    SET_EDGE_TYPES,
     count_active_holder_edges,
     holder_edges,
     merge,
@@ -105,6 +112,11 @@ class OwnerListHolder:
         return self.name
 
     @property
+    def set_edges(self) -> int:
+        """Return the number of edges from the node to an owner set that the holder needs for a state that is not inherit."""
+        return 1 if self.holder.kind in {HolderKind.FIELD_SET, HolderKind.TARGET_SET} else 0
+
+    @property
     def holder(self) -> HolderKey:
         if isinstance(self._holder, HolderKey):
             return self._holder
@@ -136,6 +148,7 @@ class OwnerListHolder:
         if self.field_name not in attributes:
             return None
         entry = attributes[self.field_name]
+        assert (entry["kind"], entry["properties"]) == (OWNERS_CHANGELOG_KIND, {})
         return (self.field_name, entry["value_previous"], entry["value"])
 
     def expected_changelog(self, dataset: OwnerDataset, before: Names, after: Names) -> Changelog:
@@ -154,6 +167,39 @@ class ProfileHolder(OwnerListHolder):
         profile_id, _ = await profile_with_device(db=db, dataset=dataset)
         await self.write(db=db, branch=default_branch, dataset=dataset, node_id=profile_id, names=start)
         return profile_id
+
+    async def read(self, db: InfrahubDatabase, branch: Branch, node_id: str) -> tuple[str, ...] | None:
+        """Return the owners that the profile gives, and check that its device takes the owners from the profile."""
+        owner_ids = await super().read(db=db, branch=branch, node_id=node_id)
+        if owner_ids:
+            devices = await NodeManager.query(
+                db=db, schema="TestDevice", branch=branch, filters={"name__value": PROFILE_DEVICE_NAME}
+            )
+            assert len(devices) == 1
+            resolved = await self._resolve_device(db=db, branch=branch, profile_id=node_id, device_id=devices[0].id)
+            assert (resolved.owner_ids, resolved.origin, resolved.origin_node_id) == (
+                owner_ids,
+                OwnerOrigin.PROFILE,
+                node_id,
+            )
+        return owner_ids
+
+    async def _resolve_device(
+        self, db: InfrahubDatabase, branch: Branch, profile_id: str, device_id: str
+    ) -> ResolvedOwnership:
+        node_ownership = await resolve_owners(db=db, branch=branch, node_id=device_id)
+        if isinstance(self._holder, HolderKey):
+            return node_ownership
+        kind, field_name, _ = self._holder
+        stored = await OwnershipRepository(db=db, branch=branch, at=None).read(
+            node_ids=[device_id, profile_id], attributes=True
+        )
+        return resolve_field_ownership(
+            node=stored[device_id],
+            holder=_field(kind=kind, field_name=field_name),
+            profiles={profile_id: stored[profile_id]},
+            node_ownership=node_ownership,
+        )
 
 
 class TemplateCopyHolder(OwnerListHolder):
@@ -490,9 +536,11 @@ async def test_merge_of_the_same_owner_change_on_both_branches_records_no_owner_
 S3_HOLDERS = [
     ATTRIBUTE,
     RELATIONSHIP_MANY,
+    PROFILE,
     PROFILE_ATTRIBUTE,
     PROFILE_RELATIONSHIP,
     TEMPLATE_COPY,
+    SOURCES,
     ATTRIBUTE_OWNER_PROPERTY,
     LINK_OWNER_PROPERTY,
 ]
@@ -557,6 +605,10 @@ async def test_different_owner_changes_on_both_branches_conflict_and_the_merge_a
     assert await holder.read(db=db, branch=default_branch, node_id=node_id) == dataset.owners(merged)
     assert await holder.read(db=db, branch=branch, node_id=node_id) == dataset.owners(after)
     assert await count_active_holder_edges(db=db, branch=default_branch, node_id=node_id) == _edge_count(merged)
+    assert (
+        await count_active_holder_edges(db=db, branch=default_branch, node_id=node_id, edge_types=SET_EDGE_TYPES)
+        == holder.set_edges
+    )
     assert holder.changelog(changelogs=changelogs, node_id=node_id) == (
         holder.expected_changelog(dataset=dataset, before=START, after=after)
         if selection is ConflictSelection.DIFF_BRANCH
@@ -565,7 +617,7 @@ async def test_different_owner_changes_on_both_branches_conflict_and_the_merge_a
     await verify_graph(db=db)
 
 
-@pytest.mark.parametrize("holder", _params([holder for holder in ALL_HOLDERS if holder is not NODE]))
+@pytest.mark.parametrize("holder", _params(ALL_HOLDERS))
 async def test_rebase_refuses_different_owner_changes_on_both_branches(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -584,6 +636,9 @@ async def test_rebase_refuses_different_owner_changes_on_both_branches(
     diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
     conflict_paths = list(diff.get_all_conflicts())
     assert len(conflict_paths) == 1
+    conflict = holder.diff_property(diff=diff, node_id=node_id).conflict
+    assert conflict is not None
+    assert diff.get_all_conflicts()[conflict_paths[0]].uuid == conflict.uuid
 
     message = f"Update the data so that both branches agree on these conflicts: {conflict_paths[0]}."
     with pytest.raises(ValidationError, match=f"{re.escape(message)}$"):
@@ -626,7 +681,7 @@ OWNER_REMOVED_HOLDERS = [ATTRIBUTE, PROFILE]
 
 
 def _removal_params() -> list[Any]:
-    """Return the removal cases that each holder can store, except the source removal that another test covers."""
+    """Return the removal cases that each holder can store."""
     params = [
         pytest.param(holder, REMOVAL_TEST_CASES[0], id=f"{holder.name}-{REMOVAL_TEST_CASES[0].name}")
         for holder in OWNER_REMOVED_HOLDERS
@@ -635,7 +690,7 @@ def _removal_params() -> list[Any]:
         for test_case in REMOVAL_TEST_CASES:
             if () in (test_case.start, test_case.after) and not holder.no_owner:
                 continue
-            if test_case.name == "owner_removed" and (holder.single or holder is SOURCES):
+            if test_case.name == "owner_removed" and holder.single:
                 continue
             params.append(pytest.param(holder, test_case, id=f"{holder.name}-{test_case.name}"))
     return params
@@ -665,6 +720,7 @@ async def test_owner_removal_on_a_branch_is_merged(
 
     changelogs = await _merge_changelogs(db=db, default_branch=default_branch, branch=branch, diff=diff)
 
+    assert [(action, changelog.node_id) for action, changelog in changelogs] == [(DiffAction.UPDATED, node_id)]
     for read_branch in (default_branch, branch):
         assert await holder.read(db=db, branch=read_branch, node_id=node_id) == dataset.owners(test_case.after)
     assert await count_active_holder_edges(db=db, branch=default_branch, node_id=node_id) == _edge_count(

@@ -28,6 +28,8 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 OWNER_EDGE_TYPES = ("HAS_OWNER", "HAS_NO_OWNER", "HAS_SOURCE", "HAS_OWNER_SOURCE")
+SET_EDGE_TYPES = ("HAS_OWNER_SET", "HAS_TARGET_OWNER_SET")
+PROFILE_DEVICE_NAME = "device-with-profile"
 
 
 async def update_diff(
@@ -75,7 +77,7 @@ async def profile_with_device(db: InfrahubDatabase, dataset: OwnerDataset) -> tu
     await profile.new(db=db, profile_name="emea-fabric")
     await profile.save(db=db)
     device = await Node.init(db=db, schema="TestDevice")
-    await device.new(db=db, name="device-with-profile", rack=dataset.ids["rack-a"], profiles=[profile])
+    await device.new(db=db, name=PROFILE_DEVICE_NAME, rack=dataset.ids["rack-a"], profiles=[profile])
     await device.save(db=db)
     return profile.id, device.id
 
@@ -108,6 +110,8 @@ async def holder_edges(
     return [(row["edge_type"], row["status"], row["peer_id"], row["from_time"], row["to_time"]) for row in results]
 
 
-async def count_active_holder_edges(db: InfrahubDatabase, branch: Branch, node_id: str) -> int:
+async def count_active_holder_edges(
+    db: InfrahubDatabase, branch: Branch, node_id: str, edge_types: tuple[str, ...] = OWNER_EDGE_TYPES
+) -> int:
     edges = await holder_edges(db=db, branch=branch, node_id=node_id)
-    return sum(1 for edge in edges if edge[0] in OWNER_EDGE_TYPES and edge[1] == "active" and edge[4] is None)
+    return sum(1 for edge in edges if edge[0] in edge_types and edge[1] == "active" and edge[4] is None)
