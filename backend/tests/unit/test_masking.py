@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from infrahub.masking import MASKING_RULES, mask_mapping, replace_url_queries_in_text
+from infrahub.masking import MASKING_RULES, mask_mapping, replace_url_queries_in_text, url_without_secrets
 
 
 @dataclass(frozen=True)
@@ -199,3 +199,60 @@ INFRAHUB_TELEMETRY_KEYS: list[str] = [
 @pytest.mark.parametrize("key", INFRAHUB_TELEMETRY_KEYS)
 def test_no_rule_masks_a_key_that_infrahub_sets(key: str) -> None:
     assert [rule for rule in MASKING_RULES if rule.applies_to(key)] == []
+
+
+@dataclass(frozen=True)
+class UrlWithoutSecretsTestCase:
+    name: str
+    url: str
+    expected: str
+
+
+URL_WITHOUT_SECRETS_TEST_CASES: list[UrlWithoutSecretsTestCase] = [
+    UrlWithoutSecretsTestCase(
+        name="query_string", url="https://example.test/hook?token=abc", expected="https://example.test/hook"
+    ),
+    UrlWithoutSecretsTestCase(
+        name="fragment", url="https://example.test/hook#section-abc", expected="https://example.test/hook"
+    ),
+    UrlWithoutSecretsTestCase(
+        name="query_string_and_fragment",
+        url="https://example.test:8443/hook/path?token=abc&a=b#frag",
+        expected="https://example.test:8443/hook/path",
+    ),
+    UrlWithoutSecretsTestCase(
+        name="user_and_password", url="https://user:pass@example.test/hook", expected="https://example.test/hook"
+    ),
+    UrlWithoutSecretsTestCase(
+        name="user_only", url="https://user@example.test/hook", expected="https://example.test/hook"
+    ),
+    UrlWithoutSecretsTestCase(
+        name="password_with_an_at_sign", url="https://user:p@ss@example.test/hook", expected="https://example.test/hook"
+    ),
+    UrlWithoutSecretsTestCase(
+        name="user_and_password_without_a_path", url="https://user:pass@example.test", expected="https://example.test"
+    ),
+    UrlWithoutSecretsTestCase(
+        name="user_and_password_without_a_scheme", url="//user:pass@example.test/hook", expected="//example.test/hook"
+    ),
+    UrlWithoutSecretsTestCase(
+        name="at_sign_in_the_path_is_kept",
+        url="https://example.test/users/a@b/hook",
+        expected="https://example.test/users/a@b/hook",
+    ),
+    UrlWithoutSecretsTestCase(
+        name="at_sign_in_the_query_string_only",
+        url="https://example.test/hook?email=a@b",
+        expected="https://example.test/hook",
+    ),
+    UrlWithoutSecretsTestCase(name="path_only", url="/api/hook?token=abc", expected="/api/hook"),
+    UrlWithoutSecretsTestCase(
+        name="nothing_to_remove", url="https://example.test/hook", expected="https://example.test/hook"
+    ),
+    UrlWithoutSecretsTestCase(name="empty", url="", expected=""),
+]
+
+
+@pytest.mark.parametrize("test_case", URL_WITHOUT_SECRETS_TEST_CASES, ids=lambda test_case: test_case.name)
+def test_url_without_secrets(test_case: UrlWithoutSecretsTestCase) -> None:
+    assert url_without_secrets(url=test_case.url) == test_case.expected

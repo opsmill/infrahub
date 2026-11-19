@@ -202,7 +202,10 @@ services:
       GRAFANA_MCP_TOKEN_FILE: /var/run/grafana-mcp/token
       GRAFANA_MCP_TOKEN_FILE_OWNER: "1000:999"
     depends_on:
-      - infrahub-grafana
+      # Not required, so that the file loads when the profile of the Grafana service is off.
+      infrahub-grafana:
+        condition: service_started
+        required: false
 
   infrahub-grafana-mcp:
     # No restart policy: the server must stay stopped when its entrypoint refuses to start it.

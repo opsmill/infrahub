@@ -19,6 +19,8 @@ import pytest
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
+from tests.helpers.constants import INFRAHUB_USE_TEST_CONTAINERS
+
 if TYPE_CHECKING:
     from collections.abc import Generator
 
@@ -112,6 +114,8 @@ class Grafana:
 
 @pytest.fixture(scope="module", params=["11.1.5", "11.4.0"])
 def grafana_container(request: pytest.FixtureRequest) -> Generator[DockerContainer, None, None]:
+    if not INFRAHUB_USE_TEST_CONTAINERS:
+        pytest.skip("Needs a Grafana container, and test containers are turned off")
     container = (
         DockerContainer(image=f"grafana/grafana:{request.param}")
         .with_env("GF_SECURITY_ADMIN_USER", ADMIN_USER)

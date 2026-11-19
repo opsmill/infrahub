@@ -95,31 +95,39 @@ text_field() {
 }
 
 wait_for_grafana() {
-    waited=0
+    case "$wait_seconds" in
+        "" | *[!0-9]*) fail "GRAFANA_WAIT_SECONDS must be a number of seconds, not $wait_seconds" ;;
+    esac
+    # The limit counts the time of the requests too, not only the pauses between them.
+    deadline=$(($(date +%s) + wait_seconds))
     while true; do
         status="$(curl --silent --max-time "$poll_seconds" --output /dev/null --write-out '%{http_code}' "$grafana_url/api/health" 2>/dev/null || true)"
         if [ "$status" = 200 ]; then
             return 0
         fi
-        if [ "$waited" -ge "$wait_seconds" ]; then
+        if [ "$(date +%s)" -ge "$deadline" ]; then
             if [ "$wait_seconds" -eq 300 ]; then
                 fail "Grafana did not answer at $grafana_url within 5 minutes"
             fi
             fail "Grafana did not answer at $grafana_url within $wait_seconds seconds"
         fi
         sleep "$poll_seconds"
-        waited=$((waited + poll_seconds))
     done
 }
 
-# True when the stored token exists and Grafana accepts it.
+# True when the stored token exists and Grafana accepts it. False when there is none, or Grafana refuses it.
+# Any other answer stops the script: a token that may still be valid is not replaced because of a temporary error.
 stored_token_works() {
     [ -s "$token_file" ] || return 1
     token_config="$work_dir/token.curlrc"
     printf 'header = "Authorization: Bearer %s"\n' "$(escape_for_curl_config "$(cat "$token_file")")" > "$token_config"
     status="$(curl --silent --max-time "$request_seconds" --config "$token_config" --output /dev/null --write-out '%{http_code}' "$grafana_url/api/user" 2>/dev/null || true)"
     rm -f "$token_config"
-    [ "$status" = 200 ]
+    case "$status" in
+        200) return 0 ;;
+        401 | 403) return 1 ;;
+        *) fail "Grafana answered HTTP $status when asked to check the stored token of the service account $account_name" ;;
+    esac
 }
 
 wait_for_grafana

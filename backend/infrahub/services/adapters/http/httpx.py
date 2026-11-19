@@ -132,7 +132,12 @@ class HttpxAdapter(InfrahubHTTP):
                         message = f"TLS error when connecting to {safe_url}"
                     raise HTTPServerSSLError(message=message) from exc
                 # Catch all error from httpx
-                log.warning(f"Unhandled HTTP error for {safe_url} ({replace_url_queries_in_text(str(exc))})")
+                # The message of a protocol error repeats the request header that it refuses, which can be a secret.
+                if isinstance(exc, httpx.LocalProtocolError):
+                    detail = type(exc).__name__
+                else:
+                    detail = replace_url_queries_in_text(str(exc))
+                log.warning(f"Unhandled HTTP error for {safe_url} ({detail})")
                 raise HTTPServerError(message=f"Unknown http error when connecting to {safe_url}") from exc
 
         return response

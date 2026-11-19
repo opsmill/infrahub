@@ -1,1 +1,1 @@
-Added an optional Grafana MCP server to the observability Compose stack, off by default, which gives an AI assistant read-only access to the metrics, traces and logs in Grafana when the `grafana-mcp` Compose profile and the `INFRAHUB_GRAFANA_MCP_TOKEN` setting are set.
+Added an optional Grafana MCP server to the observability Compose stack, off by default, which gives an AI assistant read-only access to the metrics, traces and logs in Grafana when `COMPOSE_PROFILES=grafana-mcp` and `INFRAHUB_GRAFANA_MCP_TOKEN` are set.

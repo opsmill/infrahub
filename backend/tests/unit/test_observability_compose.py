@@ -132,7 +132,7 @@ def test_grafana_mcp_init_service(file_name: str) -> None:
     assert service["user"] == "root"
     assert service["entrypoint"] == GRAFANA_MCP_INIT_ENTRYPOINT
     assert service["environment"] == GRAFANA_MCP_INIT_ENVIRONMENT
-    assert service["depends_on"] == ["infrahub-grafana"]
+    assert service["depends_on"] == {"infrahub-grafana": {"condition": "service_started", "required": False}}
     assert shared_volumes == ["grafana_mcp_token:/var/run/grafana-mcp"]
     assert "ports" not in service
     assert "restart" not in service

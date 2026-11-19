@@ -1,6 +1,6 @@
 # Log audit: personal data and secrets that the Grafana MCP server can return
 
-**Feature**: [spec.md](spec.md) | **Requirements**: FR-022, FR-022a, FR-023, FR-024 | **Date**: 2026-11-19
+**Feature**: `spec.md` in this directory | **Requirements**: FR-022, FR-022a, FR-023, FR-024 | **Date**: 2026-11-19
 
 The Grafana MCP server gives an AI assistant what Grafana can read: the log streams in Loki, the
 traces in Tempo and the metrics in Prometheus. Everything it returns reaches the AI model provider.
@@ -9,7 +9,9 @@ address or a URL query string reaches one of these three stores, and what was do
 
 ## Result
 
-- 5 findings are confirmed and fixed in the code that writes the line (rows 1 to 5).
+- 6 findings are confirmed and fixed in the code that writes the line (rows 1 to 5, and 3a).
+- 1 finding is confirmed and not changed: a secret in the path of a webhook URL (row 3b). The docs
+  name it.
 - 1 finding is confirmed and not changed: the webhook payload line (row 6). Daniel decided on
   2026-11-19 to keep the line, so the docs must name it as data that reaches the AI model provider.
 - 1 finding is in the Python SDK (row 7). It is not fixed in this repository.
@@ -20,7 +22,7 @@ address or a URL query string reaches one of these three stores, and what was do
 
 ## How the audit was done
 
-**Code reading.** The first pass of [research.md](research.md) R8, and the code paths named in the
+**Code reading.** The first pass of `research.md` R8, and the code paths named in the
 rows below.
 
 **Running stack.** One Compose stack built from the branch
@@ -53,7 +55,7 @@ Then each marker was searched for in:
 - A single sign-on login. No identity provider was available, so rows 4 and 5 were checked by calling
   the functions with a provider response, not on the running stack.
 - A real client IP address. Every request came from the Docker host, and the API server writes no
-  access log in production ([research.md](research.md) R8).
+  access log in production (`research.md` R8).
 - `INFRAHUB_LOG_LEVEL=DEBUG` and the debug levels of the other containers. The audit covers default
   log levels only.
 - Every path where an exception message is logged with `exc_info`. The audit covers the paths that the
@@ -74,6 +76,8 @@ Each location is a file under `backend/infrahub/` and a function or symbol.
 | 3 | `services/adapters/http/httpx.py::HttpxAdapter._request` | The request URL with its query string, in three log lines and in the messages of `HTTPServerTimeoutError`, `HTTPServerSSLError` and `HTTPServerError`. The message of the `httpx` error is written too, and can repeat the URL | INFO or WARNING, on a failed request only | Loki; the Prefect server when a flow logs the exception | Confirmed in the code. Fixed, and checked on the running stack with the webhook whose host does not exist | The lines and the messages name the URL without its query string, user and password. A URL inside the `httpx` error message keeps its path and loses its query string. Test: `backend/tests/unit/services/adapters/http/test_httpx.py`. This branch |
 | 4 | `auth/auth.py::get_groups_from_provider` (Google, with `fetch_groups` on) | The email address of the user, in the URL query string that row 3 wrote on a failed request | INFO or WARNING, on a failed request only | Loki | Confirmed in the code. Fixed. Checked with a unit test, not on the running stack (no identity provider) | The email address is sent as a request parameter (`params`), a new optional argument of the `get` method of the HTTP adapter, so the URL that the adapter logs does not hold it. Test: `backend/tests/unit/auth/test_google_group_lookup.py`. This branch |
 | 5 | `auth/auth.py::validate_auth_response` and `auth/auth.py::safe_get_response_body` | The URL of the identity provider's answer, with its query string if the configured URL has one | ERROR, when the provider answers with an error or an empty body | Loki | Possible in research R8. Confirmed for the URL by calling the functions with a provider answer; not checked on the running stack. Fixed | The `url` field is written without its query string. Test: `backend/tests/unit/auth/test_auth_response.py`. This branch |
+| 3a | `services/adapters/http/httpx.py::HttpxAdapter._request`, the text of the `httpx` error in the WARNING line | A request header value. When a header value is not valid, for example an `Authorization` value that ends with a line break, the error text repeats it | WARNING, on such a request only | Loki; the Prefect server | Found by the review of the pull request, and confirmed there by running the adapter. Fixed | For an `httpx.LocalProtocolError`, the line writes the name of the error and not its text. Test: `backend/tests/unit/services/adapters/http/test_httpx.py`. This branch |
+| 3b | Rows 1 to 3: the path of the URL | A secret in the path of a webhook URL. Slack, Discord and Microsoft Teams put the secret of an incoming webhook there | INFO, written by default | Loki and the Prefect server | Confirmed by reading the code. Not changed: the path is what tells the user where the webhook went, and Infrahub cannot tell which part of a path is a secret | Named in the webhook docs (`docs/docs/webhooks/overview.mdx`, "Header and payload logging"). The docs page of the Grafana MCP server must name it too (FR-026, task T058) |
 | 5a | `auth/auth.py::validate_auth_response`, field `body` | The body of the provider's error answer, written in full. A provider can put a client ID or a user name in `error_description` | ERROR, when the provider answers with an error | Loki | Not checked: no real provider answer was available. Not changed | None. Check with the answers of the supported providers (Google, Keycloak, Entra ID) before the release |
 | 6 | `webhook/log_formatter.py::WebhookLogFormatter.outgoing_request`, the `Payload:` block (and `full_payload` at DEBUG) | The event payload: the values of the node that changed. For an account, the user name (its human-friendly ID) and its label. For any node, whatever its attributes hold, such as an email address | INFO for the first 2048 characters, written by default. DEBUG for the full payload | Loki and the Prefect server | Possible in research R8. Confirmed on the running stack: the task worker stream holds the marker user name (1 line) and the marker label (5 lines), and the Grafana MCP server returns them | Not changed, decided by Daniel on 2026-11-19. The docs must name it (FR-026). See "Decision: the webhook payload line" below |
 | 7 | Python SDK: `infrahub_sdk/retry.py::prepare_retry` and the HTTP 429 lines of `infrahub_sdk/rate_limit.py`, used by the task workers | The API URL with its query string. No SDK call puts a token in it. `query_gql_query` puts the variables of a stored GraphQL query in it, and a variable can hold personal data | WARNING, then ERROR after a long retry. Written on a transient failure only | Loki and the Prefect server | Possible in research R8. Confirmed by reading the SDK code; no retry happened on the running stack | Not fixed here: the line is in `opsmill/infrahub-sdk-python`. It needs a change there, an SDK release and an update of the `python_sdk` submodule |

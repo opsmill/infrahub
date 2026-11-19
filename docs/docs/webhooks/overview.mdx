@@ -363,6 +363,10 @@ Every delivery attempt is logged with the target URL, the request headers, and t
 The target URL is logged without its query string, its fragment, and any user and password it contains, because these parts can hold a secret. A webhook with the URL `https://example.com/hook?token=abc` is logged as `https://example.com/hook`. The request itself is sent to the full URL.
 
 :::warning
+The path of the URL is logged as it is. Some services, such as Slack, Discord and Microsoft Teams, put the secret of an incoming webhook in the path, so that secret appears in the delivery logs.
+:::
+
+:::warning
 A static header value is logged verbatim unless its name is one of the well-known credential headers listed above. To keep a secret out of the delivery logs when it is not sent under one of those names, store it as an **Environment Variable Key-Value** header — environment-sourced values are always masked.
 :::
 

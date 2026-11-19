@@ -118,6 +118,14 @@ FAILED_REQUEST_CASES = [
         expected_log=f"Unhandled HTTP error for {URL} (connection refused)",
     ),
     FailedRequestCase(
+        name="error_that_repeats_a_request_header",
+        error=httpx.LocalProtocolError("Illegal header value b'Bearer secret-value\\n'"),
+        expected_error=HTTPServerError,
+        expected_message=f"Unknown http error when connecting to {URL}",
+        expected_log_level="warning",
+        expected_log=f"Unhandled HTTP error for {URL} (LocalProtocolError)",
+    ),
+    FailedRequestCase(
         name="other_error_that_repeats_the_url",
         error=httpx.ConnectError(f"cannot reach {URL_WITH_QUERY}"),
         expected_error=HTTPServerError,
