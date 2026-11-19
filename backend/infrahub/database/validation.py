@@ -21,6 +21,7 @@ class GraphCheck(InfrahubStringEnum):
     DUPLICATE_ATTRIBUTES = "duplicate_attributes"
     ATTRIBUTE_EDGE_BRANCH = "attribute_edge_branch"
     DUPLICATE_OWNER_SETS = "duplicate_owner_sets"
+    NO_OWNER_VERTEX = "no_owner_vertex"
 
 
 @dataclass(frozen=True)
@@ -629,6 +630,20 @@ RETURN node_id, edge_type, attribute, identifier, direction, num_sets
     return violations
 
 
+async def _check_no_owner_vertex(db: InfrahubDatabase, kinds: list[str] | None) -> list[GraphViolation]:
+    """Verify that the graph has exactly one `NoOwner` vertex, the end of every "no owner" edge.
+
+    A filter on kinds skips the check, because the vertex has no kind.
+    """
+    if kinds:
+        return []
+    records = await db.execute_query(query="MATCH (n:NoOwner) RETURN count(n) AS num_vertices")
+    num_vertices = records[0].get("num_vertices")
+    if num_vertices == 1:
+        return []
+    return [GraphViolation(check=GraphCheck.NO_OWNER_VERTEX, message=f"{num_vertices} NoOwner vertices, expected 1")]
+
+
 async def collect_graph_violations(db: InfrahubDatabase, kinds: list[str] | None = None) -> list[GraphViolation]:
     """Run every graph-integrity check and return all violations found.
 
@@ -646,6 +661,7 @@ async def collect_graph_violations(db: InfrahubDatabase, kinds: list[str] | None
     violations.extend(await _check_relationship_edge_counts(db=db, kinds=kinds))
     violations.extend(await _check_attribute_edge_branch(db=db, kinds=kinds))
     violations.extend(await _check_duplicate_owner_sets(db=db, kinds=kinds))
+    violations.extend(await _check_no_owner_vertex(db=db, kinds=kinds))
     return violations
 
 
