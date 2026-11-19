@@ -154,9 +154,9 @@ Status transitions in this feature:
 
 `mark_failed` closes the records of a failed load in one statement: `applied` becomes
 `rolled_back`, `waiting` becomes `cancelled`, `running` becomes `failed` with the error of the load
-added to its errors, and `failed` stays. `mark_failed_if_running` closes the records of a cancelled
-load the same way, except that `applied` stays `applied`, because a cancelled load is not rolled
-back (spec, decision 11).
+added to its errors, and `failed` stays. `mark_failed_if_running`, for a cancelled load, leaves
+the records as they are, because the migrations keep running and write their own statuses (spec,
+decision 11).
 
 `running` means that the task of the migration started. The records report progress and are best
 effort: a record whose write fails after the retries keeps its earlier status, also when the load
@@ -174,7 +174,8 @@ branch deletion:
 | Create the migration records of an application | The migration flow, in one query |
 | Set the status of the migration records of an application by position | The migration flow, when a migration starts and when it returns |
 | Mark a schema change and its application applied, with version, parent and time | The end of a load |
-| Mark a schema change and its application failed, with the error, and close its migration records | The end of a failed or cancelled load |
+| Mark a schema change and its application failed, with the error, and close its migration records | The end of a failed load |
+| Mark a running schema change and its application failed, with the error, and leave its migration records | The end of a cancelled load |
 | Get the highest applied version of a branch, and the highest version of main applied at or before a timestamp, each with the ID of its schema change | `SchemaChangeVersionResolver` ([research.md](research.md), R10) |
 | Delete the schema changes of a branch with all their records | `BranchDataDeleter` ([research.md](research.md), R13) |
 

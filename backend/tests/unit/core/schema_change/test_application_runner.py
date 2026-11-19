@@ -38,6 +38,7 @@ from tests.unit.core.schema_change.helpers import (
     FailingCompleteApplicationRecorder,
     FailingSchemaUpdateExecutor,
     GatedFailApplicationRecorder,
+    GatedStartApplicationRecorder,
     RecordingApplicationRecorder,
     RecordingSchemaUpdateExecutor,
     SchemaApplicationCall,
@@ -310,6 +311,27 @@ async def test_run_keeps_the_status_of_a_schema_change_that_stopped_running_when
         application_id=RECORDED_APPLICATION_ID,
     )
     assert len(warnings) == 1
+
+
+async def test_run_waits_for_the_schema_change_to_be_created_and_records_the_failure_when_cancelled_during_the_write() -> (
+    None
+):
+    calls: list[SchemaApplicationCall] = []
+    executor = BlockingSchemaUpdateExecutor(calls=calls)
+    gate = FailGate()
+    runner = SchemaChangeApplicationRunner(
+        recorder=GatedStartApplicationRecorder(calls=calls, gate=gate), executor=executor
+    )
+    run_input = _build_run_input()
+    load = asyncio.create_task(_run(runner=runner, run_input=run_input))
+    await gate.started.wait()
+
+    load.cancel()
+    gate.opened.set()
+
+    with pytest.raises(asyncio.CancelledError):
+        await load
+    assert calls == [_start_call(run_input), _cancelled_fail_call(run_input)]
 
 
 async def test_run_finishes_recording_the_failure_when_the_load_is_cancelled_again_during_the_write() -> None:

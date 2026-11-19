@@ -849,6 +849,22 @@ class GatedFailApplicationRecorder(RecordingApplicationRecorder):
             self.gate.finished.set()
 
 
+class GatedStartApplicationRecorder(RecordingApplicationRecorder):
+    """An application recorder that records each call; `start` sets `gate.started`, waits for `gate.opened`, then records."""
+
+    def __init__(self, calls: list[SchemaApplicationCall], gate: FailGate) -> None:
+        super().__init__(calls=calls)
+        self.gate = gate
+
+    @override
+    async def start(
+        self, *, branch: Branch, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
+    ) -> SchemaChangeRecording:
+        self.gate.started.set()
+        await self.gate.opened.wait()
+        return await super().start(branch=branch, operations=operations, at=at, user_id=user_id)
+
+
 class FailingCompleteApplicationRecorder(RecordingApplicationRecorder):
     """An application recorder that records each call, and raises a database error from `complete`."""
 

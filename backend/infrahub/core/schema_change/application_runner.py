@@ -116,7 +116,7 @@ class SchemaChangeApplicationRunner:
                 final_step=None,
             )
 
-        recording = await self.recorder.start(branch=branch, operations=candidate.operations, at=at, user_id=user_id)
+        recording = await self._start(branch=branch, operations=candidate.operations, at=at, user_id=user_id)
 
         async def record_completion() -> None:
             await self.recorder.complete(recording=recording, branch=branch, user_id=user_id)
@@ -165,6 +165,23 @@ class SchemaChangeApplicationRunner:
             application_id=application_id,
             final_step=final_step,
         )
+
+    async def _start(
+        self, *, branch: Branch, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
+    ) -> SchemaChangeRecording:
+        """Create the running schema change; a cancellation lets the write finish, then records the schema change as failed.
+
+        Raises:
+            CancelledError: When the load is cancelled during the write, after the schema change is recorded as failed.
+
+        """
+        start = asyncio.ensure_future(self.recorder.start(branch=branch, operations=operations, at=at, user_id=user_id))
+        try:
+            return await asyncio.shield(start)
+        except asyncio.CancelledError:
+            recording = await asyncio.shield(start)
+            await asyncio.shield(self._record_cancellation(recording=recording, user_id=user_id))
+            raise
 
     async def _record_cancellation(self, *, recording: SchemaChangeRecording, user_id: str) -> None:
         # The cancellation can arrive after the schema change was recorded as applied, and a cancelled load does not

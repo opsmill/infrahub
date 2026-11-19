@@ -469,7 +469,7 @@ async def test_mark_failed_closes_each_migration_record_by_its_status(
     ]
 
 
-async def test_mark_failed_if_running_changes_only_a_running_schema_change_and_keeps_its_applied_migrations(
+async def test_mark_failed_if_running_changes_only_a_running_schema_change_and_leaves_its_migration_records(
     db: InfrahubDatabase, empty_database: None
 ) -> None:
     statuses_before = [
@@ -542,8 +542,8 @@ async def test_mark_failed_if_running_changes_only_a_running_schema_change_and_k
             [
                 (0, SchemaChangeMigrationStatus.APPLIED, []),
                 (1, SchemaChangeMigrationStatus.FAILED, [MIGRATION_ERROR]),
-                (2, SchemaChangeMigrationStatus.FAILED, [FAILURE_ERROR]),
-                (3, SchemaChangeMigrationStatus.CANCELLED, []),
+                (2, SchemaChangeMigrationStatus.RUNNING, []),
+                (3, SchemaChangeMigrationStatus.WAITING, []),
             ],
         ),
     ]

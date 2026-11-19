@@ -393,9 +393,10 @@ build, which a later replay would expose. The review reverted it on 2026-11-18.
      becomes `failed` with the error of the load added to its errors;
    - cancellation (`asyncio.CancelledError`, which is not an `Exception`): the runner calls
      `fail_if_running` with the error `The schema load was cancelled before it completed` inside
-     `asyncio.shield`, then lets the cancellation go on. It closes the migration records as `fail`
-     does, except that `applied` stays `applied`, because nothing rolls the load back (spec,
-     decision 11).
+     `asyncio.shield`, then lets the cancellation go on. It leaves the migration records as they
+     are, because the migration flow run keeps running on the task worker and writes their
+     statuses (spec, decision 11). A cancellation during the write that creates the schema change
+     lets that write finish first.
 
 **Which writes must succeed** (spec, decision 9): the schema change and its application are
 required records, because the ordered replay at rebase and merge reads them. A load whose schema

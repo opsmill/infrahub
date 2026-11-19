@@ -195,11 +195,11 @@ class SchemaChangeMarkAppliedQuery(Query):
 
 
 class SchemaChangeMarkFailedQuery(Query):
-    """Set a schema change and its application to failed, and close the migration records of the application.
+    """Set a schema change and its application to failed, and with `close_migration_records` close its migration records.
 
-    A waiting migration record becomes cancelled, and a running one failed with the error added to its errors; a failed
-    one stays failed. An applied one becomes rolled back with `rolled_back`, and stays applied without it. With
-    `only_if_running`, a schema change that is not running is left as it is and the query returns no row.
+    A closed applied migration record becomes rolled back, a waiting one cancelled, and a running one failed with the
+    error added to its errors; a failed one stays failed. With `only_if_running`, a schema change that is not running is
+    left as it is and the query returns no row.
     """
 
     name = "schema-change-mark-failed"
@@ -214,11 +214,12 @@ class SchemaChangeMarkFailedQuery(Query):
         error: str,
         updated_at: str,
         only_if_running: bool,
-        rolled_back: bool,
+        close_migration_records: bool,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.only_if_running = only_if_running
+        self.close_migration_records = close_migration_records
         # A schema change that is no longer running gives no row, which is an answer and not an error.
         self.raise_error_if_empty = not only_if_running
         self.params["running_schema_change_status"] = SchemaChangeStatus.RUNNING.value
@@ -235,10 +236,6 @@ class SchemaChangeMarkFailedQuery(Query):
         self.params["cancelled_migration_status"] = SchemaChangeMigrationStatus.CANCELLED.value
         self.params["running_migration_status"] = SchemaChangeMigrationStatus.RUNNING.value
         self.params["failed_migration_status"] = SchemaChangeMigrationStatus.FAILED.value
-        closed_migration_statuses = [SchemaChangeMigrationStatus.WAITING, SchemaChangeMigrationStatus.RUNNING]
-        if rolled_back:
-            closed_migration_statuses.append(SchemaChangeMigrationStatus.APPLIED)
-        self.params["closed_migration_statuses"] = [status.value for status in closed_migration_statuses]
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.add_to_query(
@@ -250,7 +247,7 @@ class SchemaChangeMarkFailedQuery(Query):
         )
         if self.only_if_running:
             self.add_to_query("WHERE schema_change.status = $running_schema_change_status")
-        query = (
+        self.add_to_query(
             """
         SET schema_change.status = $schema_change_status,
             schema_change.updated_at = $updated_at,
@@ -260,9 +257,19 @@ class SchemaChangeMarkFailedQuery(Query):
             application.updated_at = $updated_at,
             application.updated_by = $updated_by
         WITH schema_change, application
+        """
+        )
+        if self.close_migration_records:
+            self.add_to_query(self._close_migration_records_query())
+        self.add_to_query("RETURN schema_change.uuid AS schema_change_id")
+        self.return_labels = ["schema_change_id"]
+
+    def _close_migration_records_query(self) -> str:
+        return (
+            """
         CALL (application) {
             MATCH (application)-[:%(has_migration)s]->(record:%(migration_label)s)
-            WHERE record.status IN $closed_migration_statuses
+            WHERE record.status IN [$applied_migration_status, $waiting_migration_status, $running_migration_status]
             WITH record, record.status = $running_migration_status AS was_running
             SET record.status = CASE record.status
                     WHEN $applied_migration_status THEN $rolled_back_migration_status
@@ -272,12 +279,10 @@ class SchemaChangeMarkFailedQuery(Query):
                 record.errors = CASE WHEN was_running THEN coalesce(record.errors, []) + $error ELSE record.errors END,
                 record.updated_at = $updated_at
         }
-        RETURN schema_change.uuid AS schema_change_id
+        WITH schema_change
         """
             % CYPHER_NAMES
         )
-        self.add_to_query(query)
-        self.return_labels = ["schema_change_id"]
 
     def get_data(self) -> bool:
         """Return whether the schema change was set to failed."""
@@ -546,7 +551,7 @@ class SchemaChangeRepository:
             error=error,
             updated_at=Timestamp().to_string(),
             only_if_running=False,
-            rolled_back=True,
+            close_migration_records=True,
             user_id=user_id,
         )
         await self._write(query=query)
@@ -554,10 +559,10 @@ class SchemaChangeRepository:
     async def mark_failed_if_running(
         self, *, schema_change_id: str, application_id: str, error: str, user_id: str
     ) -> bool:
-        """Set a schema change and its application to failed, only while the schema change is running, for a load that was not rolled back.
+        """Set a schema change and its application to failed, only while the schema change is running, for a cancelled load.
 
-        An applied migration record stays applied, a waiting one becomes cancelled, and a running one failed with the
-        error added to its errors.
+        The migration records are left as they are, because the migrations of a cancelled load keep running and write
+        their own statuses.
 
         Returns:
             Whether the schema change was set to failed; False when it is no longer running or is not stored.
@@ -570,7 +575,7 @@ class SchemaChangeRepository:
             error=error,
             updated_at=Timestamp().to_string(),
             only_if_running=True,
-            rolled_back=False,
+            close_migration_records=False,
             user_id=user_id,
         )
         await self._write(query=query)

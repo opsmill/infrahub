@@ -270,8 +270,8 @@ branch. Count the records of that branch and of main before and after.
   application, are set to `failed` with the error `The schema load was cancelled before it
   completed`; one already recorded as `applied` keeps that status. The schema and the data that
   the load wrote before the cancellation are not rolled back, as before this feature
-  ([research.md](research.md), R8), so a migration record that was `applied` keeps that status
-  (decision 11).
+  ([research.md](research.md), R8). The migration records are left to the migrations, which keep
+  running on the task worker and write their own statuses (decision 11).
 - **A worker that stops during a load, or a write of the status `failed` that fails**: the schema
   change and its application keep the status `running`. They have no version and are not part of
   the history that later tasks apply. Recovery after a worker stops during a schema load is out of
@@ -462,8 +462,9 @@ branch. Count the records of that branch and of main before and after.
   change and its application to `failed`, and the application MUST hold the error and keep its
   migration records. A migration record that was `applied` becomes `rolled back` (decision 6), one
   that was `waiting` becomes `cancelled`, and one that was `running` becomes `failed` with the
-  error of the load (decision 10). A cancelled load is recorded as failed in the same way, except
-  that a migration record that was `applied` stays `applied` (decision 11). A dropdown or enum
+  error of the load (decision 10). A cancelled load sets the schema change and its application to
+  `failed` in the same way, and leaves its migration records to the migrations (decision 11). A
+  dropdown or enum
   mutation whose save fails stores nothing (decision 7).
 - **FR-063**: A schema load MUST fail, and be rolled back, when its schema change or its
   application cannot be created or set to `applied` (decision 9). Each record write MUST be
@@ -657,11 +658,13 @@ review.
     is `running` becomes `failed` with the error of the load, in the same write that sets the
     schema change to `failed`.
 
-11. **A migration record that is `applied` when the load is cancelled stays `applied`.** Decided in
-    review on 2026-11-19. A cancelled load is not rolled back
-    ([IFC-3637](https://opsmill.atlassian.net/browse/IFC-3637)), so the data that its applied
-    migrations wrote stays in the branch, and `rolled back` would state a revert that did not
-    happen. A `waiting` record becomes `cancelled` and a `running` one `failed`, as in decision 10.
+11. **A cancelled load leaves its migration records to the migrations.** Decided in review on
+    2026-11-19. Cancelling the request does not cancel the migration flow run on the task worker,
+    which keeps running the migrations and writing their statuses, and a cancelled load is not
+    rolled back ([IFC-3637](https://opsmill.atlassian.net/browse/IFC-3637)). Closing the records at
+    the cancellation would state `rolled back` or `cancelled` for migrations whose data changes stay
+    in the branch, and the task worker would later overwrite those statuses. The schema change and
+    its application are still set to `failed`.
 
 12. **A kind rename is one operation that sets the name and the namespace together.** Decided in
     review on 2026-11-19. Two operations, one for each property, pass the kind through the kind

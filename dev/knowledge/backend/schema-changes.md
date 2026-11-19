@@ -195,8 +195,10 @@ progress and are best effort.
    the cancellation go on. `fail_if_running` changes the schema change only while it is `running`:
    a cancellation can arrive after the final step recorded the schema change as applied, and a
    cancelled load keeps its schema, so that schema change stays `applied` and the runner logs a
-   warning. It closes the migration records as `fail` does, except that an `applied` record stays
-   `applied`, because nothing removes what its migration wrote.
+   warning. It leaves the migration records as they are: cancelling the request does not cancel
+   the migration flow run on the task worker, which keeps writing the status of each migration.
+   When the cancellation arrives while `start` creates the schema change, the runner lets that
+   write finish inside `asyncio.shield`, then calls `fail_if_running` the same way.
 
 A failure of `fail` itself is logged when it is one of `RECORD_WRITE_ERRORS`
 (`core/schema_change/record_errors.py`: a `DatabaseError`, a `QueryError`, a `QueryTimeoutError` or
@@ -225,7 +227,7 @@ Schema change and application:
   this status gets a version and a parent.
 - `failed`: by `fail` (`SchemaChangeMarkFailedQuery`) when the update raises, or by
   `fail_if_running` (the same query) when the load is cancelled. The same statement stores the
-  error on the application and closes the migration records of the application.
+  error on the application; `fail` also closes the migration records of the application.
 
 Migration record:
 
@@ -235,9 +237,9 @@ Migration record:
 - When the load fails, `fail` sets an `applied` record to `rolled_back`, because the rollback
   removes what the migration wrote, a `waiting` record to `cancelled`, and a `running` record to
   `failed` with the error of the load added to its errors. A `failed` record keeps its status.
-- When the load is cancelled, `fail_if_running` closes the records the same way, except that an
-  `applied` record stays `applied`: a cancelled load is not rolled back, so the data its migration
-  wrote stays.
+- When the load is cancelled, `fail_if_running` leaves the records as they are. The migration flow
+  run keeps running on the task worker and sets each record from the result of its migration, so
+  the records show what ran, even after the application is `failed`.
 
 The enumerations also hold `staged` for a schema change, and `rolled_back` and `skipped` for an
 application. No code sets them.
@@ -252,8 +254,11 @@ A schema change and its application stay `running` when:
 
 The coordinator rolls back only on an `Exception`, and `asyncio.CancelledError` is not one. A
 cancelled load therefore records a running schema change as `failed`, but the coordinator does not roll
-back the schema and the data that the load wrote before the cancellation. The rollback on
-cancellation belongs to the coordinator, which every schema update uses, not to the records.
+back the schema and the data that the load wrote before the cancellation, nor cancel the
+migration flow run. The rollback on cancellation belongs to the coordinator, which every schema
+update uses, not to the records
+([IFC-3637](https://opsmill.atlassian.net/browse/IFC-3637)). The migration records of a cancelled
+load stay `waiting` or `running` when the task worker stops too.
 
 A migration record keeps an earlier status when one of its own writes fails after the retries, even
 when the load succeeds. After a failed load, `fail` closes every record that is `waiting` or

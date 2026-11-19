@@ -41,8 +41,8 @@ enum SchemaChangeApplicationStatus {
 
 # When a schema load fails, a migration record that was APPLIED becomes
 # ROLLED_BACK, a WAITING one CANCELLED, and a RUNNING one FAILED with the error
-# of the load added to its errors. When a schema load is cancelled, an APPLIED
-# record stays APPLIED, because a cancelled load is not rolled back.
+# of the load added to its errors. When a schema load is cancelled, the records
+# keep the statuses that the running migrations write.
 """
 Status of one migration that an application of a schema change runs on the data of its branch.
 """

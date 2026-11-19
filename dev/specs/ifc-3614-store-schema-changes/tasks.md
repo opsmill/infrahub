@@ -1046,10 +1046,10 @@ tasks that name it.
       merge leave the records unchanged is removed.
 - [X] T074 Rewrite `dev/knowledge/backend/schema-changes.md`, update every file of this directory
       that states a reversed decision, and delete the implementation report.
-- [X] T075 [US3] A cancelled load leaves an `applied` migration record `applied` (spec, decision
-      11): `SchemaChangeMarkFailedQuery` takes `rolled_back`, which `mark_failed` sets and
-      `mark_failed_if_running` does not, and the component test of `mark_failed_if_running`
-      asserts the status of each migration record.
+- [X] T075 [US3] A cancelled load leaves its migration records to the migrations (spec, decision
+      11): `SchemaChangeMarkFailedQuery` takes `close_migration_records`, which `mark_failed` sets
+      and `mark_failed_if_running` does not. When the cancellation arrives during the write that
+      creates the schema change, the runner lets that write finish, then records the failure.
 - [X] T076 [US1] A kind rename is one `node_rename` operation (spec, decision 12). The
       `node_add` operations come after the operations of changed kinds, and within a kind the
       element renames come before the element additions. `from_schema_root` raises
