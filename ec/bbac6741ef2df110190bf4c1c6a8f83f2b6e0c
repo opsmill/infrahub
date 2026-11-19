@@ -1,0 +1,46 @@
+dev/specs/ifc-2167-placeholder-automations/contracts/fingerprint-store.md
+  s_3996e3c90e5373::t_c8661e85e775cf 1-48
+dev/specs/ifc-2167-placeholder-automations/plan.md
+  s_3996e3c90e5373::t_fa10163667d2b5 1-144
+dev/specs/ifc-2167-placeholder-automations/research.md
+  s_3996e3c90e5373::t_92609f0ebf658d 1-97,99-103,105
+  s_3996e3c90e5373::t_61a04944f57fc0 98
+  s_3996e3c90e5373::t_6feb8b73e7150e 104
+dev/specs/ifc-2167-placeholder-automations/contracts/recompute-decision.md
+  s_3996e3c90e5373::t_53ec481ff47a54 9
+  s_3996e3c90e5373::t_d4663c06c22bb9 1-8,10-56
+dev/specs/ifc-2167-placeholder-automations/data-model.md
+  s_3996e3c90e5373::t_ea2f1a3f301025 27
+  s_3996e3c90e5373::t_1de653b750c2fd 12
+  s_3996e3c90e5373::t_2033ef9184b1e8 1-11,13-26,28-71
+dev/specs/ifc-2167-placeholder-automations/quickstart.md
+  s_3996e3c90e5373::t_62117c5ddf6196 1-77
+.specify/workflows/runs/5ab86115/log.jsonl
+  s_c084e8bac6e69f::t_c4ea619d13e842 9-18
+.specify/workflows/runs/5ab86115/state.json
+  s_c084e8bac6e69f::t_eeb047bf547182 8,12,119-136,139-156,159-249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ecbbac6741ef2df110190bf4c1c6a8f83f2b6e0c",
+  "prompts": {},
+  "sessions": {
+    "s_3996e3c90e5373": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7feae31f-71a2-4ef0-9403-2c4157b0f8ab",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_c084e8bac6e69f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a62b57c8-0237-436f-98fd-7089eb103a35",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
