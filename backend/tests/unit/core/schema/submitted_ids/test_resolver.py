@@ -305,6 +305,23 @@ RESOLVE_CASES: list[ResolveCase] = [
         expected_lookup_calls=[{"old"}],
     ),
     ResolveCase(
+        name="absent_node_field_repeats_an_earlier_id",
+        submitted=[
+            SchemaRoot(
+                nodes=[
+                    NodeSchema(id="n2", name="Gadget", namespace="Testing", attributes=[_attribute("serial", "n2a")]),
+                    _widget("old", attributes=[_attribute("serial_copy", "n2a")], state=HashableModelState.ABSENT),
+                ]
+            )
+        ],
+        existing_ids={"old"},
+        expected_ids={"TestingGadget": "n2", "TestingGadget.serial": "n2a"},
+        expected_absent_removed=["TestingWidget", "TestingWidget.serial_copy"],
+        expected_warnings=[_skipped_warning(SchemaWarningKind(kind="TestingWidget", field=None))],
+        expected_errors=["TestingWidget.serial_copy: id 'n2a' is also given to attribute 'TestingGadget.serial'"],
+        expected_lookup_calls=[{"old"}],
+    ),
+    ResolveCase(
         name="absent_generic_id_in_database",
         submitted=[
             SchemaRoot(

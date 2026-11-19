@@ -99,15 +99,16 @@ class SubmittedSchemaIdResolver:
         ignored: list[_UnresolvedElement] = []
         skipped: list[_UnresolvedElement] = []
         for element in unresolved:
-            # An owner precedes its fields in the list, so its skipped flag is set before its fields are checked.
-            if element.owner is not None and element.owner.skipped:
-                continue
             if element.first_holder is not None:
                 errors.append(
                     f"{element.label}: id '{element.element_id}' is also given to "
                     f"{element.first_holder.element_type.value} '{element.first_holder.label}'"
                 )
-            elif element.stored is not None:
+                continue
+            # An owner precedes its fields in the list, so its skipped flag is set before its fields are checked.
+            if element.owner is not None and element.owner.skipped:
+                continue
+            if element.stored is not None:
                 errors.append(
                     f"{element.label}: id '{element.element_id}' belongs to "
                     f"{element.stored.element_type.value} '{element.stored.label}'"
