@@ -207,14 +207,14 @@ description: "Task list for recording template fingerprints in the database inst
 
 **Purpose**: Documentation, changelog, regression runs and measurements.
 
-- [ ] T033 [P] Update `dev/knowledge/backend/display-labels-and-hfid.md`, section "Async Backfill After Schema Changes": the setup flows compare the schema fingerprints with `TemplateFingerprint` records under the per-family lock, record after submission, carry over placeholders, and the branch deleter removes the records
-- [ ] T034 [P] Update `dev/knowledge/backend/computed-attributes.md` (self-targeting triggers): no automation is created for self-targeting Jinja2 trigger nodes; candidates and the default-branch hash come from the schema
-- [ ] T035 [P] Update `dev/knowledge/backend/events.md`, section "Branch scoping of automations": remove the three placeholder families from the list of automations created per diverging branch
-- [ ] T036 Create the changelog fragment `changelog/+ifc-2167.changed.md` with `towncrier create` through the `creating-changelog-entries` skill: the task manager no longer holds one automation per kind and per diverging branch for display labels, HFIDs and Jinja2 computed attributes; the upgrade removes the existing ones without recomputing values. Lint it with Vale
-- [ ] T037 Check that `TRIGGER_PLACEHOLDER_FIELD` is used only in `backend/infrahub/trigger/constants.py`, `backend/infrahub/trigger/placeholder_carry_over.py` and tests (`grep -rn TRIGGER_PLACEHOLDER_FIELD backend/infrahub backend/tests`)
+- [X] T033 [P] Update `dev/knowledge/backend/display-labels-and-hfid.md`, section "Async Backfill After Schema Changes": the setup flows compare the schema fingerprints with `TemplateFingerprint` records under the per-family lock, record after submission, carry over placeholders, and the branch deleter removes the records
+- [X] T034 [P] Update `dev/knowledge/backend/computed-attributes.md` (self-targeting triggers): no automation is created for self-targeting Jinja2 trigger nodes; candidates and the default-branch hash come from the schema
+- [X] T035 [P] Update `dev/knowledge/backend/events.md`, section "Branch scoping of automations": remove the three placeholder families from the list of automations created per diverging branch
+- [X] T036 Create the changelog fragment `changelog/+ifc-2167.changed.md` with `towncrier create` through the `creating-changelog-entries` skill: the task manager no longer holds one automation per kind and per diverging branch for display labels, HFIDs and Jinja2 computed attributes; the upgrade removes the existing ones without recomputing values. Lint it with Vale
+- [X] T037 Check that `TRIGGER_PLACEHOLDER_FIELD` is used only in `backend/infrahub/trigger/constants.py`, `backend/infrahub/trigger/placeholder_carry_over.py` and tests (`grep -rn TRIGGER_PLACEHOLDER_FIELD backend/infrahub backend/tests`)
 - [ ] T038 Run `EXPLAIN` on the get query of `backend/infrahub/core/query/template_fingerprint.py` on a database with at least 50 kinds and 3 diverging branches, and record the plan in the PR description; propose an index only with maintainer approval (research Decision 3)
-- [ ] T039 Run the regression suite `uv run pytest backend/tests/integration_docker/test_computed_attributes.py`
-- [ ] T040 Run `uv run invoke format`, `uv run invoke lint`, `uv run invoke backend.mypy`, `uv run ty check` and `uv run invoke docs.validate`, and fix every finding without adding a suppression
+- [X] T039 Run the regression suite `uv run pytest backend/tests/integration_docker/test_computed_attributes.py`
+- [X] T040 Run `uv run invoke format`, `uv run invoke lint`, `uv run invoke backend.mypy`, `uv run ty check` and `uv run invoke docs.validate`, and fix every finding without adding a suppression
 - [ ] T041 Run the live scenarios 1 to 4 of `dev/specs/ifc-2167-placeholder-automations/quickstart.md` on a local stack built from this branch, and measure SC-005 as described in its "Performance check" section (durations of `display-labels-setup-jinja2` and `hfid-setup` on the previous release and on this branch); record the results in the PR description
 
 ---

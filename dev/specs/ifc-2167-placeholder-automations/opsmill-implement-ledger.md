@@ -164,3 +164,36 @@ Lint and format: `uv run ruff format` (2 files reformatted) and `uv run ruff che
 | backend/tests/component/branch/test_template_fingerprint_cleanup.py::TestTemplateFingerprintCleanup (3 tests) | integration (component, Prefect test server and Neo4j) | `cd backend && uv run pytest tests/component/branch/ tests/component/display_labels/ tests/component/core/template_fingerprint/test_repository.py -q` | 2026-11-19T17:04:51Z | Neo4j and Prefect test server started by testcontainers through the local Docker daemon, macOS, Python 3.14 | `================= 36 passed, 17 warnings in 493.70s (0:08:13) ==================` |
 | backend/tests/component/display_labels/test_setup.py::TestDisplayLabelSetup::test_branch_that_stops_owning_its_schema_loses_its_records | integration (component, Prefect test server and Neo4j) | same command | 2026-11-19T17:04:51Z | same | `================= 36 passed, 17 warnings in 493.70s (0:08:13) ==================` |
 | backend/tests/component/core/template_fingerprint/test_repository.py (one test removed, rest unchanged) | integration (component, Neo4j) | same command | 2026-11-19T17:04:51Z | same | `================= 36 passed, 17 warnings in 493.70s (0:08:13) ==================` |
+
+## Chunk: Phase 7: Polish and cross-cutting concerns
+
+| Task | Outcome | Reason when not done |
+|------|---------|----------------------|
+| T033 | ✅ done | |
+| T034 | ✅ done | |
+| T035 | ✅ done | |
+| T036 | ✅ done | |
+| T037 | ✅ done | |
+| T038 | ❌ blocked | Needs a database loaded with at least 50 kinds and 3 diverging branches, and a PR description to record the plan in; no PR exists for this branch and no such stack was started in this run. |
+| T039 | ✅ done | |
+| T040 | ✅ done | |
+| T041 | ❌ blocked | Needs a local stack built from this branch, a second stack on the previous release for the SC-005 comparison, and a PR description to record the results in. Not runnable inside this unattended chunk. |
+
+Decisions worth flagging:
+
+- T033: `display-labels-and-hfid.md` gets a sub-section "Template fingerprints decide which kinds are recomputed" under "Async Backfill After Schema Changes". It lists the six steps the setup flows run under the family lock, the seed at the initial task manager setup, the placeholder carry-over, and the branch cleanup. The seed is described as `WorkflowWorkerExecution.initialize` with `is_initial_setup`, which is where Phase 4 placed it (not in `setup_task_manager_identifiers` as the task text said).
+- T034: `computed-attributes.md` replaces the "neutralizes self-targeting triggers" paragraph: no automation for self-targeting trigger nodes, candidates from `get_jinja2_trigger_nodes()` of a branch that owns its schema, `RecomputeScoper` scoping, and the default-branch hash comparison. It states that this family has no carry-over, because its decision reads no stored fingerprint.
+- T035: `events.md`, "Branch scoping of automations", gains a paragraph saying that the three families keep automations only for templates that read a peer. The existing family list was kept, because the peer automations of those families still follow the per-branch scoping it describes.
+- T036: the fragment was created with `uv run towncrier create +ifc-2167.changed.md --content ...`, then reworded so that the carry-over is scoped to display labels and HFIDs. A direct `vale` call needed an approval nobody could give; `uv run invoke release.vale` (the project task, which lints every fragment) reported 0 errors and 4 warnings, none on `+ifc-2167.changed.md`.
+- T037: `grep -rln TRIGGER_PLACEHOLDER_FIELD backend/infrahub backend/tests` lists `trigger/constants.py`, `trigger/placeholder_carry_over.py` and seven test files (including `tests/helpers/template_fingerprint.py`).
+- T040: every command passed without a code change, so no suppression was added.
+
+Lint and format: `uv run invoke format` ("3076 files left unchanged", "All checks passed!"). `uv run invoke lint`: ruff "All checks passed!", ty "All checks passed!", mypy "Success: no issues found in 2105 source files". `uv run invoke backend.mypy`: "Success: no issues found in 2105 source files". `uv run ty check`: "All checks passed!". `uv run invoke docs.validate`: no generated file changed (`git status` unchanged). `uv run invoke docs.lint`: 0 errors, 10 warnings, all in `docs/docs/` files this branch did not change.
+
+No new or modified tests in this chunk.
+
+T039 regression run (existing suite, not modified):
+
+| Test id | Type (unit/integration/e2e) | Run command | Passed at (ISO 8601) | Environment context | Verbatim pass line |
+|---------|-----------------------------|-------------|----------------------|---------------------|--------------------|
+| backend/tests/integration_docker/test_computed_attributes.py | integration (docker stack) | `uv run pytest backend/tests/integration_docker/test_computed_attributes.py -q` | 2026-11-19T17:11:26Z | Infrahub stack started by testcontainers through the local Docker daemon, macOS, Python 3.14. The image comes from `INFRAHUB_TESTING_IMAGE_VER` (read in `python_sdk/infrahub_sdk/testing/docker.py`); this run did not check whether the containers ran this branch's code or a published image. | `================= 11 passed, 17 warnings in 225.51s (0:03:45) ==================` |

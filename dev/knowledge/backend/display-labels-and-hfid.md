@@ -130,12 +130,33 @@ When a schema is updated to add or change a `display_label` or a `human_friendly
 
 ```
 SchemaUpdatedEvent
-  -> display_labels_setup_jinja2 / hfid_setup (gathers triggers, detects new/changed definitions)
+  -> display_labels_setup_jinja2 / hfid_setup (configures the peer automations, compares template fingerprints with the recorded ones)
   -> trigger_update_display_labels / trigger_update_hfid (pages through all node ids of the kind in uuid order, at the client's pagination size, never below one submission chunk)
   -> process_display_label / process_hfid (one flow per submission chunk: queries the chunk via GraphQL, renders the values, bulk-writes changed ones)
 ```
 
 Each chunk runs as a coalesced pass (`object_ids`, origin `recompute`), the same shape as the merge and rebase recompute. One flow per node would cost a Prefect submission and a flow run for every node, even when every value is already current, as after a merge that carried the recomputed values. The trigger definitions and gathering logic live in `backend/infrahub/display_labels/` and `backend/infrahub/hfid/`.
+
+#### Template fingerprints decide which kinds are recomputed
+
+The setup flows decide a whole-kind recompute from `TemplateFingerprint` vertices, not from task manager automations. Each vertex holds `family` (`display_label_jinja2` or `human_friendly_id`), `branch`, `kind` and `fingerprint`, the `get_hash()` of the kind's template on that branch. The task manager holds automations only for templates that read a peer; a template that reads only its own node is applied inline by the mutation and has no automation.
+
+Each setup flow does the following under the family's `configure-action-rules-<family>` lock (namespace `trigger-rules`), so two runs never read the same records:
+
+1. Configure the peer automations with `setup_triggers`.
+2. Carry over the fingerprint of every placeholder automation that step 1 deleted (see below).
+3. Collect the schema fingerprints of the default branch and of every branch that owns its schema (`core/template_fingerprint/collector.py`), and compare them with the recorded ones (`core/template_fingerprint/decision.py`).
+4. Delete the records of branches that no longer own their schema and of kinds or templates that no longer exist.
+5. Submit one recompute per kind of the event branch whose fingerprint changed. On a branch other than the default branch, a template identical to the default branch template is recorded without a recompute.
+6. Write the records after the submissions, so a submission that raises leaves the records unchanged and the next run submits again.
+
+A `BranchDeletedEvent`, or a branch that does not own its schema, submits nothing. `TemplateFingerprintRefresher` runs steps 3 to 6, and `TemplateFingerprintRepository` holds the queries.
+
+The initial task manager setup (`WorkflowWorkerExecution.initialize` with `is_initial_setup`) writes the missing records through `seed_template_fingerprints` in `workflows/initialization.py`, without submitting a recompute, so a first start does not recompute every kind.
+
+Releases before these records kept the fingerprint in the description (`| hash: <fingerprint>`) of a placeholder automation named `<family>::<branch>::<kind>::by::<kind>`, whose trigger matched only the `_trigger_placeholder` field. When `trigger_configure_all` or a setup flow deletes such an automation, `trigger/placeholder_carry_over.py` writes its fingerprint as a record when none exists, so an upgrade with an unchanged schema submits no recompute.
+
+`BranchDataDeleter` deletes the records of a branch before its edges, and the repository writes a record only when a `Branch` vertex of that name exists, so a setup run with a stale registry cannot write records for a deleted branch.
 
 A node whose display label template raises while rendering keeps its stored label and logs a warning; the rest of its flow's nodes are still written.
 
