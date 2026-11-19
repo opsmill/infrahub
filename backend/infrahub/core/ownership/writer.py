@@ -34,6 +34,7 @@ class OwnershipWriter:
         at: Timestamp,
         user_id: str,
         stored: Mapping[str, StoredNodeOwnership] | None = None,
+        keep_deleted_owners: bool = False,
     ) -> bool:
         """Store the state, and record the update in the audit metadata and in the changelog of the node.
 
@@ -47,6 +48,7 @@ class OwnershipWriter:
             user_id: The author of the write.
             stored: The states that the node stores, with the states of its attributes for the holder of an
                 attribute. Without it, the call reads them.
+            keep_deleted_owners: True to also write an owner that is deleted, for a copy of a stored state.
 
         Returns:
             False when the holder already stores this state. Nothing is written then.
@@ -60,7 +62,13 @@ class OwnershipWriter:
             return False
         write_branch = _write_branch(node=node, holder=holder)
         await self.repository.write(
-            node_id=node_id, holder=holder, state=state, write_branch=write_branch, at=at, user_id=user_id
+            node_id=node_id,
+            holder=holder,
+            state=state,
+            write_branch=write_branch,
+            at=at,
+            user_id=user_id,
+            keep_deleted_owners=keep_deleted_owners,
         )
         await self.repository.record_node_update(node_id=node_id, write_branch=write_branch, at=at, user_id=user_id)
         await self._add_to_changelog(node=node, holder=holder, state=state, previous=previous)
@@ -88,6 +96,7 @@ class OwnershipWriter:
             write_branch=_write_branch(node=node, holder=holder),
             at=at,
             user_id=user_id,
+            keep_deleted_owners=True,
         )
         await self._add_to_changelog(node=node, holder=holder, state=state, previous=INHERIT)
 
@@ -128,7 +137,7 @@ class OwnershipWriter:
 async def store_owner_states(
     db: InfrahubDatabase, branch: Branch, node: Node, owner_states: Mapping[HolderKey, StoredOwnerState], user_id: str
 ) -> None:
-    """Store the owner states of a saved node. Give the transaction that saved the node."""
+    """Store a copy of stored owner states on a saved node, deleted owners included. Give the transaction of the save."""
     if not owner_states:
         return
     repository = OwnershipRepository(db=db, branch=branch, at=None)
@@ -138,7 +147,9 @@ async def store_owner_states(
         node_ids=[node.get_id()], attributes=any(holder.kind == HolderKind.ATTRIBUTE for holder in owner_states)
     )
     for holder, state in owner_states.items():
-        await writer.apply(node=node, holder=holder, state=state, at=at, user_id=user_id, stored=stored)
+        await writer.apply(
+            node=node, holder=holder, state=state, at=at, user_id=user_id, stored=stored, keep_deleted_owners=True
+        )
 
 
 def _write_branch(node: Node, holder: HolderKey) -> Branch:

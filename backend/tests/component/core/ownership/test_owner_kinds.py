@@ -101,6 +101,26 @@ async def test_update_of_an_attribute_owner_to_a_repository_is_refused(
     assert await _owner_ids(db=db, branch=default_branch, car_id=car.id) == (group.id, group.id)
 
 
+@pytest.mark.parametrize("path", ["color.owner", "owner.owner"])
+async def test_update_of_an_owner_to_a_deleted_owner_is_refused(
+    db: InfrahubDatabase, default_branch: Branch, person: Node, path: str
+) -> None:
+    group = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="network-team")
+    deleted_group = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="deleted-team")
+    await deleted_group.delete(db=db)
+    car = await _create_car(db=db, person=person, color_owner_id=group.id, link_owner_id=group.id)
+
+    if path == "color.owner":
+        car.color.owner = deleted_group
+    else:
+        await car.owner.update(db=db, data={"id": person.id, "_relation__owner": deleted_group.id})
+    with pytest.raises(ValidationError) as exc:
+        await car.save(db=db)
+
+    assert exc.value.message == f"Owner not found: {deleted_group.id} at {path}"
+    assert await _owner_ids(db=db, branch=default_branch, car_id=car.id) == (group.id, group.id)
+
+
 async def test_refused_owner_of_one_field_stops_the_writes_of_the_other_fields(
     db: InfrahubDatabase, default_branch: Branch, person: Node, repository: Node
 ) -> None:

@@ -192,6 +192,27 @@ async def test_node_created_from_a_template_that_gives_no_owners(
     assert (await _devices_owned_by(db, dataset))["no owner"] == [device.id]
 
 
+@pytest.mark.parametrize(
+    "deleted",
+    [pytest.param(("dc-emea",), id="one_owner_deleted"), pytest.param(("dc-emea", "network-emea"), id="all_deleted")],
+)
+async def test_node_created_from_a_template_gets_the_deleted_owners_that_the_template_gives(
+    db: InfrahubDatabase, dataset: TemplateDataset, deleted: tuple[str, ...]
+) -> None:
+    owner_ids = dataset.owners("dc-emea", "network-emea")
+    template = await _device_template(db=db, dataset=dataset, name="emea-leaf", owners=owner_ids)
+    for name in deleted:
+        group = await NodeManager.get_one(db=db, branch=dataset.branch, id=dataset.groups[name], raise_on_error=True)
+        await group.delete(db=db)
+
+    device = await _create_device(db=db, dataset=dataset, name="leaf-1", template=template)
+
+    assert await _stored(db, dataset, device.id) == {
+        NODE_HOLDER: StoredOwnerState(owner_ids=owner_ids, template_id=template.id)
+    }
+    assert await _resolve(db, dataset, device.id) == {device.id: _from_template(template, owner_ids)}
+
+
 async def test_profile_replaces_the_owners_that_came_from_a_template(
     db: InfrahubDatabase, dataset: TemplateDataset
 ) -> None:

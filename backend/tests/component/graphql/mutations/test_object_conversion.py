@@ -209,6 +209,45 @@ async def test_convert_object_type_keeps_node_owners_and_sources(
     } == {"with-owners": ((group.id,), (group.id,)), "without-owner": ((), None)}
 
 
+@pytest.mark.parametrize(
+    "deleted",
+    [pytest.param(("dc-emea",), id="one_owner_deleted"), pytest.param(("dc-emea", "dc-security"), id="all_deleted")],
+)
+async def test_convert_object_type_keeps_the_deleted_owners_of_the_node(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    schemas_conversion: dict[str, Any],
+    deleted: tuple[str, ...],
+) -> None:
+    registry.schema.register_schema(schema=SchemaRoot(**schemas_conversion), branch=default_branch.name)
+    default_branch.update_schema_hash()
+    groups: dict[str, Node] = {}
+    for name in ("dc-emea", "dc-security"):
+        groups[name] = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+        await groups[name].new(db=db, name=name)
+        await groups[name].save(db=db)
+    owner_ids = tuple(sorted(group.id for group in groups.values()))
+    person = await Node.init(db=db, schema="TestconvPerson1")
+    await person.new(db=db, name="deleted-owners")
+    await person.save(db=db)
+    await _write_owners(
+        db=db, branch=default_branch, node_id=person.id, states={NODE_HOLDER: StoredOwnerState(owner_ids=owner_ids)}
+    )
+    for name in deleted:
+        await groups[name].delete(db=db)
+
+    new_id = await _convert_person(
+        db=db,
+        branch=default_branch,
+        node_id=person.id,
+        fields_mapping={"name": {"source_field": "name"}, "age": {"data": {"attribute_value": 30}}},
+    )
+
+    stored = await OwnershipRepository(db=db, branch=default_branch, at=None).read(node_ids=[new_id])
+    assert stored[new_id].get(NODE_HOLDER) == StoredOwnerState(owner_ids=owner_ids)
+
+
 async def test_convert_object_type_gives_the_owners_that_the_node_holds_when_its_transaction_starts(
     db: InfrahubDatabase,
     default_branch: Branch,

@@ -267,6 +267,7 @@ class DiffMerger:
                 at=at,
                 user_id=user_id,
                 skip_inactive=True,
+                keep_deleted_owners=True,
             )
             if not written:
                 log.warning(
