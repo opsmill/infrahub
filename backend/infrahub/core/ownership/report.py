@@ -17,6 +17,8 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 OPEN_EDGE_FILTER = 'r.status = "active" AND r.to IS NULL'
+# A deleted node, and the vertex that a kind migration replaced, keep their attributes only with closed edges.
+OPEN_ATTRIBUTE_EDGE_FILTER = 'ha.status = "active" AND ha.to IS NULL'
 
 
 @dataclass(frozen=True)
@@ -71,9 +73,13 @@ class RepositoryOwnersReportQuery(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
-MATCH (repository:%(repository_label)s)<-[r:HAS_OWNER]-(attribute:Attribute)<-[:HAS_ATTRIBUTE]-(node:Node)
-WHERE %(open_edge)s
-        """ % {"repository_label": InfrahubKind.GENERICREPOSITORY, "open_edge": OPEN_EDGE_FILTER}
+MATCH (repository:%(repository_label)s)<-[r:HAS_OWNER]-(attribute:Attribute)<-[ha:HAS_ATTRIBUTE]-(node:Node)
+WHERE %(open_edge)s AND %(open_attribute_edge)s
+        """ % {
+            "repository_label": InfrahubKind.GENERICREPOSITORY,
+            "open_edge": OPEN_EDGE_FILTER,
+            "open_attribute_edge": OPEN_ATTRIBUTE_EDGE_FILTER,
+        }
         self.add_to_query(query)
         self.return_labels = [
             "repository.uuid AS repository_id",
@@ -111,10 +117,10 @@ class OtherOwnersReportQuery(Query):
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["excluded_labels"] = sorted(OWNER_KINDS | {InfrahubKind.GENERICREPOSITORY})
         query = """
-MATCH (owner:Node)<-[r:HAS_OWNER]-(attribute:Attribute)<-[:HAS_ATTRIBUTE]-(node:Node)
-WHERE %(open_edge)s
+MATCH (owner:Node)<-[r:HAS_OWNER]-(attribute:Attribute)<-[ha:HAS_ATTRIBUTE]-(node:Node)
+WHERE %(open_edge)s AND %(open_attribute_edge)s
 AND NOT any(label IN labels(owner) WHERE label IN $excluded_labels)
-        """ % {"open_edge": OPEN_EDGE_FILTER}
+        """ % {"open_edge": OPEN_EDGE_FILTER, "open_attribute_edge": OPEN_ATTRIBUTE_EDGE_FILTER}
         self.add_to_query(query)
         self.return_labels = [
             "owner.kind AS owner_kind",
@@ -181,9 +187,9 @@ class ProtectedValuesReportQuery(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
-MATCH (:Boolean {value: true})<-[r:IS_PROTECTED]-(attribute:Attribute)<-[:HAS_ATTRIBUTE]-(node:Node)
-WHERE %(open_edge)s
-        """ % {"open_edge": OPEN_EDGE_FILTER}
+MATCH (:Boolean {value: true})<-[r:IS_PROTECTED]-(attribute:Attribute)<-[ha:HAS_ATTRIBUTE]-(node:Node)
+WHERE %(open_edge)s AND %(open_attribute_edge)s
+        """ % {"open_edge": OPEN_EDGE_FILTER, "open_attribute_edge": OPEN_ATTRIBUTE_EDGE_FILTER}
         self.add_to_query(query)
         self.return_labels = [
             "node.kind AS node_kind",
