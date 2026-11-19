@@ -164,8 +164,9 @@ services:
       - grafana_data:/var/lib/grafana
       - grafana_logs:/var/log/grafana
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      # The Grafana MCP init step logs in with the same two settings.
+      - GF_SECURITY_ADMIN_USER=${INFRAHUB_GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${INFRAHUB_GRAFANA_ADMIN_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_LOG_LEVEL=warn
       - GF_LOG_MODE=console,file
@@ -181,7 +182,71 @@ services:
       - infrahub-prometheus
       - infrahub-loki
 
+  infrahub-grafana-mcp-init:
+    # Grafana MCP server: gives an AI assistant read access to Grafana. Off by default.
+    # Turn it on with COMPOSE_PROFILES=grafana-mcp (or --profile grafana-mcp) and set
+    # INFRAHUB_GRAFANA_MCP_TOKEN, the token that AI assistants send.
+    # This service runs once: it creates the Grafana service account of the server and stores its token.
+    profiles: [grafana-mcp]
+    image: grafana/grafana:11.4.0
+    # A new volume belongs to root, so root writes the token file and gives it to the user of the server.
+    user: root
+    entrypoint: ["/bin/sh", "/usr/local/bin/create-service-account.sh"]
+    volumes:
+      - ./grafana-mcp/create-service-account.sh:/usr/local/bin/create-service-account.sh:ro
+      - grafana_mcp_token:/var/run/grafana-mcp
+    environment:
+      GRAFANA_URL: http://infrahub-grafana:3000
+      GRAFANA_ADMIN_USER: ${INFRAHUB_GRAFANA_ADMIN_USER:-admin}
+      GRAFANA_ADMIN_PASSWORD: ${INFRAHUB_GRAFANA_ADMIN_PASSWORD:-admin}
+      GRAFANA_MCP_TOKEN_FILE: /var/run/grafana-mcp/token
+      GRAFANA_MCP_TOKEN_FILE_OWNER: "1000:999"
+    depends_on:
+      - infrahub-grafana
+
+  infrahub-grafana-mcp:
+    # No restart policy: the server must stay stopped when its entrypoint refuses to start it.
+    profiles: [grafana-mcp]
+    image: grafana/mcp-grafana:2.0.2@sha256:78d208116ec52b09b44f0eca66892073b39aefcb64483c54d43255c8eab7e97a
+    # The user of the image, written here because the init step gives the token file to it.
+    user: "1000:999"
+    entrypoint: ["/bin/sh", "/usr/local/bin/grafana-mcp-entrypoint.sh"]
+    volumes:
+      - ./grafana-mcp/entrypoint.sh:/usr/local/bin/grafana-mcp-entrypoint.sh:ro
+      - grafana_mcp_token:/var/run/grafana-mcp:ro
+      # A bind mount needs a source even when no TLS file is set, so the default is an empty file.
+      # The entrypoint turns TLS on from the two settings below, not from these files.
+      - type: bind
+        source: ${INFRAHUB_GRAFANA_MCP_TLS_CERT_FILE:-/dev/null}
+        target: /etc/grafana-mcp/tls/tls.crt
+        read_only: true
+      - type: bind
+        source: ${INFRAHUB_GRAFANA_MCP_TLS_KEY_FILE:-/dev/null}
+        target: /etc/grafana-mcp/tls/tls.key
+        read_only: true
+    environment:
+      INFRAHUB_GRAFANA_MCP_TOKEN: ${INFRAHUB_GRAFANA_MCP_TOKEN:-}
+      INFRAHUB_GRAFANA_MCP_ALLOWED_HOSTS: ${INFRAHUB_GRAFANA_MCP_ALLOWED_HOSTS:-localhost:8100,127.0.0.1:8100}
+      # The same value as the port below: the entrypoint refuses an address open to a network without TLS.
+      INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS: ${INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS:-127.0.0.1}
+      INFRAHUB_GRAFANA_MCP_TLS_CERT_FILE: ${INFRAHUB_GRAFANA_MCP_TLS_CERT_FILE:-}
+      INFRAHUB_GRAFANA_MCP_TLS_KEY_FILE: ${INFRAHUB_GRAFANA_MCP_TLS_KEY_FILE:-}
+      GRAFANA_URL: http://infrahub-grafana:3000
+      GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE: /var/run/grafana-mcp/token
+      DO_NOT_TRACK: "1"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    ports:
+      - "${INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS:-127.0.0.1}:8100:8000"
+    depends_on:
+      infrahub-grafana-mcp-init:
+        condition: service_completed_successfully
+
 volumes:
+  grafana_mcp_token:
   grafana_data:
   grafana_logs:
   prometheus_data:
