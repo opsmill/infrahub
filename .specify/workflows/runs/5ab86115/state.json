@@ -5,11 +5,11 @@
   "installed_registry_root": null,
   "status": "running",
   "current_step_index": 0,
-  "current_step_id": "commit-spec",
+  "current_step_id": "commit-plan",
   "step_results": {},
   "workflow_dir": "/Users/Pol/Documents/OpsMill/infrahub/stable/infrahub-speckit-pr48/.specify/workflows/opsmill-auto",
   "created_at": "2026-11-19T14:20:44.755413+00:00",
-  "updated_at": "2026-11-19T14:23:07.296171+00:00",
+  "updated_at": "2026-11-19T14:32:29.398116+00:00",
   "error": null,
   "inputs": {
     "spec": "https://opsmill.atlassian.net/browse/IFC-2167",
@@ -116,14 +116,137 @@
                           "error": null
                         },
                         {
-                          "phase": "ready",
-                          "active": true
+                          "phase": "done",
+                          "active": false,
+                          "result": {
+                            "type": "shell",
+                            "integration": null,
+                            "model": null,
+                            "options": {},
+                            "input": {},
+                            "output": {
+                              "exit_code": 0,
+                              "stdout": "",
+                              "stderr": ""
+                            },
+                            "status": "completed",
+                            "error": null
+                          },
+                          "outcome": "completed",
+                          "error": null
                         },
                         {
-                          "phase": "ready"
+                          "phase": "done",
+                          "active": false,
+                          "result": {
+                            "type": "shell",
+                            "integration": null,
+                            "model": null,
+                            "options": {},
+                            "input": {},
+                            "output": {
+                              "exit_code": 0,
+                              "stdout": "",
+                              "stderr": ""
+                            },
+                            "status": "completed",
+                            "error": null
+                          },
+                          "outcome": "completed",
+                          "error": null
                         },
                         {
-                          "phase": "ready"
+                          "phase": "children",
+                          "active": true,
+                          "result": {
+                            "type": "do-while",
+                            "integration": null,
+                            "model": null,
+                            "options": {},
+                            "input": {},
+                            "output": {
+                              "condition": "{{ steps.critique.output.stdout | contains('CRITIQUE_VERDICT: RETHINK') }}",
+                              "max_iterations": 3,
+                              "loop_type": "do-while"
+                            },
+                            "status": "completed",
+                            "error": null
+                          },
+                          "children": [
+                            {
+                              "source": "- id: plan-or-rework\n  type: if\n  condition: '{{ steps.critique.output.stdout | default('''') | contains(''CRITIQUE_VERDICT:\n    RETHINK'') }}'\n  then:\n  - id: replan\n    command: speckit.plan\n    integration: '{{ inputs.integration }}'\n    input:\n      args: The latest critique report in the feature directory rejected the current\n        design. Rework the plan to resolve its findings. Correct spec.md first when\n        the report says that the spec itself is the problem.\n  else:\n  - id: plan\n    command: speckit.plan\n    integration: '{{ inputs.integration }}'\n- id: commit-plan\n  type: shell\n  run: 'git add -A && (git diff --cached --quiet || git commit -q -m ''plan: write\n    the implementation plan'')'\n- id: check-plan\n  type: shell\n  run: 'python3 -c \"import json, pathlib, sys; d = pathlib.Path(json.loads(pathlib.Path(''.specify/feature.json'').read_text())[''feature_directory'']);\n    sys.exit(0 if (d / ''plan.md'').is_file() else ''BLOCKED: the plan phase wrote\n    no plan.md. The output of that phase says why, often a tool that Claude Code refused'')\"'\n- id: critique\n  command: speckit.opsmill.prep-critique\n  integration: '{{ inputs.integration }}'\n  capture: true\n  timeout: 1800\n- id: commit-critique\n  type: shell\n  run: 'git add -A && (git diff --cached --quiet || git commit -q -m ''critique: review\n    the spec and the plan'')'\n",
+                              "nodes": [
+                                {
+                                  "phase": "done",
+                                  "active": false,
+                                  "result": {
+                                    "type": "if",
+                                    "integration": null,
+                                    "model": null,
+                                    "options": {},
+                                    "input": {},
+                                    "output": {
+                                      "condition_result": false
+                                    },
+                                    "status": "completed",
+                                    "error": null
+                                  },
+                                  "children": [
+                                    {
+                                      "source": "- id: plan\n  command: speckit.plan\n  integration: '{{ inputs.integration }}'\n",
+                                      "nodes": [
+                                        {
+                                          "phase": "done",
+                                          "active": false,
+                                          "result": {
+                                            "type": "command",
+                                            "integration": "claude",
+                                            "model": null,
+                                            "options": {},
+                                            "input": {},
+                                            "output": {
+                                              "command": "speckit.plan",
+                                              "integration": "claude",
+                                              "model": null,
+                                              "options": {},
+                                              "input": {},
+                                              "integration_args": [],
+                                              "integration_options": {},
+                                              "exit_code": 0,
+                                              "stdout": "",
+                                              "stderr": "",
+                                              "dispatched": true
+                                            },
+                                            "status": "completed",
+                                            "error": null,
+                                            "integration_args": [],
+                                            "integration_options": {}
+                                          },
+                                          "outcome": "completed",
+                                          "error": null
+                                        }
+                                      ]
+                                    }
+                                  ],
+                                  "outcome": "completed",
+                                  "error": null
+                                },
+                                {
+                                  "phase": "ready",
+                                  "active": true
+                                },
+                                {
+                                  "phase": "ready"
+                                },
+                                {
+                                  "phase": "ready"
+                                },
+                                {
+                                  "phase": "ready"
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "phase": "ready"
