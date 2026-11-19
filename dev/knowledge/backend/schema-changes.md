@@ -104,12 +104,17 @@ All three build a `SchemaCandidate` (operations, processed schema, `SchemaUpdate
 with `SchemaCandidateBuilder`, which `factory.py::build_schema_candidate_builder` builds. The
 candidate schema is always the schema that `SchemaChangeApplier` builds from the operations.
 
-A schema load and a schema check call `from_schema_root` through
-`api/schema.py::build_candidate_from_schemas`:
+A schema load and a schema check call `api/schema.py::build_candidate_from_submitted_schemas`.
+It first passes the files through `SubmittedSchemaIdResolver`, which keeps only the IDs that the
+branch holds for the same element, removes or skips the others with a warning, or refuses the load
+(see *IDs in a submitted schema* in `schema-definitions.md`). It then calls `from_schema_root`
+through `api/schema.py::build_candidate_from_schemas`:
 
 1. When the file gives a kind of the branch schema an ID that the branch schema does not hold, it
    raises `SchemaNotFoundError` before any operation is built. Laying that file over the branch
-   schema would replace the kind whole, which no operation states.
+   schema would replace the kind whole, which no operation states. A load or a check does not
+   reach this error, because the resolver has already removed or refused such an ID; it guards the
+   other callers of `from_schema_root`.
 2. When the file renames a kind and states a kind without an ID under the old name of that kind,
    it raises `SchemaNameReusedError` (HTTP 422) before any operation is built. Laying the file over
    the branch schema (`SchemaBranch.load_schema`) and saving the schema

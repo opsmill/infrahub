@@ -265,9 +265,8 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         The logic is the same for both, except that the functions we are using to access these objects are differents.
 
-        To map elements from the local and other objects together, we are using a combinasion of ID and name
-        If the same id is present on both we'll use the ID to match the elements on both side
-        If the id is not present on either side, we'll try to match with the name
+        Elements that share an ID on both sides are matched by ID.
+        All other elements are matched by name, also when the two sides carry different IDs.
 
         """
         # Build a mapping between name and id for all element as well as the reverse mapping to make it easy to access the data
