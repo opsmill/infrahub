@@ -50,7 +50,7 @@ export const SearchNodes = () => {
 
   const rows = data?.matchingObjects ?? [];
 
-  if (query === "") return null;
+  if (query.trim() === "") return null;
 
   if (isPending) {
     return (

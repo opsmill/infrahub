@@ -180,3 +180,20 @@ class TestSearchAnywhere:
         await expect(dialog).to_contain_text("Could not load more results")
         await expect(results).to_have_count(SEARCH_FIRST_BATCH)
         await expect(parent_prefixes).to_be_visible()
+
+    async def test_a_search_of_only_spaces_lists_no_objects(
+        self, page: Page, branch_with_matching_tags: tuple[str, str]
+    ) -> None:
+        branch, search = branch_with_matching_tags
+        # GIVEN
+        await page.goto(f"/?branch={branch}")
+        await page.get_by_test_id("search-anywhere-trigger").click()
+        await page.get_by_test_id("search-anywhere-input").fill(search)
+        objects = page.get_by_test_id("search-anywhere").get_by_role("group", name=re.compile(r"^Objects"))
+        await expect(objects).to_be_visible()
+
+        # WHEN
+        await page.get_by_test_id("search-anywhere-input").fill("   ")
+
+        # THEN
+        await expect(objects).to_have_count(0)
