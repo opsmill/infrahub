@@ -1,0 +1,23 @@
+backend/infrahub/graphql/queries/ipam.py
+  s_92ce1f25dbe045::t_3d86732a482af8 54
+backend/infrahub/core/node/resource_manager/ip_address_pool.py
+  s_92ce1f25dbe045::t_3d86732a482af8 143,153
+backend/infrahub/core/node/resource_manager/ip_prefix_pool.py
+  s_92ce1f25dbe045::t_3d86732a482af8 153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7e7e0178d57ce3e12fd56b8c63528af46ab366c7",
+  "prompts": {},
+  "sessions": {
+    "s_92ce1f25dbe045": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4d35956-d350-4d16-acf4-30ed14df1414",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

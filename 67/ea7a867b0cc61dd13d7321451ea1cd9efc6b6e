@@ -1,0 +1,22 @@
+backend/infrahub/database/__init__.py
+  s_92ce1f25dbe045::t_0aa18258bb002c 313-317
+backend/tests/component/database/test_transaction_holds.py
+  s_92ce1f25dbe045::t_495c0e686768bd 97-100
+  s_92ce1f25dbe045::t_0aa18258bb002c 101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "67ea7a867b0cc61dd13d7321451ea1cd9efc6b6e",
+  "prompts": {},
+  "sessions": {
+    "s_92ce1f25dbe045": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4d35956-d350-4d16-acf4-30ed14df1414",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

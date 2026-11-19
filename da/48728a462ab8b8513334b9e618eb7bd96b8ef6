@@ -1,0 +1,24 @@
+backend/infrahub/core/migrations/schema/attribute_kind_update.py
+  s_df41172c2bb3fa::t_ede99f2437c624 31
+  s_df41172c2bb3fa::t_c5023fcc56da33 30,32-42
+changelog/+attribute-kind-update-branch-objects.fixed.md
+  s_df41172c2bb3fa::t_f93031acb2c865 1
+backend/tests/component/core/migrations/schema/test_migration_selection_count.py
+  s_df41172c2bb3fa::t_835613cf865a43 424
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "da48728a462ab8b8513334b9e618eb7bd96b8ef6",
+  "prompts": {},
+  "sessions": {
+    "s_df41172c2bb3fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0dc08ef8-dcfe-4680-813b-8e1b8eb38c5b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

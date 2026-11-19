@@ -1,0 +1,19 @@
+dev/guides/frontend/writing-component-tests.md
+  s_92ce1f25dbe045::t_a77dcca5b182c0 119-121,124-126,134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "460636d99d55016cd70a6dea8e5e174c0aafc718",
+  "prompts": {},
+  "sessions": {
+    "s_92ce1f25dbe045": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4d35956-d350-4d16-acf4-30ed14df1414",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+.agents/rules/testing-python.md
+  s_92ce1f25dbe045::t_a4692b768541d0 74
+dev/guidelines/backend/testing.md
+  s_92ce1f25dbe045::t_a4692b768541d0 66-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a248f5e4b2b1df9be56d2e4cbe0435e9dcd0a75b",
+  "prompts": {},
+  "sessions": {
+    "s_92ce1f25dbe045": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4d35956-d350-4d16-acf4-30ed14df1414",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

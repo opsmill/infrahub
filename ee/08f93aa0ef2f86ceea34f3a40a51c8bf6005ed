@@ -1,0 +1,20 @@
+dev/knowledge/backend/merge-schema-checks.md
+  s_c635c0ab719820::t_444d98bd5f0971 41-44
+  s_c635c0ab719820::t_e7c2d5e62b2ba7 56-58,61-68,71-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ee08f93aa0ef2f86ceea34f3a40a51c8bf6005ed",
+  "prompts": {},
+  "sessions": {
+    "s_c635c0ab719820": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9dc6648c-b1f2-4d6d-9231-bda66faa77f5",
+        "model": "unknown"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

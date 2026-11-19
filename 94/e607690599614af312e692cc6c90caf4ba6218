@@ -1,0 +1,20 @@
+backend/tests/integration/schema_lifecycle/test_schema_migration_branch.py
+  s_df41172c2bb3fa::t_6255613d5a016a 8,22,59-86,95,131,208,212-213,227-231,266,270-271,292,645-671
+  s_df41172c2bb3fa::t_349e2139823977 299
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "94e607690599614af312e692cc6c90caf4ba6218",
+  "prompts": {},
+  "sessions": {
+    "s_df41172c2bb3fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0dc08ef8-dcfe-4680-813b-8e1b8eb38c5b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

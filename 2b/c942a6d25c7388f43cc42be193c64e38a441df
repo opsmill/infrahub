@@ -1,0 +1,31 @@
+backend/tests/component/core/integrity/test_conflict_recorder.py
+  s_92ce1f25dbe045::t_21fa3ccaa1fb58 112-161
+dev/knowledge/backend/merge-schema-checks.md
+  s_92ce1f25dbe045::t_c7c33c6519007a 77-79
+  s_92ce1f25dbe045::t_48d45d79202cb9 76
+backend/tests/component/message_bus/operations/requests/test_proposed_change.py
+  s_92ce1f25dbe045::t_4d94fc888c67ff 12,16,19,27,254-299
+  s_92ce1f25dbe045::t_4d99252d732600 300-301
+backend/infrahub/core/integrity/object_conflict/conflict_recorder.py
+  s_92ce1f25dbe045::t_3d0c63e769003d 103-118,124,127,129
+backend/infrahub/proposed_change/tasks.py
+  s_92ce1f25dbe045::t_60d06ecda39379 623-624
+changelog/+schema-integrity-merge-failure-during-check.fixed.md
+  s_92ce1f25dbe045::t_becbf9cb4101d0 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2bc942a6d25c7388f43cc42be193c64e38a441df",
+  "prompts": {},
+  "sessions": {
+    "s_92ce1f25dbe045": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4d35956-d350-4d16-acf4-30ed14df1414",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

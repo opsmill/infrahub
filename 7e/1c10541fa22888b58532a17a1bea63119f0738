@@ -1,0 +1,20 @@
+backend/tests/component/core/migrations/schema/test_migration_second_run.py
+  s_df41172c2bb3fa::t_fc9039f1714d9a 975-976,978-994,996-1012
+  s_df41172c2bb3fa::t_6e0ba4aed0a710 977,995
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7e1c10541fa22888b58532a17a1bea63119f0738",
+  "prompts": {},
+  "sessions": {
+    "s_df41172c2bb3fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0dc08ef8-dcfe-4680-813b-8e1b8eb38c5b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
