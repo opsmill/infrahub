@@ -5,7 +5,6 @@ from prefect import flow
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 
-from infrahub import lock
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core.constants.schema import DISPLAY_LABEL_ATTRIBUTE_NAME
 from infrahub.core.recompute.bulk_write import AttributeValueWrite
@@ -21,7 +20,7 @@ from infrahub.events.limits import get_submission_chunk_size
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.placeholder_carry_over import carry_over_placeholder_fingerprints
-from infrahub.trigger.setup import setup_triggers
+from infrahub.trigger.setup import setup_triggers, trigger_configuration_lock
 from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
 from infrahub.workflows.catalogue import DISPLAY_LABELS_PROCESS_JINJA2, TRIGGER_UPDATE_DISPLAY_LABELS
 from infrahub.workflows.constants import WorkflowTag
@@ -122,11 +121,7 @@ async def display_labels_setup_jinja2(
             workflow=get_workflow(),
             recompute_workflow=TRIGGER_UPDATE_DISPLAY_LABELS,
         )
-        async with lock.registry.get(
-            name=f"configure-action-rules-{TriggerType.DISPLAY_LABEL_JINJA2.value}",
-            namespace="trigger-rules",
-            local=False,
-        ):
+        async with trigger_configuration_lock(trigger_type=TriggerType.DISPLAY_LABEL_JINJA2):
             triggers = await gather_trigger_display_labels_jinja2()
             async with get_prefect_client(sync_client=False) as prefect_client:
                 report: TriggerSetupReport = await setup_triggers(

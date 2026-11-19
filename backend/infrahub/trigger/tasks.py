@@ -17,7 +17,7 @@ from infrahub.webhook.gather import gather_trigger_webhook
 from infrahub.workers.dependencies import get_database
 
 from .placeholder_carry_over import carry_over_placeholder_fingerprints
-from .setup import setup_triggers
+from .setup import setup_triggers, template_fingerprint_locks
 
 
 @flow(name="trigger-configure-all", flow_run_name="Configure all triggers")
@@ -47,11 +47,12 @@ async def trigger_configure_all() -> None:
             + action_rules
         )
 
-        async with get_client(sync_client=False) as prefect_client:
-            report = await setup_triggers(client=prefect_client, triggers=triggers, force_update=True)
+        async with template_fingerprint_locks():
+            async with get_client(sync_client=False) as prefect_client:
+                report = await setup_triggers(client=prefect_client, triggers=triggers, force_update=True)
 
-        await carry_over_placeholder_fingerprints(
-            deleted=report.deleted,
-            schemas=[collect_schema_fingerprints(family=family) for family in TemplateFamily],
-            repository=repository,
-        )
+            await carry_over_placeholder_fingerprints(
+                deleted=report.deleted,
+                schemas=[collect_schema_fingerprints(family=family) for family in TemplateFamily],
+                repository=repository,
+            )

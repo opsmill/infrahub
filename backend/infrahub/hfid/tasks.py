@@ -4,7 +4,6 @@ from prefect import flow
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 
-from infrahub import lock
 from infrahub.core.constants.schema import HFID_ATTRIBUTE_NAME
 from infrahub.core.recompute.bulk_write import AttributeValueWrite
 from infrahub.core.recompute.dispatch import build_bulk_recompute_dispatcher
@@ -18,7 +17,7 @@ from infrahub.events.limits import get_submission_chunk_size
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.placeholder_carry_over import carry_over_placeholder_fingerprints
-from infrahub.trigger.setup import setup_triggers
+from infrahub.trigger.setup import setup_triggers, trigger_configuration_lock
 from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
 from infrahub.workflows.catalogue import HFID_PROCESS, TRIGGER_UPDATE_HFID
 from infrahub.workflows.constants import WorkflowTag
@@ -108,9 +107,7 @@ async def hfid_setup(context: EventContext, branch_name: str | None = None, even
             workflow=get_workflow(),
             recompute_workflow=TRIGGER_UPDATE_HFID,
         )
-        async with lock.registry.get(
-            name=f"configure-action-rules-{TriggerType.HUMAN_FRIENDLY_ID.value}", namespace="trigger-rules", local=False
-        ):
+        async with trigger_configuration_lock(trigger_type=TriggerType.HUMAN_FRIENDLY_ID):
             triggers = await gather_trigger_hfid()
             async with get_prefect_client(sync_client=False) as prefect_client:
                 report: TriggerSetupReport = await setup_triggers(

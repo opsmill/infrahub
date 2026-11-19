@@ -11,6 +11,7 @@ from prefect.exceptions import ObjectNotFound
 
 from infrahub import config, lock
 from infrahub.exceptions import WorkflowOrchestrationError
+from infrahub.trigger.setup import template_fingerprint_locks
 from infrahub.workers.submission import SUBMISSION_WINDOW_CAPACITY
 from infrahub.workers.utils import inject_context_parameter
 from infrahub.workflows.initialization import (
@@ -62,9 +63,10 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
     ) -> None:
         if is_initial_setup:
             await WorkflowWorkerExecution._setup_task_manager()
-            await setup_task_manager_identifiers()
-            async with database.start_session() as db:
-                await seed_template_fingerprints(db=db)
+            async with template_fingerprint_locks():
+                await setup_task_manager_identifiers()
+                async with database.start_session() as db:
+                    await seed_template_fingerprints(db=db)
         elif component_is_primary_server:
             await WorkflowWorkerExecution._setup_task_manager()
 

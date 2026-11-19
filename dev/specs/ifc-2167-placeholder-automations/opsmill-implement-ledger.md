@@ -222,3 +222,21 @@ Decisions worth flagging:
 Lint and format: no source or test code changed in this pass; not run.
 
 No new or modified tests in this chunk.
+
+## Review
+
+Review mode: command (/code-review)
+Why not a full review: n/a
+
+The `pr-review-toolkit` agents were not among the available subagent types, so the review ran with `/code-review medium 0d36b64bd9b8b031cf8fe84b613fb8d905a811ba..HEAD`. The command rates findings as important, pre-existing or nit. The table maps them to high, medium and low after checking each one against the code and the design documents.
+
+| Severity | File | Line | Summary | Fixed or deferred |
+|----------|------|------|---------|-------------------|
+| high | backend/infrahub/trigger/tasks.py | 52 | `trigger_configure_all` (run by `infrahub upgrade`) and the initial-setup seed wrote fingerprint records without the per-family configuration lock, which research Decision 3 relies on to keep `MERGE` on `(family, branch, kind)` unique. A setup flow running during the upgrade could find neither a placeholder nor a record and recompute every kind, or two writers could create duplicate records. | Fixed: new `template_fingerprint_locks()` in `trigger/setup.py` holds both family locks in a fixed order around the trigger setup and carry-over in `trigger_configure_all`, and around the identifier setup and seed in the worker's initial setup. No uniqueness constraint added, per research Decision 3. |
+| medium | backend/infrahub/core/template_fingerprint/decision.py | 26 | Deletions cover every branch, based on this worker's branch registry, but only the event branch's schema is waited on. A worker whose registry still holds an old schema for another branch can delete that branch's records (and the carry-over can drop its placeholder fingerprint). The result is an extra recompute at that branch's next schema update, never a missed one, so FR-007 still holds. Possible fix: limit deletions to the event branch and to branches whose `Branch` vertex no longer exists. | Deferred. Rated medium instead of the reviewer's "important" because the failure only adds recomputes. |
+| medium | backend/infrahub/core/template_fingerprint/refresher.py | 55 | The fingerprint is recorded when the recompute is submitted, not when it succeeds, so a recompute flow that fails is not retried by later schema updates. This is the behavior FR-006 asks for; the reviewer tagged it as pre-existing. | Deferred |
+| low | backend/infrahub/display_labels/tasks.py | 124 | The configuration lock name was spelled out in three places (display labels, HFID, `setup_triggers_specific`). | Fixed as part of the high-severity fix: all three now call `trigger_configuration_lock()` in `trigger/setup.py`. |
+| low | backend/t031.log | 1 | A local pytest run log with absolute paths and a failing-test output was committed in fc5c900bcc. Delete it before opening the PR. | Deferred |
+| low | backend/tests/component/core/template_fingerprint/tmp_explain_check.py | 1 | An empty scratch module left from the T038 query-plan check was committed. Delete it before opening the PR. | Deferred |
+
+Checks after the fix: `ruff format`, `ruff check`, `mypy` and `ty check` pass on the edited modules. The display label and HFID setup tests, the carry-over tests (unit and component), the seed test and the fingerprint unit tests ran with `78 passed, 17 warnings in 623.05s`. No test asserts that `trigger_configure_all` or the seed hold the lock.
