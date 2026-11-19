@@ -33,16 +33,15 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
   timestamps), and the global branch, where an edge matches only when its timestamp is *exactly* one
   of them. A global edge stamped at one of the operation's timestamps was written by this operation,
   but any other global timestamp came from an unrelated write on some other branch and has to
-  survive — the global branch is written by every branch, so a range there would over-revert. Each pass runs as its own
-  statement — chaining them into one statement stacks planner Eager buffers and can exhaust the
-  database's transaction memory pool on large rollbacks — and each is a single label-less pass over
-  those branches' edges: the `from`/`to` range predicates cannot use the per-type relationship
-  indexes, so type-scoped statements would only multiply the full passes. Each pass also cleans up
-  after its own edges — deleting newly orphaned vertices in the same batch as the edge deletions
-  that orphaned them, and restoring
-  `previous_updated_at`/`previous_updated_by` no later than the edge reversal it belongs to (the
-  delete pass restores in a transactional block that commits entirely before the first edge
-  deletion). That ordering is what makes an interrupted rollback resumable: cleanup driven by ids
+  survive — the global branch is written by every branch, so a range there would over-revert. Each
+  pass runs as its own statement — chaining them into one statement stacks planner Eager buffers and
+  can exhaust the database's transaction memory pool on large rollbacks — and each is a single
+  label-less pass over those branches' edges: the `from`/`to` range predicates cannot use the
+  per-type relationship indexes, so type-scoped statements would only multiply the full passes. Each
+  pass also cleans up after its own edges — deleting newly orphaned vertices in the same batch as the
+  edge deletions that orphaned them, and restoring `previous_updated_at`/`previous_updated_by` no
+  later than the edge reversal it belongs to (the delete pass restores in a transactional block that
+  commits entirely before the first edge deletion). That ordering is what makes an interrupted rollback resumable: cleanup driven by ids
   collected in the recovering process would be lost with it, leaving orphans and stale metadata
   that a re-run could no longer find (the already reversed edges no longer match the window).
 
@@ -65,8 +64,9 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
    status, which is reloaded at startup — so protection survives a restart or cache flush.
 
 3. **Every merge-window write is stamped with one of the merge's step timestamps, and lands on the
-   target branch or the global branch.** The merge passes one timestamp today. The bulk graph-merge queries write only to `branch = $target_branch` and stamp every
-   edge with the same merge timestamp `$at`. What writes outside the target branch is
+   target branch or the global branch.** The merge passes one timestamp today. The bulk graph-merge
+   queries write only to `branch = $target_branch` and stamp every edge with the same merge
+   timestamp `$at`. What writes outside the target branch is
    branch-agnostic retirement, which closes global-branch edges — also at the merge `$at`. It
    reaches the window two ways: the merge's own re-evaluation for the nodes whose deletion it
    carried over (`DiffMerger._retire_agnostic_fields_of_deleted_nodes`), and any agnostic-field
@@ -88,8 +88,8 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
    the whole window, and not varying with the scope. A vertex stamped without a snapshot was new to
    the branch, so restoring its NULL snapshot correctly resets its metadata to unset. The exact
    match is also what keeps the restore idempotent: a restored vertex no longer carries one of the
-   timestamps, so a later pass or a re-run cannot null what an earlier one put back. The diff-merge write path co-writes those
-   `previous_*` fields (`core/diff/query/merge.py`,
+   timestamps, so a later pass or a re-run cannot null what an earlier one put back. The diff-merge
+   write path co-writes those `previous_*` fields (`core/diff/query/merge.py`,
    `DiffMergeMetadataQuery`), and the schema-migration queries that bump vertex metadata do the
    same (e.g. `core/migrations/schema/attribute_kind_update.py`,
    `core/migrations/query/attribute_add.py`, `node_duplicate.py`, `node_remove.py`).
@@ -100,7 +100,9 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
    `at` (`MigrationSelectionQuery.operation_ats_param`). A vertex changed by several steps therefore
    keeps the value from before the operation, not the one a step before it wrote. This is what
    lets the metadata restore cover both merge-diff and migration collateral without enumerating
-   which step touched which node.
+   which step touched which node. The number pool writers that a NumberPool attribute-add migration
+   runs after its queries (`core/query/resource_manager.py`) stamp with only their own `at`, not
+   `MigrationInput.operation_ats`.
 
 6. **Repository (git) merges are out of scope.** They are not graph edges on the target branch, so the
    range rollback does not reverse them. Recovery restores the graph and node metadata only.
@@ -118,11 +120,13 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
   mutating default-branch graph state — recovery would leave it partially applied.
 - A step stamps vertex metadata at a merge timestamp without receiving the earlier steps'
   timestamps in `operation_ats` — the vertex saves the earlier step's stamp as its previous value.
-  When the rollback is given both timestamps, the restore matches the vertex again after it
-  restored the earlier step's stamp (in the other pass, or in a later batch of the same pass), and
-  the metadata ends up unset. When only one pass restores it, it ends up with the earlier step's
-  stamp. Neither is the value from before the operation. The schema migration flow above
-  `MigrationInput` does not pass `operation_ats`, so its migrations see only their own `at`.
+  When the rollback is given both timestamps, each edge row runs its own restore, so the restore
+  matches the vertex again after it restored the earlier step's stamp. That repeat comes from
+  another edge of the same vertex, in the same batch or a later one, or from the other pass. The
+  metadata ends up unset when more than one edge reversal reaches the vertex, and with the earlier
+  step's stamp when only one does. Neither is the value from before the operation.
+  `core/migrations/schema/tasks.py` builds `MigrationInput` without `operation_ats`, so its
+  migrations see only their own `at`.
 - A merge-window writer bumps vertex `updated_at`/`updated_by` to the merge `$at` without
   co-writing `previous_*` — the restore still fires on those vertices and writes whatever
   `previous_*` holds (unset, or a leftover snapshot from an older operation), silently corrupting
