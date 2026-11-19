@@ -512,7 +512,8 @@ CALL (n, h) {
         self.params.update(
             {
                 "node_id": self.node_id,
-                "owner_ids": self.owner_ids or [],
+                # A repeated owner would get two active edges, and a later write closes only one of them.
+                "owner_ids": sorted(set(self.owner_ids or [])),
                 "no_owner": self.owner_ids == [],
                 "has_state": self.owner_ids is not None,
                 "template_id": self.template_id,
