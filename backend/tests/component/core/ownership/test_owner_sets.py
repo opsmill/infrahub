@@ -245,3 +245,37 @@ RETURN count(r) AS open_edges
     )
     assert records[0]["open_edges"] == 0
     await verify_graph(db=db, kinds=["TestPerson"])
+
+
+@pytest.mark.parametrize("on_branch", [False, True], ids=["default-branch", "branch"])
+async def test_owner_writes_of_two_attributes_and_node_delete_in_open_transactions_do_not_deadlock(
+    db: InfrahubDatabase, default_branch: Branch, person: Node, group_ids: list[str], on_branch: bool
+) -> None:
+    branch = await create_branch(db=db, branch_name="two-writes-and-delete") if on_branch else default_branch
+    first_is_written = asyncio.Event()
+
+    async def write_owners() -> None:
+        async with db.start_session() as session_db, session_db.start_transaction() as dbt:
+            for field_name in ("height", "name"):
+                await _write(
+                    db=dbt,
+                    branch=branch,
+                    node_id=person.id,
+                    holder=_holder(default_branch=default_branch, field_name=field_name),
+                    owner_ids=group_ids[:1],
+                )
+                first_is_written.set()
+                # The delete starts while this transaction holds the node and has not written the next attribute.
+                await asyncio.sleep(SECONDS_BEFORE_FIRST_COMMIT)
+
+    async def delete_node() -> None:
+        await first_is_written.wait()
+        async with db.start_session() as session_db, session_db.start_transaction() as dbt:
+            node = await NodeManager.get_one(db=dbt, branch=branch, id=person.id, raise_on_error=True)
+            await node.delete(db=dbt)
+
+    # Both writes run to their end, so a failed one leaves no open transaction for the next test.
+    results = await asyncio.gather(write_owners(), delete_node(), return_exceptions=True)
+
+    assert results == [None, None]
+    await verify_graph(db=db, kinds=["TestPerson"])

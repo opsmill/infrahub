@@ -94,9 +94,16 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
   path: a merge, a node create, an object conversion. `NodeSourcesWriteQuery` and `NodeOwnerEdgesCloseQuery` take
   the lock too.
   The attribute rename migration, the only other code that creates a set, takes the same lock.
-  The close query needs its own lock: `NodeDeleteQuery` locks the node on the default and the global branch with
-  `SET n.updated_at`, but not on another branch, where it only creates an edge, and the creation of an edge does
-  not wait for the lock of another transaction on the node.
+- Lock order: a write of owners locks the node vertex first, and then an attribute vertex or a set vertex. So
+  `Node.delete` takes the lock on the node vertex (`NodeLockQuery`) before it deletes the attributes, on every
+  branch. Without this lock, a delete and a transaction that writes the owners of two attributes fail:
+  - On the default branch, the delete of an attribute locks the attribute vertex first, and then the node vertex.
+    The two transactions deadlock, and Neo4j stops one of them with
+    `Neo.TransientError.Transaction.DeadlockDetected`.
+  - On another branch, the delete does not wait for the write, and an active owner edge stays on a deleted
+    attribute.
+- When the caller gives no time, `Node.delete` reads its time after the lock, so it also closes the owner edges
+  that a write commits while the delete waits for the lock.
 - The check that the node is active comes after the lock, so it reads a delete of the node that another
   transaction commits while the query waits for the lock. The query then writes nothing and raises `QueryError`,
   for every kind of holder.
