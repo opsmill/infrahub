@@ -67,7 +67,7 @@ export const SearchNodes = () => {
   return (
     <SearchAnywhereGroup
       heading={<SearchNodesHeading count={rows.length} hasMore={hasNextPage} />}
-      className="shrink"
+      className="min-h-26 shrink"
     >
       {rows.map((node) => (
         <NodesOptions key={node.id} node={node} />
