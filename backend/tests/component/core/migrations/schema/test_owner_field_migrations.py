@@ -48,7 +48,7 @@ Holders = dict[str, dict[HolderKey, tuple[tuple[str, ...] | None, str | None]]]
 
 COPY_FROM_TEMPLATE = "car-from-template"
 FIELD_GROUPS: dict[str, tuple[bool, str | None, str | None]] = {
-    "car": (False, "dc-emea", "security"),
+    "car": (False, None, None),
     "profile": (True, None, "network-emea"),
     "template": (True, "security", "dc-emea"),
     COPY_FROM_TEMPLATE: (False, "security", "dc-emea"),
@@ -112,6 +112,22 @@ async def _read(db: InfrahubDatabase, branch: Branch, field_owners: FieldOwners)
         name: {holder: (state.owner_ids, state.template_id) for holder, state in stored[node_id].holders.items()}
         for name, node_id in field_owners.node_ids.items()
     }
+
+
+async def _open_edges_of_removed_attributes(db: InfrahubDatabase) -> int:
+    """Count the open owner edges and template marks of the attributes that their node no longer holds."""
+    query = """
+    MATCH ()-[held:HAS_ATTRIBUTE]->(a:Attribute)
+    WITH a, held
+    ORDER BY held.from DESC
+    WITH a, head(collect(held.status)) AS latest_status
+    WHERE latest_status = "deleted"
+    MATCH (a)-[r:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE]->()
+    WHERE r.status = "active" AND r.to IS NULL
+    RETURN count(r) AS total
+    """
+    results = await db.execute_query(query=query)
+    return results[0]["total"]
 
 
 async def _open_edges_of_detached_sets(db: InfrahubDatabase) -> int:
@@ -306,6 +322,7 @@ async def test_owners_of_a_field_follow_a_rename_and_end_with_a_removal(
     assert not result.errors
     assert await _read(db=db, branch=default_branch, field_owners=field_owners) == after
     assert await _open_edges_of_detached_sets(db=db) == 0
+    assert await _open_edges_of_removed_attributes(db=db) == 0
     await verify_graph(db=db)
 
 
@@ -449,6 +466,7 @@ async def test_merge_closes_the_owner_that_the_default_branch_gave_to_an_attribu
     assert await _read(db=db, branch=default_branch, field_owners=field_owners) == field_owners.holders(
         branch=default_branch, attribute=None
     )
+    assert await _open_edges_of_removed_attributes(db=db) == 0
     await verify_graph(db=db)
 
 
