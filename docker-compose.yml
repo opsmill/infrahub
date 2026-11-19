@@ -268,7 +268,7 @@ services:
       NEO4J_AUTH: ${INFRAHUB_DB_USERNAME:-neo4j}/${INFRAHUB_DB_PASSWORD:-admin}
       NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
       NEO4J_dbms_security_auth__minimum__password__length: 4
-      # Turns off the JVM's accelerated Base64 routine, which the Java build in the default image decodes unsafely (CVE-2026-114938); remove it once the image bundles a Java build with the fix.
+      # Mitigates CVE-2026-114938, which affects x86-64 CPUs with AVX-512 VBMI; remove it once the default image bundles a Java build with the fix.
       NEO4J_server_jvm_additional: "-XX:-UseBASE64Intrinsics"
     volumes:
       - "database_data:/data"
