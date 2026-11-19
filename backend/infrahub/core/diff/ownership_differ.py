@@ -59,7 +59,7 @@ class OwnershipDiffer:
     async def get_branch_changes(self, request: OwnerDiffRequest) -> FieldNames:
         """Return the holders whose owners changed on the diff branch, with the field name of each."""
         return await self._get_changes(
-            schema_branch=self.db.schema.get_schema_branch(name=request.diff_branch.name),
+            schema_branches=[self.db.schema.get_schema_branch(name=request.diff_branch.name)],
             branch=request.diff_branch,
             from_time=request.from_time,
             to_time=request.to_time,
@@ -70,7 +70,6 @@ class OwnershipDiffer:
     async def add_owner_changes(
         self, request: OwnerDiffRequest, branch_root: DiffRoot, base_root: DiffRoot, branch_changes: FieldNames
     ) -> None:
-        schema_branch = self.db.schema.get_schema_branch(name=request.diff_branch.name)
         # A rebase moves the edges of the branch to the time that the branch starts from, so the owners that the
         # branch starts with are the owners of the base branch.
         is_full_diff = request.from_time == request.branch_from_time
@@ -97,8 +96,12 @@ class OwnershipDiffer:
         candidate_uuids = sorted(new_fields.keys() | current_fields.keys())
         if not candidate_uuids:
             return
+        # A kind migration on the base branch gives its holders a kind that only the base branch schema has.
         base_changes = await self._get_changes(
-            schema_branch=schema_branch,
+            schema_branches=[
+                self.db.schema.get_schema_branch(name=request.diff_branch.name),
+                self.db.schema.get_schema_branch(name=request.base_branch.name),
+            ],
             branch=request.base_branch,
             from_time=request.branch_from_time,
             to_time=request.to_time,
@@ -123,7 +126,7 @@ class OwnershipDiffer:
 
     async def _get_changes(
         self,
-        schema_branch: SchemaBranch,
+        schema_branches: list[SchemaBranch],
         branch: Branch,
         from_time: Timestamp,
         to_time: Timestamp,
@@ -149,15 +152,16 @@ class OwnershipDiffer:
             )
             await query.execute(db=self.db)
             for change in query.get_changes():
-                if field_name := self._field_name(change=change, schema_branch=schema_branch):
+                if field_name := self._field_name(change=change, schema_branches=schema_branches):
                     changes[change] = field_name
         return changes
 
     @staticmethod
-    def _field_name(change: OwnerHolderChange, schema_branch: SchemaBranch) -> str | None:
+    def _field_name(change: OwnerHolderChange, schema_branches: list[SchemaBranch]) -> str | None:
         if change.holder.kind == HolderKind.ATTRIBUTE:
             return change.holder.attribute
-        if not schema_branch.has(name=change.node_kind):
+        schema_branch = next((schema for schema in schema_branches if schema.has(name=change.node_kind)), None)
+        if schema_branch is None:
             return None
         return stored_holder_field_name(
             holder=change.holder,

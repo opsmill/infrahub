@@ -94,8 +94,9 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
     stays in the list. The object conversion (`store_owner_states`), the copy from an object template
     (`copy_from_template`) and the owner resolution of a merge (`DiffMerger._apply_owner_diff_resolutions`) use
     this rule.
-- The query looks for the `OwnerSet` with the same key on all branches and reuses it. It creates a set only for the
-  first owner or the first "no owner". When the set goes back to inherit, its edges close and the vertex stays.
+- The query looks for the `OwnerSet` with the same key on all branches and on each `Node` vertex of the UUID, and
+  reuses it. So after a kind migration on one branch, the two branches write to the same set. It creates a set only
+  for the first owner or the first "no owner". When the set goes back to inherit, its edges close and the vertex stays.
 - The query compares only the key properties of a set (`owner_set_key_filter`), so another property on the vertex
   does not hide the set.
 - Before the query checks that the node is active, it takes a write lock on the node vertex in the database
@@ -220,6 +221,10 @@ the holders that are not attributes are in `core/ownership/fields.py` (see [Diff
   A kind migration links the old and the new `Node` vertex of a UUID to the same attribute or set. So the query keeps
   the row of the vertex whose `HAS_ATTRIBUTE`, `HAS_OWNER_SET` or `HAS_TARGET_OWNER_SET` link to the holder is the
   latest on the queried branch, and the diff gives one node for each UUID.
+- `OwnershipDiffer` (`core/diff/ownership_differ.py`) takes the field name of a set or of a node holder from the
+  schema of the diff branch. For a change of the base branch, it uses the schema of the base branch when the schema
+  of the diff branch does not have the kind. So after a kind migration on the base branch, different owner changes on
+  both branches still give a conflict.
 - `BulkMergeOwnershipEdgesQuery` (`core/diff/query/bulk_merge.py`) copies the owner edges of the branch as a set for
   each holder, edge type and owner. It writes the edges of a node to the `Node` vertex that is active on the target
   branch, which a kind migration on the target branch replaces. A `deleted` edge of the branch from a `Node` vertex
