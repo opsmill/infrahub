@@ -1,0 +1,40 @@
+dev/specs/ifc-2167-placeholder-automations/opsmill-implement-ledger.md
+  s_9a143cf51cf916::t_2754cb14b271fd 76-111
+dev/specs/ifc-2167-placeholder-automations/tasks.md
+  s_9a143cf51cf916::t_d90cff61352013 135
+  s_9a143cf51cf916::t_84276341c865ae 121
+  s_9a143cf51cf916::t_66c88b791261a7 145
+  s_9a143cf51cf916::t_3de7970f4642dc 137
+  s_9a143cf51cf916::t_d7e7d217526578 131
+  s_9a143cf51cf916::t_33a46c0214540f 146
+  s_9a143cf51cf916::t_0fea2c706bb304 122
+  s_9a143cf51cf916::t_3e04f28c694132 136
+.specify/workflows/runs/5ab86115/log.jsonl
+  s_c084e8bac6e69f::t_d76c2dfe0e7074 77-82
+.specify/workflows/runs/5ab86115/state.json
+  s_c084e8bac6e69f::t_15c19eb07b57bd 8,56,981-1044,1049-1051
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa7f6bfe96d63c1449daf7c1430a9e36269a7041",
+  "prompts": {},
+  "sessions": {
+    "s_9a143cf51cf916": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f0a4cf37-7b9a-4f3c-84ef-58e47b805395",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_c084e8bac6e69f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a62b57c8-0237-436f-98fd-7089eb103a35",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
