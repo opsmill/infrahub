@@ -601,7 +601,7 @@ async def test_query_NodeGetHierarchyQuery_filters(
 
     europe = hierarchical_location_data["europe"]
 
-    ids_to_names = {value.id: value for _, value in hierarchical_location_data.items()}
+    ids_to_names = {value.id: value for value in hierarchical_location_data.values()}
 
     query = await NodeGetHierarchyQuery.init(
         db=db,

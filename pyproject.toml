@@ -608,13 +608,6 @@ allow-dunder-method-names = [
     "PLR0915", # Too many statements
 ]
 
-"backend/infrahub/core/convert_object_type/object_conversion.py" = [
-    ##################################################################################################
-    # Refactor code and remove the ignore rule
-    ##################################################################################################
-    "PERF102", # When using only the values of a dict use the `values()` method
-]
-
 "backend/infrahub/core/query/node.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
@@ -640,15 +633,7 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
-    "PERF102", # When using only the values of a dict use the `values()` method
     "PLR0915", # Too many statements
-]
-
-"backend/infrahub/graphql/mutations/proposed_change.py" = [
-    ##################################################################################################
-    # Refactor code and remove the ignore rule
-    ##################################################################################################
-    "PERF102", # When using only the values of a dict use the `values()` method
 ]
 
 "backend/infrahub/graphql/manager.py" = [
@@ -1030,20 +1015,6 @@ allow-dunder-method-names = [
     # Refactor code and remove the ignore rule
     ##################################################################################################
     "RUF100",  # Unused `noqa` directive
-]
-
-"backend/tests/component/core/convert_object_type/test_convert_object_type.py" = [
-    ##################################################################################################
-    # Refactor code and remove the ignore rule
-    ##################################################################################################
-    "PERF102", # When using only the values of a dict use the `values()` method
-]
-
-"backend/tests/component/core/test_node_query.py" = [
-    ##################################################################################################
-    # Refactor code and remove the ignore rule
-    ##################################################################################################
-    "PERF102", # When using only the values of a dict use the `values()` method
 ]
 
 "backend/tests/component/core/migrations/schema/test_node_attribute_add.py" = [

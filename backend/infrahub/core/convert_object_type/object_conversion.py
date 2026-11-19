@@ -60,7 +60,7 @@ async def build_data_new_node(db: InfrahubDatabase, mapping: dict[str, Conversio
                         data[dest_field_name] = {"id": peer.id}
                     # else, relationship is optional, and if the target relationship is mandatory an error will be raised during creation
                 elif item.schema.cardinality == RelationshipCardinality.MANY:
-                    data[dest_field_name] = [{"id": peer.id} for _, peer in (await item.get_peers(db=db)).items()]
+                    data[dest_field_name] = [{"id": peer.id} for peer in (await item.get_peers(db=db)).values()]
                 else:
                     assert_never(item.schema.cardinality)
         elif conv_field_input.data is not None:
