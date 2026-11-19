@@ -408,6 +408,27 @@ class TestVerifyGraph:
 
         assert await collect_graph_violations(db=db, kinds=case.excluded_kinds) == []
 
+    @pytest.mark.parametrize(
+        "damage",
+        [
+            pytest.param("MATCH (n:NoOwner) DELETE n", id="missing"),
+            pytest.param('CREATE (:NoOwner {uuid: "no-owner"})', id="duplicate"),
+        ],
+    )
+    async def test_graph_without_exactly_one_no_owner_vertex_is_reported(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        car_person_schema: SchemaBranch,
+        car_accord_main: Node,
+        damage: str,
+    ) -> None:
+        await db.execute_query(query=damage)
+
+        unfiltered = await collect_graph_violations(db=db)
+        assert [violation.check for violation in unfiltered] == [GraphCheck.NO_OWNER_VERTEX]
+        assert await collect_graph_violations(db=db, kinds=["TestCar"]) == []
+
     async def test_empty_kind_filter_behaves_like_no_filter(
         self,
         db: InfrahubDatabase,
