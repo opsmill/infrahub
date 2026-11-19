@@ -50,6 +50,7 @@ from tests.helpers.ownership import (
 
 from ..get_one_node import get_one_diff_node
 from ._ownership import (
+    OWNER_EDGE_TYPES,
     PROFILE_DEVICE_NAME,
     SET_EDGE_TYPES,
     count_active_holder_edges,
@@ -74,6 +75,8 @@ if TYPE_CHECKING:
 
 Names = tuple[str, ...] | None
 """Group names. None is inherit, an empty tuple is "no owner"."""
+
+ALL_EDGE_TYPES = (*OWNER_EDGE_TYPES, *SET_EDGE_TYPES)
 
 Changelog = tuple[str, Any, Any]
 """The name of the changed field or property, its previous value and its new value."""
@@ -891,6 +894,10 @@ async def test_node_deleted_on_the_default_branch_conflicts_with_an_owner_change
     await merge(db=db, branch=branch)
 
     assert await NodeManager.get_one(db=db, branch=default_branch, id=node_id) is None
+    assert (
+        await count_active_holder_edges(db=db, branch=default_branch, node_id=node_id, edge_types=ALL_EDGE_TYPES) == 0
+    )
+    await verify_graph(db=db)
 
 
 @pytest.mark.parametrize("holder", _params([ATTRIBUTE, NODE, RELATIONSHIP_ONE, SOURCES]))
@@ -919,3 +926,7 @@ async def test_merge_skips_the_owner_resolution_of_a_node_deleted_after_the_diff
     assert [(log["node_id"], log["holder"]) for log in logs if log["log_level"] == "warning"] == [
         (node_id, holder.holder)
     ]
+    assert (
+        await count_active_holder_edges(db=db, branch=default_branch, node_id=node_id, edge_types=ALL_EDGE_TYPES) == 0
+    )
+    await verify_graph(db=db)
