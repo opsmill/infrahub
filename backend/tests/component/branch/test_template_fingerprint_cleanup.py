@@ -25,9 +25,7 @@ class TestTemplateFingerprintCleanup(TemplateSetupTestBase):
     def diverging_schema() -> SchemaRoot:
         return schema_variant(owner_display_label="{{ name__value }} ({{ code__value }})")
 
-    async def create_recorded_branch(
-        self, db: InfrahubDatabase, admin_account: CoreAccount, branch_name: str
-    ) -> None:
+    async def create_recorded_branch(self, db: InfrahubDatabase, admin_account: CoreAccount, branch_name: str) -> None:
         await self.create_branch_with_schema(db=db, branch_name=branch_name, schema=self.diverging_schema())
         await display_labels_setup_jinja2(context=self.context(admin_account, branch_name), branch_name=branch_name)
 

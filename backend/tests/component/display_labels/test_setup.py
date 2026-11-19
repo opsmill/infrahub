@@ -13,11 +13,21 @@ from infrahub.trigger.constants import TRIGGER_PLACEHOLDER_FIELD
 from infrahub.trigger.models import TriggerType
 from infrahub.trigger.setup import setup_triggers
 from infrahub.workflows.catalogue import TRIGGER_UPDATE_DISPLAY_LABELS
-from tests.helpers.template_fingerprint import DEVICE, OWNER, TemplateSetupScenarios, schema_variant
+from tests.helpers.schema import load_schema
+from tests.helpers.template_fingerprint import (
+    DEVICE,
+    FINGERPRINT_SCHEMA,
+    OWNER,
+    TemplateSetupScenarios,
+    schema_variant,
+)
 
 if TYPE_CHECKING:
+    from infrahub.core.protocols import CoreAccount
     from infrahub.core.schema import SchemaRoot
+    from infrahub.database import InfrahubDatabase
     from infrahub.events.models import EventContext
+    from tests.adapters.workflow import WorkflowRecorder
 
 
 class TestDisplayLabelSetup(TemplateSetupScenarios):
@@ -50,3 +60,25 @@ class TestDisplayLabelSetup(TemplateSetupScenarios):
                 triggers=[*peer_triggers, placeholder],
                 trigger_type=TriggerType.DISPLAY_LABEL_JINJA2,
             )
+
+    async def test_branch_that_stops_owning_its_schema_loses_its_records(
+        self, db: InfrahubDatabase, workflow_recorder: WorkflowRecorder, admin_account: CoreAccount
+    ) -> None:
+        branch_name = f"{self.BRANCH_PREFIX}-realigned"
+        await self.create_branch_with_schema(db=db, branch_name=branch_name, schema=self.changed_schema())
+        await self.run_setup(context=self.context(admin_account, branch_name), branch_name=branch_name)
+        assert (branch_name, OWNER) in await self.recorded(db=db, family=self.FAMILY)
+
+        await load_schema(db=db, schema=FINGERPRINT_SCHEMA, branch_name=branch_name, update_db=True)
+        assert branch_name not in registry.get_altered_schema_branches()
+        other_branch_records = {
+            key: value
+            for key, value in (await self.recorded(db=db, family=self.FAMILY)).items()
+            if key[0] != branch_name
+        }
+        workflow_recorder.reset()
+
+        await self.run_setup(context=self.context(admin_account, branch_name), branch_name=branch_name)
+
+        assert self.submitted(workflow_recorder, self.WORKFLOW) == []
+        assert await self.recorded(db=db, family=self.FAMILY) == other_branch_records

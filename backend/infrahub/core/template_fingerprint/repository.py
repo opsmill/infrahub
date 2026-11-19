@@ -69,4 +69,3 @@ class TemplateFingerprintRepository:
             return
         query = TemplateFingerprintDeleteQuery(keys=[_key_params(key) for key in keys])
         await query.execute(db=self.db)
-

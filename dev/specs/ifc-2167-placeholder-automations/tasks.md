@@ -189,15 +189,15 @@ description: "Task list for recording template fingerprints in the database inst
 
 ### Tests for User Story 4
 
-- [ ] T030 [P] [US4] Write `backend/tests/component/branch/test_template_fingerprint_cleanup.py`:
+- [X] T030 [P] [US4] Write `backend/tests/component/branch/test_template_fingerprint_cleanup.py`:
   - `BranchDataDeleter.delete` removes every record of the branch and none of other branches (User Story 4 scenario 1, SC-004);
   - a setup flow whose worker registry still holds the deleted branch writes no record for it (spec Edge Cases);
   - a new branch with the same name and the same diverging template gets one display label submission from `display_labels_setup_jinja2` (scenario 2).
-- [ ] T031 [P] [US4] Add to `backend/tests/component/display_labels/test_setup.py` a case where a branch stops owning its schema (its schema becomes equal to the default branch schema): the next setup run deletes the branch's records and submits nothing for it (User Story 4 scenario 3)
+- [X] T031 [P] [US4] Add to `backend/tests/component/display_labels/test_setup.py` a case where a branch stops owning its schema (its schema becomes equal to the default branch schema): the next setup run deletes the branch's records and submits nothing for it (User Story 4 scenario 3)
 
 ### Implementation for User Story 4
 
-- [ ] T032 [US4] In `backend/infrahub/core/branch/data_deleter.py::BranchDataDeleter.delete_branch_data`, delete the branch's records before the edges, so a resumed delete also removes them. `BranchDataDeleter(` appears 31 times in `backend/infrahub` and `backend/tests`, and the class already runs its own Query classes, so run the delete-branch Query class from T007 directly, as it does for its other queries, instead of adding a constructor parameter. Then update `contracts/fingerprint-store.md` (repository table and "Callers that write") so it states that `BranchDataDeleter` runs the query, and remove `delete_branch` from the repository and its test if nothing else calls it. Make T030 pass (depends on T007, T022)
+- [X] T032 [US4] In `backend/infrahub/core/branch/data_deleter.py::BranchDataDeleter.delete_branch_data`, delete the branch's records before the edges, so a resumed delete also removes them. `BranchDataDeleter(` appears 31 times in `backend/infrahub` and `backend/tests`, and the class already runs its own Query classes, so run the delete-branch Query class from T007 directly, as it does for its other queries, instead of adding a constructor parameter. Then update `contracts/fingerprint-store.md` (repository table and "Callers that write") so it states that `BranchDataDeleter` runs the query, and remove `delete_branch` from the repository and its test if nothing else calls it. Make T030 pass (depends on T007, T022)
 
 **Checkpoint**: `uv run pytest backend/tests/component/branch/ backend/tests/component/display_labels/` passes.
 

@@ -12,9 +12,10 @@ Internal contract. Nothing here is exposed through GraphQL, REST or the web inte
 | `upsert(records: list[RecordedFingerprint]) -> None` | `UNWIND $records AS r MATCH (:Branch {name: r.branch}) MERGE (f:TemplateFingerprint {family: r.family, branch: r.branch, kind: r.kind}) ON CREATE SET f.uuid = r.uuid SET f.fingerprint = r.fingerprint` | One query for all records. No-op on an empty list. A record whose branch has no `Branch` vertex is not written (research Decision 10) |
 | `insert_missing(records: list[RecordedFingerprint]) -> int` | Same `MATCH` on `Branch` and `MERGE`, with `ON CREATE SET f.uuid = r.uuid, f.fingerprint = r.fingerprint` only | Used by the carry-over and the first-start seed; never overwrites. Returns the number created |
 | `delete(keys: list[FingerprintKey]) -> None` | `UNWIND $keys AS k MATCH (f:TemplateFingerprint {family: k.family, branch: k.branch, kind: k.kind}) DETACH DELETE f` | One query |
-| `delete_branch(branch: str) -> None` | `MATCH (f:TemplateFingerprint {branch: $branch}) DETACH DELETE f` | Called by `BranchDataDeleter` |
 
-Callers that write hold the lock `configure-action-rules-<trigger type>` for the family, except `delete_branch` (the branch is being deleted and no flow writes its records once it is out of scope) and `insert_missing` (idempotent).
+The records of a deleted branch are removed outside the repository: `BranchDataDeleter.delete_branch_data` runs `TemplateFingerprintDeleteBranchQuery` (`MATCH (f:TemplateFingerprint {branch: $branch_name}) DETACH DELETE f`) before it deletes the branch's edges, so a resumed delete also removes them.
+
+Callers that write hold the lock `configure-action-rules-<trigger type>` for the family, except `BranchDataDeleter` (the branch is being deleted, and a later write for it finds no `Branch` vertex and writes nothing) and `insert_missing` (idempotent).
 
 ## Collector
 
