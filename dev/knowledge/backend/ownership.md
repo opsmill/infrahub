@@ -31,16 +31,17 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
 | none | `INHERIT` |
 | only `HAS_NO_OWNER` | `NO_OWNER` |
 | one or more `HAS_OWNER` | `OWNERS`. They win over a `HAS_NO_OWNER` edge that a merge leaves active |
-| `HAS_OWNER` and `HAS_OWNER_SOURCE` | a copy from an object template. The state reads as `INHERIT`, the origin is `TEMPLATE` |
+| `HAS_OWNER` or `HAS_NO_OWNER`, and `HAS_OWNER_SOURCE` | a copy from an object template. The state reads as `INHERIT`, the origin is `TEMPLATE` |
 
 - Every `HAS_NO_OWNER` edge ends at the one `NoOwner` vertex (`uuid: "no-owner"`). The creation of the `Root`
   vertex (`create_root_node`) and the graph migration `m086` create it. The write query also has a `MERGE` for a
   database without it. The delete of a branch, the rebase of a branch and a rollback (`GraphRollbacker`) delete each
   vertex that keeps no edge, but not this vertex.
   `verify_graph` reports a graph that has no such vertex or more than one (`GraphCheck.NO_OWNER_VERTEX`).
-- `HAS_OWNER_SOURCE` ends at the object template. Without a `HAS_OWNER` edge, the mark gives no state.
-  The delete of the template, and the merge of a branch that deletes it, close the mark. The copied `HAS_OWNER`
-  edges stay, so the holder then reads as its own owners: the state `OWNERS` with the origin `SELF`.
+- `HAS_OWNER_SOURCE` ends at the object template. Without a `HAS_OWNER` or `HAS_NO_OWNER` edge, the mark gives no
+  state. The delete of the template, and the merge of a branch that deletes it, close the mark. The copied
+  `HAS_OWNER` or `HAS_NO_OWNER` edges stay, so the holder then reads as its own state: `OWNERS`, or `NO_OWNER` for a
+  copy of "no owner", with the origin `SELF`.
 - The sources of a node are `HAS_SOURCE` edges from the `Node` vertex. Sources have no "no owner" state: an empty
   list closes all source edges.
 - The `HAS_OWNER` and `HAS_SOURCE` edges of a `Relationship` vertex (the properties of one link) keep one target
@@ -102,8 +103,11 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
 - Before the query checks that the node is active, it takes a write lock on the node vertex in the database
   (`SET n.uuid = n.uuid`), for every kind of holder. The lock lasts until the commit of the transaction. So two
   open transactions cannot both create a set with the same key, or an active edge to the same owner, on any write
-  path: a merge, a node create, an object conversion. `NodeSourcesWriteQuery` and `NodeOwnerEdgesCloseQuery` take
-  the lock too.
+  path: the owner resolution of a merge, a node create, an object conversion. `NodeSourcesWriteQuery` and
+  `NodeOwnerEdgesCloseQuery` take the lock too. The copy of the owner edges of a branch in a merge
+  (`BulkMergeOwnershipEdgesQuery`) takes no lock. It depends on the merge write block (`MergeWriteBlocker`, see
+  [Merge Failure Recovery](merge-failure-recovery.md)), which refuses the other writes on the default branch and on
+  the source branch during the merge.
   The attribute rename migration, the only other code that creates a set, takes the same lock before it reads the
   sets of the node. After the lock, it gives no set to a node that is not active, with the same check of a later
   `deleted` `IS_PART_OF` edge as a write of owners.
@@ -130,7 +134,7 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
   merge skips the node and logs a warning (see Diff and Merge).
 - The caller gives the write time before the query waits for the lock, so that delete can have a later time than
   the write. The check also refuses the write when the node has a `deleted` `IS_PART_OF` edge after `$at`, on a
-  branch that the write branch reads at `$at`. An isolated branch reads its origin branch at the start of the
+  branch that the branch of the query reads at `$at`. An isolated branch reads its origin branch at the start of the
   branch, so a later delete on the origin branch does not stop a write on the branch. The query does not read the
   time after the lock, because each caller gives the time that its other writes use: the merge writes at the merge
   time, and a save writes the owners at the time of its other fields.
