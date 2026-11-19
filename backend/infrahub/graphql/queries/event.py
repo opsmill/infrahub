@@ -60,6 +60,8 @@ class Events(ObjectType):
         if limit > 50:
             # Prefect restricts this to 50
             raise ValidationError(input_value="The parameter 'limit' can't be above 50")
+        if offset is not None and offset < 0:
+            raise ValidationError(input_value="The parameter 'offset' can't be negative")
 
         exclude_prefixes: list[str] | None = None
         graphql_context: GraphqlContext = info.context
@@ -161,7 +163,8 @@ Event = Field(
         required=False,
         description=(
             "Search events since this timestamp, defaults to the activity log retention before until, "
-            "or at least 180 days before until when the task manager does not delete old events"
+            "or at least 180 days before until when the task manager does not delete old events; "
+            "a query by ids or parent__ids has no default start"
         ),
     ),
     until=DateTime(required=False, description="Search events until this timestamp, defaults to the current time"),

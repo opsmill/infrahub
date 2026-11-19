@@ -222,8 +222,9 @@ Webhook branch scoping matches an event against `meta.context.branch` (see [Webh
 | The Activities page loads its first page | The task manager reads newest first, one window at a time: the 2,000 newest events of the requested event types, then the next 48,000, then the rest of the range. It stops at the window that fills the page |
 | The user loads more events | The page sends the time of the oldest event shown as `until` (`since` in ascending order) and drops the events it already shows by ID |
 | Every event of a full page has the same time | The next request keeps that time and adds `offset`, the number of events of that time already shown, so the page continues inside that time. The task manager orders the events of one time by ID, so the offset skips exactly the events already shown. The page stops if a request adds no new event |
-| A filter names a branch | The resolver sends the ID of the current branch with that name, else the ID from the newest `infrahub.branch.deleted` event for that name; with neither, it returns an empty page without querying |
+| A filter names a branch | The resolver sends the ID of the current branch with that name, else the ID from the newest stored `infrahub.branch.deleted` event for that name, however old; with neither, it returns an empty page without querying |
 | A query sets no `since` | The task manager reads back to its event retention, which can reach past Prefect's 180-day default, or at least 180 days when it does not delete old events |
+| A query selects events by `ids` or `parent__ids` and sets no `since` | The resolver sends the earliest time as the start, so the query returns an event however old it is. A list reaches such an event by paging, because each request counts its range back from `until` |
 | A query selects `count` | The task manager counts the whole range; otherwise `total` is null and no count runs |
 | An API client pages with `offset` | Still accepted; each window is read from the newest event with the offset until one returns events, and the wider windows then add only older events, so the result equals one read of the whole range, but deep offsets get slower |
 

@@ -770,6 +770,25 @@ async def test_event_query_prefect(
     } in event["relationships"]
 
 
+async def test_event_query_rejects_a_negative_offset(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    prefect_client: PrefectClient,
+    session_admin: AccountSession,
+) -> None:
+    result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT,
+        variables={"primary_node__ids": [str(uuid.uuid4())], "offset": -1, "limit": 10},
+        account_session=session_admin,
+    )
+
+    assert result.errors
+    assert [error.message for error in result.errors] == ["The parameter 'offset' can't be negative"]
+
+
 async def test_event_query_branch_name_without_a_current_branch(
     db: InfrahubDatabase,
     default_branch: Branch,

@@ -336,7 +336,7 @@ BRANCH_RESOLUTION_CASES = [
         name="deletion_older_than_the_read_window",
         names=[EXPIRED_BRANCH[0]],
         current_branch_ids={},
-        expected=[],
+        expected=[EXPIRED_BRANCH[1]],
     ),
     BranchResolutionCase(
         name="unknown_name",
@@ -361,7 +361,7 @@ BRANCH_RESOLUTION_CASES = [
 
 @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in BRANCH_RESOLUTION_CASES])
 async def test_branch_names_resolve_to_branch_ids(test_case: BranchResolutionCase, seeded: dict[str, str]) -> None:
-    """A name resolves to its current branch, else to the newest deletion of that name inside the read window, else to nothing."""
+    """A name resolves to its current branch, else to the newest stored deletion of that name, else to nothing."""
     branch_ids = await PrefectEvent.resolve_branch_ids(
         names=test_case.names, current_branch_ids=test_case.current_branch_ids
     )
