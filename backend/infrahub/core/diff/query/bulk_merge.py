@@ -1150,6 +1150,7 @@ class BulkMergeOwnershipEdgesQuery(Query):
             for holder_kind, pattern in HOLDER_PATTERNS.items()
             if holder_kind not in (HolderKind.TARGET_SET, HolderKind.SOURCES)
         ]
+        # shortcut: the edges to the sets have no index on the branch, add one when a merge is slow with many owner sets
         patterns += [
             f"""
     MATCH (n:Node)-[src:{edge_type.value}]->(child:OwnerSet)
