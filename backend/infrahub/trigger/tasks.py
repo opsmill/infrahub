@@ -6,6 +6,9 @@ from infrahub.computed_attribute.gather import (
     gather_trigger_computed_attribute_jinja2,
     gather_trigger_computed_attribute_python,
 )
+from infrahub.core.template_fingerprint.collector import collect_schema_fingerprints
+from infrahub.core.template_fingerprint.models import TemplateFamily
+from infrahub.core.template_fingerprint.repository import TemplateFingerprintRepository
 from infrahub.display_labels.gather import gather_trigger_display_labels_jinja2
 from infrahub.hfid.gather import gather_trigger_hfid
 from infrahub.profiles.gather import gather_trigger_profile_refresh
@@ -13,6 +16,7 @@ from infrahub.trigger.catalogue import builtin_triggers
 from infrahub.webhook.gather import gather_trigger_webhook
 from infrahub.workers.dependencies import get_database
 
+from .placeholder_carry_over import carry_over_placeholder_fingerprints
 from .setup import setup_triggers
 
 
@@ -20,6 +24,7 @@ from .setup import setup_triggers
 async def trigger_configure_all() -> None:
     database = await get_database()
     async with database.start_session() as db:
+        repository = TemplateFingerprintRepository(db=db)
         webhook_trigger = await gather_trigger_webhook(db=db)
         display_label_triggers = await gather_trigger_display_labels_jinja2()
         human_friendly_id_triggers = await gather_trigger_hfid()
@@ -43,4 +48,10 @@ async def trigger_configure_all() -> None:
         )
 
         async with get_client(sync_client=False) as prefect_client:
-            await setup_triggers(client=prefect_client, triggers=triggers, force_update=True)
+            report = await setup_triggers(client=prefect_client, triggers=triggers, force_update=True)
+
+        await carry_over_placeholder_fingerprints(
+            deleted=report.deleted,
+            schemas=[collect_schema_fingerprints(family=family) for family in TemplateFamily],
+            repository=repository,
+        )

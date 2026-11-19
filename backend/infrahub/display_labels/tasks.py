@@ -20,6 +20,7 @@ from infrahub.events import BranchDeletedEvent
 from infrahub.events.limits import get_submission_chunk_size
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
+from infrahub.trigger.placeholder_carry_over import carry_over_placeholder_fingerprints
 from infrahub.trigger.setup import setup_triggers
 from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
 from infrahub.workflows.catalogue import DISPLAY_LABELS_PROCESS_JINJA2, TRIGGER_UPDATE_DISPLAY_LABELS
@@ -113,10 +114,11 @@ async def display_labels_setup_jinja2(
             component = await get_component()
             await wait_for_schema_to_converge(branch_name=branch_name, component=component, db=db, log=log)
 
+        repository = TemplateFingerprintRepository(db=db)
         refresher = TemplateFingerprintRefresher(
             family=TemplateFamily.DISPLAY_LABEL_JINJA2,
             default_branch=registry.default_branch,
-            repository=TemplateFingerprintRepository(db=db),
+            repository=repository,
             workflow=get_workflow(),
             recompute_workflow=TRIGGER_UPDATE_DISPLAY_LABELS,
         )
@@ -130,8 +132,10 @@ async def display_labels_setup_jinja2(
                 report: TriggerSetupReport = await setup_triggers(
                     client=prefect_client, triggers=triggers, trigger_type=TriggerType.DISPLAY_LABEL_JINJA2
                 )
+            schema = collect_schema_fingerprints(family=TemplateFamily.DISPLAY_LABEL_JINJA2)
+            await carry_over_placeholder_fingerprints(deleted=report.deleted, schemas=[schema], repository=repository)
             decision = await refresher.refresh(
-                schema=collect_schema_fingerprints(family=TemplateFamily.DISPLAY_LABEL_JINJA2),
+                schema=schema,
                 event_branch=branch_name,
                 branch_deleted=event_name == BranchDeletedEvent.event_name,
                 context=context,
