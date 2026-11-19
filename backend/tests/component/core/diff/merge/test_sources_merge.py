@@ -9,11 +9,13 @@ from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import ConflictSelection
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.ownership.models import NODE_SOURCES_HOLDER
 from infrahub.database.validation import verify_graph
 from tests.helpers.ownership import (
     SOURCES_FIELD,
     OwnerDataset,
+    add_node,
     count_active_owner_edges,
     load_owner_dataset,
     read_owners,
@@ -155,3 +157,22 @@ async def test_different_sources_on_both_branches_conflict(
         await count_active_owner_edges(db=db, branch=default_branch, node_id=tenant_id, edge_types=SOURCE_EDGE_TYPES)
         == 1
     )
+
+
+async def test_source_deleted_on_a_branch_stays_a_source_after_the_merge(
+    db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset
+) -> None:
+    tenant_id = dataset.ids["tenant-a"]
+    template = await add_node(db=db, kind="TemplateTestSite", template_name="emea-site")
+    await _set_sources(db=db, branch=default_branch, node_id=tenant_id, source_ids=(template.id,))
+    branch = await create_branch(db=db, branch_name="source-deleted")
+    branch_template = await NodeManager.get_one(db=db, branch=branch, id=template.id, raise_on_error=True)
+
+    await branch_template.delete(db=db)
+
+    assert await _read_sources(db=db, branch=branch, node_id=tenant_id) == (template.id,)
+    await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+    await merge(db=db, branch=branch)
+
+    assert await _read_sources(db=db, branch=default_branch, node_id=tenant_id) == (template.id,)
+    await verify_graph(db=db)

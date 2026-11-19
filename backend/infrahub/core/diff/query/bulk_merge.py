@@ -186,11 +186,15 @@ CALL (n, tgt_n, src) {
         SET set_rel.to = $at, set_rel.to_user_id = src.from_user_id
     }
     // ------------------------------
-    // close HAS_SOURCE and HAS_OWNER_SOURCE edges pointing to this deleted node, and the HAS_OWNER edge of each link
-    // that it owns. the other HAS_OWNER edges that point to it stay, so that what it owned shows a deleted owner
+    // close HAS_OWNER_SOURCE edges pointing to this deleted node, and the HAS_SOURCE and HAS_OWNER edges of each
+    // attribute or link that points to it. the edges from a node or an owner set stay, so that a list shows it deleted
     // ------------------------------
     OPTIONAL MATCH (tgt_n)<-[inbound_rel:HAS_SOURCE|HAS_OWNER|HAS_OWNER_SOURCE]-(holder)
-    WHERE (type(inbound_rel) <> "HAS_OWNER" OR holder:Relationship)
+    WHERE (
+        type(inbound_rel) = "HAS_OWNER_SOURCE"
+        OR holder:Relationship
+        OR (type(inbound_rel) = "HAS_SOURCE" AND holder:Attribute)
+    )
     AND inbound_rel.branch = $target_branch
     AND inbound_rel.status = "active"
     AND inbound_rel.to IS NULL

@@ -43,8 +43,10 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
   list closes all source edges.
 - The `HAS_OWNER` and `HAS_SOURCE` edges of a `Relationship` vertex (the properties of one link) keep one target
   and are not part of this model.
-  The merge of a branch that deletes a node closes the `HAS_OWNER` edge from a `Relationship` vertex to that node.
-  The `HAS_OWNER` edges from the other vertices stay, so that the list of owners shows a deleted owner.
+  The merge of a branch that deletes a node closes the `HAS_OWNER` and `HAS_SOURCE` edges from a `Relationship`
+  vertex to that node, and the `HAS_SOURCE` edges from an `Attribute` vertex. The `HAS_OWNER` edges from a `Node`,
+  `Attribute` or `OwnerSet` vertex and the `HAS_SOURCE` edges from a `Node` vertex stay, so that a list shows a
+  deleted owner or a deleted source.
 - The merge copies an owner edge or a source edge of the branch also when its owner or source is deleted, so the
   default branch reads the same list as the branch and the diff. Only the `HAS_OWNER_SOURCE` mark needs a live
   template.
