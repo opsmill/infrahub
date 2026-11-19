@@ -9,6 +9,7 @@ backend/infrahub/pools/schema_number_pool_synchronizer.py
   s_92ce1f25dbe045::t_8a1b30ab490a01 36-37
   s_92ce1f25dbe045::t_cdf513a4cec3a1 4,16,23,41-43,143-147,152-181,201-204,205-208,214-217
   s_92ce1f25dbe045::t_992de6c08ccbc0 218
+  s_92ce1f25dbe045::t_825975203baaf5 209
 dev/knowledge/backend/mutations.md
   s_92ce1f25dbe045::t_ee1d5cffb04595 307-314
 backend/tests/unit/pools/test_schema_number_pool_sync_result.py
