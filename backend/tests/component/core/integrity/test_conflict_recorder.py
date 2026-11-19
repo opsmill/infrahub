@@ -109,3 +109,53 @@ async def test_clear_failure_creates_no_validator_when_none_was_recorded(
 
     assert await _validator_conclusions(db=db) == []
     assert await _check_results(db=db) == []
+
+
+async def test_record_conflicts_unless_failed_since_keeps_a_failure_completed_after_the_timestamp(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    proposed_change_id = await _proposed_change(db=db, default_branch=default_branch)
+    since = Timestamp()
+    await _recorder(db=db).record_conflicts(proposed_change_id=proposed_change_id, conflicts=[_conflict()])
+    validators = await NodeManager.query(db=db, schema=CoreSchemaValidator)
+    completed_at = validators[0].completed_at.value
+    assert Timestamp(completed_at) > since
+
+    await _recorder(db=db).record_conflicts_unless_failed_since(
+        proposed_change_id=proposed_change_id, conflicts=[], since=since
+    )
+
+    validators = await NodeManager.query(db=db, schema=CoreSchemaValidator)
+    assert [(validator.conclusion.value.value, validator.completed_at.value) for validator in validators] == [
+        (ValidatorConclusion.FAILURE.value, completed_at)
+    ]
+    assert await _check_results(db=db) == [(ValidatorConclusion.FAILURE.value, 1)]
+
+
+async def test_record_conflicts_unless_failed_since_replaces_a_failure_completed_before_the_timestamp(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    proposed_change_id = await _proposed_change(db=db, default_branch=default_branch)
+    await _recorder(db=db).record_conflicts(proposed_change_id=proposed_change_id, conflicts=[_conflict()])
+    assert await _validator_conclusions(db=db) == [ValidatorConclusion.FAILURE.value]
+    since = Timestamp()
+
+    await _recorder(db=db).record_conflicts_unless_failed_since(
+        proposed_change_id=proposed_change_id, conflicts=[], since=since
+    )
+
+    assert await _validator_conclusions(db=db) == [ValidatorConclusion.SUCCESS.value]
+    assert await _check_results(db=db) == [(ValidatorConclusion.SUCCESS.value, 0)]
+
+
+async def test_record_conflicts_unless_failed_since_records_when_no_validator_exists(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    proposed_change_id = await _proposed_change(db=db, default_branch=default_branch)
+
+    await _recorder(db=db).record_conflicts_unless_failed_since(
+        proposed_change_id=proposed_change_id, conflicts=[_conflict()], since=Timestamp()
+    )
+
+    assert await _validator_conclusions(db=db) == [ValidatorConclusion.FAILURE.value]
+    assert await _check_results(db=db) == [(ValidatorConclusion.FAILURE.value, 1)]

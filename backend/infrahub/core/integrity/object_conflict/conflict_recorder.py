@@ -100,19 +100,33 @@ class ObjectConflictValidatorRecorder:
 
         A failure completed at or after `recorded_before`, or with no completion time, is kept.
         """
+        failure_completed_at = await self._get_failure_completed_at(proposed_change_id=proposed_change_id)
+        if failure_completed_at is None or failure_completed_at >= recorded_before:
+            return
+        await self.record_conflicts(proposed_change_id=proposed_change_id, conflicts=[])
+
+    async def record_conflicts_unless_failed_since(
+        self, proposed_change_id: str, conflicts: Sequence[ObjectConflict], since: Timestamp
+    ) -> None:
+        """Record `conflicts` unless the validator's last result is a failure completed at or after `since`."""
+        failure_completed_at = await self._get_failure_completed_at(proposed_change_id=proposed_change_id)
+        if failure_completed_at is not None and failure_completed_at >= since:
+            return
+        await self.record_conflicts(proposed_change_id=proposed_change_id, conflicts=conflicts)
+
+    async def _get_failure_completed_at(self, proposed_change_id: str) -> Timestamp | None:
+        """Return the completion time of the validator's last result when it is a failure with a completion time."""
         try:
             proposed_change = await NodeManager.get_one_by_id_or_default_filter(
                 id=proposed_change_id, kind=CoreProposedChange, db=self.db
             )
         except NodeNotFoundError:
-            return
+            return None
         validator = await self.get_validator(proposed_change=proposed_change)
         if validator is None or validator.conclusion.value.value != ValidatorConclusion.FAILURE.value:
-            return
+            return None
         completed_at = validator.completed_at.value
-        if not completed_at or Timestamp(completed_at) >= recorded_before:
-            return
-        await self.record_conflicts(proposed_change_id=proposed_change_id, conflicts=[])
+        return Timestamp(completed_at) if completed_at else None
 
     async def get_validator(self, proposed_change: CoreProposedChange) -> CoreValidator | None:
         validations = await proposed_change.validations.get_peers(db=self.db)

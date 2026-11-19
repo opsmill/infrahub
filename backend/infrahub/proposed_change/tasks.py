@@ -620,8 +620,8 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     # TODO we need to report a failure if an error happened during the execution of a validator
     async with database.start_transaction() as db:
         object_conflict_validator_recorder = _build_schema_integrity_validator_recorder(db=db)
-        await object_conflict_validator_recorder.record_conflicts(
-            proposed_change_id=model.proposed_change, conflicts=conflicts
+        await object_conflict_validator_recorder.record_conflicts_unless_failed_since(
+            proposed_change_id=model.proposed_change, conflicts=conflicts, since=check_started_at
         )
 
 

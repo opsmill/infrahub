@@ -73,5 +73,7 @@ branch's schema allows.
 
 A refused merge of a proposed change records its violations as a failure of the Schema Integrity validator. When a
 later pipeline or Schema Integrity check finds nothing to check, `ObjectConflictValidatorRecorder.clear_failure`
-replaces that failure with a passing result. It replaces only a failure the validator completed before that run
-started, so a merge refused while the run was in progress keeps its failure.
+replaces that failure with a passing result. When the Schema Integrity check has constraints to check, it records
+its result through `ObjectConflictValidatorRecorder.record_conflicts_unless_failed_since`. Both keep a failure the
+validator completed at or after that run started, so a merge refused while the run was in progress keeps its failure,
+which was found in the merge view.

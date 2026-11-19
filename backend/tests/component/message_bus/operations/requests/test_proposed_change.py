@@ -9,12 +9,14 @@ from pytest_httpx import HTTPXMock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipCardinality, RelationshipKind, SchemaPathType
-from infrahub.core.diff.model.diff import DiffElementType
+from infrahub.core.diff.model.diff import DiffElementType, SchemaConflict
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreSchemaCheck, CoreSchemaValidator
 from infrahub.core.schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus.types import ProposedChangeBranchDiff
@@ -22,6 +24,7 @@ from infrahub.proposed_change.branch_diff import set_diff_summary_cache
 from infrahub.proposed_change.models import RequestProposedChangeSchemaIntegrity
 from infrahub.proposed_change.tasks import (
     _get_proposed_change_schema_integrity_constraints,
+    _record_schema_integrity_failure,
     run_proposed_change_schema_integrity_check,
 )
 from infrahub.workers.dependencies import build_cache
@@ -246,6 +249,54 @@ async def test_schema_integrity(
         assert len(checks) == 1
         assert checks[0].conclusion.value.value == "success"
         assert checks[0].conflicts.value == []
+
+
+async def test_schema_integrity_keeps_a_merge_failure_recorded_after_the_check_started(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+    schema_integrity_01: RequestProposedChangeSchemaIntegrity,
+    branch_diff_01_summary: list[NodeDiff],
+    dependency_provider: Provider,
+    car_accord_main: Node,
+    person_john_main: Node,
+) -> None:
+    cache = MemoryCache()
+    with override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider):
+        branch2 = await create_branch(branch_name=SOURCE_BRANCH_A, db=db)
+        person = await Node.init(db=db, schema="TestPerson", branch=branch2)
+        await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
+        await person.save(db=db)
+        await set_diff_summary_cache(
+            pipeline_id=schema_integrity_01.branch_diff.pipeline_id, diff_summary=branch_diff_01_summary, cache=cache
+        )
+
+        merge_conflict = SchemaConflict(
+            name="schema/TestPerson/name/parameters.regex",
+            type=ConstraintIdentifier.ATTRIBUTE_PARAMETERS_REGEX_UPDATE.value,
+            kind="TestPerson",
+            id=person_john_main.id,
+            path="schema/TestPerson/name/parameters.regex",
+            value="Attribute-level 'regex' constraint violation on schema 'TestPerson'.",
+            branch="placeholder",
+        )
+        await _record_schema_integrity_failure(
+            database=db, proposed_change_id=schema_integrity_01.proposed_change, schema_conflicts=[merge_conflict]
+        )
+        validator = (await NodeManager.query(db=db, schema=CoreSchemaValidator))[0]
+        merge_completed_at = Timestamp().add(hours=1).to_string()
+        validator.completed_at.value = merge_completed_at
+        await validator.save(db=db)
+
+        await run_proposed_change_schema_integrity_check(model=schema_integrity_01)
+
+        validators = await NodeManager.query(db=db, schema=CoreSchemaValidator)
+        assert [(v.conclusion.value.value, v.completed_at.value) for v in validators] == [
+            ("failure", merge_completed_at)
+        ]
+        checks = await NodeManager.query(db=db, schema=CoreSchemaCheck)
+        assert [check.conflicts.value for check in checks] == [[merge_conflict.to_conflict_dict()]]
 
 
 async def test_schema_integrity_process_validation_error(
