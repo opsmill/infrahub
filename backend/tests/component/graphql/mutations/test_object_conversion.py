@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Any
 
 import pytest
 from infrahub_sdk.convert_object_type import ConversionFieldInput, ConversionFieldValue
 
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.convert_object_type.object_conversion import convert_and_validate_object_type
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.ownership.models import (
     NODE_HOLDER,
@@ -343,6 +346,64 @@ async def test_convert_object_type_gives_the_owners_that_the_node_holds_when_its
         node_id=person.id,
         fields_mapping={"name": {"source_field": "name"}, "age": {"data": {"attribute_value": 30}}},
     )
+
+    stored = await OwnershipRepository(db=db, branch=default_branch, at=None).read(node_ids=[new_id])
+    assert stored[new_id].get(NODE_HOLDER).owner_ids == (group_ids[1],)
+
+
+async def test_convert_object_type_gives_the_owners_of_a_write_that_commits_while_the_conversion_waits(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    schemas_conversion: dict[str, Any],
+) -> None:
+    registry.schema.register_schema(schema=SchemaRoot(**schemas_conversion), branch=default_branch.name)
+    default_branch.update_schema_hash()
+    group_ids = []
+    for name in ("dc-emea", "dc-security"):
+        group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+        await group.new(db=db, name=name)
+        await group.save(db=db)
+        group_ids.append(group.id)
+    person = await Node.init(db=db, schema="TestconvPerson1")
+    await person.new(db=db, name="owners-written-during-conversion")
+    await person.save(db=db)
+    await _write_owners(
+        db=db,
+        branch=default_branch,
+        node_id=person.id,
+        states={NODE_HOLDER: StoredOwnerState(owner_ids=(group_ids[0],))},
+    )
+    node = await NodeManager.get_one(db=db, branch=default_branch, id=person.id, raise_on_error=True)
+    owners_are_written = asyncio.Event()
+
+    async def write_owners() -> None:
+        async with db.start_session() as session_db, session_db.start_transaction() as dbt:
+            await _write_owners(
+                db=dbt,
+                branch=default_branch,
+                node_id=person.id,
+                states={NODE_HOLDER: StoredOwnerState(owner_ids=(group_ids[1],))},
+            )
+            owners_are_written.set()
+            # The conversion starts while this transaction holds the node.
+            await asyncio.sleep(1.0)
+
+    async def convert() -> str:
+        await owners_are_written.wait()
+        new_node = await convert_and_validate_object_type(
+            node=node,
+            target_schema=registry.schema.get_node_schema(name="TestconvPerson2", branch=default_branch),
+            mapping={
+                "name": ConversionFieldInput(source_field="name"),
+                "age": ConversionFieldInput(data=ConversionFieldValue(attribute_value=30)),
+            },
+            branch=default_branch,
+            db=db,
+        )
+        return new_node.id
+
+    _, new_id = await asyncio.gather(write_owners(), convert())
 
     stored = await OwnershipRepository(db=db, branch=default_branch, at=None).read(node_ids=[new_id])
     assert stored[new_id].get(NODE_HOLDER).owner_ids == (group_ids[1],)
