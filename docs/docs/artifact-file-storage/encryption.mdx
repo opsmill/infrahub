@@ -145,7 +145,15 @@ The API server holds a whole file in memory while it encrypts it. Two settings l
 
 When the budget has no room for the next file, the request waits. A request for one file waits 0.5 seconds. A request for several files, which is what the command sends, waits up to 60 seconds for each file. After that the server answers HTTP 429 with a `Retry-After` header of 1 second. Files encrypted before the answer stay encrypted. The command waits and sends the request again.
 
-Worst case for one process: the memory claimed for the files in progress never exceeds the budget, whatever the number of requests, files per request or file sizes. With the default, that is 600 MB. The claim is a little above what was measured: in tests, two files of 90 MiB made the server grow by 459 MiB, about 2.5 times the file size. The budget does not count the body of the request, the Python interpreter, or working buffers beyond the three copies. Each API server process has its own budget, so the total multiplies with the number of processes and replicas: for example, 4 processes with the default budget claim up to 2.4 GB. Set the budget so that this total fits in the memory of your API servers.
+The budget limits the memory that the files in progress hold. It does not limit the memory that the server process keeps after it finishes a file.
+
+While a process encrypts one file on local disk, it holds about three times the size of the file. In a test with one file at a time, the peak was 2.96 to 3.0 times the size, for files of 10, 30 and 90 MiB. On S3 (Garage) the peak was 3.0 times for 90 MiB, 3.2 to 3.3 times for 30 MiB and 3.6 to 3.75 times for 10 MiB, so the budget is a little low for files of 10 to 30 MiB on S3.
+
+After it writes the encrypted copy, the process can keep the memory instead of giving it back to the operating system. In a test with 4 API server processes, a budget of 90 MB and 24 requests in parallel for 24 files of 30 MiB, the memory of the container as `docker stats` shows it grew by 861 to 983 MiB in 6 runs. It was still at that value 60 seconds after the last request. Almost all of it was memory of the server processes: each thread that had encrypted a file of 30 MiB kept about 60 MiB. A process has up to the number of CPUs plus 4 of these threads, at most 32. The budget does not count this memory. Files of 90 MiB were not kept: after 4 of them, the container was 1 to 6 MiB above its value before. These numbers come from one test on Linux with the Infrahub image and local disk. They are not limits: they depend on the number of threads that handle files.
+
+To avoid this, set the environment variable `MALLOC_MMAP_THRESHOLD_=1048576` for the API server. In the same test, in two runs, the container was 17 and 20 MiB above its value before, 60 seconds after the last request. The effect of this setting on the rest of the server is not measured.
+
+Each API server process has its own budget, so the total multiplies with the number of processes and replicas: for example, 4 processes with the default budget claim up to 2.4 GB. Set the budget so that this total fits in the memory of your API servers, and leave room for the memory that the processes keep.
 
 ### The stored encryption value of artifacts
 
