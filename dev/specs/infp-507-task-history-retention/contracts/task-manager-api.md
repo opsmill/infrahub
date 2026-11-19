@@ -73,7 +73,7 @@ Behaviour changes:
 ## GraphQL `InfrahubEvent` (no new or changed arguments)
 
 - `count` is computed only when selected.
-- A query without `since` reads back the activity log retention from `until`, or at least 180 days when the task manager does not delete old events, instead of Prefect's 180-day default; the `since` description says so.
+- A query without `since` reads back the activity log retention from `until`, or at least 180 days when the task manager does not delete old events, instead of Prefect's 180-day default; the `since` description says so. A query by `ids` or `parent__ids` without `since` has no default start: the Infrahub server sends the earliest time as the start, so that an event a list reaches by paging is also found by its ID or its parent's ID.
 - `branches`, `account__ids`, `primary_node__ids`, `parent__ids` and the branch-name `event_type_filter` keep their arguments and results, except for the combination in the next item; their matching changes as described in data-model.md.
 - `primary_node__ids` combined with branch names, identity providers or protocols in `event_type_filter` returns only the events that match both; before, the primary node conditions replaced the others (data-model.md, Activities filters).
 - `primary_node__ids` is read as up to two requests to the task manager (data-model.md, Activities filters): each returns its events up to the end of the page, the Infrahub server merges them by time and then ID and applies `offset`, and `count` is the sum of both counts. A page whose `offset` plus `limit` is above 1,000 is read as one request that matches the `infrahub.node.id` label, which the task manager pages with the offset (added on 16 Nov). Arguments and results are unchanged.

@@ -85,7 +85,7 @@ query IncidentEvents {
 }
 ```
 
-`until` defaults to the current time. A query that omits `since` returns events as far back as the [activity log retention](#retention), including events older than 180 days when the retention is longer. When `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` is set to a value that does not turn on `events`, the task manager does not delete old events, and such a query returns at least the events of the last 180 days. Selecting `count` makes the task manager count every matching event in the time range, which takes much longer than reading one page when the range holds millions of events; leave it out when you only need the events.
+`until` defaults to the current time. A query that omits `since` returns events as far back as the [activity log retention](#retention), including events older than 180 days when the retention is longer. When `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` is set to a value that does not turn on `events`, the task manager does not delete old events, and such a query returns at least the events of the last 180 days. A query that selects events by `ids` or `parent__ids` and omits `since` returns the matching events however old they are. Selecting `count` makes the task manager count every matching event in the time range, which takes much longer than reading one page when the range holds millions of events; leave it out when you only need the events.
 
 The filters available in the web interface map onto these parameters, and the query accepts several that the interface does not expose:
 
