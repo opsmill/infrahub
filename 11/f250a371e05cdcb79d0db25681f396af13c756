@@ -1,0 +1,19 @@
+changelog/+query-group-update-permission.security.md
+  s_efabefa475e91d::t_6006c112aa57d6 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "11f250a371e05cdcb79d0db25681f396af13c756",
+  "prompts": {},
+  "sessions": {
+    "s_efabefa475e91d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99e1db76-c6ee-472d-bb99-0d010014b033",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
