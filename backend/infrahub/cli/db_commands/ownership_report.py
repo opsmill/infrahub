@@ -10,8 +10,8 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-def _print_section(console: Console, title: str, lines: list[str]) -> None:
-    for line in ["", f"{title}: {len(lines)}", *(f"  {line}" for line in lines)]:
+def _print_section(console: Console, title: str, count: int, lines: list[str]) -> None:
+    for line in ["", f"{title}: {count}", *(f"  {line}" for line in lines)]:
         console.print(line, markup=False, highlight=False, soft_wrap=True)
 
 
@@ -22,6 +22,7 @@ async def ownership_report(db: InfrahubDatabase) -> None:
     _print_section(
         console,
         title="Attributes that a repository owns (the upgrade removes these owners)",
+        count=sum(row.nb_attributes for row in report.repository_owners),
         lines=[
             f"{row.node_kind}.{row.attribute_name}, repository {row.repository_id} ({row.repository_kind}),"
             f" branch {row.branch}: {row.nb_attributes}"
@@ -34,6 +35,7 @@ async def ownership_report(db: InfrahubDatabase) -> None:
             "Attributes that a node other than an account, an account group or a repository owns"
             " (the upgrade keeps these owners)"
         ),
+        count=sum(row.nb_attributes for row in report.other_owners),
         lines=[
             f"{row.owner_kind} owns {row.node_kind}.{row.attribute_name}, branch {row.branch}: {row.nb_attributes}"
             for row in report.other_owners
@@ -42,6 +44,7 @@ async def ownership_report(db: InfrahubDatabase) -> None:
     _print_section(
         console,
         title="Relationships whose links have owners (the upgrade keeps these owners)",
+        count=len({row.identifier for row in report.link_owners}),
         lines=[
             f"{row.identifier} ({', '.join(row.peer_kinds)}), owner kind {row.owner_kind},"
             f" branch {row.branch}: {row.nb_links}"
@@ -51,6 +54,7 @@ async def ownership_report(db: InfrahubDatabase) -> None:
     _print_section(
         console,
         title="Attributes with values that have is_protected set (is_protected is deprecated)",
+        count=sum(row.nb_values for row in report.protected_values),
         lines=[
             f"{row.node_kind}.{row.attribute_name}, branch {row.branch}: {row.nb_values}"
             for row in report.protected_values
