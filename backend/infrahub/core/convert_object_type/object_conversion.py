@@ -11,6 +11,7 @@ from infrahub.core.node.create import create_node
 from infrahub.core.ownership.models import HolderKind, StoredOwnerState, field_holder
 from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.ownership.writer import store_owner_states
+from infrahub.core.query.node import NodeLockQuery
 from infrahub.core.query.relationship import GetAllPeersIds
 from infrahub.core.query.resource_manager import IPPoolChangeReserved, NumberPoolChangeReserved
 from infrahub.core.relationship import RelationshipManager
@@ -206,6 +207,9 @@ async def convert_object_type(
         raise ValueError(f"Only a node with a NodeSchema can be converted, got {type(node_schema)}")
 
     conversion_timestamp = Timestamp()
+    # An owner write that holds the node lock commits before the read, so the new node also gets those owners.
+    lock_query = await NodeLockQuery.init(db=db, node=node)
+    await lock_query.execute(db=db)
     # The delete closes the owner edges of the node, so the read comes first.
     owner_states = await _converted_owner_states(
         db=db, branch=branch, node=node, target_schema=target_schema, mapping=mapping
