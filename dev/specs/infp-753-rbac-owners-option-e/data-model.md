@@ -74,6 +74,7 @@ A write on a branch hides each owner edge that the branch inherits with a `delet
 | `owner_branch` on `HAS_OWNER(branch)` | existing in `core/graph/index.py` |
 | `source_branch` on `HAS_SOURCE(branch)` | existing |
 | `no_owner_branch` on `HAS_NO_OWNER(branch)` | new. The spike measured it, and it stays ([measurements.md](measurements.md)). It needs no migration: the server creates each missing index of `core/graph/index.py` when it starts |
+| `owner_source_branch`, `owner_set_branch` and `target_owner_set_branch` on `HAS_OWNER_SOURCE(branch)`, `HAS_OWNER_SET(branch)` and `HAS_TARGET_OWNER_SET(branch)` | new. The diff and the merge of owners read these edges by branch. Like `no_owner_branch`, they need no migration |
 | An index for the lookup of an `OwnerSet` by key | none. The spike decided that the lookup needs no index ([measurements.md](measurements.md)) |
 
 ### Graph migrations
