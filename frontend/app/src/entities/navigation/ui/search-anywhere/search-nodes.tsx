@@ -1,6 +1,6 @@
 import { Command, useCommandState } from "cmdk";
 import { useAtomValue } from "jotai";
-import type React from "react";
+import React from "react";
 
 import { Icon } from "@/shared/components/display/icon";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
@@ -34,6 +34,7 @@ export const SearchNodes = () => {
   const query = useCommandState((state) => state.search);
   const queryDebounced = useDebounce(query.trim(), 300);
   const caseSensitive = useAtomValue(searchCaseSensitiveAtom);
+  const viewportRef = React.useRef<HTMLDivElement>(null);
 
   const {
     data,
@@ -68,6 +69,7 @@ export const SearchNodes = () => {
     <SearchAnywhereGroup
       heading={<SearchNodesHeading count={rows.length} hasMore={hasNextPage} />}
       className="min-h-26 shrink"
+      viewportRef={viewportRef}
     >
       {rows.map((node) => (
         <NodesOptions key={node.id} node={node} />
@@ -76,6 +78,7 @@ export const SearchNodes = () => {
       <InfiniteTrigger
         hasNextPage={hasNextPage && !isFetching && !isFetchNextPageError}
         onLoadMore={fetchNextPage}
+        rootRef={viewportRef}
       />
 
       <SearchNodesListEnd
