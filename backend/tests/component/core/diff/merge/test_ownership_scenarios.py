@@ -614,11 +614,16 @@ S6_HOLDERS = [
     ATTRIBUTE_OWNER_PROPERTY,
     LINK_OWNER_PROPERTY,
 ]
+OWNER_REMOVED_HOLDERS = [ATTRIBUTE, PROFILE]
+"""Holders with a list of owners that run only the removal of one owner of several."""
 
 
 def _removal_params() -> list[Any]:
     """Return the removal cases that each holder can store, except the source removal that another test covers."""
-    params = []
+    params = [
+        pytest.param(holder, REMOVAL_TEST_CASES[0], id=f"{holder.name}-{REMOVAL_TEST_CASES[0].name}")
+        for holder in OWNER_REMOVED_HOLDERS
+    ]
     for holder in S6_HOLDERS:
         for test_case in REMOVAL_TEST_CASES:
             if () in (test_case.start, test_case.after) and not holder.no_owner:
