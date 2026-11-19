@@ -1,3 +1,4 @@
+import pytest
 from rich.console import Console
 
 from infrahub.core import registry
@@ -5,7 +6,10 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph.m085_close_repository_owner_edges import Migration085
+from infrahub.core.migrations.graph.m085_close_repository_owner_edges import (
+    HideGlobalRepositoryOwnersQuery,
+    Migration085,
+)
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.ownership.models import HolderKey, HolderKind
@@ -277,3 +281,37 @@ async def test_branch_made_before_the_upgrade_reads_no_global_repository_owner_a
     } == owners_before
     hidden = [(edge["owner_id"], edge["branch"]) for edge in edges_after if edge["status"] == "deleted"]
     assert hidden == [(repository.id, global_branch.name)] * 2
+
+
+async def test_closed_edges_are_printed_when_a_later_query_fails(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
+    await repository.new(db=db, name="repo01", location="git@github.com:user/repo01.git")
+    await repository.save(db=db)
+    person = await Node.init(db=db, schema="TestPerson")
+    await person.new(db=db, name="John")
+    await person.save(db=db)
+    car = await create_car(db=db, name="repository-car", person=person)
+    await add_owner_edge(
+        db=db, query=ADD_ATTRIBUTE_OWNER, branch=default_branch, node_id=car.id, owner_id=repository.id
+    )
+
+    async def fail(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("hide query failed")
+
+    monkeypatch.setattr(HideGlobalRepositoryOwnersQuery, "execute", fail)
+    console = Console(width=1000, log_time=False, log_path=False)
+    with console.capture() as capture:
+        result = await Migration085().execute(migration_input=MigrationInput(db=db, console=console))
+
+    assert result.errors == ["hide query failed"]
+    # The close commits before the failure, so the counts of the closed edges must be printed.
+    assert [line.rstrip() for line in capture.get().splitlines()] == [
+        "Closed 1 owner edge(s) from attributes to repositories.",
+        f"  repository {repository.id} (CoreRepository): 1",
+    ]
