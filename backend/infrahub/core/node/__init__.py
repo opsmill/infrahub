@@ -34,6 +34,7 @@ from infrahub.core.query.node import (
     NodeCreateAllQuery,
     NodeDeleteQuery,
     NodeListGetAttributeQuery,
+    NodeLockQuery,
     NodeUpdateMetadataQuery,
 )
 from infrahub.core.query.node_agnostic_retirement import RetireNodeAgnosticFieldsQuery
@@ -1465,6 +1466,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     async def delete(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID, at: Timestamp | None = None) -> None:
         """Delete the Node in the database."""
+        # A write of owners locks the node before its attributes, so the other order can deadlock.
+        lock_query = await NodeLockQuery.init(db=db, node=self)
+        await lock_query.execute(db=db)
         delete_at = Timestamp(at)
 
         node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")

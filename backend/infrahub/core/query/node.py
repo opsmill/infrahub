@@ -743,6 +743,19 @@ SET n.updated_at = $at, n.updated_by = $user_id
         self.add_to_query(query)
 
 
+class NodeLockQuery(NodeQuery):
+    """Take the write lock of the node vertex, which lasts until the transaction commits."""
+
+    name = "node_lock"
+    type: QueryType = QueryType.WRITE
+    insert_return = False
+    raise_error_if_empty = False
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["uuid"] = self.node_id
+        self.add_to_query("MATCH (n:Node { uuid: $uuid }) SET n.uuid = n.uuid")
+
+
 class NodeCheckIDQuery(Query):
     name = "node_check_id"
 
