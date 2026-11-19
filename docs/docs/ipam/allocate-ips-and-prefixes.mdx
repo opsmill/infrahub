@@ -7,24 +7,24 @@ import TabItem from '@theme/TabItem';
 
 Allocate addresses and prefixes from a Resource Manager pool when a Generator, a provisioning pipeline or a CI/CD job creates the devices and interfaces that need them, such as those of a new data center or a customer service. Add IPAM prefixes to the pool as its resources. For each request, Infrahub creates the next available address or prefix in those prefixes, and returns the existing one when a request repeats an identifier. To record and query IP data that already exists, a pool is not needed.
 
-## How a pool uses your prefixes
+## How Infrahub allocates from a pool
 
-A `CoreIPAddressPool` or a `CoreIPPrefixPool` takes IPAM prefixes as its `resources`, and allocates in one namespace. The `resources` relationship is the connection point between IPAM and the Resource Manager:
+Add IPAM prefixes to a `CoreIPAddressPool` or a `CoreIPPrefixPool` through its `resources` relationship, and set the pool's namespace. Infrahub then allocates from those prefixes, in that namespace, as follows:
 
-- When a pool allocates an address or a prefix on a branch, it reserves the value on every branch at that moment. A request to the same pool from another branch receives a different value, so two branches that allocate from one pool do not hold the same value when they are merged. See [Branch-agnostic allocation](../resource-manager/overview.mdx#branch-agnostic-allocation).
-- When you pass the same `identifier` on repeated allocation requests, Infrahub returns the existing allocation instead of creating a new one, on any branch that can read that allocation. A provisioning script can then run more than once without allocating a second address or subnet for the same object.
-- Infrahub handles one allocation request at a time for each pool, across every Infrahub worker, so two concurrent requests to the same pool never receive the same resource.
-- When a pool has several prefixes as resources, it allocates from the prefix with the highest `allocation_weight` first. The attribute comes from the `CoreWeightedPoolResource` generic. The Marketplace `IpamPrefix` does not inherit from it, so add it to your prefix node to use weights. See [Weighted allocation](../resource-manager/weighted-allocation.mdx).
+- When an address or a prefix is allocated from a pool on a branch, Infrahub reserves the value on every branch at that moment. A request to the same pool on another branch receives a different value, so no two branches have the same address or prefix from that pool when they are merged. See [Branch-agnostic allocation](../resource-manager/overview.mdx#branch-agnostic-allocation).
+- When repeated allocation requests have the same `identifier`, Infrahub returns the existing allocation instead of creating a new one, on any branch where the allocated address or prefix exists. A provisioning script can then run more than once without allocating a second address or subnet for the same object.
+- When several requests to the same pool arrive at the same time, Infrahub completes one allocation before it starts the next, across all Infrahub workers, so two requests never receive the same address or prefix.
+- When a pool has several prefixes as resources, Infrahub allocates from the prefix with the highest `allocation_weight` first. The attribute comes from the `CoreWeightedPoolResource` generic. The Marketplace `IpamPrefix` does not inherit from it, so add it to your prefix node to use weights. See [Weighted allocation](../resource-manager/weighted-allocation.mdx).
 
 In the following example, a loopback pool allocates from `10.0.0.0/24`. A request with a new identifier receives the next available address, and a request that repeats an identifier receives the address already allocated to it:
 
-![A loopback pool uses the prefix 10.0.0.0/24 as its resource. The prefix does not count every address as usable, so the pool does not allocate the network address 10.0.0.0. A Generator requests an address with the identifier atl1-edge1 and receives 10.0.0.1/32, then with atl1-edge2 and receives 10.0.0.2/32. Requesting again with atl1-edge1 returns 10.0.0.1/32 again instead of a new address.](../media/ipam/ipam-pool-allocation.svg)
+![A loopback pool uses the prefix 10.0.0.0/24 as its resource. Not every address in the prefix is usable, so Infrahub does not allocate the network address 10.0.0.0. A Generator requests an address with the identifier atl1-edge1 and receives 10.0.0.1/32, then with atl1-edge2 and receives 10.0.0.2/32. Requesting again with atl1-edge1 returns 10.0.0.1/32 again instead of a new address.](../media/ipam/ipam-pool-allocation.svg)
 
-The [Resource Manager](../resource-manager/overview.mdx#idempotent-allocation) page has the full identifier rules.
+For the full identifier rules, see [Idempotent allocation](../resource-manager/overview.mdx#idempotent-allocation).
 
 ## Create a pool
 
-Give the namespace by its HFID, which holds its name: `{hfid: ["default"]}` in GraphQL, `["default"]` in the Python SDK. Give each prefix in `resources` by its ID: the relationship accepts a prefix of any kind that inherits from `BuiltinIPPrefix`, and that generic has no HFID.
+Create the pool with its prefixes and the namespace they are in. Give the namespace by its HFID, a list that contains its name: `{hfid: ["default"]}` in GraphQL, `["default"]` in the Python SDK. Give each prefix in `resources` by its ID: the relationship accepts a prefix of any kind that inherits from `BuiltinIPPrefix`, and that generic has no HFID.
 
 <Tabs groupId="method" queryString>
   <TabItem value="graphql" label="GraphQL" default>

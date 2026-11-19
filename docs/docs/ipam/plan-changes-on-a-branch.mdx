@@ -8,8 +8,8 @@ Make an addressing change, such as a subnet split or the prefixes of a new site,
 
 1. [Create a branch](../branches/create.mdx).
 2. Make the addressing changes on the branch, as described in [Manage prefixes and addresses](./manage-prefixes-and-addresses.mdx).
-3. Open a [Proposed Change](../proposed-changes/overview.mdx). The Data tab lists the prefixes, addresses and namespaces that were added, changed or deleted, and the attributes that changed on each. The checks run on the Proposed Change, including the Schema Integrity check described in [When the same prefix is created on two branches](#when-the-same-prefix-is-created-on-two-branches).
-4. Merge once the review is complete. See [Merge a branch](../branches/merge.mdx) for what happens at merge time.
+3. Open a [Proposed Change](../proposed-changes/overview.mdx). On the Data tab, reviewers view the prefixes, addresses and namespaces that were added, changed or deleted, and the attributes that changed on each. The checks run on the Proposed Change, including the Schema Integrity check described in [When the same prefix is created on two branches](#when-the-same-prefix-is-created-on-two-branches).
+4. Merge the Proposed Change after the review. See [Merge a branch](../branches/merge.mdx) for what happens at merge time.
 
 ## How Infrahub updates the tree on a branch and at merge
 
@@ -19,9 +19,9 @@ Infrahub updates the tree of a branch after each change on it, so the prefixes a
 
 When you query a branch, Infrahub computes utilization for that branch, so the figures on the branch include its changes, and the figures on the default branch include them only after the merge.
 
-## When two branches create the same prefix
+## When the same prefix is created on two branches
 
-When your schema makes prefixes and addresses unique within a namespace, as the Marketplace schema does, only one of two branches that create the same prefix or address in a namespace can be merged. The first branch to be merged succeeds, and Infrahub blocks the second one:
+When your schema makes prefixes and addresses unique within a namespace, as the Marketplace schema does, and the same prefix or address is created in one namespace on two branches, only one of the two branches can be merged. The first merge succeeds, and Infrahub blocks the second:
 
 - In the Proposed Change of the second branch, the Schema Integrity check fails with uniqueness violations for the duplicate prefix, and Infrahub refuses to merge the Proposed Change.
 - The Data tab of that Proposed Change shows no conflict. A conflict is a change that two branches make to the same object, and the two prefixes are separate objects.
@@ -39,7 +39,7 @@ The network team of customer A, from the example in [Use namespaces](./use-names
 1. Create a branch named `customer-a-subnet-split`.
 2. On the branch, create `10.1.0.0/17` and `10.1.128.0/17` in the `customer-a` namespace, with the member type `prefix`. You do not set their parent. Infrahub places both under `10.1.0.0/16`, and moves each existing `/24` under the `/17` that contains it.
 3. Open a Proposed Change. The Data tab lists the two `/17` prefixes as added, and each moved `/24` as updated, with its parent changed from `10.1.0.0/16` to the `/17` that contains it.
-4. Merge. Infrahub updates the tree of the `customer-a` namespace on the default branch in the same way.
+4. Merge the Proposed Change. Shortly after the merge, Infrahub places the two `/17` prefixes under `10.1.0.0/16` on the default branch, and each `/24` under the `/17` that contains it.
 
 ## Related
 

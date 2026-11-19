@@ -29,7 +29,7 @@ Once your IPAM schema is in place, use [Infrahub Sync](https://docs.infrahub.app
 - Within a namespace, prefixes form a tree based on network containment. A prefix is the parent of the prefixes it contains, and each address belongs to the most specific prefix that contains it.
 - Prefixes and addresses relate to the rest of your data through schema relationships. In the Marketplace schema, an address relates to an interface (`interface`) and can be the primary address of a device (`primary_of`).
 
-Three built-in generics, `BuiltinIPNamespace`, `BuiltinIPPrefix` and `BuiltinIPAddress`, define this behavior, and the prefix and address nodes of your schema inherit from them. Whether one namespace can hold the same prefix twice also depends on your schema: the Marketplace schema makes prefixes and addresses unique within a namespace.
+The prefix and address nodes of your schema inherit from the built-in generics `BuiltinIPPrefix` and `BuiltinIPAddress`, and the namespace node from `BuiltinIPNamespace`. Infrahub builds the tree for every node that inherits from them. Whether one namespace can contain the same prefix twice depends on the uniqueness constraints in your schema: the Marketplace schema makes prefixes and addresses unique within a namespace.
 
 To store a single IP value on another node without these behaviors, such as the address of a syslog server, use the `IPAddress`, `IPHost` or `IPNetwork` attribute kinds instead. See [Build your IPAM schema](./build-your-ipam-schema.mdx#iphost-ipnetwork-and-ipaddress-attribute-kinds) for when to choose each.
 
@@ -79,7 +79,7 @@ When you query a branch, Infrahub computes utilization for that branch. Infrahub
 
 Create a namespace when address space overlaps, for example when the customers of a managed service all use `10.0.0.0/8`, or when two sets of prefixes must be kept separate so that the same values can exist in both. Each namespace has its own tree and its own utilization figures.
 
-To record which customer, business unit or region owns a prefix, use a relationship such as a tenant, not a namespace. A VRF node and a namespace also record different things: a VRF node records the routing instance, and a namespace allows the same prefix to exist twice. See [Use namespaces](./use-namespaces.mdx) for how to combine them.
+To record which customer, business unit or region owns a prefix, use a relationship such as a tenant, not a namespace. A VRF and a namespace represent different things: a VRF represents a routing instance, and a namespace is a separate address space. With the Marketplace schema, when the same prefix exists in two VRFs, record the prefixes of each VRF in its own namespace. See [Use namespaces](./use-namespaces.mdx) for how to combine them.
 
 :::info
 When you delete a namespace, Infrahub deletes every prefix and address in it. The `default` namespace cannot be deleted.

@@ -98,7 +98,7 @@ An `IpamNamespace` node that inherits from `BuiltinIPNamespace` already exists. 
 
 Make prefixes and addresses unique within a namespace, not across the whole instance: `[prefix__value, ip_namespace]` and `[address__value, ip_namespace]`, as in the example above and in the Marketplace schema.
 
-The built-in generics declare no uniqueness constraint, so your schema decides what Infrahub accepts:
+The built-in prefix and address generics declare no uniqueness constraint. A duplicate prefix or address is rejected only when your schema declares one:
 
 - With the per-namespace constraint, Infrahub rejects a second prefix or address with the same value in the same namespace, and accepts the same value in another namespace.
 - With a constraint on the value alone, such as `[address__value]`, Infrahub also rejects the same address in a second namespace, so namespaces can no longer contain overlapping address space.
@@ -107,7 +107,7 @@ The built-in generics declare no uniqueness constraint, so your schema decides w
 
 Reference the namespace through the relationship name, `ip_namespace`. Infrahub rejects an attribute of the related node, such as `ip_namespace__name__value`, in a uniqueness constraint.
 
-When two branches each create the same prefix in a namespace, Infrahub checks the constraint again in the Proposed Change of the second branch. See [Plan changes on a branch](./plan-changes-on-a-branch.mdx#when-two-branches-create-the-same-prefix).
+When the same prefix is created in one namespace on two branches, Infrahub checks the constraint again in the Proposed Change of the branch that is merged second. See [Plan changes on a branch](./plan-changes-on-a-branch.mdx#when-the-same-prefix-is-created-on-two-branches).
 
 ## VLAN, VRF, and other extensions
 
@@ -127,7 +127,7 @@ Browse [marketplace.infrahub.app](https://marketplace.infrahub.app) for the full
 
 ## IPHost, IPNetwork, and IPAddress attribute kinds
 
-`IPHost`, `IPNetwork`, and `IPAddress` are attribute kinds, not IPAM nodes. Attach one directly to any schema node for a validated IP value that does not belong in your address plan: a monitoring target, a syslog destination, an NTP server address. The value behaves like any other attribute. It is stored on the node you attach it to, it does not appear in the prefix tree or in utilization, and it cannot be allocated from a Resource Manager pool.
+`IPHost`, `IPNetwork`, and `IPAddress` are attribute kinds, not IPAM nodes. Add an attribute of one of these kinds to any node for a validated IP value that does not belong in your address plan: a monitoring target, a syslog destination, an NTP server address. The value is stored on that node, like any other attribute. It does not appear in the prefix tree or in utilization, and it cannot be allocated from a Resource Manager pool.
 
 | Kind | Stores | Example |
 | --- | --- | --- |
@@ -168,7 +168,7 @@ print(region.ntp_server.value)  # 192.0.2.1, an ipaddress.IPv4Address
 
 ### When to model an IPAM node instead
 
-The `Region` example models a third-party NTP or syslog service: the address is not yours to manage, and Infrahub only needs it to render into device configuration. The `IPAddress` attribute is the right choice there, because all you need is a validated value to read back when you generate the configuration.
+The `Region` example models a third-party NTP or syslog service: the address is not yours to manage, and it is used only in generated device configuration. An `IPAddress` attribute is enough there, because it stores a validated value to read back for that configuration.
 
 Use an `IpamIPAddress` node instead of an attribute kind when you need the address to:
 
