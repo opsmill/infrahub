@@ -358,7 +358,7 @@ async def create_component(
         )
         await node_profiles_applier.apply_profiles(node=obj_peer)
 
-    await obj_peer.save(db=db, user_id=user_id)
+    await obj_peer.save(db=db, user_id=user_id, at=at)
     writer = OwnershipWriter(repository=OwnershipRepository(db=db, branch=branch, at=at))
     for holder, owner_ids in component.given_owners.items():
         await writer.copy_from_template(

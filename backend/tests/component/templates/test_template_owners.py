@@ -21,6 +21,7 @@ from infrahub.core.ownership.queries import NodeOwnerStateReadQuery
 from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.ownership.resolver import OwnershipResolver
 from infrahub.core.registry import registry
+from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
 from tests.constants import TestKind
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
@@ -318,6 +319,29 @@ async def test_components_get_the_owners_that_their_subtemplates_give(
         sfps[0].id: _from_template(sfp_subtemplate, dataset.owners("network-emea")),
     }
     await verify_graph(db=db, kinds=[TestKind.DEVICE, TestKind.PHYSICAL_INTERFACE, TestKind.SFP])
+
+
+async def test_component_created_at_a_given_time_gets_the_owners_of_its_subtemplate(
+    db: InfrahubDatabase, dataset: TemplateDataset
+) -> None:
+    template = await _device_template(db=db, dataset=dataset, name="emea-leaf", owners=None)
+    subtemplate = await _interface_template(
+        db=db, dataset=dataset, template=template, name="eth0", owners=dataset.owners("dc-security")
+    )
+    create_at = Timestamp()
+
+    await create_node(
+        data={"name": "leaf-1", "object_template": {"id": template.id}},
+        db=db,
+        branch=dataset.branch,
+        schema=registry.schema.get_node_schema(name=TestKind.DEVICE, branch=dataset.branch),
+        at=create_at,
+    )
+
+    interfaces = await NodeManager.query(db=db, schema=TestKind.PHYSICAL_INTERFACE, branch=dataset.branch)
+    assert await _resolve(db, dataset, interfaces[0].id) == {
+        interfaces[0].id: _from_template(subtemplate, dataset.owners("dc-security"))
+    }
 
 
 @pytest.mark.parametrize(
