@@ -469,9 +469,15 @@ async def test_mark_failed_closes_each_migration_record_by_its_status(
     ]
 
 
-async def test_mark_failed_if_running_changes_only_a_running_schema_change(
+async def test_mark_failed_if_running_changes_only_a_running_schema_change_and_keeps_its_applied_migrations(
     db: InfrahubDatabase, empty_database: None
 ) -> None:
+    statuses_before = [
+        SchemaChangeMigrationStatus.APPLIED,
+        SchemaChangeMigrationStatus.FAILED,
+        SchemaChangeMigrationStatus.RUNNING,
+        SchemaChangeMigrationStatus.WAITING,
+    ]
     history = await seed_schema_change_history(
         db=db,
         branches=[
@@ -479,7 +485,12 @@ async def test_mark_failed_if_running_changes_only_a_running_schema_change(
                 branch=BRANCH_NAME,
                 changes=[SchemaChangeStatus.APPLIED, SchemaChangeStatus.RUNNING],
                 migrations=[
-                    MigrationSeed(migration=attribute_migration(), status=SchemaChangeMigrationStatus.APPLIED),
+                    MigrationSeed(
+                        migration=attribute_migration(field_name=f"field{position}"),
+                        status=status,
+                        errors=(MIGRATION_ERROR,) if status == SchemaChangeMigrationStatus.FAILED else (),
+                    )
+                    for position, status in enumerate(statuses_before)
                 ],
             )
         ],
@@ -510,12 +521,31 @@ async def test_mark_failed_if_running_changes_only_a_running_schema_change(
         db=db, schema_change_ids=[applied_change.id, running_change.id]
     )
     assert [
-        (application.application.status.value, [migration.status for migration in application.migrations])
+        (
+            application.application.status.value,
+            [(migration.position, migration.status, list(migration.errors)) for migration in application.migrations],
+        )
         for schema_change_id in (applied_change.id, running_change.id)
         for application in applications[schema_change_id]
     ] == [
-        ("applied", [SchemaChangeMigrationStatus.APPLIED]),
-        ("failed", [SchemaChangeMigrationStatus.ROLLED_BACK]),
+        (
+            "applied",
+            [
+                (0, SchemaChangeMigrationStatus.APPLIED, []),
+                (1, SchemaChangeMigrationStatus.FAILED, [MIGRATION_ERROR]),
+                (2, SchemaChangeMigrationStatus.RUNNING, []),
+                (3, SchemaChangeMigrationStatus.WAITING, []),
+            ],
+        ),
+        (
+            "failed",
+            [
+                (0, SchemaChangeMigrationStatus.APPLIED, []),
+                (1, SchemaChangeMigrationStatus.FAILED, [MIGRATION_ERROR]),
+                (2, SchemaChangeMigrationStatus.FAILED, [FAILURE_ERROR]),
+                (3, SchemaChangeMigrationStatus.CANCELLED, []),
+            ],
+        ),
     ]
 
 

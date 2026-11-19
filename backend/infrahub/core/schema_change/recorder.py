@@ -101,7 +101,10 @@ class SchemaChangeRecorder:
         )
 
     async def fail_if_running(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> bool:
-        """Set the schema change and its application to failed as `fail` does, only while the schema change is running.
+        """Set the schema change and its application to failed with the error, only while the schema change is running.
+
+        It is for a load whose schema and data were not rolled back, so an applied migration record stays applied; a
+        waiting one becomes cancelled, and a running one failed with the error added to its errors.
 
         Returns:
             Whether the schema change was set to failed; False when it was already recorded as applied or failed.

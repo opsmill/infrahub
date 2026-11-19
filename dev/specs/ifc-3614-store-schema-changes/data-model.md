@@ -154,7 +154,9 @@ Status transitions in this feature:
 
 `mark_failed` closes the records of a failed load in one statement: `applied` becomes
 `rolled_back`, `waiting` becomes `cancelled`, `running` becomes `failed` with the error of the load
-added to its errors, and `failed` stays.
+added to its errors, and `failed` stays. `mark_failed_if_running` closes the records of a cancelled
+load the same way, except that `applied` stays `applied`, because a cancelled load is not rolled
+back (spec, decision 11).
 
 `running` means that the task of the migration started. The records report progress and are best
 effort: a record whose write fails after the retries keeps its earlier status, also when the load

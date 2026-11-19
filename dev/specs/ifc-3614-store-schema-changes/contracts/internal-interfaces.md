@@ -232,6 +232,9 @@ class SchemaChangeRepository:
   migration records of the application in the same statement: an `applied` record becomes
   `rolled_back`, a `waiting` one `cancelled`, and a `running` one `failed` with the error added to
   its errors; a `failed` one keeps its status.
+- `mark_failed_if_running` does what `mark_failed` does only while the schema change is `running`,
+  and returns whether it changed it. An `applied` migration record stays `applied`, because it is
+  called for a cancelled load, which is not rolled back.
 - `create_migration_records` raises `QueryError` when the application is not stored.
 - `delete_branch_schema_changes` deletes the schema changes of the branch with their operations,
   applications and migration records, and returns the number of schema changes deleted. It runs
@@ -386,7 +389,7 @@ class SchemaChangeRecorder:
 | `start` | created, `running`, no version | created, `running` | none yet |
 | `complete` | `applied`, version, parent, `applied_at` | `applied` | unchanged |
 | `fail` | `failed` | `failed`, with the error | `applied` becomes `rolled_back`, `waiting` becomes `cancelled`, `running` becomes `failed` with the error; `failed` is unchanged |
-| `fail_if_running` | as `fail`, only while `running`; otherwise unchanged, and it returns `False` | as `fail`, only while the schema change is `running` | as `fail`, only while the schema change is `running` |
+| `fail_if_running` | as `fail`, only while `running`; otherwise unchanged, and it returns `False` | as `fail`, only while the schema change is `running` | as `fail`, except that `applied` stays `applied`, only while the schema change is `running` |
 | `record_applied` | created, `applied`, version, parent, `applied_at` | created, `applied` | none |
 
 - It has five entry methods because they are the steps of one schema change, and each needs the

@@ -175,7 +175,8 @@ progress and are best effort.
    the cancellation go on. `fail_if_running` changes the schema change only while it is `running`:
    a cancellation can arrive after the final step recorded the schema change as applied, and a
    cancelled load keeps its schema, so that schema change stays `applied` and the runner logs a
-   warning.
+   warning. It closes the migration records as `fail` does, except that an `applied` record stays
+   `applied`, because nothing removes what its migration wrote.
 
 A failure of `fail` itself is logged when it is one of `RECORD_WRITE_ERRORS`
 (`core/schema_change/record_errors.py`: a `DatabaseError`, a `QueryError`, a `QueryTimeoutError` or
@@ -202,9 +203,9 @@ Schema change and application:
 - `running`: by `start`, at the beginning of a load.
 - `applied`: by `complete` at the end of a load, or directly by `record_applied` for a mutation. Only
   this status gets a version and a parent.
-- `failed`: by `fail` (`SchemaChangeMarkFailedQuery`), when the update raises or the load is
-  cancelled. The same statement stores the error on the application and closes the migration
-  records of the application.
+- `failed`: by `fail` (`SchemaChangeMarkFailedQuery`) when the update raises, or by
+  `fail_if_running` (the same query) when the load is cancelled. The same statement stores the
+  error on the application and closes the migration records of the application.
 
 Migration record:
 
@@ -214,6 +215,9 @@ Migration record:
 - When the load fails, `fail` sets an `applied` record to `rolled_back`, because the rollback
   removes what the migration wrote, a `waiting` record to `cancelled`, and a `running` record to
   `failed` with the error of the load added to its errors. A `failed` record keeps its status.
+- When the load is cancelled, `fail_if_running` closes the records the same way, except that an
+  `applied` record stays `applied`: a cancelled load is not rolled back, so the data its migration
+  wrote stays.
 
 The enumerations also hold `staged` for a schema change, and `rolled_back` and `skipped` for an
 application. No code sets them.

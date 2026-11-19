@@ -1046,6 +1046,10 @@ tasks that name it.
       merge leave the records unchanged is removed.
 - [X] T074 Rewrite `dev/knowledge/backend/schema-changes.md`, update every file of this directory
       that states a reversed decision, and delete the implementation report.
+- [X] T075 [US3] A cancelled load leaves an `applied` migration record `applied` (spec, decision
+      11): `SchemaChangeMarkFailedQuery` takes `rolled_back`, which `mark_failed` sets and
+      `mark_failed_if_running` does not, and the component test of `mark_failed_if_running`
+      asserts the status of each migration record.
 
 ---
 
@@ -1102,5 +1106,5 @@ methods of one class run in the order they are defined.
 | 6. User Story 4 | T050 to T051 | 2 |
 | 7. User Story 5 | T052 to T055 | 4 |
 | 8. Documentation and polish | T056 to T064 | 9 |
-| 9. Changes decided in review | T066 to T074 | 9 |
-| Total | | 74 |
+| 9. Changes decided in review | T066 to T075 | 10 |
+| Total | | 75 |
