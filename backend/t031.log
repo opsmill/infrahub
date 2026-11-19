@@ -1,0 +1,62 @@
+/Users/Pol/Documents/OpsMill/infrahub/stable/infrahub-speckit-pr48/.venv/lib/python3.14/site-packages/pytest_benchmark/logger.py:46: PytestBenchmarkWarning: Benchmarks are automatically disabled because xdist plugin is active.Benchmarks cannot be performed reliably in a parallelized environment.
+  warner(PytestBenchmarkWarning(text))
+============================= test session starts ==============================
+platform darwin -- Python 3.14.4, pytest-9.0.3, pluggy-1.6.0
+codspeed: 4.5.0 (disabled, mode: walltime, callgraph: not supported, timer_resolution: 41.7ns)
+benchmark: 4.0.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /Users/Pol/Documents/OpsMill/infrahub/stable/infrahub-speckit-pr48
+configfile: pyproject.toml
+plugins: cov-7.1.0, xdist-3.8.0, env-1.6.0, Faker-40.19.1, codspeed-4.5.0, clarity-1.0.1, anyio-4.14.2, asyncio-1.3.0, httpx-0.36.2, infrahub-server-1.12.2.dev140+g2aa3a6b5b, base-url-2.1.0, timeout-2.3.1, benchmark-4.0.0, playwright-asyncio-0.8.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=session, asyncio_default_test_loop_scope=function
+timeout: 300.0s
+timeout method: signal
+timeout func_only: False
+collected 9 items
+
+tests/component/display_labels/test_setup.py ........F                   [100%]
+
+=================================== FAILURES ===================================
+_ TestDisplayLabelSetup.test_branch_that_stops_owning_its_schema_loses_its_records _
+
+self = <tests.component.display_labels.test_setup.TestDisplayLabelSetup object at 0x11fe3dbd0>
+db = <infrahub.database.InfrahubDatabase object at 0x12005fb60>
+workflow_recorder = <WorkflowRecorder created during backend/tests/component/display_labels/test_setup.py::TestDisplayLabelSetup::test_unchanged_schema_submits_nothing (setup)>
+admin_account = CoreAccount(ID: 18e9806d-a94c-0f10-37ce-223d03f1e044)
+
+    async def test_branch_that_stops_owning_its_schema_loses_its_records(
+        self, db: InfrahubDatabase, workflow_recorder: WorkflowRecorder, admin_account: CoreAccount
+    ) -> None:
+        branch_name = f"{self.BRANCH_PREFIX}-realigned"
+        await self.create_branch_with_schema(db=db, branch_name=branch_name, schema=self.changed_schema())
+        await self.run_setup(context=self.context(admin_account, branch_name), branch_name=branch_name)
+>       assert {branch for branch, _ in await self.recorded(db=db, family=self.FAMILY)} == {"main", branch_name}
+E       AssertionError: assert {'dl-divergin...gned', 'main'} == {'dl-realigned', 'main'}
+E         
+E         Extra items in the left set:
+E         'dl-identical'
+E         'dl-diverging'
+E         Use -v to get more diff
+
+tests/component/display_labels/test_setup.py:70: AssertionError
+----------------------------- Captured stderr call -----------------------------
+[2m2026-11-19T16:56:06.358570Z[0m [[33m[1mwarning  [0m] [1mSchema had not converged after 6.00 seconds, refreshing schema on local worker manually[0m [[0m[1m[34mprefect.flow_runs[0m][0m
+------------------------------ Captured log call -------------------------------
+WARNING  prefect.flow_runs:utils.py:96 Schema had not converged after 6.00 seconds, refreshing schema on local worker manually
+=============================== warnings summary ===============================
+../.venv/lib/python3.14/site-packages/coolname/loader.py:64: 15 warnings
+  /Users/Pol/Documents/OpsMill/infrahub/stable/infrahub-speckit-pr48/.venv/lib/python3.14/site-packages/coolname/loader.py:64: DeprecationWarning: codecs.open() is deprecated. Use open() instead.
+    with codecs.open(file_path, encoding='utf-8') as file:
+
+../.venv/lib/python3.14/site-packages/coolname/loader.py:74
+  /Users/Pol/Documents/OpsMill/infrahub/stable/infrahub-speckit-pr48/.venv/lib/python3.14/site-packages/coolname/loader.py:74: DeprecationWarning: codecs.open() is deprecated. Use open() instead.
+    with codecs.open(config_file_path, encoding='utf-8') as file:
+
+../.venv/lib/python3.14/site-packages/authlib/integrations/httpx_client/assertion_client.py:5
+  /Users/Pol/Documents/OpsMill/infrahub/stable/infrahub-speckit-pr48/.venv/lib/python3.14/site-packages/authlib/integrations/httpx_client/assertion_client.py:5: AuthlibDeprecationWarning: The httpx module is deprecated; please use httpx2 instead.
+    from ._compat import httpx2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /Users/Pol/Documents/OpsMill/infrahub/stable/infrahub-speckit-pr48/backend/pytest-junit.xml -
+=========================== short test summary info ============================
+FAILED tests/component/display_labels/test_setup.py::TestDisplayLabelSetup::test_branch_that_stops_owning_its_schema_loses_its_records
+============= 1 failed, 8 passed, 17 warnings in 278.71s (0:04:38) =============
