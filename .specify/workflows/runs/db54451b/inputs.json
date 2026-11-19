@@ -1,0 +1,6 @@
+{
+  "inputs": {
+    "spec": "https://opsmill.atlassian.net/browse/IFC-2167",
+    "integration": "claude"
+  }
+}
