@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 class CloseRepositoryOwnerEdgesQuery(Query):
-    """Close the open owner edges from attributes to repositories, on every branch.
+    """Close the open owner edges from attributes to repositories, on every branch, and count them by repository.
 
     Each edge keeps its `from` time and gets a `to` time, so a read at an earlier time still returns the repository.
     The writes are batched, so this query cannot run inside an explicit transaction. A second run finds no open
@@ -29,13 +29,27 @@ class CloseRepositoryOwnerEdgesQuery(Query):
         self.params["user_id"] = self.user_id
         self.params["batch_size"] = config.SETTINGS.database.query_size_limit
         query = """
-MATCH (:Attribute)-[r:HAS_OWNER]->(:%(repository_label)s)
+MATCH (:Attribute)-[r:HAS_OWNER]->(repository:%(repository_label)s)
 WHERE r.status = "active" AND r.to IS NULL
 CALL (r) {
     SET r.to = $at, r.to_user_id = $user_id
 } IN TRANSACTIONS OF $batch_size ROWS
+RETURN repository.uuid AS repository_id, repository.kind AS repository_kind, count(r) AS nb_edges
+ORDER BY repository_id
         """ % {"repository_label": InfrahubKind.GENERICREPOSITORY}
         self.add_to_query(query)
+        self.return_labels = ["repository_id", "repository_kind", "nb_edges"]
+
+    def get_closed_edges(self) -> list[tuple[str, str, int]]:
+        """Return the ID, the kind and the number of closed edges of each repository."""
+        return [
+            (
+                result.get_as_type("repository_id", str),
+                result.get_as_type("repository_kind", str),
+                result.get_as_type("nb_edges", int),
+            )
+            for result in self.get_results()
+        ]
 
 
 class HideRepositoryOwnersOnBranchesQuery(Query):
@@ -126,18 +140,22 @@ class Migration085(ArbitraryMigration):
         return MigrationResult()
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        db = migration_input.db
         try:
+            close_query = await CloseRepositoryOwnerEdgesQuery.init(
+                db=db, at=migration_input.at, user_id=migration_input.user_id
+            )
+            await close_query.execute(db=db)
             # The hide queries read the `to` times that the first query sets.
-            for query_class in (
-                CloseRepositoryOwnerEdgesQuery,
-                HideRepositoryOwnersOnBranchesQuery,
-                HideGlobalRepositoryOwnersQuery,
-            ):
-                query = await query_class.init(
-                    db=migration_input.db, at=migration_input.at, user_id=migration_input.user_id
-                )
-                await query.execute(db=migration_input.db)
+            for query_class in (HideRepositoryOwnersOnBranchesQuery, HideGlobalRepositoryOwnersQuery):
+                query = await query_class.init(db=db, at=migration_input.at, user_id=migration_input.user_id)
+                await query.execute(db=db)
         # reported through the result so the runner prints it against this migration
         except Exception as exc:  # noqa: BLE001
             return MigrationResult(errors=[str(exc)])
-        return MigrationResult()
+        closed_edges = close_query.get_closed_edges()
+        nb_closed = sum(nb_edges for _, _, nb_edges in closed_edges)
+        migration_input.console.log(f"Closed {nb_closed} owner edge(s) from attributes to repositories.")
+        for repository_id, repository_kind, nb_edges in closed_edges:
+            migration_input.console.log(f"  repository {repository_id} ({repository_kind}): {nb_edges}")
+        return MigrationResult(nbr_migrations_executed=nb_closed)
