@@ -323,14 +323,13 @@ class ConflictsEnricher:
             return True
         if {base_property.new_value, branch_property.new_value} <= {NULL_VALUE, None}:
             return True
-        if is_list and stored_owner_ids(value=base_property.new_value) == stored_owner_ids(
-            value=branch_property.new_value
-        ):
-            return True
-        # An update that keeps the value changes what the value does not show, such as the origin of a list of owners.
-        if is_list and any(
-            prop.action is DiffAction.UPDATED and prop.previous_value == prop.new_value
-            for prop in (base_property, branch_property)
+        if is_list and (
+            stored_owner_ids(value=base_property.new_value) == stored_owner_ids(value=branch_property.new_value)
+            # An update that keeps the value changes what the value does not show, such as the origin of a list of owners.
+            or any(
+                prop.action is DiffAction.UPDATED and prop.previous_value == prop.new_value
+                for prop in (base_property, branch_property)
+            )
         ):
             return True
         if (
