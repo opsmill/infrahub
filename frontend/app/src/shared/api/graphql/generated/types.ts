@@ -18763,7 +18763,7 @@ export type InfrahubSchemaChangeNodeOperationsArgs = {
 /** One operation of a schema change; the operations apply in the order of `position`. */
 export type InfrahubSchemaChangeOperation = {
   __typename: 'InfrahubSchemaChangeOperation';
-  /** Name of the attribute or relationship before the operation. */
+  /** Name of the attribute or relationship. Set for the three ELEMENT types; for a rename, the name before the operation. */
   element_name: Maybe<Scalars['String']['output']>;
   kind: Scalars['String']['output'];
   /** Set for NODE_ADD. */

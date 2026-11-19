@@ -229,6 +229,9 @@ def build_candidate_from_schemas(
     Raises:
         SchemaNotValidError: When the files cannot be merged or laid over the branch schema, or when the candidate
             is not a valid update of the branch schema.
+        SchemaNotFoundError: When a file gives a kind of the branch schema an ID that the branch schema does not hold.
+        SchemaOperationsRebuildError: When the operations built from the files cannot be applied, or when the schema
+            they build differs from the files laid over the branch schema.
 
     """
     try:

@@ -49,9 +49,7 @@ class SchemaChangeRecording:
 class SchemaChangeRecorder:
     """Record a schema change and its application, and move both through their statuses.
 
-    It has several entry methods because they are the steps of one schema change, each taking the
-    recording that an earlier step returned. The caller holds the schema lock, so the version that
-    the resolver returns is still free when it is written.
+    The caller must hold the schema lock while a step writes the next version of the branch.
     """
 
     def __init__(self, repository: SchemaChangeRecordStore, version_resolver: SchemaChangeVersionResolver) -> None:

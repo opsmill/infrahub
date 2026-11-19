@@ -60,7 +60,7 @@ def _error_text(exc: Exception) -> str:
     # An Infrahub error can hold its text in `message` alone, which leaves `str()` empty.
     if isinstance(exc, Error) and exc.message:
         return exc.message
-    return str(exc)
+    return str(exc) or type(exc).__name__
 
 
 class SchemaChangeApplicationRunner:

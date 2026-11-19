@@ -79,7 +79,13 @@ class InfrahubSchemaChangeOperation(ObjectType):
     kind = String(required=True)
     node_type = Field(SchemaOperationNodeType, required=False, description="Set for NODE_ADD.")
     section = Field(SchemaOperationSection, required=False, description="Set for the three ELEMENT types.")
-    element_name = String(required=False, description="Name of the attribute or relationship before the operation.")
+    element_name = String(
+        required=False,
+        description=(
+            "Name of the attribute or relationship. Set for the three ELEMENT types; "
+            "for a rename, the name before the operation."
+        ),
+    )
     property_name = String(
         required=False, description="Name of the property, dotted when nested. Set for the two PROPERTY types."
     )

@@ -64,7 +64,7 @@ class SchemaChangeApplier:
             SchemaOperationTargetNotFoundError: When an operation names a kind, attribute or relationship that the
                 schema does not have at that step.
             SchemaOperationTargetExistsError: When an operation adds a kind, or an attribute or relationship of a
-                kind, that the schema already has at that step.
+                kind, or renames a kind to one that the schema already has at that step.
 
         """
         schema = target_schema.duplicate()
@@ -108,6 +108,10 @@ class SchemaChangeApplier:
                 property_name = self._property_name(operation=operation)
                 self._set_property(holder=node, property_name=property_name, value=operation.value)
                 if property_name in SCHEMA_KIND_NAME_PROPERTIES and node.kind != operation.kind:
+                    if node.kind in schema.nodes or node.kind in schema.generics:
+                        raise SchemaOperationTargetExistsError(
+                            position=position, operation_type=operation.operation_type, kind=node.kind
+                        )
                     schema.delete(name=operation.kind)
                     if operation.kind in field_name_changes:
                         field_name_changes[node.kind] = field_name_changes.pop(operation.kind)

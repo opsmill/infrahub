@@ -310,7 +310,7 @@ def test_a_schema_file_whose_operations_do_not_rebuild_its_schema_is_refused(
     with pytest.raises(
         SchemaOperationsRebuildError,
         match=(
-            r"^The schema change cannot be stored accurately, so the schema was not loaded\. This is an error in "
+            r"^The schema change cannot be built accurately, so the request was not completed\. This is an error in "
             r"Infrahub, not in the schema file: the operations built from the file do not rebuild its schema for the "
             rf"kinds {test_case.expected_kinds}\.$"
         ),

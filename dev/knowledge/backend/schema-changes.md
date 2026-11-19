@@ -146,8 +146,10 @@ turns the comparison off, and a server or task worker in a container compares th
 `SchemaUpdateCoordinator.execute`, inside the schema lock, after the constraint checks pass and only
 when the diff is not empty. A load refused before that point stores nothing.
 
-The schema change and its application are required records: a merge or a rebase will read them, so
-a load whose schema change cannot be recorded fails and is rolled back. The migration records report
+The schema change and its application are required records, so a load whose schema change cannot
+be recorded fails and is rolled back. They are kept for merge and rebase to read in later work;
+today neither reads them, and both apply their migrations with `application_id=None`, which records
+no migration. The migration records report
 progress and are best effort.
 
 1. `SchemaChangeRecorder.start` creates the schema change and one application, both `running`, with

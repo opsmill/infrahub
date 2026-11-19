@@ -277,7 +277,7 @@ def test_schema_operations_rebuild_error_is_a_server_error_that_names_the_kinds(
 
     assert error.HTTP_CODE == 500
     assert str(error) == (
-        "The schema change cannot be stored accurately, so the schema was not loaded. This is an error in Infrahub, "
+        "The schema change cannot be built accurately, so the request was not completed. This is an error in Infrahub, "
         "not in the schema file: the operations built from the file do not rebuild its schema for the kinds "
         "DcimGenericDevice, LocationSite."
     )

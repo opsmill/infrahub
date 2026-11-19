@@ -487,7 +487,7 @@ class SchemaOperationsRebuildError(Error):
     def __init__(self, *, kinds: list[str]) -> None:
         self.kinds = kinds
         self.message = (
-            "The schema change cannot be stored accurately, so the schema was not loaded. This is an error in "
+            "The schema change cannot be built accurately, so the request was not completed. This is an error in "
             "Infrahub, not in the schema file: the operations built from the file do not rebuild its schema for the "
             f"kinds {', '.join(kinds)}."
         )

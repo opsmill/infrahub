@@ -106,3 +106,29 @@ def test_a_kind_and_an_attribute_that_differ_only_by_id_give_no_kind(equivalence
     )
 
     assert differing_kinds == []
+
+
+def test_a_number_pool_attribute_that_differs_only_by_pool_id_gives_no_kind(
+    equivalence_base_schema: SchemaBranch,
+) -> None:
+    direct_load_schema = _with_device_attribute(
+        equivalence_base_schema,
+        AttributeSchema(
+            name="ticket",
+            kind="NumberPool",
+            read_only=True,
+            parameters={"start_range": 1, "end_range": 100, "number_pool_id": "3c8e1f27-6a4d-4b90-a5e2-7d1b0f6c9e48"},
+        ),
+    )
+    applied_schema = _with_device_attribute(
+        equivalence_base_schema,
+        AttributeSchema(
+            name="ticket", kind="NumberPool", read_only=True, parameters={"start_range": 1, "end_range": 100}
+        ),
+    )
+
+    differing_kinds = SchemaCandidateComparer().differing_kinds(
+        direct_load_schema=direct_load_schema, applied_schema=applied_schema
+    )
+
+    assert differing_kinds == []

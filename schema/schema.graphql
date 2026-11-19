@@ -9400,7 +9400,9 @@ type InfrahubSchemaChangeNode {
 One operation of a schema change; the operations apply in the order of `position`.
 """
 type InfrahubSchemaChangeOperation {
-  """Name of the attribute or relationship before the operation."""
+  """
+  Name of the attribute or relationship. Set for the three ELEMENT types; for a rename, the name before the operation.
+  """
   element_name: String
   kind: String!
   """Set for NODE_ADD."""

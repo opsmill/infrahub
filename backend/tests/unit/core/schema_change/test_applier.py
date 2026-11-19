@@ -257,6 +257,20 @@ EXISTING_TARGET_CASES: list[ExistingTargetCase] = [
         ),
     ),
     ExistingTargetCase(
+        name="kind_renamed_to_an_existing_kind",
+        operations=[
+            RELABEL_TAG,
+            SchemaOperation(
+                operation_type=SchemaOperationType.NODE_PROPERTY,
+                kind=TestKind.TAG,
+                property_name="name",
+                value="Device",
+                previous_value="Tag",
+            ),
+        ],
+        message=r"^Schema operation 1 \(node_property\) adds the kind TestingDevice, which the schema already has\.$",
+    ),
+    ExistingTargetCase(
         name="attribute_added_by_an_earlier_operation",
         operations=[SERIAL_ATTRIBUTE_ADD, SERIAL_ATTRIBUTE_ADD],
         message=(

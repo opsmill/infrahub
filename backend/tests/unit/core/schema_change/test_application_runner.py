@@ -180,6 +180,11 @@ EXECUTOR_FAILURE_CASES: list[ExecutorFailureCase] = [
         error=RuntimeError("Workflow is not available"),
         expected_text="Workflow is not available",
     ),
+    ExecutorFailureCase(
+        name="error_without_text_gives_its_type_name",
+        error=TimeoutError(),
+        expected_text="TimeoutError",
+    ),
 ]
 
 
