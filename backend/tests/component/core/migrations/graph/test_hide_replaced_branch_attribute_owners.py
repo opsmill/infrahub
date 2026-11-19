@@ -7,6 +7,7 @@ from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from tests.component.core.diff.merge.conftest import get_diff_coordinator, get_diff_merger
 from tests.helpers.ownership import add_node, create_car
 
 # An owner edge as an earlier release stored it: an owner write on a branch left the edge of the default branch active.
@@ -209,3 +210,47 @@ async def test_default_branch_owner_is_hidden_from_the_first_of_two_branch_owner
         db=db, id=car.id, branch=branch, include_metadata=MetadataOptions.OWNER, raise_on_error=True
     )
     assert branch_car.color.owner_id == second_owner.id
+
+
+async def test_default_branch_owner_added_after_the_branch_start_is_hidden_and_the_merge_keeps_the_branch_owner(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+) -> None:
+    """The merge of the branch gives the owner of the branch alone, as the merge of an earlier release did."""
+    main_owner = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="main-owner")
+    later_owner = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="later-main-owner")
+    branch_owner = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="branch-owner")
+    person = await add_node(db=db, kind="TestPerson", name="John")
+    car = await create_car(db=db, name="volt", person=person, owner_id=main_owner.id)
+    branch = await create_branch(db=db, branch_name="branch1")
+    await _add_owner_edge(db=db, branch=branch, node_id=car.id, owner_id=branch_owner.id)
+    # An owner change on the default branch after the start of the branch, as an earlier release stored it.
+    await db.execute_query(
+        query=CLOSE_OWNER_EDGE,
+        params={
+            "node_id": car.id,
+            "owner_id": main_owner.id,
+            "branch": default_branch.name,
+            "at": Timestamp().to_string(),
+        },
+    )
+    await _add_owner_edge(db=db, branch=default_branch, node_id=car.id, owner_id=later_owner.id)
+    assert await _active_owner_ids(db=db, branch=branch, node_id=car.id) == {main_owner.id, branch_owner.id}
+
+    result = await Migration084().execute(migration_input=MigrationInput(db=db))
+
+    assert result.errors == []
+    assert sorted((edge["owner_id"], edge["branch"]) for edge in await _deleted_edges(db=db)) == sorted(
+        [(main_owner.id, branch.name), (later_owner.id, branch.name)]
+    )
+    assert await _active_owner_ids(db=db, branch=branch, node_id=car.id) == {branch_owner.id}
+    assert await _active_owner_ids(db=db, branch=default_branch, node_id=car.id) == {later_owner.id}
+
+    coordinator = await get_diff_coordinator(db=db, branch=branch)
+    await coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+    merger = await get_diff_merger(db=db, branch=branch)
+    await merger.merge_graph(at=Timestamp())
+
+    assert await _active_owner_ids(db=db, branch=default_branch, node_id=car.id) == {branch_owner.id}
