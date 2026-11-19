@@ -96,14 +96,21 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
   path: a merge, a node create, an object conversion. `NodeSourcesWriteQuery` and `NodeOwnerEdgesCloseQuery` take
   the lock too.
   The attribute rename migration, the only other code that creates a set, takes the same lock.
-- Lock order: a write of owners locks the node vertex first, and then an attribute vertex or a set vertex. So
-  `Node.delete` takes the lock on the node vertex (`NodeLockQuery`) before it deletes the attributes, on every
-  branch. Without this lock, a delete and a transaction that writes the owners of two attributes fail:
-  - On the default branch, the delete of an attribute locks the attribute vertex first, and then the node vertex.
-    The two transactions deadlock, and Neo4j stops one of them with
-    `Neo.TransientError.Transaction.DeadlockDetected`.
-  - On another branch, the delete does not wait for the write, and an active owner edge stays on a deleted
-    attribute.
+- Lock order: a writer of a node locks the node vertex first, and then an attribute vertex or a set vertex. A
+  write of owners, `Node._update` and `Node.delete` take the lock on the node vertex (`NodeLockQuery`, or the same
+  `SET` in the query) before they write a field, on every branch. When one transaction locks a field first, it
+  fails against a transaction that locks the node first:
+  - On the default branch, the two transactions deadlock, and Neo4j stops one of them with
+    `Neo.TransientError.Transaction.DeadlockDetected`. For example, the value write of an attribute locks the
+    attribute vertex, and the write of `updated_at` on the node vertex comes later.
+  - On another branch, the delete does not wait for the write, and an active value edge or owner edge stays on a
+    deleted attribute.
+- Two writers still lock a field before the node, so they can still deadlock against a delete of the node:
+  - `Attribute.save` from a caller other than `Node._update` locks the attribute vertex before the owner write locks
+    the node vertex. Only the migration `m064` calls it, and a migration runs alone.
+  - On the default branch, `RelationshipDeleteQuery` sets `updated_at` on the `Relationship` vertex before the
+    source and the peer node vertices, in one statement. `Relationship.delete` in the GraphQL `RelationshipRemove`
+    mutation and `RelationshipManager.save` in the profile applier run it before any node lock.
 - When the caller gives no time, `Node.delete` reads its time after the lock, so it also closes the owner edges
   that a write commits while the delete waits for the lock.
 - The check that the node is active comes after the lock, so it reads a delete of the node that another
