@@ -602,9 +602,11 @@ async def get_groups_from_provider(
 ) -> list[str]:
     # Poor man's workaround to fetch user groups from Google
     if isinstance(provider, (SecurityOAuth2Google, SecurityOIDCGoogle)) and provider.fetch_groups:
+        # The email address is a request parameter, not part of the URL, so no log line or error message repeats it.
         groups_response = await service.http.get(
-            f"{provider.cloudidentity_url}?query=member_key_id == '{user_info['email']}'",
+            provider.cloudidentity_url,
             headers={"Authorization": f"{payload.get('token_type')} {payload.get('access_token')}"},
+            params={"query": f"member_key_id == '{user_info['email']}'"},
         )
         group_memberships = groups_response.json()
         if "memberships" in group_memberships:

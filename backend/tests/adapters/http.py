@@ -14,6 +14,13 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
+class RecordedGet:
+    url: str
+    headers: dict[str, Any] | None = None
+    params: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
 class RecordedPost:
     url: str
     data: Any | None = None
@@ -25,6 +32,7 @@ class MemoryHTTP(InfrahubHTTP):
     def __init__(self) -> None:
         self._get_response: dict[str, httpx.Response] = {}
         self._post_response: dict[str, httpx.Response | Exception] = {}
+        self.gets: list[RecordedGet] = []
         self.posts: list[RecordedPost] = []
 
     def verify_tls(self, verify: bool | None = None) -> bool | ssl.SSLContext:
@@ -34,7 +42,9 @@ class MemoryHTTP(InfrahubHTTP):
         self,
         url: str,
         headers: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
     ) -> httpx.Response:
+        self.gets.append(RecordedGet(url=url, headers=headers, params=params))
         return self._get_response[url]
 
     async def post(
