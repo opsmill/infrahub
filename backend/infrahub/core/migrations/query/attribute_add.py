@@ -4,14 +4,17 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, NULL_VALUE, BranchSupportType, RelationshipStatus
 from infrahub.core.graph.schema import GraphAttributeValueIndexedNode, GraphAttributeValueNode
-from infrahub.core.query import Query, QueryType
+from infrahub.core.migrations.query.selection import MigrationSelectionQuery
+from infrahub.core.query import QueryType
 from infrahub.types import is_large_attribute_type
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.database import InfrahubDatabase
 
 
-class AttributeAddQuery(Query):
+class AttributeAddQuery(MigrationSelectionQuery):
     """Create missing attribute rows on the nodes of the given kinds.
 
     ``uuids`` optionally restricts the write to specific nodes.
@@ -22,6 +25,7 @@ class AttributeAddQuery(Query):
 
     name = "attribute_add"
     type = QueryType.WRITE
+    selected_node = "n"
 
     def __init__(
         self,
@@ -41,8 +45,34 @@ class AttributeAddQuery(Query):
         self.uuids = uuids
         super().__init__(**kwargs)
 
+    def render_selection(self, carry: Sequence[str] = ()) -> str:
+        """Return the selection, passing the variables named in `carry` through its ``WITH`` clause."""
+        branch_filter, _ = self.branch.get_query_filter_path(at=self.at.to_string())
+        return """
+        MATCH (n:%(node_kinds_str)s)
+        WHERE $node_uuids IS NULL OR n.uuid IN $node_uuids
+        CALL (n) {
+            MATCH (:Root)<-[r:IS_PART_OF]-(n)
+            WHERE %(branch_filter)s
+            WITH n, r AS is_part_of_e
+            OPTIONAL MATCH (n)-[r:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name })
+            WHERE %(branch_filter)s
+            WITH is_part_of_e, r AS has_attr_e
+            RETURN is_part_of_e, has_attr_e
+            ORDER BY has_attr_e.branch_level DESC, has_attr_e.from DESC, has_attr_e.status ASC,
+                is_part_of_e.branch_level DESC, is_part_of_e.from DESC, is_part_of_e.status ASC
+            LIMIT 1
+        }
+        WITH n, is_part_of_e, has_attr_e%(carry)s
+        WHERE is_part_of_e.status = "active" AND (has_attr_e IS NULL OR has_attr_e.status = "deleted")
+        """ % {
+            "node_kinds_str": "|".join(self.node_kinds),
+            "branch_filter": branch_filter,
+            "carry": "".join(f", {variable}" for variable in carry),
+        }
+
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        _, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
         write_time = self.at.to_string()
@@ -96,27 +126,11 @@ class AttributeAddQuery(Query):
             LIMIT 1
             """ % {"attr_value_label": attr_value_label}
 
-        node_kinds_str = "|".join(self.node_kinds)
         query = """
         %(match_query)s
         MERGE (is_protected_value:Boolean { value: $is_protected_default })
         WITH av, is_protected_value
-        MATCH (n:%(node_kinds_str)s)
-        WHERE $node_uuids IS NULL OR n.uuid IN $node_uuids
-        CALL (n) {
-            MATCH (:Root)<-[r:IS_PART_OF]-(n)
-            WHERE %(branch_filter)s
-            WITH n, r AS is_part_of_e
-            OPTIONAL MATCH (n)-[r:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name })
-            WHERE %(branch_filter)s
-            WITH is_part_of_e, r AS has_attr_e
-            RETURN is_part_of_e, has_attr_e
-            ORDER BY has_attr_e.branch_level DESC, has_attr_e.from DESC, has_attr_e.status ASC,
-                is_part_of_e.branch_level DESC, is_part_of_e.from DESC, is_part_of_e.status ASC
-            LIMIT 1
-        }
-        WITH n, is_part_of_e, has_attr_e, av, is_protected_value
-        WHERE is_part_of_e.status = "active" AND (has_attr_e IS NULL OR has_attr_e.status = "deleted")
+        %(selection)s
         // -----------------
         // Use the branch support of the new Attribute and its Node to determine which branch the edges are added to
         // If Attribute is (branch-agnostic) OR (branch-local AND Node is branch-agnostic) then use global branch
@@ -163,8 +177,7 @@ class AttributeAddQuery(Query):
         }
         """ % {
             "match_query": match_query,
-            "branch_filter": branch_filter,
-            "node_kinds_str": node_kinds_str,
+            "selection": self.render_selection(carry=("av", "is_protected_value")),
             "uuid_generation": db.render_uuid_generation(node_label="a", node_attr="uuid"),
         }
 

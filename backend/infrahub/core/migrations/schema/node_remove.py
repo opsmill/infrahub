@@ -6,13 +6,14 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipStatus
 
 from ..query import MigrationQuery
+from ..query.selection import MigrationSelectionQuery
 from ..shared import SchemaMigration
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class NodeRemoveMigrationBaseQuery(MigrationQuery):
+class NodeRemoveMigrationBaseQuery(MigrationQuery, MigrationSelectionQuery):
     """Shared parameter setup for node-remove migrations."""
 
     def _branch_from_existing(self, existing: str) -> str:
@@ -45,6 +46,24 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery):
             # Set metadata for vertex properties on default/global branch
             "set_metadata": self.branch.is_default or self.branch.is_global,
         }
+
+    def render_selection(self) -> str:
+        branch_filter, _ = self.branch.get_query_filter_path(at=self.at.to_string())
+        return """
+    // ----------------------------------------------------------
+    // Find all active nodes of the kind being removed
+    // ----------------------------------------------------------
+    MATCH (node:%(node_kind)s)
+    CALL (node) {
+        MATCH (root:Root)<-[r:IS_PART_OF]-(node)
+        WHERE %(branch_filter)s
+        RETURN r AS root_edge
+        ORDER BY r.branch_level DESC, r.from DESC
+        LIMIT 1
+    }
+    WITH node AS active_node, root_edge
+    WHERE root_edge.status = "active"
+    """ % {"node_kind": self.migration.previous_schema.kind, "branch_filter": branch_filter}
 
     def get_nbr_migrations_executed(self) -> int:
         return self.stats.get_counter(name="nodes_created")
@@ -80,19 +99,7 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
 
         query = (
             """
-    // ----------------------------------------------------------
-    // Find all active nodes of the kind being removed
-    // ----------------------------------------------------------
-    MATCH (node:%(node_kind)s)
-    CALL (node) {
-        MATCH (root:Root)<-[r:IS_PART_OF]-(node)
-        WHERE %(branch_filter)s
-        RETURN r AS root_edge
-        ORDER BY r.branch_level DESC, r.from DESC
-        LIMIT 1
-    }
-    WITH node AS active_node, root_edge
-    WHERE root_edge.status = "active"
+    %(selection)s
 
     // ----------------------------------------------------------
     // For each inbound edge to active_node, find the latest active edge on the branch
@@ -193,7 +200,7 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     """
         ) % {
             "branch_filter": branch_filter,
-            "node_kind": self.migration.previous_schema.kind,
+            "selection": self.render_selection(),
         }
         self.add_to_query(query)
 
@@ -225,19 +232,7 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
 
         query = (
             """
-    // ----------------------------------------------------------
-    // Find all active nodes of the kind being removed
-    // ----------------------------------------------------------
-    MATCH (node:%(node_kind)s)
-    CALL (node) {
-        MATCH (root:Root)<-[r:IS_PART_OF]-(node)
-        WHERE %(branch_filter)s
-        RETURN r AS root_edge
-        ORDER BY r.branch_level DESC, r.from DESC
-        LIMIT 1
-    }
-    WITH node AS active_node, root_edge
-    WHERE root_edge.status = "active"
+    %(selection)s
 
     // ----------------------------------------------------------
     // Set updated metadata on the Node vertex on default/global branch
@@ -353,7 +348,7 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     """
         ) % {
             "branch_filter": branch_filter,
-            "node_kind": self.migration.previous_schema.kind,
+            "selection": self.render_selection(),
         }
         self.add_to_query(query)
 

@@ -32,6 +32,8 @@ Choose the right base class in `backend/infrahub/core/migrations/shared.py`:
 
 `SchemaMigration` is a separate family under `backend/infrahub/core/migrations/schema/`, registered in `MIGRATION_MAP` and selected by the schema diff rather than by `GRAPH_VERSION`. Steps 1-3 below do not apply to it, but the retry rule does. A new `MIGRATION_MAP` entry with a class also needs a case in `backend/tests/component/core/migrations/schema/test_migration_second_run.py`, which runs the migration twice on one branch; `test_every_migration_class_has_a_second_run_case` fails until it has one.
 
+A `SchemaMigration` query that changes a set of nodes inherits `backend/infrahub/core/migrations/query/selection.py::MigrationSelectionQuery`. Put the Cypher that selects the nodes in `render_selection()`: the match on the kinds and every active-state check. The selection ends with the selected node in scope, under the name in `selected_node` (`active_node` unless the query sets another). The write then inserts that selection, so `count_changes()` counts, per kind, exactly the nodes the write runs on. Nodes of other kinds that the write changes as a side effect are not counted. Keep write-only steps, such as a `MERGE` that creates shared vertices, out of the selection.
+
 ## Migrations run at the current timestamp
 
 Each caller supplies `MigrationInput.at` for its operation: the graph upgrade and branch-version runner use a fresh timestamp, while rebases derive it from the diff timestamp and schema-migration batches forward `message.at`. Keep `from <= $at` predicates and historical-`at` tests whenever the migration query is time-scoped.
