@@ -1,0 +1,129 @@
+backend/tests/unit/core/schema_change/test_operation_builder.py
+  s_8c6ad6674612c6::t_1aea2afa739724 405-406
+  s_8c6ad6674612c6::t_f8195464ed26f6 403
+  s_8c6ad6674612c6::t_a5531b5490cc5f 254-275
+  s_8c6ad6674612c6::t_87e227efbaf664 314
+backend/tests/unit/core/schema_change/equivalence_cases_relationships.py
+  s_8c6ad6674612c6::t_e0fc4a423614fd 1-2
+  s_8c6ad6674612c6::t_9b7db9612b3303 65-119,121-140
+backend/infrahub/core/schema_change/enums.py
+  s_8c6ad6674612c6::t_b60cb1f218cd50 32
+dev/knowledge/backend/schema-changes.md
+  s_8c6ad6674612c6::t_0391f95244bd74 137
+  s_8c6ad6674612c6::t_d15d3722deb061 119-136
+  s_8c6ad6674612c6::t_d89d99fe6172ef 115-118
+backend/tests/unit/core/schema_change/test_applier.py
+  s_8c6ad6674612c6::t_8dce7617a171b2 273-279,281-282,285-288
+  s_8c6ad6674612c6::t_d6439cfafd9846 264,266-270
+  s_e2cde554cc4958::t_3439376ea3d976 271-272
+dev/specs/ifc-3614-store-schema-changes/spec.md
+  s_8c6ad6674612c6::t_a5cbdea6c86ef5 393-395
+  s_8c6ad6674612c6::t_cbb911045a54bd 324-326
+  s_8c6ad6674612c6::t_6bf5544d3140f2 348,351-352
+  s_8c6ad6674612c6::t_ab836aafabcfd5 346-347,349-350,353
+  s_8c6ad6674612c6::t_0e2699f4d52333 666-670,680
+  s_8c6ad6674612c6::t_dd68bd2c3a5ea9 396-397
+  s_8c6ad6674612c6::t_869d42c87fd109 250-253
+  s_8c6ad6674612c6::t_87b9e11624e2f7 671-679
+dev/specs/ifc-3614-store-schema-changes/research.md
+  s_8c6ad6674612c6::t_c73848b190ec7e 529-530
+  s_8c6ad6674612c6::t_ce88ba0f2112bf 259-261
+  s_8c6ad6674612c6::t_0b3b42c51b5e15 123,129-130
+backend/tests/unit/core/schema_change/equivalence_cases_kinds.py
+  s_8c6ad6674612c6::t_6e247d9affe5b3 173-181,183-184
+  s_8c6ad6674612c6::t_04db77c9b9f962 9
+  s_8c6ad6674612c6::t_5e332758d73524 90-111
+  s_8c6ad6674612c6::t_b856df3d35a0e9 182
+backend/infrahub/core/schema_change/applier.py
+  s_8c6ad6674612c6::t_29dbf5e1981ef2 95
+  s_8c6ad6674612c6::t_03ae70002ec560 257-273
+  s_8c6ad6674612c6::t_8927e19ee26081 224-228,230-233,238,241-246
+  s_8c6ad6674612c6::t_aab80e7458661c 128-130
+  s_8c6ad6674612c6::t_6845c288794e27 80-81
+  s_8c6ad6674612c6::t_aba7801d797b56 22
+  s_8c6ad6674612c6::t_25f1a6d83169f6 149-151,157
+  s_8c6ad6674612c6::t_fa5e757a6981ee 163-184
+  s_8c6ad6674612c6::t_33000aba048c8f 137-139
+  s_8c6ad6674612c6::t_0daf7f26a33180 234-237
+  s_8c6ad6674612c6::t_c53d51eb2d49fb 123-127
+  s_8c6ad6674612c6::t_57acad23083f4d 11,13
+  s_8c6ad6674612c6::t_b7f41d25f143d2 35-36,38-50
+backend/tests/unit/core/schema_change/test_applier_equivalence.py
+  s_8c6ad6674612c6::t_ff2a5347c2080e 4-7
+  s_8c6ad6674612c6::t_4ee29ee4012845 28-31
+backend/infrahub/core/schema_change/candidate.py
+  s_8c6ad6674612c6::t_0c00ca031e9092 134,138-139,142-150,159,161-164,167-171,175
+  s_8c6ad6674612c6::t_a543ee2b6f35cb 80
+  s_8c6ad6674612c6::t_26ef8f89952a09 136-137,140-141
+  s_8c6ad6674612c6::t_388c8c14827190 151-158,160,165-166,172-174
+  s_8c6ad6674612c6::t_0f4bf654e2922a 135
+  s_8c6ad6674612c6::t_579774d943b920 70-71
+  s_8c6ad6674612c6::t_20514c2c81cc50 3,7-9,11
+dev/specs/ifc-3614-store-schema-changes/data-model.md
+  s_8c6ad6674612c6::t_819da27ed24bc9 72
+backend/infrahub/exceptions.py
+  s_8c6ad6674612c6::t_5d2d5cd457d38f 483
+  s_8c6ad6674612c6::t_ef9d6379684254 482,484-492,494-506
+  s_8c6ad6674612c6::t_6821e5eb46a078 493
+backend/tests/unit/core/schema_change/test_operations.py
+  s_8c6ad6674612c6::t_3118e0a989447c 370-380
+  s_8c6ad6674612c6::t_841f78c5f52336 78-118
+  s_8c6ad6674612c6::t_346f938ef17247 369
+dev/specs/ifc-3614-store-schema-changes/contracts/internal-interfaces.md
+  s_8c6ad6674612c6::t_059f6bd0e6c684 70-74
+  s_8c6ad6674612c6::t_81736c23fbe74b 133-134
+  s_8c6ad6674612c6::t_5ec7170f106f45 656
+backend/tests/unit/core/schema_change/test_candidate.py
+  s_8c6ad6674612c6::t_89ef2a581f160b 333-336
+  s_8c6ad6674612c6::t_aa2ed4e4e779d8 1
+  s_8c6ad6674612c6::t_b09ae3ae562321 330-332,337-442
+  s_8c6ad6674612c6::t_a147abe82f502f 18,443
+backend/tests/unit/test_exceptions.py
+  s_8c6ad6674612c6::t_f75a58772b666d 143-146
+  s_8c6ad6674612c6::t_9200586b957e94 30
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_8c6ad6674612c6::t_45cba900bf12e3 40351-40352
+backend/infrahub/core/schema_change/operations.py
+  s_8c6ad6674612c6::t_3754a55a868c24 26-49
+  s_8c6ad6674612c6::t_a50671d3765784 3,8
+  s_8c6ad6674612c6::t_9763520c8a2f30 158-159
+  s_8c6ad6674612c6::t_64ca74c4ebeea9 99-102
+  s_8c6ad6674612c6::t_e805ce6d76d621 103-111
+schema/schema.graphql
+  s_8c6ad6674612c6::t_45cba900bf12e3 28369
+dev/specs/ifc-3614-store-schema-changes/contracts/schema-change-history.graphql
+  s_8c6ad6674612c6::t_3b932bd717ce12 68
+dev/specs/ifc-3614-store-schema-changes/tasks.md
+  s_8c6ad6674612c6::t_cb77583f10e4f2 1116-1117
+  s_8c6ad6674612c6::t_a6f3e10a8f241d 1053-1059
+backend/infrahub/core/schema_change/operation_builder.py
+  s_8c6ad6674612c6::t_40fe87f628249b 244
+  s_8c6ad6674612c6::t_0d54fc832b56ee 21
+  s_8c6ad6674612c6::t_7f29c11fab84ce 143-149
+  s_8c6ad6674612c6::t_aa957b39faddb7 70,76
+  s_8c6ad6674612c6::t_24fdc27b8aeb02 315-325,327
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c879a4d469b317452d1abb6ab4b43a3417227c43",
+  "prompts": {},
+  "sessions": {
+    "s_8c6ad6674612c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "18613163-eab0-4bd1-8493-c25f0662e6d2",
+        "model": "unknown"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    },
+    "s_e2cde554cc4958": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10d20eae-af80-40e5-828e-25ac8ce1187e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
