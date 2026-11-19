@@ -3,9 +3,9 @@
   "workflow_id": "opsmill-auto",
   "installed_workflow_id": "opsmill-auto",
   "installed_registry_root": null,
-  "status": "running",
+  "status": "failed",
   "current_step_index": 1,
-  "current_step_id": "commit-report",
+  "current_step_id": "stop-on-incomplete",
   "step_results": {
     "prep": {
       "type": "workflow",
@@ -49,12 +49,26 @@
       },
       "status": "completed",
       "error": null
+    },
+    "implement": {
+      "type": "workflow",
+      "integration": null,
+      "model": null,
+      "options": {},
+      "input": {},
+      "output": {
+        "workflow": "opsmill-implement",
+        "status": "failed",
+        "error": "Shell command exited with code 1."
+      },
+      "status": "failed",
+      "error": "Shell command exited with code 1."
     }
   },
   "workflow_dir": "/Users/Pol/Documents/OpsMill/infrahub/stable/infrahub-speckit-pr48/.specify/workflows/opsmill-auto",
   "created_at": "2026-11-19T14:20:44.755413+00:00",
-  "updated_at": "2026-11-19T17:32:17.467305+00:00",
-  "error": null,
+  "updated_at": "2026-11-19T17:56:11.355716+00:00",
+  "error": "Shell command exited with code 1.",
   "inputs": {
     "spec": "https://opsmill.atlassian.net/browse/IFC-2167",
     "integration": "claude"
@@ -615,7 +629,7 @@
         },
         {
           "phase": "children",
-          "active": true,
+          "active": false,
           "result": {
             "type": "if",
             "integration": null,
@@ -653,8 +667,8 @@
                   "error": null
                 },
                 {
-                  "phase": "children",
-                  "active": true,
+                  "phase": "blocked",
+                  "active": false,
                   "binding": {
                     "workflow": "opsmill-implement",
                     "definition": "schema_version: '1.0'\nworkflow:\n  id: opsmill-implement\n  name: OpsMill implementation\n  version: 1.0.0\n  author: opsmill\n  description: Implements the tasks of a spec directory chunk by chunk, reviews the\n    result, then writes a report. Each phase is one step, and the workflow sets when\n    the chunk step is repeated and how often.\nrequires:\n  speckit_version: '>=1.2.4'\n  integrations:\n    any:\n    - claude\ninputs:\n  spec_dir:\n    type: string\n    required: true\n    prompt: Spec directory to implement, for example specs/001-feature\n  integration:\n    type: string\n    default: auto\n    prompt: Integration to use ('auto' uses the project's integration)\nsteps:\n- id: base\n  type: shell\n  run: git rev-parse HEAD | tr -d '\\n'\n- id: preflight\n  type: shell\n  run: 'd=''{{ inputs.spec_dir }}''; for f in spec.md plan.md tasks.md; do test -f\n    \"$d/$f\" || { echo \"BLOCKED: $d/$f is missing\" >&2; exit 1; }; done; test -z \"$(git\n    status --porcelain -- . '':!.specify/workflows/runs'')\" || { echo ''BLOCKED: the\n    working tree has uncommitted changes'' >&2; exit 1; }'\n- id: chunks\n  type: do-while\n  max_iterations: 20\n  condition: '{{ steps.left.output.stdout != ''0'' and steps.left.output.stdout !=\n    steps.before.output.stdout }}'\n  steps:\n  - id: before\n    type: shell\n    run: '{ grep -c ''^[[:space:]]*- \\[ \\]'' ''{{ inputs.spec_dir }}/tasks.md'' ||\n      true; } | tr -d ''\\n'''\n  - id: chunk\n    command: speckit.opsmill.implement-chunk\n    integration: '{{ inputs.integration }}'\n    input:\n      args: '{{ inputs.spec_dir }}'\n  - id: commit-chunk\n    type: shell\n    run: 'git add -A && (git diff --cached --quiet || git commit -q -m ''implement:\n      changes that the chunk left uncommitted'')'\n  - id: left\n    type: shell\n    run: '{ grep -c ''^[[:space:]]*- \\[ \\]'' ''{{ inputs.spec_dir }}/tasks.md'' ||\n      true; } | tr -d ''\\n'''\n- id: review\n  command: speckit.opsmill.implement-review\n  integration: '{{ inputs.integration }}'\n  input:\n    args: '{{ inputs.spec_dir }} {{ steps.base.output.stdout }}'\n- id: commit-review\n  type: shell\n  run: 'git add -A && (git diff --cached --quiet || git commit -q -m ''review: fixes\n    of the high-severity findings'')'\n- id: report\n  command: speckit.opsmill.implement-report\n  integration: '{{ inputs.integration }}'\n  capture: true\n  timeout: 1800\n  input:\n    args: '{{ inputs.spec_dir }} {{ steps.base.output.stdout }}'\n- id: commit-report\n  type: shell\n  run: 'git add -A && (git diff --cached --quiet || git commit -q -m ''report: implementation\n    and review report'')'\n- id: not-done\n  type: if\n  condition: '{{ not (steps.report.output.stdout | contains(''STATUS: DONE | SPEC_DIR:''))\n    }}'\n  then:\n  - id: stop-on-incomplete\n    type: shell\n    run: 'echo ''INCOMPLETE: the implementation did not end with STATUS: DONE; see\n      opsmill-implement-report.md in the spec directory'' >&2; exit 1'\noutputs:\n  done:\n    value: '{{ true }}'\n  report:\n    value: '{{ steps.report.output.stdout }}'\n",
@@ -1607,19 +1621,95 @@
                           "error": null
                         },
                         {
-                          "phase": "ready",
-                          "active": true
+                          "phase": "done",
+                          "active": false,
+                          "result": {
+                            "type": "shell",
+                            "integration": null,
+                            "model": null,
+                            "options": {},
+                            "input": {},
+                            "output": {
+                              "exit_code": 0,
+                              "stdout": "",
+                              "stderr": ""
+                            },
+                            "status": "completed",
+                            "error": null
+                          },
+                          "outcome": "completed",
+                          "error": null
                         },
                         {
-                          "phase": "ready"
+                          "phase": "children",
+                          "active": false,
+                          "result": {
+                            "type": "if",
+                            "integration": null,
+                            "model": null,
+                            "options": {},
+                            "input": {},
+                            "output": {
+                              "condition_result": true
+                            },
+                            "status": "completed",
+                            "error": null
+                          },
+                          "children": [
+                            {
+                              "source": "- id: stop-on-incomplete\n  type: shell\n  run: 'echo ''INCOMPLETE: the implementation did not end with STATUS: DONE; see opsmill-implement-report.md\n    in the spec directory'' >&2; exit 1'\n",
+                              "nodes": [
+                                {
+                                  "phase": "blocked",
+                                  "active": false,
+                                  "result": {
+                                    "type": "shell",
+                                    "integration": null,
+                                    "model": null,
+                                    "options": {},
+                                    "input": {},
+                                    "output": {
+                                      "exit_code": 1,
+                                      "stdout": "",
+                                      "stderr": "INCOMPLETE: the implementation did not end with STATUS: DONE; see opsmill-implement-report.md in the spec directory\n"
+                                    },
+                                    "status": "failed",
+                                    "error": "Shell command exited with code 1."
+                                  },
+                                  "outcome": "failed",
+                                  "error": "Shell command exited with code 1."
+                                }
+                              ]
+                            }
+                          ],
+                          "outcome": "failed",
+                          "error": "Shell command exited with code 1."
                         }
                       ]
                     }
-                  ]
+                  ],
+                  "result": {
+                    "type": "workflow",
+                    "integration": null,
+                    "model": null,
+                    "options": {},
+                    "input": {},
+                    "output": {
+                      "workflow": "opsmill-implement",
+                      "status": "failed",
+                      "error": "Shell command exited with code 1."
+                    },
+                    "status": "failed",
+                    "error": "Shell command exited with code 1."
+                  },
+                  "outcome": "failed",
+                  "error": "Shell command exited with code 1."
                 }
               ]
             }
-          ]
+          ],
+          "outcome": "failed",
+          "error": "Shell command exited with code 1."
         }
       ]
     },

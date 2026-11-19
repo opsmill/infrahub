@@ -124,3 +124,19 @@
 {"event": "step_started", "step_id": "report", "type": "command", "execution_path": [1, 0, 1, "workflow", 5], "workflow_id": "opsmill-implement", "timestamp": "2026-11-19T17:30:46.472083+00:00"}
 {"event": "step_completed", "step_id": "report", "status": "completed", "execution_path": [1, 0, 1, "workflow", 5], "workflow_id": "opsmill-implement", "timestamp": "2026-11-19T17:32:17.466827+00:00"}
 {"event": "step_started", "step_id": "commit-report", "type": "shell", "execution_path": [1, 0, 1, "workflow", 6], "workflow_id": "opsmill-implement", "timestamp": "2026-11-19T17:32:17.471409+00:00"}
+{"event": "step_completed", "step_id": "commit-report", "status": "completed", "execution_path": [1, 0, 1, "workflow", 6], "workflow_id": "opsmill-implement", "timestamp": "2026-11-19T17:32:17.903890+00:00"}
+{"event": "step_started", "step_id": "not-done", "type": "if", "execution_path": [1, 0, 1, "workflow", 7], "workflow_id": "opsmill-implement", "timestamp": "2026-11-19T17:32:17.905662+00:00"}
+{"event": "step_completed", "step_id": "not-done", "status": "completed", "execution_path": [1, 0, 1, "workflow", 7], "workflow_id": "opsmill-implement", "timestamp": "2026-11-19T17:32:17.908179+00:00"}
+{"event": "step_started", "step_id": "stop-on-incomplete", "type": "shell", "execution_path": [1, 0, 1, "workflow", 7, 0, 0], "workflow_id": "opsmill-implement", "timestamp": "2026-11-19T17:32:17.910135+00:00"}
+{"event": "step_completed", "step_id": "stop-on-incomplete", "status": "failed", "execution_path": [1, 0, 1, "workflow", 7, 0, 0], "workflow_id": "opsmill-implement", "timestamp": "2026-11-19T17:32:17.916642+00:00"}
+{"event": "step_failed", "step_id": "stop-on-incomplete", "error": "Shell command exited with code 1.", "execution_path": [1, 0, 1, "workflow", 7, 0, 0], "workflow_id": "opsmill-implement", "timestamp": "2026-11-19T17:32:17.916742+00:00"}
+{"event": "step_completed", "step_id": "implement", "status": "failed", "timestamp": "2026-11-19T17:32:17.920180+00:00"}
+{"event": "step_failed", "step_id": "implement", "error": "Shell command exited with code 1.", "timestamp": "2026-11-19T17:32:17.920265+00:00"}
+{"event": "workflow_finished", "status": "failed", "timestamp": "2026-11-19T17:32:17.924091+00:00"}
+{"event": "step_started", "step_id": "implement", "type": "workflow", "timestamp": "2026-11-19T17:56:11.326574+00:00"}
+{"event": "step_started", "step_id": "stop-on-incomplete", "type": "shell", "execution_path": [1, 0, 1, "workflow", 7, 0, 0], "workflow_id": "opsmill-implement", "timestamp": "2026-11-19T17:56:11.337823+00:00"}
+{"event": "step_completed", "step_id": "stop-on-incomplete", "status": "failed", "execution_path": [1, 0, 1, "workflow", 7, 0, 0], "workflow_id": "opsmill-implement", "timestamp": "2026-11-19T17:56:11.347669+00:00"}
+{"event": "step_failed", "step_id": "stop-on-incomplete", "error": "Shell command exited with code 1.", "execution_path": [1, 0, 1, "workflow", 7, 0, 0], "workflow_id": "opsmill-implement", "timestamp": "2026-11-19T17:56:11.347832+00:00"}
+{"event": "step_completed", "step_id": "implement", "status": "failed", "timestamp": "2026-11-19T17:56:11.351296+00:00"}
+{"event": "step_failed", "step_id": "implement", "error": "Shell command exited with code 1.", "timestamp": "2026-11-19T17:56:11.351414+00:00"}
+{"event": "workflow_finished", "status": "failed", "timestamp": "2026-11-19T17:56:11.355431+00:00"}

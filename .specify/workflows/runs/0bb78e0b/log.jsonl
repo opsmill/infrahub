@@ -1,0 +1,11 @@
+{"event": "step_started", "step_id": "base", "type": "shell", "timestamp": "2026-11-19T17:57:22.494048+00:00"}
+{"event": "step_completed", "step_id": "base", "status": "completed", "timestamp": "2026-11-19T17:57:22.515653+00:00"}
+{"event": "step_started", "step_id": "preflight", "type": "shell", "timestamp": "2026-11-19T17:57:22.516357+00:00"}
+{"event": "step_completed", "step_id": "preflight", "status": "completed", "timestamp": "2026-11-19T17:57:22.666546+00:00"}
+{"event": "step_started", "step_id": "chunks", "type": "do-while", "timestamp": "2026-11-19T17:57:22.667339+00:00"}
+{"event": "step_completed", "step_id": "chunks", "status": "completed", "timestamp": "2026-11-19T17:57:22.669349+00:00"}
+{"event": "step_started", "step_id": "before", "type": "shell", "timestamp": "2026-11-19T17:57:22.670434+00:00"}
+{"event": "step_completed", "step_id": "before", "status": "completed", "timestamp": "2026-11-19T17:57:22.681409+00:00"}
+{"event": "step_started", "step_id": "chunk", "type": "command", "timestamp": "2026-11-19T17:57:22.682200+00:00"}
+{"event": "step_completed", "step_id": "chunk", "status": "completed", "timestamp": "2026-11-19T17:58:02.299430+00:00"}
+{"event": "step_started", "step_id": "commit-chunk", "type": "shell", "timestamp": "2026-11-19T17:58:02.300998+00:00"}
