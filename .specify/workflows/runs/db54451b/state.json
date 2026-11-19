@@ -3,14 +3,29 @@
   "workflow_id": "opsmill-auto",
   "installed_workflow_id": "opsmill-auto",
   "installed_registry_root": null,
-  "status": "running",
+  "status": "failed",
   "current_step_index": 0,
-  "current_step_id": "commit-spec",
-  "step_results": {},
+  "current_step_id": "check-spec",
+  "step_results": {
+    "prep": {
+      "type": "workflow",
+      "integration": null,
+      "model": null,
+      "options": {},
+      "input": {},
+      "output": {
+        "workflow": "opsmill-prep",
+        "status": "failed",
+        "error": "Shell command exited with code 1."
+      },
+      "status": "failed",
+      "error": "Shell command exited with code 1."
+    }
+  },
   "workflow_dir": "/Users/Pol/Documents/OpsMill/infrahub/stable/infrahub-speckit-pr48/.specify/workflows/opsmill-auto",
   "created_at": "2026-11-19T14:11:39.161356+00:00",
-  "updated_at": "2026-11-19T14:14:13.915329+00:00",
-  "error": null,
+  "updated_at": "2026-11-19T14:14:14.912154+00:00",
+  "error": "Shell command exited with code 1.",
   "inputs": {
     "spec": "https://opsmill.atlassian.net/browse/IFC-2167",
     "integration": "claude"
@@ -21,8 +36,8 @@
       "source": "- id: prep\n  type: workflow\n  workflow: opsmill-prep\n  input:\n    spec: '{{ inputs.spec }}'\n    integration: '{{ inputs.integration }}'\n- id: ready\n  type: if\n  condition: '{{ steps.prep.output.ready }}'\n  then:\n  - id: spec_dir\n    type: shell\n    run: python3 -c \"import json; print(json.load(open('.specify/feature.json'))['feature_directory'],\n      end='')\"\n  - id: implement\n    type: workflow\n    workflow: opsmill-implement\n    input:\n      spec_dir: '{{ steps.spec_dir.output.stdout }}'\n      integration: '{{ inputs.integration }}'\n  else:\n  - id: blocked\n    type: shell\n    run: echo 'opsmill-prep did not report that the spec is ready; see the prep step\n      in the run state' >&2; exit 1\n",
       "nodes": [
         {
-          "phase": "children",
-          "active": true,
+          "phase": "blocked",
+          "active": false,
           "binding": {
             "workflow": "opsmill-prep",
             "definition": "schema_version: '1.0'\nworkflow:\n  id: opsmill-prep\n  name: OpsMill preparation\n  version: 1.0.0\n  author: opsmill\n  description: 'Prepares a feature for implementation: specify, plan and critique,\n    tasks, then an alignment check against the request. Each phase is one step, and\n    the workflow sets when a phase is repeated and how often.'\nrequires:\n  speckit_version: '>=1.2.4'\n  integrations:\n    any:\n    - claude\ninputs:\n  spec:\n    type: string\n    required: true\n    prompt: Describe the feature, or give the URL of the ticket or PRD\n  integration:\n    type: string\n    default: auto\n    prompt: Integration to use ('auto' uses the project's integration)\nsteps:\n- id: pass\n  type: do-while\n  max_iterations: 3\n  condition: '{{ not (steps.critique.output.stdout | contains(''CRITIQUE_VERDICT:\n    RETHINK'')) and (steps.align.output.stdout | default('''') | contains(''ALIGNMENT:\n    SIGNIFICANT_DRIFT'')) }}'\n  steps:\n  - id: spec\n    type: if\n    condition: '{{ steps.align.output.stdout | default('''') | contains(''ALIGNMENT:\n      SIGNIFICANT_DRIFT'') }}'\n    then:\n    - id: realign\n      command: speckit.opsmill.prep-realign\n      integration: '{{ inputs.integration }}'\n      input:\n        args: '{{ inputs.spec }}'\n    else:\n    - id: specify\n      command: speckit.specify\n      integration: '{{ inputs.integration }}'\n      input:\n        args: '{{ inputs.spec }}\n\n\n          Nobody can answer a question during this run. Decide every open point yourself,\n          record each decision in the Assumptions section, and leave no clarification\n          marker in the spec.'\n  - id: commit-spec\n    type: shell\n    run: 'git add -A && (git diff --cached --quiet || git commit -q -m ''specify:\n      write the spec'')'\n  - id: check-spec\n    type: shell\n    run: 'python3 -c \"import json, pathlib, sys; f = pathlib.Path(''.specify/feature.json'');\n      d = f.exists() and pathlib.Path(json.loads(f.read_text())[''feature_directory'']);\n      sys.exit(0 if d and (d / ''spec.md'').is_file() else ''BLOCKED: the specify\n      phase wrote no spec.md. The output of that phase says why, often a tool that\n      Claude Code refused'')\"'\n  - id: design\n    type: do-while\n    max_iterations: 3\n    condition: '{{ steps.critique.output.stdout | contains(''CRITIQUE_VERDICT: RETHINK'')\n      }}'\n    steps:\n    - id: plan-or-rework\n      type: if\n      condition: '{{ steps.critique.output.stdout | default('''') | contains(''CRITIQUE_VERDICT:\n        RETHINK'') }}'\n      then:\n      - id: replan\n        command: speckit.plan\n        integration: '{{ inputs.integration }}'\n        input:\n          args: The latest critique report in the feature directory rejected the current\n            design. Rework the plan to resolve its findings. Correct spec.md first\n            when the report says that the spec itself is the problem.\n      else:\n      - id: plan\n        command: speckit.plan\n        integration: '{{ inputs.integration }}'\n    - id: commit-plan\n      type: shell\n      run: 'git add -A && (git diff --cached --quiet || git commit -q -m ''plan: write\n        the implementation plan'')'\n    - id: check-plan\n      type: shell\n      run: 'python3 -c \"import json, pathlib, sys; d = pathlib.Path(json.loads(pathlib.Path(''.specify/feature.json'').read_text())[''feature_directory'']);\n        sys.exit(0 if (d / ''plan.md'').is_file() else ''BLOCKED: the plan phase wrote\n        no plan.md. The output of that phase says why, often a tool that Claude Code\n        refused'')\"'\n    - id: critique\n      command: speckit.opsmill.prep-critique\n      integration: '{{ inputs.integration }}'\n      capture: true\n      timeout: 1800\n    - id: commit-critique\n      type: shell\n      run: 'git add -A && (git diff --cached --quiet || git commit -q -m ''critique:\n        review the spec and the plan'')'\n  - id: accepted\n    type: if\n    condition: '{{ not (steps.critique.output.stdout | contains(''CRITIQUE_VERDICT:\n      RETHINK'')) }}'\n    then:\n    - id: tasks\n      command: speckit.tasks\n      integration: '{{ inputs.integration }}'\n    - id: commit-tasks\n      type: shell\n      run: 'git add -A && (git diff --cached --quiet || git commit -q -m ''tasks:\n        generate the tasks'')'\n    - id: check-tasks\n      type: shell\n      run: 'python3 -c \"import json, pathlib, sys; d = pathlib.Path(json.loads(pathlib.Path(''.specify/feature.json'').read_text())[''feature_directory'']);\n        sys.exit(0 if (d / ''tasks.md'').is_file() else ''BLOCKED: the tasks phase\n        wrote no tasks.md. The output of that phase says why, often a tool that Claude\n        Code refused'')\"'\n    - id: align\n      command: speckit.opsmill.prep-align\n      integration: '{{ inputs.integration }}'\n      capture: true\n      timeout: 1800\n      input:\n        args: '{{ inputs.spec }}'\n    - id: commit-align\n      type: shell\n      run: 'git add -A && (git diff --cached --quiet || git commit -q -m ''alignment:\n        check the spec against the request'')'\n- id: design-rejected\n  type: if\n  condition: '{{ steps.critique.output.stdout | contains(''CRITIQUE_VERDICT: RETHINK'')\n    }}'\n  then:\n  - id: stop-on-design\n    type: shell\n    run: 'echo ''BLOCKED: the critique still asks for a rethink after 3 plan and critique\n      passes'' >&2; exit 1'\n- id: drift-unresolved\n  type: if\n  condition: '{{ steps.align.output.stdout | default('''') | contains(''ALIGNMENT:\n    SIGNIFICANT_DRIFT'') }}'\n  then:\n  - id: stop-on-drift\n    type: shell\n    run: 'echo ''BLOCKED: the spec still drifts from the request after 2 remediation\n      passes'' >&2; exit 1'\n- id: spec_dir\n  type: shell\n  run: python3 -c \"import json; print(json.load(open('.specify/feature.json'))['feature_directory'],\n    end='')\"\noutputs:\n  ready:\n    value: '{{ true }}'\n  spec-dir:\n    value: '{{ steps.spec_dir.output.stdout }}'\n  critique:\n    value: '{{ steps.critique.output.stdout }}'\n  alignment:\n    value: '{{ steps.align.output.stdout }}'\n",
@@ -37,7 +52,7 @@
               "nodes": [
                 {
                   "phase": "children",
-                  "active": true,
+                  "active": false,
                   "result": {
                     "type": "do-while",
                     "integration": null,
@@ -116,11 +131,44 @@
                           "error": null
                         },
                         {
-                          "phase": "ready",
-                          "active": true
+                          "phase": "done",
+                          "active": false,
+                          "result": {
+                            "type": "shell",
+                            "integration": null,
+                            "model": null,
+                            "options": {},
+                            "input": {},
+                            "output": {
+                              "exit_code": 0,
+                              "stdout": "",
+                              "stderr": ""
+                            },
+                            "status": "completed",
+                            "error": null
+                          },
+                          "outcome": "completed",
+                          "error": null
                         },
                         {
-                          "phase": "ready"
+                          "phase": "blocked",
+                          "active": false,
+                          "result": {
+                            "type": "shell",
+                            "integration": null,
+                            "model": null,
+                            "options": {},
+                            "input": {},
+                            "output": {
+                              "exit_code": 1,
+                              "stdout": "",
+                              "stderr": "BLOCKED: the specify phase wrote no spec.md. The output of that phase says why, often a tool that Claude Code refused\n"
+                            },
+                            "status": "failed",
+                            "error": "Shell command exited with code 1."
+                          },
+                          "outcome": "failed",
+                          "error": "Shell command exited with code 1."
                         },
                         {
                           "phase": "ready"
@@ -130,7 +178,9 @@
                         }
                       ]
                     }
-                  ]
+                  ],
+                  "outcome": "failed",
+                  "error": "Shell command exited with code 1."
                 },
                 {
                   "phase": "ready"
@@ -143,7 +193,23 @@
                 }
               ]
             }
-          ]
+          ],
+          "result": {
+            "type": "workflow",
+            "integration": null,
+            "model": null,
+            "options": {},
+            "input": {},
+            "output": {
+              "workflow": "opsmill-prep",
+              "status": "failed",
+              "error": "Shell command exited with code 1."
+            },
+            "status": "failed",
+            "error": "Shell command exited with code 1."
+          },
+          "outcome": "failed",
+          "error": "Shell command exited with code 1."
         },
         {
           "phase": "ready"

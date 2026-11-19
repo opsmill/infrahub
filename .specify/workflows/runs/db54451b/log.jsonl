@@ -6,3 +6,10 @@
 {"event": "step_started", "step_id": "specify", "type": "command", "execution_path": [0, "workflow", 0, 0, 0, 0, 0], "workflow_id": "opsmill-prep", "timestamp": "2026-11-19T14:11:39.202169+00:00"}
 {"event": "step_completed", "step_id": "specify", "status": "completed", "execution_path": [0, "workflow", 0, 0, 0, 0, 0], "workflow_id": "opsmill-prep", "timestamp": "2026-11-19T14:14:13.913987+00:00"}
 {"event": "step_started", "step_id": "commit-spec", "type": "shell", "execution_path": [0, "workflow", 0, 0, 1], "workflow_id": "opsmill-prep", "timestamp": "2026-11-19T14:14:13.916010+00:00"}
+{"event": "step_completed", "step_id": "commit-spec", "status": "completed", "execution_path": [0, "workflow", 0, 0, 1], "workflow_id": "opsmill-prep", "timestamp": "2026-11-19T14:14:14.854796+00:00"}
+{"event": "step_started", "step_id": "check-spec", "type": "shell", "execution_path": [0, "workflow", 0, 0, 2], "workflow_id": "opsmill-prep", "timestamp": "2026-11-19T14:14:14.856177+00:00"}
+{"event": "step_completed", "step_id": "check-spec", "status": "failed", "execution_path": [0, "workflow", 0, 0, 2], "workflow_id": "opsmill-prep", "timestamp": "2026-11-19T14:14:14.903095+00:00"}
+{"event": "step_failed", "step_id": "check-spec", "error": "Shell command exited with code 1.", "execution_path": [0, "workflow", 0, 0, 2], "workflow_id": "opsmill-prep", "timestamp": "2026-11-19T14:14:14.903356+00:00"}
+{"event": "step_completed", "step_id": "prep", "status": "failed", "timestamp": "2026-11-19T14:14:14.905643+00:00"}
+{"event": "step_failed", "step_id": "prep", "error": "Shell command exited with code 1.", "timestamp": "2026-11-19T14:14:14.905814+00:00"}
+{"event": "workflow_finished", "status": "failed", "timestamp": "2026-11-19T14:14:14.911827+00:00"}

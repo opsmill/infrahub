@@ -1,0 +1,8 @@
+{"event": "step_started", "step_id": "prep", "type": "workflow", "timestamp": "2026-11-19T14:20:44.764580+00:00"}
+{"event": "step_started", "step_id": "pass", "type": "do-while", "execution_path": [0, "workflow", 0], "workflow_id": "opsmill-prep", "timestamp": "2026-11-19T14:20:44.780225+00:00"}
+{"event": "step_completed", "step_id": "pass", "status": "completed", "execution_path": [0, "workflow", 0], "workflow_id": "opsmill-prep", "timestamp": "2026-11-19T14:20:44.784413+00:00"}
+{"event": "step_started", "step_id": "spec", "type": "if", "execution_path": [0, "workflow", 0, 0, 0], "workflow_id": "opsmill-prep", "timestamp": "2026-11-19T14:20:44.787412+00:00"}
+{"event": "step_completed", "step_id": "spec", "status": "completed", "execution_path": [0, "workflow", 0, 0, 0], "workflow_id": "opsmill-prep", "timestamp": "2026-11-19T14:20:44.788881+00:00"}
+{"event": "step_started", "step_id": "specify", "type": "command", "execution_path": [0, "workflow", 0, 0, 0, 0, 0], "workflow_id": "opsmill-prep", "timestamp": "2026-11-19T14:20:44.789677+00:00"}
+{"event": "step_completed", "step_id": "specify", "status": "completed", "execution_path": [0, "workflow", 0, 0, 0, 0, 0], "workflow_id": "opsmill-prep", "timestamp": "2026-11-19T14:23:07.294637+00:00"}
+{"event": "step_started", "step_id": "commit-spec", "type": "shell", "execution_path": [0, "workflow", 0, 0, 1], "workflow_id": "opsmill-prep", "timestamp": "2026-11-19T14:23:07.296936+00:00"}
