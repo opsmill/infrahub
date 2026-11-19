@@ -16,6 +16,7 @@ from .model.path import (
     EnrichedDiffSingleRelationship,
     NodeIdentifier,
 )
+from .ownership_fields import is_list_property, stored_owner_ids
 
 
 @dataclass
@@ -146,7 +147,10 @@ class DiffCombiner:
         return combined
 
     def _combine_properties(
-        self, earlier_properties: set[EnrichedDiffProperty], later_properties: set[EnrichedDiffProperty]
+        self,
+        earlier_properties: set[EnrichedDiffProperty],
+        later_properties: set[EnrichedDiffProperty],
+        attribute_name: str | None = None,
     ) -> set[EnrichedDiffProperty]:
         earlier_props_by_type = {prop.property_type: prop for prop in earlier_properties}
         later_props_by_type = {prop.property_type: prop for prop in later_properties}
@@ -160,7 +164,14 @@ class DiffCombiner:
             if earlier_property.action is DiffAction.ADDED and later_property.action is DiffAction.REMOVED:
                 continue
             combined_action = self._combine_actions(earlier=earlier_property.action, later=later_property.action)
-            if earlier_property.previous_value == later_property.new_value or {
+            is_reset = earlier_property.previous_value == later_property.new_value
+            if attribute_name and is_list_property(
+                field_name=attribute_name, property_type=later_property.property_type
+            ):
+                is_reset = stored_owner_ids(value=earlier_property.previous_value) == stored_owner_ids(
+                    value=later_property.new_value
+                )
+            if is_reset or {
                 earlier_property.previous_value,
                 later_property.new_value,
             } <= {None, NULL_VALUE}:
@@ -195,7 +206,9 @@ class DiffCombiner:
             if not self._should_include(earlier=earlier_attribute.action, later=later_attribute.action):
                 continue
             combined_properties = self._combine_properties(
-                earlier_properties=earlier_attribute.properties, later_properties=later_attribute.properties
+                earlier_properties=earlier_attribute.properties,
+                later_properties=later_attribute.properties,
+                attribute_name=earlier_attribute.name,
             )
             if all(p.action is DiffAction.UNCHANGED for p in combined_properties):
                 combined_action = DiffAction.UNCHANGED
