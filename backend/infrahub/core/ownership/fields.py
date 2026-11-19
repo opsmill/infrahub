@@ -92,6 +92,23 @@ def stored_holder_field_name(holder: HolderKey, schema: MainSchemaTypes, schema_
     return holder_field_name(holder=holder, field=field) if field else None
 
 
+def diff_field_name(holder: HolderKey, kind: str, schema_branches: list[SchemaBranch]) -> str | None:
+    """Return the field name that the diff shows the owners of a holder under, from the first schema with the kind.
+
+    Returns:
+        None when no schema has the kind, or when the kind has no field for the holder.
+
+    """
+    if holder.kind == HolderKind.ATTRIBUTE:
+        return holder.attribute
+    schema_branch = next((schema for schema in schema_branches if schema.has(name=kind)), None)
+    if schema_branch is None:
+        return None
+    return stored_holder_field_name(
+        holder=holder, schema=schema_branch.get(name=kind, duplicate=False), schema_branch=schema_branch
+    )
+
+
 def owner_list_value(owner_ids: tuple[str, ...] | None) -> str | None:
     """Return the diff value of an owner state: None for inherit, else a JSON list of the sorted owner IDs."""
     if owner_ids is None:

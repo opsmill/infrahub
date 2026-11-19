@@ -37,6 +37,13 @@ def holder_edge_patterns() -> Iterator[tuple[HolderKind, str, DatabaseEdgeType]]
             yield holder_kind, pattern, edge_type
 
 
+def template_mark_patterns() -> Iterator[tuple[HolderKind, str]]:
+    """Yield each kind of holder that can hold the mark of a copy from an object template, with the path to its vertex."""
+    for holder_kind, pattern in HOLDER_PATTERNS.items():
+        if holder_kind not in (HolderKind.TARGET_SET, HolderKind.SOURCES):
+            yield holder_kind, pattern
+
+
 @dataclass(frozen=True)
 class OwnerHolderChange:
     node_uuid: str
@@ -92,8 +99,7 @@ class DiffOwnerHoldersQuery(Query):
             hint, scope = "USING INDEX n:Node(uuid)", "AND n.uuid IN $node_uuids"
         edge_patterns = [(*edge_pattern, hint) for edge_pattern in holder_edge_patterns()] + [
             (holder_kind, pattern, DatabaseEdgeType.HAS_OWNER_SOURCE, hint)
-            for holder_kind, pattern in HOLDER_PATTERNS.items()
-            if holder_kind not in (HolderKind.TARGET_SET, HolderKind.SOURCES)
+            for holder_kind, pattern in template_mark_patterns()
         ]
         patterns = [
             f"""

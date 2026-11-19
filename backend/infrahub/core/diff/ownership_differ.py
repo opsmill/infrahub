@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 from infrahub import config
 from infrahub.core.constants import DiffAction
-from infrahub.core.ownership.fields import list_property_type, owner_list_value, stored_holder_field_name
-from infrahub.core.ownership.models import INHERIT, HolderKind
+from infrahub.core.ownership.fields import diff_field_name, list_property_type, owner_list_value
+from infrahub.core.ownership.models import INHERIT
 from infrahub.core.ownership.repository import OwnershipRepository
 
 from .model.path import DiffAttribute, DiffNode, DiffProperty, DiffRoot, NodeIdentifier
@@ -154,22 +154,11 @@ class OwnershipDiffer:
             )
             await query.execute(db=self.db)
             for change in query.get_changes():
-                if field_name := self._field_name(change=change, schema_branches=schema_branches):
+                if field_name := diff_field_name(
+                    holder=change.holder, kind=change.node_kind, schema_branches=schema_branches
+                ):
                     changes[change] = field_name
         return changes
-
-    @staticmethod
-    def _field_name(change: OwnerHolderChange, schema_branches: list[SchemaBranch]) -> str | None:
-        if change.holder.kind == HolderKind.ATTRIBUTE:
-            return change.holder.attribute
-        schema_branch = next((schema for schema in schema_branches if schema.has(name=change.node_kind)), None)
-        if schema_branch is None:
-            return None
-        return stored_holder_field_name(
-            holder=change.holder,
-            schema=schema_branch.get(name=change.node_kind, duplicate=False),
-            schema_branch=schema_branch,
-        )
 
     async def read_states(self, branch: Branch, at: Timestamp, node_ids: list[str]) -> OwnerStates:
         """Return the stored state of each holder of the nodes that does not inherit, as the branch reads it at `at`."""
