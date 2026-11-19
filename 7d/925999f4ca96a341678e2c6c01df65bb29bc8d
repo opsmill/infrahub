@@ -1,0 +1,21 @@
+.specify/workflows/runs/0603d153/log.jsonl
+  s_69ad06f37d331d::t_b962b48bdc29d0 10-11
+.specify/workflows/runs/0603d153/state.json
+  s_69ad06f37d331d::t_feaee0d41d206d 8,65-92,97,190-221,224-225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7d925999f4ca96a341678e2c6c01df65bb29bc8d",
+  "prompts": {},
+  "sessions": {
+    "s_69ad06f37d331d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab537019-8c3c-4c43-aa53-a41881c8e9fb",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
