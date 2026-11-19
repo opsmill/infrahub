@@ -1171,12 +1171,17 @@ AND NOT ([n.uuid] + holder_key) IN $excluded_owner_holders
 AND (holder:Attribute OR n.branch_support = "aware")
 WITH n, holder, src, child, type(src) AS edge_type, src.from_user_id AS prop_from_user_id
 // -------------------------
-// A deleted source edge closes the active target edge of the same type to the same child
+// A deleted source edge closes the active target edge of the same type to the same child.
+// A kind migration copies the edges of the Node to a new vertex, so an edge of the Node closes on each vertex of its UUID.
 // -------------------------
-CALL (holder, child, src, edge_type, prop_from_user_id) {
-    OPTIONAL MATCH (holder)-[tgt:$(edge_type)]->(child)
+CALL (n, holder, child, src, edge_type, prop_from_user_id) {
+    WITH n, holder, child, src, edge_type, prop_from_user_id
     WHERE src.status = "deleted"
-    AND tgt.branch = $target_branch
+    OPTIONAL MATCH (same_uuid:Node {uuid: n.uuid})
+    WHERE holder = n
+    WITH DISTINCT coalesce(same_uuid, holder) AS close_holder, child, edge_type, prop_from_user_id
+    MATCH (close_holder)-[tgt:$(edge_type)]->(child)
+    WHERE tgt.branch = $target_branch
     AND tgt.status = "active"
     AND tgt.to IS NULL
     SET tgt.to = $at, tgt.to_user_id = prop_from_user_id
@@ -1187,10 +1192,23 @@ CALL (holder, child, src, edge_type, prop_from_user_id) {
 WITH n, holder, src, child, edge_type
 WHERE src.status = "active"
 // -------------------------
-// For active edges, the Node must be alive on target based on the latest IS_PART_OF
+// Resolve the Node vertex that is active on target, which a kind migration on target replaces
 // -------------------------
 CALL (n) {
-    MATCH (n)-[ipo:IS_PART_OF]->(:Root)
+    OPTIONAL MATCH (tgt_candidate:Node {uuid: n.uuid})-[tgt_ipo:IS_PART_OF {branch: $target_branch, status: "active"}]->(:Root)
+    WHERE tgt_ipo.to IS NULL
+    WITH tgt_candidate, tgt_ipo
+    ORDER BY tgt_ipo.from DESC
+    LIMIT 1
+    RETURN tgt_candidate
+}
+WITH DISTINCT COALESCE(tgt_candidate, n) AS tgt_n, CASE WHEN holder = n THEN COALESCE(tgt_candidate, n) ELSE holder END AS holder,
+    src, child, edge_type
+// -------------------------
+// For active edges, the Node must be alive on target based on the latest IS_PART_OF
+// -------------------------
+CALL (tgt_n) {
+    MATCH (tgt_n)-[ipo:IS_PART_OF]->(:Root)
     WHERE ipo.branch IN [$target_branch, $global_branch]
     RETURN (ipo.status = "active" AND ipo.to IS NULL) AS parent_is_alive
     ORDER BY ipo.from DESC
