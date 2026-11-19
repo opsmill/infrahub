@@ -337,7 +337,7 @@ For each pair of (upstream Generator, downstream Generator), define one `CoreGen
 If you prefer to create trigger rules via the Infrahub UI, follow the [creating event trigger rules and actions](../../../events/overview) guide. The configuration is the same:
 
 1. Create a **Generator Action** (Actions > Create > Generator Action) pointing to the downstream Generator
-2. Create a **Node Trigger Rule** (Trigger Rules > Create > Node Trigger) for the downstream target kind, with mutation action `updated`
+2. Create a **Node Trigger Rule** (**Actions** > **Events** > **Rules** > **Add Trigger Rule** > **Node Trigger Rule**) for the downstream target kind, with mutation action `updated`
 3. Add an **Attribute Match** on the `checksum` attribute with value match `any`
 4. Set the trigger to **active**
 

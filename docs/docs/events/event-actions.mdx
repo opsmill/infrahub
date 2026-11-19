@@ -2,56 +2,106 @@
 title: Event actions
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Event actions
 
-An event action is a node you create in Infrahub that defines an outcome: add a device to a group, run a Generator definition. Actions on their own do nothing — they fire only when an [event rule](./event-rules) matches and points at them.
+An event action is the work a rule starts when it matches an event: a group action adds the object of the event to a group or removes it, and a Generator action runs a Generator definition for it. An action does nothing on its own. It runs each time a [rule](./event-rules.mdx) that references it matches, on the branch where the event was emitted.
 
-Actions inherit from the `CoreAction` generic. Two action kinds exist because the most common automated outcomes fall into two categories: modifying group membership, or running a Generator against the impacted object.
-
-| Action kind | Effect | Example |
+| Action | What it does | Rules that can run it |
 |---|---|---|
-| `CoreGroupAction` | Adds or removes members from a group | Add a device to `arista_devices` when a node trigger rule fires |
-| `CoreGeneratorAction` | Runs a Generator definition against the impacted object | Run `create_circuit_endpoints` when a group trigger rule fires on `provisioning_circuits` |
+| Group action (`CoreGroupAction`) | Adds the object of the event to a group, or removes it | Node trigger rules |
+| Generator action (`CoreGeneratorAction`) | Runs a Generator definition for the object of the event, or for the members added to or removed from a group | Node trigger rules and group trigger rules |
 
-[Webhooks](../webhooks/overview) are a related concept — they also fire in response to events — but they live outside the rule/action loop because their setup is more involved. Use a Generator action when the outcome stays inside Infrahub; use a webhook when you need to send a payload to an external HTTP endpoint.
+Infrahub emits events for the data an action changes, and another rule can match them. To run a Generator on a branch as soon as its input exists, match these events with a second rule: see [Running a Generator from events](../generators/overview.mdx#running-a-generator-from-events).
 
 ## Configure a group action
 
-A group action adds or removes nodes from a group when triggered.
+Use a group action to add objects to a group, or remove them from it, when they meet a condition you express as a rule: for example, to add every new device whose platform is Arista EOS to `arista_devices`. Infrahub adds or removes the object of the event, on the branch of the event, and emits `infrahub.group.member_added` or `infrahub.group.member_removed`.
 
-1. Navigate to the **Actions** page.
-2. Click **Create** and select **Group Action**.
-3. Configure the action:
-   - Enter a name (example: `add-to-group-arista_devices`)
-   - Select the associated kind of group (example: `Standard Group Core`)
-   - Choose the target group (example: `arista_devices`)
-   - Click **Save**.
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web interface" default>
 
-![Group Action creation form](../media/guides/events/grp_actions-form-creation.png)
+1. Go to **Actions** > **Events** > **Actions** and click **Add Core Action**.
+2. In **Select an object type**, choose **Group Action**.
+3. Fill in the action:
+   - **Name**: For example `add-to-group-arista_devices`.
+   - **Member Action**: **Add member** or **Remove member**. The default is **Add member**.
+   - **Group**: The kind of group, then the group, for example `arista_devices`.
 
-After saving, the details page shows the action's configuration:
+   ![The Create Core Action form with Group Action selected: the name add-to-group-arista_devices, Member Action Add member, and the standard group for Arista devices.](../media/guides/events/grp_actions-form-creation.png)
 
-![Group Action details](../media/guides/events/grp_actions-details.png)
+4. Click **Save**. The action's page shows its settings, and the rules that run it under **Triggers**.
 
-The action appears in the actions list and can be referenced by any trigger rule.
+   ![The page of the group action add-to-group-arista_devices, with Member Action Add member, the group for Arista devices, and no triggers yet.](../media/guides/events/grp_actions-details.png)
+
+  </TabItem>
+  <TabItem value="object-file" label="Object file">
+
+```yaml
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreGroupAction
+  data:
+    - name: add-to-group-arista_devices
+      member_action: add_member
+      group: arista_devices
+```
+
+Load it with `infrahubctl object load <file>`, or list it under `objects` in the `.infrahub.yml` of a [linked repository](../git-integration/overview.mdx). `member_action` is `add_member` or `remove_member`.
+
+  </TabItem>
+</Tabs>
+
+A node trigger rule can run a group action. Do not use a group action with a group trigger rule: see [Known limitations](./event-rules.mdx#known-limitations).
 
 ## Configure a Generator action
 
-A Generator action runs a Generator definition when triggered. The Generator receives the impacted object as its target.
+A Generator action runs a Generator definition on the branch of the event:
 
-1. Navigate to the **Actions** page.
-2. Click **Create** and select **Generator Action**.
-3. Configure the action:
-   - Enter a name (example: `create_circuit_endpoints`)
-   - Select the Generator (example: `create_circuit_endpoints`)
-   - Click **Save**.
+- From a node trigger rule, for the object of the event.
+- From a group trigger rule, for the members that were added to the group or removed from it.
 
-![Generator Action creation form](../media/guides/events/generator-action-form-creation.png)
+Infrahub runs the Generator only for objects that are members of the Generator definition's target group. If none of them is a member, the run fails with `Target <id> is not part of the group <id>`. To run a Generator for new objects, chain two rules: a node trigger rule with a group action adds the object to the target group, and a group trigger rule on that group runs the Generator action.
 
-The action appears in the actions list and can be referenced by any trigger rule.
+![A node rule matches a new circuit and adds it to the group provisioning_circuits, the Generator definition's target group. A group rule matches the new member and runs the Generator, which creates the endpoints. A Generator action on a node rule fails for a circuit that is not a member of the target group.](../media/events/rule-chain-generator.svg)
 
-## Related
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web interface" default>
 
-- [Event rules](./event-rules) — the conditions that fire actions
-- [Event system](./event-system) — what events are and where they come from
-- [Webhooks](../webhooks/overview) — a related event-driven outcome that lives outside the rule/action loop
+1. Go to **Actions** > **Events** > **Actions** and click **Add Core Action**.
+2. In **Select an object type**, choose **Generator Action**.
+3. Fill in the action:
+   - **Name**: For example `create_circuit_endpoints`.
+   - **Generator**: The Generator definition, for example `create_circuit_endpoints`.
+
+   ![The Create Core Action form with Generator Action selected: the name create_circuit_endpoints and the Generator definition create_circuit_endpoints.](../media/guides/events/generator-action-form-creation.png)
+
+4. Click **Save**.
+
+  </TabItem>
+  <TabItem value="object-file" label="Object file">
+
+```yaml
+---
+apiVersion: infrahub.app/v1
+kind: Object
+spec:
+  kind: CoreGeneratorAction
+  data:
+    - name: create_circuit_endpoints
+      generator: create_circuit_endpoints
+```
+
+  </TabItem>
+</Tabs>
+
+The Generator definition has to exist on the default branch. Infrahub reads rules and the actions they reference from the default branch only, and skips a rule whose action references a Generator definition it cannot find there.
+
+## Next
+
+- [Event rules](./event-rules.mdx) — Create the rule that runs the action, and choose the branches whose events it matches
+- [Event system](./event-system.mdx) — See which events Infrahub emits for an action's changes
