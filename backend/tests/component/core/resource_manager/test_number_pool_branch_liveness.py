@@ -23,7 +23,7 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from tests.component.core.agnostic_retirement.support import rebase_branch
-from tests.component.core.resource_manager.conftest import delete_branch
+from tests.component.core.resource_manager.conftest import delete_branch, mark_branches_deleting
 from tests.helpers.agnostic_edges import pool_reservation_edges
 from tests.helpers.number_pool import (
     add_pool_range,
@@ -71,8 +71,8 @@ async def pool(
     return await _make_pool(db=db)
 
 
-async def _new_ticket(db: InfrahubDatabase, pool: CoreNumberPool, title: str) -> Node:
-    ticket = await Node.init(db=db, schema=TICKET.kind)
+async def _new_ticket(db: InfrahubDatabase, pool: CoreNumberPool, title: str, branch: Branch | None = None) -> Node:
+    ticket = await Node.init(db=db, schema=TICKET.kind, branch=branch)
     await ticket.new(db=db, title=title, ticket_id={"from_pool": {"id": pool.id}})
     await ticket.save(db=db)
     return ticket
@@ -241,6 +241,40 @@ async def test_a_held_number_is_never_allocated_when_the_attribute_is_not_unique
     )
 
 
+@dataclass(frozen=True)
+class UniquenessCase:
+    name: str
+    unique: bool
+    """A unique attribute also has its taken values checked on save, which must see the value the branch holds."""
+
+
+@pytest.mark.parametrize(
+    "case",
+    [UniquenessCase(name="not-unique", unique=False), UniquenessCase(name="unique", unique=True)],
+    ids=lambda case: case.name,
+)
+async def test_a_number_deleted_on_the_default_branch_is_never_allocated_on_a_branch_that_holds_it(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, case: UniquenessCase
+) -> None:
+    """The branch forked before the delete and still holds the object, so its number stays taken on that branch."""
+    schema = deepcopy(TICKET)
+    schema.get_attribute(name="ticket_id").unique = case.unique
+    await load_schema(db=db, schema=SchemaRoot(nodes=[schema]))
+    await initialize_registry(db=db)
+
+    pool = await _make_pool(db=db)
+    keeper = await _new_ticket(db=db, pool=pool, title="keeper")
+    assert keeper.get_attribute("ticket_id").value == POOL_START
+    branch = await create_branch(branch_name=f"holds-the-deleted-{case.name}", db=db)
+    await keeper.delete(db=db)
+
+    newcomer = await _new_ticket(db=db, pool=pool, title="newcomer", branch=branch)
+
+    assert newcomer.get_attribute("ticket_id").value == POOL_START + 1
+    on_branch = await NodeManager.query(db=db, schema=TICKET.kind, branch=branch)
+    assert sorted(node.get_attribute("ticket_id").value for node in on_branch) == [POOL_START, POOL_START + 1]
+
+
 class TestOlderBranchLiveness:
     """A branch created before a change on the default branch still holds what the default branch let go.
 
@@ -374,9 +408,7 @@ class TestOlderBranchLiveness:
         rows = await _in_use_rows(db=db, pool=pool, branch=default_branch_scope_class)
         assert _rows_of(rows, held) == [(held, older.name)]
 
-        await db.execute_query(
-            query='MATCH (b:Branch {name: $name}) SET b.status = "DELETING"', params={"name": older.name}
-        )
+        await mark_branches_deleting(db=db, branches=[older])
 
         assert held not in await pool_used_numbers(db=db, pool=pool, branch=default_branch_scope_class), (
             "a branch being deleted holds nothing, so no branch holds the number"

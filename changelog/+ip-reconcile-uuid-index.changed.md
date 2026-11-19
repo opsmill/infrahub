@@ -1,0 +1,1 @@
+Creating or updating an IP address or IP prefix is now faster in databases with many IP addresses and prefixes: finding the address or prefix to place in the IP hierarchy no longer reads every address or prefix.

@@ -57,6 +57,7 @@
         "useSortedAttributes": "off",
         "useSortedInterfaceMembers": "off",
         "useSortedKeys": "off",
+        "useSortedPackageJson": "off",
         "useSortedProperties": "off"
       }
     }
@@ -85,7 +86,8 @@
         "useDateNow": "off",
         "useOptionalChain": "off",
         "useSimplifiedLogicExpression": "off",
-        "noArguments": "off"
+        "noArguments": "off",
+        "noUselessReturn": "off"
       },
       "correctness": {
         "useImageSize": "off",
@@ -112,7 +114,9 @@
         "noAccumulatingSpread": "off",
         "noImgElement": "off",
         "useTopLevelRegex": "off",
-        "noNamespaceImport": "off"
+        "noNamespaceImport": "off",
+        "noAwaitInLoops": "off",
+        "noJsxPropsBind": "off"
       },
       "style": {
         "noDefaultExport": "off",
@@ -141,7 +145,10 @@
         "noSubstr": "off",
         "useSelfClosingElements": "off",
         "noMagicNumbers": "off",
-        "useTemplate": "off"
+        "useTemplate": "off",
+        "noIncrementDecrement": "off",
+        "useConsistentMethodSignatures": "off",
+        "useDestructuring": "off"
       },
       "suspicious": {
         "noArrayIndexKey": "off",
@@ -165,7 +172,10 @@
         "noUnnecessaryConditions": "off",
         "useIterableCallbackReturn": "off",
         "noSkippedTests": "off",
-        "useAwait": "off"
+        "useAwait": "off",
+        "noEqualsToNull": "off",
+        "noLeakedRender": "off",
+        "noReturnAssign": "off"
       }
     }
   },

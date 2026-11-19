@@ -271,6 +271,14 @@ async def execute(
     )
 
 
+async def execute_in_own_session(
+    db: InfrahubDatabase, branch: Branch, source: str, variables: dict[str, Any]
+) -> ExecutionResult:
+    """Run the query on a session of its own, so it can race other queries of the same test."""
+    async with db.start_session() as session_db:
+        return await execute(db=session_db, branch=branch, source=source, variables=variables)
+
+
 async def create_pool(db: InfrahubDatabase, branch: Branch, name: str, bounds: dict[str, Any]) -> str:
     result = await execute(
         db=db,
