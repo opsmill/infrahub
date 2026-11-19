@@ -88,3 +88,5 @@
 {"event": "step_started", "step_id": "chunks:before:4", "type": "shell", "execution_path": [1, 0, 1, "workflow", 2, 4, 0], "workflow_id": "opsmill-implement", "timestamp": "2026-11-19T16:05:47.639244+00:00"}
 {"event": "step_completed", "step_id": "chunks:before:4", "status": "completed", "execution_path": [1, 0, 1, "workflow", 2, 4, 0], "workflow_id": "opsmill-implement", "timestamp": "2026-11-19T16:05:47.648333+00:00"}
 {"event": "step_started", "step_id": "chunks:chunk:4", "type": "command", "execution_path": [1, 0, 1, "workflow", 2, 4, 1], "workflow_id": "opsmill-implement", "timestamp": "2026-11-19T16:05:47.649692+00:00"}
+{"event": "step_completed", "step_id": "chunks:chunk:4", "status": "completed", "execution_path": [1, 0, 1, "workflow", 2, 4, 1], "workflow_id": "opsmill-implement", "timestamp": "2026-11-19T16:27:00.760693+00:00"}
+{"event": "step_started", "step_id": "chunks:commit-chunk:4", "type": "shell", "execution_path": [1, 0, 1, "workflow", 2, 4, 2], "workflow_id": "opsmill-implement", "timestamp": "2026-11-19T16:27:00.763196+00:00"}
