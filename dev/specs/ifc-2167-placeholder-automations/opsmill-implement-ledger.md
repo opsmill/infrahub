@@ -109,3 +109,33 @@ Lint and format: `uv run ruff format` and `uv run ruff check --fix` on the chang
 | backend/tests/component/hfid/test_setup.py::TestHFIDSetup (10 tests) | integration (component, Prefect test server) | `cd backend && uv run pytest tests/component/hfid/test_setup.py tests/component/core/template_fingerprint/test_seed.py -q` | 2026-11-19T15:54:30Z | same | `================= 11 passed, 17 warnings in 414.08s (0:06:54) ==================` |
 | backend/tests/component/core/template_fingerprint/test_seed.py::TestTemplateFingerprintSeed::test_first_start_records_every_template_and_next_update_submits_nothing | integration (component, Prefect test server) | same command | 2026-11-19T15:54:30Z | same | `================= 11 passed, 17 warnings in 414.08s (0:06:54) ==================` |
 | backend/tests/helpers/template_fingerprint.py (new shared scenarios, run through the two classes above) | integration (component) | covered by the commands above | 2026-11-19T15:59:30Z | same | see the rows above |
+
+## Chunk: Phase 5: User Story 3 - Upgrade an existing instance without a full recompute (Priority: P2)
+
+| Task | Outcome | Reason when not done |
+|------|---------|----------------------|
+| T025 | ✅ done | |
+| T026 | ✅ done | |
+| T027 | ✅ done | |
+| T028 | ✅ done | |
+| T029 | ✅ done | |
+
+Decisions worth flagging:
+
+- `backend/infrahub/trigger/placeholder_carry_over.py` has `parse_placeholder_automation(automation, schemas)` and `carry_over_placeholder_fingerprints(deleted, schemas, repository)`. The contract describes the schema input as "`SchemaFingerprints` per family"; it is a `Sequence[SchemaFingerprints]`, and a branch is in scope only when it is in the `SchemaFingerprints` of the automation's family. The setup flows pass their own family; `trigger_configure_all` passes both.
+- Condition 2 ("trigger matches only `TRIGGER_PLACEHOLDER_FIELD`") is checked on the union of the `infrahub.field.name` values over every `match_related` entry, so the branch exclusion entries added by `exclude_branches` do not affect it. A trigger on the placeholder and a real field is skipped.
+- Skipped automations are logged at debug level through `infrahub.log.get_logger()`, because the function also runs outside a Prefect run context.
+- The setup flows now compute the schema fingerprints once and pass them to both the carry-over and `refresher.refresh`. The repository is built once at the top of each flow and given to both.
+- In `trigger_configure_all`, the carry-over runs after the Prefect client is closed, with the flow's database session. It does not take the family locks (the contract allows it, since `insert_missing` never overwrites).
+- T026: the shared autouse fixture writes the records of the current schema before each test, so the test deletes the records of `TestingFpOwner` and `TestingFpDevice` (both families, on `main`, `carry-over-a` and `carry-over/b`) and installs one placeholder per deleted record, 12 in total. The hand-deleted automation is the display label placeholder of `TestingFpOwner` on `main`; the setup flows then submit exactly `("main", TestingFpOwner)` for display labels and nothing for HFIDs. The branch `carry-over/b` checks the parse from the right on a branch name with `/` and `-`.
+- T026, "second run creates or overwrites nothing": the test installs placeholders whose hash is `stale-template` over records that already exist, runs `trigger_configure_all`, and checks that the records still hold the schema fingerprints.
+- Bite check: with `insert_missing(records=records[:0])` in the carry-over, the first component test failed with `assert {} == {...}` ("Right contains 11 more items"). The edit was reversed and `git diff` showed no change against the WIP commit.
+- PLR0911 (too many returns) was fixed by splitting the name and hash parsing into two helpers.
+
+Lint and format: `uv run ruff format` and `uv run ruff check --fix` on the changed modules and tests ("All checks passed!"). `uv run ty check` on the same paths: "All checks passed!". `uv run mypy` on the 6 changed files: "Success: no issues found in 6 source files". The full `uv run invoke lint` and `uv run invoke backend.mypy` run in T040.
+
+| Test id | Type (unit/integration/e2e) | Run command | Passed at (ISO 8601) | Environment context | Verbatim pass line |
+|---------|-----------------------------|-------------|----------------------|---------------------|--------------------|
+| backend/tests/unit/trigger/test_placeholder_carry_over.py::test_parse_placeholder_automation (14 cases) | unit | `cd backend && uv run pytest tests/unit/trigger/ tests/component/trigger/test_placeholder_carry_over.py tests/component/display_labels/test_setup.py tests/component/hfid/test_setup.py -q` | 2026-11-19T16:26:22Z | macOS, Python 3.14 | `================= 58 passed, 17 warnings in 556.74s (0:09:16) ==================` |
+| backend/tests/component/trigger/test_placeholder_carry_over.py::TestPlaceholderCarryOver::test_upgrade_carries_placeholder_fingerprints_over | integration (component, Prefect test server and Neo4j) | same command | 2026-11-19T16:26:22Z | Neo4j and Prefect test server started by testcontainers through the local Docker daemon, macOS, Python 3.14 | `================= 58 passed, 17 warnings in 556.74s (0:09:16) ==================` |
+| backend/tests/component/trigger/test_placeholder_carry_over.py::TestPlaceholderCarryOver::test_second_upgrade_keeps_existing_records | integration (component, Prefect test server and Neo4j) | same command | 2026-11-19T16:26:22Z | same | `================= 58 passed, 17 warnings in 556.74s (0:09:16) ==================` |

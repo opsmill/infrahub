@@ -22,8 +22,11 @@ from infrahub.workflows.catalogue import TRIGGER_UPDATE_DISPLAY_LABELS, TRIGGER_
 from tests.helpers.template_fingerprint import DEVICE, OWNER, TemplateSetupTestBase, schema_variant
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.core.protocols import CoreAccount
     from infrahub.database import InfrahubDatabase
+    from infrahub.trigger.models import TriggerDefinition
     from tests.adapters.workflow import WorkflowRecorder
 
 BRANCHES = ["main", "carry-over-a", "carry-over/b"]
@@ -43,7 +46,11 @@ def _placeholder(family: TemplateFamily, branch: str, kind: str, fingerprint: st
             )
         case TemplateFamily.HUMAN_FRIENDLY_ID:
             return HFIDTriggerDefinition.new(
-                branch=branch, node_kind=kind, target_kind=kind, hfid_hash=fingerprint, fields=[TRIGGER_PLACEHOLDER_FIELD]
+                branch=branch,
+                node_kind=kind,
+                target_kind=kind,
+                hfid_hash=fingerprint,
+                fields=[TRIGGER_PLACEHOLDER_FIELD],
             )
 
 
@@ -67,12 +74,12 @@ class TestPlaceholderCarryOver(TemplateSetupTestBase):
     @staticmethod
     async def install_placeholders(fingerprints: dict[FingerprintKey, str]) -> None:
         """Configure the peer automations and the placeholder automations as the previous release did."""
-        gatherers = {
-            TemplateFamily.DISPLAY_LABEL_JINJA2: gather_trigger_display_labels_jinja2,
-            TemplateFamily.HUMAN_FRIENDLY_ID: gather_trigger_hfid,
+        peer_triggers: dict[TemplateFamily, Sequence[TriggerDefinition]] = {
+            TemplateFamily.DISPLAY_LABEL_JINJA2: await gather_trigger_display_labels_jinja2(),
+            TemplateFamily.HUMAN_FRIENDLY_ID: await gather_trigger_hfid(),
         }
         async with get_prefect_client(sync_client=False) as prefect_client:
-            for family, gatherer in gatherers.items():
+            for family, peers in peer_triggers.items():
                 placeholders = [
                     _placeholder(family=key.family, branch=key.branch, kind=key.kind, fingerprint=fingerprint)
                     for key, fingerprint in fingerprints.items()
@@ -80,7 +87,7 @@ class TestPlaceholderCarryOver(TemplateSetupTestBase):
                 ]
                 await setup_triggers(
                     client=prefect_client,
-                    triggers=[*await gatherer(), *placeholders],
+                    triggers=[*peers, *placeholders],
                     trigger_type=TriggerType(family.value),
                 )
 

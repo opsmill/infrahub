@@ -157,7 +157,7 @@ description: "Task list for recording template fingerprints in the database inst
 
 ### Tests for User Story 3
 
-- [ ] T025 [P] [US3] Write unit tests in `backend/tests/unit/trigger/test_placeholder_carry_over.py` for each condition in `contracts/fingerprint-store.md`, "Carry-over":
+- [X] T025 [P] [US3] Write unit tests in `backend/tests/unit/trigger/test_placeholder_carry_over.py` for each condition in `contracts/fingerprint-store.md`, "Carry-over":
   - name prefix other than `display_label_jinja2::` or `human_friendly_id::`: skipped;
   - trigger matching a field other than `TRIGGER_PLACEHOLDER_FIELD` (the self-peer `<kind>::by::<kind>` automation): skipped;
   - branch names that contain `/` and `-` are parsed correctly by splitting from the right on `::`;
@@ -165,7 +165,7 @@ description: "Task list for recording template fingerprints in the database inst
   - description without a `| hash:` suffix, or with an empty value: skipped;
   - branch not in scope: skipped;
   - a matching automation becomes one `RecordedFingerprint` with the parsed family, branch, kind and hash.
-- [ ] T026 [P] [US3] Write a component test in `backend/tests/component/trigger/test_placeholder_carry_over.py` on the Prefect test server and Neo4j:
+- [X] T026 [P] [US3] Write a component test in `backend/tests/component/trigger/test_placeholder_carry_over.py` on the Prefect test server and Neo4j:
   - create display label and HFID placeholder automations for the default branch and two branches with `DisplayLabelTriggerDefinition.new` and `HFIDTriggerDefinition.new` and `fields=[TRIGGER_PLACEHOLDER_FIELD]`, delete one by hand;
   - run `trigger_configure_all`: no placeholder automation remains and one record exists per remaining placeholder (User Story 3 scenario 1, SC-003);
   - run the two setup flows on the unchanged schema with a `WorkflowRecorder`: nothing is submitted except the kind whose automation was deleted by hand (scenarios 2 and 4);
@@ -173,9 +173,9 @@ description: "Task list for recording template fingerprints in the database inst
 
 ### Implementation for User Story 3
 
-- [ ] T027 [US3] Create `backend/infrahub/trigger/placeholder_carry_over.py` with a pure parsing function that turns one Prefect `Automation` into a `RecordedFingerprint` or `None` following the five conditions, and `carry_over_placeholder_fingerprints(deleted, schema, repository) -> int` that parses `TriggerSetupReport.deleted`, passes the matches to `repository.insert_missing`, logs each skipped automation at debug level and returns the number created. Make T025 pass (depends on T008)
-- [ ] T028 [US3] In `backend/infrahub/trigger/tasks.py::trigger_configure_all`, keep the report returned by `setup_triggers`, build `TemplateFingerprintRepository(db=db)` and the collector output of both families, and call `carry_over_placeholder_fingerprints` with `report.deleted` (depends on T010, T027)
-- [ ] T029 [US3] Add step 2 of `contracts/recompute-decision.md` to `backend/infrahub/display_labels/tasks.py::display_labels_setup_jinja2` and `backend/infrahub/hfid/tasks.py::hfid_setup`: inside the lock, after `setup_triggers` and before `get_by_family`, call `carry_over_placeholder_fingerprints` with `report.deleted`. Make T026 pass (depends on T022, T023, T027, T028)
+- [X] T027 [US3] Create `backend/infrahub/trigger/placeholder_carry_over.py` with a pure parsing function that turns one Prefect `Automation` into a `RecordedFingerprint` or `None` following the five conditions, and `carry_over_placeholder_fingerprints(deleted, schema, repository) -> int` that parses `TriggerSetupReport.deleted`, passes the matches to `repository.insert_missing`, logs each skipped automation at debug level and returns the number created. Make T025 pass (depends on T008)
+- [X] T028 [US3] In `backend/infrahub/trigger/tasks.py::trigger_configure_all`, keep the report returned by `setup_triggers`, build `TemplateFingerprintRepository(db=db)` and the collector output of both families, and call `carry_over_placeholder_fingerprints` with `report.deleted` (depends on T010, T027)
+- [X] T029 [US3] Add step 2 of `contracts/recompute-decision.md` to `backend/infrahub/display_labels/tasks.py::display_labels_setup_jinja2` and `backend/infrahub/hfid/tasks.py::hfid_setup`: inside the lock, after `setup_triggers` and before `get_by_family`, call `carry_over_placeholder_fingerprints` with `report.deleted`. Make T026 pass (depends on T022, T023, T027, T028)
 
 **Checkpoint**: `uv run pytest backend/tests/unit/trigger/test_placeholder_carry_over.py backend/tests/component/trigger/` passes.
 
