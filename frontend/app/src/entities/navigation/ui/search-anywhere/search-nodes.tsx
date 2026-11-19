@@ -1,18 +1,24 @@
 import { Command, useCommandState } from "cmdk";
 import { useAtomValue } from "jotai";
-import type { ReactElement } from "react";
+import type React from "react";
 
 import { Icon } from "@/shared/components/display/icon";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { Badge } from "@/shared/components/ui/badge";
+import { InfiniteTrigger } from "@/shared/components/utils/infinite-trigger";
 import { useFormatDate } from "@/shared/context/date-preferences-context";
 import { useDebounce } from "@/shared/hooks/useDebounce";
+import { formatNumberDisplay } from "@/shared/utils/number";
 
 import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import type { ObjectResult } from "@/entities/navigation/domain/use-cases/search-anywhere";
 import { searchCaseSensitiveAtom } from "@/entities/navigation/stores/search-case-sensitive.atom";
-import { useGetSearchAnywhere } from "@/entities/navigation/ui/queries/search-anywhere.query";
+import {
+  SEARCH_BATCH_SIZE,
+  useGetSearchAnywhere,
+} from "@/entities/navigation/ui/queries/search-anywhere.query";
 import { SearchAnywhereGroup } from "@/entities/navigation/ui/search-anywhere/search-anywhere-group";
 import { SearchAnywhereItem } from "@/entities/navigation/ui/search-anywhere/search-anywhere-item";
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
@@ -29,16 +35,12 @@ export const SearchNodes = () => {
   const queryDebounced = useDebounce(query.trim(), 300);
   const caseSensitive = useAtomValue(searchCaseSensitiveAtom);
 
-  const { data, isPending, error } = useGetSearchAnywhere(
-    { search: queryDebounced, caseSensitive },
-    {
-      enabled: !!queryDebounced,
-    }
-  );
+  const { data, isPending, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage, error } =
+    useGetSearchAnywhere({ search: queryDebounced, caseSensitive }, { enabled: !!queryDebounced });
 
-  if (query === "") {
-    return null;
-  }
+  const rows = data?.matchingObjects ?? [];
+
+  if (query === "") return null;
 
   if (isPending) {
     return (
@@ -52,14 +54,58 @@ export const SearchNodes = () => {
 
   if (error) return null;
 
-  if (data.count === 0) return null;
+  if (rows.length === 0) return null;
 
   return (
-    <SearchAnywhereGroup heading="Objects">
-      {data.matchingObjects.map((node) => (
+    <SearchAnywhereGroup
+      heading={<SearchNodesHeading count={rows.length} hasMore={hasNextPage} />}
+      className="shrink"
+    >
+      {rows.map((node) => (
         <NodesOptions key={node.id} node={node} />
       ))}
+
+      <InfiniteTrigger hasNextPage={hasNextPage && !isFetching} onLoadMore={fetchNextPage} />
+
+      <SearchNodesListEnd
+        isLoadingMore={isFetchingNextPage}
+        hasMore={hasNextPage}
+        count={rows.length}
+      />
     </SearchAnywhereGroup>
+  );
+};
+
+interface SearchNodesHeadingProps {
+  count: number;
+  hasMore: boolean;
+}
+
+const SearchNodesHeading = ({ count, hasMore }: SearchNodesHeadingProps) => (
+  <span className="flex items-center gap-1.5">
+    Objects{" "}
+    <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-content-strong px-1.5 font-medium text-foreground-muted text-xxs tabular-nums leading-none">
+      {formatNumberDisplay(count)}
+      {hasMore && "+"}
+    </span>
+  </span>
+);
+
+interface SearchNodesListEndProps {
+  isLoadingMore: boolean;
+  hasMore: boolean;
+  count: number;
+}
+
+const SearchNodesListEnd = ({ isLoadingMore, hasMore, count }: SearchNodesListEndProps) => {
+  if (isLoadingMore) return <LoadingIndicator className="my-2 text-sm" />;
+
+  if (hasMore || count <= SEARCH_BATCH_SIZE) return null;
+
+  return (
+    <div className="flex h-10 items-center justify-center text-subtle-muted text-xs">
+      End of results · {formatNumberDisplay(count)} objects
+    </div>
   );
 };
 
@@ -73,12 +119,15 @@ export const NodesOptions = ({ node }: NodesOptionsProps) => {
     data: objectDetailsData,
     isPending,
     error,
-  } = useGetObject({
-    objectSchema: schema!,
-    objectId: node.id,
-    getRelationshipsVisible: (relationships) =>
-      relationships.filter((rel) => rel.cardinality === "one"),
-  });
+  } = useGetObject(
+    {
+      objectSchema: schema!,
+      objectId: node.id,
+      getRelationshipsVisible: (relationships) =>
+        relationships.filter((rel) => rel.cardinality === "one"),
+    },
+    { refetchOnWindowFocus: false } // Otherwise every loaded row refetches at once.
+  );
 
   if (!schema) return null;
 
@@ -156,7 +205,7 @@ type NodeAttributeProps = {
 const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
   const { formatDate } = useFormatDate();
 
-  const formatValue = (): string | number | boolean | ReactElement | null => {
+  const formatValue = (): string | number | boolean | React.ReactElement | null => {
     if ("node" in value && value.node) {
       return value.node ? getNodeLabel(value.node) : null;
     }
