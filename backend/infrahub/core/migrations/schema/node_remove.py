@@ -4,6 +4,7 @@ from collections.abc import Sequence  # noqa: TC003  needed for pydantic
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipStatus
+from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 
 from ..query import MigrationQuery
 from ..query.selection import MigrationSelectionQuery
@@ -45,6 +46,7 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery, MigrationSelectionQuery):
             },
             # Set metadata for vertex properties on default/global branch
             "set_metadata": self.branch.is_default or self.branch.is_global,
+            "operation_ats": self.operation_ats_param,
         }
 
     def render_selection(self) -> str:
@@ -122,15 +124,7 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     CALL (peer_node) {
         WITH peer_node
         WHERE $set_metadata
-        SET peer_node.previous_updated_at = CASE
-                WHEN peer_node.updated_at IS NULL OR peer_node.updated_at <> $current_time THEN peer_node.updated_at
-                ELSE peer_node.previous_updated_at
-            END,
-            peer_node.previous_updated_by = CASE
-                WHEN peer_node.updated_at IS NULL OR peer_node.updated_at <> $current_time THEN peer_node.updated_by
-                ELSE peer_node.previous_updated_by
-            END
-        SET peer_node.updated_at = $current_time, peer_node.updated_by = $user_id
+        %(stamp_peer_node)s
     }
 
     WITH active_node, rel_inbound, peer_node,
@@ -201,6 +195,7 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
         ) % {
             "branch_filter": branch_filter,
             "selection": self.render_selection(),
+            "stamp_peer_node": stamp_vertex_metadata("peer_node", at_param="current_time"),
         }
         self.add_to_query(query)
 
@@ -240,15 +235,7 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     CALL (active_node) {
         WITH active_node
         WHERE $set_metadata
-        SET active_node.previous_updated_at = CASE
-                WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_at
-                ELSE active_node.previous_updated_at
-            END,
-            active_node.previous_updated_by = CASE
-                WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_by
-                ELSE active_node.previous_updated_by
-            END
-        SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
+        %(stamp_active_node)s
     }
 
     // ----------------------------------------------------------
@@ -273,15 +260,7 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     CALL (peer_node) {
         WITH peer_node
         WHERE $set_metadata AND (peer_node:Attribute OR peer_node:Relationship)
-        SET peer_node.previous_updated_at = CASE
-                WHEN peer_node.updated_at IS NULL OR peer_node.updated_at <> $current_time THEN peer_node.updated_at
-                ELSE peer_node.previous_updated_at
-            END,
-            peer_node.previous_updated_by = CASE
-                WHEN peer_node.updated_at IS NULL OR peer_node.updated_at <> $current_time THEN peer_node.updated_by
-                ELSE peer_node.previous_updated_by
-            END
-        SET peer_node.updated_at = $current_time, peer_node.updated_by = $user_id
+        %(stamp_peer_node)s
     }
 
     WITH active_node, rel_outbound, peer_node,
@@ -349,6 +328,8 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
         ) % {
             "branch_filter": branch_filter,
             "selection": self.render_selection(),
+            "stamp_active_node": stamp_vertex_metadata("active_node", at_param="current_time"),
+            "stamp_peer_node": stamp_vertex_metadata("peer_node", at_param="current_time"),
         }
         self.add_to_query(query)
 

@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, RelationshipStatus
 from infrahub.core.migrations.query.selection import MigrationSelectionQuery
 from infrahub.core.query.agnostic_field_closure import CLOSE_UNRETAINED_AGNOSTIC_FIELDS
+from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -83,6 +84,7 @@ class AttributeRenameQuery(MigrationSelectionQuery):
         self.params["prev_attr"] = self.previous_attr.model_dump()
 
         self.params["current_time"] = self.at.to_string()
+        self.params["operation_ats"] = self.operation_ats_param
         self.params["branch_name"] = self.branch.name
 
         self.params["user_id"] = self.user_id
@@ -211,15 +213,7 @@ class AttributeRenameQuery(MigrationSelectionQuery):
             // The renamed Attribute vertex is created here, so it has no prior metadata to snapshot
             SET new_attr.created_at = $current_time, new_attr.created_by = $user_id
             SET new_attr.updated_at = $current_time, new_attr.updated_by = $user_id
-            SET active_node.previous_updated_at = CASE
-                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_at
-                    ELSE active_node.previous_updated_at
-                END,
-                active_node.previous_updated_by = CASE
-                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_by
-                    ELSE active_node.previous_updated_by
-                END
-            SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
+            %(stamp_node)s
         }
         // --------------
         // Retire the global edges linked to the old Attribute vertex if it is no longer reachable
@@ -228,5 +222,8 @@ class AttributeRenameQuery(MigrationSelectionQuery):
         WITH collect(active_attr) AS agnostic_candidates, count(new_attr) AS nbr_new_attributes
         %(close_unretained_agnostic_fields)s
         RETURN nbr_new_attributes
-        """ % {"close_unretained_agnostic_fields": CLOSE_UNRETAINED_AGNOSTIC_FIELDS}
+        """ % {
+            "close_unretained_agnostic_fields": CLOSE_UNRETAINED_AGNOSTIC_FIELDS,
+            "stamp_node": stamp_vertex_metadata("active_node", at_param="current_time"),
+        }
         self.add_to_query(query)

@@ -6,6 +6,7 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME, NULL_VALUE, BranchSuppor
 from infrahub.core.graph.schema import GraphAttributeValueIndexedNode, GraphAttributeValueNode
 from infrahub.core.migrations.query.selection import MigrationSelectionQuery
 from infrahub.core.query import QueryType
+from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 from infrahub.types import is_large_attribute_type
 
 if TYPE_CHECKING:
@@ -82,6 +83,7 @@ class AttributeAddQuery(MigrationSelectionQuery):
         self.params["attr_name"] = self.attribute_name
         self.params["branch_support"] = self.branch_support
         self.params["current_time"] = write_time
+        self.params["operation_ats"] = self.operation_ats_param
 
         if self.default_value is not None:
             self.params["attr_value"] = self.default_value
@@ -165,20 +167,13 @@ class AttributeAddQuery(MigrationSelectionQuery):
             // The Attribute vertex is created here, so it has no prior metadata to snapshot for rollback
             // -----------------
             SET a.created_at = $current_time, a.created_by = $user_id, a.updated_at = $current_time, a.updated_by = $user_id
-            SET n.previous_updated_at = CASE
-                    WHEN n.updated_at IS NULL OR n.updated_at <> $current_time THEN n.updated_at
-                    ELSE n.previous_updated_at
-                END,
-                n.previous_updated_by = CASE
-                    WHEN n.updated_at IS NULL OR n.updated_at <> $current_time THEN n.updated_by
-                    ELSE n.previous_updated_by
-                END
-            SET n.updated_at = $current_time, n.updated_by = $user_id
+            %(stamp_node)s
         }
         """ % {
             "match_query": match_query,
             "selection": self.render_selection(carry=("av", "is_protected_value")),
             "uuid_generation": db.render_uuid_generation(node_label="a", node_attr="uuid"),
+            "stamp_node": stamp_vertex_metadata("n", at_param="current_time"),
         }
 
         self.add_to_query(query)

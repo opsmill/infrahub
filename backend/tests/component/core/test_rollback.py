@@ -29,6 +29,8 @@ from tests.helpers.agnostic_edges import (
 from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA, WIDGET_KIND
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
@@ -690,7 +692,11 @@ MIGRATION_USER_ID = "migration_user"
 
 
 async def _add_widget_attribute(
-    db: InfrahubDatabase, branch: Branch, attribute: AttributeSchema, at: Timestamp
+    db: InfrahubDatabase,
+    branch: Branch,
+    attribute: AttributeSchema,
+    at: Timestamp,
+    operation_ats: Sequence[Timestamp] = (),
 ) -> None:
     candidate_schema = registry.schema.get_schema_branch(name=branch.name).duplicate()
     widget_schema = candidate_schema.get(name=WIDGET_KIND)
@@ -705,7 +711,8 @@ async def _add_widget_attribute(
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=WIDGET_KIND, field_name=attribute.name),
     )
     result = await migration.execute(
-        migration_input=MigrationInput(db=db, at=at, user_id=MIGRATION_USER_ID), branch=branch
+        migration_input=MigrationInput(db=db, at=at, user_id=MIGRATION_USER_ID, operation_ats=list(operation_ats)),
+        branch=branch,
     )
     assert not result.errors
     registry.schema.set_schema_branch(name=branch.name, schema=candidate_schema)
@@ -714,7 +721,10 @@ async def _add_widget_attribute(
 @dataclass(frozen=True)
 class SeveralTimestampsScenario:
     step1_at: Timestamp
+    between_at: Timestamp
     step2_at: Timestamp
+    widget_a_before: dict[str, str | None]
+    widget_b_before: dict[str, str | None]
     main_before: list[tuple]
     other_serial_after_write: list
     main_edges_at_step1: int
@@ -725,6 +735,11 @@ class SeveralTimestampsScenario:
     other_serial_after_rollback: list
     main_after_second: list[tuple]
     global_after_second: list[tuple]
+    widget_a_after_steps: dict[str, str | None]
+    widget_a_after_rollback: dict[str, str | None]
+    widget_b_after_rollback: dict[str, str | None]
+    widget_a_after_second: dict[str, str | None]
+    widget_b_after_second: dict[str, str | None]
 
 
 class TestRollbackOfStepsAtSeveralTimestamps:
@@ -736,12 +751,14 @@ class TestRollbackOfStepsAtSeveralTimestamps:
         registry.schema.register_schema(schema=AGNOSTIC_RETIREMENT_SCHEMA, branch=main.name)
         global_branch = registry.get_global_branch()
 
-        await create_widget(db=db, branch=main, name="widget-a", serial=1)
-        await create_widget(db=db, branch=main, name="widget-b", serial=2)
+        widget_a = await create_widget(db=db, branch=main, name="widget-a", serial=1)
+        widget_b = await create_widget(db=db, branch=main, name="widget-b", serial=2)
         other = await create_widget(db=db, branch=main, name="other", serial=3)
         user_branch = await create_branch(branch_name="several-timestamps", db=db)
 
         main_before = await branch_edge_fingerprint(db=db, branch_name=main.name)
+        widget_a_before = await _get_node_vertex_metadata(db=db, node_uuid=widget_a.id)
+        widget_b_before = await _get_node_vertex_metadata(db=db, node_uuid=widget_b.id)
 
         step1_at = Timestamp()
         await _add_widget_attribute(
@@ -750,7 +767,9 @@ class TestRollbackOfStepsAtSeveralTimestamps:
 
         other_on_branch = await NodeManager.get_one(db=db, id=other.id, branch=user_branch)
         other_on_branch.serial.value = 4
-        await other_on_branch.save(db=db, at=Timestamp())
+        between_at = Timestamp()
+        await other_on_branch.save(db=db, at=between_at)
+        await _bump_node_metadata_by_hand(db=db, node_id=widget_b.id, at=between_at, by="another-writer")
         other_serial_after_write = await attribute_global_edges(db=db, node_id=other.id, attribute_name="serial")
 
         step2_at = Timestamp()
@@ -759,7 +778,9 @@ class TestRollbackOfStepsAtSeveralTimestamps:
             branch=main,
             attribute=AttributeSchema(name="lot", kind="Number", optional=True, branch=BranchSupportType.AGNOSTIC),
             at=step2_at,
+            operation_ats=[step1_at],
         )
+        widget_a_after_steps = await _get_node_vertex_metadata(db=db, node_uuid=widget_a.id)
 
         main_edges_at_step1 = await _count_branch_edges_at(db=db, branch=main, at=step1_at)
         global_edges_at_step2 = await _count_branch_edges_at(db=db, branch=global_branch, at=step2_at)
@@ -774,14 +795,21 @@ class TestRollbackOfStepsAtSeveralTimestamps:
         global_after = await branch_edge_fingerprint(db=db, branch_name=GLOBAL_BRANCH_NAME)
         global_edges_at_step2_after = await _count_branch_edges_at(db=db, branch=global_branch, at=step2_at)
         other_serial_after_rollback = await attribute_global_edges(db=db, node_id=other.id, attribute_name="serial")
+        widget_a_after_rollback = await _get_node_vertex_metadata(db=db, node_uuid=widget_a.id)
+        widget_b_after_rollback = await _get_node_vertex_metadata(db=db, node_uuid=widget_b.id)
 
         await _roll_back()
         main_after_second = await branch_edge_fingerprint(db=db, branch_name=main.name)
         global_after_second = await branch_edge_fingerprint(db=db, branch_name=GLOBAL_BRANCH_NAME)
+        widget_a_after_second = await _get_node_vertex_metadata(db=db, node_uuid=widget_a.id)
+        widget_b_after_second = await _get_node_vertex_metadata(db=db, node_uuid=widget_b.id)
 
         return SeveralTimestampsScenario(
             step1_at=step1_at,
+            between_at=between_at,
             step2_at=step2_at,
+            widget_a_before=widget_a_before,
+            widget_b_before=widget_b_before,
             main_before=main_before,
             other_serial_after_write=other_serial_after_write,
             main_edges_at_step1=main_edges_at_step1,
@@ -792,6 +820,11 @@ class TestRollbackOfStepsAtSeveralTimestamps:
             other_serial_after_rollback=other_serial_after_rollback,
             main_after_second=main_after_second,
             global_after_second=global_after_second,
+            widget_a_after_steps=widget_a_after_steps,
+            widget_a_after_rollback=widget_a_after_rollback,
+            widget_b_after_rollback=widget_b_after_rollback,
+            widget_a_after_second=widget_a_after_second,
+            widget_b_after_second=widget_b_after_second,
         )
 
     def test_the_steps_wrote_to_main_and_the_global_branch(self, scenario: SeveralTimestampsScenario) -> None:
@@ -811,10 +844,38 @@ class TestRollbackOfStepsAtSeveralTimestamps:
     ) -> None:
         assert scenario.other_serial_after_rollback == scenario.other_serial_after_write
 
+    def test_the_second_step_keeps_the_metadata_from_before_the_first(
+        self, scenario: SeveralTimestampsScenario
+    ) -> None:
+        assert scenario.widget_a_after_steps == {
+            "updated_at": scenario.step2_at.to_string(),
+            "updated_by": MIGRATION_USER_ID,
+            "previous_updated_at": scenario.widget_a_before["updated_at"],
+            "previous_updated_by": scenario.widget_a_before["updated_by"],
+        }
+
+    def test_rollback_restores_the_metadata_from_before_the_first_step(
+        self, scenario: SeveralTimestampsScenario
+    ) -> None:
+        assert scenario.widget_a_after_rollback == {
+            "updated_at": scenario.widget_a_before["updated_at"],
+            "updated_by": scenario.widget_a_before["updated_by"],
+            "previous_updated_at": None,
+            "previous_updated_by": None,
+        }
+
+    def test_rollback_restores_a_write_made_between_the_steps(self, scenario: SeveralTimestampsScenario) -> None:
+        after = scenario.widget_b_after_rollback
+        assert (after["updated_at"], after["updated_by"]) == (scenario.between_at.to_string(), "another-writer")
+
     def test_a_second_rollback_changes_nothing(self, scenario: SeveralTimestampsScenario) -> None:
         assert (scenario.main_after_second, scenario.global_after_second) == (
             scenario.main_after,
             scenario.global_after,
+        )
+        assert (scenario.widget_a_after_second, scenario.widget_b_after_second) == (
+            scenario.widget_a_after_rollback,
+            scenario.widget_b_after_rollback,
         )
 
     async def test_rollback_refuses_an_empty_timestamp_list(

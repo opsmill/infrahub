@@ -615,6 +615,7 @@ class NodeCreateAllQuery(NodeQuery):
         }
 
         self.params["at"] = at.to_string()
+        self.params["operation_ats"] = [self.params["at"]]
 
         self.add_to_query(query)
         self.return_labels = ["n", "rn", "rv"]

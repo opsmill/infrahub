@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipStatus
 from infrahub.core.query import QueryType
 from infrahub.core.query.agnostic_field_closure import CLOSE_UNRETAINED_AGNOSTIC_FIELDS
+from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import retry_db_transaction
@@ -121,6 +122,7 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery, Migration
         self.params["kinds_to_skip"] = params.kinds_to_skip
         self.params["rel_identifiers"] = params.rel_identifiers
         self.params["at"] = self.at.to_string()
+        self.params["operation_ats"] = self.operation_ats_param
         self.params["branch_name"] = self.branch.name
         self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
         self.params["user_id"] = self.user_id
@@ -142,24 +144,8 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery, Migration
         CALL (active_node, rel) {
             WITH active_node, rel
             WHERE $set_metadata
-            SET rel.previous_updated_at = CASE
-                    WHEN rel.updated_at IS NULL OR rel.updated_at <> $at THEN rel.updated_at
-                    ELSE rel.previous_updated_at
-                END,
-                rel.previous_updated_by = CASE
-                    WHEN rel.updated_at IS NULL OR rel.updated_at <> $at THEN rel.updated_by
-                    ELSE rel.previous_updated_by
-                END
-            SET rel.updated_at = $at, rel.updated_by = $user_id
-            SET active_node.previous_updated_at = CASE
-                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $at THEN active_node.updated_at
-                    ELSE active_node.previous_updated_at
-                END,
-                active_node.previous_updated_by = CASE
-                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $at THEN active_node.updated_by
-                    ELSE active_node.previous_updated_by
-                END
-            SET active_node.updated_at = $at, active_node.updated_by = $user_id
+            %(stamp_rel)s
+            %(stamp_active_node)s
         }
 
         // ----------------------------------------------------------
@@ -201,15 +187,7 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery, Migration
         CALL (peer) {
             WITH peer
             WHERE $set_metadata AND peer:Node
-            SET peer.previous_updated_at = CASE
-                    WHEN peer.updated_at IS NULL OR peer.updated_at <> $at THEN peer.updated_at
-                    ELSE peer.previous_updated_at
-                END,
-                peer.previous_updated_by = CASE
-                    WHEN peer.updated_at IS NULL OR peer.updated_at <> $at THEN peer.updated_by
-                    ELSE peer.previous_updated_by
-                END
-            SET peer.updated_at = $at, peer.updated_by = $user_id
+            %(stamp_peer)s
         }
 
         // ----------------------------------------------------------
@@ -224,6 +202,9 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery, Migration
             "branch_filter": branch_filter,
             "selection": self.render_selection(),
             "close_unretained_agnostic_fields": CLOSE_UNRETAINED_AGNOSTIC_FIELDS,
+            "stamp_rel": stamp_vertex_metadata("rel"),
+            "stamp_active_node": stamp_vertex_metadata("active_node"),
+            "stamp_peer": stamp_vertex_metadata("peer"),
         }
         self.add_to_query(query)
 
@@ -302,6 +283,7 @@ class NodeRelationshipRemoveMigration(RelationshipSchemaMigration):
                 at=migration_input.at,
                 migration=self,
                 user_id=migration_input.user_id,
+                operation_ats=migration_input.operation_ats,
                 query_params=query_params,
             )
             await query.execute(db=ts)

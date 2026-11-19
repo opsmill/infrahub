@@ -7,6 +7,7 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipStatus
 from infrahub.core.graph.schema import GraphAttributeRelationships
 from infrahub.core.migrations.query.selection import MigrationSelectionQuery
 from infrahub.core.query.agnostic_field_closure import CLOSE_UNRETAINED_AGNOSTIC_FIELDS
+from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 
@@ -94,6 +95,7 @@ class AttributeRemoveQuery(MigrationSelectionQuery):
         self.params["kinds_to_ignore"] = kinds_to_ignore
         self.params["attr_name"] = self.attribute_name
         self.params["at"] = self.at.to_string()
+        self.params["operation_ats"] = self.operation_ats_param
         self.params["branch_name"] = self.branch.name
         self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
 
@@ -157,24 +159,8 @@ class AttributeRemoveQuery(MigrationSelectionQuery):
         CALL (active_attr, active_node) {
             WITH active_attr, active_node
             WHERE $set_metadata
-            SET active_attr.previous_updated_at = CASE
-                    WHEN active_attr.updated_at IS NULL OR active_attr.updated_at <> $at THEN active_attr.updated_at
-                    ELSE active_attr.previous_updated_at
-                END,
-                active_attr.previous_updated_by = CASE
-                    WHEN active_attr.updated_at IS NULL OR active_attr.updated_at <> $at THEN active_attr.updated_by
-                    ELSE active_attr.previous_updated_by
-                END
-            SET active_attr.updated_at = $at, active_attr.updated_by = $user_id
-            SET active_node.previous_updated_at = CASE
-                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $at THEN active_node.updated_at
-                    ELSE active_node.previous_updated_at
-                END,
-                active_node.previous_updated_by = CASE
-                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $at THEN active_node.updated_by
-                    ELSE active_node.previous_updated_by
-                END
-            SET active_node.updated_at = $at, active_node.updated_by = $user_id
+            %(stamp_attr)s
+            %(stamp_node)s
         }
         // ------------
         // Clean up branch-agnostic edges when they become unreachable
@@ -187,5 +173,7 @@ class AttributeRemoveQuery(MigrationSelectionQuery):
             "branch_filter": branch_filter,
             "sub_query_all": sub_query_all,
             "close_unretained_agnostic_fields": CLOSE_UNRETAINED_AGNOSTIC_FIELDS,
+            "stamp_attr": stamp_vertex_metadata("active_attr"),
+            "stamp_node": stamp_vertex_metadata("active_node"),
         }
         self.add_to_query(query)
