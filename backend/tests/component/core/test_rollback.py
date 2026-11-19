@@ -12,6 +12,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddMigration
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
+from infrahub.core.ownership.constants import NO_OWNER_VERTEX_UUID
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.rollback import RollbackScope
 from infrahub.core.rollback import GraphRollbacker
@@ -28,6 +29,7 @@ from tests.helpers.agnostic_edges import (
     open_edges,
 )
 from tests.helpers.db_validation import count_branch_edges_at, count_branch_edges_since
+from tests.helpers.ownership import add_node, set_owners
 from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA, WIDGET_KIND
 
 if TYPE_CHECKING:
@@ -91,6 +93,22 @@ async def _get_node_vertex_metadata(db: InfrahubDatabase, node_uuid: str) -> dic
         "previous_updated_at": record.get("previous_updated_at"),
         "previous_updated_by": record.get("previous_updated_by"),
     }
+
+
+async def test_rollback_keeps_the_no_owner_vertex_when_it_deletes_its_only_edge(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+) -> None:
+    person = await add_node(db=db, kind="TestPerson", name="John", height=180)
+    at = Timestamp()
+    await set_owners(db=db, branch=default_branch, node_id=person.id, owner_ids=(), at=at)
+    assert await count_branch_edges_at(db=db, branch_name=default_branch.name, at=at.to_string()) > 0
+
+    await GraphRollbacker(db=db).rollback(target_branch=default_branch, at=at, scope=RollbackScope.AT_TIMESTAMP)
+
+    assert await count_branch_edges_at(db=db, branch_name=default_branch.name, at=at.to_string()) == 0
+    assert await _count_vertices_with_uuid(db=db, uuid=NO_OWNER_VERTEX_UUID) == 1
 
 
 async def test_rollback_at_timestamp_only_reverses_that_timestamp(
