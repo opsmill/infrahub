@@ -5,7 +5,7 @@
   "installed_registry_root": null,
   "status": "running",
   "current_step_index": 1,
-  "current_step_id": "review",
+  "current_step_id": "commit-review",
   "step_results": {
     "prep": {
       "type": "workflow",
@@ -53,7 +53,7 @@
   },
   "workflow_dir": "/Users/Pol/Documents/OpsMill/infrahub/stable/infrahub-speckit-pr48/.specify/workflows/opsmill-auto",
   "created_at": "2026-11-19T14:20:44.755413+00:00",
-  "updated_at": "2026-11-19T17:14:38.003579+00:00",
+  "updated_at": "2026-11-19T17:30:46.011079+00:00",
   "error": null,
   "inputs": {
     "spec": "https://opsmill.atlassian.net/browse/IFC-2167",
@@ -1515,11 +1515,42 @@
                           "error": null
                         },
                         {
-                          "phase": "ready",
-                          "active": true
+                          "phase": "done",
+                          "active": false,
+                          "result": {
+                            "type": "command",
+                            "integration": "claude",
+                            "model": null,
+                            "options": {},
+                            "input": {
+                              "args": "specs/ifc-2167-placeholder-automations 0d36b64bd9b8b031cf8fe84b613fb8d905a811ba"
+                            },
+                            "output": {
+                              "command": "speckit.opsmill.implement-review",
+                              "integration": "claude",
+                              "model": null,
+                              "options": {},
+                              "input": {
+                                "args": "specs/ifc-2167-placeholder-automations 0d36b64bd9b8b031cf8fe84b613fb8d905a811ba"
+                              },
+                              "integration_args": [],
+                              "integration_options": {},
+                              "exit_code": 0,
+                              "stdout": "",
+                              "stderr": "",
+                              "dispatched": true
+                            },
+                            "status": "completed",
+                            "error": null,
+                            "integration_args": [],
+                            "integration_options": {}
+                          },
+                          "outcome": "completed",
+                          "error": null
                         },
                         {
-                          "phase": "ready"
+                          "phase": "ready",
+                          "active": true
                         },
                         {
                           "phase": "ready"
