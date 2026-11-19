@@ -807,6 +807,10 @@ export interface components {
             /** Installation Type */
             installation_type: string;
             policy: components["schemas"]["PolicySettings"];
+            /** @description Instance identity: each field is the value saved in the global preferences, else the deployment default; both fields are null when the saved values cannot be read */
+            instance: components["schemas"]["InstanceIdentityAPI"];
+            /** @description Instance identity set by the deployment configuration, used for a field with no saved value */
+            instance_defaults: components["schemas"]["InstanceIdentityAPI"];
         };
         /**
          * DiffAction
@@ -1391,6 +1395,25 @@ export interface components {
             deployment_id: string;
             /** Version */
             version: string;
+        };
+        /**
+         * InstanceColor
+         * @description Preset colors an administrator can assign to the instance; clients map each to their own theme.
+         * @enum {string}
+         */
+        InstanceColor: "RED" | "AMBER" | "GREEN" | "BLUE" | "INDIGO" | "PURPLE" | "GRAY";
+        /**
+         * InstanceIdentityAPI
+         * @description A label and a color that identify this instance to every visitor.
+         */
+        InstanceIdentityAPI: {
+            /**
+             * Label
+             * @description Instance label shown in the header badge and the tab title
+             */
+            label: string | null;
+            /** @description Preset color of the instance badge, bar and tab icon */
+            color: components["schemas"]["InstanceColor"] | null;
         };
         /** JSONSchema */
         JSONSchema: {
