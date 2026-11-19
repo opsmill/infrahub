@@ -5,13 +5,13 @@ title: Query IPAM data
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-Query the computed values of prefixes and addresses, follow the tree, and list the free space in a prefix, with GraphQL or the Python SDK. Run these queries in reports and automation to find out how full a subnet is, which addresses it holds, and where a new prefix can go.
+Query the values Infrahub calculates for prefixes and addresses, follow the tree, and list the available space in a prefix, with GraphQL or the Python SDK. Run these queries in reports and automation to find out how full a subnet is, which addresses are in it, and where a new prefix can go.
 
 The same prefix can exist in several namespaces, so filter on the namespace when you look up one prefix or address. The examples filter on `default`.
 
-## Query the computed values of a prefix
+## Query the calculated values of a prefix
 
-Every prefix has the read-only attributes `utilization`, `netmask`, `hostmask`, `network_address` and `broadcast_address`, computed when you query them:
+Every prefix has the read-only attributes `utilization`, `netmask`, `hostmask`, `network_address` and `broadcast_address`, calculated each time they are queried:
 
 <Tabs groupId="method" queryString>
   <TabItem value="graphql" label="GraphQL" default>
@@ -53,9 +53,9 @@ print(prefix.network_address.value, prefix.broadcast_address.value)
 
 See [Utilization depends on the member type](./overview.mdx#utilization-depends-on-the-member-type) for how `utilization` is calculated, and why a prefix can have a utilization of 0%.
 
-## Query the computed values of an address
+## Query the calculated values of an address
 
-An address has no separate computed attributes. Its `address` attribute, of kind `IPHost`, has the computed sub-fields `ip`, `netmask`, `hostmask`, `prefixlen` and `version`:
+An address has no read-only attributes of its own. Its `address` attribute, of kind `IPHost`, returns the sub-fields `ip`, `netmask`, `hostmask`, `prefixlen` and `version`, derived from the value:
 
 <Tabs groupId="method" queryString>
   <TabItem value="graphql" label="GraphQL" default>
@@ -100,7 +100,7 @@ The Python SDK converts the value of an `IPHost` attribute to the standard libra
 
 ## Find the addresses in a prefix
 
-The `ip_addresses` relationship of a prefix holds the addresses in it, and the `ip_prefix` relationship of an address holds its prefix. Both relationships are read-only, and Infrahub sets them from the tree:
+The `ip_addresses` relationship of a prefix lists the addresses in it, and the `ip_prefix` relationship of an address points to its prefix. Both relationships are read-only, and Infrahub sets them from the tree:
 
 <Tabs groupId="method" queryString>
   <TabItem value="graphql" label="GraphQL" default>
@@ -140,11 +140,11 @@ for related in prefix.ip_addresses.peers:
 </TabItem>
 </Tabs>
 
-`ip_addresses` holds only the addresses whose most specific prefix is this one. Addresses in a child prefix are listed on that child.
+`ip_addresses` lists only the addresses whose most specific prefix is this one. Addresses in a child prefix are listed on that child.
 
 ## Navigate the hierarchy
 
-Prefixes have the read-only relationships `parent`, `children`, `ancestors` and `descendants`. `children` holds the direct child prefixes, and `descendants` holds every prefix below this one in the tree:
+Prefixes have the read-only relationships `parent` and `children`, and the read-only fields `ancestors` and `descendants`. `children` lists the direct child prefixes, and `descendants` lists every prefix below this one in the tree:
 
 <Tabs groupId="method" queryString>
   <TabItem value="graphql" label="GraphQL" default>
@@ -240,14 +240,14 @@ for prefix in roots:
 </TabItem>
 </Tabs>
 
-## List the free space in a prefix
+## List the available space in a prefix
 
-To find where a new prefix or address can go, query the children of a prefix with `include_available: true`. Infrahub then adds a row for each free block between the existing children. The argument exists only on the queries of the built-in generics, `BuiltinIPPrefix` and `BuiltinIPAddress`, and the query returns free rows only when you filter on one parent prefix:
+To find where a new prefix or address can go, query the children of a prefix with `include_available: true`. Infrahub then adds a result for each available block inside the prefix. The argument exists only on the queries of the built-in generics, `BuiltinIPPrefix` and `BuiltinIPAddress`, and the query returns these results only when you filter on one parent prefix:
 
-- `BuiltinIPPrefix(parent__ids: ["<prefix-id>"], include_available: true)` returns the child prefixes, and a row of type `InternalIPPrefixAvailable` for each free block, for example `10.0.2.0/23`.
-- `BuiltinIPAddress(ip_prefix__ids: ["<prefix-id>"], include_available: true)` returns the addresses, and a row of type `InternalIPRangeAvailable` for each free range. The row's `address` is the first free address, and its display label states the size of the range, for example "9 IP addresses available". In an IPv4 prefix, the ranges leave out the network and broadcast addresses, unless `is_pool` is `true` or the prefix is a `/31` with the member type `address`. In an IPv6 prefix, the ranges include them.
+- `BuiltinIPPrefix(parent__ids: ["<prefix-id>"], include_available: true)` returns the child prefixes, and a result of type `InternalIPPrefixAvailable` for each available block, for example `10.0.2.0/23`.
+- `BuiltinIPAddress(ip_prefix__ids: ["<prefix-id>"], include_available: true)` returns the addresses, and a result of type `InternalIPRangeAvailable` for each available range. The result's `address` is the first available address, and its display label states the size of the range, for example "9 IP addresses available". In an IPv4 prefix, the ranges leave out the network and broadcast addresses, unless `is_pool` is `true` or the prefix is a `/31` with the member type `address`. In an IPv6 prefix, the ranges include them.
 
-The `count` of the query does not include the free rows.
+The `count` of the query does not include these results.
 
 <Tabs groupId="method" queryString>
   <TabItem value="graphql" label="GraphQL" default>
@@ -270,7 +270,7 @@ query {
 
   <TabItem value="sdk" label="Python SDK">
 
-`client.filters()` cannot read the free rows, because their kinds have no schema in the SDK, so run the GraphQL query with `execute_graphql`:
+`client.filters()` cannot read these results, because their kinds have no schema in the SDK, so run the GraphQL query with `execute_graphql`:
 
 ```python
 prefix = await client.get(
@@ -295,7 +295,7 @@ for edge in result["BuiltinIPPrefix"]["edges"]:
 </TabItem>
 </Tabs>
 
-To get only the next free address or prefix of a given size, use the next-available queries described in [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx#advanced-next-available-graphql-queries).
+To get only the next available address or prefix of a given size, use the next-available queries described in [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx#advanced-next-available-graphql-queries).
 
 ## Next
 

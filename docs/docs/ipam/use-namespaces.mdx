@@ -19,33 +19,33 @@ Create a namespace when the address space you track overlaps, or must be kept se
 - Customers of a managed service who each use `10.0.0.0/8` in their own network.
 - A lab or a disaster recovery network that reuses the addressing of production.
 
-Do not create a namespace only to record who owns a prefix. To record which customer, business unit, region or data center a prefix belongs to, relate the prefix to that object. The Marketplace [`infrahub/tenancy`](https://marketplace.infrahub.app/schemas/infrahub/tenancy) extension, for example, relates tenants to prefixes and addresses. Each namespace has its own tree and its own utilization figures, the web interface shows one namespace at a time, and a Resource Manager pool allocates from one namespace only.
+To record which customer, business unit, region or data center a prefix belongs to, relate the prefix to that owner, for example with the `tenant` relationship from the Marketplace [`infrahub/tenancy`](https://marketplace.infrahub.app/schemas/infrahub/tenancy) extension. Do not create a namespace per owner for this. Each namespace is a separate tree with its own utilization, the web interface shows one namespace at a time, and a Resource Manager pool belongs to one namespace.
 
-A deployment that manages a single network or organization usually needs only the `default` namespace.
+For a single network or organization, the `default` namespace is usually enough.
 
 ## Choose between a namespace and a VRF
 
-A VRF and a namespace record different things. A VRF node records the routing instance. A namespace is what allows the same prefix to exist twice: the Marketplace IPAM schema makes prefixes unique within a namespace, so two VRFs that hold the same prefix need two namespaces.
+A VRF and a namespace represent different things. A VRF represents a routing instance, with its route distinguisher and route targets. A namespace is a separate address space. The Marketplace IPAM schema makes prefixes unique within a namespace, so when the same prefix exists in two VRFs, the prefixes of each VRF need their own namespace.
 
 How you combine them depends on how your organization models its networks. Each of these models works with Infrahub:
 
-- One namespace for each VRF. Each VRF has its own tree and its own utilization figures, and every VRF can hold the same prefixes as another.
-- Several VRFs in one namespace. A VRF node records each routing instance, and the `vrf` relationship of each prefix records the VRF it belongs to. The VRFs share one tree and one set of utilization figures, and with the Marketplace IPAM schema they cannot hold the same prefix or address twice.
+- One namespace for each VRF. Each VRF has its own tree and its own utilization figures, and the same prefix can exist in every VRF.
+- Several VRFs in one namespace. Each routing instance is a VRF object, and each prefix relates to its VRF through its `vrf` relationship. The VRFs share one tree and one set of utilization figures, and with the Marketplace IPAM schema, a prefix or an address can exist only once across all of them.
 - A VRF node that is also the namespace. Define a VRF node that inherits from `BuiltinIPNamespace`, and add the VRF attributes to it, such as the route distinguisher. Each VRF is then a namespace, with its own tree, and you manage one object for each VRF instead of two.
 
-![Three models for two VRFs, red and blue. One namespace for each VRF: two namespaces, red and blue, each hold 10.0.0.0/16, and each corresponds to a VRF object. Several VRFs in one namespace: a single namespace, default, holds 10.0.0.0/16, related to VRF red, and 10.1.0.0/16, related to VRF blue, in one tree, so the same prefix cannot exist twice. A VRF node that is also the namespace: red and blue are objects of a VRF node that inherits from BuiltinIPNamespace. Each has a route distinguisher and holds 10.0.0.0/16 in its own tree.](../media/ipam/ipam-vrf-namespace-models.svg)
+![Three models for two VRFs, red and blue. One namespace for each VRF: two namespaces, red and blue, each contain 10.0.0.0/16, and each corresponds to a VRF object. Several VRFs in one namespace: a single namespace, default, contains 10.0.0.0/16, related to VRF red, and 10.1.0.0/16, related to VRF blue, in one tree, so the same prefix cannot exist twice. A VRF node that is also the namespace: red and blue are objects of a VRF node that inherits from BuiltinIPNamespace. Each has a route distinguisher and contains 10.0.0.0/16 in its own tree.](../media/ipam/ipam-vrf-namespace-models.svg)
 
-In the Marketplace [`infrahub/vrf`](https://marketplace.infrahub.app/schemas/infrahub/vrf) extension, the VRF node records the route distinguisher, the import and export route targets, and, through the `vrf` relationship of each prefix, the prefixes that belong to the VRF. It has no relationship to a namespace. The extension includes one as a commented-out example, for when you want to record which namespace each VRF uses.
+In the Marketplace [`infrahub/vrf`](https://marketplace.infrahub.app/schemas/infrahub/vrf) extension, the VRF node has attributes for the route distinguisher and the import and export route targets, and each prefix relates to its VRF through the prefix's `vrf` relationship. It has no relationship to a namespace. The extension includes one as a commented-out example, for when you want to record which namespace each VRF uses.
 
 ## The default namespace
 
-Infrahub creates a namespace named `default` when it starts for the first time. A prefix or an address created without a namespace is assigned to `default`. The `default` namespace cannot be deleted.
+Infrahub creates a namespace named `default` when it starts for the first time. When no namespace is chosen, the prefix or the address is created in `default`. The `default` namespace cannot be deleted.
 
 ## Example: overlapping customer address space
 
-A service provider runs managed networks for three customers, and each customer uses `10.0.0.0/8` internally. One namespace cannot hold three copies of the same prefix when prefixes are unique within a namespace. With one namespace per customer, each copy is tracked separately:
+A service provider runs managed networks for three customers, and each customer uses `10.0.0.0/8` internally. One namespace cannot contain three copies of the same prefix when prefixes are unique within a namespace. With one namespace per customer, each copy is tracked separately:
 
-![The namespaces customer-a, customer-b and customer-c each hold 10.0.0.0/8, 10.1.0.0/16 and the address 10.1.0.1/16 without conflict. Each namespace also holds a different second /16.](../media/ipam/ipam-namespaces.svg)
+![The namespaces customer-a, customer-b and customer-c each contain 10.0.0.0/8, 10.1.0.0/16 and the address 10.1.0.1/16 without conflict. Each namespace also contains a different second /16.](../media/ipam/ipam-namespaces.svg)
 
 Each namespace has its own tree, its own utilization figures and its own addresses. A query filtered on `customer-a` returns only the prefixes and addresses of customer A.
 
@@ -131,7 +131,7 @@ To create an address, use `IpamIPAddressCreate` with `address` in place of `pref
 
   <TabItem value="sdk" label="Python SDK">
 
-Give the namespace by its HFID, a list that holds its name:
+Give the namespace by its HFID, a list that contains its name:
 
 ```python
 prefix = await client.create(
@@ -194,7 +194,7 @@ for prefix in prefixes:
 Change the namespace of the prefix or the address. Infrahub moves only that prefix or address:
 
 - The child prefixes and addresses of a moved prefix stay in the old namespace, under the next prefix there that contains them, or at the top level.
-- In the new namespace, Infrahub places the moved prefix or address under the most specific prefix that contains it, or at the top level.
+- In the new namespace, Infrahub places the moved prefix or address under the most specific prefix that contains it, or at the top level, and the prefixes and addresses there that a moved prefix contains become its children.
 
 :::warning
 
@@ -271,7 +271,7 @@ await move_subtree(client, prefix="10.0.0.0/8", source="customer-a", target="cus
 
 Infrahub places each prefix and address in the tree of the target namespace as it is moved, so the moved prefixes and addresses keep the same parents there.
 
-Create the branch before you run the function, and review the result in a Proposed Change. If the target namespace already holds one of the values, Infrahub rejects that change, and the function stops after it has moved only part of the prefixes and addresses. You can then delete the branch instead of moving them back one by one.
+Create the branch before you run the function, and review the result in a Proposed Change. If the target namespace already contains one of the values, Infrahub rejects that change, and the function stops after it has moved only part of the prefixes and addresses. You can then delete the branch instead of moving them back one by one.
 
 ## Delete a namespace
 
