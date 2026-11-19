@@ -152,10 +152,12 @@ class TestSearchAnywhere:
         self, page: Page, branch_with_matching_tags: tuple[str, str]
     ) -> None:
         branch, search = branch_with_matching_tags
+        failed_load_more_requests: list[dict] = []
 
         async def fail_load_more(route: Route) -> None:
             request = route.request.post_data_json or {}
             if request.get("operationName") == "Search" and request["variables"]["limit"] > SEARCH_FIRST_BATCH + 1:
+                failed_load_more_requests.append(request)
                 await route.abort()
             else:
                 await route.fallback()
@@ -180,6 +182,7 @@ class TestSearchAnywhere:
         await expect(dialog).to_contain_text("Could not load more results")
         await expect(results).to_have_count(SEARCH_FIRST_BATCH)
         await expect(parent_prefixes).to_be_visible()
+        assert len(failed_load_more_requests) == 1
 
     async def test_a_search_of_only_spaces_lists_no_objects(
         self, page: Page, branch_with_matching_tags: tuple[str, str]
