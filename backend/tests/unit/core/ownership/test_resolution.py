@@ -5,19 +5,13 @@ import pytest
 from infrahub.core.ownership.models import (
     NODE_HOLDER,
     NODE_TARGET_HOLDER,
-    HolderKey,
-    HolderKind,
     OwnerOrigin,
     OwnerState,
     ResolvedOwnership,
     StoredNodeOwnership,
     StoredOwnerState,
 )
-from infrahub.core.ownership.resolution import (
-    resolve_field_ownership,
-    resolve_node_ownership,
-    resolve_target_ownership,
-)
+from infrahub.core.ownership.resolution import resolve_node_ownership
 
 LINEAGE_IDS = ("interface", "device", "site")
 
@@ -251,128 +245,3 @@ def test_resolve_node_ownership_applies_the_order_of_the_owner_sources(test_case
     profiles = {profile.node_id: profile for profile in test_case.profiles}
 
     assert resolve_node_ownership(lineage=test_case.lineage, profiles=profiles) == test_case.expected
-
-
-FIELD = HolderKey(kind=HolderKind.FIELD_SET, identifier="device__ip_addresses", direction="bidirectional")
-GIVEN_FIELD = HolderKey(kind=HolderKind.TARGET_SET, identifier="device__ip_addresses", direction="bidirectional")
-OTHER_GIVEN_FIELD = HolderKey(kind=HolderKind.TARGET_SET, attribute="description")
-NODE_OWNERSHIP = ResolvedOwnership(
-    state=OwnerState.INHERIT, owner_ids=("server-team",), origin=OwnerOrigin.PARENT, origin_node_id="rack"
-)
-NO_NODE_OWNERSHIP = ResolvedOwnership(state=OwnerState.INHERIT, owner_ids=(), origin=None, origin_node_id=None)
-
-
-def _server(
-    field: StoredOwnerState | None = None, profiles: tuple[tuple[str, int | None], ...] = ()
-) -> StoredNodeOwnership:
-    """Return a server whose own owners are of no use to its fields: a field takes the owners that apply to the node."""
-    holders = {NODE_HOLDER: StoredOwnerState(owner_ids=("unused",))} | ({FIELD: field} if field else {})
-    return StoredNodeOwnership(node_id="server", kind="TestServer", holders=holders, profiles=profiles)
-
-
-def _field_profile(node_id: str, holder: HolderKey, owner_ids: tuple[str, ...]) -> StoredNodeOwnership:
-    return StoredNodeOwnership(
-        node_id=node_id, kind="ProfileTestServer", holders={holder: StoredOwnerState(owner_ids=owner_ids)}
-    )
-
-
-@dataclass
-class FieldOwnershipTestCase:
-    name: str
-    node: StoredNodeOwnership
-    profiles: list[StoredNodeOwnership]
-    expected: ResolvedOwnership
-    node_ownership: ResolvedOwnership = NODE_OWNERSHIP
-
-
-FIELD_OWNERSHIP_TEST_CASES: list[FieldOwnershipTestCase] = [
-    FieldOwnershipTestCase(
-        name="field_without_state_takes_the_owners_that_apply_to_its_node",
-        node=_server(),
-        profiles=[],
-        expected=ResolvedOwnership(
-            state=OwnerState.INHERIT, owner_ids=("server-team",), origin=OwnerOrigin.OBJECT, origin_node_id="server"
-        ),
-    ),
-    FieldOwnershipTestCase(
-        name="field_of_a_node_without_owner_has_no_origin",
-        node=_server(),
-        profiles=[],
-        node_ownership=NO_NODE_OWNERSHIP,
-        expected=NO_NODE_OWNERSHIP,
-    ),
-    FieldOwnershipTestCase(
-        name="own_owners_win_over_a_profile_and_the_node",
-        node=_server(field=StoredOwnerState(owner_ids=("network-team",)), profiles=(("profile-a", 10),)),
-        profiles=[_field_profile(node_id="profile-a", holder=GIVEN_FIELD, owner_ids=("security",))],
-        expected=ResolvedOwnership(
-            state=OwnerState.OWNERS, owner_ids=("network-team",), origin=OwnerOrigin.SELF, origin_node_id="server"
-        ),
-    ),
-    FieldOwnershipTestCase(
-        name="own_no_owner_wins_over_a_profile_and_the_node",
-        node=_server(field=StoredOwnerState(owner_ids=()), profiles=(("profile-a", 10),)),
-        profiles=[_field_profile(node_id="profile-a", holder=GIVEN_FIELD, owner_ids=("security",))],
-        expected=ResolvedOwnership(
-            state=OwnerState.NO_OWNER, owner_ids=(), origin=OwnerOrigin.SELF, origin_node_id="server"
-        ),
-    ),
-    FieldOwnershipTestCase(
-        name="profile_with_the_lowest_priority_number_wins_over_the_template_copy",
-        node=_server(
-            field=StoredOwnerState(owner_ids=("network-team",), template_id="template"),
-            profiles=(("profile-a", 20), ("profile-b", 10)),
-        ),
-        profiles=[
-            _field_profile(node_id="profile-a", holder=GIVEN_FIELD, owner_ids=("dc-emea",)),
-            _field_profile(node_id="profile-b", holder=GIVEN_FIELD, owner_ids=("security",)),
-        ],
-        expected=ResolvedOwnership(
-            state=OwnerState.INHERIT, owner_ids=("security",), origin=OwnerOrigin.PROFILE, origin_node_id="profile-b"
-        ),
-    ),
-    FieldOwnershipTestCase(
-        name="profile_that_gives_owners_to_the_node_or_to_another_field_gives_nothing_to_the_field",
-        node=_server(profiles=(("profile-a", 10), ("profile-b", 20))),
-        profiles=[
-            _field_profile(node_id="profile-a", holder=NODE_TARGET_HOLDER, owner_ids=("dc-emea",)),
-            _field_profile(node_id="profile-b", holder=OTHER_GIVEN_FIELD, owner_ids=("security",)),
-        ],
-        expected=ResolvedOwnership(
-            state=OwnerState.INHERIT, owner_ids=("server-team",), origin=OwnerOrigin.OBJECT, origin_node_id="server"
-        ),
-    ),
-    FieldOwnershipTestCase(
-        name="template_copy_wins_over_the_node",
-        node=_server(field=StoredOwnerState(owner_ids=("network-team",), template_id="template")),
-        profiles=[],
-        expected=ResolvedOwnership(
-            state=OwnerState.INHERIT,
-            owner_ids=("network-team",),
-            origin=OwnerOrigin.TEMPLATE,
-            origin_node_id="template",
-        ),
-    ),
-]
-
-
-@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in FIELD_OWNERSHIP_TEST_CASES])
-def test_resolve_field_ownership_applies_the_order_of_the_owner_sources(test_case: FieldOwnershipTestCase) -> None:
-    profiles = {profile.node_id: profile for profile in test_case.profiles}
-
-    resolved = resolve_field_ownership(
-        node=test_case.node, holder=FIELD, profiles=profiles, node_ownership=test_case.node_ownership
-    )
-
-    assert resolved == test_case.expected
-
-
-def test_resolve_target_ownership_gives_the_owners_that_a_profile_gives_to_one_field() -> None:
-    profile = _field_profile(node_id="profile-a", holder=GIVEN_FIELD, owner_ids=("security",))
-
-    assert resolve_target_ownership(node=profile, holder=FIELD) == ResolvedOwnership(
-        state=OwnerState.OWNERS, owner_ids=("security",), origin=OwnerOrigin.SELF, origin_node_id="profile-a"
-    )
-    assert resolve_target_ownership(node=profile) == ResolvedOwnership(
-        state=OwnerState.INHERIT, owner_ids=(), origin=None, origin_node_id=None
-    )

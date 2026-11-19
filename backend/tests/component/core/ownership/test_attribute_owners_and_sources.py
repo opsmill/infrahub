@@ -4,7 +4,6 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.ownership.constants import SOURCES_IDS_FILTER
 from infrahub.core.ownership.models import INHERIT, NODE_SOURCES_HOLDER, HolderKey, HolderKind, StoredOwnerState
 from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -109,7 +108,7 @@ async def test_write_of_the_single_owner_on_a_branch_hides_the_owners_of_the_def
     await verify_graph(db=db)
 
 
-async def test_sources_of_a_node_are_stored_and_filter_the_list_before_pagination(
+async def test_sources_of_a_node_are_stored_on_each_branch(
     db: InfrahubDatabase, default_branch: Branch, groups: list[str]
 ) -> None:
     persons = [await add_node(db=db, kind="TestPerson", name=f"person-{index}") for index in range(4)]
@@ -125,21 +124,6 @@ async def test_sources_of_a_node_are_stored_and_filter_the_list_before_paginatio
         owner_ids=tuple(groups[:2])
     )
     assert await _stored(db, default_branch, persons[2].id, NODE_SOURCES_HOLDER) == INHERIT
-
-    filters = {SOURCES_IDS_FILTER: groups[:2]}
-    pages = [
-        await NodeManager.query(
-            db=db, schema="TestPerson", branch=default_branch, filters=filters, limit=1, offset=offset
-        )
-        for offset in range(3)
-    ]
-    assert [[node.id for node in page] for page in pages] == [[persons[0].id], [persons[1].id], []]
-    assert await NodeManager.count(db=db, schema="TestPerson", branch=default_branch, filters=filters) == 2
-    assert await NodeManager.count(db=db, schema="TestPerson", branch=branch, filters=filters) == 3
-    assert (
-        await NodeManager.count(
-            db=db, schema="TestPerson", branch=default_branch, filters={SOURCES_IDS_FILTER: [groups[2]]}
-        )
-        == 0
-    )
+    assert await _stored(db, branch, persons[3].id, NODE_SOURCES_HOLDER) == StoredOwnerState(owner_ids=(groups[0],))
+    assert await _stored(db, default_branch, persons[3].id, NODE_SOURCES_HOLDER) == INHERIT
     await verify_graph(db=db)

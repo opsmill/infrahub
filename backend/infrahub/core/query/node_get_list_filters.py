@@ -8,7 +8,6 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import NODE_METADATA_PREFIX as _NODE_METADATA_PREFIX
-from infrahub.core.ownership.constants import OWNERS_IDS_FILTER, OWNERS_ISNULL_FILTER, SOURCES_IDS_FILTER
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import extract_field_filters
@@ -25,9 +24,6 @@ NODE_METADATA_PREFIX = f"{_NODE_METADATA_PREFIX}__"
 IP_ATTRIBUTE_KINDS = frozenset({"IPHost", "IPNetwork", "IPAddress"})
 
 INTERNAL_FILTER_NAMES = ("any", "attribute", "relationship")
-
-OWNERSHIP_FILTERS = (OWNERS_IDS_FILTER, OWNERS_ISNULL_FILTER, SOURCES_IDS_FILTER)
-"""The filters on the owners and on the sources of a node, which are not filters on a field of the node."""
 
 
 class FieldAttributeRequirementType(Enum):
@@ -211,8 +207,6 @@ def get_filter_requirements(
     index = start_index
 
     for filter_key, filter_value in filters.items():
-        if filter_key in OWNERSHIP_FILTERS:
-            continue
         metadata_details = _get_metadata_field_details(filter_key)
         if metadata_details:
             field_name, operator = metadata_details

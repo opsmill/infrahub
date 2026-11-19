@@ -21,7 +21,6 @@ class OwnerOrigin(StrEnum):
     PROFILE = "profile"
     TEMPLATE = "template"
     PARENT = "parent"
-    OBJECT = "object"
 
 
 class HolderKind(StrEnum):

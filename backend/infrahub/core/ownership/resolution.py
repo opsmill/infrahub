@@ -38,47 +38,6 @@ def resolve_node_ownership(
     return ResolvedOwnership(state=state, owner_ids=(), origin=None, origin_node_id=None)
 
 
-def resolve_field_ownership(
-    node: StoredNodeOwnership,
-    holder: HolderKey,
-    profiles: Mapping[str, StoredNodeOwnership],
-    node_ownership: ResolvedOwnership,
-) -> ResolvedOwnership:
-    """Return the owners that apply to one field of a node.
-
-    The field looks at its own state, then at its profiles by priority, then at its copy from an object template,
-    then at the owners that apply to its node.
-
-    Args:
-        node: The stored states of the node.
-        holder: The holder of the owners of the field.
-        profiles: The stored states of the profiles of the node, by profile ID.
-        node_ownership: The owners that apply to the node.
-
-    """
-    state = node.get(holder).state
-    if found := _own_levels(node=node, profiles=profiles, holder=holder):
-        origin, origin_node_id, owner_ids = found
-        return ResolvedOwnership(state=state, owner_ids=owner_ids, origin=origin, origin_node_id=origin_node_id)
-    if node_ownership.origin is None:
-        return ResolvedOwnership(state=state, owner_ids=(), origin=None, origin_node_id=None)
-    return ResolvedOwnership(
-        state=state, owner_ids=node_ownership.owner_ids, origin=OwnerOrigin.OBJECT, origin_node_id=node.node_id
-    )
-
-
-def resolve_target_ownership(node: StoredNodeOwnership, holder: HolderKey = NODE_HOLDER) -> ResolvedOwnership:
-    """Return the owners that a profile or an object template gives to a holder of its nodes, as it stores them."""
-    given = node.get(given_holder(holder))
-    gives = given.owner_ids is not None
-    return ResolvedOwnership(
-        state=given.state,
-        owner_ids=given.owner_ids or (),
-        origin=OwnerOrigin.SELF if gives else None,
-        origin_node_id=node.node_id if gives else None,
-    )
-
-
 def _own_levels(
     node: StoredNodeOwnership, profiles: Mapping[str, StoredNodeOwnership], holder: HolderKey = NODE_HOLDER
 ) -> tuple[OwnerOrigin, str, tuple[str, ...]] | None:

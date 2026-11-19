@@ -34,13 +34,9 @@ from infrahub.core.order import (
     METADATA_UPDATED_BY,
     OrderModel,
 )
-from infrahub.core.ownership.constants import SOURCES_IDS_FILTER
-from infrahub.core.ownership.filter import OwnerFilter, has_owner_filter
-from infrahub.core.ownership.sources import SourceFilter
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.node_get_list_filters import (
     NODE_METADATA_PREFIX,
-    OWNERSHIP_FILTERS,
     FieldAttributeRequirement,
     FieldAttributeRequirementType,
     get_filter_requirements,
@@ -1955,8 +1951,6 @@ class NodeGetListQuery(Query):
             return
         filter_errors = []
         for filter_str in self.filters:
-            if filter_str in OWNERSHIP_FILTERS:
-                continue
             split_filter = filter_str.split("__")
             if len(split_filter) > 2 and split_filter[-1] == "isnull":
                 filter_errors.append(
@@ -2115,28 +2109,6 @@ WITH %(tracked_vars)s,
             # first MATCH for Neo4j to use that index instead of reading every node of the kind.
             node_labels = f"Node:{self.schema.kind}"
             node_ids_where = "n.uuid IN $node_ids"
-
-        if has_owner_filter(filters=self.filters):
-            # The owner filter binds `n` before the first MATCH, so the query starts from the owners.
-            owner_filter = OwnerFilter(
-                branch=self.branch,
-                at=self.at,
-                schema_branch=db.schema.get_schema_branch(name=self.branch.name),
-                kind=self.schema.kind,
-            )
-            owner_query, owner_params = owner_filter.render(filters=self.filters or {})
-            self.add_to_query(owner_query)
-            self.params.update(owner_params)
-
-        if self.filters and self.filters.get(SOURCES_IDS_FILTER) is not None:
-            # Without an owner filter, the source filter binds `n` before the first MATCH and starts from the sources.
-            source_query, source_params = SourceFilter(branch=self.branch, at=self.at).render(
-                kind=self.schema.kind,
-                source_ids=self.filters[SOURCES_IDS_FILTER],
-                bound=has_owner_filter(filters=self.filters),
-            )
-            self.add_to_query(source_query)
-            self.params.update(source_params)
 
         # The initial subquery is used to filter out deleted nodes because we can have multiple valid results per branch
         #   and we need to filter out the one that have been deleted in the branch.
