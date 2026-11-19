@@ -179,7 +179,8 @@ Limits found in this round and written in `dev/knowledge/backend/ownership.md`:
 
 - A branch made before the upgrade can read two owners on a branch-agnostic attribute, when an earlier release changed its owner on the global branch after the start of the branch.
 - The clear of the source of a branch-agnostic attribute leaves the old source readable on a branch made before the clear. `develop` has the same behavior.
-- The attribute rename migration takes the node lock but does not check that the node is still active.
+- The attribute rename migration takes the node lock but does not check that the node is still active. A later round
+  removed this limit: the migration now takes the lock before it reads the sets, and then checks that the node is active.
 
 Runs after the last code change of this round, each package in its own pytest session, with testcontainers and without the `INFRAHUB_*` variables of the shell: on commit `499b86b694` (before the squash), 2026-11-18: `backend/tests/component/core/ownership` 160 passed; `backend/tests/component/core/diff/merge` 97 passed; `backend/tests/component/core/merge` 47 passed; `backend/tests/component/core/migrations` 349 passed, 2 skipped; `backend/tests/component/templates` 39 passed. Earlier in this round: `backend/tests/component/core/diff` 367 passed, `backend/tests/component/database` 19 passed, `backend/tests/component/patch` 14 passed, `backend/tests/component/core/agnostic_retirement` 27 passed, the node delete tests 134 passed, `backend/tests/unit/core` 1315 passed. `invoke lint` and `docs.validate` pass.
 

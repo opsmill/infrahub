@@ -103,7 +103,9 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
   open transactions cannot both create a set with the same key, or an active edge to the same owner, on any write
   path: a merge, a node create, an object conversion. `NodeSourcesWriteQuery` and `NodeOwnerEdgesCloseQuery` take
   the lock too.
-  The attribute rename migration, the only other code that creates a set, takes the same lock.
+  The attribute rename migration, the only other code that creates a set, takes the same lock before it reads the
+  sets of the node. After the lock, it gives no set to a node that is not active, with the same check of a later
+  `deleted` `IS_PART_OF` edge as a write of owners.
 - Lock order: a writer of a node locks the node vertex first, and then an attribute vertex or a set vertex. A
   write of owners, `Node._update` and `Node.delete` take the lock on the node vertex (`NodeLockQuery`, or the same
   `SET` in the query) before they write a field, on every branch. When one transaction locks a field first, it
@@ -282,9 +284,6 @@ holds, so it runs before the upgrade.
 - The clear of the source of a branch-agnostic attribute (`AttributeClearNodePropertyQuery`) gives the global edge
   a `to` time and no `deleted` edge. So a branch made before the clear still reads the old source. The release
   before does the same.
-- The attribute rename migration (`core/migrations/query/owner_set_attribute.py`) takes the lock on the node, but
-  does not then check that the node is active. When a delete of the node commits while the migration waits for the
-  lock, the migration still gives the node a set with active edges.
 - A rebase stops on a conflict of owners or sources until both branches hold the same list. See
   [Diff Conflicts](diff-conflicts.md).
 - The diff shows a holder that lost only its `HAS_OWNER_SOURCE` mark as an update with the same list at both ends.

@@ -8,8 +8,9 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.query.owner_set_attribute import OwnerSetKeyMigrationQuery
 from infrahub.core.node import Node
-from infrahub.core.ownership.models import NODE_HOLDER, HolderKey, StoredOwnerState, field_holder
+from infrahub.core.ownership.models import NODE_HOLDER, HolderKey, HolderKind, StoredOwnerState, field_holder
 from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -372,3 +373,57 @@ async def test_node_update_and_node_delete_in_open_transactions_do_not_deadlock(
 
     assert results == [None, None]
     await verify_graph(db=db, kinds=["TestPerson"])
+
+
+async def test_attribute_rename_gives_no_set_to_a_node_whose_delete_commits_while_the_rename_waits(
+    db: InfrahubDatabase, default_branch: Branch, person: Node, group_ids: list[str]
+) -> None:
+    profile = await Node.init(db=db, schema="ProfileTestPerson")
+    await profile.new(db=db, profile_name="person-profile")
+    await profile.save(db=db)
+    await _write(
+        db=db,
+        branch=default_branch,
+        node_id=profile.id,
+        holder=HolderKey(kind=HolderKind.TARGET_SET, attribute="name"),
+        owner_ids=group_ids[:1],
+    )
+    # The rename takes its time before it waits for the lock that the delete holds.
+    rename_at = Timestamp()
+    node_is_deleted = asyncio.Event()
+
+    async def delete_node() -> None:
+        async with db.start_session() as session_db, session_db.start_transaction() as dbt:
+            node = await NodeManager.get_one(db=dbt, branch=default_branch, id=profile.id, raise_on_error=True)
+            await node.delete(db=dbt)
+            node_is_deleted.set()
+            # The rename runs while this transaction is open.
+            await asyncio.sleep(SECONDS_BEFORE_FIRST_COMMIT)
+
+    async def rename_attribute() -> None:
+        await node_is_deleted.wait()
+        async with db.start_session() as session_db, session_db.start_transaction() as dbt:
+            query = await OwnerSetKeyMigrationQuery.init(
+                db=dbt,
+                branch=default_branch,
+                at=rename_at,
+                node_kinds=["ProfileTestPerson"],
+                set_key={"attribute": "name"},
+                new_set_key={"attribute": "full_name"},
+            )
+            await query.execute(db=dbt)
+
+    await asyncio.gather(delete_node(), rename_attribute())
+
+    records = await db.execute_query(
+        query="""
+MATCH (n:Node {uuid: $node_id})
+MATCH (h)-[r:HAS_OWNER|HAS_NO_OWNER|HAS_TARGET_OWNER_SET]->()
+WHERE (h = n OR EXISTS { (n)-[:HAS_TARGET_OWNER_SET]->(h) })
+AND r.status = "active" AND r.to IS NULL
+RETURN count(r) AS open_edges
+""",
+        params={"node_id": profile.id},
+    )
+    assert records[0]["open_edges"] == 0
+    await verify_graph(db=db, kinds=["ProfileTestPerson"])
