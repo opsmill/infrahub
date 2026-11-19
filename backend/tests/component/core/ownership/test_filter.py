@@ -134,14 +134,19 @@ FILTER_TEST_CASES: list[FilterTestCase] = [
         branch=DEFAULT_BRANCH,
         kind="TestRack",
         filters={OWNERS_ISNULL_FILTER: True},
-        expected=("rack-no-owner", "rack-of-deleted-group", "rack-of-tenant-without-owners"),
+        expected=(
+            "rack-no-owner",
+            "rack-of-deleted-group",
+            "rack-of-tenant-without-owners",
+            "rack-of-tenant-a-with-a-deleted-owner",
+        ),
     ),
     FilterTestCase(
         name="no_owner_inherited",
         branch=DEFAULT_BRANCH,
         kind="TestDevice",
         filters={OWNERS_ISNULL_FILTER: True},
-        expected=("device-c", "device-d"),
+        expected=("device-c", "device-d", "device-e"),
     ),
     FilterTestCase(
         name="with_an_owner",
@@ -204,7 +209,7 @@ FILTER_TEST_CASES: list[FilterTestCase] = [
         branch=OTHER_BRANCH,
         kind="TestDevice",
         filters={OWNERS_ISNULL_FILTER: True},
-        expected=("device-d",),
+        expected=("device-d", "device-e"),
     ),
 ]
 
@@ -238,6 +243,7 @@ class TestOwnerFilter:
             "rack-no-owner": "tenant-a",
             "rack-of-tenant-without-owners": "tenant-without-owners",
             "rack-of-deleted-group": "tenant-of-deleted-group",
+            "rack-of-tenant-a-with-a-deleted-owner": "tenant-a",
         }
         for name, tenant in racks.items():
             nodes[name] = await add_node(
@@ -248,6 +254,7 @@ class TestOwnerFilter:
             "device-b": "rack-own-owners",
             "device-c": "rack-no-owner",
             "device-d": "rack-of-deleted-group",
+            "device-e": "rack-of-tenant-a-with-a-deleted-owner",
         }
         for name, rack in devices.items():
             nodes[name] = await add_node(db=db, kind="TestDevice", name=name, rack=nodes[rack])
@@ -259,6 +266,7 @@ class TestOwnerFilter:
             "tenant-of-deleted-group": ("deleted-group",),
             "rack-own-owners": ("dc-emea", "security"),
             "rack-no-owner": (),
+            "rack-of-tenant-a-with-a-deleted-owner": ("deleted-group",),
         }
         for name, group_names in owners.items():
             await set_owners(
