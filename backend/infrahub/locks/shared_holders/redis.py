@@ -46,6 +46,23 @@ class RedisSharedHolderStore(SharedHolderStore):
                 pipe.exists(_holder_key(key=key, holder=holder))
             alive = await pipe.execute()
         expired = [holder for holder, exists in zip(holders, alive, strict=True) if not exists]
-        if expired:
-            await self._connection.srem(key, *expired)
-        return len(expired) < len(holders)
+        if not expired:
+            return True
+        await self._connection.srem(key, *expired)
+        renewed = await self._renewed_since_removal(key=key, holders=expired)
+        return len(expired) - len(renewed) < len(holders)
+
+    async def _renewed_since_removal(self, key: str, holders: list[str]) -> list[str]:
+        """Add back the ids among `holders` whose key was written again before their removal, and return them.
+
+        A renewal writes the key before the id, so an id removed after the key was written is added back here, and
+        an id removed before it is added back by the renewal itself.
+        """
+        async with self._connection.pipeline(transaction=False) as pipe:
+            for holder in holders:
+                pipe.exists(_holder_key(key=key, holder=holder))
+            alive = await pipe.execute()
+        renewed = [holder for holder, exists in zip(holders, alive, strict=True) if exists]
+        if renewed:
+            await self._connection.sadd(key, *renewed)
+        return renewed

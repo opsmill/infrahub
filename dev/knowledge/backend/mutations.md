@@ -272,7 +272,8 @@ the new pool before its transaction commits, so no write can hold it.
   `lock.shared.<lock name>.<holder id>`, adds its id to the set `lock.shared.<lock name>`, and renews
   the entry while it holds the lock, so allocations in different divisions never wait for each other.
   Checking for holders reads that set and the entries of the ids in it, and drops the ids whose entries
-  expired.
+  expired. It then reads those entries again and adds back each id whose entry a renewal wrote in the
+  meantime, so a holder that renews late stays in the set.
 - **A hold lasts until the commit.** Inside a transaction, `holding` and `changing` hand their release
   to `InfrahubDatabase.hold_until_transaction_end`, because a number or a range only becomes visible to
   other writes once it is committed. This also covers allocations that run inside a transaction outside

@@ -1,9 +1,12 @@
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Awaitable, Callable
+from typing import Any, cast
 
 import pytest
+import redis.asyncio as redis
 
 from infrahub import config
 from infrahub.lock import InfrahubLockRegistry, get_shared_holders_key
+from infrahub.locks.shared_holders.redis import RedisSharedHolderStore
 from infrahub.redis_connection import build_redis_connection
 from tests.helpers.shared_lock_scenarios import (
     exclusive_ignores_the_holders_of_a_lock_whose_name_extends_its_own,
@@ -99,6 +102,42 @@ async def test_the_set_of_holder_ids_drops_an_expired_holder_and_is_deleted_once
 
     assert not await registry.shared_holder_store.has_holders(key=key)
     assert await connection.exists(key, f"{key}.live-holder") == 0
+
+
+class RenewingBeforeRemoval:
+    """Passes every command to the connection, and runs `renew` once, just before the first SREM."""
+
+    def __init__(self, connection: redis.Redis, renew: Callable[[], Awaitable[None]]) -> None:
+        self._connection = connection
+        self._renew: Callable[[], Awaitable[None]] | None = renew
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._connection, name)
+
+    async def srem(self, name: str, *values: str) -> int:
+        if self._renew is not None:
+            renew, self._renew = self._renew, None
+            await renew()
+        return await self._connection.srem(name, *values)
+
+
+async def test_a_holder_renewed_while_the_expired_holders_are_dropped_stays_recorded(redis_driver: None) -> None:
+    connection = InfrahubLockRegistry(local_only=False).connection
+    assert connection is not None
+    key = get_shared_holders_key(name=unique_lock_name())
+    store = RedisSharedHolderStore(connection=connection)
+    await store.add(key=key, holder="late-holder", token="token", ttl_seconds=60)
+    await connection.delete(f"{key}.late-holder")
+
+    async def renew() -> None:
+        await store.add(key=key, holder="late-holder", token="token", ttl_seconds=60)
+
+    checking = RedisSharedHolderStore(connection=cast("redis.Redis", RenewingBeforeRemoval(connection, renew=renew)))
+    await checking.has_holders(key=key)
+
+    assert await connection.smembers(key) == {b"late-holder"}
+    assert await store.has_holders(key=key)
+    await store.remove(key=key, holder="late-holder")
 
 
 async def test_a_user_with_the_documented_acl_takes_and_waits_for_the_lock(documented_acl_user: None) -> None:
