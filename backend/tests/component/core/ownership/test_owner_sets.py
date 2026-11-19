@@ -130,6 +130,19 @@ RETURN count(r) AS edges
     assert await read_owners(db=db, branch=branch, node_id=person.id, holder=NODE_HOLDER) == tuple(group_ids[:1])
 
 
+async def test_write_of_a_repeated_owner_creates_one_edge(
+    db: InfrahubDatabase, default_branch: Branch, person: Node, group_ids: list[str]
+) -> None:
+    owner_id = group_ids[0]
+    await _write(db=db, branch=default_branch, node_id=person.id, holder=NODE_HOLDER, owner_ids=[owner_id, owner_id])
+
+    await _write(db=db, branch=default_branch, node_id=person.id, holder=NODE_HOLDER, owner_ids=group_ids[1:])
+
+    assert await read_owners(db=db, branch=default_branch, node_id=person.id, holder=NODE_HOLDER) == tuple(
+        group_ids[1:]
+    )
+
+
 async def test_write_reuses_a_set_that_has_another_property(
     db: InfrahubDatabase, default_branch: Branch, person: Node, group_ids: list[str]
 ) -> None:
