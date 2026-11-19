@@ -42,7 +42,7 @@ All edges below carry the branch and time properties of Infrahub edges (`branch`
 | `HAS_SOURCE` | `Node` | source `Node` | new use | Sources of a node |
 | `HAS_OWNER`, `HAS_SOURCE` | `Relationship` | `Node` | existing, unchanged | Owner and source of one link (D-9) |
 
-No two edges from a node vertex end at the same vertex, because the owners of fields and the given owners start at an `OwnerSet`.
+No two owner edges from a node vertex end at the same vertex, because the owners of fields and the given owners start at an `OwnerSet`. Two edges of different types can end at the same vertex: for example, one account group can be an owner and a source of the same node, with a `HAS_OWNER` edge and a `HAS_SOURCE` edge.
 
 ### Owner state of a holder
 
