@@ -94,6 +94,44 @@ def test_parent_filter_matches_the_ancestor_id_and_the_direct_parent_label() -> 
     ]
 
 
+@dataclass
+class RangeStartCase:
+    name: str
+    filters: dict[str, Any]
+    expected_since: str | None
+
+
+RANGE_START_CASES = [
+    RangeStartCase(name="list-leaves-the-start-to-the-task-manager", filters={}, expected_since=None),
+    RangeStartCase(
+        name="event-ids-read-from-the-earliest-time",
+        filters={"ids": ["4a1f6c1e-6f0c-4c56-9d0a-0c6d5a3b2e10"]},
+        expected_since="0001-01-01T00:00:00Z",
+    ),
+    RangeStartCase(
+        name="parent-ids-read-from-the-earliest-time",
+        filters={"parent__ids": ["p1"]},
+        expected_since="0001-01-01T00:00:00Z",
+    ),
+    RangeStartCase(
+        name="a-given-start-is-kept-with-event-ids",
+        filters={
+            "ids": ["4a1f6c1e-6f0c-4c56-9d0a-0c6d5a3b2e10"],
+            "since": datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC),
+        },
+        expected_since="2026-01-02T03:04:05Z",
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in RANGE_START_CASES])
+def test_the_start_of_the_range_sent_to_the_task_manager(test_case: RangeStartCase) -> None:
+    """A query by event ID or parent ID with no start reads every stored event; a list leaves its start unset."""
+    event_filter = InfrahubEventFilter.from_filters(order=EventSortOrder.DESC, **test_case.filters)
+
+    assert event_filter.to_request()["occurred"].get("since") == test_case.expected_since
+
+
 NODE_RESOURCE_IDS = ["infrahub.node.n1", "n1", "infrahub.account.n1", "infrahub.proposed_change.n1"]
 EVENTS_WITH_THE_NODE_IN_A_LABEL = ["infrahub.branch.deleted", "infrahub.branch.merged", "infrahub.group.auto_created"]
 EVENTS_WITH_THE_NODE_IN_THE_RESOURCE_ID = [

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, Any
+from datetime import UTC, datetime
+from typing import Any
 
 from prefect.events.filters import (
     EventFilter,
@@ -29,9 +30,6 @@ from infrahub.events.group_action import (
     GroupAutoCreateRejectedEvent,
 )
 
-if TYPE_CHECKING:
-    from datetime import datetime
-
 BRANCH_NAME_RESOURCE_EVENTS = frozenset(
     {
         BranchCreatedEvent.event_name,
@@ -47,6 +45,9 @@ PRIMARY_NODE_OUTSIDE_RESOURCE_EVENTS = frozenset(
     {BranchDeletedEvent.event_name, BranchMergedEvent.event_name, GroupAutoCreatedEvent.event_name}
 )
 """Events whose primary node, a proposed change or a group, is not part of their resource ID."""
+
+EARLIEST_EVENT_TIME = datetime.min.replace(tzinfo=UTC)
+"""A start of the range that no stored event is older than."""
 
 MERGED_PAGE_MAX_EVENTS = 1_000
 """The furthest end of a page read through the two filters of a primary node, each of which returns every event up to it."""
@@ -280,6 +281,9 @@ class InfrahubEventFilter(EventFilter):
         occurred_filter = {}
         if since:
             occurred_filter["since"] = Timestamp(since.isoformat()).to_datetime()
+        elif ids or parent__ids:
+            # A list reaches events older than the read window by paging, and their IDs must still find them.
+            occurred_filter["since"] = EARLIEST_EVENT_TIME
 
         if until:
             occurred_filter["until"] = Timestamp(until.isoformat()).to_datetime()

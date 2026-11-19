@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.timestamp import Timestamp
 from prefect.client.orchestration import PrefectClient, get_client
-from prefect.events.filters import EventNameFilter, EventResourceFilter
+from prefect.events.filters import EventNameFilter, EventOccurredFilter, EventResourceFilter
 from prefect.events.filters import EventOrder as PrefectEventOrder
 from prefect.events.schemas.events import Event as PrefectEventModel
 from prefect.exceptions import PrefectHTTPStatusError
@@ -22,7 +22,7 @@ from infrahub.exceptions import ServiceUnavailableError
 from infrahub.log import get_logger
 from infrahub.utils import get_nested_dict
 
-from .models import InfrahubEventFilter
+from .models import EARLIEST_EVENT_TIME, InfrahubEventFilter
 
 log = get_logger()
 
@@ -487,7 +487,7 @@ class PrefectEvent:
 
     @classmethod
     async def resolve_branch_ids(cls, names: list[str], current_branch_ids: Mapping[str, str]) -> list[str]:
-        """Return the ID of each named branch: the current branch, else the newest deletion of that name inside the read window.
+        """Return the ID of each named branch: the current branch, else the newest stored deletion of that name.
 
         A name that matches neither is left out.
         """
@@ -505,9 +505,11 @@ class PrefectEvent:
 
     @classmethod
     async def _deleted_branch_ids(cls, client: PrefectClient, names: list[str]) -> dict[str, str]:
-        """Return the branch ID of the newest deletion of each name inside the read window, by name, in one request."""
+        """Return the branch ID of the newest stored deletion of each name, by name, in one request."""
         names_by_resource_id = {f"infrahub.branch.{name}": name for name in names}
         deletions = InfrahubEventFilter(
+            # A branch deleted before the read window still has events in a range that starts before its deletion.
+            occurred=EventOccurredFilter(since=EARLIEST_EVENT_TIME),
             event=EventNameFilter(name=[BranchDeletedEvent.event_name]),
             resource=EventResourceFilter(id=list(names_by_resource_id), distinct=True),
         )
