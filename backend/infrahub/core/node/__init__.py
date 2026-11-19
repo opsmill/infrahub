@@ -26,10 +26,16 @@ from infrahub.core.constants.schema import NodeProperty, SchemaElementPathType
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
 from infrahub.core.mutation_context import NodeMutationContext
-from infrahub.core.ownership.input import check_owner_kinds
+from infrahub.core.ownership.input import check_field_owner_kinds
 from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.protocols_base import CoreNode
-from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeUpdateMetadataQuery
+from infrahub.core.query.node import (
+    NodeCheckIDQuery,
+    NodeCreateAllQuery,
+    NodeDeleteQuery,
+    NodeListGetAttributeQuery,
+    NodeUpdateMetadataQuery,
+)
 from infrahub.core.query.node_agnostic_retirement import RetireNodeAgnosticFieldsQuery
 from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.schema import (
@@ -136,6 +142,11 @@ def _resets_a_tracked_number(attribute: BaseAttribute, value: dict[str, Any]) ->
         and "from_pool" not in value
         and attribute.id is not None
     )
+
+
+def _owner_path(field_name: str) -> str:
+    """Return the path that an error gives for the `owner` property of a field."""
+    return f"{field_name}.{NodeProperty.OWNER.value}"
 
 
 class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
@@ -1275,20 +1286,68 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         """
         owner_ids = {
-            str(attr.owner_id) for name in self._attributes if (attr := self.get_attribute(name=name)).owner_id
+            _owner_path(name): [str(attr.owner_id)]
+            for name in self._attributes
+            if (attr := self.get_attribute(name=name)).owner_id
         }
-        owner_ids |= {
-            str(rel.owner_id)
-            for name in self._relationships
-            for rel in self.get_relationship(name=name)._relationships
-            if rel.owner_id
-        }
-        if owner_ids:
-            await check_owner_kinds(
-                lookup=OwnershipRepository(db=db, branch=self._branch, at=None),
-                owner_ids=sorted(owner_ids),
-                path=NodeProperty.OWNER.value,
+        for name in self._relationships:
+            if link_owner_ids := [
+                str(rel.owner_id) for rel in self.get_relationship(name=name)._relationships if rel.owner_id
+            ]:
+                owner_ids[_owner_path(name)] = link_owner_ids
+        await check_field_owner_kinds(
+            lookup=OwnershipRepository(db=db, branch=self._branch, at=None), owner_ids=owner_ids
+        )
+
+    async def _check_changed_owner_kinds(self, db: InfrahubDatabase, at: Timestamp, fields: list[str] | None) -> None:
+        """Refuse the update before any write when it gives an attribute or a link an owner of another kind.
+
+        An owner that the database already holds is not checked again, so an owner that was deleted later does not
+        stop the update.
+
+        Raises:
+            ValidationError: When a new owner is not found, or is not an account or an account group.
+
+        """
+        owner_ids: dict[str, list[str]] = {}
+        attributes = [
+            attr
+            for name in self._attributes
+            if (not fields or name in fields) and (attr := self.get_attribute(name=name)).id and attr.owner_id
+        ]
+        if attributes:
+            query = await NodeListGetAttributeQuery.init(
+                db=db,
+                ids=[self.get_id()],
+                fields={attr.name: True for attr in attributes},
+                branch=self._branch,
+                at=at,
+                include_metadata=MetadataOptions.LINKED_NODES,
             )
+            await query.execute(db=db)
+            for attr in attributes:
+                stored_attr, _ = query.get_result_by_id_and_name(self.get_id(), attr.name)
+                stored_owner = stored_attr.node_properties.get(NodeProperty.OWNER.value)
+                if stored_owner is None or stored_owner.uuid != str(attr.owner_id):
+                    owner_ids[_owner_path(attr.name)] = [str(attr.owner_id)]
+        for name in self._relationships:
+            manager = self.get_relationship(name=name)
+            links = [rel for rel in manager._relationships if rel.owner_id]
+            if (fields and name not in fields) or not links:
+                continue
+            details = await manager.refresh_update_details(
+                db=db, branch_agnostic=manager.schema.branch is BranchSupportType.AGNOSTIC
+            )
+            if link_owner_ids := [
+                str(rel.owner_id)
+                for rel in links
+                if (stored_link := details.peers_database.get(str(rel.peer_id))) is None
+                or NodeProperty.OWNER.value in rel.compare_properties_with_data(data=stored_link)
+            ]:
+                owner_ids[_owner_path(name)] = link_owner_ids
+        await check_field_owner_kinds(
+            lookup=OwnershipRepository(db=db, branch=self._branch, at=None), owner_ids=owner_ids
+        )
 
     async def _set_changelog_labels(self, db: InfrahubDatabase, node_changelog: NodeChangelog) -> None:
         """Fill the changelog with this node's display label and the HFID it holds.
@@ -1306,6 +1365,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         """Update the node in the database if needed."""
         update_at = Timestamp(at)
         node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
+        await self._check_changed_owner_kinds(db=db, at=update_at, fields=fields)
 
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
