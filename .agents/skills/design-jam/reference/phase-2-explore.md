@@ -2,9 +2,10 @@
 
 Read this when phase 2 starts. The rules in `SKILL.md` still apply.
 
-Invoke `emil-prototype` if it is installed, otherwise the public `prototype`. Build 3 or 4 directions that differ in structure: information
-architecture, order of steps, or where the work happens. If they differ only in spacing
-and colour, they are one direction.
+Invoke `emil-prototype` if it is installed. Otherwise ask the user to type `/prototype`
+with the brief, because the agent cannot start the public skill. Build 3 or 4 directions
+that differ in structure: information architecture, order of steps, or where the work
+happens. If they differ only in spacing and colour, they are one direction.
 
 - Put the prototype on one route in the running app, with a URL you can paste into Slack.
   If the app has no good place for it, create one and record that in `01-system.md`.
@@ -38,6 +39,6 @@ Use these only when their condition holds:
 - `emil-animations`, or the public `animate` when it is not installed, in this phase or in
   phase 3, when motion carries meaning: something enters, changes state or follows a drag.
   Hover colours do not count.
-- `emil-get-creative` (paid), when nothing in Infrahub or in common products is like the
-  thing. Lists, detail views, diffs and forms never qualify. Skip it when it is not
-  installed, and say so.
+- `emil-get-creative` (paid, the user types `/emil-get-creative`), when nothing in
+  Infrahub or in common products is like the thing. Lists, detail views, diffs and forms
+  never qualify. Skip it when it is not installed, and say so.

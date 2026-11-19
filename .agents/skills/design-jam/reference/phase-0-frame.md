@@ -15,8 +15,8 @@ repeat it at the checkpoint.
 Honour a skip the first time. Do not offer the skipped pass again or bring it back as "a
 few quick questions".
 
-1. If `emil-product-thinking` is installed (it is a paid skill), invoke it on the request
-   as written. It answers whether this is worth building: what problem it solves, for whom,
+1. If `emil-product-thinking` is installed (it is a paid skill), ask the user to type
+   `/emil-product-thinking` followed by the request as written: the agent cannot start it. It answers whether this is worth building: what problem it solves, for whom,
    and what happens if nothing is built. If it is not installed, record in the brief that
    product framing was skipped because the skill is not installed.
 2. Invoke `grilling-ideas` on the result, unless the idea is already settled: a spec, PRD,

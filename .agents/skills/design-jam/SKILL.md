@@ -26,16 +26,17 @@ $ARGUMENTS
 
 ## Setup, once per machine
 
-Required, all public. The run blocks until they are installed:
+design-jam is designed to run with the paid skills, and falls back to public skills when
+a paid one is not installed. Install both sets before the first run:
 
-- `grilling-ideas` ships with this repo.
-- `prototype`, `emil-design-eng` and `break-ui` install from
-  [`emilkowalski/skills`](https://github.com/emilkowalski/skills) (MIT).
-
-Optional, paid: the other `emil-*` skills, from
-[aiforui.dev](https://aiforui.dev/learn/skills). With them, phase 0 adds product framing,
-phase 2 uses `emil-prototype`, and phase 4 runs the full review instead of the reduced one.
-OpsMill team members: follow the internal setup page in Notion.
+- **Public skills**, needed in every run: `prototype`, `emil-design-eng` and `break-ui`,
+  from [`emilkowalski/skills`](https://github.com/emilkowalski/skills) (MIT).
+  `grilling-ideas` ships with this repo. The run blocks until these are installed.
+- **Paid skills**, the other `emil-*` skills from
+  [aiforui.dev](https://aiforui.dev/learn/skills). With them, phase 0 adds product
+  framing, phase 2 uses `emil-prototype`, and phase 4 runs the full review. OpsMill team
+  members: follow the internal setup page in Notion. People outside OpsMill can run the
+  public fallback without them.
 
 Keep any access token out of this checkout, design-jam files, commits and PRs. Do not copy
 the paid skills into `.agents/skills/`: their licence does not allow it, and this repo is
@@ -46,8 +47,10 @@ public.
 1. Run `bash <this skill's folder>/reference/preflight.sh` and show the result. If a
    required skill is missing, stop and name it. Do not run its phase from memory: the
    output would look like a design-jam run with the important pass missing. Say which
-   review preflight reports (full or reduced) and which optional passes will be skipped.
-   Run it on resumed runs too.
+   skill set preflight reports (paid or public fallback), which passes will be skipped and
+   which skills only the user can start. If it reports the public fallback, tell the user
+   once that OpsMill team members get the full run by installing the paid skills, then
+   continue. Run it on resumed runs too.
 2. Run `ls .design/` from the repo root. If a directory matches the request, read
    `STATE.md`, then the `.design/` files it points to and the current phase's file in
    `reference/`. Say the phase, round and revision you
@@ -72,11 +75,11 @@ the way it does.
 Each phase reads named files, invokes the named skills, writes one file and stops at a
 checkpoint. Read the phase's file when the phase starts, not before.
 
-| # | Phase | Skills (paid alternative) | Details | Writes |
+| # | Phase | Skills | Details | Writes |
 |---|-------|--------|---------|--------|
-| 0 | Frame | `grilling-ideas`, after `emil-product-thinking` (paid, optional) | [phase-0-frame.md](reference/phase-0-frame.md) | `00-brief.md` |
+| 0 | Frame | `emil-product-thinking` (paid, optional), then `grilling-ideas` | [phase-0-frame.md](reference/phase-0-frame.md) | `00-brief.md` |
 | 1 | Inventory | none, reads the repo | [phase-1-inventory.md](reference/phase-1-inventory.md) | `01-system.md` |
-| 2 | Explore | `prototype` (`emil-prototype`) | [phase-2-explore.md](reference/phase-2-explore.md) | prototype route, `02-directions.md`, draft design PR |
+| 2 | Explore | `emil-prototype`, public fallback `prototype` | [phase-2-explore.md](reference/phase-2-explore.md) | prototype route, `02-directions.md`, draft design PR |
 | 3 | Refine | `emil-design-eng` | [phase-3-refine.md](reference/phase-3-refine.md) | new revisions, `03-decisions.md` |
 | 4 | Review | reduced: `break-ui`, `emil-design-eng`, a checklist; full: four paid review skills | [phase-4-review.md](reference/phase-4-review.md) | `04-review.md` |
 | 5 | Hand off | none, publishes an Artifact | [phase-5-hand-off.md](reference/phase-5-hand-off.md) | `05-handoff.md`, `05-implement.md` |
@@ -86,6 +89,11 @@ Invoke skills in the order shown, with the Skill tool. Do not work from your mem
 skill: its current rules must shape the output. Use the paid alternative when it is
 installed. Each phase file names its conditional skills; use them only when their condition
 holds, and use no other skills.
+
+Preflight marks some skills "you type": they set `disable-model-invocation`, so the Skill
+tool refuses them. When a phase needs one, ask the user to type its command (for example
+`/emil-product-thinking`) with the input it should work on, wait for its result, and
+continue the phase from it. Do not read its `SKILL.md` and do the work yourself.
 
 ## Rules for every phase
 
