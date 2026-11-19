@@ -31,6 +31,9 @@ The work spans three repositories (plan, "Structure Decision"). A path without a
 
 Cite a place in a file by its function or symbol, never by a line number.
 
+T064 and later were added after a review of this list against the three repositories. Each one sits
+in the phase it belongs to, so the IDs are not in order.
+
 ---
 
 ## Phase 1: Setup (approvals and open questions)
@@ -39,10 +42,13 @@ Cite a place in a file by its function or symbol, never by a line number.
 merge, and the answers take time.
 
 - [ ] T001 Ask the engineering approval for the new images `grafana/mcp-grafana:2.0.2` and the init image (root `AGENTS.md`, "Ask First"); record the answer in the R10 table of `dev/specs/infp-745-ai-diagnose-slowness/research.md`
-- [ ] T002 [P] Ask the Solution Engineering and Architecture team whether `infrahub-skills` hosts the skill and whether a stricter eval threshold is acceptable (SC-003); record the answer in R10 of `dev/specs/infp-745-ai-diagnose-slowness/research.md` and in "Not decided yet" of `spec.md`
+- [ ] T002 [P] Ask the Solution Engineering and Architecture team whether `infrahub-skills` hosts the skill, whether the name `infrahub-diagnosing-performance` is final, and whether a stricter eval threshold than the repository's is acceptable (SC-003); record the answers in R10 of `dev/specs/infp-745-ai-diagnose-slowness/research.md` and in "Not decided yet" of `spec.md`. The name is in the graders, the fixtures, the docs and the `AGENTS.md` rule, so confirm it before T027
 - [ ] T003 [P] Ask the owner of `infrahub.opsmill.io` whether the service changes the standalone Compose file and keeps the `profiles` key; record the answer in R1 and R10 of `dev/specs/infp-745-ai-diagnose-slowness/research.md`
 - [ ] T004 [P] Agree the date of the security review of the Grafana MCP server container with Fatih Acar; record it in R10 of `research.md` and in "Conditions for the 1.13 release" of `dev/specs/infp-745-ai-diagnose-slowness/spec.md`
 - [ ] T005 Choose the image of the service account script between `curlimages/curl` (read `id` and `key` with `sed`) and the Grafana image (research R5); write the image and its digest into the "Services" table of `dev/specs/infp-745-ai-diagnose-slowness/contracts/compose-settings.md` (depends on T001)
+- [ ] T064 [P] Ask the owner of `infrahub-helm` whether `ref: infrahub-v1.9.3` in `infrahub-helm: charts/infrahub-observability/.upstream-source` is current. The chart's dashboards and data sources come from that Infrahub release, and the skill reads the metrics of 1.13. Record the answer, and whether the ref must change for 1.13, in R10 of `dev/specs/infp-745-ai-diagnose-slowness/research.md`
+- [ ] T065 [P] Ask OpsMill support who records the count of slowness cases that arrive with a report from the skill, and where (SC-008); record the answer in SC-008 of `dev/specs/infp-745-ai-diagnose-slowness/spec.md`
+- [ ] T066 [P] Update the Jira card INFP-745, with the `creating-jpd-cards` skill, so that it describes what 1.13 delivers: in the summary, the second use case and step 5 of the solution overview, the skill describes the missing query and panel and builds no dashboard (FR-017a); the operator can open the server to a network with TLS (FR-006, FR-006a); the audit covers every log stream in Loki, the metric labels and the trace attributes (FR-022); and the engineering effort matches this task list
 
 ---
 
@@ -84,17 +90,18 @@ Helm, and a user connects Claude Code with one URL and that token (FR-001 to FR-
 
 ### Implementation for User Story 1 in Helm (`opsmill/infrahub-helm`)
 
-- [ ] T017 [US1] In kind, start `grafana/mcp-grafana:2.0.2` with the probe settings of `contracts/helm-values.md` (`/healthz` on `--healthz-address`), without and with a TLS Secret; record whether the probes pass and which scheme they need in `dev/specs/infp-745-ai-diagnose-slowness/contracts/helm-values.md`
+- [ ] T017 [US1] In a local Kubernetes cluster (the tests of `infrahub-helm` use a vcluster, see its `tests/README.md`), start `grafana/mcp-grafana:2.0.2` with the probe settings of `contracts/helm-values.md` (`/healthz` on `--healthz-address`), without and with a TLS Secret; record whether the probes pass and which scheme they need in `dev/specs/infp-745-ai-diagnose-slowness/contracts/helm-values.md`
 - [ ] T018 [P] [US1] Add the `grafanaMcp.*` values of `contracts/helm-values.md` to `infrahub-helm: charts/infrahub-observability/values.yaml`, with the image digest
-- [ ] T019 [P] [US1] Copy `development/grafana-mcp/create-service-account.sh` to `infrahub-helm: charts/infrahub-observability/files/grafana-mcp/create-service-account.sh`, as `files/datasources.yaml` is copied (depends on T012)
+- [ ] T019 [P] [US1] Commit a copy of `development/grafana-mcp/create-service-account.sh` at `infrahub-helm: charts/infrahub-observability/files/grafana-mcp/create-service-account.sh`, and say in the header of both files that the two copies must stay the same. Do not add it to `.upstream-source`: `scripts/sync-upstream.sh` downloads the files listed there from a pinned Infrahub release, so the chart would wait for the Infrahub release that contains the script. Decision to confirm with Daniel before the Helm work starts (depends on T012)
 - [ ] T020 [US1] Create `infrahub-helm: charts/infrahub-observability/templates/grafana-mcp-deployment.yaml`: the same options as Compose; the caller token through `secretKeyRef`; the Grafana token as a file from the Job's Secret; the TLS Secret mounted read-only with the two `--server.tls-*` flags; the probes from T017; `required` on the token and `fail` when `service.type` is not `ClusterIP` and `tls.existingSecret` is empty, with the messages of the contract (depends on T017, T018)
 - [ ] T021 [P] [US1] Create `infrahub-helm: charts/infrahub-observability/templates/grafana-mcp-service.yaml` and `infrahub-helm: charts/infrahub-observability/templates/grafana-mcp-secret.yaml` (Secret only when the token is given as a value) (depends on T018)
 - [ ] T022 [US1] Create `infrahub-helm: charts/infrahub-observability/templates/grafana-mcp-sa-job.yaml`: the `post-install,post-upgrade` hook Job with delete policy `before-hook-creation,hook-succeeded`, its ServiceAccount, and a Role and RoleBinding limited to `get`, `create` and `update` on the one token Secret (depends on T019)
-- [ ] T023 [US1] Add `helm template` and `helm lint` tests to `infrahub-helm` as that repository runs them: no object when `grafanaMcp.enabled` is false; install fails without a token; install fails with `service.type: LoadBalancer` and no `tls.existingSecret`; the TLS flags appear only with a TLS Secret (depends on T020, T021, T022)
+- [ ] T023 [US1] Add tests to `infrahub-helm` in the two places where that repository runs tests. In `tests/unit/` (the `unit` CI job), add pytest tests that run `helm template` on the chart: no object when `grafanaMcp.enabled` is false; the render fails without a token; the render fails with `service.type: LoadBalancer` and no `tls.existingSecret`; the TLS flags appear only with a TLS Secret. In `tests/e2e/test_infrahub_observability.py` (marker `observability`, in a vcluster), add a case that installs the chart with `grafanaMcp.enabled`, and checks that the hook Job creates the token Secret and that the server answers with the token and rejects a request without it. `helm lint` already runs in CI (depends on T020, T021, T022)
+- [ ] T067 [P] [US1] Add the changelog fragment of the chart with `uvx towncrier create --config charts/infrahub-observability/towncrier.toml +grafana-mcp-server.added.md`, and update `infrahub-helm: charts/infrahub-observability/README.md` with `helm-docs --chart-search-root=charts/infrahub-observability`, as the `AGENTS.md` of that repository requires (depends on T018)
 
 ### Validation of User Story 1
 
-- [ ] T024 [US1] Run [quickstart.md](quickstart.md) checks 1 to 6 on a Compose stack and a kind cluster; record in `dev/specs/infp-745-ai-diagnose-slowness/research.md` R3 which MCP clients work, how Claude Code handles a self-signed certificate, and whether a renewed certificate needs a restart (depends on T015, T023)
+- [ ] T024 [US1] Run [quickstart.md](quickstart.md) checks 1 to 6 on a Compose stack and a local Kubernetes cluster (vcluster or kind); record in `dev/specs/infp-745-ai-diagnose-slowness/research.md` R3 which MCP clients work, how Claude Code handles a self-signed certificate, and whether a renewed certificate needs a restart (depends on T015, T023)
 
 **Checkpoint**: The Grafana MCP server runs in Compose and Helm, and Claude Code reads the stack's
 data with one URL and one token.
@@ -109,15 +116,16 @@ component and gives the evidence for each finding (FR-011 to FR-016, FR-017a, FR
 **Independent Test**: From recorded Grafana MCP server responses of a known slow query, the skill
 names the slow query and its component, and passes the eval threshold of `infrahub-skills` (SC-003).
 
-### Fixtures
+### Recorded responses for the evals
 
-- [ ] T025 [US2] On the Compose stack of story 1, make one query slow with a generator that sends many queries, and record the `mcp-grafana` responses for these cases: a normal run, no Tempo data source, data source UIDs other than the shipped ones, Infrahub 1.12, no trace sampled, and a question that the dashboards do not answer; store them in `infrahub-skills: graders/infrahub-diagnosing-performance/fixtures/` (depends on T015)
-- [ ] T026 [US2] Review every fixture in `infrahub-skills: graders/infrahub-diagnosing-performance/fixtures/` for host names, account names, tokens and other values from the recording stack, and replace them before the commit (depends on T025)
+- [ ] T068 [US2] Decide how an eval task gives the recorded `mcp-grafana` responses to the AI assistant. The evals of `infrahub-skills` run the assistant locally with no MCP server (`eval.yaml`, `provider: local`), and no skill of that repository reads an MCP server in an eval. One option: the eval task puts the recorded responses as files in the working directory and its instruction names them. Record the choice, the folder of the recordings and the reason in R6 of `dev/specs/infp-745-ai-diagnose-slowness/research.md`. Decision to confirm with Daniel; it blocks T025 and T028
+- [ ] T025 [US2] On the Compose stack of story 1, make one query slow with a generator that sends many queries, and record the `mcp-grafana` responses for these cases: a normal run, no Tempo data source, data source UIDs other than the shipped ones, Infrahub 1.12, no trace sampled, and a question that the dashboards do not answer; store them in the folder of `infrahub-skills` that T068 chose (depends on T015, T068)
+- [ ] T026 [US2] Review every recorded response for host names, account names, tokens and other values from the recording stack, and replace them before the commit to the public `infrahub-skills` repository (depends on T025)
 
-### Tests for User Story 2 (rule = test: each rule ships with its grader, eval task and four fixtures)
+### Tests for User Story 2 (rule = test: each rule ships with its check, eval task, task grader and four fixtures)
 
-- [ ] T027 [US2] Add the checks of the six rules of research R6 (`check-version-first`, `check-datasources-first`, `follow-check-order`, `report-evidence-per-finding`, `describe-missing-panel`, `no-generic-query-help`) to `infrahub-skills: graders/infrahub-diagnosing-performance/lib.py` and one `check_<rule>.py` each, following `dev/guidelines/rule-equals-test.md` of that repository (depends on T026)
-- [ ] T028 [US2] For each rule, add four fixtures (compliant, compliant but written differently, violating, violating near-miss) and a grader test in `infrahub-skills: tests/graders/`, and add one task per rule to `infrahub-skills: eval.yaml` (depends on T027)
+- [ ] T027 [US2] Add the checks of the six rules of research R6 (`check-version-first`, `check-datasources-first`, `follow-check-order`, `report-evidence-per-finding`, `describe-missing-panel`, `no-generic-query-help`) to `infrahub-skills: graders/diagnosing-performance/lib.py`, registered in `CHECKS`, and one `graders/diagnosing-performance/check_<task>.py` each, following `dev/guidelines/rule-equals-test.md` of that repository. The folder has no `infrahub-` prefix, as `graders/analyzing-diagnostics/`. The checks read a report in the format of `contracts/diagnosis-report.md`, so they do not need the recorded responses
+- [ ] T028 [US2] For each rule, add four example reports as fixtures in `infrahub-skills: tests/graders/fixtures/` (compliant, compliant but written differently, violating, violating near-miss) and a grader test in `infrahub-skills: tests/graders/`. These fixtures are reports that a check accepts or rejects; they are not the recorded responses of T025. Add one task per rule to `infrahub-skills: eval.yaml`, which gives the recorded responses to the assistant as T068 decided (depends on T026, T027)
 
 ### Implementation for User Story 2 (`opsmill/infrahub-skills`)
 
@@ -129,7 +137,8 @@ names the slow query and its component, and passes the eval threshold of `infrah
 - [ ] T034 [P] [US2] Write `infrahub-skills: skills/infrahub-diagnosing-performance/rules/no-generic-query-help.md`: send general PromQL and TraceQL questions to `grafana/skills` (FR-012)
 - [ ] T035 [US2] Write `infrahub-skills: skills/infrahub-diagnosing-performance/SKILL.md` (front matter with `TRIGGER when:` and `DO NOT TRIGGER when:` naming `infrahub-analyzing-diagnostics`), `examples.md`, `reference.md` (research R7 table, the report format of `contracts/diagnosis-report.md`, the next step when no trace was sampled) and `rules/_sections.md` (depends on T029 to T034)
 - [ ] T036 [P] [US2] Add the new skill under `DO NOT TRIGGER when:` in `infrahub-skills: skills/infrahub-analyzing-diagnostics/SKILL.md` (FR-019)
-- [ ] T037 [US2] Regenerate `infrahub-skills: evaluations/*.json`, run the evals of the new skill as that repository's `dev/guides/getting-started.md` describes, and record the pass rate (SC-003) (depends on T028, T035, T036)
+- [ ] T037 [US2] Regenerate `infrahub-skills: evaluations/*.json` with `python scripts/sync-evals.py`, run the evals of the new skill as that repository's `dev/guides/getting-started.md` describes, and record the pass rate against the threshold of `eval.yaml` (3 trials, 0.8) (SC-003) (depends on T028, T035, T036)
+- [ ] T069 [P] [US2] Add what `infrahub-skills` requires for a new skill: a changelog fragment in `changelog/`, the page `docs/docs/skills-reference/diagnosing-performance.mdx`, and the new skill in every list that names `infrahub-analyzing-diagnostics` (`README.md`, `AGENTS.md`, `docs/docs/readme.mdx`; find the others with a search). Follow the `AGENTS.md` of that repository (depends on T035)
 
 ### Implementation for User Story 2 (`opsmill/infrahub`)
 
@@ -174,8 +183,8 @@ email address, no response of the Grafana MCP server for that time window contai
 
 - [ ] T050 [P] [US3] Remove the query string from the URL in `WebhookLogFormatter.outgoing_request` and `WebhookLogFormatter.delivery_succeeded` in `backend/infrahub/webhook/log_formatter.py` (depends on T046)
 - [ ] T051 [P] [US3] Remove the query string from the URL in the log lines and exception messages of `HttpxAdapter._request` in `backend/infrahub/services/adapters/http/httpx.py` (depends on T047)
-- [ ] T052 [P] [US3] Send the email address as a request parameter in `get_groups_from_provider` in `backend/infrahub/auth/auth.py` (depends on T048)
-- [ ] T053 [US3] For each row that T042 confirms, add a failing unit test next to the module and fix the line where it is written; record the fix in `log-audit.md` (FR-023) (depends on T042)
+- [ ] T052 [P] [US3] Add an optional `params` argument to the `get` method of the HTTP adapter interface in `backend/infrahub/services/adapters/http/`, to `HttpxAdapter.get` and `HttpxAdapter._request`, and to the test adapters that implement the interface; today `get` accepts only `url` and `headers`. Then send the email address with `params` in `get_groups_from_provider` in `backend/infrahub/auth/auth.py`. The email address is still in the query string of the request, so T051 keeps it out of the log lines and exception messages (depends on T048, T051)
+- [ ] T053 [US3] For each row that T042 confirms, add a failing unit test next to the module and fix the line where it is written; record the fix in `log-audit.md` (FR-023). When the line is in the Python SDK, such as `prepare_retry`, do not change `python_sdk/`: record the row in `log-audit.md` and report it to Daniel, because the fix needs a change in `opsmill/infrahub-sdk-python`, an SDK release and an update of the `python_sdk` submodule, and that is a fourth repository for this work (depends on T042)
 - [ ] T054 [US3] For each value found in a stream that Infrahub does not write, add an Alloy `drop` rule to `development/alloy/config.alloy`, or mark the stream for the docs (FR-026); record which one in `log-audit.md` (FR-022a) (depends on T043, T044)
 - [ ] T055 [US3] Add the same `drop` rules to the Alloy configuration of `infrahub-helm: charts/infrahub-observability` (depends on T045, T054)
 - [ ] T056 [P] [US3] Add the changelog fragment `changelog/+log-query-string.security.md` for the URL query strings and the email address removed from logs, with the `creating-changelog-entries` skill (depends on T050 to T053)
@@ -191,14 +200,17 @@ apart from the streams that the docs name.
 
 ## Phase 6: Polish & cross-cutting concerns
 
-**Purpose**: Docs, checks across the three repositories and the release conditions.
+**Purpose**: Docs, checks across the three repositories, the release conditions and the handover.
 
 - [ ] T058 [P] Add a section "Connect an AI assistant" to `docs/docs/deploy-manage/install-configure/install/observability-stack.mdx` with every item of FR-025 (turn on, token, allowed hosts, the four network settings as one block, TLS and the refusal without TLS, CA trust, certificate renewal, token change, Grafana admin password) and of FR-026 (what reaches the AI model provider, the streams of `log-audit.md` under FR-022a), with the `writing-infrahub-docs` skill (depends on T024, T057)
 - [ ] T059 [P] Link the skill from `docs/docs/overview/build-with-ai/index.mdx` ("Where to start" table and MCP table), `docs/docs/overview/build-with-ai/setup.mdx` (prerequisites), `docs/docs/overview/build-with-ai/working-with-ai.mdx` and `docs/docs/faq/faq.mdx` (FR-027); merge only when the skill is published (depends on T037)
 - [ ] T060 Run `uv run invoke format`, `uv run invoke lint`, `uv run ruff check . --exclude python_sdk`, `uv run ruff format --check --exclude python_sdk .`, `uv run invoke docs.lint` and `uv run invoke docs.validate`, then remind Daniel to run `/pre-ci`
 - [ ] T061 Grep `dev/specs/infp-745-ai-diagnose-slowness/` for each value that implementation decided or changed (restart policy, TLS mount, init image, probe scheme, eval pass rate) and update every file that repeats it
 - [ ] T062 Run [quickstart.md](quickstart.md) check 10 (automated checks) in `opsmill/infrahub` and `infrahub-skills`
-- [ ] T063 Hand the finished container to Fatih Acar for the security review, and record the result in "Conditions for the 1.13 release" of `dev/specs/infp-745-ai-diagnose-slowness/spec.md` (depends on T004, T024)
+- [ ] T063 Hand the Compose container to Fatih Acar for the security review as soon as it runs, without waiting for Helm, because the card places the review in the first weeks of 1.13; record the result in "Conditions for the 1.13 release" of `dev/specs/infp-745-ai-diagnose-slowness/spec.md` (depends on T004, T015)
+- [ ] T070 Hand the Helm part (the Deployment, the Service, the hook Job and its Role) to Fatih Acar for the second part of the security review; record the result in the same place (depends on T024, T063)
+- [ ] T071 After the pull request of `infrahub-helm` is merged, release the `infrahub-observability` chart (bump `version` in `Chart.yaml`, then the "Publish Helm Chart" workflow) and update the version of `infrahub-observability` that the `infrahub` chart pins. Without the release and the pin, operators who install the `infrahub` chart do not get the Grafana MCP server. Daniel or the chart owner runs the workflow (depends on T023, T055, T067)
+- [ ] T072 Hand the feature to the testing team with the `creating-qa-plans` skill: one Jira QA ticket with the checks of [quickstart.md](quickstart.md); then tick "Development complete", "Testing complete" and "Documentation complete" on the card as each one becomes true (depends on T057, T058, T059, T070, T071)
 
 ---
 
@@ -207,23 +219,28 @@ apart from the streams that the docs name.
 ### Phase dependencies
 
 - **Setup (Phase 1)**: starts at once. T005 needs T001. The other approvals do not block code, but
-  they are release conditions or block a merge (research R10).
+  they are release conditions or block a merge (research R10). T002 confirms the skill name before
+  the graders are written (T027). T064, T065 and T066 block no code.
 - **Foundational (Phase 2)**: no task.
 - **User Story 1 (Phase 3)**: starts after T005 for the Compose service (T013). The checks, tests and
   scripts (T006 to T012) can start at once.
-- **User Story 2 (Phase 4)**: the fixtures (T025) need the Compose services of story 1 (T015). The
-  rules (T029 to T034) and the `opsmill/infrahub` rule and knowledge tasks (T038, T039) can start at
-  once.
+- **User Story 2 (Phase 4)**: the recorded responses (T025) need the Compose services of story 1
+  (T015) and the decision of T068. The rules (T029 to T034), their checks (T027) and the
+  `opsmill/infrahub` rule and knowledge tasks (T038, T039) can start at once. The eval tasks (T028)
+  wait for the recorded responses.
 - **User Story 3 (Phase 5)**: independent of stories 1 and 2, except T043, which reads the Grafana MCP
-  server's own logs (T015). The log fixes (T046 to T052) can start at once.
-- **Polish (Phase 6)**: T058 needs stories 1 and 3; T059 needs the published skill.
+  server's own logs (T015). The log fixes (T046 to T052) can start at once. A confirmed finding in
+  the Python SDK is not fixed here (T053).
+- **Polish (Phase 6)**: T058 needs stories 1 and 3; T059 needs the published skill. The security
+  review has two parts: Compose after T015 (T063), Helm after T024 (T070).
 
 ### Order of the pull requests (plan, "Structure Decision")
 
 1. `opsmill/infrahub`: Compose services and log fixes (stories 1 and 3). The docs pages (T058, T059)
    go in a later pull request, merged only when the skill is published.
-2. `opsmill/infrahub-helm`: T017 to T023, T055.
-3. `opsmill/infrahub-skills`: T025 to T037.
+2. `opsmill/infrahub-helm`: T017 to T023, T055, T067. After the merge, the chart is released and
+   pinned in the `infrahub` chart (T071).
+3. `opsmill/infrahub-skills`: T068, T025 to T037, T069.
 
 ### Within each story
 
@@ -280,7 +297,8 @@ Task: "Check the span masking test (T049)"
 ### First increment (User Story 1)
 
 1. Phase 1: ask the approvals, choose the init image.
-2. Phase 3: Compose first (T006 to T016), then Helm (T017 to T023).
+2. Phase 3: Compose first (T006 to T016), then Helm (T017 to T023, T067). The Compose container goes
+   to the security review as soon as it runs (T063).
 3. Validate with quickstart checks 1 to 6 (T024). An operator can then connect any AI assistant to the
    stack's Grafana, without the skill.
 
@@ -289,12 +307,17 @@ Task: "Check the span masking test (T049)"
 1. Story 1: the Grafana MCP server, connected with one URL and one token.
 2. Story 3, in parallel: the audit and the log fixes. It is a release condition, so 1.13 does not ship
    the server without it.
-3. Story 2: the skill, once fixtures can be recorded from story 1.
-4. Polish: docs, checks, security review.
+3. Story 2: the skill. The rules and their checks start at once; the eval tasks start once the
+   responses can be recorded from story 1.
+4. Polish: docs, checks, the Helm part of the security review, the chart release and the handover to
+   the testing team.
 
 The 1.13 release needs all four conditions of the spec: the audit (story 3), the agreement of the
 `infrahub-skills` owners (T002), the security review (T063), and the creation of the service account
 at installation (T012, T022).
+
+The card lists "each person's own Grafana token" as nice to have. No task covers it in 1.13: the
+server uses one Grafana service account (FR-010).
 
 Story 4 (build and contribute a dashboard) is not in 1.13. Its tasks are written when that release is
 planned: the dashboard, folder and annotation write tools with the Editor role, a new security review,

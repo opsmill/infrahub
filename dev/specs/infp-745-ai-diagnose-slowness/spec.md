@@ -443,8 +443,8 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
   rejected (D10 test).
 - **SC-003**: For the eval fixtures of a known slow query, the skill names the slow query and its
   component, and gives the evidence for each finding (D8 test). The skill passes the eval threshold
-  of `infrahub-skills` (today 3 trials and a 50 % pass rate); a stricter threshold for this skill is
-  agreed with the repository owners if they accept one.
+  of `infrahub-skills` (today 3 trials and a threshold of 0.8, in its `eval.yaml`); a stricter
+  threshold for this skill is agreed with the repository owners if they accept one.
 - **SC-004**: After a single sign-on login and requests that carry a token, a user name and an email
   address, 0 of these values appear in the traces, in any log stream in Loki and in the metric labels
   that the Grafana MCP server returns for that time window, apart from the streams that the docs name
