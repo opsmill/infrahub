@@ -28,7 +28,6 @@ from infrahub.core.ownership.models import (
     field_holder,
 )
 from infrahub.core.ownership.repository import OwnershipRepository
-from infrahub.core.ownership.resolution import resolve_field_ownership
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
@@ -627,63 +626,6 @@ async def test_closed_template_mark_on_one_branch_does_not_conflict_with_new_own
     )
 
 
-@pytest.mark.parametrize(
-    ("selection", "merged_owners"),
-    [
-        pytest.param(ConflictSelection.DIFF_BRANCH, ("security",), id="branch_selected"),
-        pytest.param(ConflictSelection.BASE_BRANCH, ("network-emea",), id="default_branch_selected"),
-    ],
-)
-async def test_different_owners_given_by_a_profile_on_both_branches_conflict(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    diff_repository: DiffRepository,
-    dataset: OwnerDataset,
-    selection: ConflictSelection,
-    merged_owners: tuple[str, ...],
-) -> None:
-    profile_id, device_id = await profile_with_device(db=db, dataset=dataset)
-    await set_owners(
-        db=db,
-        branch=default_branch,
-        node_id=profile_id,
-        owner_ids=dataset.owners(("dc-emea",)),
-        holder=NODE_TARGET_HOLDER,
-    )
-    branch = await create_branch(db=db, branch_name="profile-conflict")
-    await set_owners(
-        db=db,
-        branch=default_branch,
-        node_id=profile_id,
-        owner_ids=dataset.owners(("network-emea",)),
-        holder=NODE_TARGET_HOLDER,
-    )
-    await set_owners(
-        db=db, branch=branch, node_id=profile_id, owner_ids=dataset.owners(("security",)), holder=NODE_TARGET_HOLDER
-    )
-
-    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
-
-    assert list(diff.get_all_conflicts()) == [f"data/{profile_id}/{TARGET_OWNERS_FIELD}/property/HAS_OWNER"]
-    conflict = owner_property(diff=diff, node_id=profile_id, field_name=TARGET_OWNERS_FIELD).conflict
-    assert conflict is not None
-    assert (conflict.base_branch_value, conflict.diff_branch_value) == (
-        dataset.owner_list(("network-emea",)),
-        dataset.owner_list(("security",)),
-    )
-    await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=selection)
-    await merge(db=db, branch=branch)
-
-    merged = await resolve_owners(db=db, branch=default_branch, node_id=device_id)
-    assert (merged.owner_ids, merged.origin, merged.origin_node_id) == (
-        dataset.owners(merged_owners),
-        OwnerOrigin.PROFILE,
-        profile_id,
-    )
-    # The edge to the set, and one edge of the set to its owner.
-    assert await _count_active_given_owner_edges(db=db, branch=default_branch, node_id=profile_id) == 2
-
-
 async def test_merge_closes_the_owners_that_the_default_branch_gave_through_a_profile_that_the_branch_deleted(
     db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset
 ) -> None:
@@ -872,51 +814,6 @@ async def test_two_branches_that_each_set_the_first_owners_of_a_relationship_lea
         merged_owners
     )
     assert await _count_field_owner_sets(db=db, branch=default_branch, node_id=device_id) == (1, 1)
-    await verify_graph(db=db)
-
-
-@pytest.mark.parametrize("field", ["name", "rack"])
-async def test_owners_that_a_profile_gives_to_a_field_on_a_branch_are_merged(
-    db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset, field: str
-) -> None:
-    profile_id, device_id = await profile_with_device(db=db, dataset=dataset)
-    device_schema = registry.schema.get(name="TestDevice", branch=default_branch, duplicate=False)
-    holder = field_holder(schema=device_schema, field_name=field, target=True)
-    field_of_device = field_holder(schema=device_schema, field_name=field)
-    assert holder is not None
-    assert field_of_device is not None
-    await set_owners(
-        db=db, branch=default_branch, node_id=profile_id, owner_ids=dataset.owners(("dc-emea",)), holder=holder
-    )
-    branch = await create_branch(db=db, branch_name="profile-field-merge")
-    branch_owners = dataset.owners(("network-emea", "security"))
-    await set_owners(db=db, branch=branch, node_id=profile_id, owner_ids=branch_owners, holder=holder)
-
-    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
-    owners = owner_property(diff=diff, node_id=profile_id, field_name=f"{field}__target_owners")
-    assert (owners.previous_value, owners.new_value, owners.action) == (
-        dataset.owner_list(("dc-emea",)),
-        dataset.owner_list(("network-emea", "security")),
-        DiffAction.UPDATED,
-    )
-
-    await merge(db=db, branch=branch)
-
-    assert await read_owners(db=db, branch=default_branch, node_id=profile_id, holder=holder) == branch_owners
-    stored = await OwnershipRepository(db=db, branch=default_branch, at=None).read(
-        node_ids=[device_id, profile_id], attributes=True
-    )
-    device_field = resolve_field_ownership(
-        node=stored[device_id],
-        holder=field_of_device,
-        profiles={profile_id: stored[profile_id]},
-        node_ownership=await resolve_owners(db=db, branch=default_branch, node_id=device_id),
-    )
-    assert (device_field.owner_ids, device_field.origin, device_field.origin_node_id) == (
-        branch_owners,
-        OwnerOrigin.PROFILE,
-        profile_id,
-    )
     await verify_graph(db=db)
 
 

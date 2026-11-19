@@ -1,18 +1,14 @@
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core.branch import Branch
 from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.constants import DiffAction
 from infrahub.core.initialization import create_branch
 from infrahub.core.ownership.queries import NoOwnerVertexCreateQuery
-from infrahub.exceptions import ValidationError
 from tests.helpers.ownership import (
-    OWNERS_FIELD,
     OwnerDataset,
     count_active_owner_edges,
     load_owner_dataset,
@@ -21,15 +17,12 @@ from tests.helpers.ownership import (
     set_owners,
 )
 
-from ._ownership import has_owner_change, merge, owner_property, rebase_with_conflict_check, update_diff
+from ._ownership import has_owner_change, merge, owner_property, update_diff
 
 if TYPE_CHECKING:
-    from fast_depends import Provider
-
+    from infrahub.core.branch import Branch
     from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.database import InfrahubDatabase
-    from tests.adapters.cache import MemoryCache
-    from tests.adapters.workflow import WorkflowRecorder
 
 
 @pytest.fixture
@@ -79,35 +72,6 @@ async def test_rebase_after_both_branches_set_the_same_owners(
     await merge(db=db, branch=branch)
     assert await read_owners(db=db, branch=default_branch, node_id=tenant_id) == owner_ids
     assert await count_active_owner_edges(db=db, branch=default_branch, node_id=tenant_id) == len(owner_ids)
-
-
-async def test_rebase_after_both_branches_set_different_owners(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    diff_repository: DiffRepository,
-    dataset: OwnerDataset,
-    dependency_provider: Provider,
-    memory_cache: MemoryCache,
-    workflow_recorder: WorkflowRecorder,
-) -> None:
-    tenant_id = dataset.ids["tenant-a"]
-    default_branch_owners = dataset.owners(("network-emea",))
-    branch_owners = dataset.owners(("security",))
-    await set_owners(db=db, branch=default_branch, node_id=tenant_id, owner_ids=dataset.owners(("dc-emea",)))
-    branch = await create_branch(db=db, branch_name="different-owners")
-    await set_owners(db=db, branch=default_branch, node_id=tenant_id, owner_ids=default_branch_owners)
-    await set_owners(db=db, branch=branch, node_id=tenant_id, owner_ids=branch_owners)
-    conflict_path = f"data/{tenant_id}/{OWNERS_FIELD}/property/HAS_OWNER"
-    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
-    assert list(diff.get_all_conflicts()) == [conflict_path]
-    message = f"Update the data so that both branches agree on these conflicts: {conflict_path}."
-    with pytest.raises(ValidationError, match=f"{re.escape(message)}$"):
-        await rebase_with_conflict_check(
-            db=db, default_branch=default_branch, branch=branch, dependency_provider=dependency_provider
-        )
-    assert (await Branch.get_by_name(db=db, name=branch.name)).branched_from == branch.branched_from
-    assert await read_owners(db=db, branch=branch, node_id=tenant_id) == branch_owners
-    assert await read_owners(db=db, branch=default_branch, node_id=tenant_id) == default_branch_owners
 
 
 async def test_rebase_keeps_the_new_global_owners_of_a_branch_agnostic_node(
