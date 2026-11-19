@@ -24,13 +24,19 @@ async def test_owner_change_of_a_branch_stays_in_the_diff_after_a_rebase(
     db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset
 ) -> None:
     tenant_id = dataset.ids["tenant-a"]
+    rack_id = dataset.ids["rack-a"]
     await set_owners(db=db, branch=default_branch, node_id=tenant_id, owner_ids=dataset.owners(("dc-emea",)))
     branch = await create_branch(db=db, branch_name="branch-change")
     await set_owners(db=db, branch=branch, node_id=tenant_id, owner_ids=dataset.owners(("security",)))
+    await set_owners(db=db, branch=default_branch, node_id=rack_id, owner_ids=dataset.owners(("network-emea",)))
+    assert await read_owners(db=db, branch=branch, node_id=rack_id) is None
 
     await branch.rebase(db=db)
 
     assert await read_owners(db=db, branch=branch, node_id=tenant_id) == dataset.owners(("security",))
+    assert await read_owners(db=db, branch=branch, node_id=rack_id) == dataset.owners(("network-emea",))
+    assert await read_owners(db=db, branch=default_branch, node_id=tenant_id) == dataset.owners(("dc-emea",))
+    assert await read_owners(db=db, branch=default_branch, node_id=rack_id) == dataset.owners(("network-emea",))
     diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
     owners = owner_property(diff=diff, node_id=tenant_id)
     assert (owners.previous_value, owners.new_value, owners.action) == (
@@ -38,8 +44,10 @@ async def test_owner_change_of_a_branch_stays_in_the_diff_after_a_rebase(
         dataset.owner_list(("security",)),
         DiffAction.UPDATED,
     )
+    assert rack_id not in {node.uuid for node in diff.nodes}
     await merge(db=db, branch=branch)
     assert await read_owners(db=db, branch=default_branch, node_id=tenant_id) == dataset.owners(("security",))
+    assert await read_owners(db=db, branch=default_branch, node_id=rack_id) == dataset.owners(("network-emea",))
 
 
 async def test_rebase_after_both_branches_set_the_same_owners(
