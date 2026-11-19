@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from structlog.testing import capture_logs
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -890,3 +891,31 @@ async def test_node_deleted_on_the_default_branch_conflicts_with_an_owner_change
     await merge(db=db, branch=branch)
 
     assert await NodeManager.get_one(db=db, branch=default_branch, id=node_id) is None
+
+
+@pytest.mark.parametrize("holder", _params([ATTRIBUTE, NODE, RELATIONSHIP_ONE, SOURCES]))
+async def test_merge_skips_the_owner_resolution_of_a_node_deleted_after_the_diff(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    diff_repository: DiffRepository,
+    dataset: OwnerDataset,
+    holder: OwnerListHolder,
+) -> None:
+    node_id = await holder.prepare(db=db, default_branch=default_branch, dataset=dataset, start=START)
+    branch = await create_branch(db=db, branch_name="deleted-after-diff")
+    await holder.write(db=db, branch=default_branch, dataset=dataset, node_id=node_id, names=OTHER)
+    await holder.write(db=db, branch=branch, dataset=dataset, node_id=node_id, names=_branch_change(holder))
+    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+    conflict = holder.diff_property(diff=diff, node_id=node_id).conflict
+    assert conflict is not None
+    await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=ConflictSelection.DIFF_BRANCH)
+    node = await NodeManager.get_one(db=db, branch=default_branch, id=node_id, raise_on_error=True)
+    await node.delete(db=db)
+
+    with capture_logs() as logs:
+        await merge(db=db, branch=branch)
+
+    assert await NodeManager.get_one(db=db, branch=default_branch, id=node_id) is None
+    assert [(log["node_id"], log["holder"]) for log in logs if log["log_level"] == "warning"] == [
+        (node_id, holder.holder)
+    ]

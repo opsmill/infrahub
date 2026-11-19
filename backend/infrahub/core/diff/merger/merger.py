@@ -258,14 +258,22 @@ class DiffMerger:
     async def _apply_owner_diff_resolutions(self, at: Timestamp, plan: MergeExclusionPlan, user_id: str) -> None:
         repository = OwnershipRepository(db=self.db, branch=self.destination_branch, at=None)
         for resolution in plan.owner_diff_resolutions:
-            await repository.write(
+            # The destination branch can delete the node after the last diff update.
+            written = await repository.write(
                 node_id=resolution.node_uuid,
                 holder=resolution.holder,
                 state=StoredOwnerState(owner_ids=resolution.owner_ids),
                 write_branch=self.destination_branch,
                 at=at,
                 user_id=user_id,
+                skip_inactive=True,
             )
+            if not written:
+                log.warning(
+                    "Skipping the owner resolution of a node that is not active on the destination branch",
+                    node_id=resolution.node_uuid,
+                    holder=resolution.holder,
+                )
 
     async def rollback(self, merge_started_at: Timestamp) -> None:
         """Reverse every destination-branch write stamped at or after the merge start.

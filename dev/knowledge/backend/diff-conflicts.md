@@ -28,7 +28,8 @@ A merge can apply either side of a conflict on the owners of a node or of an att
 the default branch, it skips the owner edges of the holder. In favor of the branch, it merges each
 owner edge and then gives the holder the list of owners of the branch (`OwnerDiffResolution` in
 `backend/infrahub/core/diff/merger/exclusion_plan.py`), because the owners that only the default
-branch added would stay otherwise.
+branch added would stay otherwise. The default branch can delete the node after the last diff
+update, so the merge skips the list of a node that is not active, and logs a warning.
 
 The diff reads the owners of an attribute as one list, like the owners of a node:
 `DiffQueryParser` skips the `HAS_OWNER` paths of attributes, and `OwnershipDiffer` adds one
