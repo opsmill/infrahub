@@ -5,11 +5,11 @@
   "installed_registry_root": null,
   "status": "running",
   "current_step_index": 0,
-  "current_step_id": "commit-plan",
+  "current_step_id": "commit-critique",
   "step_results": {},
   "workflow_dir": "/Users/Pol/Documents/OpsMill/infrahub/stable/infrahub-speckit-pr48/.specify/workflows/opsmill-auto",
   "created_at": "2026-11-19T14:20:44.755413+00:00",
-  "updated_at": "2026-11-19T14:32:29.398116+00:00",
+  "updated_at": "2026-11-19T14:36:12.280084+00:00",
   "error": null,
   "inputs": {
     "spec": "https://opsmill.atlassian.net/browse/IFC-2167",
@@ -232,17 +232,82 @@
                                   "error": null
                                 },
                                 {
+                                  "phase": "done",
+                                  "active": false,
+                                  "result": {
+                                    "type": "shell",
+                                    "integration": null,
+                                    "model": null,
+                                    "options": {},
+                                    "input": {},
+                                    "output": {
+                                      "exit_code": 0,
+                                      "stdout": "",
+                                      "stderr": ""
+                                    },
+                                    "status": "completed",
+                                    "error": null
+                                  },
+                                  "outcome": "completed",
+                                  "error": null
+                                },
+                                {
+                                  "phase": "done",
+                                  "active": false,
+                                  "result": {
+                                    "type": "shell",
+                                    "integration": null,
+                                    "model": null,
+                                    "options": {},
+                                    "input": {},
+                                    "output": {
+                                      "exit_code": 0,
+                                      "stdout": "",
+                                      "stderr": ""
+                                    },
+                                    "status": "completed",
+                                    "error": null
+                                  },
+                                  "outcome": "completed",
+                                  "error": null
+                                },
+                                {
+                                  "phase": "done",
+                                  "active": false,
+                                  "result": {
+                                    "type": "command",
+                                    "integration": "claude",
+                                    "model": null,
+                                    "options": {},
+                                    "input": {},
+                                    "output": {
+                                      "command": "speckit.opsmill.prep-critique",
+                                      "integration": "claude",
+                                      "model": null,
+                                      "options": {},
+                                      "input": {},
+                                      "integration_args": [],
+                                      "integration_options": {},
+                                      "exit_code": 0,
+                                      "stdout": "The critique ran through the installed critique extension. It found nothing that needs the approach rethought, and all three Must-Address findings are now fixed in the spec and plan.\n\nThe full report is in `dev/specs/ifc-2167-placeholder-automations/critiques/critique-20261119.md`.\n\n**Must-Address findings, now fixed:**\n- **The spec and the plan disagreed on Jinja2 computed attributes.** The spec still recorded fingerprints for them. The code shows their recompute is decided from the schema and the elements the schema update changed, never from a stored value. I changed `spec.md` (Background, FR-002, FR-003, FR-009, User Story 2 scenario 3, Key Entities, Assumptions, Edge Cases) so that fingerprints are recorded for display labels and HFIDs only. Jinja2 computed attribute placeholders are removed without a record.\n- **SC-002 forbade any extra recompute, but the plan accepts some.** SC-002 now forbids a missing recompute and allows an extra one only in three cases:\n  - after a failed submission;\n  - for a branch that came to own its schema during a schema update on another branch;\n  - after the upgrade, for a kind with no placeholder automation to carry over.\n- **A deleted branch could get records written back, so a new branch with the same name could skip its recompute.** A setup flow whose worker still lists the deleted branch can write its records after branch deletion has removed them. The write queries now record a fingerprint only when a branch with that name still exists, checked in the same query. I updated `contracts/fingerprint-store.md`, research Decision 10 and the plan's Risks table, and added a component test to the plan. The spec has a new edge case for it.\n\n**Recommendations, applied:**\n- Research Decision 1 now says the Jinja2 computed attribute candidates are built only for the default branch and for branches that own their schema. Without that check, an event on any other branch would recompute every self-targeting computed attribute.\n- Research Decision 8 now covers templates that read a peer of the same kind. That peer automation has the same name as the placeholder, so it is not deleted or carried over, and the kind gets one extra recompute after the upgrade, never a missing one.\n- The User Story 1 test now counts only kinds whose template reads attributes of their own node, because a template that reads a peer still adds automations that run.\n- The plan now keeps the placeholder field constant in `trigger/constants.py`, because the carry-over matches on it.\n- The plan now requires measuring SC-005 on a running instance (an unchanged schema update, before and after the change) and recording the result in the PR.\n\n**Questions, resolved:**\n- A changelog fragment is enough. The upgrade needs no action from the operator, and no customer document names these automations.\n- The carry-over stays in the setup flows after the upgrade. It reads only the automations the setup deleted, so it has no effect once the placeholders are gone, and a later release can remove it.\n\nI did not commit anything; the workflow commits what this phase wrote.\n\nCRITIQUE_VERDICT: PROCEED | CRITIQUE: extension\n",
+                                      "stderr": "Permission allow rule (../infrahub/.claude/settings.local.json): Bash(grep -nE '^\\\\+\\\\+\\\\+|^@@|^\\\\+.*\\(try:|finally:|reproduc|flaky|[Dd]o not run in CI|skip|xfail|issue|#[0-9]{3,}|_scope_|def [a-z_]+\\\\\\(|@pytest.fixture\\)') has a wildcard before the rest of the command, so it also matches any options inserted at that position and approves them without a prompt. Replace that * with the exact value you mean, or only use * after the subcommand.\nPermission allow rule (../infrahub/.claude/settings.local.json): Bash(grep -nE '^\\\\+\\\\+\\\\+|^@@|^\\\\+.*\\(try:|finally:|reproduc|flaky|do not run in CI|issue|#[0-9]{3,}|_scope_|@pytest.fixture|MATCH|ORDER BY|skip|xfail\\)' -i) has a wildcard before the rest of the command, so it also matches any options inserted at that position and approves them without a prompt. Replace that * with the exact value you mean, or only use * after the subcommand.\nWarning: this sign-in ends between 2026-11-23 and 2026-11-26 (in 4 days at the earliest). Renewing it does not move those dates. Run claude auth login before then, or use claude setup-token for unattended jobs.\n",
+                                      "dispatched": true,
+                                      "stdout_truncated": false,
+                                      "stderr_truncated": false,
+                                      "timed_out": false,
+                                      "interrupted": false
+                                    },
+                                    "status": "completed",
+                                    "error": null,
+                                    "integration_args": [],
+                                    "integration_options": {}
+                                  },
+                                  "outcome": "completed",
+                                  "error": null
+                                },
+                                {
                                   "phase": "ready",
                                   "active": true
-                                },
-                                {
-                                  "phase": "ready"
-                                },
-                                {
-                                  "phase": "ready"
-                                },
-                                {
-                                  "phase": "ready"
                                 }
                               ]
                             }

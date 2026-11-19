@@ -10,7 +10,7 @@
 
 ## Background
 
-When a schema defines a display label template, a human-friendly ID (HFID), or a Jinja2 computed attribute, Infrahub has to recompute the stored value of every node of that kind whenever the template is added or changed. To detect that change, Infrahub creates one automation in the task manager per kind (and per computed attribute) on the default branch, and one more on each branch whose schema differs from the default branch. These automations never run: their event filter matches a field name that no node has. They exist only so that their description can hold a fingerprint of the template. On each schema update, Infrahub compares the fingerprint in the schema with the fingerprint in the automation and, when they differ, recomputes every node of the kind.
+When a schema defines a display label template, a human-friendly ID (HFID), or a Jinja2 computed attribute, Infrahub has to recompute the stored value of every node of that kind whenever the template is added or changed. To detect that change, Infrahub creates one automation in the task manager per kind (and per computed attribute) on the default branch, and one more on each branch whose schema differs from the default branch. These automations never run: their event filter matches a field name that no node has. They exist only so that their description can hold a fingerprint of the template. For display labels and HFIDs, on each schema update, Infrahub compares the fingerprint in the schema with the fingerprint in the automation and, when they differ, recomputes every node of the kind. For Jinja2 computed attributes, the recompute is decided from the schema and the elements that the schema update changed; the fingerprint is used only to skip a branch whose template matches the default branch, and the gathered trigger definitions provide that value as well.
 
 Sources for the current behavior:
 
@@ -28,7 +28,7 @@ An operator runs Infrahub with many node kinds that define display labels, HFIDs
 
 **Why this priority**: This is the problem stated in INFP-441: the automation count grows with the number of kinds multiplied by the number of diverging branches, and it already broke an upgrade for one customer.
 
-**Independent Test**: On an instance with a schema that defines display labels, HFIDs and Jinja2 computed attributes on several kinds, and with two branches that each carry a schema change, count the automations in the task manager. No automation exists whose only role is to hold a template fingerprint, and the number of automations does not change when a new kind with a display label template is loaded.
+**Independent Test**: On an instance with a schema that defines display labels, HFIDs and Jinja2 computed attributes on several kinds, and with two branches that each carry a schema change, count the automations in the task manager. No automation exists whose only role is to hold a template fingerprint, and the number of automations does not change when a new kind is loaded whose display label template reads only attributes of its own node.
 
 **Acceptance Scenarios**:
 
@@ -51,7 +51,7 @@ A schema designer changes the display label template of a kind, adds an HFID to 
 
 1. **Given** a kind with a display label template on the default branch, **When** a schema update changes that template, **Then** every node of the kind on the default branch has its stored display label recomputed with the new template.
 2. **Given** a kind without an HFID, **When** a schema update adds an HFID to the kind, **Then** every node of the kind has its stored HFID computed.
-3. **Given** a Jinja2 computed attribute that reads only attributes of its own node, **When** a schema update changes its template, **Then** every node of the kind has the attribute recomputed.
+3. **Given** a Jinja2 computed attribute that reads only attributes of its own node, **When** a schema update changes its template, **Then** every node of the kind has the attribute recomputed. As today, this recompute is decided from the elements that the schema update changed, not from a recorded fingerprint.
 4. **Given** a schema update that changes no template, **When** Infrahub processes the update, **Then** no display label, HFID or Jinja2 computed attribute recompute is submitted.
 5. **Given** a branch whose schema differs from the default branch but whose template for a kind is identical to the default branch template, **When** the branch schema is loaded, **Then** no recompute is submitted for that kind on that branch, as today.
 6. **Given** a branch whose template for a kind differs from the default branch template, **When** the branch schema is loaded, **Then** every node of that kind on that branch is recomputed, and the nodes on the default branch are not.
@@ -97,35 +97,39 @@ Users create, rebase, merge and delete branches that carry schema changes. The r
 - A kind is removed from the schema: its recorded fingerprints are removed and no recompute is submitted for it.
 - A template is removed from a kind (the display label or HFID is dropped): its recorded fingerprint is removed. What happens to the stored values of the nodes is unchanged from today.
 - The task manager database is reset or replaced while the Infrahub database is kept: the recorded fingerprints remain valid, because they no longer live in the task manager.
-- A Jinja2 computed attribute that reads both its own node and a peer: change detection uses the recorded fingerprint, and the automation that reacts to peer changes remains.
+- A Jinja2 computed attribute that reads both its own node and a peer: its self-targeting placeholder automation is removed, the recompute after a schema update is decided as today, and the automation that reacts to peer changes remains.
+- A branch is deleted while a schema update on that branch is still being processed: no fingerprint is recorded for the deleted branch, so a new branch with the same name is recomputed as in User Story 4.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
 - **FR-001**: Infrahub MUST NOT create an automation in the task manager whose only role is to hold the fingerprint of a display label template, an HFID definition or the template of a Jinja2 computed attribute.
-- **FR-002**: Infrahub MUST record, in its own database, the fingerprint last applied for each display label template, each HFID definition and each Jinja2 computed attribute template, per kind (and per computed attribute) and per branch that owns its own definitions.
-- **FR-003**: On each schema update, Infrahub MUST compare the fingerprints in the schema with the recorded fingerprints and submit a whole-kind recompute only for the definitions that are new or whose fingerprint differs.
+- **FR-002**: Infrahub MUST record, in its own database, the fingerprint last applied for each display label template and each HFID definition, per kind and per branch that owns its own definitions. No fingerprint is recorded for Jinja2 computed attributes, because their recompute does not depend on a stored fingerprint.
+- **FR-003**: On each schema update, Infrahub MUST compare the display label and HFID fingerprints in the schema with the recorded fingerprints and submit a whole-kind recompute only for the definitions that are new or whose fingerprint differs. Jinja2 computed attributes keep their current recompute decision, which uses the schema and the elements that the schema update changed.
 - **FR-004**: Infrahub MUST keep the current branch scoping: the default branch fingerprints apply to every branch whose schema matches the default branch, and a branch whose schema differs owns its fingerprints.
 - **FR-005**: Infrahub MUST keep skipping the recompute on a branch when the branch's template for a kind is identical to the default branch template.
 - **FR-006**: Infrahub MUST record a fingerprint as applied only after the matching recompute has been submitted, so a failed submission is retried at the next schema update.
 - **FR-007**: Concurrent processing of schema updates MUST NOT lose a template change: every change leads to at least one recompute, and the recorded fingerprint ends up equal to the schema's fingerprint.
 - **FR-008**: Infrahub MUST remove the recorded fingerprints of a branch when the branch is deleted, when the branch stops owning its own definitions, and when the kind or the template they describe is removed.
-- **FR-009**: The upgrade MUST delete the existing placeholder automations and record the fingerprints they hold, so that loading an unchanged schema after the upgrade submits no recompute.
+- **FR-009**: The upgrade MUST delete the existing placeholder automations of the three families and record the fingerprints that the display label and HFID placeholders hold, so that loading an unchanged schema after the upgrade submits no recompute.
 - **FR-010**: The automations that recompute a value when a peer attribute changes MUST keep working as today.
 - **FR-011**: The recorded fingerprints MUST NOT be visible or editable through the GraphQL API, the REST API or the web interface.
 - **FR-012**: The recompute itself (which nodes are recomputed, how they are grouped into submissions, how merge and rebase recompute changed nodes) MUST stay unchanged.
 
 ### Key Entities
 
-- **Recorded template fingerprint**: one record per derived-value family (display label, HFID, Jinja2 computed attribute), per kind, per computed attribute name when the family is Jinja2 computed attributes, and per branch that owns its own definitions. It holds the fingerprint of the template that was last applied. It is internal to Infrahub, follows the branch it belongs to, and is not part of the user schema.
+- **Recorded template fingerprint**: one record per derived-value family (display label or HFID), per kind, and per branch that owns its own definitions. It holds the fingerprint of the template that was last applied. It is internal to Infrahub, follows the branch it belongs to, and is not part of the user schema.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
 - **SC-001**: On an instance with K kinds that define a display label, an HFID or a Jinja2 computed attribute that reads only its own node, and B branches whose schema differs from the default branch, the number of automations in the task manager decreases by the number of placeholder automations the current release creates for that schema (up to K × (B + 1) per family), and does not grow when K or B grows.
-- **SC-002**: For a set of schema updates (template added, changed, unchanged, removed, on the default branch and on a diverging branch), the recomputes submitted are the same as with the current release: no missing recompute and no extra recompute.
+- **SC-002**: For a set of schema updates (template added, changed, unchanged, removed, on the default branch and on a diverging branch), no recompute that the current release submits is missing. An extra recompute is allowed only in these cases:
+  - after a failed submission;
+  - for a branch that came to own its schema during a schema update on another branch, at its next schema update;
+  - after the upgrade, for a kind with no placeholder automation to carry over.
 - **SC-003**: After upgrading an instance that holds placeholder automations, loading the unchanged schema submits zero recomputes, and the task manager holds zero placeholder automations.
 - **SC-004**: After a branch is deleted, zero recorded fingerprints remain for that branch.
 - **SC-005**: The time Infrahub takes to process a schema update that changes no template does not increase compared with the current release on the same schema and branch count.
@@ -134,7 +138,7 @@ Users create, rebase, merge and delete branches that carry schema changes. The r
 
 Nobody could answer questions during this run, so each open point was decided as follows.
 
-- **Scope includes Jinja2 computed attributes.** INFP-441 names display labels and HFIDs only. The epic title is "Refactor placeholder automations", and the Jinja2 computed attributes that read only their own node use the same placeholder pattern (`dev/knowledge/backend/computed-attributes.md`). Leaving them out would keep one third of the placeholder automations, so they are in scope.
+- **Scope includes Jinja2 computed attributes.** INFP-441 names display labels and HFIDs only. The epic title is "Refactor placeholder automations", and the Jinja2 computed attributes that read only their own node use the same placeholder pattern (`dev/knowledge/backend/computed-attributes.md`). Leaving them out would keep one third of the placeholder automations, so their placeholder automations are removed. Their recompute decision does not read a stored fingerprint, so no fingerprint is recorded for them.
 - **Automations that run stay automations.** Only the automations whose event filter can never match are replaced. The automations that recompute a value when a peer changes, the Python transform computed attribute automations, and the profile refresh automations are out of scope.
 - **No change to when or how values are recomputed.** This work changes where the fingerprint is recorded, not the recompute logic. Any improvement to recompute granularity is out of scope.
 - **Recorded fingerprints are internal.** INFP-441 says "Users won't notice the change in an observable way aside from seeing lower number of automations in Prefect". The records are therefore not exposed in the API or the web interface, and no schema change visible to users is introduced.

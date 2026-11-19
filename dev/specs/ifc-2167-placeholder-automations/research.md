@@ -22,10 +22,10 @@ Shared facts:
 
 ## Decision 1: Jinja2 computed attributes need no recorded fingerprint
 
-- **Decision**: Stop creating the self-targeting Jinja2 computed attribute automations, and build the setup flow's candidate list directly from `schema_branch.computed_attributes.get_jinja2_trigger_nodes()` (the trigger nodes with `targets_self`). Keep the `changed_elements` scoping and the default-branch skip, and read the default-branch template hash from the default branch schema instead of from the automation list. No fingerprint is recorded for this family.
+- **Decision**: Stop creating the self-targeting Jinja2 computed attribute automations, and build the setup flow's candidate list directly from `schema_branch.computed_attributes.get_jinja2_trigger_nodes()` (the trigger nodes with `targets_self`). Keep the `changed_elements` scoping and the default-branch skip, and read the default-branch template hash from the default branch schema instead of from the automation list. Build the candidates only when the event branch is the default branch or is returned by `Registry.get_altered_schema_branches()`: today `self_triggers_on_branch` is empty for any other branch, so nothing is recomputed there. No fingerprint is recorded for this family.
 - **Rationale**: The current flow does not compare a stored hash with the schema hash to decide a recompute (see the table above). Every input it reads is available from the schema registry. Recording a fingerprint and using it would change which recomputes are submitted, which FR-012 and SC-002 forbid. Recording one without using it adds writes that nothing reads (Principle VII).
 - **Alternatives considered**: Record the fingerprint and recompute only when it changes, as for display labels. Rejected: when an event carries no `changed_elements`, the current flow recomputes every computed attribute on the branch, and a fingerprint gate would suppress those recomputes.
-- **Effect on the spec**: FR-002, FR-003, FR-009 and the Key Entity list Jinja2 computed attributes among the recorded families, and the Background says the fingerprint decides the recompute for all three families. This plan keeps FR-001, FR-010, FR-012 and SC-001 for computed attributes and records fingerprints for display labels and HFIDs only. The spec needs amending (see plan.md, "Differences from the spec").
+- **Effect on the spec**: the spec was amended after the critique: FR-002, FR-003, FR-009, the Background and the Key Entity record fingerprints for display labels and HFIDs only. FR-001, FR-010, FR-012 and SC-001 still apply to computed attributes.
 
 ## Decision 2: Storage as an internal `StandardNode` keyed by branch name
 
@@ -81,6 +81,8 @@ Shared facts:
   - A separate upgrade step before `trigger_configure_all` that reads all automations. Rejected: it reads the automations a second time, and it does not cover the setup flows.
   - No carry-over (recompute everything once after the upgrade). Rejected by User Story 3.
 - **Kinds without a placeholder** (US3 scenario 4) get no record and are recomputed at the next schema update.
+- **Templates that read a peer of the same kind**: the peer trigger is also named `<kind>::by::<kind>` (`display_labels/models.py::DisplayLabelTriggerDefinition.new` and its HFID counterpart). When the automation with that name holds the peer trigger, the gatherers still emit that name, so the automation is not deleted and nothing is carried over. That kind gets one extra recompute after the upgrade, never a missing one.
+- **Duration**: the carry-over in the setup flows stays after the upgrade. It reads only `report.deleted`, so it has no effect once the placeholders are gone. A later release can remove it.
 
 ## Decision 9: First start records the current fingerprints without a recompute
 
@@ -90,7 +92,7 @@ Shared facts:
 ## Decision 10: Branch deletion removes the records directly
 
 - **Decision**: `core/branch/data_deleter.py::BranchDataDeleter` deletes the records of the branch together with its other data, before it deletes the `Branch` vertex. The setup flows also delete the records of branches that are no longer in scope.
-- **Rationale**: SC-004 asks for zero records after deletion. The setup flows depend on the worker's branch registry (`Registry.get_altered_schema_branches` reads the in-memory registry), which may still hold the deleted branch when the `BranchDeletedEvent` flow runs. Deleting in the branch deleter does not depend on that. A deletion that fails part-way is retried with the rest of the branch data.
+- **Rationale**: SC-004 asks for zero records after deletion. The setup flows depend on the worker's branch registry (`Registry.get_altered_schema_branches` reads the in-memory registry), which may still hold the deleted branch when the `BranchDeletedEvent` flow runs. Deleting in the branch deleter does not depend on that. A deletion that fails part-way is retried with the rest of the branch data. Because of the same registry timing, a setup flow can try to write records for a branch after the branch deleter ran. A record left this way would make a new branch with the same name skip its recompute. So the write queries create or update a record only when a `Branch` vertex with that name exists, checked in the same query.
 - **Alternatives considered**: Rely only on the setup flows, as the automations do today. Rejected because of the registry timing described above.
 
 ## Decision 11: Same fingerprint values as today

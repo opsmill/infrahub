@@ -23,7 +23,7 @@ The design decisions and their sources are in [research.md](./research.md).
 
 **Storage**: Neo4j. New internal label `TemplateFingerprint` (no edges, not branch-aware, not in the user schema). No graph migration: the label is new and no existing data changes shape. No index (research Decision 3).
 
-**Testing**: pytest. Unit tests for the decision rules and the carry-over parsing; component tests (testcontainers Neo4j and the Prefect test server) for the repository, the three setup flows with a `WorkflowRecorder`, branch deletion and the carry-over; regression run of `tests/integration_docker/test_computed_attributes.py`.
+**Testing**: pytest. Unit tests for the decision rules and the carry-over parsing; component tests (testcontainers Neo4j and the Prefect test server) for the repository, the three setup flows with a `WorkflowRecorder`, branch deletion and the carry-over; regression run of `tests/integration_docker/test_computed_attributes.py`. SC-005 is measured on a running instance: the duration of an unchanged schema update before and after the change, on the same schema and branch count, recorded in the PR.
 
 **Target Platform**: Linux server (API server, task workers, `infrahub upgrade` CLI)
 
@@ -53,15 +53,13 @@ No item is marked NEEDS CLARIFICATION: each open point is resolved in research.m
 
 **Re-check after Phase 1**: PASS. The data model and contracts add no API surface, no schema change visible to users, no migration and no index. The deviation in Complexity Tracking is unchanged.
 
-## Differences from the spec
+## Notes on the spec
 
-The spec must be amended before or during task generation. The plan follows the code facts below.
+The spec was amended after the critique ([critiques/critique-20261119.md](./critiques/critique-20261119.md)), so it now records fingerprints for display labels and HFIDs only (research Decision 1), and SC-002 lists the cases in which an extra recompute is allowed. One point of timing remains:
 
-| Spec item | Spec text | Plan | Reason |
-|---|---|---|---|
-| Background, FR-002, FR-003, FR-009, Key Entities | Fingerprints recorded and compared for Jinja2 computed attributes as well | Recorded and compared for display labels and HFIDs only. Computed attribute placeholders are removed without a record | `computed_attribute_setup_jinja2` does not use the stored hash to decide a recompute; recording one would either be unused or change the recomputes (FR-012). Research Decision 1 |
-| User Story 2 scenario 3 | A change to a computed attribute template recomputes every node | Kept. The recompute is decided by the `changed_elements` scoping as today, not by a fingerprint | Same as above |
-| User Story 3 scenario 4 | A kind without a placeholder is recomputed after the upgrade | Kept, at the first schema update after the upgrade. Today `infrahub upgrade` recreates a missing automation without a recompute | Research Decision 8 |
+| Spec item | Plan | Reason |
+|---|---|---|
+| User Story 3 scenario 4: a kind without a placeholder is recomputed after the upgrade | Recomputed at the first schema update after the upgrade. Today `infrahub upgrade` recreates a missing automation without a recompute | Research Decision 8 |
 
 ## Project Structure
 
@@ -95,6 +93,7 @@ backend/infrahub/
 ├── core/branch/data_deleter.py             # BranchDataDeleter: delete the branch's records
 ├── trigger/
 │   ├── placeholder_carry_over.py           # NEW: parse deleted placeholder automations into records
+│   ├── constants.py                        # TRIGGER_PLACEHOLDER_FIELD kept: the carry-over matches on it
 │   └── tasks.py                            # trigger_configure_all: run the carry-over on report.deleted
 ├── workflows/initialization.py             # setup_task_manager_identifiers: first-start seed
 ├── display_labels/
@@ -115,7 +114,7 @@ backend/tests/
 ├── component/hfid/                         # NEW: setup-flow test with WorkflowRecorder
 ├── component/computed_attribute/           # update test_scoped_recompute_jinja2.py and test_gather.py; branch skip test
 ├── component/trigger/                      # NEW: carry-over through trigger_configure_all on the Prefect test server
-├── component/branch/                       # NEW: branch deletion removes the records
+├── component/branch/                       # NEW: branch deletion removes the records; no record is written for a deleted branch
 └── functional/computed_attributes/test_local_computation.py   # replace the placeholder-field assertions
 
 dev/knowledge/backend/
@@ -136,6 +135,7 @@ changelog/+ifc-2167.changed.md              # NEW: fewer automations in the task
 | The carry-over misparses an automation | A missing record, so one extra recompute for that kind | Parsing is unit-tested on names with `/` and `-` in the branch name; an automation that fails a check is skipped, never recorded with a wrong value |
 | The lock is now held during submissions | A second setup flow for the same family waits longer | Submitting creates flow runs only; the number of submissions per event is unchanged |
 | A record is left for a deleted branch if the branch deleter fails after the records step | Stale records | The deleter is retried as a whole; the setup flows also delete records of branches out of scope |
+| A setup flow whose worker registry still holds a deleted branch writes records for it after the branch deleter ran | A new branch with the same name and the same template skips its recompute (User Story 4 scenario 2) | `upsert` and `insert_missing` write a record only when a `Branch` vertex with that name exists, checked in the same query; covered by a component test |
 
 ## Complexity Tracking
 
