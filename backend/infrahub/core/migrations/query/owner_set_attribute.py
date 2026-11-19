@@ -90,6 +90,15 @@ class OwnerSetKeyMigrationQuery(Query):
                 "user_id": self.user_id,
                 "active_edge": edge_properties | {"status": RelationshipStatus.ACTIVE.value},
                 "deleted_edge": edge_properties | {"status": RelationshipStatus.DELETED.value},
+                # An isolated branch reads its origin branch at the branch start, so a later delete there is hidden.
+                "later_branches": sorted(
+                    {
+                        name
+                        for names, time in self.branch.get_branches_and_times_to_query_global(at=self.at).items()
+                        if time == self.at.to_string()
+                        for name in names
+                    }
+                ),
             }
         )
         query = """
@@ -97,6 +106,29 @@ MATCH (n:%(node_kinds)s)-[:HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(s:OwnerSet)
 WHERE %(same_key)s
 AND none(label IN labels(n) WHERE label IN $kinds_to_skip)
 WITH DISTINCT n, s
+CALL (n) {
+    // The write lock lasts until the commit, so the reads below see a committed delete and no other write creates the set
+    WITH n
+    WHERE $new_set_key IS NOT NULL
+    SET n.uuid = n.uuid
+}
+// ------------
+// A rename gives no set to a node that is not active after the lock
+// ------------
+CALL (n) {
+    OPTIONAL MATCH (n)-[r:IS_PART_OF]->(:Root)
+    WHERE %(branch_filter)s
+    WITH n, r
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+    RETURN r.status = "active" AND NOT EXISTS {
+        // A delete that commits while the query waits for the lock can have a later time than the query
+        MATCH (n)-[later:IS_PART_OF {status: "deleted"}]->(:Root)
+        WHERE later.branch IN $later_branches AND later.from > $at
+    } AS is_active
+}
+WITH n, s, is_active
+WHERE $new_set_key IS NULL OR is_active
 CALL (n, s) {
     MATCH (n)-[r:HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(s)
     WHERE %(branch_filter)s
@@ -121,10 +153,6 @@ CALL (s) {
 CALL (n, attached, held) {
     WITH n, attached, held
     WHERE $new_set_key IS NOT NULL
-    CALL (n) {
-        // The write lock on the node lasts until the commit, so a write of owners cannot create the same set
-        SET n.uuid = n.uuid
-    }
     CALL (n) {
         OPTIONAL MATCH (n)-[:HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(existing:OwnerSet)
         WHERE %(same_new_key)s
