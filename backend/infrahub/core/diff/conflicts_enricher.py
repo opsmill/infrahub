@@ -16,6 +16,7 @@ from .model.path import (
     EnrichedDiffRoot,
     EnrichedDiffSingleRelationship,
 )
+from .ownership_fields import is_list_property
 
 # Attribute kinds whose value is a JSON collection that an "ordered=False" schema flag can make
 # order-insensitive during conflict detection.
@@ -185,6 +186,7 @@ class ConflictsEnricher:
                 base_property=base_property,
                 branch_property=branch_property,
                 ignore_order=value_order_insensitive,
+                is_list=is_list_property(field_name=branch_attribute.name, property_type=branch_property.property_type),
             )
             if same_value:
                 branch_property.conflict = None
@@ -313,6 +315,7 @@ class ConflictsEnricher:
         base_property: EnrichedDiffProperty,
         branch_property: EnrichedDiffProperty,
         ignore_order: bool = False,
+        is_list: bool = False,
     ) -> bool:
         if base_property.new_value == branch_property.new_value:
             return True
@@ -321,7 +324,7 @@ class ConflictsEnricher:
         if {base_property.new_value, branch_property.new_value} <= {NULL_VALUE, None}:
             return True
         # An update that keeps the value changes what the value does not show, such as the origin of a list of owners.
-        if any(
+        if is_list and any(
             prop.action is DiffAction.UPDATED and prop.previous_value == prop.new_value
             for prop in (base_property, branch_property)
         ):
