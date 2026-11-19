@@ -88,7 +88,7 @@ async def test_command_prints_each_section_with_its_rows(
 
     assert capsys.readouterr().out.splitlines() == [
         "",
-        "Attributes that a repository owns (the upgrade removes these owners): 2",
+        "Attributes that a repository owns (the upgrade removes these owners): 3",
         f"  TestCar.color, repository {repository.id} (CoreRepository), branch branch1: 1",
         f"  TestCar.color, repository {repository.id} (CoreRepository), branch main: 2",
         "",
@@ -96,7 +96,7 @@ async def test_command_prints_each_section_with_its_rows(
         " (the upgrade keeps these owners): 1",
         "  TestPerson owns TestCar.color, branch main: 1",
         "",
-        "Relationships whose links have owners (the upgrade keeps these owners): 2",
+        "Relationships whose links have owners (the upgrade keeps these owners): 1",
         "  testcar__testperson (TestCar, TestPerson), owner kind CoreAccountGroup, branch main: 1",
         "  testcar__testperson (TestCar, TestPerson), owner kind CoreRepository, branch main: 1",
         "",
