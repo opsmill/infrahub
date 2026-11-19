@@ -118,8 +118,8 @@ description: "Task list for recording template fingerprints in the database inst
 
 ### Tests for User Story 2
 
-- [ ] T017 [P] [US2] Update `backend/tests/component/display_labels/test_gather.py`: `gather_trigger_display_labels_jinja2` returns no definition whose fields are `[TRIGGER_PLACEHOLDER_FIELD]`, and still returns the definitions for templates that read a peer attribute (spec, User Story 1 scenario 4)
-- [ ] T018 [P] [US2] Write `backend/tests/component/display_labels/test_setup.py` that runs `display_labels_setup_jinja2` on the Prefect test server with a `WorkflowRecorder` and asserts the exact list of submitted `TRIGGER_UPDATE_DISPLAY_LABELS` workflows and the records left in the database:
+- [X] T017 [P] [US2] Update `backend/tests/component/display_labels/test_gather.py`: `gather_trigger_display_labels_jinja2` returns no definition whose fields are `[TRIGGER_PLACEHOLDER_FIELD]`, and still returns the definitions for templates that read a peer attribute (spec, User Story 1 scenario 4)
+- [X] T018 [P] [US2] Write `backend/tests/component/display_labels/test_setup.py` that runs `display_labels_setup_jinja2` on the Prefect test server with a `WorkflowRecorder` and asserts the exact list of submitted `TRIGGER_UPDATE_DISPLAY_LABELS` workflows and the records left in the database:
   - template changed on the default branch: one submission for that kind, record updated (User Story 2 scenario 1);
   - no template changed: no submission (scenario 4);
   - branch template identical to the default branch: no submission, record written for the branch (scenario 5);
@@ -128,13 +128,13 @@ description: "Task list for recording template fingerprints in the database inst
   - submission raises: no record written, and the next run submits again (FR-006, spec Edge Cases);
   - kind or template removed: its record deleted, no submission (spec Edge Cases);
   - no automation of the family has a trigger matching `_trigger_placeholder` after the run, and the peer-driven automation exists (User Story 1 scenarios 1, 3 and 4).
-- [ ] T019 [P] [US2] Write `backend/tests/component/hfid/test_setup.py` with the same cases for `hfid_setup` and `TRIGGER_UPDATE_HFID`, plus HFID added to a kind that had none: one submission (User Story 2 scenario 2), and one schema update that changes the display label template of one kind and the HFID of another: exactly one submission per family (scenario 7, run both setup flows)
+- [X] T019 [P] [US2] Write `backend/tests/component/hfid/test_setup.py` with the same cases for `hfid_setup` and `TRIGGER_UPDATE_HFID`, plus HFID added to a kind that had none: one submission (User Story 2 scenario 2), and one schema update that changes the display label template of one kind and the HFID of another: exactly one submission per family (scenario 7, run both setup flows)
 
 ### Implementation for User Story 2
 
-- [ ] T020 [P] [US2] In `backend/infrahub/display_labels/models.py::DisplayLabelTriggerDefinition.from_schema_display_labels`, stop creating the definitions for `get_template_nodes()` (the ones with `fields=[TRIGGER_PLACEHOLDER_FIELD]` and `target_kind == node_kind`). Keep the definitions built from `get_related_trigger_nodes()`, and keep `TRIGGER_PLACEHOLDER_FIELD` in `backend/infrahub/trigger/constants.py` because the carry-over matches on it (plan.md structure). Make T017 pass
-- [ ] T021 [P] [US2] In `backend/infrahub/hfid/models.py::HFIDTriggerDefinition.from_schema_hfids`, make the same change as T020
-- [ ] T022 [US2] Rewrite the body of `backend/infrahub/display_labels/tasks.py::display_labels_setup_jinja2` after `wait_for_schema_to_converge`, following "Order of execution in the setup flow" in `contracts/recompute-decision.md`, without step 2 (added in T029):
+- [X] T020 [P] [US2] In `backend/infrahub/display_labels/models.py::DisplayLabelTriggerDefinition.from_schema_display_labels`, stop creating the definitions for `get_template_nodes()` (the ones with `fields=[TRIGGER_PLACEHOLDER_FIELD]` and `target_kind == node_kind`). Keep the definitions built from `get_related_trigger_nodes()`, and keep `TRIGGER_PLACEHOLDER_FIELD` in `backend/infrahub/trigger/constants.py` because the carry-over matches on it (plan.md structure). Make T017 pass
+- [X] T021 [P] [US2] In `backend/infrahub/hfid/models.py::HFIDTriggerDefinition.from_schema_hfids`, make the same change as T020
+- [X] T022 [US2] Rewrite the body of `backend/infrahub/display_labels/tasks.py::display_labels_setup_jinja2` after `wait_for_schema_to_converge`, following "Order of execution in the setup flow" in `contracts/recompute-decision.md`, without step 2 (added in T029):
   - build `TemplateFingerprintRepository(db=db)` at the top of the flow;
   - take the lock with `lock.registry.get(name=f"configure-action-rules-{TriggerType.DISPLAY_LABEL_JINJA2.value}", namespace="trigger-rules", local=False)` and hold it until the records are written;
   - inside the lock, gather and call `setup_triggers` (not `setup_triggers_specific`) for the peer automations and keep the report;
@@ -142,8 +142,8 @@ description: "Task list for recording template fingerprints in the database inst
   - delete `to_delete`, submit one `TRIGGER_UPDATE_DISPLAY_LABELS` per kind in `to_recompute` with the parameters `branch_name` and `kind`, then `upsert(to_record)` in one call; a submission that raises skips the write;
   - stop submitting from `report.modified_triggers_with_type(...)`, and log the kinds in `skipped_identical` at debug level.
   Make T018 pass (depends on T005, T008, T010, T020)
-- [ ] T023 [US2] Make the same change as T022 in `backend/infrahub/hfid/tasks.py::hfid_setup`, with `TriggerType.HUMAN_FRIENDLY_ID`, `TemplateFamily` `human_friendly_id` and `TRIGGER_UPDATE_HFID`. Make T019 pass (depends on T005, T008, T010, T021)
-- [ ] T024 [US2] In `backend/infrahub/workflows/initialization.py::setup_task_manager_identifiers`, after the two `setup_triggers` calls, open a database session, build `TemplateFingerprintRepository`, and call `insert_missing` with the collector output of both families for every branch in scope. Submit no recompute (research Decision 9). Add a test in `backend/tests/component/core/test_initialization.py` that the first start writes one record per kind with a display label template or an HFID, and that a following unchanged schema update submits nothing (depends on T008, T010)
+- [X] T023 [US2] Make the same change as T022 in `backend/infrahub/hfid/tasks.py::hfid_setup`, with `TriggerType.HUMAN_FRIENDLY_ID`, `TemplateFamily` `human_friendly_id` and `TRIGGER_UPDATE_HFID`. Make T019 pass (depends on T005, T008, T010, T021)
+- [X] T024 [US2] In `backend/infrahub/workflows/initialization.py::setup_task_manager_identifiers`, after the two `setup_triggers` calls, open a database session, build `TemplateFingerprintRepository`, and call `insert_missing` with the collector output of both families for every branch in scope. Submit no recompute (research Decision 9). Add a test in `backend/tests/component/core/test_initialization.py` that the first start writes one record per kind with a display label template or an HFID, and that a following unchanged schema update submits nothing (depends on T008, T010)
 
 **Checkpoint**: `uv run pytest backend/tests/component/display_labels/ backend/tests/component/hfid/ backend/tests/component/core/test_initialization.py` passes. User Stories 1 and 2 are complete for all three families.
 

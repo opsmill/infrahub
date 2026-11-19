@@ -73,3 +73,39 @@ Lint and format: `uv run ruff format` (1 file reformatted) and `uv run ruff chec
 | backend/tests/functional/computed_attributes/test_local_computation.py::TestJinja2ComputedAttributeWithRelationship (2 tests modified) | integration (functional) | same command | 2026-11-19T15:15:31Z | same | `================= 70 passed, 17 warnings in 662.21s (0:11:02) ==================` |
 | backend/tests/component/computed_attribute/test_placeholder_removal.py::TestPlaceholderRemoval::test_setup_deletes_placeholder_and_keeps_peer_automation | integration (component, Prefect test server) | same command | 2026-11-19T15:15:31Z | same | `================= 70 passed, 17 warnings in 662.21s (0:11:02) ==================` |
 | backend/tests/component/computed_attribute/test_scoped_recompute_jinja2.py (3 new tests; file edited after the run above for a mypy fix) | integration (component, Prefect test server) | `cd backend && uv run pytest tests/component/computed_attribute/test_scoped_recompute_jinja2.py -q` | 2026-11-19T15:18:32Z | same | `================== 8 passed, 17 warnings in 167.42s (0:02:47) ==================` |
+
+## Chunk: Phase 4: User Story 2 - Stored values are recomputed exactly when a template changes (Priority: P1), display labels and HFIDs
+
+| Task | Outcome | Reason when not done |
+|------|---------|----------------------|
+| T017 | ✅ done | |
+| T018 | ✅ done | |
+| T019 | ✅ done | |
+| T020 | ✅ done | |
+| T021 | ✅ done | |
+| T022 | ✅ done | |
+| T023 | ✅ done | |
+| T024 | ✅ done | |
+
+Decisions worth flagging:
+
+- The steps shared by both setup flows (decision, delete, submit, record) are in a new component, `TemplateFingerprintRefresher` in `core/template_fingerprint/refresher.py`. The flow builds it at its top with the repository, the workflow adapter and the recompute workflow, takes the family lock, runs `setup_triggers` for the peer automations, then calls `refresher.refresh(...)` inside the lock. T029 adds the carry-over between `setup_triggers` and `refresh`.
+- `SchemaFingerprints.as_records()` was added to turn the collector output into records (used by the first-start seed and by the tests).
+- T024 departs from the task text. `setup_task_manager_identifiers` cannot open a database session: `workers/dependencies.py` imports `services/adapters/workflow/worker.py`, which imports `workflows/initialization.py`, so importing `get_database` there creates an import cycle, and the guidelines forbid a function-local import to break one. The seed is a plain function, `seed_template_fingerprints(db)` in `workflows/initialization.py`. `WorkflowWorkerExecution.initialize` calls it right after `setup_task_manager_identifiers`, with a session of the service database, which `InfrahubServices.initialize_workflow` now passes as a new required `database` parameter. The seed is therefore not part of the `task-manager-identifiers` flow run.
+- The T024 test is in `backend/tests/component/core/template_fingerprint/test_seed.py`, not in `backend/tests/component/core/test_initialization.py`. Function tests in that module run `delete_all_nodes_in_db` and `first_time_initialization` on the shared database, and the testing rules ask for a test to go in the topic directory of its area. The test calls `setup_task_manager_identifiers()` and then `seed_template_fingerprints(db)` directly; `WorkflowWorkerExecution.initialize` itself is not exercised by a test.
+- The display label and HFID scenarios are written once in `backend/tests/helpers/template_fingerprint.py` (`TemplateSetupScenarios`), with a small test schema (`TestingFpOwner`, `TestingFpDevice`, `TestingFpTag`). `TestDisplayLabelSetup` and `TestHFIDSetup` subclass it, and `TestHFIDSetup` adds the "HFID added" and "both families in one update" cases. Every test starts with the records that match the current schema (an autouse fixture deletes all `TemplateFingerprint` vertices and writes them again). The "submission raises" case uses a `FailingWorkflow` test adapter that records the call and then raises.
+- The default-branch change test loads the changed schema on the default branch and loads the original schema back in a `finally` block.
+- Kinds without an explicit display label still have a default display label template, and a kind with a unique attribute gets a derived HFID. So `TestingFpTag` has no unique attribute, which leaves it with no HFID until a branch adds one.
+- T017: `test_gather_trigger_gather_trigger_display_labels_jinja2_default` now compares the gathered trigger names with the peer triggers built from `get_related_trigger_nodes()`, instead of counting one trigger per node with a display label.
+- Bite check: with the previous `display_labels/models.py` and `display_labels/tasks.py` restored from the parent commit, `tests/component/display_labels/` gave "9 failed, 1 passed". The test that passed on both is `test_second_run_for_same_change_submits_nothing`, because the previous placeholder automations also stopped a second submission. The new code was restored from the WIP commit afterwards. The HFID tests were not run against the previous HFID code.
+- `setup_triggers_specific` is still used by the computed attribute flows and was kept.
+
+Lint and format: `uv run ruff format` and `uv run ruff check --fix` on the changed modules and tests ("All checks passed!"). `uv run ty check` on the same paths: "All checks passed!". `uv run mypy` on the 12 changed source and test files: "Success: no issues found in 17 source files". `uv run pytest tests/unit/trigger/ -q`: "24 passed". The full `uv run invoke lint` and `uv run invoke backend.mypy` run in T040.
+
+| Test id | Type (unit/integration/e2e) | Run command | Passed at (ISO 8601) | Environment context | Verbatim pass line |
+|---------|-----------------------------|-------------|----------------------|---------------------|--------------------|
+| backend/tests/component/display_labels/test_gather.py (2 tests modified) | integration (component, Neo4j) | `cd backend && uv run pytest tests/component/display_labels/ -q` | 2026-11-19T15:59:30Z | Neo4j and Prefect test server started by testcontainers through the local Docker daemon, macOS, Python 3.14 | `================= 10 passed, 17 warnings in 285.04s (0:04:45) ==================` |
+| backend/tests/component/display_labels/test_setup.py::TestDisplayLabelSetup (8 tests) | integration (component, Prefect test server) | same command | 2026-11-19T15:59:30Z | same | `================= 10 passed, 17 warnings in 285.04s (0:04:45) ==================` |
+| backend/tests/component/hfid/test_setup.py::TestHFIDSetup (10 tests) | integration (component, Prefect test server) | `cd backend && uv run pytest tests/component/hfid/test_setup.py tests/component/core/template_fingerprint/test_seed.py -q` | 2026-11-19T15:54:30Z | same | `================= 11 passed, 17 warnings in 414.08s (0:06:54) ==================` |
+| backend/tests/component/core/template_fingerprint/test_seed.py::TestTemplateFingerprintSeed::test_first_start_records_every_template_and_next_update_submits_nothing | integration (component, Prefect test server) | same command | 2026-11-19T15:54:30Z | same | `================= 11 passed, 17 warnings in 414.08s (0:06:54) ==================` |
+| backend/tests/helpers/template_fingerprint.py (new shared scenarios, run through the two classes above) | integration (component) | covered by the commands above | 2026-11-19T15:59:30Z | same | see the rows above |
