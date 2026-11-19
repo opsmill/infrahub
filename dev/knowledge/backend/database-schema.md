@@ -150,7 +150,7 @@ Some edge types carry payload properties beyond these (`IS_RESERVED` holds the r
 | `HAS_NO_OWNER` | `(:Node\|Attribute\|OwnerSet)-[:HAS_NO_OWNER]->(:NoOwner)` | The `Node`, `Attribute` or `OwnerSet` has no owner and does not inherit owners |
 | `HAS_OWNER_SET` | `(:Node)-[:HAS_OWNER_SET]->(:OwnerSet)` | Links a Node to the owners of one of its relationships |
 | `HAS_TARGET_OWNER_SET` | `(:Node)-[:HAS_TARGET_OWNER_SET]->(:OwnerSet)` | Links a profile or an object template to the owners that it gives |
-| `HAS_OWNER_SOURCE` | `(:Node)-[:HAS_OWNER_SOURCE]->(:Node)` | The owners of the `Node`, `Attribute` or `OwnerSet` are a copy from this object template |
+| `HAS_OWNER_SOURCE` | `(:Node\|Attribute\|OwnerSet)-[:HAS_OWNER_SOURCE]->(:Node)` | The owners of the `Node`, `Attribute` or `OwnerSet` are a copy from this object template |
 | `IS_RESERVED` | `(:Node)-[:IS_RESERVED]->(:Attribute)` | Links a resource pool to what it accounts for (see [Resource Pool Reservations](#resource-pool-reservations)) |
 
 ### Attribute/Relationship Metadata Edges

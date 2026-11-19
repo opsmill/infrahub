@@ -41,12 +41,13 @@ closes the mark on the default branch. Such an update gives no conflict with a c
 on the other branch (`ConflictsEnricher._have_same_value`).
 
 The owners of a relationship field, and the owners that a profile or an object template gives to
-one field, show as an attribute with a reserved name: `<relationship>__owners` and
-`<field>__target_owners`. The schema of the diff branch gives the field name from the key of the
-`OwnerSet`, so a set whose field the schema lacks is not in the diff. The merge reads the edges and
-not the diff, so it still merges that set. `MergeExclusionPlanBuilder` needs the schema of the
-source branch to find the set of a resolved conflict from its reserved name. When that schema lacks
-the field, the merge skips the resolution and writes a log line.
+its nodes or to one field, show as an attribute with a reserved name: `<relationship>__owners`,
+`node_metadata__target_owners` and `<field>__target_owners`. The schema of the diff branch gives
+the field name from the key of the `OwnerSet`, so a set whose field the schema lacks is not in the
+diff. The merge reads the edges and not the diff, so it still merges that set.
+`MergeExclusionPlanBuilder` needs the schema of the source branch to find the set of a resolved
+conflict from its reserved name. When that schema lacks the field, the merge skips the resolution
+and writes a log line.
 
 The sources of a node show as the attribute `node_metadata__sources`, with one `HAS_SOURCE` property
 that holds the whole list of sources. The rules of an owner list apply to it: the conflict rule, the

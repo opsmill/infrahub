@@ -197,5 +197,5 @@ def neo4j_pagecache_size() -> str:
 
 @pytest.fixture(scope="class")
 async def reference_data_set(db: InfrahubDatabase, initialize_registry: None) -> ReferenceDataSet:
-    """Reference data set of the success criteria, for a test class that runs the application in process."""
+    """Reference data set, for a test class that runs the application in process."""
     return await load_reference_data_set(db=db)
