@@ -384,7 +384,7 @@ async def create_component(
     if template_profile_ids:
         await _apply_profiles_before_create(db=db, node=obj_peer, profiles_applier=profiles_applier)
 
-    await obj_peer.save(db=db, user_id=user_id)
+    await obj_peer.save(db=db, user_id=user_id, at=at)
     writer = OwnershipWriter(repository=OwnershipRepository(db=db, branch=branch, at=at))
     for holder, owner_ids in component.given_owners.items():
         await writer.copy_from_template(
