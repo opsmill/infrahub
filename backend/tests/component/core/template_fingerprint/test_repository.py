@@ -92,23 +92,6 @@ async def test_delete_removes_only_listed_keys(db: InfrahubDatabase, default_bra
     assert await repository.get_by_family(HFID) == [_record(HFID, "main", "TestCar", "h3")]
 
 
-async def test_delete_branch_removes_only_that_branch(db: InfrahubDatabase, default_branch: Branch) -> None:
-    await create_branch(branch_name="branch1", db=db)
-    repository = TemplateFingerprintRepository(db=db)
-    await repository.upsert(
-        [
-            _record(LABEL, "main", "TestCar", "h1"),
-            _record(LABEL, "branch1", "TestCar", "h2"),
-            _record(HFID, "branch1", "TestCar", "h3"),
-        ]
-    )
-
-    await repository.delete_branch("branch1")
-
-    assert await repository.get_by_family(LABEL) == [_record(LABEL, "main", "TestCar", "h1")]
-    assert await repository.get_by_family(HFID) == []
-
-
 async def test_writes_on_empty_list_send_no_query(db: InfrahubDatabase, default_branch: Branch) -> None:
     counting_db = CountingInfrahubDatabase.from_db(db=db)
     repository = TemplateFingerprintRepository(db=counting_db)

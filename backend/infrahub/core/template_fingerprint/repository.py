@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.query.template_fingerprint import (
-    TemplateFingerprintDeleteBranchQuery,
     TemplateFingerprintDeleteQuery,
     TemplateFingerprintGetByFamilyQuery,
     TemplateFingerprintInsertMissingQuery,
@@ -71,6 +70,3 @@ class TemplateFingerprintRepository:
         query = TemplateFingerprintDeleteQuery(keys=[_key_params(key) for key in keys])
         await query.execute(db=self.db)
 
-    async def delete_branch(self, branch_name: str) -> None:
-        query = TemplateFingerprintDeleteBranchQuery(branch_name=branch_name)
-        await query.execute(db=self.db)
