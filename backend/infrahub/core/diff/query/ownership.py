@@ -90,10 +90,8 @@ class DiffOwnerHoldersQuery(Query):
             hint, scope = "USING INDEX r:{edge_type}(branch)", ""
         else:
             hint, scope = "USING INDEX n:Node(uuid)", "AND n.uuid IN $node_uuids"
-        # shortcut: the mark has no index on the branch, add one when a diff is slow with many template copies
-        mark_hint = "" if self.node_uuids is None else hint
         edge_patterns = [(*edge_pattern, hint) for edge_pattern in holder_edge_patterns()] + [
-            (holder_kind, pattern, DatabaseEdgeType.HAS_OWNER_SOURCE, mark_hint)
+            (holder_kind, pattern, DatabaseEdgeType.HAS_OWNER_SOURCE, hint)
             for holder_kind, pattern in HOLDER_PATTERNS.items()
             if holder_kind not in (HolderKind.TARGET_SET, HolderKind.SOURCES)
         ]
