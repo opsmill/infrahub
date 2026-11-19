@@ -69,10 +69,13 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
    reaches the window two ways: the merge's own re-evaluation for the nodes whose deletion it
    carried over (`DiffMerger._retire_agnostic_fields_of_deleted_nodes`), and any agnostic-field
    removal migration the merge carries (`AttributeRemoveQuery`, `node_relationship_remove`), which
-   runs at the merge `$at` like every other merge-window migration. The merge's start timestamp is
-   persisted on the branch as `merge_started_at` at the `MERGING` transition. Because all writes
-   share one timestamp, a range query keyed on `merge_started_at` over the target branch, plus an
-   exact-timestamp query over the global branch, reverses exactly the merge's edges.
+   runs at the merge `$at` like every other merge-window migration. After the bulk owner merge,
+   `DiffMerger._apply_owner_diff_resolutions` writes the owner state that each conflict resolution
+   selects, through `OwnershipRepository.write`, on the target branch and at the merge `$at`. The
+   merge's start timestamp is persisted on the branch as `merge_started_at` at the `MERGING`
+   transition. Because all writes share one timestamp, a range query keyed on `merge_started_at`
+   over the target branch, plus an exact-timestamp query over the global branch, reverses exactly
+   the merge's edges.
 
 4. **Only the graph merge and schema migrations write to the default branch during the window.** Both
    run at the merge `$at`. IPAM reconciliation is deliberately submitted *after* the `MERGED`
@@ -88,7 +91,9 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
    keeps the restore idempotent: a restored vertex no longer carries the timestamp, so a later pass
    or a re-run cannot null what an earlier one put back. The diff-merge write path co-writes those
    `previous_*` fields (`core/diff/query/merge.py`,
-   `DiffMergeMetadataQuery`), and the schema-migration queries that bump vertex metadata do the
+   `DiffMergeMetadataQuery`), the owner write of the conflict resolutions co-writes them on the
+   attribute vertex that holds the owners (`core/ownership/queries.py`, `OwnerStateWriteQuery`),
+   and the schema-migration queries that bump vertex metadata do the
    same (e.g. `core/migrations/schema/attribute_kind_update.py`,
    `core/migrations/query/attribute_add.py`, `node_duplicate.py`, `node_remove.py`). This is what
    lets the metadata restore cover both merge-diff and migration collateral without enumerating
