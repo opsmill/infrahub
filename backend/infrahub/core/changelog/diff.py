@@ -13,13 +13,13 @@ from infrahub.core.diff.ownership_differ import OwnershipDiffer
 from infrahub.core.ownership.fields import (
     OWNERS_CHANGELOG_KIND,
     attribute_owners_change,
+    diff_field_name,
     is_list_property,
     is_owners_field_name,
     owner_list_value,
-    stored_holder_field_name,
     stored_owner_ids,
 )
-from infrahub.core.ownership.models import INHERIT, HolderKind
+from infrahub.core.ownership.models import INHERIT
 from infrahub.exceptions import SchemaNotFoundError
 
 from .models import (
@@ -207,15 +207,8 @@ class DiffChangelogCollector:
         field_states = {}
         for (node_id, holder), state in states.items():
             kind = self.get_node(node_id=node_id).kind
-            if holder.kind == HolderKind.ATTRIBUTE:
-                field_name = holder.attribute
-            elif schema_branch.has(name=kind):
-                field_name = stored_holder_field_name(
-                    holder=holder, schema=schema_branch.get(name=kind, duplicate=False), schema_branch=schema_branch
-                )
-            else:
-                continue
-            field_states[node_id, field_name] = state
+            if field_name := diff_field_name(holder=holder, kind=kind, schema_branches=[schema_branch]):
+                field_states[node_id, field_name] = state
         held = set()
         for node, field_name, diff_property in owner_lists:
             state = field_states.get((node.uuid, field_name), INHERIT)

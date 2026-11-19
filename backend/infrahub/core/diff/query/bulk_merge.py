@@ -7,7 +7,7 @@ from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.ownership.models import HolderKind
 from infrahub.core.query import Query, QueryType
 
-from .ownership import HOLDER_PATTERNS, holder_edge_patterns
+from .ownership import holder_edge_patterns, template_mark_patterns
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -1102,8 +1102,7 @@ class BulkMergeOwnershipEdgesQuery(Query):
     AND src.to IS NULL
     RETURN DISTINCT n, {"n" if holder_kind is HolderKind.NODE else "holder"} AS holder,
         {OWNER_HOLDER_KEYS[holder_kind]} AS holder_key, src, child"""
-            for holder_kind, pattern in HOLDER_PATTERNS.items()
-            if holder_kind not in (HolderKind.TARGET_SET, HolderKind.SOURCES)
+            for holder_kind, pattern in template_mark_patterns()
         ]
         patterns += [
             f"""
