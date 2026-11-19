@@ -3,6 +3,7 @@ import pytest
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.migrations.graph.m048_undelete_rel_props import Migration048
 from infrahub.core.migrations.shared import MigrationInput
+from infrahub.core.ownership.queries import NoOwnerVertexCreateQuery
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
@@ -184,6 +185,9 @@ MERGE (global:Branch {name: "-global-", branched_from: "2023-01-02T00:00:00"})
 MERGE (branch_a:Branch {name: "branch_a", branched_from: "2025-01-03T00:00:00"})
         """
         await db.execute_query(query=root_and_branch_query)
+        # A real database holds the vertex that every "no owner" edge ends at, and the graph check requires it.
+        no_owner_query = await NoOwnerVertexCreateQuery.init(db=db)
+        await no_owner_query.execute(db=db)
 
         # Create Boolean vertices for IS_VISIBLE and IS_PROTECTED edges
         create_booleans_query = """
