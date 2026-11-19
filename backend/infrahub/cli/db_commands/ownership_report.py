@@ -30,6 +30,17 @@ async def ownership_report(db: InfrahubDatabase) -> None:
     )
     _print_section(
         console,
+        title=(
+            "Attributes that a node other than an account, an account group or a repository owns"
+            " (the upgrade keeps these owners)"
+        ),
+        lines=[
+            f"{row.owner_kind} owns {row.node_kind}.{row.attribute_name}, branch {row.branch}: {row.nb_attributes}"
+            for row in report.other_owners
+        ],
+    )
+    _print_section(
+        console,
         title="Relationships whose links have owners (the upgrade keeps these owners)",
         lines=[
             f"{row.identifier} ({', '.join(row.peer_kinds)}), owner kind {row.owner_kind},"

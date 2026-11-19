@@ -686,8 +686,9 @@ async def ownership_report_cmd(
 ) -> None:
     """List the data that the upgrade to node owners changes.
 
-    The report lists the attributes that a repository owns, the relationships whose links have owners, and the
-    attributes with values that have `is_protected` set. Run this command before the upgrade. It changes no data.
+    The report lists the attributes that a repository owns, the attributes whose owner is not an account, an
+    account group or a repository, the relationships whose links have owners, and the attributes with values that
+    have `is_protected` set. Run this command before the upgrade. It changes no data.
     """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)

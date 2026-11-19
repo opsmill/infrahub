@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.ownership.input import OWNER_KINDS
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
@@ -22,6 +23,15 @@ OPEN_EDGE_FILTER = 'r.status = "active" AND r.to IS NULL'
 class RepositoryOwnerRow:
     repository_id: str
     repository_kind: str
+    node_kind: str
+    attribute_name: str
+    branch: str
+    nb_attributes: int
+
+
+@dataclass(frozen=True)
+class OtherOwnerRow:
+    owner_kind: str
     node_kind: str
     attribute_name: str
     branch: str
@@ -48,6 +58,7 @@ class ProtectedValueRow:
 @dataclass(frozen=True)
 class OwnershipReport:
     repository_owners: list[RepositoryOwnerRow]
+    other_owners: list[OtherOwnerRow]
     link_owners: list[LinkOwnerRow]
     protected_values: list[ProtectedValueRow]
 
@@ -79,6 +90,45 @@ WHERE %(open_edge)s
             RepositoryOwnerRow(
                 repository_id=result.get_as_type("repository_id", str),
                 repository_kind=result.get_as_type("repository_kind", str),
+                node_kind=result.get_as_type("node_kind", str),
+                attribute_name=result.get_as_type("attribute_name", str),
+                branch=result.get_as_type("branch", str),
+                nb_attributes=result.get_as_type("nb_attributes", int),
+            )
+            for result in self.get_results()
+        ]
+
+
+class OtherOwnersReportQuery(Query):
+    """Count the attributes whose owner is not an account, an account group or a repository.
+
+    The count is for each kind of owner, kind of node, attribute name and branch.
+    """
+
+    name = "ownership_report_other_owners"
+    type = QueryType.READ
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["excluded_labels"] = sorted(OWNER_KINDS | {InfrahubKind.GENERICREPOSITORY})
+        query = """
+MATCH (owner:Node)<-[r:HAS_OWNER]-(attribute:Attribute)<-[:HAS_ATTRIBUTE]-(node:Node)
+WHERE %(open_edge)s
+AND NOT any(label IN labels(owner) WHERE label IN $excluded_labels)
+        """ % {"open_edge": OPEN_EDGE_FILTER}
+        self.add_to_query(query)
+        self.return_labels = [
+            "owner.kind AS owner_kind",
+            "node.kind AS node_kind",
+            "attribute.name AS attribute_name",
+            "r.branch AS branch",
+            "count(DISTINCT attribute) AS nb_attributes",
+        ]
+        self.order_by = ["owner_kind", "node_kind", "attribute_name", "branch"]
+
+    def get_rows(self) -> list[OtherOwnerRow]:
+        return [
+            OtherOwnerRow(
+                owner_kind=result.get_as_type("owner_kind", str),
                 node_kind=result.get_as_type("node_kind", str),
                 attribute_name=result.get_as_type("attribute_name", str),
                 branch=result.get_as_type("branch", str),
@@ -156,15 +206,21 @@ WHERE %(open_edge)s
 
 
 async def build_ownership_report(db: InfrahubDatabase) -> OwnershipReport:
-    """Return the repository owners, the links with owners and the protected values, on every branch."""
+    """Return the attribute owners that are not accounts or groups, the links with owners and the protected values.
+
+    The report covers every branch.
+    """
     repository_owners = await RepositoryOwnersReportQuery.init(db=db)
     await repository_owners.execute(db=db)
+    other_owners = await OtherOwnersReportQuery.init(db=db)
+    await other_owners.execute(db=db)
     link_owners = await LinkOwnersReportQuery.init(db=db)
     await link_owners.execute(db=db)
     protected_values = await ProtectedValuesReportQuery.init(db=db)
     await protected_values.execute(db=db)
     return OwnershipReport(
         repository_owners=repository_owners.get_rows(),
+        other_owners=other_owners.get_rows(),
         link_owners=link_owners.get_rows(),
         protected_values=protected_values.get_rows(),
     )

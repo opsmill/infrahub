@@ -40,7 +40,8 @@ async def repository(
     """Create each case of the report, and the cases that the report leaves out.
 
     The repository owns the color of two cars on the default branch and of one car on a branch, and one link.
-    An account group owns one color and one link. One color is protected. One car has no owner and no protection.
+    An account group owns one color and one link. A person owns one color. One color is protected. One car has no
+    owner and no protection.
     """
     repository = await add_node(
         db=db, kind=InfrahubKind.REPOSITORY, name="repo01", location="git@github.com:user/repo01.git"
@@ -55,6 +56,10 @@ async def repository(
         )
     await add_owner_edge(db=db, query=ADD_LINK_OWNER, branch=default_branch, node_id=car.id, owner_id=repository.id)
     await _create_car(db=db, name="group-car", person=person, color_owner_id=group.id, link_owner_id=group.id)
+    person_car = await _create_car(db=db, name="person-car", person=person)
+    await add_owner_edge(
+        db=db, query=ADD_ATTRIBUTE_OWNER, branch=default_branch, node_id=person_car.id, owner_id=person.id
+    )
     await _create_car(db=db, name="protected-car", person=person, is_protected=True)
     branch_car = await _create_car(db=db, name="plain-car", person=person)
     branch = await create_branch(db=db, branch_name="branch1")
@@ -70,7 +75,7 @@ async def test_report_of_a_database_without_any_case_is_empty(
 
     report = await build_ownership_report(db=db)
 
-    assert report == OwnershipReport(repository_owners=[], link_owners=[], protected_values=[])
+    assert report == OwnershipReport(repository_owners=[], other_owners=[], link_owners=[], protected_values=[])
 
 
 async def test_command_prints_each_section_with_its_rows(
@@ -83,6 +88,10 @@ async def test_command_prints_each_section_with_its_rows(
         "Attributes that a repository owns (the upgrade removes these owners): 2",
         f"  TestCar.color, repository {repository.id} (CoreRepository), branch branch1: 1",
         f"  TestCar.color, repository {repository.id} (CoreRepository), branch main: 2",
+        "",
+        "Attributes that a node other than an account, an account group or a repository owns"
+        " (the upgrade keeps these owners): 1",
+        "  TestPerson owns TestCar.color, branch main: 1",
         "",
         "Relationships whose links have owners (the upgrade keeps these owners): 2",
         "  testcar__testperson (TestCar, TestPerson), owner kind CoreAccountGroup, branch main: 1",
