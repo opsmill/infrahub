@@ -551,7 +551,8 @@ CALL (h, current) {
     AND NOT (edge_type = "HAS_NO_OWNER" AND $no_owner)
     CALL (latest) {
         WITH latest
-        WHERE latest.branch = $branch
+        // A branch reads a global edge at its start, so the edge can be closed already
+        WHERE latest.branch = $branch AND latest.to IS NULL
         SET latest.to = $at, latest.to_user_id = $user_id
     }
     CALL (h, peer, edge_type, latest) {

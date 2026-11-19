@@ -71,7 +71,9 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
 - The query reads the edges with the branch of the request and writes on the write branch. The write branch is the
   global branch for a branch-agnostic node. For the owners of an attribute, the branch support of the attribute
   gives the write branch, whatever the branch support of the node.
-- An edge of the write branch that is no longer in the list gets a `to` time.
+- An edge of the write branch that is no longer in the list gets a `to` time. An edge that has a `to` time keeps
+  it. A branch can read a global edge that is closed after the start of the branch, and a later `to` time would
+  show the old owner again on the default branch.
 - On the global branch, that edge also gets a `deleted` edge, as the delete of a node does. A branch reads a global
   edge that was open at the start of the branch, also after the global branch closes it. The `deleted` edge is later,
   so a branch made before the write reads the new state only. A later write that adds back the owner creates a new
