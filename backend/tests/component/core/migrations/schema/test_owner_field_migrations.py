@@ -383,6 +383,11 @@ async def test_merge_skips_a_resolved_owner_conflict_of_a_relationship_that_the_
 
     await _merge(db=db, default_branch=default_branch, branch=branch)
 
+    # The merge carries the hide of the relationship owners, and applies no side of the conflict.
+    assert await _read(db=db, branch=default_branch, field_owners=field_owners) == field_owners.holders(
+        branch=default_branch, relationship=None
+    )
+
     result = await _remove_relationship(default_branch).execute(
         migration_input=MigrationInput(db=db), branch=default_branch
     )
