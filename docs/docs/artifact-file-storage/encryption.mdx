@@ -108,9 +108,9 @@ The line shows the files done and the total, the rate of the last seconds, the e
 
 ### Stop and resume
 
-Press Ctrl-C, or send SIGTERM, to stop the command. The command stops the work in flight, prints the table and exits with code 130 (Ctrl-C) or 143 (SIGTERM). An error that stops the run exits with code 2.
+Press Ctrl-C, or send SIGTERM, to stop the command. The command stops the work in flight, prints the table and exits with code 130 (Ctrl-C) or 143 (SIGTERM). An error that stops the run exits with code 2. The table lists the files that the server confirmed in the page that was not complete in separate rows marked `interrupted page, not saved`. They are not in the state file.
 
-The command writes its position to the state file `infrahub-storage-encrypt.state.json` in the current directory after every page of the listing. To resume after a stop or an error, run the same command again from the same directory, or pass the same `--state-file`. Then:
+The command writes its position to the state file `infrahub-storage-encrypt.state.json` in the current directory after every page of the listing. To resume after a stop or an error, run the same command again from the same directory, or pass the same `--state-file`. Then: A listing of 5,000 files or fewer is one page with the default `--page-size`. A run that stops before that page is complete saves no position, and the next run starts from the first file. Use a smaller `--page-size`, for example 1000, to save the position more often.
 
 - The command repeats the page that was in progress. The files of that page that the server already encrypted show as `already_encrypted`, and nothing is counted twice.
 - A state file that belongs to another server address is refused. Use another `--state-file`, or `--restart`.
