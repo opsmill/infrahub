@@ -61,14 +61,12 @@ class DiffOwnerHoldersQuery(Query):
 
     def __init__(
         self,
-        branch_name: str,
         from_time: Timestamp,
         to_time: Timestamp,
         node_uuids: list[str] | None = None,
         node_kinds: list[str] | None = None,
         **kwargs: Any,
     ) -> None:
-        self.branch_name = branch_name
         self.from_time = from_time
         self.to_time = to_time
         self.node_uuids = node_uuids
@@ -76,9 +74,11 @@ class DiffOwnerHoldersQuery(Query):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        link_filter, link_params = self.branch.get_query_filter_path(at=self.to_time, variable_name="link")
+        self.params.update(link_params)
         self.params.update(
             {
-                "branch_name": self.branch_name,
+                "branch_name": self.branch.name,
                 "from_time": self.from_time.to_string(),
                 "to_time": self.to_time.to_string(),
                 "node_uuids": self.node_uuids,
@@ -107,6 +107,16 @@ class DiffOwnerHoldersQuery(Query):
         query = """
 CALL () {%(patterns)s
 }
+// A kind migration links the vertices of one UUID to the same holder, so only the latest link on the branch counts
+CALL (n, holder) {
+    OPTIONAL MATCH (linked:Node)-[link:HAS_ATTRIBUTE|HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(holder)
+    WHERE linked.uuid = n.uuid AND %(link_filter)s
+    RETURN linked
+    ORDER BY link.branch_level DESC, link.from DESC, link.status ASC
+    LIMIT 1
+}
+WITH n, holder_kind, holder, r
+WHERE linked IS NULL OR linked = n
 WITH n, holder_kind, holder,
     CASE WHEN r.to IS NOT NULL AND $from_time <= r.to < $to_time THEN r.to ELSE r.from END AS changed_at
 WHERE (holder_kind = "attribute" OR n.branch_support = "aware")
@@ -115,7 +125,11 @@ RETURN n.uuid AS node_uuid, n.kind AS node_kind, %(id_func)s(n) AS node_db_id, h
     CASE holder_kind WHEN "attribute" THEN holder.name ELSE holder.attribute END AS attribute_name,
     holder.identifier AS identifier, holder.direction AS direction,
     coalesce(holder.uuid, n.uuid) AS holder_uuid, max(changed_at) AS changed_at
-        """ % {"patterns": "\n    UNION ALL".join(patterns), "id_func": db.get_id_function_name()}
+        """ % {
+            "patterns": "\n    UNION ALL".join(patterns),
+            "link_filter": link_filter,
+            "id_func": db.get_id_function_name(),
+        }
         self.add_to_query(query)
         self.return_labels = [
             "node_uuid",

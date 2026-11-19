@@ -131,6 +131,7 @@ async def test_target_branch_migration(
         pytest.param(NODE_HOLDER, ("dc-emea",), None, id="node-owner-removed"),
         pytest.param(NODE_SOURCES_HOLDER, None, ("dc-emea",), id="node-source-added"),
         pytest.param("driver", None, ("dc-emea",), id="new-field-set"),
+        pytest.param("color", None, ("dc-emea",), id="attribute-owner"),
     ],
 )
 async def test_target_branch_migration_owners(
