@@ -47,13 +47,20 @@ def _holder(default_branch: Branch, field_name: str) -> HolderKey:
     return holder
 
 
-async def _write(db: InfrahubDatabase, branch: Branch, node_id: str, holder: HolderKey, owner_ids: list[str]) -> None:
+async def _write(
+    db: InfrahubDatabase,
+    branch: Branch,
+    node_id: str,
+    holder: HolderKey,
+    owner_ids: list[str],
+    at: Timestamp | None = None,
+) -> None:
     await OwnershipRepository(db=db, branch=branch, at=None).write(
         node_id=node_id,
         holder=holder,
         state=StoredOwnerState(owner_ids=tuple(owner_ids)),
         write_branch=branch,
-        at=Timestamp(),
+        at=at or Timestamp(),
         user_id=USER_ID,
     )
 
@@ -246,6 +253,58 @@ RETURN count(r) AS open_edges
     )
     assert records[0]["open_edges"] == 0
     await verify_graph(db=db, kinds=["TestPerson"])
+
+
+@pytest.mark.parametrize(
+    ("field_name", "on_branch"),
+    [
+        pytest.param(field_name, on_branch, id=f"{branch_id}-{field_name or 'node'}")
+        for branch_id, on_branch in (("default-branch", False), ("branch", True))
+        for field_name in (None, "name")
+    ],
+)
+async def test_owner_write_at_a_time_before_a_committed_node_delete_fails(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person: Node,
+    group_ids: list[str],
+    field_name: str | None,
+    on_branch: bool,
+) -> None:
+    branch = await create_branch(db=db, branch_name="write-before-delete") if on_branch else default_branch
+    holder = _holder(default_branch=default_branch, field_name=field_name) if field_name else NODE_HOLDER
+    # A write takes its time before it waits for the lock that the delete holds.
+    write_at = Timestamp()
+    node = await NodeManager.get_one(db=db, branch=branch, id=person.id, raise_on_error=True)
+    await node.delete(db=db)
+
+    with pytest.raises(QueryError):
+        await _write(db=db, branch=branch, node_id=person.id, holder=holder, owner_ids=group_ids[:1], at=write_at)
+
+    records = await db.execute_query(
+        query="""
+MATCH (n:Node {uuid: $node_id})
+MATCH (h)-[r:HAS_OWNER|HAS_OWNER_SET]->()
+WHERE (h = n OR EXISTS { (n)-[:HAS_ATTRIBUTE|HAS_OWNER_SET]->(h) })
+AND r.status = "active" AND r.to IS NULL
+RETURN count(r) AS open_edges
+""",
+        params={"node_id": person.id},
+    )
+    assert records[0]["open_edges"] == 0
+    await verify_graph(db=db, kinds=["TestPerson"])
+
+
+async def test_owner_write_on_a_branch_ignores_a_later_node_delete_on_the_default_branch(
+    db: InfrahubDatabase, default_branch: Branch, person: Node, group_ids: list[str]
+) -> None:
+    branch = await create_branch(db=db, branch_name="write-before-main-delete")
+    write_at = Timestamp()
+    await person.delete(db=db)
+
+    await _write(db=db, branch=branch, node_id=person.id, holder=NODE_HOLDER, owner_ids=group_ids[:1], at=write_at)
+
+    assert await read_owners(db=db, branch=branch, node_id=person.id, holder=NODE_HOLDER) == tuple(group_ids[:1])
 
 
 @pytest.mark.parametrize("on_branch", [False, True], ids=["default-branch", "branch"])
