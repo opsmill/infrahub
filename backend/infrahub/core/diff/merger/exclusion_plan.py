@@ -20,7 +20,7 @@ from ..ownership_fields import (
     holder_from_field_name,
     is_list_property,
     is_owners_field_name,
-    owner_ids_from_value,
+    stored_owner_ids,
 )
 
 if TYPE_CHECKING:
@@ -176,15 +176,11 @@ class MergeExclusionPlanBuilder:
                     holder = _owner_holder(node=node, field_name=attribute.name, schema_branch=schema_branch)
                     if holder is None:
                         continue
-                    owner_ids = owner_ids_from_value(value=conflict.diff_branch_value)
-                    if owner_ids is None and conflict.diff_branch_value is not None:
-                        # A stored diff of a release with one owner for each attribute holds the owner ID alone.
-                        owner_ids = [conflict.diff_branch_value]
                     self._plan.owner_diff_resolutions.append(
                         OwnerDiffResolution(
                             node_uuid=node.uuid,
                             holder=holder,
-                            owner_ids=tuple(owner_ids) if owner_ids is not None else None,
+                            owner_ids=stored_owner_ids(value=conflict.diff_branch_value),
                         )
                     )
 

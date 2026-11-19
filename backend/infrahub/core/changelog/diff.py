@@ -14,7 +14,7 @@ from infrahub.core.diff.ownership_differ import OwnershipDiffer
 from infrahub.core.diff.ownership_fields import (
     is_list_property,
     is_owners_field_name,
-    owner_ids_from_value,
+    stored_owner_ids,
 )
 from infrahub.core.ownership.fields import (
     ATTRIBUTE_OWNERS_PROPERTY,
@@ -223,7 +223,9 @@ class DiffChangelogCollector:
         for node, field_name, diff_property in owner_lists:
             state = field_states.get((node.uuid, field_name), INHERIT)
             # A template mark that the branch closes is a change also when the owners stay the same.
-            if state.template_id is None and owner_list_value(owner_ids=state.owner_ids) == diff_property.new_value:
+            if state.template_id is None and owner_list_value(owner_ids=state.owner_ids) == owner_list_value(
+                owner_ids=stored_owner_ids(value=diff_property.new_value)
+            ):
                 held.add((node.uuid, field_name))
         return held
 
@@ -364,16 +366,17 @@ def _add_owners_property(attribute: AttributeChangelog, diff_property: EnrichedD
     A change between one owner and none gives the `owner` property with the owner ID. Any other change gives the
     `owners` property with the owner lists.
     """
-    values = [diff_property.new_value, diff_property.previous_value]
-    owner_ids = [owner_ids_from_value(value=value) for value in values]
-    if all(value is None or (ids is not None and len(ids) == 1) for value, ids in zip(values, owner_ids, strict=True)):
-        current, previous = (ids[0] if ids else None for ids in owner_ids)
+    current_ids, previous_ids = (
+        stored_owner_ids(value=value) for value in (diff_property.new_value, diff_property.previous_value)
+    )
+    if all(ids is None or len(ids) == 1 for ids in (current_ids, previous_ids)):
+        current, previous = (ids[0] if ids else None for ids in (current_ids, previous_ids))
         attribute.add_property(name=NodeProperty.OWNER.value, value_current=current, value_previous=previous)
         return
     attribute.add_property(
         name=ATTRIBUTE_OWNERS_PROPERTY,
-        value_current=diff_property.new_value,
-        value_previous=diff_property.previous_value,
+        value_current=owner_list_value(owner_ids=current_ids),
+        value_previous=owner_list_value(owner_ids=previous_ids),
     )
 
 
