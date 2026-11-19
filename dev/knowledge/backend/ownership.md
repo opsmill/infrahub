@@ -203,9 +203,9 @@ the same order of profiles, and a deleted owner does not count.
   default branch (`BulkMergeNodeExistenceQuery`). An attribute that a kind migration of the branch moved to
   another `Node` vertex keeps its owners.
 - The object conversion (`convert_object_type`) reads the owner states of the node in the transaction of the
-  conversion, before the delete, and writes them on the new node. The owners of an attribute or of a relationship go to each field of the new kind that the mapping
-  fills from it. A field that the mapping fills with a value or with the default gets no owner state. The owners of
-  a relationship that fills no field of the new kind are not copied.
+  conversion, before the delete, and writes them on the new node. The owners of an attribute or of a relationship go
+  to each field of the new kind that the mapping fills from it. A field that the mapping fills with a value or with
+  the default gets no owner state. The owners of a relationship that fills no field of the new kind are not copied.
 
 ## Upgrade
 
