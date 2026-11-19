@@ -320,7 +320,14 @@ function SchemaMigrationsPrototype() {
 
   return (
     <div ref={area} className="min-h-0 grow">
-      {frame && <DesignHistory slug="schema-migrations" variants={VARIANTS} frame={frame} />}
+      {frame && (
+        <DesignHistory
+          slug="schema-migrations"
+          variants={VARIANTS}
+          frame={frame}
+          prUrl="https://github.com/opsmill/infrahub/pull/11662"
+        />
+      )}
       <DataSetToggle />
     </div>
   );
