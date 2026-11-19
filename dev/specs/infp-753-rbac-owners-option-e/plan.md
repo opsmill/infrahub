@@ -110,9 +110,10 @@ backend/infrahub/
 │   ├── resolution.py                        # P: order of sources for a node and for a field
 │   ├── resolver.py                          # P: batch read of the owners that apply
 │   ├── writer.py                            # P: states, template copy, legacy `owner` write
-│   ├── input.py                             # P: parse and validate owner input
-│   ├── filter.py                            # P: owner filter in list and count queries
-│   ├── sources.py                           # Node sources: write, filter. The read is in queries.py
+│   ├── fields.py                            # Reserved field names of the changelog and the diff, in both directions
+│   ├── input.py                             # P: owner kind check; the input parser is in pull request 2
+│   ├── filter.py                            # P: owner filter in list and count queries (pull request 2)
+│   ├── sources.py                           # Node sources: write. The filter is in pull request 2. The read is in queries.py
 │   └── report.py                            # Upgrade report queries
 ├── core/constants/database.py               # P: new edge types
 ├── core/graph/schema.py                     # P: new vertices and edges
@@ -125,7 +126,6 @@ backend/infrahub/
 ├── core/node/__init__.py                    # P: owner input, delete closes owner edges
 ├── core/node/create.py                      # P: template copy; change check for a create
 ├── core/diff/ownership_differ.py            # P: owner changes in the diff
-├── core/diff/ownership_fields.py            # P: reserved field names in the diff
 ├── core/diff/query/ownership.py             # P: diff query for owner edges
 ├── core/diff/calculator.py                  # P
 ├── core/diff/query_parser.py                # P
@@ -215,7 +215,7 @@ The decisions, the API review and the spike produce no pull request. The spike b
 
 | Order | Pull request | Content | Layers | Needs |
 |---|---|---|---|---|
-| 1 | Storage, branch and upgrade | Graph structure, `core/ownership/` (storage, resolution, owner filter, node sources), the copy of template owners at the create, query benchmarks, `dev/knowledge/backend/database-schema.md`. Diff, merge, conflicts, rebase and changelog of owners and sources. Graph migrations, schema migrations, the kind change, the object conversion, the upgrade report, the refusal of repositories as owners | Database layer, branch layer, upgrade | The spike. The storage option is decided: option E |
+| 1 | Storage, branch and upgrade | Graph structure, `core/ownership/` (storage, resolution of node owners, node sources; the owner filter moved to pull request 2 on 2026-11-19), the copy of template owners at the create, query benchmarks, `dev/knowledge/backend/database-schema.md`. Diff, merge, conflicts, rebase and changelog of owners and sources. Graph migrations, schema migrations, the kind change, the object conversion, the upgrade report, the refusal of repositories as owners | Database layer, branch layer, upgrade | The spike. The storage option is decided: option E |
 | 2 | GraphQL API | Types, resolvers, fields, inputs and filters, the deprecated `owner` and `is_protected`, owner labels in the activity log, E2E tests | GraphQL layer | Pull request 1 |
 | 3 | Permissions and object files | The change check and its calls in the mutations, "applies to" and its graph migration, the permission report of each node, `dev/knowledge/backend/permissions.md` and `dev/knowledge/backend/mutations.md`. The account group tree: the setting, the permission queries, the report. Object files: the backend part and the submodule pointer | Permission layer, account group tree, object files | Pull request 2, and the pull request on the SDK repository |
 

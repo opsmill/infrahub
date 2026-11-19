@@ -124,8 +124,9 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
 - When the caller gives no time, `Node.delete` reads its time after the lock, so it also closes the owner edges
   that a write commits while the delete waits for the lock.
 - The check that the node is active comes after the lock, so it reads a delete of the node that another
-  transaction commits while the query waits for the lock. The query then writes nothing and raises `QueryError`,
-  for every kind of holder.
+  transaction commits while the query waits for the lock. The query then writes nothing, for every kind of holder.
+  It raises `QueryError`, unless the caller sets `skip_inactive`. Only the owner resolution of a merge sets it: the
+  merge skips the node and logs a warning (see Diff and Merge).
 - The caller gives the write time before the query waits for the lock, so that delete can have a later time than
   the write. The check also refuses the write when the node has a `deleted` `IS_PART_OF` edge after `$at`, on a
   branch that the write branch reads at `$at`. An isolated branch reads its origin branch at the start of the
@@ -163,8 +164,7 @@ branches and at all times, so a closed edge also makes the query read the holder
 ## Owner Kinds
 
 - An owner is an account or an account group (`OWNER_KINDS` in `core/ownership/input.py`). A repository is refused.
-- A source is an account, an account group, a repository, a resource pool, a profile or an object template
-  (`SOURCE_KINDS`).
+- No code of this pull request checks the kind of a source. The input of pull request 2 adds that check.
 - The create and the update of a node check the `owner` property of each attribute and of each link before the first
   write (`check_field_owner_kinds`), so a refused owner leaves the node unchanged also outside a transaction. The
   update checks only an owner that the database does not hold yet, so an owner that was deleted later does not stop
@@ -188,10 +188,11 @@ rules are in `core/ownership/resolution.py`.
 - The walk and the read of one node find the parent with two different Cypher patterns. So the resolver checks the
   result: when a parent or a profile that the rules need is not in the result, the resolver reads it with one more
   query for each level (`_needed`). The results are then the same if the walk misses a node.
-- A change of the rules must reach four places: `core/ownership/resolution.py`, `_needed`, `OwnerFilter`, and the
-  walk. The first three give the result. The walk only reads ahead: it copies the rules so that one query reads all
-  the nodes. When the walk misses a node that the rules need, `_needed` reads that node with one more query, so a
-  walk that does not follow a change of the rules costs queries but does not change the result.
+- A change of the rules must reach three places: `core/ownership/resolution.py`, `_needed`, and the walk. The
+  first two give the result. The owner list filter of pull request 2 must give the same result. The walk only
+  reads ahead: it copies the rules so that one query reads all the nodes. When the walk misses a node that the
+  rules need, `_needed` reads that node with one more query, so a walk that does not follow a change of the rules
+  costs queries but does not change the result.
 
 The owners that apply to a node come from the first level that has a state:
 
@@ -202,26 +203,33 @@ The owners that apply to a node come from the first level that has a state:
 4. Its parent, with the same order on the parent (`PARENT`). The parent is the peer of the relationship of kind
    `Parent`, otherwise the peer of the hierarchy relationship `parent`.
 
-The owners that apply to a field: the own state of the field, then the profiles that give owners to that field,
-then the template copy of the field, then the owners that apply to the node (`OBJECT`).
+The resolution of the owners that apply to a field, and of the owners that a profile or an object template gives,
+is in pull request 2.
 
 - The walk stops after `MAX_INHERITANCE_DEPTH` parents. A node with more parents and no state below the limit
   gets no inherited owner.
 - A deleted owner stays in the list.
 - `state` is always what the item itself stores, whatever the origin of the owners that apply.
 
-## List Filters
+## Diff and Merge
 
-`NodeGetListQuery` handles three filters before the pagination, so the count is correct:
+Each holder is one property of the diff, and its value is the sorted list of owner IDs. The reserved field names of
+the holders that are not attributes are in `core/ownership/fields.py` (see [Diff Conflicts](diff-conflicts.md)).
 
-| Filter | Built by | Start of the query |
-|---|---|---|
-| `node_metadata__owners__ids` | `OwnerFilter` (`core/ownership/filter.py`) | the owners, then down to the nodes that inherit |
-| `node_metadata__owners__isnull` | `OwnerFilter` | all nodes with a live owner, then the nodes of the kind that are not in that set when the value is `true` |
-| `node_metadata__sources__ids` | `SourceFilter` (`core/ownership/sources.py`) | the sources |
-
-`OwnerFilter` must give each node the answer of the resolver: the same parent for each kind, the same depth limit,
-the same order of profiles, and a deleted owner does not count.
+- `DiffOwnerHoldersQuery` (`core/diff/query/ownership.py`) lists the holders whose owner edges changed on a branch.
+  A kind migration links the old and the new `Node` vertex of a UUID to the same attribute or set. So the query keeps
+  the row of the vertex whose `HAS_ATTRIBUTE`, `HAS_OWNER_SET` or `HAS_TARGET_OWNER_SET` link to the holder is the
+  latest on the queried branch, and the diff gives one node for each UUID.
+- `BulkMergeOwnershipEdgesQuery` (`core/diff/query/bulk_merge.py`) copies the owner edges of the branch as a set for
+  each holder, edge type and owner. It writes the edges of a node to the `Node` vertex that is active on the target
+  branch, which a kind migration on the target branch replaces. A `deleted` edge of the branch from a `Node` vertex
+  closes the active edge on each `Node` vertex of the UUID.
+- `ConflictsEnricher._have_same_value` (`core/diff/conflicts_enricher.py`) gives no conflict for an owner list or a
+  source list with the same owner IDs on both branches, or with an update that keeps the same list.
+- `OwnerDiffResolution` (`core/diff/merger/exclusion_plan.py`) is a holder whose owner conflict the branch side won.
+  `DiffMerger._apply_owner_diff_resolutions` (`core/diff/merger/merger.py`) then writes the list of the branch on the
+  holder, with `keep_deleted_owners` and `skip_inactive`. When the node is not active on the target branch, the merge
+  skips the holder and logs a warning.
 
 ## Schema Changes and Kind Changes
 
@@ -273,6 +281,14 @@ holds, so it runs before the upgrade.
 
 - The diff and the merge of owners read branch-aware nodes, and the branch-aware attributes of all nodes. The owners
   of a relationship field (`FIELD_SET`) follow the branch support of the node, not of the relationship.
+- Outside a transaction, a pool allocation for the peer of a link with an owner stays when the owner kind check
+  then refuses the owner. The update resolves the peers of a relationship before the check, to compare each link
+  with the database.
+- The upgrade ends only the attribute owners that are repositories (`m085`). An attribute owner of another kind that
+  is not an account or an account group stays readable. `infrahub db ownership-report` lists them, by kind, before
+  the upgrade.
+- Two transactions that write owners on the same nodes in a different order can deadlock, because each one locks
+  the nodes in its own order. No test covers this case.
 - The graph migration `m084` skips an attribute whose owner a branch wrote and then cleared before the upgrade.
   The release before closed the edge of the branch at the clear, and added its own `deleted` edge for the owner of
   the default branch at that time. So a read on the branch at a time between the write and the clear gives two
@@ -306,14 +322,17 @@ holds, so it runs before the upgrade.
 | File | Content |
 |---|---|
 | `core/ownership/models.py` | Holders, states and the resolved result |
-| `core/ownership/constants.py` | The depth limit, the node limit of the walk, the names of the list filters and the ID of the `NoOwner` vertex |
+| `core/ownership/constants.py` | The depth limit, the node limit of the walk and the ID of the `NoOwner` vertex |
 | `core/ownership/queries.py` | The read query, the write query and the close query |
 | `core/ownership/repository.py` | `OwnershipRepository`: the reads and writes as one branch does them |
 | `core/ownership/resolver.py`, `resolution.py` | The owners that apply |
-| `core/ownership/filter.py`, `sources.py` | The list filters and the source edges |
-| `core/ownership/input.py` | The kinds that can be an owner or a source, and the checks of owner references |
+| `core/ownership/sources.py` | The source edges |
+| `core/ownership/input.py` | The kinds that can be an owner, and the checks of owner references |
 | `core/ownership/writer.py` | `OwnershipWriter`: the write of one holder of a saved node |
-| `core/ownership/fields.py` | The reserved field names and the value of an owner list, for the changelog and the diff |
+| `core/ownership/fields.py` | The reserved field names in both directions, the value and the labels of an owner list, for the changelog and the diff |
 | `core/ownership/report.py` | The data of `infrahub db ownership-report` |
-| `core/diff/ownership_differ.py`, `core/diff/ownership_fields.py` | The owner lists in the diff |
+| `core/diff/ownership_differ.py`, `core/diff/query/ownership.py` | The owner lists in the diff |
+| `core/diff/query/bulk_merge.py` | `BulkMergeOwnershipEdgesQuery`: the merge of the owner edges |
+| `core/diff/conflicts_enricher.py` | `ConflictsEnricher._have_same_value`: no conflict for the same owner list |
+| `core/diff/merger/exclusion_plan.py`, `core/diff/merger/merger.py` | `OwnerDiffResolution` and `DiffMerger._apply_owner_diff_resolutions`: the owner conflicts that the branch side won |
 | `core/migrations/query/owner_set_attribute.py` | `OwnerSetKeyMigrationQuery`: the `OwnerSet` keys at a rename or a removal of a field |
