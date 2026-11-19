@@ -31,8 +31,8 @@ description: "Task list for recording template fingerprints in the database inst
 
 **Purpose**: Create the new packages and load the domain knowledge.
 
-- [ ] T001 Read `dev/knowledge/backend/display-labels-and-hfid.md` (section "Async Backfill After Schema Changes"), `dev/knowledge/backend/computed-attributes.md` (self-targeting triggers), `dev/knowledge/backend/events.md` (section "Branch scoping of automations"), `dev/knowledge/backend/query-pattern.md`, `dev/knowledge/backend/database-schema.md` and `dev/knowledge/backend/testing.md` before writing code
-- [ ] T002 Create the empty packages `backend/infrahub/core/template_fingerprint/__init__.py`, `backend/tests/unit/core/template_fingerprint/__init__.py`, `backend/tests/component/core/template_fingerprint/__init__.py` and `backend/tests/component/hfid/__init__.py`
+- [X] T001 Read `dev/knowledge/backend/display-labels-and-hfid.md` (section "Async Backfill After Schema Changes"), `dev/knowledge/backend/computed-attributes.md` (self-targeting triggers), `dev/knowledge/backend/events.md` (section "Branch scoping of automations"), `dev/knowledge/backend/query-pattern.md`, `dev/knowledge/backend/database-schema.md` and `dev/knowledge/backend/testing.md` before writing code
+- [X] T002 Create the empty packages `backend/infrahub/core/template_fingerprint/__init__.py`, `backend/tests/unit/core/template_fingerprint/__init__.py`, `backend/tests/component/core/template_fingerprint/__init__.py` and `backend/tests/component/hfid/__init__.py`
 
 ---
 
