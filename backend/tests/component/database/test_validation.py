@@ -82,6 +82,21 @@ SET hae.status = "deleted"
     await db.execute_query(query=query, params={"node_id": car.id})
 
 
+async def _delete_attribute_edge_with_owner_state(db: InfrahubDatabase, car: Node, person: Node) -> None:
+    """Give the car's name a "no owner" state copied from a template, then mark its HAS_ATTRIBUTE edge deleted."""
+    query = """
+MATCH (:Node {uuid: $node_id})-[hae:HAS_ATTRIBUTE {status: "active"}]->(a:Attribute {name: "name"})
+WHERE hae.to IS NULL
+WITH hae, a LIMIT 1
+MATCH (no_owner:NoOwner)
+MATCH (template:Node {uuid: $template_id})
+CREATE (a)-[:HAS_NO_OWNER {branch: hae.branch, branch_level: hae.branch_level, status: "active", from: hae.from}]->(no_owner)
+CREATE (a)-[:HAS_OWNER_SOURCE {branch: hae.branch, branch_level: hae.branch_level, status: "active", from: hae.from}]->(template)
+SET hae.status = "deleted"
+    """
+    await db.execute_query(query=query, params={"node_id": car.id, "template_id": person.id})
+
+
 async def _add_edge_after_node_delete(db: InfrahubDatabase, car: Node, person: Node) -> None:
     """Delete the car, then attach an edge to it afterwards."""
     query = """
@@ -325,6 +340,15 @@ GRAPH_DAMAGE_CASES = [
         damage=_delete_attribute_edge_only,
         expected_violations=2,
         scoped_violations=2,
+        included_kinds=["TestCar"],
+        excluded_kinds=["TestPerson"],
+    ),
+    GraphDamageCase(
+        name="orphaned_active_owner_state_edges",
+        check=GraphCheck.ORPHANED_ACTIVE_EDGES,
+        damage=_delete_attribute_edge_with_owner_state,
+        expected_violations=4,
+        scoped_violations=4,
         included_kinds=["TestCar"],
         excluded_kinds=["TestPerson"],
     ),

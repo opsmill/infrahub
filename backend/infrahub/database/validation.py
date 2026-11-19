@@ -260,7 +260,7 @@ WHERE open_edges = 0 AND delete_time IS NOT NULL
 // The delete writes the field's edges at the same instant, so only what is still open, or what carries a
 // later time, is a violation
 // ----------------
-MATCH (field)-[child:HAS_VALUE|IS_PROTECTED|HAS_OWNER|HAS_SOURCE|IS_RELATED]-(peer)
+MATCH (field)-[child:HAS_VALUE|IS_PROTECTED|HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE|HAS_SOURCE|IS_RELATED]-(peer)
 WHERE coalesce(peer.uuid, "") <> node_id
 // ----------------
 // A branch that forked after the delete inherits it, so writing the field there is an update to something
