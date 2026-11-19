@@ -8,6 +8,36 @@
       "source": "bundled",
       "installed_at": "2026-04-27T05:54:41.080920+00:00",
       "updated_at": "2026-04-27T05:54:41.080932+00:00"
+    },
+    "opsmill-prep": {
+      "name": "OpsMill preparation",
+      "version": "1.0.0",
+      "description": "Prepares a feature for implementation: specify, plan and critique, tasks, then an alignment check against the request. Each phase is one step, and the workflow sets when a phase is repeated and how often.",
+      "source": "catalog",
+      "catalog_name": "opsmill",
+      "url": "http://127.0.0.1:36007/opsmill-prep-1.0.0.zip",
+      "installed_at": "2026-11-19T10:54:07.091541+00:00",
+      "updated_at": "2026-11-19T10:54:07.091555+00:00"
+    },
+    "opsmill-implement": {
+      "name": "OpsMill implementation",
+      "version": "1.0.0",
+      "description": "Implements the tasks of a spec directory chunk by chunk, reviews the result, then writes a report. Each phase is one step, and the workflow sets when the chunk step is repeated and how often.",
+      "source": "catalog",
+      "catalog_name": "opsmill",
+      "url": "http://127.0.0.1:36007/opsmill-implement-1.0.0.zip",
+      "installed_at": "2026-11-19T10:54:07.105332+00:00",
+      "updated_at": "2026-11-19T10:54:07.105345+00:00"
+    },
+    "opsmill-auto": {
+      "name": "OpsMill end to end",
+      "version": "1.0.0",
+      "description": "Runs the opsmill-prep workflow, then the opsmill-implement workflow when prep reports that the spec is ready.",
+      "source": "catalog",
+      "catalog_name": "opsmill",
+      "url": "http://127.0.0.1:36007/opsmill-auto-1.0.0.zip",
+      "installed_at": "2026-11-19T10:54:07.121454+00:00",
+      "updated_at": "2026-11-19T10:54:07.121467+00:00"
     }
   }
 }

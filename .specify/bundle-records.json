@@ -1,0 +1,194 @@
+{
+  "schema_version": "1.0",
+  "updated_at": "2026-11-19T10:54:07Z",
+  "bundles": [
+    {
+      "bundle_id": "opsmill-jira",
+      "version": "1.0.0",
+      "installed_at": "2026-11-19T10:54:07Z",
+      "contributed_components": [
+        {
+          "kind": "extensions",
+          "id": "opsmill",
+          "version": "1.5.0",
+          "source": "opsmill"
+        },
+        {
+          "kind": "extensions",
+          "id": "checkpoint",
+          "version": "1.0.0",
+          "source": "opsmill"
+        },
+        {
+          "kind": "extensions",
+          "id": "critique",
+          "version": "1.0.0",
+          "source": "opsmill"
+        },
+        {
+          "kind": "extensions",
+          "id": "reconcile",
+          "version": "1.3.1",
+          "source": "opsmill"
+        },
+        {
+          "kind": "extensions",
+          "id": "git",
+          "version": "1.0.1"
+        },
+        {
+          "kind": "presets",
+          "id": "critique-opsmill",
+          "version": "1.5.0",
+          "source": "opsmill",
+          "priority": 10,
+          "strategy": "replace"
+        },
+        {
+          "kind": "presets",
+          "id": "reconcile-opsmill",
+          "version": "1.5.0",
+          "source": "opsmill",
+          "priority": 10,
+          "strategy": "replace"
+        },
+        {
+          "kind": "presets",
+          "id": "jira-branch",
+          "version": "1.5.0",
+          "source": "opsmill",
+          "priority": 10,
+          "strategy": "replace"
+        },
+        {
+          "kind": "presets",
+          "id": "taskstoissues-jira",
+          "version": "1.5.0",
+          "source": "opsmill",
+          "priority": 10,
+          "strategy": "replace"
+        },
+        {
+          "kind": "workflows",
+          "id": "opsmill-prep",
+          "version": "1.0.0",
+          "source": "opsmill"
+        },
+        {
+          "kind": "workflows",
+          "id": "opsmill-implement",
+          "version": "1.0.0",
+          "source": "opsmill"
+        },
+        {
+          "kind": "workflows",
+          "id": "opsmill-auto",
+          "version": "1.0.0",
+          "source": "opsmill"
+        }
+      ],
+      "required_components": [
+        {
+          "kind": "extensions",
+          "id": "opsmill",
+          "version": "1.5.0",
+          "source": "opsmill"
+        },
+        {
+          "kind": "extensions",
+          "id": "checkpoint",
+          "version": "1.0.0",
+          "source": "opsmill"
+        },
+        {
+          "kind": "extensions",
+          "id": "critique",
+          "version": "1.0.0",
+          "source": "opsmill"
+        },
+        {
+          "kind": "extensions",
+          "id": "reconcile",
+          "version": "1.3.1",
+          "source": "opsmill"
+        },
+        {
+          "kind": "extensions",
+          "id": "git",
+          "version": "1.0.1"
+        },
+        {
+          "kind": "presets",
+          "id": "critique-opsmill",
+          "version": "1.5.0",
+          "source": "opsmill",
+          "priority": 10,
+          "strategy": "replace"
+        },
+        {
+          "kind": "presets",
+          "id": "reconcile-opsmill",
+          "version": "1.5.0",
+          "source": "opsmill",
+          "priority": 10,
+          "strategy": "replace"
+        },
+        {
+          "kind": "presets",
+          "id": "jira-branch",
+          "version": "1.5.0",
+          "source": "opsmill",
+          "priority": 10,
+          "strategy": "replace"
+        },
+        {
+          "kind": "presets",
+          "id": "taskstoissues-jira",
+          "version": "1.5.0",
+          "source": "opsmill",
+          "priority": 10,
+          "strategy": "replace"
+        },
+        {
+          "kind": "workflows",
+          "id": "opsmill-prep",
+          "version": "1.0.0",
+          "source": "opsmill"
+        },
+        {
+          "kind": "workflows",
+          "id": "opsmill-implement",
+          "version": "1.0.0",
+          "source": "opsmill"
+        },
+        {
+          "kind": "workflows",
+          "id": "opsmill-auto",
+          "version": "1.0.0",
+          "source": "opsmill"
+        }
+      ],
+      "installed_versions": {
+        "extensions:opsmill": "1.5.0",
+        "extensions:checkpoint": "1.0.0",
+        "extensions:critique": "1.0.0",
+        "extensions:reconcile": "1.3.1",
+        "extensions:git": "1.0.1",
+        "presets:critique-opsmill": "1.5.0",
+        "presets:reconcile-opsmill": "1.5.0",
+        "presets:jira-branch": "1.5.0",
+        "presets:taskstoissues-jira": "1.5.0",
+        "workflows:opsmill-prep": "1.0.0",
+        "workflows:opsmill-implement": "1.0.0",
+        "workflows:opsmill-auto": "1.0.0"
+      },
+      "bundle_references": [
+        {
+          "id": "opsmill-sdd",
+          "version": "1.0.0",
+          "source": "opsmill"
+        }
+      ]
+    }
+  ]
+}

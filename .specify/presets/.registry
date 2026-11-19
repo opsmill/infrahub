@@ -1,24 +1,13 @@
 {
   "schema_version": "1.0",
   "presets": {
-    "jira-branch": {
-      "version": "1.0.0",
-      "source": "local",
-      "manifest_hash": "sha256:c06329b9c0f45605abdf8513eaf04b6cdf0955e5c9a24b830c0d5da3a335457f",
-      "enabled": true,
-      "priority": 10,
-      "registered_commands": {
-        "claude": [
-          "speckit.git.feature"
-        ]
-      },
-      "registered_skills": {},
-      "installed_at": "2026-11-03T13:40:37.562659+00:00"
-    },
     "critique-opsmill": {
-      "version": "1.0.0",
-      "source": "local",
-      "manifest_hash": "sha256:0dfb76ba3f29dc941a01ed43cda981777fb1463466a9ebaedc796fd85962ffff",
+      "version": "1.5.0",
+      "source": {
+        "kind": "catalog",
+        "catalog": "opsmill"
+      },
+      "manifest_hash": "sha256:be033b57d6a53bf1db8644b66dba249e05d2c2d8f69113a51300a17c2289fef2",
       "enabled": true,
       "priority": 10,
       "registered_commands": {
@@ -26,8 +15,75 @@
           "speckit.critique.run"
         ]
       },
-      "registered_skills": {},
-      "installed_at": "2026-11-03T13:40:38.223314+00:00"
+      "registered_skills": {
+        "claude": [
+          "speckit-critique-run"
+        ]
+      },
+      "installed_at": "2026-11-19T10:54:06.856138+00:00"
+    },
+    "reconcile-opsmill": {
+      "version": "1.5.0",
+      "source": {
+        "kind": "catalog",
+        "catalog": "opsmill"
+      },
+      "manifest_hash": "sha256:74470cf9906dc61bcefbea8747d3a8ea3f6454728601c80d76a6fc2faa8db1cf",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.reconcile.run"
+        ]
+      },
+      "registered_skills": {
+        "claude": [
+          "speckit-reconcile-run"
+        ]
+      },
+      "installed_at": "2026-11-19T10:54:06.908769+00:00"
+    },
+    "jira-branch": {
+      "version": "1.5.0",
+      "source": {
+        "kind": "catalog",
+        "catalog": "opsmill"
+      },
+      "manifest_hash": "sha256:62c8e9774bbbe47abaa9f741fa80ec6d4c57de50149b9c3c5eeb4ea11bb4975a",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.git.feature"
+        ]
+      },
+      "registered_skills": {
+        "claude": [
+          "speckit-git-feature"
+        ]
+      },
+      "installed_at": "2026-11-19T10:54:06.962128+00:00"
+    },
+    "taskstoissues-jira": {
+      "version": "1.5.0",
+      "source": {
+        "kind": "catalog",
+        "catalog": "opsmill"
+      },
+      "manifest_hash": "sha256:bbfb8c499367de7b8c813040bd0d92b69c72502ad89dbe6dc0e506263d602b06",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.taskstoissues"
+        ]
+      },
+      "registered_skills": {
+        "claude": [
+          "speckit-taskstoissues"
+        ]
+      },
+      "installed_at": "2026-11-19T10:54:07.018561+00:00"
     }
   }
 }

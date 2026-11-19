@@ -4,16 +4,7 @@ Overrides `speckit.critique.run` from the [spec-kit-critique](https://github.com
 
 ## Install
 
-Install the `critique` extension first, otherwise the override is skipped:
-
-```bash
-specify extension add critique \
-  --from https://github.com/arunt14/spec-kit-critique/archive/refs/tags/v1.0.0.zip
-git clone -b <tag> https://github.com/opsmill/opsmill-speckit
-specify preset add --dev opsmill-speckit/presets/critique-opsmill
-```
-
-`<tag>` is a release that includes this preset (see [`presets/CHANGELOG.md`](../CHANGELOG.md)). If the preset was added before the extension, run `specify preset remove critique-opsmill` and add it again.
+Installed by the `opsmill-sdd` bundle, which also installs the `critique` extension: see [Install](../../README.md#install) in the repo README.
 
 ## License
 

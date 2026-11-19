@@ -1,0 +1,53 @@
+schema_version: "1.0"
+extension:
+  id: "reconcile"
+  name: "Reconcile Extension"
+  version: "1.3.1"
+  description: "Reconcile implementation drift by surgically updating the feature's own spec, plan, and tasks."
+  category: "docs"
+  effect: "read-write"
+  author: "Stanislav Deviatov"
+  repository: "https://github.com/stn1slv/spec-kit-reconcile"
+  homepage: "https://github.com/stn1slv/spec-kit-reconcile"
+  license: "MIT"
+requires:
+  # The command runs check-prerequisites.sh --json --paths-only, reads
+  # .specify/feature.json, and resolves templates through the override stack
+  # that 0.16.2 introduced.
+  speckit_version: ">=0.16.2"
+provides:
+  commands:
+    - name: "speckit.reconcile.run"
+      file: "commands/reconcile.md"
+      description: "Reconcile implementation drift from a gap report"
+hooks:
+  # Prompt strings are copied verbatim into .specify/extensions.yml and are
+  # never passed through the command renderer, so a __SPECKIT_COMMAND_*__ token
+  # would reach the user unresolved and a literal `/speckit.…` would be wrong
+  # for every skills-based agent. Describe the arguments; never the invocation.
+  #
+  # `priority` is metadata for now: the command templates surface hooks in
+  # configured order and do not sort by it yet. 20 puts this after the git
+  # extension's commit prompt (10), which is the order that makes sense --
+  # commit the implementation, then reconcile what it drifted.
+  after_implement:
+    command: "speckit.reconcile.run"
+    priority: 20
+    optional: true
+    prompt: "Did implementation surface a discovery the team accepts, or a gap the artifacts should record? Re-run with a feature path and a description of what drifted, e.g. specs/001-feature the screen shipped but is unreachable."
+    description: "Amend the feature's spec, plan, and tasks from a gap report"
+  # Converge appends work the artifacts call for. When one of its findings
+  # shows a discovery the team decides to accept, the artifacts need to record
+  # that decision, which is what this command does. It never treats the code
+  # itself as the source of intent.
+  after_converge:
+    command: "speckit.reconcile.run"
+    priority: 20
+    optional: true
+    prompt: "Did convergence surface a discovery the team accepts that the artifacts do not record yet? Re-run this command with a feature path and a description of what drifted, e.g. specs/001-feature the endpoint shipped but the plan never declared it."
+    description: "Amend the feature's spec, plan, and tasks from a gap report"
+tags:
+  - "reconcile"
+  - "drift"
+  - "tasks"
+  - "remediation"

@@ -1,0 +1,158 @@
+schema_version: "1.0"
+workflow:
+  id: "opsmill-prep"
+  name: "OpsMill preparation"
+  version: "1.0.0"
+  author: "opsmill"
+  description: "Prepares a feature for implementation: specify, plan and critique, tasks, then an alignment check against the request. Each phase is one step, and the workflow sets when a phase is repeated and how often."
+
+requires:
+  speckit_version: ">=1.2.4"
+  integrations:
+    any:
+      - "claude"
+
+inputs:
+  spec:
+    type: string
+    required: true
+    prompt: "Describe the feature, or give the URL of the ticket or PRD"
+  integration:
+    type: string
+    default: "auto"
+    prompt: "Integration to use ('auto' uses the project's integration)"
+
+steps:
+  # One preparation pass: spec, plan and critique, tasks, alignment check.
+  # The pass is repeated while the alignment check finds that the spec drifted
+  # from the request: the first pass, then two remediation passes at most.
+  # Each phase is followed by a commit of what it wrote.
+  - id: pass
+    type: do-while
+    max_iterations: 3
+    condition: "{{ not (steps.critique.output.stdout | contains('CRITIQUE_VERDICT: RETHINK')) and (steps.align.output.stdout | default('') | contains('ALIGNMENT: SIGNIFICANT_DRIFT')) }}"
+    steps:
+      # The first pass writes spec.md from the request. A remediation pass
+      # corrects spec.md from the findings of the alignment check.
+      - id: spec
+        type: if
+        condition: "{{ steps.align.output.stdout | default('') | contains('ALIGNMENT: SIGNIFICANT_DRIFT') }}"
+        then:
+          - id: realign
+            command: speckit.opsmill.prep-realign
+            integration: "{{ inputs.integration }}"
+            input:
+              args: "{{ inputs.spec }}"
+        else:
+          # Left alone, specify ends on its open questions and leaves them
+          # in the spec, so the request carries the instruction to decide.
+          - id: specify
+            command: speckit.specify
+            integration: "{{ inputs.integration }}"
+            input:
+              args: "{{ inputs.spec }}\n\nNobody can answer a question during this run. Decide every open point yourself, record each decision in the Assumptions section, and leave no clarification marker in the spec."
+      - id: commit-spec
+        type: shell
+        run: "git add -A && (git diff --cached --quiet || git commit -q -m 'specify: write the spec')"
+      # A phase that writes nothing, for example because Claude Code refused
+      # it a tool, stops the run here instead of in the last step.
+      - id: check-spec
+        type: shell
+        run: "python3 -c \"import json, pathlib, sys; f = pathlib.Path('.specify/feature.json'); d = f.exists() and pathlib.Path(json.loads(f.read_text())['feature_directory']); sys.exit(0 if d and (d / 'spec.md').is_file() else 'BLOCKED: the specify phase wrote no spec.md. The output of that phase says why, often a tool that Claude Code refused')\""
+
+      # Plan, then critique. Repeated while the critique verdict is RETHINK,
+      # three times at most.
+      - id: design
+        type: do-while
+        max_iterations: 3
+        condition: "{{ steps.critique.output.stdout | contains('CRITIQUE_VERDICT: RETHINK') }}"
+        steps:
+          # After a RETHINK, the plan is reworked from the critique report.
+          - id: plan-or-rework
+            type: if
+            condition: "{{ steps.critique.output.stdout | default('') | contains('CRITIQUE_VERDICT: RETHINK') }}"
+            then:
+              - id: replan
+                command: speckit.plan
+                integration: "{{ inputs.integration }}"
+                input:
+                  args: "The latest critique report in the feature directory rejected the current design. Rework the plan to resolve its findings. Correct spec.md first when the report says that the spec itself is the problem."
+            else:
+              - id: plan
+                command: speckit.plan
+                integration: "{{ inputs.integration }}"
+          - id: commit-plan
+            type: shell
+            run: "git add -A && (git diff --cached --quiet || git commit -q -m 'plan: write the implementation plan')"
+          - id: check-plan
+            type: shell
+            run: "python3 -c \"import json, pathlib, sys; d = pathlib.Path(json.loads(pathlib.Path('.specify/feature.json').read_text())['feature_directory']); sys.exit(0 if (d / 'plan.md').is_file() else 'BLOCKED: the plan phase wrote no plan.md. The output of that phase says why, often a tool that Claude Code refused')\""
+          - id: critique
+            command: speckit.opsmill.prep-critique
+            integration: "{{ inputs.integration }}"
+            capture: true
+            timeout: 1800
+          - id: commit-critique
+            type: shell
+            run: "git add -A && (git diff --cached --quiet || git commit -q -m 'critique: review the spec and the plan')"
+
+      # Tasks and the alignment check need a design that the critique accepts.
+      - id: accepted
+        type: if
+        condition: "{{ not (steps.critique.output.stdout | contains('CRITIQUE_VERDICT: RETHINK')) }}"
+        then:
+          - id: tasks
+            command: speckit.tasks
+            integration: "{{ inputs.integration }}"
+          - id: commit-tasks
+            type: shell
+            run: "git add -A && (git diff --cached --quiet || git commit -q -m 'tasks: generate the tasks')"
+          - id: check-tasks
+            type: shell
+            run: "python3 -c \"import json, pathlib, sys; d = pathlib.Path(json.loads(pathlib.Path('.specify/feature.json').read_text())['feature_directory']); sys.exit(0 if (d / 'tasks.md').is_file() else 'BLOCKED: the tasks phase wrote no tasks.md. The output of that phase says why, often a tool that Claude Code refused')\""
+          - id: align
+            command: speckit.opsmill.prep-align
+            integration: "{{ inputs.integration }}"
+            capture: true
+            timeout: 1800
+            input:
+              args: "{{ inputs.spec }}"
+          - id: commit-align
+            type: shell
+            run: "git add -A && (git diff --cached --quiet || git commit -q -m 'alignment: check the spec against the request')"
+
+  # The run stops here, with an error, when the spec is not safe to implement.
+  - id: design-rejected
+    type: if
+    condition: "{{ steps.critique.output.stdout | contains('CRITIQUE_VERDICT: RETHINK') }}"
+    then:
+      - id: stop-on-design
+        type: shell
+        run: "echo 'BLOCKED: the critique still asks for a rethink after 3 plan and critique passes' >&2; exit 1"
+
+  - id: drift-unresolved
+    type: if
+    condition: "{{ steps.align.output.stdout | default('') | contains('ALIGNMENT: SIGNIFICANT_DRIFT') }}"
+    then:
+      - id: stop-on-drift
+        type: shell
+        run: "echo 'BLOCKED: the spec still drifts from the request after 2 remediation passes' >&2; exit 1"
+
+  # The feature directory that specify recorded for the spec.
+  - id: spec_dir
+    type: shell
+    run: "python3 -c \"import json; print(json.load(open('.specify/feature.json'))['feature_directory'], end='')\""
+
+outputs:
+  # Reached only when the critique accepted the design and the alignment check
+  # found no significant drift: the spec is safe to implement.
+  ready:
+    value: "{{ true }}"
+  spec-dir:
+    value: "{{ steps.spec_dir.output.stdout }}"
+  # What the last critique and the last alignment check reported, for a
+  # workflow that runs this one as a step.
+  critique:
+    value: "{{ steps.critique.output.stdout }}"
+  alignment:
+    value: "{{ steps.align.output.stdout }}"

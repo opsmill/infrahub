@@ -3,7 +3,7 @@ schema_version: "1.0"
 extension:
   id: "opsmill"
   name: "OpsMill Speckit Workflow"
-  version: "1.4.1"
+  version: "1.5.0"
   description: "OpsMill house spec-kit commands: autonomous end-to-end workflow (auto/prep/implement), knowledge extraction, session retrospective, session summary, and QA checklist."
   author: "opsmill"
   repository: "https://github.com/opsmill/opsmill-speckit"
@@ -11,7 +11,7 @@ extension:
   homepage: "https://github.com/opsmill/opsmill-speckit"
 
 requires:
-  speckit_version: ">=0.8.0"
+  speckit_version: ">=1.2.4"
   scripts:
     - "check-prerequisites.sh"
 
@@ -31,13 +31,31 @@ provides:
       description: "Produce a manual QA checklist next to spec.md / plan.md that walks a human tester through verifying the implemented feature."
     - name: "speckit.opsmill.auto"
       file: "commands/auto.md"
-      description: "Run the speckit workflow end-to-end (prep + implement) autonomously. Stops before extract; run that manually."
+      description: "Run the speckit workflow end-to-end by running the opsmill-auto workflow (prep, then implement), autonomously. Stops before extract; run that manually."
     - name: "speckit.opsmill.prep"
       file: "commands/prep.md"
-      description: "Run the speckit preparation phases end-to-end (specify → plan → critique → tasks → alignment), stopping before implementation."
+      description: "Prepare a feature for implementation by running the opsmill-prep workflow (specify → plan → critique → tasks → alignment), stopping before implementation."
+    - name: "speckit.opsmill.prep-critique"
+      file: "commands/prep-critique.md"
+      description: "Phase of the opsmill-prep workflow: critique spec.md and plan.md, and report the verdict."
+    - name: "speckit.opsmill.prep-align"
+      file: "commands/prep-align.md"
+      description: "Phase of the opsmill-prep workflow: check spec.md against the request, and report the verdict."
+    - name: "speckit.opsmill.prep-realign"
+      file: "commands/prep-realign.md"
+      description: "Phase of the opsmill-prep workflow: correct spec.md after the alignment check found drift."
+    - name: "speckit.opsmill.implement-chunk"
+      file: "commands/implement-chunk.md"
+      description: "Phase of the opsmill-implement workflow: implement the next chunk of tasks.md and record the result."
+    - name: "speckit.opsmill.implement-review"
+      file: "commands/implement-review.md"
+      description: "Phase of the opsmill-implement workflow: review the changes, fix the high-severity findings, and record the findings."
+    - name: "speckit.opsmill.implement-report"
+      file: "commands/implement-report.md"
+      description: "Phase of the opsmill-implement workflow: write the report and report the status of the run."
     - name: "speckit.opsmill.implement"
       file: "commands/implement.md"
-      description: "Run the implementation + review tail in clean-context subagents from an existing tasks.md, then produce a final report."
+      description: "Implement an existing tasks.md by running the opsmill-implement workflow (chunks, review, final report)."
 
 hooks:
   after_taskstoissues:
