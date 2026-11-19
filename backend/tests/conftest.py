@@ -404,13 +404,13 @@ def neo4j_pagecache_size() -> str:
 
 @pytest.fixture(scope="session")
 def neo4j(
-    request: pytest.FixtureRequest,
     load_settings_before_session: None,
     neo4j_heap_size: str,
     neo4j_pagecache_size: str,
-) -> dict[int, int] | None:
+) -> Generator[dict[int, int] | None, None, None]:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type == "memgraph":
-        return None
+        yield None
+        return
 
     # Bound neo4j memory: the image auto-sizes heap/pagecache from HOST memory, so with
     # several xdist workers the containers overcommit and get the host OOM-killed.
@@ -422,18 +422,20 @@ def neo4j(
             "NEO4J_server_memory_pagecache_size": neo4j_pagecache_size,
         },
     )
-    request.addfinalizer(container.stop)
 
-    return {
+    yield {
         PORT_BOLT_NEO4J: get_exposed_port(container, PORT_BOLT_NEO4J),
         PORT_HTTP_NEO4J: get_exposed_port(container, PORT_HTTP_NEO4J),
     }
 
+    container.stop()
+
 
 @pytest.fixture(scope="session")
-def rabbitmq_container(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
+def rabbitmq_container(load_settings_before_session: None) -> Generator[dict[int, int] | None, None, None]:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.broker.driver != config.BrokerDriver.RabbitMQ:
-        return None
+        yield None
+        return
 
     container = (
         DockerContainer(image="rabbitmq:4.2.1-management")
@@ -444,12 +446,13 @@ def rabbitmq_container(request: pytest.FixtureRequest, load_settings_before_sess
 
     container.start()
     wait_for_logs(container, "Server startup complete;")  # wait_container_is_ready does not seem to be enough
-    request.addfinalizer(container.stop)
 
-    return {
+    yield {
         PORT_CLIENT_RABBITMQ: get_exposed_port(container, PORT_CLIENT_RABBITMQ),
         PORT_HTTP_RABBITMQ: get_exposed_port(container, PORT_HTTP_RABBITMQ),
     }
+
+    container.stop()
 
 
 @pytest.fixture(scope="module")
@@ -471,17 +474,19 @@ def rabbitmq(
 
 # NOTE: This fixture needs to run before initialize_lock_fixture which is guaranteed to run after as it has a module scope.
 @pytest.fixture(scope="session")
-def redis_container(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
+def redis_container(load_settings_before_session: None) -> Generator[dict[int, int] | None, None, None]:
     if not INFRAHUB_USE_TEST_CONTAINERS:
-        return None
+        yield None
+        return
 
     container = DockerContainer(image="redis:8.4.0").with_exposed_ports(PORT_REDIS)
 
     container.start()
     wait_for_logs(container, "Ready to accept connections tcp")  # wait_container_is_ready does not seem to be enough
-    request.addfinalizer(container.stop)
 
-    return {PORT_REDIS: get_exposed_port(container, PORT_REDIS)}
+    yield {PORT_REDIS: get_exposed_port(container, PORT_REDIS)}
+
+    container.stop()
 
 
 @pytest.fixture(scope="module")
@@ -515,9 +520,10 @@ def wait_for_memgraph_ready(host: str, port: int, timeout: int = 15) -> bool:
 
 
 @pytest.fixture(scope="session")
-def memgraph(request: pytest.FixtureRequest, load_settings_before_session: None) -> dict[int, int] | None:
+def memgraph(load_settings_before_session: None) -> Generator[dict[int, int] | None, None, None]:
     if not INFRAHUB_USE_TEST_CONTAINERS or config.SETTINGS.database.db_type != "memgraph":
-        return None
+        yield None
+        return
 
     memgraph_image = os.getenv("MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-mage:1.19-memgraph-2.19-no-ml")
 
@@ -535,9 +541,9 @@ def memgraph(request: pytest.FixtureRequest, load_settings_before_session: None)
     # Note we still need to call wait_for_memgraph_ready to be sure the container is fully started.
     wait_for_memgraph_ready(host="localhost", port=container.get_exposed_port(PORT_MEMGRAPH))
 
-    request.addfinalizer(container.stop)
+    yield {PORT_MEMGRAPH: get_exposed_port(container, PORT_MEMGRAPH)}
 
-    return {PORT_MEMGRAPH: get_exposed_port(container, PORT_MEMGRAPH)}
+    container.stop()
 
 
 @pytest.fixture(scope="session")

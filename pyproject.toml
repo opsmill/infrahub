@@ -730,7 +730,6 @@ allow-dunder-method-names = [
     "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed
     "N806",     # Variable in function should be lowercase
     "PLR6301",  # Method could be a function, class method, or static method
-    "PT021",    # Use `yield` instead of `request.addfinalizer`
     "RUF029",   # Function is declared `async`, but doesn't `await`
     "SIM108",   # Use ternary operator instead of `if`-`else`-block
     "SLF001",   # Private member accessed
@@ -944,7 +943,6 @@ allow-dunder-method-names = [
     "PT007",    # Wrong values type in `pytest.mark.parametrize`
     "PT011",    # `pytest.raises(ValueError)` is too broad
     "PT012",    # `pytest.raises()` block should contain a single simple statement
-    "PT021",    # Use `yield` instead of `request.addfinalizer`
     "RUF005",   # Consider spread operator instead of concatenation
     "RUF012",   # Mutable class attributes should be annotated with `typing.ClassVar`
     "RUF015",   # Prefer `next(...)` over single element slice
