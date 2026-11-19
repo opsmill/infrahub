@@ -14,6 +14,7 @@ from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.ownership.constants import NO_OWNER_VERTEX_UUID
 from infrahub.core.path import SchemaPath
+from infrahub.core.query.delete import DeleteAfterTimeQuery
 from infrahub.core.query.rollback import RollbackScope
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.attribute_schema import AttributeSchema
@@ -108,6 +109,21 @@ async def test_rollback_keeps_the_no_owner_vertex_when_it_deletes_its_only_edge(
     await GraphRollbacker(db=db).rollback(target_branch=default_branch, at=at, scope=RollbackScope.AT_TIMESTAMP)
 
     assert await count_branch_edges_at(db=db, branch_name=default_branch.name, at=at.to_string()) == 0
+    assert await _count_vertices_with_uuid(db=db, uuid=NO_OWNER_VERTEX_UUID) == 1
+
+
+async def test_reset_to_a_time_keeps_the_no_owner_vertex_when_it_deletes_its_only_edge(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+) -> None:
+    person = await add_node(db=db, kind="TestPerson", name="John", height=180)
+    reset_time = Timestamp()
+    await set_owners(db=db, branch=default_branch, node_id=person.id, owner_ids=())
+
+    query = await DeleteAfterTimeQuery.init(db=db, timestamp=reset_time)
+    await query.execute(db=db)
+
     assert await _count_vertices_with_uuid(db=db, uuid=NO_OWNER_VERTEX_UUID) == 1
 
 
