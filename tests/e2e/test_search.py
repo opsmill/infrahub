@@ -2,10 +2,10 @@
 
 Search-anywhere modal: open/close (click, Esc, Ctrl/Cmd+K), the Device menu
 link, the no-results message, node + IPAM results, lookup by UUID, and loading
-more results on scroll. Runs anonymously; the result tests rely on data_sites
-(the atl1 site, the 10.x prefix/loopback tree, and AS174 transitively via
-org_registry) and the menu, except the scroll test, which creates its own tags
-on a throwaway branch.
+more results on scroll, including after a failed request. Runs anonymously; the
+result tests rely on data_sites (the atl1 site, the 10.x prefix/loopback tree,
+and AS174 transitively via org_registry) and the menu, except the scroll tests,
+which create their own tags on a throwaway branch.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from data.handles import SitesHandle
     from helpers import BranchAPI
     from infrahub_sdk import InfrahubClient
-    from playwright.async_api import Page
+    from playwright.async_api import Page, Route
 
 SEARCH_FIRST_BATCH = 20
 MATCHING_TAGS = SEARCH_FIRST_BATCH + 5
@@ -146,3 +146,33 @@ class TestSearchAnywhere:
         await expect(results).to_have_count(MATCHING_TAGS)
         await expect(objects).to_have_accessible_name(f"Objects {MATCHING_TAGS}")
         await expect(dialog).to_contain_text(f"End of results · {MATCHING_TAGS} objects")
+
+    async def test_a_failed_load_more_keeps_the_loaded_objects(
+        self, page: Page, branch_with_matching_tags: tuple[str, str]
+    ) -> None:
+        branch, search = branch_with_matching_tags
+
+        async def fail_load_more(route: Route) -> None:
+            request = route.request.post_data_json or {}
+            if request.get("operationName") == "Search" and request["variables"]["limit"] > SEARCH_FIRST_BATCH + 1:
+                await route.abort()
+            else:
+                await route.fallback()
+
+        # GIVEN
+        await page.set_viewport_size({"width": 1280, "height": 720})
+        await page.route("**/graphql/**", fail_load_more)
+        await page.goto(f"/?branch={branch}")
+        await page.get_by_test_id("search-anywhere-trigger").click()
+        await page.get_by_test_id("search-anywhere-input").fill(search)
+        dialog = page.get_by_test_id("search-anywhere")
+        objects = dialog.get_by_role("group", name=re.compile(r"^Objects "))
+        results = objects.get_by_role("option", name=search)
+        await expect(results).to_have_count(SEARCH_FIRST_BATCH)
+
+        # WHEN
+        await results.last.scroll_into_view_if_needed()
+
+        # THEN
+        await expect(dialog).to_contain_text("Could not load more results")
+        await expect(results).to_have_count(SEARCH_FIRST_BATCH)

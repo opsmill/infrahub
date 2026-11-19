@@ -52,8 +52,6 @@ export const SearchNodes = () => {
     );
   }
 
-  if (error) return null;
-
   if (rows.length === 0) return null;
 
   return (
@@ -65,11 +63,15 @@ export const SearchNodes = () => {
         <NodesOptions key={node.id} node={node} />
       ))}
 
-      <InfiniteTrigger hasNextPage={hasNextPage && !isFetching} onLoadMore={fetchNextPage} />
+      <InfiniteTrigger
+        hasNextPage={hasNextPage && !isFetching && !error}
+        onLoadMore={fetchNextPage}
+      />
 
       <SearchNodesListEnd
         isLoadingMore={isFetchingNextPage}
         hasMore={hasNextPage}
+        hasFailed={!!error}
         count={rows.length}
       />
     </SearchAnywhereGroup>
@@ -94,11 +96,25 @@ const SearchNodesHeading = ({ count, hasMore }: SearchNodesHeadingProps) => (
 interface SearchNodesListEndProps {
   isLoadingMore: boolean;
   hasMore: boolean;
+  hasFailed: boolean;
   count: number;
 }
 
-const SearchNodesListEnd = ({ isLoadingMore, hasMore, count }: SearchNodesListEndProps) => {
+const SearchNodesListEnd = ({
+  isLoadingMore,
+  hasMore,
+  hasFailed,
+  count,
+}: SearchNodesListEndProps) => {
   if (isLoadingMore) return <LoadingIndicator className="my-2 text-sm" />;
+
+  if (hasFailed) {
+    return (
+      <div className="flex h-10 items-center justify-center text-subtle-muted text-xs">
+        Could not load more results
+      </div>
+    );
+  }
 
   if (hasMore || count <= SEARCH_BATCH_SIZE) return null;
 
