@@ -18,8 +18,10 @@ class HideReplacedBranchAttributeOwnersQuery(Query):
     owner edge. A read that takes every active owner edge returns both owners. So each replaced owner gets a
     `deleted` edge on the branch, at the time of the first edge of the branch to another owner, so that a read at a
     time between two owner writes of the branch returns one owner. This includes an owner edge that the parent
-    branch closed after the start of the branch, because the branch still reads it. A repository is left out,
-    because the upgrade closes its owner edges.
+    branch closed after the start of the branch, because the branch still reads it. It also includes an owner that
+    the parent branch added after the start of the branch, which the branch does not read: the merge then closes
+    that owner, so the merge keeps the single owner of the branch, as the merge of an earlier release did. A
+    repository is left out, because the upgrade closes its owner edges.
     """
 
     name = "migration_084_hide_replaced_branch_attribute_owners"
