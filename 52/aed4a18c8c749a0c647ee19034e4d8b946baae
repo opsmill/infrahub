@@ -1,0 +1,19 @@
+.specify/workflows/runs/db54451b/workflow.yml
+  s_3ea1f51b711d5b::t_bae7a9c0006d77 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "52aed4a18c8c749a0c647ee19034e4d8b946baae",
+  "prompts": {},
+  "sessions": {
+    "s_3ea1f51b711d5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b04160d5-dec4-4c0b-9cd6-ce92d0b37f9a",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
