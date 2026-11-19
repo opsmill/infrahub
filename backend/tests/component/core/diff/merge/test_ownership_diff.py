@@ -15,7 +15,6 @@ from tests.helpers.ownership import (
     OWNERS_FIELD,
     SOURCES_FIELD,
     OwnerDataset,
-    load_owner_dataset,
     resolve_owners,
     set_owners,
 )
@@ -26,11 +25,6 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.database import InfrahubDatabase
-
-
-@pytest.fixture
-async def dataset(db: InfrahubDatabase, default_branch: Branch) -> OwnerDataset:
-    return await load_owner_dataset(db=db, default_branch=default_branch)
 
 
 async def test_owner_change_lists_one_node_with_the_labels_of_its_owners(

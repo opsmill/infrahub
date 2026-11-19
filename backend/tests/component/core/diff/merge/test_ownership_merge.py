@@ -36,9 +36,6 @@ from tests.helpers.ownership import (
     TARGET_OWNERS_FIELD,
     OwnerDataset,
     copies,
-    count_active_owner_edges,
-    load_owner_dataset,
-    owner_edges,
     read_owners,
     resolve_owners,
     set_owners,
@@ -48,18 +45,23 @@ from tests.helpers.ownership import (
 )
 
 from ..get_one_node import get_one_diff_node
-from ._ownership import has_owner_change, merge, owner_property, profile_with_device, update_diff
+from ._ownership import (
+    OWNER_EDGE_TYPES,
+    SET_EDGE_TYPES,
+    count_active_holder_edges,
+    has_owner_change,
+    holder_edges,
+    merge,
+    owner_property,
+    profile_with_device,
+    update_diff,
+)
 from .conftest import get_diff_merger
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.database import InfrahubDatabase
-
-
-@pytest.fixture
-async def dataset(db: InfrahubDatabase, default_branch: Branch) -> OwnerDataset:
-    return await load_owner_dataset(db=db, default_branch=default_branch)
 
 
 @dataclass
@@ -156,7 +158,7 @@ async def test_owner_removed_and_set_again_on_a_branch_stays_after_the_merge(
     await merge(db=db, branch=branch)
 
     assert await read_owners(db=db, branch=default_branch, node_id=tenant_id) == owner_ids
-    assert await count_active_owner_edges(db=db, branch=default_branch, node_id=tenant_id) == len(owner_ids)
+    assert await count_active_holder_edges(db=db, branch=default_branch, node_id=tenant_id) == len(owner_ids)
 
 
 @pytest.mark.parametrize(
@@ -186,7 +188,7 @@ async def test_owner_state_set_again_on_a_branch_does_not_return_after_the_defau
     await merge(db=db, branch=branch)
 
     assert await read_owners(db=db, branch=default_branch, node_id=tenant_id) == default_branch_ids
-    assert await count_active_owner_edges(db=db, branch=default_branch, node_id=tenant_id) == 1
+    assert await count_active_holder_edges(db=db, branch=default_branch, node_id=tenant_id) == 1
     await verify_graph(db=db)
 
 
@@ -230,7 +232,7 @@ async def test_second_merged_branch_with_other_owners_gives_one_owner_state(
     await merge(db=db, branch=second_branch)
 
     assert await read_owners(db=db, branch=default_branch, node_id=tenant_id) == dataset.owners(merged_owners)
-    assert await count_active_owner_edges(db=db, branch=default_branch, node_id=tenant_id) == len(merged_owners)
+    assert await count_active_holder_edges(db=db, branch=default_branch, node_id=tenant_id) == len(merged_owners)
 
 
 async def test_node_deleted_on_a_branch_loses_its_owners_at_the_merge(
@@ -256,7 +258,7 @@ async def test_node_deleted_on_a_branch_loses_its_owners_at_the_merge(
     await merge(db=db, branch=branch)
 
     assert await NodeManager.get_one(db=db, branch=default_branch, id=device_id) is None
-    assert await count_active_owner_edges(db=db, branch=default_branch, node_id=device_id) == 0
+    assert await count_active_holder_edges(db=db, branch=default_branch, node_id=device_id) == 0
 
 
 @pytest.mark.parametrize(
@@ -287,12 +289,12 @@ async def test_merge_closes_the_owners_that_the_default_branch_gave_to_a_node_th
     device = await NodeManager.get_one(db=db, branch=branch, id=device_id, raise_on_error=True)
     await device.delete(db=db)
     await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
-    assert await count_active_owner_edges(db=db, branch=default_branch, node_id=device_id, edge_types=edge_types) == 2
+    assert await count_active_holder_edges(db=db, branch=default_branch, node_id=device_id, edge_types=edge_types) == 2
 
     await merge(db=db, branch=branch)
 
     assert await NodeManager.get_one(db=db, branch=default_branch, id=device_id) is None
-    assert await count_active_owner_edges(db=db, branch=default_branch, node_id=device_id, edge_types=edge_types) == 0
+    assert await count_active_holder_edges(db=db, branch=default_branch, node_id=device_id, edge_types=edge_types) == 0
 
 
 @pytest.mark.parametrize(
@@ -393,20 +395,6 @@ async def test_merge_changelog_records_the_owner_change_of_the_changed_node_only
             "value_update_status": DiffAction.UPDATED,
         }
     }
-
-
-async def _count_active_given_owner_edges(db: InfrahubDatabase, branch: Branch, node_id: str) -> int:
-    """Count the open edges of the set of owners that a node gives, with the edge to the set, on one branch."""
-    query = """
-    MATCH (n:Node {uuid: $node_id})-[attached:HAS_TARGET_OWNER_SET]->(s:OwnerSet)
-    OPTIONAL MATCH (s)-[r:HAS_OWNER|HAS_NO_OWNER]->()
-    UNWIND [attached, r] AS edge
-    WITH DISTINCT edge
-    WHERE edge.branch = $branch_name AND edge.status = "active" AND edge.to IS NULL
-    RETURN count(edge) AS total
-    """
-    results = await db.execute_query(query=query, params={"node_id": node_id, "branch_name": branch.name})
-    return results[0]["total"]
 
 
 @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in OWNER_SET_MERGE_TEST_CASES])
@@ -645,11 +633,21 @@ async def test_merge_closes_the_owners_that_the_default_branch_gave_through_a_pr
     profile = await NodeManager.get_one(db=db, branch=branch, id=profile_id, raise_on_error=True)
     await profile.delete(db=db)
     await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
-    assert await _count_active_given_owner_edges(db=db, branch=default_branch, node_id=profile_id) == 3
+    assert (
+        await count_active_holder_edges(
+            db=db, branch=default_branch, node_id=profile_id, edge_types=(*OWNER_EDGE_TYPES, *SET_EDGE_TYPES)
+        )
+        == 3
+    )
 
     await merge(db=db, branch=branch)
 
-    assert await _count_active_given_owner_edges(db=db, branch=default_branch, node_id=profile_id) == 0
+    assert (
+        await count_active_holder_edges(
+            db=db, branch=default_branch, node_id=profile_id, edge_types=(*OWNER_EDGE_TYPES, *SET_EDGE_TYPES)
+        )
+        == 0
+    )
     merged = await resolve_owners(db=db, branch=default_branch, node_id=device_id)
     assert (merged.owner_ids, merged.origin, merged.origin_node_id) == (
         dataset.owners(("network-emea",)),
@@ -898,13 +896,13 @@ async def test_merge_keeps_the_global_owner_edges_of_a_branch_agnostic_node(
     branch = await create_branch(db=db, branch_name="global-owner-merge")
     await set_owners(db=db, branch=default_branch, node_id=group_id, owner_ids=dataset.owners(("network-emea",)))
     await set_owners(db=db, branch=branch, node_id=dataset.ids["tenant-a"], owner_ids=dataset.owners(("dc-emea",)))
-    edges = await owner_edges(db=db, node_id=group_id)
-    assert {(edge[0], edge[1]) for edge in edges} == {(GLOBAL_BRANCH_NAME, "active"), (GLOBAL_BRANCH_NAME, "deleted")}
+    edges = await holder_edges(db=db, node_id=group_id)
+    assert {(edge[5], edge[1]) for edge in edges} == {(GLOBAL_BRANCH_NAME, "active"), (GLOBAL_BRANCH_NAME, "deleted")}
 
     await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
     await merge(db=db, branch=branch)
 
-    assert await owner_edges(db=db, node_id=group_id) == edges
+    assert await holder_edges(db=db, node_id=group_id) == edges
     for read_branch in (default_branch, branch):
         assert await read_owners(db=db, branch=read_branch, node_id=group_id) == dataset.owners(("network-emea",))
     await verify_graph(db=db)

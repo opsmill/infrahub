@@ -42,7 +42,6 @@ from tests.helpers.ownership import (
     SOURCES_FIELD,
     TARGET_OWNERS_FIELD,
     OwnerDataset,
-    load_owner_dataset,
     read_owners,
     resolve_owners,
     set_owners,
@@ -77,11 +76,6 @@ Names = tuple[str, ...] | None
 
 Changelog = tuple[str, Any, Any]
 """The name of the changed field or property, its previous value and its new value."""
-
-
-@pytest.fixture
-async def dataset(db: InfrahubDatabase, default_branch: Branch) -> OwnerDataset:
-    return await load_owner_dataset(db=db, default_branch=default_branch)
 
 
 def _field(kind: str, field_name: str, target: bool = False) -> HolderKey:

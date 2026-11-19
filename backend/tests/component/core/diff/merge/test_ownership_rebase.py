@@ -2,32 +2,22 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.constants import DiffAction
 from infrahub.core.initialization import create_branch
 from infrahub.core.ownership.queries import NoOwnerVertexCreateQuery
 from tests.helpers.ownership import (
     OwnerDataset,
-    count_active_owner_edges,
-    load_owner_dataset,
-    owner_edges,
     read_owners,
     set_owners,
 )
 
-from ._ownership import has_owner_change, merge, owner_property, update_diff
+from ._ownership import count_active_holder_edges, has_owner_change, holder_edges, merge, owner_property, update_diff
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.database import InfrahubDatabase
-
-
-@pytest.fixture
-async def dataset(db: InfrahubDatabase, default_branch: Branch) -> OwnerDataset:
-    return await load_owner_dataset(db=db, default_branch=default_branch)
 
 
 async def test_owner_change_of_a_branch_stays_in_the_diff_after_a_rebase(
@@ -71,7 +61,7 @@ async def test_rebase_after_both_branches_set_the_same_owners(
     assert not has_owner_change(diff=diff)
     await merge(db=db, branch=branch)
     assert await read_owners(db=db, branch=default_branch, node_id=tenant_id) == owner_ids
-    assert await count_active_owner_edges(db=db, branch=default_branch, node_id=tenant_id) == len(owner_ids)
+    assert await count_active_holder_edges(db=db, branch=default_branch, node_id=tenant_id) == len(owner_ids)
 
 
 async def test_rebase_keeps_the_new_global_owners_of_a_branch_agnostic_node(
@@ -82,11 +72,11 @@ async def test_rebase_keeps_the_new_global_owners_of_a_branch_agnostic_node(
     branch = await create_branch(db=db, branch_name="global-owner-rebase")
     await set_owners(db=db, branch=default_branch, node_id=group_id, owner_ids=dataset.owners(("network-emea",)))
     await set_owners(db=db, branch=branch, node_id=dataset.ids["tenant-a"], owner_ids=dataset.owners(("dc-emea",)))
-    edges = await owner_edges(db=db, node_id=group_id)
+    edges = await holder_edges(db=db, node_id=group_id)
 
     await branch.rebase(db=db)
 
-    assert await owner_edges(db=db, node_id=group_id) == edges
+    assert await holder_edges(db=db, node_id=group_id) == edges
     assert await read_owners(db=db, branch=branch, node_id=group_id) == dataset.owners(("network-emea",))
     assert await read_owners(db=db, branch=branch, node_id=dataset.ids["tenant-a"]) == dataset.owners(("dc-emea",))
 
