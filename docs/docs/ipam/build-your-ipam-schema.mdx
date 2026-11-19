@@ -176,48 +176,45 @@ Use an `IpamIPAddress` node instead of an attribute kind when you need the addre
 - Be allocated from a `CoreIPAddressPool`
 - Be shared across more than one object, or have its own relationships, lifecycle, or namespace
 
-If the NTP server is infrastructure you track and allocate addresses for, model it as an `IpamIPAddress` and relate it to `Region` following the pattern in [Extend IPAM with a relationship to another object](#extend-ipam-with-a-relationship-to-another-object).
+If the NTP server is infrastructure you track and allocate addresses for, model it as an `IpamIPAddress` and relate it to `Region` following the pattern in [Extend IPAM with a relationship to another object](#relate-prefixes-and-addresses-to-other-nodes).
 
-## Extend IPAM with a relationship to another object
+## Relate prefixes and addresses to other nodes
 
-Relationships from IPAM to other Infrahub objects are ordinary schema relationships, not metadata fields. The [Service Catalog demo](https://github.com/opsmill/infrahub-demo-service-catalog) relates prefixes and addresses to a `ServiceGeneric` node this way, declaring both directions and pairing them by `identifier`.
+To record which service, site or customer a prefix or an address belongs to, add a relationship between them in your schema, as you would between any two nodes. Declare the relationship on both nodes with the same `identifier`, so that you can follow it from either node in queries and filters.
 
-Declare the relationship from the `Service` side first, inbound and paired by `identifier`:
+In this example, each customer service has one assigned prefix. Add the other side of the relationship to `IpamPrefix` in an `extensions` block, so that you do not redefine the Marketplace node:
 
-```yaml title="example/service.yml"
+```yaml title="schemas/customer/service.yml"
+version: "1.0"
 nodes:
   - name: Service
     namespace: Customer
-    inherit_from:
-      - InfraService
     attributes:
       - name: service_identifier
         kind: Text
         unique: true
     relationships:
       - name: assigned_prefix
-        label: "Assigned prefix"
+        label: Assigned prefix
         peer: IpamPrefix
-        optional: false
         kind: Attribute
+        cardinality: one
+        optional: false
         direction: inbound
         identifier: service_prefix
-        cardinality: one
-```
-
-To add the relationship from the IPAM side as well, so that you can query and filter from `IpamPrefix` directly, extend the IPAM kind with an `extensions.nodes` block:
-
-```yaml title="Adapted from opsmill/infrahub-demo-service-catalog: schemas/service/service.yml"
 extensions:
   nodes:
     - kind: IpamPrefix
       relationships:
         - name: service
-          peer: ServiceGeneric
+          peer: CustomerService
           cardinality: one
+          optional: true
           direction: outbound
           identifier: service_prefix
 ```
+
+For a complete example with prefixes and addresses, see the schema of the [Service Catalog demo](https://github.com/opsmill/infrahub-demo-service-catalog).
 
 ## Next
 

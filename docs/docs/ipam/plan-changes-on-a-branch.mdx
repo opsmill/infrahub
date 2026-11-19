@@ -17,7 +17,7 @@ Infrahub updates the tree of a branch after each change on it, so the prefixes a
 
 ![On the customer-a-subnet-split branch, creating 10.1.0.0/17 updates the branch's prefix tree right away. When the branch is merged, Infrahub updates the tree on the default branch for the prefixes and addresses that changed.](../media/ipam/ipam-branch-reconciliation.svg)
 
-Utilization is computed for the branch you query, so the figures on the branch include its changes, and the figures on the default branch include them only after the merge.
+When you query a branch, Infrahub computes utilization for that branch, so the figures on the branch include its changes, and the figures on the default branch include them only after the merge.
 
 ## When two branches create the same prefix
 
@@ -30,7 +30,7 @@ When your schema makes prefixes and addresses unique within a namespace, as the 
 
 To merge the second branch, first delete the duplicate prefix or address from it, or change its value. Then select **Retry all** on the Checks tab of the Proposed Change.
 
-Without a uniqueness constraint, you can merge both branches, and the namespace then holds two prefixes with the same value. See [Build your IPAM schema](./build-your-ipam-schema.mdx#choose-the-uniqueness-constraints) to choose the constraint.
+Without a uniqueness constraint, you can merge both branches, and the namespace then contains two prefixes with the same value. See [Build your IPAM schema](./build-your-ipam-schema.mdx#choose-the-uniqueness-constraints) to choose the constraint.
 
 ## Example: split a subnet on a branch
 

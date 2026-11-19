@@ -54,9 +54,17 @@ Infrahub counts only the children that match the member type. A prefix that cont
 
 Infrahub returns utilization as a whole number, rounded down. A large prefix can therefore have a utilization of 0% while it holds a few small prefixes: for `10.0.0.0/8` with three `/24` children, the value is 0 in either mode.
 
-The network and broadcast addresses count as usable when `is_pool` is `true`, when an IPv4 prefix is `/31` or longer (per [RFC 3021](https://datatracker.ietf.org/doc/html/rfc3021)), and for every IPv6 prefix. With `is_pool` set, Infrahub can also allocate the network and broadcast addresses when it allocates the next free address, from a Resource Manager pool or from the next-available query. `is_pool` is an attribute of the prefix, and is not related to Resource Manager pools.
+In a subnet, the first address (the network address) and the last address (the broadcast address) cannot be assigned to a host. Infrahub leaves them out when it calculates utilization, so the `/26` above has 62 usable addresses, not 64.
 
-Utilization is computed for the branch you query. Infrahub includes an address you add on a branch in the utilization of that branch, and in the utilization of the default branch only after the merge.
+Every address is usable in three cases:
+
+- The prefix has `is_pool` set to `true`. You can then also allocate the network and broadcast addresses, from a Resource Manager pool or with the next-available query.
+- The prefix is an IPv4 `/31` or `/32` (see [RFC 3021](https://datatracker.ietf.org/doc/html/rfc3021)).
+- The prefix is IPv6.
+
+Despite its name, `is_pool` does not make the prefix a Resource Manager pool.
+
+When you query a branch, Infrahub computes utilization for that branch. Infrahub includes an address you add on a branch in the utilization of that branch, and in the utilization of the default branch only after the merge.
 
 ## Namespaces separate overlapping address space
 

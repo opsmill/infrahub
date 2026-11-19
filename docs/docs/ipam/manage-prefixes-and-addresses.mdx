@@ -228,7 +228,7 @@ await prefix.save()
 
 When you delete a prefix, Infrahub moves its child prefixes and addresses up to its parent. It does not delete them. To remove a whole subtree, delete each of its prefixes and addresses.
 
-When you delete an address that was allocated from a pool, the address becomes free in the pool again. See [Return an address to the pool](./allocate-ips-and-prefixes.mdx#return-an-address-to-the-pool).
+When you delete an address that was allocated from a pool, it becomes available in the pool again. If a branch was created before you deleted the address, that branch still has it, so the address becomes available only after you rebase or delete that branch. See [Return an address to the pool](./allocate-ips-and-prefixes.mdx#return-an-address-to-the-pool).
 
 <Tabs groupId="method" queryString>
   <TabItem value="web" label="Web Interface" default>
@@ -267,9 +267,9 @@ await prefix.delete()
 
 ## Concurrent changes to one namespace
 
-Infrahub handles the changes to the prefixes of one namespace one at a time, on every branch: a create, update or delete of a prefix waits until the previous one in the same namespace is complete. If a script creates many prefixes in one namespace in parallel, Infrahub still handles them one at a time.
+When several people or scripts change prefixes in the same namespace at the same time, the changes are saved one by one, on every branch. Adding, deleting or resizing a prefix can change the parent of other prefixes, and saving two such changes at once could leave a prefix with two parents. Creating many prefixes in one namespace in parallel is therefore no faster than creating them one after another.
 
-Changes to addresses wait for each other only when they write the same address in the same namespace on the default branch. When the address schema declares a uniqueness constraint, creates of the same address are also handled one at a time on every branch: one succeeds, and the others are rejected with the uniqueness error.
+Changes to different addresses are saved in parallel. When two people or scripts create or change the same address in the same namespace on the default branch, the changes are saved one after the other. If two requests create the same address at the same time, and addresses are unique in your schema, one succeeds and the other fails with a uniqueness error.
 
 ## Next
 

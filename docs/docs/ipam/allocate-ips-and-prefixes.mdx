@@ -99,7 +99,11 @@ interconnect_subnet = await client.allocate_next_ip_prefix(
 
 ## Return an address to the pool
 
-A pool counts an address as in use as long as the address exists. To return it to the pool, delete the address. When you delete the device or interface it was allocated to, Infrahub leaves the address in place, unless the relationship between them cascades the delete. [Releasing an allocated resource](../resource-manager/overview.mdx#releasing-an-allocated-resource) has the rules, including the case of an address that another branch can still read.
+An address you allocated from a pool stays in use as long as it exists on any branch. To return it to the pool, delete it. If a branch was created before you deleted the address, that branch still has it, so the address stays in use until you rebase or delete the branch.
+
+Deleting the device or interface that uses an address does not delete the address, unless the relationship between them has `on_delete: cascade` or is of kind `Component`. Delete the address itself.
+
+After the address is deleted, Infrahub allocates the next available address to a request with the same identifier, as it does for a new identifier. See [Releasing an allocated resource](../resource-manager/overview.mdx#releasing-an-allocated-resource) for the full rules.
 
 ## Advanced: next-available GraphQL queries
 

@@ -19,7 +19,7 @@ Create a namespace when the address space you track overlaps, or must be kept se
 - Customers of a managed service who each use `10.0.0.0/8` in their own network.
 - A lab or a disaster recovery network that reuses the addressing of production.
 
-Do not create a namespace only to record who owns a prefix. To record which customer, business unit, region or data center a prefix belongs to, relate the prefix to that object. The Marketplace [`infrahub/tenancy`](https://marketplace.infrahub.app/schemas/infrahub/tenancy) extension, for example, relates tenants to prefixes and addresses. Each namespace has its own tree and its own utilization figures, the web interface shows one namespace at a time, and a Resource Manager pool allocates from one namespace only.
+To record which customer, business unit, region or data center a prefix belongs to, relate the prefix to that owner, for example with the `tenant` relationship from the Marketplace [`infrahub/tenancy`](https://marketplace.infrahub.app/schemas/infrahub/tenancy) extension. Do not create a namespace per owner for this. Each namespace is a separate tree with its own utilization, the web interface shows one namespace at a time, and a Resource Manager pool belongs to one namespace.
 
 A deployment that manages a single network or organization usually needs only the `default` namespace.
 
