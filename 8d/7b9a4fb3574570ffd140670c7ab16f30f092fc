@@ -1,0 +1,21 @@
+backend/infrahub/core/node/resource_manager/ip_prefix_pool.py
+  s_92ce1f25dbe045::t_750444414e01a9 19,64
+backend/infrahub/core/node/resource_manager/ip_address_pool.py
+  s_92ce1f25dbe045::t_750444414e01a9 19,59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8d7b9a4fb3574570ffd140670c7ab16f30f092fc",
+  "prompts": {},
+  "sessions": {
+    "s_92ce1f25dbe045": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4d35956-d350-4d16-acf4-30ed14df1414",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
