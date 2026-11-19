@@ -7,14 +7,11 @@ from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
-from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.migrations import MIGRATION_MAP
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.migrations.shared import DerivedSchemaPair, MigrationInput
-from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.schema.derived_kinds import get_object_template_kind, get_profile_kind
-from infrahub.core.timestamp import Timestamp
 from infrahub.workers.dependencies import get_database
 from infrahub.workflows.utils import add_branch_tag
 
@@ -26,7 +23,9 @@ if TYPE_CHECKING:
 
     from prefect.logging.loggers import LoggingAdapter
 
+    from infrahub.core.branch import Branch
     from infrahub.core.models import SchemaUpdateMigrationInfo
+    from infrahub.core.path import SchemaPath
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.timestamp import Timestamp
