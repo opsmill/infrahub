@@ -1,5 +1,5 @@
 import { Button } from "@infrahub/ui";
-import React, { useId } from "react";
+import React from "react";
 
 import { Icon } from "@/shared/components/display/icon";
 import { Badge } from "@/shared/components/ui/badge";
@@ -36,18 +36,16 @@ export interface RelationshipHierarchicalContentProps extends RelationshipCombob
   hideExplore?: boolean;
   // Pre-fills the "Add new" create form so a created peer satisfies an enforced filter.
   addNewInitialObject?: NodeFieldsWithMetadata;
-  contentId?: string;
 }
 
 export const RelationshipHierarchicalContent = ({
   hideExplore,
   addNewInitialObject,
-  contentId,
   ...props
 }: RelationshipHierarchicalContentProps) => {
   if (hideExplore) {
     return (
-      <ComboboxContent id={contentId}>
+      <ComboboxContent>
         <RelationshipComboboxList {...props} />
         <AddRelationshipAction {...props} initialObject={addNewInitialObject} />
       </ComboboxContent>
@@ -55,7 +53,7 @@ export const RelationshipHierarchicalContent = ({
   }
 
   return (
-    <ComboboxContent id={contentId}>
+    <ComboboxContent>
       <PopoverTabs defaultValue="list">
         <PopoverTabsList className="mt-1">
           <PopoverTabsTrigger value="list">All</PopoverTabsTrigger>
@@ -149,8 +147,6 @@ export const RelationshipHierarchicalManyInput = ({
   ...props
 }: RelationshipHierarchicalManyInputProps) => {
   const [open, setOpen] = React.useState(false);
-  const contentId = useId();
-  const controlledContentId = open ? contentId : undefined;
 
   const handleSelect = (relationship: Node) => {
     onChange(value ? [...value, relationship] : [relationship]);
@@ -158,8 +154,9 @@ export const RelationshipHierarchicalManyInput = ({
 
   return (
     <Combobox open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild aria-controls={controlledContentId}>
+      <PopoverTrigger asChild>
         <div
+          data-testid="relationship-hierarchical-many-input"
           className={classNames(
             inputStyle,
             "has-[>:last-child:focus]:border-ring has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-ring-halo",
@@ -189,17 +186,11 @@ export const RelationshipHierarchicalManyInput = ({
             ))}
           </div>
 
-          {/* A plain button, not a second PopoverTrigger: a nested trigger also registers as the
-              popover anchor, and the content would then open at this button's width. It carries the
-              trigger's ARIA state itself, because the wrapper is not focusable. */}
           <button
             ref={ref}
             type="button"
             className="h-3.5 w-3.5 text-subtle-muted outline-hidden"
             aria-label={`Open ${peer}`}
-            aria-haspopup="dialog"
-            aria-expanded={open}
-            aria-controls={controlledContentId}
             {...props}
           >
             <Icon icon="mdi:unfold-more-horizontal" />
@@ -208,7 +199,6 @@ export const RelationshipHierarchicalManyInput = ({
       </PopoverTrigger>
 
       <RelationshipHierarchicalContent
-        contentId={contentId}
         peer={peer}
         onSelect={handleSelect}
         filterItem={(node) => !value?.some((v) => v.id === node.id)}

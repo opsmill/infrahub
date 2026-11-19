@@ -72,6 +72,14 @@ describe("RelationshipHierarchicalField", () => {
     hierarchical: "IpamIPPrefix",
   });
 
+  const manyRelationship = generateRelationshipSchema({
+    name: "ip_prefixes",
+    peer: "IpamIPPrefix",
+    kind: "Attribute",
+    cardinality: "many",
+    hierarchical: "IpamIPPrefix",
+  });
+
   const poolProps = {
     name: "ip_prefix",
     label: "IP Prefix",
@@ -116,13 +124,7 @@ describe("RelationshipHierarchicalField", () => {
       <TestForm>
         <RelationshipHierarchicalField
           {...poolProps}
-          relationship={generateRelationshipSchema({
-            name: "ip_prefixes",
-            peer: "IpamIPPrefix",
-            kind: "Attribute",
-            cardinality: "many",
-            hierarchical: "IpamIPPrefix",
-          })}
+          relationship={manyRelationship}
           defaultValue={DEFAULT_FORM_FIELD_VALUE}
         />
       </TestForm>
@@ -138,21 +140,19 @@ describe("RelationshipHierarchicalField", () => {
     const component = await render(
       <TestForm>
         <RelationshipHierarchicalField
-          {...poolProps}
-          relationship={generateRelationshipSchema({
-            name: "ip_prefixes",
-            peer: "IpamIPPrefix",
-            kind: "Attribute",
-            cardinality: "many",
-            hierarchical: "IpamIPPrefix",
-          })}
+          name="ip_prefixes"
+          label="IP Prefixes"
+          relationship={manyRelationship}
           defaultValue={DEFAULT_FORM_FIELD_VALUE}
         />
       </TestForm>
     );
     const openButton = component.getByRole("button", { name: "Open IpamIPPrefix" });
     const fieldWidth = Math.round(
-      openButton.element().parentElement?.getBoundingClientRect().width ?? 0
+      component
+        .getByTestId("relationship-hierarchical-many-input")
+        .element()
+        .getBoundingClientRect().width
     );
 
     // WHEN
@@ -164,38 +164,6 @@ describe("RelationshipHierarchicalField", () => {
     await expect
       .poll(() => Math.round(dropdown.element().getBoundingClientRect().width))
       .toBe(fieldWidth);
-  });
-
-  test("announces the open dropdown on the button of a cardinality-many relationship", async () => {
-    // GIVEN
-    const component = await render(
-      <TestForm>
-        <RelationshipHierarchicalField
-          {...poolProps}
-          relationship={generateRelationshipSchema({
-            name: "ip_prefixes",
-            peer: "IpamIPPrefix",
-            kind: "Attribute",
-            cardinality: "many",
-            hierarchical: "IpamIPPrefix",
-          })}
-          defaultValue={DEFAULT_FORM_FIELD_VALUE}
-        />
-      </TestForm>
-    );
-    const openButton = component.getByRole("button", { name: "Open IpamIPPrefix" });
-
-    // WHEN
-    await openButton.click();
-
-    // THEN
-    const dropdown = component.getByRole("dialog");
-    await expect.element(dropdown).toBeVisible();
-    await expect.element(openButton).toHaveAttribute("aria-haspopup", "dialog");
-    await expect.element(openButton).toHaveAttribute("aria-expanded", "true");
-    await expect
-      .element(openButton)
-      .toHaveAttribute("aria-controls", dropdown.element().getAttribute("id"));
   });
 
   test("presents the two ways of satisfying the field as tabs, starting on Object", async () => {
