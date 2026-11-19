@@ -235,6 +235,39 @@ async def test_second_merged_branch_with_other_owners_gives_one_owner_state(
     assert await count_active_holder_edges(db=db, branch=default_branch, node_id=tenant_id) == len(merged_owners)
 
 
+@pytest.mark.parametrize(
+    ("branch_owners", "default_branch_owners"),
+    [
+        pytest.param(("network-emea", "security"), ("dc-emea",), id="one_owner_deleted"),
+        pytest.param(("security",), ("network-emea",), id="all_deleted"),
+    ],
+)
+async def test_selected_branch_owners_keep_an_owner_that_the_default_branch_deleted(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    diff_repository: DiffRepository,
+    dataset: OwnerDataset,
+    branch_owners: tuple[str, ...],
+    default_branch_owners: tuple[str, ...],
+) -> None:
+    tenant_id = dataset.ids["tenant-a"]
+    await set_owners(db=db, branch=default_branch, node_id=tenant_id, owner_ids=dataset.owners(("dc-emea", "security")))
+    branch = await create_branch(db=db, branch_name="deleted-owner")
+    # The branch inherits the edge to `security`, so only the write of the selected list can give it to the default branch.
+    await set_owners(db=db, branch=branch, node_id=tenant_id, owner_ids=dataset.owners(branch_owners))
+    await set_owners(db=db, branch=default_branch, node_id=tenant_id, owner_ids=dataset.owners(default_branch_owners))
+    security = await NodeManager.get_one(db=db, branch=default_branch, id=dataset.ids["security"], raise_on_error=True)
+    await security.delete(db=db)
+
+    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+    conflict = owner_property(diff=diff, node_id=tenant_id).conflict
+    assert conflict is not None
+    await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=ConflictSelection.DIFF_BRANCH)
+    await merge(db=db, branch=branch)
+
+    assert await read_owners(db=db, branch=default_branch, node_id=tenant_id) == dataset.owners(branch_owners)
+
+
 async def test_node_deleted_on_a_branch_loses_its_owners_at_the_merge(
     db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset
 ) -> None:

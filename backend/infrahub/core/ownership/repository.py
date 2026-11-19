@@ -102,12 +102,16 @@ class OwnershipRepository:
         at: Timestamp,
         user_id: str,
         skip_inactive: bool = False,
+        keep_deleted_owners: bool = False,
     ) -> bool:
         """Replace the owner state of one holder, or the sources of the node for the holder of the sources.
 
         Args:
             write_branch: The branch that gets the edge changes: the global branch for a node that all branches share.
             skip_inactive: Write nothing, and raise no error, when the node is not active at the write time.
+            keep_deleted_owners: True to also write an edge to an owner that is deleted at the write time, for a copy
+                of a list that the graph stores. A write of a list that a user gives keeps the default, which skips
+                such an owner.
 
         Returns:
             False when the node is not active at the write time, else True.
@@ -127,6 +131,7 @@ class OwnershipRepository:
             owner_ids=list(state.owner_ids) if state.owner_ids is not None else None,
             template_id=state.template_id,
             write_branch=write_branch,
+            keep_deleted_owners=keep_deleted_owners,
         )
         query.raise_error_if_empty = not skip_inactive
         await query.execute(db=self.db)

@@ -416,12 +416,15 @@ class OwnerStateWriteQuery(Query):
         owner_ids: list[str] | None,
         write_branch: Branch,
         template_id: str | None = None,
+        keep_deleted_owners: bool = False,
         **kwargs: Any,
     ) -> None:
         """Set `owner_ids` to None for inherit, and to an empty list for "no owner".
 
         Args:
             template_id: The object template that the owners are a copy from. A write without it closes the mark.
+            keep_deleted_owners: True to also write an edge to an owner that is deleted at the write time. Else the
+                write skips such an owner.
 
         """
         self.node_id = node_id
@@ -429,6 +432,7 @@ class OwnerStateWriteQuery(Query):
         self.owner_ids = owner_ids
         self.write_branch = write_branch
         self.template_id = template_id
+        self.keep_deleted_owners = keep_deleted_owners
         super().__init__(**kwargs)
 
     def _holders_query(self, branch_filter: str) -> str:
@@ -511,6 +515,7 @@ CALL (n, h) {
                 "no_owner": self.owner_ids == [],
                 "has_state": self.owner_ids is not None,
                 "template_id": self.template_id,
+                "keep_deleted_owners": self.keep_deleted_owners,
                 "no_owner_uuid": NO_OWNER_VERTEX_UUID,
                 "branch": self.write_branch.name,
                 "branch_level": self.write_branch.hierarchy_level,
@@ -596,7 +601,7 @@ CALL (h, current) {
         LIMIT 1
     }
     WITH owner, part_of
-    WHERE part_of.status = "active"
+    WHERE part_of.status = "active" OR $keep_deleted_owners
     %(owner_edge)s
 }
 CALL (h, current) {

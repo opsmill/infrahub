@@ -86,6 +86,14 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
   gives the `deleted` edge a `to` time and creates no edge. The branch reads the inherited edge again, and a merge
   has no edge to copy. So the owner does not come back when the default branch removed it after the start of the
   branch.
+- The query writes an edge to an owner only when the branch reads an `IS_PART_OF` edge of the owner vertex. Two
+  rules then apply:
+  - A write of a list that a user gives also needs that edge to be active, so it skips a deleted owner. The check
+    of the owner kinds refuses a deleted owner before the write (see Owner Kinds).
+  - A copy of a list that the graph stores keeps a deleted owner (`keep_deleted_owners`), because a deleted owner
+    stays in the list. The object conversion (`store_owner_states`), the copy from an object template
+    (`copy_from_template`) and the owner resolution of a merge (`DiffMerger._apply_owner_diff_resolutions`) use
+    this rule.
 - The query looks for the `OwnerSet` with the same key on all branches and reuses it. It creates a set only for the
   first owner or the first "no owner". When the set goes back to inherit, its edges close and the vertex stays.
 - The query compares only the key properties of a set (`owner_set_key_filter`), so another property on the vertex
