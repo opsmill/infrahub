@@ -36,6 +36,7 @@ from infrahub.events.models import EventMeta
 from infrahub.exceptions import AuthorizationError, GatewayError, NodeNotFoundError, ProcessingError
 from infrahub.external_protocols import ExternalAuthProtocol  # noqa: TC001
 from infrahub.log import get_logger
+from infrahub.masking import url_without_secrets
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -687,7 +688,7 @@ def safe_get_response_body(response: httpx.Response, raise_error_on_empty_body: 
             if not text_body.strip() and raise_error_on_empty_body:  # Check for empty or whitespace-only response
                 log.error(
                     "Empty response body from authentication provider",
-                    url=str(response.url),
+                    url=url_without_secrets(str(response.url)),
                     status_code=response.status_code,
                 )
                 raise GatewayError(message="Authentication provider returned an empty response") from json_error
@@ -695,7 +696,7 @@ def safe_get_response_body(response: httpx.Response, raise_error_on_empty_body: 
         except Exception:  # noqa: BLE001
             log.error(
                 "Unable to read response body from authentication provider",
-                url=str(response.url),
+                url=url_without_secrets(str(response.url)),
                 status_code=response.status_code,
             )
             raise GatewayError(message="Unable to read response from authentication provider") from json_error
@@ -785,6 +786,8 @@ def validate_auth_response(response: httpx.Response, provider_type: str = "authe
             base_msg = "Authentication provider is experiencing server issues. Please try again later or contact your administrator."
 
     # Print proper log and raise gateway error
-    log.error(log_message, url=str(response.url), status_code=response.status_code, body=response_body)
+    log.error(
+        log_message, url=url_without_secrets(str(response.url)), status_code=response.status_code, body=response_body
+    )
     error_msg = extract_auth_error_message(response_body, base_msg)
     raise GatewayError(message=error_msg)
