@@ -181,6 +181,13 @@ class TemplateCopyHolder(OwnerListHolder):
         assert stored[site.id].get(NODE_HOLDER).template_id == template.id
         return site.id
 
+    async def read(self, db: InfrahubDatabase, branch: Branch, node_id: str) -> tuple[str, ...] | None:
+        """Return the owners of the site, and check that the write or the merge before the read closed the mark."""
+        stored = await OwnershipRepository(db=db, branch=branch, at=None).read(node_ids=[node_id])
+        state = stored[node_id].get(NODE_HOLDER)
+        assert state.template_id is None
+        return state.owner_ids
+
 
 class AttributeOwnersHolder(OwnerListHolder):
     """Own owners of the attribute `name`, which the changelog records as a property of the attribute."""
