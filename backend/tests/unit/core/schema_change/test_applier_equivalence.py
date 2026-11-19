@@ -1,7 +1,10 @@
 import pytest
 
 from tests.unit.core.schema_change.equivalence_cases import COMBINED_LOAD_CASES, EQUIVALENCE_CASES
-from tests.unit.core.schema_change.equivalence_cases_kinds import MOVED_TAG_NAMESPACE
+from tests.unit.core.schema_change.equivalence_cases_kinds import (
+    MOVED_TAG_NAMESPACE,
+    RENAMED_PAST_EXISTING_KIND_NAMESPACE,
+)
 from tests.unit.core.schema_change.helpers import CombinedLoad, CombinedLoadCase, assert_same_load_result
 
 
@@ -22,6 +25,9 @@ def test_applied_operations_give_the_direct_load_result_for_every_kind(combined_
 
 
 def test_each_case_of_the_combined_load_has_a_namespace_of_its_own() -> None:
-    namespaces = [case.namespace for case in COMBINED_LOAD_CASES] + [MOVED_TAG_NAMESPACE]
+    namespaces = [case.namespace for case in COMBINED_LOAD_CASES] + [
+        MOVED_TAG_NAMESPACE,
+        RENAMED_PAST_EXISTING_KIND_NAMESPACE,
+    ]
 
     assert sorted({namespace for namespace in namespaces if namespaces.count(namespace) > 1}) == []

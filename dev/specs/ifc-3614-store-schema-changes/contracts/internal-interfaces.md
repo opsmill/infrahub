@@ -67,6 +67,11 @@ class SchemaChangeApplier:
 - Raises `SchemaOperationTargetExistsError` when a `node_add` or an `element_add` adds a kind,
   attribute or relationship that the schema already has at that step. The message names the
   operation and the existing element. Skipping such an add is left to the ordered replay task.
+  It raises the same error when a `node_rename` names a kind that the schema already has, and
+  when, after the last operation, a rename leaves two attributes or relationships of a kind with
+  the same name.
+- While a chain or a swap of renames runs, two elements of a kind can share a name. An operation
+  then finds the element that no earlier operation renamed; renamed elements are tracked by ID.
 - Given the same target and the same operations, it returns a schema with the same hash each time.
 - The six operation types are a closed set. The applier selects the handling of an operation with
   an exhaustive `match` on `SchemaOperationType` that ends with `typing.assert_never`, so a type
@@ -125,7 +130,8 @@ class SchemaCandidateBuilder:
 
 - `from_schema_root`: raises `SchemaNotFoundError` when the file gives a kind of the branch
   schema an ID that the branch schema does not hold, before it builds any operation. It then
-  builds the operations, applies them to `branch_schema` with the applier, and compares the result
+  builds the operations, and raises `SchemaNameReusedError` (HTTP 422) when they free an attribute
+  name or a kind and give it to another owner (spec, FR-017) before it applies any. It then applies them to `branch_schema` with the applier, and compares the result
   with `direct_load_schema` with the comparer. It raises `SchemaOperationsRebuildError` (HTTP 500)
   when the applier raises `SchemaOperationTargetNotFoundError` or
   `SchemaOperationTargetExistsError`, or when the comparer returns kinds; the message says that the
@@ -647,7 +653,7 @@ One place builds a component after the work started, and it is deliberate:
 | `api/schema.py::check_schema` | Calls `_validate_migrations` in place of its own copy of the constraint workflow call |
 | `graphql/mutations/schema.py::update_registry` | Replaced by `apply_attribute_property_change` |
 | `core/branch/data_deleter.py::BranchDataDeleter` | Takes a `SchemaChangeRecordDeleter`, the protocol of `SchemaChangeRepository.delete_branch_schema_changes`, as a constructor argument. `delete_branch_data` also deletes the schema change records of the branch, in batches of the deleter's batch size. The number of edges it returns does not count the edges of these records |
-| `exceptions.py` | New errors `SchemaOperationTargetNotFoundError` and `SchemaOperationTargetExistsError` (HTTP 422), raised by the applier, and `SchemaOperationsRebuildError` (HTTP 500), raised by `from_schema_root` |
+| `exceptions.py` | New errors `SchemaOperationTargetNotFoundError` and `SchemaOperationTargetExistsError` (HTTP 422), raised by the applier, and `SchemaNameReusedError` (HTTP 422) and `SchemaOperationsRebuildError` (HTTP 500), raised by `from_schema_root` |
 | `POST /api/schema/load` | Request and response unchanged. Stores a schema change when the schema changed |
 | `POST /api/schema/check` | Request and response unchanged. Stores nothing |
 | `SchemaDropdownAdd`, `SchemaDropdownRemove`, `SchemaEnumAdd`, `SchemaEnumRemove` | Input and payload unchanged. Each stores a schema change when the schema changed |

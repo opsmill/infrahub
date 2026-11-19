@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Self
 
 from pydantic import BaseModel, ConfigDict, JsonValue, model_validator
 
-from infrahub.core.schema_change.constants import SCHEMA_CHANGE_NAME_VERSION_DIGITS
+from infrahub.core.schema_change.constants import SCHEMA_CHANGE_NAME_VERSION_DIGITS, SCHEMA_KIND_NAME_PROPERTIES
 from infrahub.core.schema_change.enums import SchemaOperationNodeType, SchemaOperationSection, SchemaOperationType
 
 if TYPE_CHECKING:
@@ -20,6 +21,30 @@ REMOVE_OPERATION_TYPES = frozenset({SchemaOperationType.NODE_REMOVE, SchemaOpera
 INSTANCE_ID_KEY = "id"
 PARAMETERS_KEY = "parameters"
 NUMBER_POOL_ID_KEY = "number_pool_id"
+
+
+@dataclass(frozen=True)
+class KindName:
+    name: str
+    namespace: str
+
+    @property
+    def kind(self) -> str:
+        return f"{self.namespace}{self.name}"
+
+    def to_value(self) -> dict[str, JsonValue]:
+        return {"name": self.name, "namespace": self.namespace}
+
+
+def read_kind_name(value: JsonValue) -> KindName | None:
+    """Return the name and the namespace that the value of a kind rename holds, or `None` when it holds no text for one of them."""
+    if not isinstance(value, dict):
+        return None
+    name = value.get("name")
+    namespace = value.get("namespace")
+    if not isinstance(name, str) or not isinstance(namespace, str):
+        return None
+    return KindName(name=name, namespace=namespace)
 
 
 class SchemaOperation(BaseModel):
@@ -71,6 +96,19 @@ class SchemaOperation(BaseModel):
             raise ValueError(f"Operation {self.operation_type.value} requires 'property_name'")
         if self.operation_type == SchemaOperationType.NODE_ADD and self.node_type is None:
             raise ValueError(f"Operation {self.operation_type.value} requires 'node_type'")
+        if (
+            self.operation_type == SchemaOperationType.NODE_PROPERTY
+            and self.property_name in SCHEMA_KIND_NAME_PROPERTIES
+        ):
+            raise ValueError(
+                f"Operation {self.operation_type.value} cannot change '{self.property_name}'; use "
+                f"{SchemaOperationType.NODE_RENAME.value}"
+            )
+        if self.operation_type == SchemaOperationType.NODE_RENAME and read_kind_name(self.value) is None:
+            raise ValueError(
+                f"Operation {self.operation_type.value} requires a value with the text fields "
+                f"{' and '.join(repr(name) for name in SCHEMA_KIND_NAME_PROPERTIES)}"
+            )
         return self
 
     @model_validator(mode="after")
@@ -117,6 +155,8 @@ def _summary_action(operation_type: SchemaOperationType) -> str:
         return "add"
     if operation_type in REMOVE_OPERATION_TYPES:
         return "remove"
+    if operation_type == SchemaOperationType.NODE_RENAME:
+        return "rename"
     return "update"
 
 

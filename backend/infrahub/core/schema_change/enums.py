@@ -29,6 +29,7 @@ class SchemaOperationType(InfrahubStringEnum):
     NODE_ADD = "node_add"
     NODE_REMOVE = "node_remove"
     NODE_PROPERTY = "node_property"
+    NODE_RENAME = "node_rename"
     ELEMENT_ADD = "element_add"
     ELEMENT_REMOVE = "element_remove"
     ELEMENT_PROPERTY = "element_property"

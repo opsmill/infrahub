@@ -261,14 +261,31 @@ EXISTING_TARGET_CASES: list[ExistingTargetCase] = [
         operations=[
             RELABEL_TAG,
             SchemaOperation(
-                operation_type=SchemaOperationType.NODE_PROPERTY,
+                operation_type=SchemaOperationType.NODE_RENAME,
                 kind=TestKind.TAG,
-                property_name="name",
-                value="Device",
-                previous_value="Tag",
+                value={"name": "Device", "namespace": "Testing"},
+                previous_value={"name": "Tag", "namespace": "Testing"},
             ),
         ],
-        message=r"^Schema operation 1 \(node_property\) adds the kind TestingDevice, which the schema already has\.$",
+        message=r"^Schema operation 1 \(node_rename\) adds the kind TestingDevice, which the schema already has\.$",
+    ),
+    ExistingTargetCase(
+        name="attribute_renamed_to_a_name_that_no_operation_frees",
+        operations=[
+            SchemaOperation(
+                operation_type=SchemaOperationType.ELEMENT_PROPERTY,
+                kind=TestKind.TAG,
+                section=SchemaOperationSection.ATTRIBUTES,
+                element_name="description",
+                property_name="name",
+                value="name",
+                previous_value="description",
+            ),
+        ],
+        message=(
+            r"^Schema operation 0 \(element_property\) adds 'name' to the attributes of the kind TestingTag, "
+            r"which the schema already has\.$"
+        ),
     ),
     ExistingTargetCase(
         name="attribute_added_by_an_earlier_operation",

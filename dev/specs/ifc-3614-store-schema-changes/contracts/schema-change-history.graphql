@@ -65,6 +65,7 @@ enum SchemaOperationType {
   NODE_ADD
   NODE_PROPERTY
   NODE_REMOVE
+  NODE_RENAME
 }
 
 """Whether a kind that a schema operation adds is a node or a generic."""

@@ -251,6 +251,28 @@ def test_a_rename_by_id_names_the_element_by_its_name_before_the_load(equivalenc
     ]
 
 
+def test_a_kind_renamed_in_its_name_and_its_namespace_gives_one_rename_operation(
+    equivalence_base_schema: SchemaBranch,
+) -> None:
+    tag = base_node_definition(TestKind.TAG)
+    tag.id = schema_element_id(equivalence_base_schema, TestKind.TAG)
+    tag.name = "Sfp"
+    tag.namespace = "Optics"
+
+    result = _build(branch_schema=equivalence_base_schema, schema_root=SchemaRoot(nodes=[tag]))
+
+    assert [describe_operation(operation) for operation in result.operations] == [
+        describe_operation(
+            SchemaOperation(
+                operation_type=SchemaOperationType.NODE_RENAME,
+                kind=TestKind.TAG,
+                value={"name": "Sfp", "namespace": "Optics"},
+                previous_value={"name": "Tag", "namespace": "Testing"},
+            )
+        )
+    ]
+
+
 def test_no_operation_holds_an_id_or_a_number_pool_id(equivalence_base_schema: SchemaBranch) -> None:
     ticket = NodeSchema(
         id=NEW_NODE_ID,
@@ -281,7 +303,6 @@ def test_no_operation_holds_an_id_or_a_number_pool_id(equivalence_base_schema: S
     result = _build(branch_schema=equivalence_base_schema, schema_root=SchemaRoot(nodes=[ticket, device]))
 
     assert [_target(operation) for operation in result.operations] == [
-        (SchemaOperationType.NODE_ADD, TICKET_KIND, SchemaOperationNodeType.NODE, None, None, None),
         (
             SchemaOperationType.ELEMENT_ADD,
             TestKind.DEVICE,
@@ -290,6 +311,7 @@ def test_no_operation_holds_an_id_or_a_number_pool_id(equivalence_base_schema: S
             "ticket_number",
             None,
         ),
+        (SchemaOperationType.NODE_ADD, TICKET_KIND, SchemaOperationNodeType.NODE, None, None, None),
     ]
     assert [_held_instance_values(operation.value) for operation in result.operations] == [[], []]
     dumped = json.dumps([operation.model_dump(mode="json", exclude_unset=True) for operation in result.operations])
@@ -354,8 +376,6 @@ class TestOperationsOfAFileWithEveryOperationType:
                 None,
             ),
             (SchemaOperationType.NODE_REMOVE, TestKind.TAG, None, None, None, None),
-            (SchemaOperationType.NODE_ADD, CONNECTOR_KIND, SchemaOperationNodeType.GENERIC, None, None, None),
-            (SchemaOperationType.NODE_ADD, CABLE_KIND, SchemaOperationNodeType.NODE, None, None, None),
             (
                 SchemaOperationType.ELEMENT_REMOVE,
                 TestKind.DEVICE,
@@ -364,7 +384,6 @@ class TestOperationsOfAFileWithEveryOperationType:
                 "weight",
                 None,
             ),
-            (SchemaOperationType.ELEMENT_ADD, TestKind.DEVICE, None, SchemaOperationSection.ATTRIBUTES, "serial", None),
             (
                 SchemaOperationType.ELEMENT_PROPERTY,
                 TestKind.DEVICE,
@@ -381,7 +400,10 @@ class TestOperationsOfAFileWithEveryOperationType:
                 "height",
                 "name",
             ),
+            (SchemaOperationType.ELEMENT_ADD, TestKind.DEVICE, None, SchemaOperationSection.ATTRIBUTES, "serial", None),
             (SchemaOperationType.NODE_PROPERTY, TestKind.SFP, None, None, None, "label"),
+            (SchemaOperationType.NODE_ADD, CONNECTOR_KIND, SchemaOperationNodeType.GENERIC, None, None, None),
+            (SchemaOperationType.NODE_ADD, CABLE_KIND, SchemaOperationNodeType.NODE, None, None, None),
         ]
         assert [_target(operation) for operation in build_result.operations] == expected
         assert [_target(operation) for operation in reversed_result.operations] == expected

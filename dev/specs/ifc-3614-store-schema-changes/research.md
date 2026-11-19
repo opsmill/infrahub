@@ -120,13 +120,14 @@ have. Every load writes and reads these records, so the scan grows with every lo
 
 ## R4. The format of an operation
 
-**Decision**: an operation is one of six types. It names its target by kind and name only.
+**Decision**: an operation is one of seven types. It names its target by kind and name only.
 
 | Type | Target | Holds |
 | --- | --- | --- |
 | `node_add` | a kind | the full definition as written, and whether it is a node or a generic |
 | `node_remove` | a kind | nothing else |
-| `node_property` | a property of a kind | the new value and the value before |
+| `node_rename` | a kind | the new name and namespace, and the name and namespace before (spec, decision 12) |
+| `node_property` | a property of a kind other than `name` and `namespace` | the new value and the value before |
 | `element_add` | an attribute or a relationship of a kind | the full definition as written, with the order weight that processing gave it when the file sets none |
 | `element_remove` | an attribute or a relationship of a kind | nothing else |
 | `element_property` | a property of an attribute or a relationship | the new value and the value before |
@@ -255,8 +256,9 @@ returns a processed copy of the target.
    - `node_add`: build the node or generic from the definition and `set` it.
    - `node_remove`: set the state of the kind to absent, as a load does for `state: absent`. The
      diff then reports the kind as removed, and `SchemaManager.update_schema_to_db` deletes it.
-   - `node_property`: set the property. For `name` or `namespace`, delete the old kind and set the
-     new one, as `SchemaBranch.load_schema` does for a renamed kind.
+   - `node_property`: set the property.
+   - `node_rename`: set the name and the namespace, delete the old kind and set the new one, as
+     `SchemaBranch.load_schema` does for a renamed kind.
    - `element_add`, `element_remove`, `element_property`: change the list of attributes or
      relationships of the kind. The element keeps its ID, so the diff still reports a rename as a
      change of `name`.
@@ -524,7 +526,8 @@ change only after the whole flow ends.
 - The parent is the schema change that gave the base version. Main's first schema change, and a
   branch's first schema change when main has none, have no parent.
 - The summary is stored. It comes from the first operation: the kind in lower case, the attribute,
-  relationship or property name when there is one, and `add`, `remove` or `update`. With more
+  relationship or property name when there is one, and `add`, `remove`, `rename` (for a
+  `node_rename`) or `update`. With more
   operations it ends with `_and_<n>_more`. An `element_property` operation gives the attribute or
   relationship name, not the property name (`dcimgenericdevice_serial_update`); a `node_property`
   operation gives the property name (`dcimgenericdevice_generate_profile_update`).

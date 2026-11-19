@@ -40348,7 +40348,8 @@ export const SchemaOperationType = {
   ELEMENT_REMOVE: 'ELEMENT_REMOVE',
   NODE_ADD: 'NODE_ADD',
   NODE_PROPERTY: 'NODE_PROPERTY',
-  NODE_REMOVE: 'NODE_REMOVE'
+  NODE_REMOVE: 'NODE_REMOVE',
+  NODE_RENAME: 'NODE_RENAME'
 } as const;
 
 export type SchemaOperationType = typeof SchemaOperationType[keyof typeof SchemaOperationType];

@@ -76,6 +76,47 @@ REFUSED_OPERATION_CASES: list[RefusedOperationCase] = [
         error=r"Value error, Operation node_property requires 'property_name' \[",
     ),
     RefusedOperationCase(
+        name="node_property_names_the_name_of_the_kind",
+        fields={
+            "operation_type": SchemaOperationType.NODE_PROPERTY,
+            "kind": "DcimGenericDevice",
+            "property_name": "name",
+            "value": "Device",
+            "previous_value": "GenericDevice",
+        },
+        error=r"Value error, Operation node_property cannot change 'name'; use node_rename \[",
+    ),
+    RefusedOperationCase(
+        name="node_property_names_the_namespace_of_the_kind",
+        fields={
+            "operation_type": SchemaOperationType.NODE_PROPERTY,
+            "kind": "DcimGenericDevice",
+            "property_name": "namespace",
+            "value": "Infra",
+            "previous_value": "Dcim",
+        },
+        error=r"Value error, Operation node_property cannot change 'namespace'; use node_rename \[",
+    ),
+    RefusedOperationCase(
+        name="node_rename_without_namespace",
+        fields={
+            "operation_type": SchemaOperationType.NODE_RENAME,
+            "kind": "DcimGenericDevice",
+            "value": {"name": "Device"},
+            "previous_value": {"name": "GenericDevice", "namespace": "Dcim"},
+        },
+        error=r"Value error, Operation node_rename requires a value with the text fields 'name' and 'namespace' \[",
+    ),
+    RefusedOperationCase(
+        name="node_rename_with_a_text_value",
+        fields={
+            "operation_type": SchemaOperationType.NODE_RENAME,
+            "kind": "DcimGenericDevice",
+            "value": "DcimDevice",
+        },
+        error=r"Value error, Operation node_rename requires a value with the text fields 'name' and 'namespace' \[",
+    ),
+    RefusedOperationCase(
         name="node_add_without_node_type",
         fields={
             "operation_type": SchemaOperationType.NODE_ADD,
@@ -324,6 +365,18 @@ SUMMARY_CASES: list[SummaryCase] = [
             )
         ],
         expected="dcimgenericdevice_generate_profile_update",
+    ),
+    SummaryCase(
+        name="node_rename",
+        operations=[
+            SchemaOperation(
+                operation_type=SchemaOperationType.NODE_RENAME,
+                kind="DcimGenericDevice",
+                value={"name": "Device", "namespace": "Dcim"},
+                previous_value={"name": "GenericDevice", "namespace": "Dcim"},
+            )
+        ],
+        expected="dcimgenericdevice_rename",
     ),
     SummaryCase(
         name="node_add",

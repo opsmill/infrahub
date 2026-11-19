@@ -479,6 +479,31 @@ class SchemaOperationTargetExistsError(Error):
         super().__init__(self.message)
 
 
+class SchemaNameReusedError(Error):
+    """A schema file frees a kind, or a field name of a kind, and gives it to another in the same load."""
+
+    HTTP_CODE: int = 422
+
+    def __init__(self, *, kind: str, section: SchemaOperationSection | None = None, name: str | None = None) -> None:
+        """Build the error for a reused kind, or for a reused field name of a kind when `section` and `name` are given."""
+        self.kind = kind
+        self.section = section
+        self.name = name
+        if section is not None and name is not None:
+            field_type = section.value.removesuffix("s")
+            self.message = (
+                f"The schema load frees the {field_type} name '{name}' of the kind {kind} and gives it to another "
+                f"{field_type}, which Infrahub cannot apply in one load. Load the changes in separate steps, so that "
+                "no load both frees and reuses a name."
+            )
+        else:
+            self.message = (
+                f"The schema load frees the kind {kind} and gives it to another kind, which Infrahub cannot apply in "
+                "one load. Load the changes in separate steps, so that no load both frees and reuses a kind."
+            )
+        super().__init__(self.message)
+
+
 class SchemaOperationsRebuildError(Error):
     """The operations built from a schema file do not rebuild the schema of that file laid over the branch schema."""
 

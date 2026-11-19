@@ -69,7 +69,7 @@ One change to the schema. The operations of a schema change apply in the order o
 | Field | Type | Notes |
 | --- | --- | --- |
 | `position` | `int` | Starts at 0. Unique within one schema change |
-| `operation_type` | `SchemaOperationType` | `node_add`, `node_remove`, `node_property`, `element_add`, `element_remove`, `element_property` |
+| `operation_type` | `SchemaOperationType` | `node_add`, `node_remove`, `node_rename`, `node_property`, `element_add`, `element_remove`, `element_property` |
 | `kind` | `str` | Kind of the node or generic. For a renamed kind, the kind before the operation |
 | `node_type` | `SchemaOperationNodeType \| None` | `node` or `generic`. Set for `node_add` |
 | `section` | `SchemaOperationSection \| None` | `attributes` or `relationships`. Set for the three element types |

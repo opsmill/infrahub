@@ -247,6 +247,10 @@ branch. Count the records of that branch and of main before and after.
   are recorded. A file that changes nothing stores nothing.
 - **A rename**: a schema file renames an element by its ID, as it does today. The operation names
   the element by the name it had before the load, and holds the new name as the value.
+- **An attribute name or a kind freed and reused in one load**, such as two attributes that swap
+  names, a chain of attribute renames, or an attribute renamed while a new attribute takes its old
+  name: the load is refused with HTTP 422 and nothing is stored (FR-017). The user loads the
+  changes in separate steps. The same changes to relationship names load.
 - **A list field that a load replaces whole**, such as `human_friendly_id` or `inherit_from`: one
   operation holds the whole new list and the whole list before the change.
 - **`state: absent`** on a node, attribute or relationship is recorded as a removal.
@@ -317,8 +321,9 @@ branch. Count the records of that branch and of main before and after.
 
 #### Schema change operations
 
-- **FR-010**: Each operation MUST be one of six: add a node, remove a node, change a property of a
-  node, and the same three for an attribute or a relationship.
+- **FR-010**: Each operation MUST be one of seven: add a node, remove a node, rename a node, change
+  another property of a node, and add, remove or change a property of an attribute or a
+  relationship. A node rename sets the name and the namespace together (decision 12).
 - **FR-011**: A schema change MUST hold only the changes the user made: the paths of the processed
   diff that exist in what the user loaded, with the user's values. The paths that processing
   produced MUST be left out, such as:
@@ -338,6 +343,14 @@ branch. Count the records of that branch and of main before and after.
 - **FR-015**: An operation that changes a property MUST also hold the value before the change.
 - **FR-016**: Each schema change MUST record the version of the format its operations are stored
   in, so that stored operations stay readable after an upgrade that changes the format.
+- **FR-017**: A schema load and a schema check MUST be refused with HTTP 422, before any operation
+  is applied, when the load frees a name and gives it to another owner (decision 13):
+  - an attribute name of a kind, freed by a rename or a removal and taken by a rename or an add;
+  - a kind, freed by a rename or a removal and taken by a rename.
+
+  A new kind MAY take a kind that a renamed kind frees, and a relationship MAY take a relationship
+  name that another relationship of the kind frees. The message MUST tell the user to load the
+  changes in separate steps.
 
 #### One applier
 
@@ -377,6 +390,11 @@ branch. Count the records of that branch and of main before and after.
   - adding a node;
   - relationship changes;
   - kind renames, namespace changes and `inherit_from` changes;
+  - a kind rename with a new kind under the old kind;
+  - a kind renamed in its name and its namespace, whose new name in the old namespace is an
+    existing kind;
+  - chained and swapped relationship renames, and a relationship renamed while a new relationship
+    takes its old name;
   - removing a generic;
   - dropdown choices;
   - `state: absent`, node extensions, and list fields that a load replaces whole, such as
@@ -644,6 +662,21 @@ review.
     ([IFC-3637](https://opsmill.atlassian.net/browse/IFC-3637)), so the data that its applied
     migrations wrote stays in the branch, and `rolled back` would state a revert that did not
     happen. A `waiting` record becomes `cancelled` and a `running` one `failed`, as in decision 10.
+
+12. **A kind rename is one operation that sets the name and the namespace together.** Decided in
+    review on 2026-11-19. Two operations, one for each property, pass the kind through the kind
+    that the new name makes in the old namespace, and the applier refuses that step when that kind
+    exists.
+
+13. **A load that frees an attribute name or a kind and reuses it is refused with HTTP 422.**
+    Decided in review on 2026-11-19. Today's load accepts it, but its data migrations cannot apply
+    it correctly: the migrations that rename, add and remove attributes find them by name and run
+    at the same time, and those that rename kinds find nodes by the label of the kind. Supporting
+    these loads is left to a separate task. A new kind may take a freed kind, because it has no
+    nodes during the load. Relationship names are not refused: the data of a relationship is keyed
+    by its identifier, which a load cannot change, and a relationship rename has no data
+    migration. The applier applies chained and swapped relationship renames, and a relationship
+    renamed while a new relationship takes its old name.
 
 ## Sources
 

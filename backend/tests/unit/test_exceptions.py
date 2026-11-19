@@ -27,6 +27,7 @@ from infrahub.exceptions import (
     RepositoryNotSynchronizedError,
     RepositoryPushRejectedError,
     RPCError,
+    SchemaNameReusedError,
     SchemaNotFoundError,
     SchemaOperationsRebuildError,
     SchemaOperationTargetExistsError,
@@ -138,6 +139,10 @@ ERROR_PICKLE_CASES = [
     ErrorPickleCase(
         name="schema_operations_rebuild",
         error=SchemaOperationsRebuildError(kinds=["DcimGenericDevice", "LocationSite"]),
+    ),
+    ErrorPickleCase(
+        name="schema_name_reused",
+        error=SchemaNameReusedError(kind="DcimGenericDevice", section=SchemaOperationSection.ATTRIBUTES, name="serial"),
     ),
 ]
 

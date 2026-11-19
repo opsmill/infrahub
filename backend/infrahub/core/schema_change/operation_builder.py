@@ -18,6 +18,7 @@ from infrahub.core.schema_change.operations import (
     INSTANCE_ID_KEY,
     NUMBER_POOL_ID_KEY,
     PARAMETERS_KEY,
+    KindName,
     SchemaOperation,
 )
 from infrahub.core.schema_change.schema_elements import (
@@ -66,12 +67,13 @@ class _ChangedKindOperations:
     kind_renames: list[SchemaOperation] = field(default_factory=list)
 
     def ordered(self) -> list[SchemaOperation]:
+        """Return the operations with the renames before the additions, so that an added element can take a freed name."""
         return [
             *self.element_removals,
-            *self.element_additions,
             *self.node_properties,
             *self.element_properties,
             *self.element_renames,
+            *self.element_additions,
             *self.kind_renames,
         ]
 
@@ -123,12 +125,6 @@ class SchemaOperationBuilder:
                 stated_kind=stated_kinds[kind],
             )
         ]
-        added_kinds = [kind for kind in diff.added if kind in unprocessed and stated_kinds[kind].definitions]
-        operations.extend(
-            self._node_add(kind=kind, node=unprocessed[kind])
-            for kind in sorted(added_kinds, key=lambda kind: (not isinstance(unprocessed[kind], GenericSchema), kind))
-        )
-
         changed_kinds = [
             self._changed_kind_operations(
                 branch_schema=branch_schema,
@@ -143,6 +139,13 @@ class SchemaOperationBuilder:
         ]
         for kind_operations in sorted(changed_kinds, key=lambda item: item.kind_before):
             operations.extend(kind_operations.ordered())
+
+        # A new kind can take the name that a renamed kind gives up, so kinds are added after the renames.
+        added_kinds = [kind for kind in diff.added if kind in unprocessed and stated_kinds[kind].definitions]
+        operations.extend(
+            self._node_add(kind=kind, node=unprocessed[kind])
+            for kind in sorted(added_kinds, key=lambda kind: (not isinstance(unprocessed[kind], GenericSchema), kind))
+        )
 
         return SchemaOperationBuildResult(operations=operations, direct_load_schema=direct_load_schema)
 
@@ -235,10 +238,10 @@ class SchemaOperationBuilder:
         )
         return [
             *changes.element_removals,
-            *changes.element_additions,
             *(operation for operation in changes.node_properties if operation.property_name != STATE_PROPERTY),
             *changes.element_properties,
             *changes.element_renames,
+            *changes.element_additions,
             SchemaOperation(operation_type=SchemaOperationType.NODE_REMOVE, kind=kind_before),
         ]
 
@@ -309,24 +312,19 @@ class SchemaOperationBuilder:
         return section_position, operation.element_name or "", operation.property_name or ""
 
     def _kind_renames(self, branch_node: MainSchemaTypes, unprocessed_node: MainSchemaTypes) -> list[SchemaOperation]:
-        renames: list[SchemaOperation] = []
-        renamed_node = branch_node
-        for name_property in SCHEMA_KIND_NAME_PROPERTIES:
-            value = getattr(unprocessed_node, name_property)
-            previous_value = getattr(renamed_node, name_property)
-            if value == previous_value:
-                continue
-            renames.append(
-                SchemaOperation(
-                    operation_type=SchemaOperationType.NODE_PROPERTY,
-                    kind=renamed_node.kind,
-                    property_name=name_property,
-                    value=value,
-                    previous_value=previous_value,
-                )
+        """Return the rename of a kind as one operation, so that the kind never passes through a kind between its two names."""
+        new_name = KindName(name=unprocessed_node.name, namespace=unprocessed_node.namespace)
+        previous_name = KindName(name=branch_node.name, namespace=branch_node.namespace)
+        if new_name == previous_name:
+            return []
+        return [
+            SchemaOperation(
+                operation_type=SchemaOperationType.NODE_RENAME,
+                kind=branch_node.kind,
+                value=new_name.to_value(),
+                previous_value=previous_name.to_value(),
             )
-            renamed_node = renamed_node.model_copy(update={name_property: value})
-        return renames
+        ]
 
     def _collect_element_operations(
         self,

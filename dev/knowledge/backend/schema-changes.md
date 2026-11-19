@@ -112,9 +112,29 @@ A schema load and a schema check call `from_schema_root` through
    schema would replace the kind whole, which no operation states.
 2. `SchemaOperationBuilder` lays the merged file over a copy of the branch schema, processes it,
    diffs it against the branch schema, and keeps each path of that diff that the file states as an
-   operation. That processed copy is the direct-load schema.
-3. The applier applies the operations to a copy of the branch schema and processes it.
-4. `SchemaCandidateComparer` compares the applied schema with the direct-load schema, kind by kind,
+   operation. That processed copy is the direct-load schema. A renamed kind gives one
+   `node_rename` operation that sets its name and namespace together, so the kind never passes
+   through a kind between the two. The operations of removed kinds come first, then those of
+   changed kinds, then the `node_add` operations, so a new kind can take the kind that a renamed
+   kind gives up. Within a kind, the renames of attributes and relationships come before the
+   additions, so an added element can take a name that a rename frees.
+3. When the operations free an attribute name of a kind, or a kind, and give it to another owner
+   in the same load, the builder raises `SchemaNameReusedError` (HTTP 422) before any operation is
+   applied. A name is freed by a rename or a removal, and taken by a rename or an add; a new kind
+   (`node_add`) may take a freed kind. The data migrations of attribute renames, adds and removals
+   find attributes by name and run at the same time, and those of kind renames find nodes by the
+   label of the kind, so a name freed and reused in one load can reach the wrong attribute or node.
+   The message tells the user to load the changes in separate steps. Relationship names are not
+   refused: the data of a relationship is keyed by its identifier, which a load cannot change
+   (`UpdateSupport.NOT_SUPPORTED`), and a relationship rename has no data migration. Chained and
+   swapped relationship renames therefore load.
+4. The applier applies the operations to a copy of the branch schema and processes it. An element
+   operation names its element by its name before the load. While a chain or a swap of renames
+   runs, two elements of a kind can share a name; the applier then picks the element that no
+   earlier operation renamed, tracking renamed elements by ID. After the last operation, a rename
+   that leaves two elements of a kind with the same name raises
+   `SchemaOperationTargetExistsError`.
+5. `SchemaCandidateComparer` compares the applied schema with the direct-load schema, kind by kind,
    without the IDs of the kinds and of their attributes and relationships: saving a schema gives a
    new kind or element a database ID whatever ID the file set, and the operations hold no ID.
 

@@ -1,3 +1,4 @@
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -14,6 +15,7 @@ from infrahub.core.schema_change.factory import build_schema_candidate_builder
 from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder
 from infrahub.core.schema_change.operations import SchemaOperation
 from infrahub.exceptions import (
+    SchemaNameReusedError,
     SchemaNotFoundError,
     SchemaOperationsRebuildError,
     SchemaOperationTargetExistsError,
@@ -323,6 +325,120 @@ def test_a_schema_file_whose_operations_do_not_rebuild_its_schema_is_refused(
 
     cause = exc_info.value.__cause__
     assert (None if cause is None else type(cause)) is test_case.expected_cause
+
+
+def _stated_node(schema: SchemaBranch, kind: str) -> NodeSchema:
+    """Return a base node as a schema file states it, with the IDs that the branch schema holds for it and its fields."""
+    stored = schema.get(name=kind, duplicate=False)
+    node = base_node_definition(kind)
+    node.id = stored.id
+    for attribute in node.attributes:
+        attribute.id = stored.get_attribute(name=attribute.name).id
+    for relationship in node.relationships:
+        relationship.id = stored.get_relationship(name=relationship.name).id
+    return node
+
+
+def _chain_attribute_renames(schema: SchemaBranch) -> SchemaRoot:
+    tag = _stated_node(schema, TestKind.TAG)
+    tag.get_attribute(name=TAG_STATUS_ATTRIBUTE).name = "state"
+    tag.get_attribute(name="description").name = TAG_STATUS_ATTRIBUTE
+    return SchemaRoot(nodes=[tag])
+
+
+def _swap_attribute_names(schema: SchemaBranch) -> SchemaRoot:
+    tag = _stated_node(schema, TestKind.TAG)
+    status = tag.get_attribute(name=TAG_STATUS_ATTRIBUTE)
+    description = tag.get_attribute(name="description")
+    status.name, description.name = "description", TAG_STATUS_ATTRIBUTE
+    return SchemaRoot(nodes=[tag])
+
+
+def _rename_attribute_and_add_one_under_its_name(schema: SchemaBranch) -> SchemaRoot:
+    tag = _stated_node(schema, TestKind.TAG)
+    tag.get_attribute(name="description").name = "notes"
+    tag.attributes.append(AttributeSchema(name="description", kind="TextArea", optional=True))
+    return SchemaRoot(nodes=[tag])
+
+
+def _remove_attribute_and_rename_another_onto_it(schema: SchemaBranch) -> SchemaRoot:
+    tag = _stated_node(schema, TestKind.TAG)
+    tag.get_attribute(name=TAG_STATUS_ATTRIBUTE).state = HashableModelState.ABSENT
+    tag.get_attribute(name="description").name = TAG_STATUS_ATTRIBUTE
+    return SchemaRoot(nodes=[tag])
+
+
+def _swap_kind_names(schema: SchemaBranch) -> SchemaRoot:
+    tag = _stated_node(schema, TestKind.TAG)
+    sfp = _stated_node(schema, TestKind.SFP)
+    tag.name, sfp.name = "Sfp", "Tag"
+    return SchemaRoot(nodes=[tag, sfp])
+
+
+@dataclass(frozen=True)
+class ReusedNameCase:
+    name: str
+    schema_file: Callable[[SchemaBranch], SchemaRoot]
+    expected_message: str
+
+
+def _reused_field_name_message(field_type: str, name: str, kind: str) -> str:
+    return (
+        f"The schema load frees the {field_type} name '{name}' of the kind {kind} and gives it to another "
+        f"{field_type}, which Infrahub cannot apply in one load. Load the changes in separate steps, so that no load "
+        "both frees and reuses a name."
+    )
+
+
+REUSED_NAME_CASES = [
+    ReusedNameCase(
+        name="chained_attribute_renames",
+        schema_file=_chain_attribute_renames,
+        expected_message=_reused_field_name_message("attribute", TAG_STATUS_ATTRIBUTE, TestKind.TAG),
+    ),
+    ReusedNameCase(
+        name="swapped_attribute_names",
+        schema_file=_swap_attribute_names,
+        expected_message=_reused_field_name_message("attribute", "description", TestKind.TAG),
+    ),
+    ReusedNameCase(
+        name="attribute_renamed_and_another_added_under_its_name",
+        schema_file=_rename_attribute_and_add_one_under_its_name,
+        expected_message=_reused_field_name_message("attribute", "description", TestKind.TAG),
+    ),
+    ReusedNameCase(
+        name="attribute_removed_and_another_renamed_onto_its_name",
+        schema_file=_remove_attribute_and_rename_another_onto_it,
+        expected_message=_reused_field_name_message("attribute", TAG_STATUS_ATTRIBUTE, TestKind.TAG),
+    ),
+    ReusedNameCase(
+        name="swapped_kind_names",
+        schema_file=_swap_kind_names,
+        expected_message=(
+            f"The schema load frees the kind {TestKind.SFP} and gives it to another kind, which Infrahub cannot apply "
+            "in one load. Load the changes in separate steps, so that no load both frees and reuses a kind."
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", REUSED_NAME_CASES, ids=lambda case: case.name)
+def test_a_schema_file_that_frees_and_reuses_a_name_is_refused_before_any_operation_is_applied(
+    equivalence_base_schema: SchemaBranch, test_case: ReusedNameCase
+) -> None:
+    applier = RecordingSchemaChangeApplier()
+    builder = SchemaCandidateBuilder(
+        operation_builder=SchemaOperationBuilder(), applier=applier, comparer=SchemaCandidateComparer()
+    )
+
+    with pytest.raises(SchemaNameReusedError, match=rf"^{re.escape(test_case.expected_message)}$"):
+        builder.from_schema_root(
+            branch_schema=equivalence_base_schema,
+            schema_root=test_case.schema_file(equivalence_base_schema),
+            default_branch_schema=equivalence_base_schema,
+        )
+
+    assert applier.calls == []
 
 
 def test_a_schema_file_that_gives_an_existing_kind_an_unknown_id_is_refused_before_any_operation_is_applied(

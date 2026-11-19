@@ -1050,6 +1050,13 @@ tasks that name it.
       11): `SchemaChangeMarkFailedQuery` takes `rolled_back`, which `mark_failed` sets and
       `mark_failed_if_running` does not, and the component test of `mark_failed_if_running`
       asserts the status of each migration record.
+- [X] T076 [US1] A kind rename is one `node_rename` operation (spec, decision 12). The
+      `node_add` operations come after the operations of changed kinds, and within a kind the
+      element renames come before the element additions. `from_schema_root` raises
+      `SchemaNameReusedError` (HTTP 422) when the operations free an attribute name or a kind and
+      reuse it (spec, FR-017, decision 13). The applier picks the element that no earlier operation
+      renamed when two elements share a name, and refuses a rename that leaves two elements with
+      the same name. Regenerate `schema/schema.graphql` and the front-end types.
 
 ---
 
@@ -1106,5 +1113,5 @@ methods of one class run in the order they are defined.
 | 6. User Story 4 | T050 to T051 | 2 |
 | 7. User Story 5 | T052 to T055 | 4 |
 | 8. Documentation and polish | T056 to T064 | 9 |
-| 9. Changes decided in review | T066 to T075 | 10 |
-| Total | | 75 |
+| 9. Changes decided in review | T066 to T076 | 11 |
+| Total | | 76 |

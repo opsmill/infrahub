@@ -28366,6 +28366,7 @@ enum SchemaOperationType {
   NODE_ADD
   NODE_PROPERTY
   NODE_REMOVE
+  NODE_RENAME
 }
 
 """Whether a schema path names a kind, an attribute or a relationship."""
