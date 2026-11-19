@@ -16,7 +16,7 @@ The examples use the Marketplace kinds `IpamPrefix` and `IpamIPAddress`, describ
 Choose the member type of the prefix before you create it, because Infrahub computes the utilization of the prefix with a formula that depends on it:
 
 - `prefix` for a prefix that you divide into other prefixes, such as the `10.0.0.0/16` of a data center that you split into subnets.
-- `address` for a subnet that holds addresses. This is the default.
+- `address` for a subnet that contains addresses. This is the default.
 
 Set `is_pool` to `true` when every address in the prefix is usable, including the network and broadcast addresses.
 
@@ -113,28 +113,28 @@ await address.save()
 </TabItem>
 </Tabs>
 
-Infrahub attaches the address to the most specific prefix that contains it. If no prefix contains it, the address has no parent prefix until you create one that does.
+The parent prefix of an address is the most specific prefix that contains it. If no prefix contains it, the address has no parent prefix until you create one that does.
 
-## Create a prefix or an address in free space
+## Create a prefix or an address in available space
 
-When you add a subnet to a site or an address to a subnet, start from the free space of the parent prefix instead of searching for an unused value.
+When you add a subnet to a site or an address to a subnet, start from the available space of the parent prefix instead of searching for an unused value.
 
 <Tabs groupId="method" queryString>
   <TabItem value="web" label="Web Interface" default>
 
 1. Open the parent prefix by selecting its value in the prefix table or in the tree.
 2. On the **Children** tab, each free block is listed as a row marked **Prefix available**. The **Available IP prefixes** tag above the table hides or shows these rows, and they are shown by default. On the **IP Addresses** tab of a subnet, the **Available IP addresses** tag controls the rows of free address ranges in the same way.
-3. Select a free prefix row. The **Create Prefix** panel opens with the free block in **Prefix**. To create a smaller prefix inside the block, change the value, for example from `10.0.2.0/23` to `10.0.2.0/24`.
+3. Select an available prefix row. The **Create Prefix** panel opens with the available block in **Prefix**. To create a smaller prefix inside the block, change the value, for example from `10.0.2.0/23` to `10.0.2.0/24`.
 4. The panel does not fill in the namespace. If the parent prefix is not in `default`, choose its namespace in **IP Namespace**. Otherwise Infrahub creates the prefix in `default`.
 5. Select **Save**.
 
-![The Children tab of 10.0.0.0/16 with Available IP prefixes visible: the free blocks 10.0.2.0/23 to 10.0.64.0/18 between 10.0.1.0/24 and 10.0.128.0/24, and further free blocks after 10.0.128.0/24.](../media/ipam/ipam-available-prefixes.png)
+![The Children tab of 10.0.0.0/16 with Available IP prefixes visible: the available blocks 10.0.2.0/23 to 10.0.64.0/18 between 10.0.1.0/24 and 10.0.128.0/24, and further free blocks after 10.0.128.0/24.](../media/ipam/ipam-available-prefixes.png)
 
 </TabItem>
 
   <TabItem value="graphql" label="GraphQL">
 
-Query the next free prefix of a given size in the parent prefix, then create it:
+Query the next available prefix of a given size in the parent prefix, then create it:
 
 ```graphql
 query {
@@ -148,7 +148,7 @@ query {
 
   <TabItem value="sdk" label="Python SDK">
 
-Query the next free prefix of a given size in the parent prefix, then create it:
+Query the next available prefix of a given size in the parent prefix, then create it:
 
 ```python
 parent = await client.get(
@@ -174,7 +174,7 @@ await subnet.save()
 </TabItem>
 </Tabs>
 
-The query returns the value and creates nothing, so another client can use the same value before you create it. To list every free block of the parent prefix, see [Query IPAM data](./query-ipam-data.mdx#list-the-free-space-in-a-prefix).
+The query returns the value and creates nothing, so another client can use the same value before you create it. To list every available block of the parent prefix, see [Query IPAM data](./query-ipam-data.mdx#list-the-available-space-in-a-prefix).
 
 When automation assigns the prefix, allocate it from a Resource Manager pool instead. The pool creates the prefix and records the allocation in one request, and it does not give the same value to two requests with different identifiers. A pool has to exist first, with the parent prefix as one of its resources. See [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx).
 
@@ -276,6 +276,6 @@ Changes to different addresses are saved in parallel. When two people or scripts
 ## Next
 
 - [Use namespaces](./use-namespaces.mdx) — Separate overlapping address space and move prefixes between namespaces
-- [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx) — Assign the next free address or prefix from a pool
+- [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx) — Allocate the next available address or prefix from a pool
 - [Query IPAM data](./query-ipam-data.mdx) — Check utilization and the tree after a change
 - [Plan changes on a branch](./plan-changes-on-a-branch.mdx) — Review an addressing change before it is merged

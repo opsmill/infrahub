@@ -25,7 +25,7 @@ Once your IPAM schema is in place, use [Infrahub Sync](https://docs.infrahub.app
 
 ![The default namespace contains the prefix 10.0.0.0/16, which contains 10.0.0.0/24 and 10.0.1.0/24. Each address belongs to the most specific prefix that contains it, and one address is assigned to the device atl1-edge1.](../media/ipam/ipam-data-model.svg)
 
-- A namespace is a separate address space. Every prefix and every address belongs to exactly one namespace. Infrahub creates the `default` namespace when it starts for the first time, and assigns a prefix or an address to it when you do not choose a namespace.
+- A namespace is a separate address space. Every prefix and every address belongs to exactly one namespace. Infrahub creates the `default` namespace when it starts for the first time, and creates a prefix or an address in it when no namespace is chosen.
 - Within a namespace, prefixes form a tree based on network containment. A prefix is the parent of the prefixes it contains, and each address belongs to the most specific prefix that contains it.
 - Prefixes and addresses relate to the rest of your data through schema relationships. In the Marketplace schema, an address relates to an interface (`interface`) and can be the primary address of a device (`primary_of`).
 
@@ -57,11 +57,11 @@ Infrahub computes the read-only `utilization` attribute of a prefix from its dir
 - **`prefix`**: the address space of the child prefixes, divided by the address space of the prefix. For example, `192.0.2.0/24` with one `192.0.2.0/26` child has a utilization of 25%.
 - **`address`**: the number of addresses in the prefix, divided by the number of usable addresses. For example, `192.0.2.0/26` has 62 usable addresses, so with 20 addresses its utilization is 32%.
 
-![192.0.2.0/24 with member type prefix holds one /26: utilization 25%. 192.0.2.0/26 with member type address holds 20 of 62 usable addresses: utilization 32%. 10.0.0.0/22 with member type address holds three /24 prefixes and no addresses: utilization 0%.](../media/ipam/ipam-utilization.svg)
+![192.0.2.0/24 with member type prefix contains one /26: utilization 25%. 192.0.2.0/26 with member type address contains 20 of 62 usable addresses: utilization 32%. 10.0.0.0/22 with member type address contains three /24 prefixes and no addresses: utilization 0%.](../media/ipam/ipam-utilization.svg)
 
-Infrahub counts only the children that match the member type. A prefix that contains other prefixes, and whose member type is still `address`, has a utilization of 0%, however many prefixes it holds.
+Infrahub counts only the children that match the member type. A prefix that contains other prefixes, and whose member type is still `address`, has a utilization of 0%, however many prefixes it contains.
 
-Infrahub returns utilization as a whole number, rounded down. A large prefix can therefore have a utilization of 0% while it holds a few small prefixes: for `10.0.0.0/8` with three `/24` children, the value is 0 in either mode.
+Infrahub returns utilization as a whole number, rounded down. A large prefix can therefore have a utilization of 0% while it contains a few small prefixes: for `10.0.0.0/8` with three `/24` children, the value is 0 in either mode.
 
 In a subnet, the first address (the network address) and the last address (the broadcast address) cannot be assigned to a host. Infrahub leaves them out when it calculates utilization, so the `/26` above has 62 usable addresses, not 64.
 
@@ -106,6 +106,6 @@ When a Generator creates the devices and interfaces of a new data center, site o
 - [Build your IPAM schema](./build-your-ipam-schema.mdx) — Load the Marketplace IPAM schema or define your own prefix and address nodes, and choose their uniqueness constraints
 - [Manage prefixes and addresses](./manage-prefixes-and-addresses.mdx) — Create, change and delete prefixes and addresses, and see what each change does to the tree
 - [Use namespaces](./use-namespaces.mdx) — Separate overlapping address space, combine namespaces with VRFs, and move prefixes between namespaces
-- [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx) — Assign the next free address or prefix from a Resource Manager pool
-- [Query IPAM data](./query-ipam-data.mdx) — Read utilization, the hierarchy and the free space of a prefix with GraphQL or the Python SDK
+- [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx) — Allocate the next available address or prefix from a Resource Manager pool
+- [Query IPAM data](./query-ipam-data.mdx) — Read utilization, the hierarchy and the available space of a prefix with GraphQL or the Python SDK
 - [Plan changes on a branch](./plan-changes-on-a-branch.mdx) — Prepare an addressing change on a branch, review it, and resolve duplicates between branches

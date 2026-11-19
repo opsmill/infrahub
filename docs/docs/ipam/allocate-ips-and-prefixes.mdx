@@ -16,7 +16,7 @@ A `CoreIPAddressPool` or a `CoreIPPrefixPool` takes IPAM prefixes as its `resour
 - Infrahub handles one allocation request at a time for each pool, across every Infrahub worker, so two concurrent requests to the same pool never receive the same resource.
 - When a pool has several prefixes as resources, it allocates from the prefix with the highest `allocation_weight` first. The attribute comes from the `CoreWeightedPoolResource` generic. The Marketplace `IpamPrefix` does not inherit from it, so add it to your prefix node to use weights. See [Weighted allocation](../resource-manager/weighted-allocation.mdx).
 
-In the following example, a loopback pool allocates from `10.0.0.0/24`. A request with a new identifier receives the next free address, and a request that repeats an identifier receives the address already allocated to it:
+In the following example, a loopback pool allocates from `10.0.0.0/24`. A request with a new identifier receives the next available address, and a request that repeats an identifier receives the address already allocated to it:
 
 ![A loopback pool uses the prefix 10.0.0.0/24 as its resource. The prefix does not count every address as usable, so the pool does not allocate the network address 10.0.0.0. A Generator requests an address with the identifier atl1-edge1 and receives 10.0.0.1/32, then with atl1-edge2 and receives 10.0.0.2/32. Requesting again with atl1-edge1 returns 10.0.0.1/32 again instead of a new address.](../media/ipam/ipam-pool-allocation.svg)
 
@@ -107,7 +107,7 @@ After the address is deleted, Infrahub allocates the next available address to a
 
 ## Advanced: next-available GraphQL queries
 
-`InfrahubIPAddressGetNextAvailable` and `InfrahubIPPrefixGetNextAvailable` are read-only GraphQL queries that return the next free address or subnet in a given prefix. They take the ID of the prefix in `prefix_id`, and an optional `prefix_length`:
+`InfrahubIPAddressGetNextAvailable` and `InfrahubIPPrefixGetNextAvailable` are read-only GraphQL queries that return the next available address or subnet in a given prefix. They take the ID of the prefix in `prefix_id`, and an optional `prefix_length`:
 
 ```graphql
 query {
@@ -117,9 +117,9 @@ query {
 }
 ```
 
-Unlike a pool allocation, they create no record, and they do not provide the pool's guarantee across branches: two callers on different branches can receive the same next free value and both try to create it.
+Unlike a pool allocation, they create no record, and they do not provide the pool's guarantee across branches: two callers on different branches can receive the same next available value and both try to create it.
 
-Use a pool for production workflows. Use these queries only to look up a value without storing it. To list all the free blocks of a prefix instead of the next one, see [Query IPAM data](./query-ipam-data.mdx#list-the-free-space-in-a-prefix).
+Use a pool for production workflows. Use these queries only to look up a value without storing it. To list all the available blocks of a prefix instead of the next one, see [Query IPAM data](./query-ipam-data.mdx#list-the-available-space-in-a-prefix).
 
 ## Next
 

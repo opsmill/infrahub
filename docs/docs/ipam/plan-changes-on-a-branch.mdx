@@ -8,7 +8,7 @@ Make an addressing change, such as a subnet split or the prefixes of a new site,
 
 1. [Create a branch](../branches/create.mdx).
 2. Make the addressing changes on the branch, as described in [Manage prefixes and addresses](./manage-prefixes-and-addresses.mdx).
-3. Open a [Proposed Change](../proposed-changes/overview.mdx). The Data tab lists the prefixes, addresses and namespaces that were added, changed or deleted, and the attributes that changed on each. The checks run on the Proposed Change, including the uniqueness check described in [When two branches create the same prefix](#when-two-branches-create-the-same-prefix).
+3. Open a [Proposed Change](../proposed-changes/overview.mdx). The Data tab lists the prefixes, addresses and namespaces that were added, changed or deleted, and the attributes that changed on each. The checks run on the Proposed Change, including the Schema Integrity check described in [When the same prefix is created on two branches](#when-the-same-prefix-is-created-on-two-branches).
 4. Merge once the review is complete. See [Merge a branch](../branches/merge.mdx) for what happens at merge time.
 
 ## How Infrahub updates the tree on a branch and at merge
@@ -34,7 +34,7 @@ Without a uniqueness constraint, you can merge both branches, and the namespace 
 
 ## Example: split a subnet on a branch
 
-The network team of customer A, from the example in [Use namespaces](./use-namespaces.mdx#example-overlapping-customer-address-space), needs to split `10.1.0.0/16` into two `/17` prefixes ahead of a data center migration. `10.1.0.0/16` has the member type `prefix` and holds several `/24` prefixes.
+The network team of customer A, from the example in [Use namespaces](./use-namespaces.mdx#example-overlapping-customer-address-space), needs to split `10.1.0.0/16` into two `/17` prefixes ahead of a data center migration. `10.1.0.0/16` has the member type `prefix` and contains several `/24` prefixes.
 
 1. Create a branch named `customer-a-subnet-split`.
 2. On the branch, create `10.1.0.0/17` and `10.1.128.0/17` in the `customer-a` namespace, with the member type `prefix`. You do not set their parent. Infrahub places both under `10.1.0.0/16`, and moves each existing `/24` under the `/17` that contains it.

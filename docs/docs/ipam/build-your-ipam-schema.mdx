@@ -42,7 +42,7 @@ The full list of attributes and relationships of each generic:
 
 - `BuiltinIPNamespace`
   - Attributes: `name` and `description`.
-  - Relationships: `ip_prefixes` and `ip_addresses`. When you delete a namespace, Infrahub deletes the prefixes and addresses it holds.
+  - Relationships: `ip_prefixes` and `ip_addresses`. When you delete a namespace, Infrahub deletes the prefixes and addresses in it.
   - Infrahub includes `IpamNamespace`, which inherits from this generic and has an additional read-only `default` attribute.
 - `BuiltinIPPrefix`
   - Attributes: `prefix` (attribute kind `IPNetwork`), `description`, `member_type` (`prefix` or `address`, default `address`) and `is_pool` (default `false`).
@@ -101,7 +101,7 @@ Make prefixes and addresses unique within a namespace, not across the whole inst
 The built-in generics declare no uniqueness constraint, so your schema decides what Infrahub accepts:
 
 - With the per-namespace constraint, Infrahub rejects a second prefix or address with the same value in the same namespace, and accepts the same value in another namespace.
-- With a constraint on the value alone, such as `[address__value]`, Infrahub also rejects the same address in a second namespace, so namespaces can no longer hold overlapping address space.
+- With a constraint on the value alone, such as `[address__value]`, Infrahub also rejects the same address in a second namespace, so namespaces can no longer contain overlapping address space.
 - Without a constraint, Infrahub accepts two prefixes or two addresses with the same value in one namespace. Two such prefixes are siblings in the tree, and neither contains the other.
 - A constraint applies only within its own kind. An `IpamIPAddress` can have the same value as an address of another kind that also inherits from `BuiltinIPAddress`.
 
@@ -137,7 +137,7 @@ Browse [marketplace.infrahub.app](https://marketplace.infrahub.app) for the full
 
 Use `IPAddress` when the value has no subnet context and a prefix would be misleading. Use `IPHost` when the prefix is part of the data but the address itself is not tracked in IPAM, for example a value copied from an external inventory system. Use `IPNetwork` for a subnet reference that is not itself a tracked prefix.
 
-An address that belongs to infrastructure you manage, such as the address of an interface, is not a fit for any of these three kinds. In the Marketplace schema, `IpamIPAddress` has an `interface` relationship to `InterfaceLayer3`, so each interface address is an IPAM address with its own position in the tree, its own place in utilization, and its own allocation history. See [When to model an IPAM node instead](#when-to-model-an-ipam-node-instead).
+Model an address that belongs to infrastructure you manage, such as the address of an interface, as an IPAM address, not as an attribute. In the Marketplace schema, `IpamIPAddress` has an `interface` relationship to `InterfaceLayer3`, so each interface address is an IPAM address with its own position in the tree, its own place in utilization, and its own allocation history. See [When to model an IPAM node instead](#when-to-model-an-ipam-node-instead).
 
 ### Example: NTP and syslog addresses on a region
 
@@ -172,7 +172,7 @@ The `Region` example models a third-party NTP or syslog service: the address is 
 
 Use an `IpamIPAddress` node instead of an attribute kind when you need the address to:
 
-- Take part in the prefix tree or in utilization
+- Have a place in the prefix tree and count in utilization
 - Be allocated from a `CoreIPAddressPool`
 - Be shared across more than one object, or have its own relationships, lifecycle, or namespace
 
@@ -220,4 +220,4 @@ For a complete example with prefixes and addresses, see the schema of the [Servi
 
 - [Manage prefixes and addresses](./manage-prefixes-and-addresses.mdx) — Create, change and delete the prefixes and addresses this schema defines
 - [Use namespaces](./use-namespaces.mdx) — Separate overlapping address space
-- [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx) — Assign addresses and subnets from a pool
+- [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx) — Allocate addresses and subnets from a pool
