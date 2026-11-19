@@ -228,7 +228,7 @@ await prefix.save()
 
 ## Delete a prefix or an address
 
-When you delete a prefix, Infrahub moves its child prefixes and addresses up to its parent. It does not delete them. To remove a whole subtree, delete each of its prefixes and addresses.
+Deleting a prefix does not delete the prefixes and addresses under it. They are assigned to the parent of the deleted prefix, or have no parent if the deleted prefix was a top-level prefix. To remove a whole subtree, delete each of its prefixes and addresses.
 
 When you delete an address that was allocated from a pool, it becomes available in the pool again. If a branch was created before you deleted the address, that branch still has it, so the address becomes available only after you rebase or delete that branch. See [Return an address to the pool](./allocate-ips-and-prefixes.mdx#return-an-address-to-the-pool).
 

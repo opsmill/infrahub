@@ -38,7 +38,7 @@ To store a single IP value on another node without these behaviors, such as the 
 You set the value of a prefix or an address, and Infrahub sets its parent. Creating, changing or deleting a prefix also changes the parents of other prefixes and addresses in that namespace:
 
 - When you create a prefix, Infrahub moves the existing prefixes and addresses it contains under it.
-- When you delete a prefix, Infrahub moves its child prefixes and addresses up to its parent. It does not delete them.
+- When you delete a prefix, its child prefixes and addresses are not deleted. They are assigned to the parent of the deleted prefix, or have no parent if the deleted prefix was a top-level prefix.
 - When you change the value of a prefix, for example from a `/24` to a `/23`, Infrahub moves prefixes and addresses into it or out of it.
 - An address that no prefix contains has no parent prefix until you create a prefix that contains it.
 
@@ -95,7 +95,7 @@ Open a prefix to view its child prefixes together with the available blocks insi
 
 ## Changes on a branch
 
-Prepare an addressing change, such as a subnet split or the prefixes of a new site, on a branch, and review it in a Proposed Change together with the device and service changes that depend on it. You can create, change and delete namespaces, prefixes and addresses on any branch. Infrahub updates the tree of the branch after each change. When you merge or rebase the branch, Infrahub updates the tree of the target branch for the prefixes and addresses that changed. See [Plan changes on a branch](./plan-changes-on-a-branch.mdx) for the review workflow, and for what happens when two branches create the same prefix.
+Prepare an addressing change, such as a subnet split or the prefixes of a new site, on a branch, and review it in a Proposed Change together with the device and service changes that depend on it. You can create, change and delete namespaces, prefixes and addresses on any branch. Infrahub updates the tree of the branch after each change. When you merge or rebase the branch, Infrahub updates the tree of the default branch, or of the rebased branch, for the prefixes and addresses that changed. See [Plan changes on a branch](./plan-changes-on-a-branch.mdx) for the review workflow, and for what happens when two branches create the same prefix.
 
 ## Allocate addresses and prefixes
 

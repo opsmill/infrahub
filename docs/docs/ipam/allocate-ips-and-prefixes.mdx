@@ -75,27 +75,27 @@ For the full walkthrough, including creating the source prefix in the web interf
 
 ## Allocate from Generators
 
-A Generator has the same Python SDK client available as any other script, so allocating from a pool inside a Generator is an ordinary SDK call:
+In the Generator's `generate` method, allocate from a pool with the Generator's client, `self.client`. In this example, `device_name`, `interface` and `network` come from the data that the Generator's query returns:
 
 ```python
-loopback_pool = await client.get(kind="CoreIPAddressPool", name__value="Loopback pool")
-interconnection_pool = await client.get(kind="CoreIPPrefixPool", name__value="Interconnection pool")
+loopback_pool = await self.client.get(kind="CoreIPAddressPool", name__value="Loopback pool")
+interconnection_pool = await self.client.get(kind="CoreIPPrefixPool", name__value="Interconnection pool")
 
-device_loopback = await client.allocate_next_ip_address(
+device_loopback = await self.client.allocate_next_ip_address(
     resource_pool=loopback_pool,
     identifier=device_name,
     data={"interface": interface.id},
-    branch=branch,
+    branch=self.branch,
 )
 
-interconnect_subnet = await client.allocate_next_ip_prefix(
+interconnect_subnet = await self.client.allocate_next_ip_prefix(
     resource_pool=interconnection_pool,
     identifier=network.identifier,
-    branch=branch,
+    branch=self.branch,
 )
 ```
 
-`allocate_next_ip_address` and `allocate_next_ip_prefix` take the same `resource_pool` and `identifier` arguments as the underlying `InfrahubIPAddressPoolGetResource` and `InfrahubIPPrefixPoolGetResource` mutations. Pass a stable `identifier`, such as the device name, so that a Generator receives the same address each time it runs again. The [infrastructure-edge topology model](https://github.com/opsmill/infrahub/blob/stable/models/infrastructure_edge.py) is a worked example that allocates loopback and management addresses, and interconnection subnets, this way.
+Pass a stable `identifier`, such as the device name, so that a Generator receives the same address each time it runs again.
 
 ## Return an address to the pool
 

@@ -47,16 +47,17 @@ The full list of attributes and relationships of each generic:
 - `BuiltinIPPrefix`
   - Attributes: `prefix` (attribute kind `IPNetwork`), `description`, `member_type` (`prefix` or `address`, default `address`) and `is_pool` (default `false`).
   - Read-only attributes: `is_top_level`, `utilization`, `netmask`, `hostmask`, `network_address` and `broadcast_address`.
-  - Relationships: `ip_namespace`, and the read-only `parent`, `children`, `ancestors`, `descendants`, `ip_addresses` and `resource_pool`.
+  - Relationships: `ip_namespace`, and the read-only `parent`, `children`, `ip_addresses` and `resource_pool`. Read-only fields: `ancestors` and `descendants`.
 - `BuiltinIPAddress`
   - Attributes: `address` (attribute kind `IPHost`) and `description`.
   - Relationships: `ip_namespace`, and the read-only `ip_prefix`.
 
 ## Define your own IPAM nodes
 
-To build the model yourself rather than start from the Marketplace schema, inherit from `BuiltinIPPrefix` and `BuiltinIPAddress`. The nodes then take part in the tree, utilization and namespaces. This example uses the same kind names as the Marketplace schema, so the examples on the other IPAM pages work with either:
+To use your own model instead of the Marketplace schema, define a prefix node that inherits from `BuiltinIPPrefix` and an address node that inherits from `BuiltinIPAddress`. Infrahub places the prefixes and addresses created from these nodes in the tree of their namespace and calculates their utilization, as it does for the Marketplace nodes. This example uses the same kind names as the Marketplace schema, so the examples on the other IPAM pages work with either schema, except those that use `status`, `role` or the `interface` relationship of an address, which only the Marketplace nodes have:
 
 ```yaml title="schemas/ipam/prefix-and-address.yml"
+version: "1.0"
 nodes:
   - name: Prefix
     namespace: Ipam
@@ -65,7 +66,7 @@ nodes:
     description: IPv4 or IPv6 network
     icon: mdi:ip-network
     label: Prefix
-    menu_placement: IpamNamespace
+    include_in_menu: false
     human_friendly_id:
       - ip_namespace__name__value
       - prefix__value
@@ -78,7 +79,7 @@ nodes:
     description: IPv4 or IPv6 address
     icon: mdi:ip
     label: IP Address
-    menu_placement: IpamNamespace
+    include_in_menu: false
     human_friendly_id:
       - ip_namespace__name__value
       - address__value
@@ -121,7 +122,7 @@ infrahubctl marketplace get infrahub/ipam_aggregate
 
 The [`infrahub/ipam_aggregate`](https://marketplace.infrahub.app/schemas/infrahub/ipam_aggregate) extension defines `IpamAggregate`, a top-level prefix assigned by a Regional Internet Registry (RIR), and `OrganizationRIR` for the registry. `IpamAggregate` inherits from `BuiltinIPPrefix`, so aggregates are prefixes in the tree. Its uniqueness constraint is on the value alone, so one aggregate value cannot exist in two namespaces.
 
-The [`infrahub/vrf`](https://marketplace.infrahub.app/schemas/infrahub/vrf) extension defines a VRF node with a route distinguisher and import and export route targets, and adds a `vrf` relationship to `IpamPrefix`. To choose how to combine VRFs and namespaces, see [Use namespaces](./use-namespaces.mdx#choose-between-a-namespace-and-a-vrf).
+The [`infrahub/vrf`](https://marketplace.infrahub.app/schemas/infrahub/vrf) extension defines a VRF node with a route distinguisher and import and export route targets, and adds a `vrf` relationship to `IpamPrefix` and `IpamIPAddress`. To choose how to combine VRFs and namespaces, see [Use namespaces](./use-namespaces.mdx#choose-between-a-namespace-and-a-vrf).
 
 Browse [marketplace.infrahub.app](https://marketplace.infrahub.app) for the full catalog of extensions. Load extension schemas on a branch, not `main`. See [Create and load schema](../schema/create-and-load.mdx).
 
@@ -137,13 +138,14 @@ Browse [marketplace.infrahub.app](https://marketplace.infrahub.app) for the full
 
 Use `IPAddress` when the value has no subnet context and a prefix would be misleading. Use `IPHost` when the prefix is part of the data but the address itself is not tracked in IPAM, for example a value copied from an external inventory system. Use `IPNetwork` for a subnet reference that is not itself a tracked prefix.
 
-Model an address that belongs to infrastructure you manage, such as the address of an interface, as an IPAM address, not as an attribute. In the Marketplace schema, `IpamIPAddress` has an `interface` relationship to `InterfaceLayer3`, so each interface address is an IPAM address with its own position in the tree, its own place in utilization, and its own allocation history. See [When to model an IPAM node instead](#when-to-model-an-ipam-node-instead).
+Model an address that belongs to infrastructure you manage, such as the address of an interface, as an IPAM address, not as an attribute. In the Marketplace schema, `IpamIPAddress` has an `interface` relationship to `InterfaceLayer3`, so each interface address is an IPAM address, with its own place in the tree and in utilization, and it can be allocated from a pool. See [When to model an IPAM node instead](#when-to-model-an-ipam-node-instead).
 
 ### Example: NTP and syslog addresses on a region
 
 The NTP and syslog servers of a region are addresses that other devices are configured to use, not address space to manage. You do not need a tree, utilization or allocation for them. Add them as `IPAddress` attributes on the node that uses them:
 
 ```yaml title="schemas/location/region.yml"
+version: "1.0"
 nodes:
   - name: Region
     namespace: Location

@@ -194,7 +194,7 @@ for prefix in prefixes:
 Change the namespace of the prefix or the address. Infrahub moves only that prefix or address:
 
 - The child prefixes and addresses of a moved prefix stay in the old namespace, under the next prefix there that contains them, or at the top level.
-- In the new namespace, Infrahub places the moved prefix or address under the most specific prefix that contains it, or at the top level.
+- In the new namespace, Infrahub places the moved prefix or address under the most specific prefix that contains it, or at the top level, and the prefixes and addresses there that a moved prefix contains become its children.
 
 :::warning
 
