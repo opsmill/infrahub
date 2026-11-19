@@ -1106,6 +1106,25 @@ class TestConflictsEnricher:
 
         assert (branch_property.conflict is not None) is conflicts
 
+    @pytest.mark.parametrize(
+        ("branch_owners", "conflicts"),
+        [pytest.param('["b"]', False, id="same_owner"), pytest.param('["c"]', True, id="other_owner")],
+    )
+    async def test_owner_that_an_earlier_release_stored_in_the_diff_is_an_owner_list(
+        self, db: InfrahubDatabase, branch_owners: str, conflicts: bool
+    ) -> None:
+        # An earlier release stored the owner ID alone, not a list of owner IDs.
+        base_root, branch_root, branch_property = self._build_property_conflict_roots(
+            attribute_name="smell",
+            property_type=DatabaseEdgeType.HAS_OWNER,
+            base_values=("a", "b"),
+            branch_values=('["a"]', branch_owners),
+        )
+
+        await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
+
+        assert (branch_property.conflict is not None) is conflicts
+
     async def test_manually_fixed_node_conflict_cleared(self, db: InfrahubDatabase) -> None:
         node_uuid = str(uuid4())
         node_kind = "SomethingSmelly"
