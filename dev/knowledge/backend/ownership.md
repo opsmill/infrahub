@@ -134,7 +134,9 @@ branches and at all times, so a closed edge also makes the query read the holder
 - The create and the update of a node check the `owner` property of each attribute and of each link before the first
   write (`check_field_owner_kinds`), so a refused owner leaves the node unchanged also outside a transaction. The
   update checks only an owner that the database does not hold yet, so an owner that was deleted later does not stop
-  the update. An owner of another kind, or an owner that does not exist, raises `ValidationError` with the path of
+  the update. To compare a link with the database, the update first resolves the peers of each relationship that has
+  a link with an owner. So a resource pool gives the peer before the check, as in the GraphQL mutations, which
+  resolve all peers before the save. An owner of another kind, or an owner that does not exist, raises `ValidationError` with the path of
   the field, for example `color.owner`. The save of one attribute or of one link checks its own new owner too.
 
 ## Resolution

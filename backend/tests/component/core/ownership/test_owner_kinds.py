@@ -59,6 +59,21 @@ async def test_account_and_account_group_are_accepted_as_owner_of_an_attribute_a
     assert await _owner_ids(db=db, branch=default_branch, car_id=car.id) == (account.id, group.id)
 
 
+async def test_link_given_by_hfid_with_an_owner_is_saved(
+    db: InfrahubDatabase, default_branch: Branch, person: Node
+) -> None:
+    group = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="network-team")
+    other_person = await add_node(db=db, kind="TestPerson", name="Jane")
+    car = await _create_car(db=db, person=person)
+
+    await car.owner.update(db=db, data={"hfid": ["Jane"], "_relation__owner": group.id})
+    await car.save(db=db)
+
+    stored_car = await NodeManager.get_one(db=db, branch=default_branch, id=car.id, raise_on_error=True)
+    assert (await stored_car.owner.get_peer(db=db, raise_on_error=True)).id == other_person.id
+    assert await _owner_ids(db=db, branch=default_branch, car_id=car.id) == (None, group.id)
+
+
 @pytest.mark.parametrize(("holder", "path"), [("color_owner_id", "color.owner"), ("link_owner_id", "owner.owner")])
 async def test_create_with_a_repository_as_owner_is_refused(
     db: InfrahubDatabase, default_branch: Branch, person: Node, repository: Node, holder: str, path: str
