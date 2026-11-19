@@ -4,8 +4,8 @@
   "installed_workflow_id": "opsmill-implement",
   "installed_registry_root": null,
   "status": "running",
-  "current_step_index": 4,
-  "current_step_id": "commit-review",
+  "current_step_index": 5,
+  "current_step_id": "report",
   "step_results": {
     "base": {
       "type": "shell",
@@ -146,11 +146,25 @@
       "error": null,
       "integration_args": [],
       "integration_options": {}
+    },
+    "commit-review": {
+      "type": "shell",
+      "integration": null,
+      "model": null,
+      "options": {},
+      "input": {},
+      "output": {
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "status": "completed",
+      "error": null
     }
   },
   "workflow_dir": "/Users/Pol/Documents/OpsMill/infrahub/stable/infrahub-speckit-pr48/.specify/workflows/opsmill-implement",
   "created_at": "2026-11-19T17:57:22.485432+00:00",
-  "updated_at": "2026-11-19T17:59:47.609932+00:00",
+  "updated_at": "2026-11-19T17:59:48.076902+00:00",
   "error": null,
   "inputs": {
     "spec_dir": "dev/specs/ifc-2167-placeholder-automations",
@@ -357,11 +371,28 @@
           "error": null
         },
         {
-          "phase": "ready",
-          "active": true
+          "phase": "done",
+          "active": false,
+          "result": {
+            "type": "shell",
+            "integration": null,
+            "model": null,
+            "options": {},
+            "input": {},
+            "output": {
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            },
+            "status": "completed",
+            "error": null
+          },
+          "outcome": "completed",
+          "error": null
         },
         {
-          "phase": "ready"
+          "phase": "ready",
+          "active": true
         },
         {
           "phase": "ready"
