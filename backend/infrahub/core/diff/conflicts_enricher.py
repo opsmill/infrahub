@@ -4,6 +4,7 @@ import ujson
 
 from infrahub.core.constants import NULL_VALUE, DiffAction, InfrahubKind, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.core.ownership.fields import is_list_property, stored_owner_ids
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import BranchNotFoundError, InitializationError, SchemaNotFoundError
 
@@ -16,7 +17,6 @@ from .model.path import (
     EnrichedDiffRoot,
     EnrichedDiffSingleRelationship,
 )
-from .ownership_fields import is_list_property, stored_owner_ids
 
 # Attribute kinds whose value is a JSON collection that an "ordered=False" schema flag can make
 # order-insensitive during conflict detection.

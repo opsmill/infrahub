@@ -34,7 +34,6 @@ from infrahub.core.diff.model.path import (
     EnrichedDiffRoot,
 )
 from infrahub.core.diff.models import RequestDiffUpdate
-from infrahub.core.diff.ownership_fields import is_owner_list_path
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.merge.builder import (
@@ -59,6 +58,7 @@ from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.runner import MigrationRunner
+from infrahub.core.ownership.fields import is_owner_list_path
 from infrahub.core.query.node_agnostic_retirement import NodesToCheckForGlobalEdgesQuery, RetireNodeAgnosticFieldsQuery
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator

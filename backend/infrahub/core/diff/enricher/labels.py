@@ -4,6 +4,12 @@ from dataclasses import dataclass
 
 from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.core.ownership.fields import (
+    DELETED_OWNER_LABEL,
+    OWNER_LABEL_SEPARATOR,
+    deleted_label,
+    owner_ids_from_value,
+)
 from infrahub.core.query.node import NodeGetKindQuery
 from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
@@ -15,7 +21,6 @@ from ..model.path import (
     EnrichedDiffRelationship,
     EnrichedDiffRoot,
 )
-from ..ownership_fields import DELETED_OWNER_LABEL, OWNER_LABEL_SEPARATOR, deleted_label, owner_ids_from_value
 from ..payload_builder import get_display_labels, get_stored_display_labels
 from .interface import DiffEnricherInterface
 

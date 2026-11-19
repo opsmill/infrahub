@@ -5,6 +5,13 @@ from typing import TYPE_CHECKING, NamedTuple
 
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.core.ownership.fields import (
+    field_owners_holder,
+    holder_from_field_name,
+    is_list_property,
+    is_owners_field_name,
+    stored_owner_ids,
+)
 from infrahub.core.ownership.models import HolderKey, HolderKind
 from infrahub.log import get_logger
 
@@ -14,13 +21,6 @@ from ..model.path import (
     EnrichedDiffRelationship,
     EnrichedDiffRoot,
     EnrichedDiffSingleRelationship,
-)
-from ..ownership_fields import (
-    field_owners_holder,
-    holder_from_field_name,
-    is_list_property,
-    is_owners_field_name,
-    stored_owner_ids,
 )
 
 if TYPE_CHECKING:
