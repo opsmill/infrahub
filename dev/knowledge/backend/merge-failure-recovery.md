@@ -26,12 +26,14 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
   associated proposed change and then the branch to `OPEN`, release the stale merge lock, and lift
   the write protection. Idempotent.
 - **Range rollback** (`core/rollback.py`, `GraphRollbacker` with `RollbackScope.SINCE_TIMESTAMP`):
-  reopen edges closed at/after the merge start and delete edges created at/after it. Both passes
-  cover two branches (`core/query/rollback.py`, `_rollback_branches`): the target branch, where the
-  window follows the scope, and the global branch, where it is always the *exact* timestamp. A
-  global edge stamped at the merge `$at` was written by this merge, but a later global timestamp
-  came from an unrelated write on some other branch and has to survive — the global branch is
-  written by every branch, so a range there would over-revert. Each pass runs as its own
+  reopen edges closed at/after the merge start and delete edges created at/after it. The rollback
+  takes the operation's timestamps (`ats`, at least one; an empty list raises `ValueError`). Both
+  passes cover two branches (`core/query/rollback.py`, `_rollback_branches`): the target branch,
+  where the window follows the scope (with `SINCE_TIMESTAMP`, it starts at the earliest of the
+  timestamps), and the global branch, where an edge matches only when its timestamp is *exactly* one
+  of them. A global edge stamped at one of the operation's timestamps was written by this operation,
+  but any other global timestamp came from an unrelated write on some other branch and has to
+  survive — the global branch is written by every branch, so a range there would over-revert. Each pass runs as its own
   statement — chaining them into one statement stacks planner Eager buffers and can exhaust the
   database's transaction memory pool on large rollbacks — and each is a single label-less pass over
   those branches' edges: the `from`/`to` range predicates cannot use the per-type relationship
@@ -62,8 +64,8 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
    belongs to this merge. The recurring scan reconciles the volatile key against the durable branch
    status, which is reloaded at startup — so protection survives a restart or cache flush.
 
-3. **Every merge-window write is timestamp-uniform, and lands on the target branch or the global
-   branch.** The bulk graph-merge queries write only to `branch = $target_branch` and stamp every
+3. **Every merge-window write is stamped with one of the merge's step timestamps, and lands on the
+   target branch or the global branch.** The merge passes one timestamp today. The bulk graph-merge queries write only to `branch = $target_branch` and stamp every
    edge with the same merge timestamp `$at`. What writes outside the target branch is
    branch-agnostic retirement, which closes global-branch edges — also at the merge `$at`. It
    reaches the window two ways: the merge's own re-evaluation for the nodes whose deletion it
@@ -71,8 +73,8 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
    removal migration the merge carries (`AttributeRemoveQuery`, `node_relationship_remove`), which
    runs at the merge `$at` like every other merge-window migration. The merge's start timestamp is
    persisted on the branch as `merge_started_at` at the `MERGING` transition. Because all writes
-   share one timestamp, a range query keyed on `merge_started_at` over the target branch, plus an
-   exact-timestamp query over the global branch, reverses exactly the merge's edges.
+   carry the merge's timestamp, a range query keyed on `merge_started_at` over the target branch,
+   plus an exact-timestamp query over the global branch, reverses exactly the merge's edges.
 
 4. **Only the graph merge and schema migrations write to the default branch during the window.** Both
    run at the merge `$at`. IPAM reconciliation is deliberately submitted *after* the `MERGED`
@@ -82,15 +84,21 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
 
 5. **Vertex metadata carries a restorable previous value.** The rollback restores
    `updated_at`/`updated_by` from `previous_updated_at`/`previous_updated_by` on every endpoint
-   vertex whose `updated_at` equals the operation's *exact* timestamp — not the whole window, and
-   not varying with the scope. A vertex stamped without a snapshot was new to the branch, so
-   restoring its NULL snapshot correctly resets its metadata to unset. The exact match is also what
-   keeps the restore idempotent: a restored vertex no longer carries the timestamp, so a later pass
-   or a re-run cannot null what an earlier one put back. The diff-merge write path co-writes those
+   vertex whose `updated_at` equals any of the operation's timestamps (`updated_at IN $ats`) — not
+   the whole window, and not varying with the scope. A vertex stamped without a snapshot was new to
+   the branch, so restoring its NULL snapshot correctly resets its metadata to unset. The exact
+   match is also what keeps the restore idempotent: a restored vertex no longer carries one of the
+   timestamps, so a later pass or a re-run cannot null what an earlier one put back. The diff-merge write path co-writes those
    `previous_*` fields (`core/diff/query/merge.py`,
    `DiffMergeMetadataQuery`), and the schema-migration queries that bump vertex metadata do the
    same (e.g. `core/migrations/schema/attribute_kind_update.py`,
-   `core/migrations/query/attribute_add.py`, `node_duplicate.py`, `node_remove.py`). This is what
+   `core/migrations/query/attribute_add.py`, `node_duplicate.py`, `node_remove.py`).
+
+   A migration writer saves the previous value only when the vertex's `updated_at` is unset or is not
+   one of the operation's timestamps (`stamp_vertex_metadata` in `core/query/vertex_metadata.py`).
+   The operation's timestamps are `MigrationInput.operation_ats`, always including the write's own
+   `at` (`MigrationSelectionQuery.operation_ats_param`). A vertex changed by several steps therefore
+   keeps the value from before the operation, not the one a step before it wrote. This is what
    lets the metadata restore cover both merge-diff and migration collateral without enumerating
    which step touched which node.
 
@@ -108,6 +116,11 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
   those two branches, and only the exact timestamp on the global one.
 - Any pre-`MERGED` step (a new follow-on, or IPAM/repository sync moved back before `MERGED`) starts
   mutating default-branch graph state — recovery would leave it partially applied.
+- A step stamps vertex metadata at a merge timestamp without receiving the earlier steps'
+  timestamps in `operation_ats` — a vertex changed by several steps would save the earlier step's
+  stamp as its previous value, and the rollback would restore that stamp instead of the value from
+  before the operation. The schema migration flow above `MigrationInput` does not pass
+  `operation_ats`, so its migrations see only their own `at`.
 - A merge-window writer bumps vertex `updated_at`/`updated_by` to the merge `$at` without
   co-writing `previous_*` — the restore still fires on those vertices and writes whatever
   `previous_*` holds (unset, or a leftover snapshot from an older operation), silently corrupting
@@ -126,6 +139,7 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
 | `core/merge/merge_locker.py` | `MergeLocker`, `MERGE_LOCK_KEY`, `get_merge_lock_holder_worker_id` — the global merge lock and its holder |
 | `core/rollback.py` | `GraphRollbacker` — orchestrates the per-phase range revert + metadata restore |
 | `core/query/rollback.py` | per-phase rollback queries, `RollbackScope` |
+| `core/query/vertex_metadata.py` | `stamp_vertex_metadata` — the Cypher that stamps vertex metadata and keeps the value from before the operation as the previous one |
 | `core/diff/query/merge.py` | `DiffMergeMetadataQuery` — co-writes `previous_*` for the merge diff |
 | `core/merge/orchestrator.py` | `BranchMergeOrchestrator` — publishes the write protection, sets `merge_started_at` at `MERGING`, lifts the protection at `MERGED` |
 | `core/merge/post_merge.py` | `PostMergeDispatcher` — submits the repository merges and the IPAM reconciliation after `MERGED` |
