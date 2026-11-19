@@ -154,13 +154,18 @@ def _remove_attribute(branch: Branch) -> SchemaMigration:
     )
 
 
-def _remove_relationship(branch: Branch) -> SchemaMigration:
-    """Remove both sides of the relationship from the schema of the branch, and return the migration of the removal."""
+def _remove_relationship(branch: Branch, other_side: bool = True) -> SchemaMigration:
+    """Remove the relationship from the schema of the branch, and return the migration of the removal.
+
+    Set `other_side` to False to keep the relationship of the person in the schema.
+    """
     schema = registry.schema.get_schema_branch(name=branch.name)
     previous_node = schema.get(name=CAR_KIND)
     identifier = previous_node.get_relationship(name=RELATIONSHIP).get_identifier()
     candidate = schema.duplicate()
     for sharing_schema in candidate.get_schemas_by_rel_identifier(identifier=identifier):
+        if not other_side and sharing_schema.kind != CAR_KIND:
+            continue
         node = candidate.get(name=sharing_schema.kind)
         node.relationships = [rel for rel in node.relationships if rel.identifier != identifier]
         candidate.set(name=sharing_schema.kind, schema=node)
@@ -327,6 +332,33 @@ async def test_merge_skips_a_resolved_owner_conflict_of_a_relationship_that_the_
     assert await _read(db=db, branch=default_branch, field_owners=field_owners) == field_owners.holders(
         branch=default_branch, relationship=None
     )
+    await verify_graph(db=db)
+
+
+async def test_removal_of_one_side_of_a_relationship_ends_the_owners_of_that_side_only(
+    db: InfrahubDatabase, default_branch: Branch, field_owners: FieldOwners, person_john_main: Node
+) -> None:
+    person_holder = field_holder(
+        schema=registry.schema.get(name="TestPerson", branch=default_branch, duplicate=False), field_name="cars"
+    )
+    assert person_holder is not None
+    security_id = field_owners.group_ids["security"]
+    await _write(db=db, branch=default_branch, node_id=person_john_main.id, holder=person_holder, owner_id=security_id)
+
+    result = await _remove_relationship(default_branch, other_side=False).execute(
+        migration_input=MigrationInput(db=db), branch=default_branch
+    )
+
+    assert not result.errors
+    assert await _read(db=db, branch=default_branch, field_owners=field_owners) == field_owners.holders(
+        branch=default_branch, relationship=None
+    )
+    stored = await OwnershipRepository(db=db, branch=default_branch, at=None).read(
+        node_ids=[person_john_main.id], attributes=True
+    )
+    assert {holder: state.owner_ids for holder, state in stored[person_john_main.id].holders.items()} == {
+        person_holder: (security_id,)
+    }
     await verify_graph(db=db)
 
 
