@@ -73,11 +73,13 @@ class OwnershipDiffer:
         # A rebase moves the edges of the branch to the time that the branch starts from, so the owners that the
         # branch starts with are the owners of the base branch.
         is_full_diff = request.from_time == request.branch_from_time
+        # The time range of a later diff includes its start, so the state before the range excludes an edge from then.
+        start_time = request.from_time if is_full_diff else request.from_time.subtract(microseconds=1)
         await self._apply_changes(
             root=branch_root,
             start_branch=request.base_branch if is_full_diff else request.diff_branch,
             end_branch=request.diff_branch,
-            start_times=dict.fromkeys(branch_changes, request.from_time),
+            start_times=dict.fromkeys(branch_changes, start_time),
             field_names=branch_changes,
             request=request,
         )
@@ -114,7 +116,7 @@ class OwnershipDiffer:
             if field_name in new_fields.get(change.node_uuid, set()):
                 start_times[change] = request.branch_from_time
             elif field_name in current_fields.get(change.node_uuid, set()) and change.changed_at >= request.from_time:
-                start_times[change] = request.from_time
+                start_times[change] = start_time
         await self._apply_changes(
             root=base_root,
             start_branch=request.base_branch,

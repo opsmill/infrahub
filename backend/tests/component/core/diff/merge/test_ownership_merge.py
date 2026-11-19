@@ -1083,3 +1083,47 @@ async def test_owner_diff_of_more_nodes_than_the_query_size_limit_reads_the_node
     node_batches = [batch for batch in batches if batch is not None]
     assert len(node_batches) > 1
     assert all(len(batch) <= 2 for batch in node_batches)
+
+
+async def test_owner_write_at_the_end_of_a_diff_time_range_is_in_the_next_time_range(
+    db: InfrahubDatabase, default_branch: Branch, dataset: OwnerDataset
+) -> None:
+    tenant_id = dataset.ids["tenant-a"]
+    branch = await create_branch(db=db, branch_name="owner-range-end")
+    branch_from_time = Timestamp(branch.get_branched_from())
+    range_end = Timestamp()
+    await set_owners(db=db, branch=branch, node_id=tenant_id, owner_ids=dataset.owners(("dc-emea",)), at=range_end)
+
+    async def owner_values(from_time: Timestamp, to_time: Timestamp) -> list[tuple[str | None, str | None]]:
+        request = OwnerDiffRequest(
+            base_branch=default_branch,
+            diff_branch=branch,
+            branch_from_time=branch_from_time,
+            from_time=from_time,
+            to_time=to_time,
+            include_unchanged=False,
+            previous_node_specifiers=None,
+            node_kinds=None,
+            node_uuids=None,
+        )
+        roots = [
+            DiffRoot(from_time=from_time, to_time=to_time, uuid=name, branch=name)
+            for name in (branch.name, default_branch.name)
+        ]
+        differ = OwnershipDiffer(db=db)
+        await differ.add_owner_changes(
+            request=request,
+            branch_root=roots[0],
+            base_root=roots[1],
+            branch_changes=await differ.get_branch_changes(request=request),
+        )
+        return [
+            (prop.previous_value, prop.new_value)
+            for node in roots[0].nodes
+            for attribute in node.attributes
+            if attribute.name == OWNERS_FIELD
+            for prop in attribute.properties
+        ]
+
+    assert await owner_values(from_time=branch_from_time, to_time=range_end) == []
+    assert await owner_values(from_time=range_end, to_time=Timestamp()) == [(None, dataset.owner_list(("dc-emea",)))]
