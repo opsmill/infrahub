@@ -688,7 +688,9 @@ async def ownership_report_cmd(
 
     The report lists the attributes that a repository owns, the attributes whose owner is not an account, an
     account group or a repository, the relationships whose links have owners, and the attributes with values that
-    have `is_protected` set. Run this command before the upgrade. It changes no data.
+    have `is_protected` set. It counts only open edges: an edge that the default branch closed after the start of
+    a branch is not in the report, but that branch can still read it. Run this command before the upgrade. It
+    changes no data.
     """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
