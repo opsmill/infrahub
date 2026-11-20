@@ -112,6 +112,18 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
   sets of the node. It looks for the set with the new key in the same way, on all branches and on each `Node` vertex
   of the UUID. After the lock, it gives no set to a node that is not active, with the same check of a later
   `deleted` `IS_PART_OF` edge as a write of owners.
+- The lock is on the node vertex because Neo4j does not order two writes by the edges that they create. The create
+  of an edge does not wait for a `SET` on either end vertex. Only a `SET` on the same vertex or on the same edge
+  makes another transaction wait. A write of owners locks the node vertex before it writes, so `Node.delete` locks it
+  first too.
+- An application lock (`InfrahubMultiLock`) in the mutation cannot replace the lock in the owner queries. Some
+  writers do not run through a mutation and cannot lock each node before their first write: the IPAM reconciler
+  writes inside the transaction of a create, after the create, and the migrations and the merge write with Cypher
+  over many nodes.
+- Known limit: `Node.save` reads the update time before `Node._update` takes the lock. A value update that waits
+  behind a delete of the node then writes at a time before the delete. The delete closed the old `HAS_VALUE` edge,
+  so the update creates a new active one on the deleted attribute, and `verify_graph` reports it
+  (`GraphCheck.ORPHANED_ACTIVE_EDGES`). The same edge appears without the node lock, so it does not come from owners.
 - Lock order: a writer of a node locks the node vertex first, and then an attribute vertex or a set vertex. A
   write of owners, `Node._update` and `Node.delete` take the lock on the node vertex (`NodeLockQuery`, or the same
   `SET` in the query) before they write a field, on every branch. When one transaction locks a field first, it
