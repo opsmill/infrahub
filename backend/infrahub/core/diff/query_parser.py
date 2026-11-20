@@ -88,6 +88,11 @@ class TrackedStatusUpdates:
         return (action, latest_timestamp)
 
 
+def _is_null(value: Any) -> bool:
+    # Attribute values of kind Any can be lists or dicts, which a set membership test cannot hash.
+    return value is None or value == NULL_VALUE
+
+
 @dataclass
 class DiffValueIntermediate:
     changed_at: Timestamp
@@ -155,9 +160,9 @@ class DiffPropertyIntermediate:
         if earliest_value.changed_at > from_time:
             action = DiffAction.ADDED
             previous_value = None
-        elif earliest_value.value in {None, NULL_VALUE} and new_value not in {None, NULL_VALUE}:
+        elif _is_null(earliest_value.value) and not _is_null(new_value):
             action = DiffAction.ADDED
-        elif (earliest_value.value not in {None, NULL_VALUE} and new_value in {None, NULL_VALUE}) or (
+        elif (not _is_null(earliest_value.value) and _is_null(new_value)) or (
             earliest_value.status,
             new_status,
         ) == (RelationshipStatus.ACTIVE, RelationshipStatus.DELETED):
