@@ -96,22 +96,26 @@ query device_config($name: String!) {
   }
 }
 """
-REPOSITORY_CONFIG = {
-    "queries": [{"name": "device_config", "file_path": "queries/device_config.gql"}],
-    "external_transforms": [
-        {"name": "ansible-startup-config", "query": "device_config", "version": "1.5.0", "timeout": 600}
-    ],
-    "artifact_definitions": [
-        {
-            "name": DEFINITION_NAME,
-            "artifact_name": DEFINITION_NAME,
-            "parameters": {"name": "name__value"},
-            "content_type": "text/plain",
-            "targets": "edge-routers",
-            "transformation": "ansible-startup-config",
-        }
-    ],
-}
+
+
+def _repository_config(version: str) -> dict[str, Any]:
+    return {
+        "queries": [{"name": "device_config", "file_path": "queries/device_config.gql"}],
+        "external_transforms": [
+            {"name": "ansible-startup-config", "query": "device_config", "version": version, "timeout": 600}
+        ],
+        "artifact_definitions": [
+            {
+                "name": DEFINITION_NAME,
+                "artifact_name": DEFINITION_NAME,
+                "parameters": {"name": "name__value"},
+                "content_type": "text/plain",
+                "targets": "edge-routers",
+                "transformation": "ansible-startup-config",
+            }
+        ],
+    }
+
 
 QUERY_RENDER_REQUESTED_EVENTS = """
 query($artifact_ids: [String!]) {
@@ -305,7 +309,9 @@ class TestExternalArtifact(TestInfrahubApp):
         query_path = Path(file_repo.path) / "queries" / "device_config.gql"
         query_path.parent.mkdir(parents=True, exist_ok=True)
         query_path.write_text(DEVICE_CONFIG_QUERY, encoding="utf-8")
-        (Path(file_repo.path) / ".infrahub.yml").write_text(yaml.safe_dump(REPOSITORY_CONFIG), encoding="utf-8")
+        (Path(file_repo.path) / ".infrahub.yml").write_text(
+            yaml.safe_dump(_repository_config(version="1.5.0")), encoding="utf-8"
+        )
         file_repo.repo.git.add(".")
         file_repo.repo.index.commit("add external transformation")
         return file_repo
@@ -330,7 +336,7 @@ class TestExternalArtifact(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def edge_routers(self, db: InfrahubDatabase, webhook_id: str) -> dict[str, str]:
         devices = []
-        for name in ("edge-01", "edge-02"):
+        for name in ("edge-01", "edge-02", "edge-03"):
             device = await Node.init(schema=TestKind.DEVICE, db=db)
             await device.new(db=db, name=name, manufacturer="Juniper", weight=10, airflow="Front to rear")
             await device.save(db=db)
@@ -529,7 +535,7 @@ class TestExternalArtifact(TestInfrahubApp):
     ) -> None:
         """No token the engine received can be read back from events, task parameters, captures or run logs."""
         tokens = {request.token for request in engine.received}
-        assert len(tokens) == len(engine.received) == 4
+        assert len(tokens) == len(engine.received) == 5
 
         artifact_ids = sorted({request.data["artifact_id"] for request in engine.received})
         events = json.dumps(
@@ -537,15 +543,144 @@ class TestExternalArtifact(TestInfrahubApp):
         )
         tasks = await client.execute_graphql(query=QUERY_WEBHOOK_TASKS, variables={"webhook_id": webhook_id})
         deliveries = tasks["InfrahubTask"]["edges"]
-        assert [delivery["node"]["workflow"] for delivery in deliveries] == ["webhook-send"] * 4
+        assert [delivery["node"]["workflow"] for delivery in deliveries] == ["webhook-send"] * 5
         assert all(delivery["node"]["parameters"]["render_request"] for delivery in deliveries)
         assert [delivery["node"]["http_request"]["headers"][RENDER_TOKEN_HEADER] for delivery in deliveries] == [
             "***"
-        ] * 4
+        ] * 5
         outgoing = [message for message in run_logs.messages if message.startswith("Webhook 'reference-engine'")]
-        assert len(outgoing) == 4
+        assert len(outgoing) == 5
 
         stored = "\n".join([events, json.dumps(tasks), *run_logs.messages])
         for request in engine.received:
             assert request.data["render_id"] in events
             assert request.token not in stored
+
+    async def _render_request_ids(
+        self, client: InfrahubClient, edge_routers: dict[str, str], branch: str
+    ) -> dict[str, str | None]:
+        """Return the render request each target's artifact on the branch waits for, by target name."""
+        return {
+            name: (await self._artifact(client=client, device_id=device_id, branch=branch)).render_request_id.value
+            for name, device_id in edge_routers.items()
+        }
+
+    async def _render_request_counts(
+        self,
+        client: InfrahubClient,
+        prefect_client: PrefectClient,
+        edge_routers: dict[str, str],
+        branch: str,
+        count: int,
+    ) -> dict[str, int]:
+        """Wait for `count` render requests of each target's artifact on the branch and return how many arrived."""
+        counts = {}
+        for name, device_id in edge_routers.items():
+            artifact = await self._artifact(client=client, device_id=device_id, branch=branch)
+            events = await self._render_requests(
+                prefect_client=prefect_client, artifact_id=artifact.id, branch=branch, count=count
+            )
+            assert events[-1].payload["data"]["render_id"] == artifact.render_request_id.value
+            counts[name] = len(events)
+        return counts
+
+    async def _import_git_branch(
+        self, client: InfrahubClient, file_repo: FileRepo, branch: str, files: dict[str, str]
+    ) -> None:
+        """Commit the files on a new Git branch and have the Infrahub branch of the same name track it."""
+        file_repo.repo.git.checkout("-b", branch, "main")
+        for path, content in files.items():
+            (Path(file_repo.path) / path).write_text(content, encoding="utf-8")
+        file_repo.repo.git.add(".")
+        commit = file_repo.repo.index.commit(f"commit on {branch}").hexsha
+        file_repo.repo.git.checkout("main")
+
+        await client.branch.create(branch_name=branch, sync_with_git=False)
+        repository = await client.get(kind=CoreReadOnlyRepository, name__value=REPOSITORY_NAME, branch=branch)
+        repository.ref.value = branch
+        await repository.save()
+        repository = await client.get(kind=CoreReadOnlyRepository, name__value=REPOSITORY_NAME, branch=branch)
+        assert repository.commit.value == commit
+
+    async def test_version_change_on_a_branch_renders_every_target(
+        self,
+        client: InfrahubClient,
+        prefect_client: PrefectClient,
+        file_repo: FileRepo,
+        edge_routers: dict[str, str],
+        definition_id: str,
+    ) -> None:
+        """A new version imported on a branch, then its proposed change, each request one render of every target."""
+        branch = "template-1-1"
+        main_request_ids = await self._render_request_ids(client=client, edge_routers=edge_routers, branch="main")
+
+        await self._import_git_branch(
+            client=client,
+            file_repo=file_repo,
+            branch=branch,
+            files={".infrahub.yml": yaml.safe_dump(_repository_config(version="1.6.0"))},
+        )
+
+        branch_request_ids = await self._render_request_ids(client=client, edge_routers=edge_routers, branch=branch)
+        assert all(branch_request_ids[name] not in {None, main_request_ids[name]} for name in edge_routers), (
+            branch_request_ids
+        )
+        assert await self._render_request_counts(
+            client=client, prefect_client=prefect_client, edge_routers=edge_routers, branch=branch, count=1
+        ) == {"edge-01": 1, "edge-02": 1, "edge-03": 1}
+
+        proposed_change = await client.create(
+            kind=CoreProposedChange, source_branch=branch, destination_branch="main", name="release template 1.6.0"
+        )
+        await proposed_change.save()
+
+        assert await self._render_request_counts(
+            client=client, prefect_client=prefect_client, edge_routers=edge_routers, branch=branch, count=2
+        ) == {"edge-01": 2, "edge-02": 2, "edge-03": 2}
+        validator = await client.get(
+            kind=CoreArtifactValidator, proposed_change__ids=[proposed_change.id], definition__ids=[definition_id]
+        )
+        checks = await client.filters(kind=CoreArtifactCheck, validator__ids=[validator.id])
+        assert len(checks) == 3
+
+    async def test_unrelated_commit_on_a_branch_renders_nothing(
+        self,
+        client: InfrahubClient,
+        prefect_client: PrefectClient,
+        file_repo: FileRepo,
+        edge_routers: dict[str, str],
+        definition_id: str,
+    ) -> None:
+        branch = "docs-update"
+        main_request_ids = await self._render_request_ids(client=client, edge_routers=edge_routers, branch="main")
+
+        await self._import_git_branch(
+            client=client, file_repo=file_repo, branch=branch, files={"README.md": "Startup configurations\n"}
+        )
+
+        assert await self._render_request_ids(client=client, edge_routers=edge_routers, branch=branch) == (
+            main_request_ids
+        )
+        for device_id in edge_routers.values():
+            artifact = await self._artifact(client=client, device_id=device_id, branch=branch)
+            assert not await self._render_requests(
+                prefect_client=prefect_client, artifact_id=artifact.id, branch=branch, count=0
+            )
+
+    async def test_manual_generation_renders_every_target(
+        self,
+        client: InfrahubClient,
+        prefect_client: PrefectClient,
+        edge_routers: dict[str, str],
+        definition_id: str,
+    ) -> None:
+        branch = "regenerate"
+        await client.branch.create(branch_name=branch, sync_with_git=False)
+
+        await client._post(
+            url=f"{client.address}/api/artifact/generate/{definition_id}?branch={branch}", payload={"nodes": []}
+        )
+
+        assert await self._render_request_counts(
+            client=client, prefect_client=prefect_client, edge_routers=edge_routers, branch=branch, count=1
+        ) == {"edge-01": 1, "edge-02": 1, "edge-03": 1}

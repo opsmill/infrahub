@@ -177,11 +177,11 @@ description: "Task list for artifacts rendered by an external engine"
 
 **Independent Test**: [quickstart.md](quickstart.md) scenario 2.
 
-- [ ] T025 [P] [US2] Extend `backend/tests/integration/artifacts/test_external_artifact.py` with three cases:
+- [X] T025 [P] [US2] Extend `backend/tests/integration/artifacts/test_external_artifact.py` with three cases:
   - a `version` change on branch `template-1-1` emits one request per member of the target group;
   - an unrelated commit emits none;
   - `POST /api/artifact/generate/{definition_id}` emits one request per member.
-- [ ] T026 [US2] Verify that `backend/infrahub/api/artifact.py::generate_artifact` and the proposed-change selection (`core/regeneration/predicates.py::definition_changed`) select external definitions through the fingerprint without extra code. Fix any gap that T025 reveals in those modules.
+- [X] T026 [US2] Verify that `backend/infrahub/api/artifact.py::generate_artifact` and the proposed-change selection (`core/regeneration/predicates.py::definition_changed`) select external definitions through the fingerprint without extra code. Fix any gap that T025 reveals in those modules.
 
 **Checkpoint**: User Stories 1 and 2 work independently.
 
