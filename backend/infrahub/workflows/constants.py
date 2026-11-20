@@ -1,5 +1,7 @@
 from infrahub.utils import InfrahubStringEnum
 
+EVERY_MINUTE_CRON = "* * * * *"
+
 
 class WorkflowType(InfrahubStringEnum):
     INTERNAL = "internal"

@@ -11,6 +11,7 @@ import urllib.request
 from contextlib import nullcontext
 from copy import deepcopy
 from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -30,6 +31,8 @@ from infrahub_sdk.protocols import (
 from prefect.client.orchestration import get_client as get_prefect_client
 
 from infrahub import config
+from infrahub.artifacts.render_result import RENDER_FAILED_MESSAGE
+from infrahub.artifacts.timeouts import RENDER_TIMEOUT_MESSAGE
 from infrahub.core.constants import (
     ArtifactStatus,
     EventType,
@@ -41,7 +44,7 @@ from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, SchemaRoot
 from infrahub.proposed_change.constants import ProposedChangeState
 from infrahub.server import app
-from infrahub.workflows.catalogue import WEBHOOK_PROCESS
+from infrahub.workflows.catalogue import EXPIRE_ARTIFACT_RENDERS, WEBHOOK_PROCESS
 from tests.constants import TestKind
 from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
 from tests.helpers.events import query_events_by_name
@@ -66,7 +69,12 @@ BRANCH_NAME = "change-123"
 DEFINITION_NAME = "startup-config"
 RENDER_TOKEN_HEADER = "X-Infrahub-Render-Token"
 RENDER_TIMEOUT_SECONDS = 60
+DEFAULT_TRANSFORM_TIMEOUT_SECONDS = 600
 LOOPBACK = "127.0.0.1"
+ENGINE_OK = "ok"
+ENGINE_FAIL = "fail"
+ENGINE_SILENT = "silent"
+ENGINE_FAILURE_MESSAGE = "template variable mtu is undefined"
 
 ARTIFACT_TARGET_DEVICE = deepcopy(DEVICE)
 ARTIFACT_TARGET_DEVICE.inherit_from = [*DEVICE.inherit_from, InfrahubKind.ARTIFACTTARGET]
@@ -98,11 +106,11 @@ query device_config($name: String!) {
 """
 
 
-def _repository_config(version: str) -> dict[str, Any]:
+def _repository_config(version: str, timeout: int = DEFAULT_TRANSFORM_TIMEOUT_SECONDS) -> dict[str, Any]:
     return {
         "queries": [{"name": "device_config", "file_path": "queries/device_config.gql"}],
         "external_transforms": [
-            {"name": "ansible-startup-config", "query": "device_config", "version": version, "timeout": 600}
+            {"name": "ansible-startup-config", "query": "device_config", "version": version, "timeout": timeout}
         ],
         "artifact_definitions": [
             {
@@ -156,6 +164,8 @@ class ReferenceEngine:
 
     received: list[ReceivedRequest] = field(default_factory=list)
     server: ThreadingHTTPServer | None = None
+    mode: str = ENGINE_OK
+    """`ok` renders, `fail` reports a failure, `silent` never calls back."""
 
     @property
     def url(self) -> str:
@@ -173,6 +183,8 @@ class ReferenceEngine:
                 self.send_response(202)
                 self.send_header("Content-Length", "0")
                 self.end_headers()
+                if engine.mode == ENGINE_SILENT:
+                    return
                 # The reply goes out after the delivery is acknowledged, as an engine running a job would.
                 threading.Thread(target=engine.call_back, args=(request,), daemon=True).start()
 
@@ -201,14 +213,17 @@ class ReferenceEngine:
             )
         return "\n".join(lines) + "\n"
 
+    def reply(self, request: ReceivedRequest) -> dict[str, Any]:
+        if self.mode == ENGINE_FAIL:
+            return {"status": "failure", "message": ENGINE_FAILURE_MESSAGE}
+        return {
+            "status": "success",
+            "content": self.render(request.data["query_result"]),
+            "content_type": request.data["content_type"],
+        }
+
     def call_back(self, request: ReceivedRequest) -> None:
-        body = json.dumps(
-            {
-                "status": "success",
-                "content": self.render(request.data["query_result"]),
-                "content_type": request.data["content_type"],
-            }
-        ).encode()
+        body = json.dumps(self.reply(request)).encode()
         while True:
             # The callback URL is the http URL Infrahub built from main.public_url.
             callback = urllib.request.Request(  # noqa: S310
@@ -408,13 +423,20 @@ class TestExternalArtifact(TestInfrahubApp):
         )
 
     async def _wait_until_ready(self, client: InfrahubClient, artifact_id: str, branch: str) -> CoreArtifact:
+        return await self._wait_for_status(
+            client=client, artifact_id=artifact_id, branch=branch, status=ArtifactStatus.READY
+        )
+
+    async def _wait_for_status(
+        self, client: InfrahubClient, artifact_id: str, branch: str, status: ArtifactStatus
+    ) -> CoreArtifact:
         artifact = await client.get(kind=CoreArtifact, id=artifact_id, branch=branch)
         for _ in range(RENDER_TIMEOUT_SECONDS * 10):
-            if artifact.status.value == ArtifactStatus.READY.value:
+            if artifact.status.value == status.value:
                 return artifact
             await asyncio.sleep(0.1)
             artifact = await client.get(kind=CoreArtifact, id=artifact_id, branch=branch)
-        pytest.fail(f"artifact {artifact_id} on {branch} is {artifact.status.value}, not Ready")
+        pytest.fail(f"artifact {artifact_id} on {branch} is {artifact.status.value}, not {status.value}")
 
     async def _render_on(
         self,
@@ -684,3 +706,134 @@ class TestExternalArtifact(TestInfrahubApp):
         assert await self._render_request_counts(
             client=client, prefect_client=prefect_client, edge_routers=edge_routers, branch=branch, count=1
         ) == {"edge-01": 1, "edge-02": 1, "edge-03": 1}
+
+    async def _propose_interface_change(
+        self, client: InfrahubClient, edge_routers: dict[str, str], branch: str, target: str
+    ) -> CoreProposedChange:
+        interfaces = await client.filters(
+            kind=TestKind.VIRTUAL_INTERFACE, device__ids=[edge_routers[target]], branch=branch
+        )
+        interfaces[0].description.value = f"uplink changed on {branch}"
+        await interfaces[0].save()
+        proposed_change = await client.create(
+            kind=CoreProposedChange, source_branch=branch, destination_branch="main", name=f"change {target}"
+        )
+        await proposed_change.save()
+        return proposed_change
+
+    async def _check(
+        self, client: InfrahubClient, proposed_change: CoreProposedChange, definition_id: str, artifact_id: str
+    ) -> tuple[CoreArtifactValidator, CoreArtifactCheck]:
+        validator = await client.get(
+            kind=CoreArtifactValidator, proposed_change__ids=[proposed_change.id], definition__ids=[definition_id]
+        )
+        checks = await client.filters(
+            kind=CoreArtifactCheck, validator__ids=[validator.id], artifact_id__value=artifact_id
+        )
+        assert len(checks) == 1
+        return validator, checks[0]
+
+    async def test_engine_failure_fails_the_check(
+        self,
+        client: InfrahubClient,
+        service: InfrahubServices,
+        prefect_client: PrefectClient,
+        engine: ReferenceEngine,
+        webhook_id: str,
+        edge_routers: dict[str, str],
+        definition_id: str,
+    ) -> None:
+        branch = "engine-fails"
+        await client.branch.create(branch_name=branch, sync_with_git=False)
+        proposed_change = await self._propose_interface_change(
+            client=client, edge_routers=edge_routers, branch=branch, target="edge-02"
+        )
+        artifact = await self._artifact(client=client, device_id=edge_routers["edge-02"], branch=branch)
+        requests = await self._render_requests(
+            prefect_client=prefect_client, artifact_id=artifact.id, branch=branch, count=1
+        )
+        assert len(requests) == 1
+
+        engine.mode = ENGINE_FAIL
+        try:
+            await self._deliver(service=service, webhook_id=webhook_id, event=requests[0])
+            await self._wait_for_status(
+                client=client, artifact_id=artifact.id, branch=branch, status=ArtifactStatus.ERROR
+            )
+        finally:
+            engine.mode = ENGINE_OK
+
+        validator, check = await self._check(
+            client=client, proposed_change=proposed_change, definition_id=definition_id, artifact_id=artifact.id
+        )
+        assert check.conclusion.value == ValidatorConclusion.FAILURE.value
+        assert check.message.value == f"{RENDER_FAILED_MESSAGE}: {ENGINE_FAILURE_MESSAGE}"
+        assert validator.state.value == ValidatorState.COMPLETED.value
+        assert validator.conclusion.value == ValidatorConclusion.FAILURE.value
+
+    async def test_no_answer_sets_the_artifact_to_error_after_the_timeout(
+        self,
+        client: InfrahubClient,
+        service: InfrahubServices,
+        prefect_client: PrefectClient,
+        engine: ReferenceEngine,
+        file_repo: FileRepo,
+        webhook_id: str,
+        edge_routers: dict[str, str],
+        definition_id: str,
+    ) -> None:
+        branch = "slow-engine"
+        await self._import_git_branch(
+            client=client,
+            file_repo=file_repo,
+            branch=branch,
+            files={
+                ".infrahub.yml": yaml.safe_dump(_repository_config(version="1.5.0", timeout=RENDER_TIMEOUT_SECONDS))
+            },
+        )
+        artifact = await self._artifact(client=client, device_id=edge_routers["edge-03"], branch=branch)
+        earlier = await self._render_requests(
+            prefect_client=prefect_client, artifact_id=artifact.id, branch=branch, count=0
+        )
+        proposed_change = await self._propose_interface_change(
+            client=client, edge_routers=edge_routers, branch=branch, target="edge-03"
+        )
+        requests = await self._render_requests(
+            prefect_client=prefect_client, artifact_id=artifact.id, branch=branch, count=len(earlier) + 1
+        )
+        assert len(requests) == len(earlier) + 1
+
+        engine.mode = ENGINE_SILENT
+        try:
+            await self._deliver(service=service, webhook_id=webhook_id, event=requests[-1])
+        finally:
+            engine.mode = ENGINE_OK
+        silent_request = engine.received[-1]
+        assert silent_request.data["render_id"] == requests[-1].payload["data"]["render_id"]
+        assert silent_request.callback_status is None
+        artifact = await self._artifact(client=client, device_id=edge_routers["edge-03"], branch=branch)
+        assert artifact.status.value == ArtifactStatus.PENDING.value
+        deadline = datetime.fromisoformat(artifact.render_deadline.value)
+        assert deadline - datetime.now(UTC) <= timedelta(seconds=RENDER_TIMEOUT_SECONDS)
+
+        # The cron runs the sweep every minute; running it once the deadline has passed stands in for the next run.
+        await asyncio.sleep(max(0.0, (deadline - datetime.now(UTC)).total_seconds()) + 1)
+        await service.workflow.execute_workflow(workflow=EXPIRE_ARTIFACT_RENDERS)
+
+        artifact = await client.get(kind=CoreArtifact, id=artifact.id, branch=branch)
+        assert artifact.status.value == ArtifactStatus.ERROR.value
+        assert artifact.render_deadline.value is None
+        validator, check = await self._check(
+            client=client, proposed_change=proposed_change, definition_id=definition_id, artifact_id=artifact.id
+        )
+        assert check.conclusion.value == ValidatorConclusion.FAILURE.value
+        assert check.message.value == f"{RENDER_FAILED_MESSAGE}: {RENDER_TIMEOUT_MESSAGE}"
+        assert validator.state.value == ValidatorState.COMPLETED.value
+        assert validator.conclusion.value == ValidatorConclusion.FAILURE.value
+
+        # The token expires at the deadline, so a callback after the sweep is refused before its render ID is checked.
+        await asyncio.to_thread(engine.call_back, silent_request)
+
+        assert silent_request.callback_status == 401
+        artifact = await client.get(kind=CoreArtifact, id=artifact.id, branch=branch)
+        assert artifact.status.value == ArtifactStatus.ERROR.value

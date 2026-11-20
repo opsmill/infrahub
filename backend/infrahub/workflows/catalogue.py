@@ -3,7 +3,7 @@ import random
 from fast_depends import Depends, inject
 from prefect.client.schemas.objects import ConcurrencyLimitStrategy
 
-from .constants import WorkflowPriority, WorkflowTag, WorkflowType
+from .constants import EVERY_MINUTE_CRON, WorkflowPriority, WorkflowTag, WorkflowType
 from .models import WorkerPoolDefinition, WorkflowDefinition
 
 INFRAHUB_WORKER_POOL = WorkerPoolDefinition(name="infrahub-worker", description="Default Pool for internal tasks")
@@ -725,6 +725,16 @@ CRASH_ZOMBIE_FLOW_RUNS = WorkflowDefinition(
     default_priority=WorkflowPriority.HIGH,
 )
 
+EXPIRE_ARTIFACT_RENDERS = WorkflowDefinition(
+    name="expire-artifact-renders",
+    type=WorkflowType.INTERNAL,
+    cron=EVERY_MINUTE_CRON,
+    module="infrahub.artifacts.timeouts",
+    function="expire_artifact_renders",
+    concurrency_limit=1,
+    concurrency_limit_strategy=ConcurrencyLimitStrategy.CANCEL_NEW,
+)
+
 MERGE_WATCHER = WorkflowDefinition(
     name="merge-watcher",
     type=WorkflowType.INTERNAL,
@@ -767,6 +777,7 @@ WORKFLOWS = [
     DIFF_UPDATE,
     DISPLAY_LABELS_PROCESS_JINJA2,
     DISPLAY_LABELS_SETUP_JINJA2,
+    EXPIRE_ARTIFACT_RENDERS,
     GIT_READ_ONLY_REPOSITORIES_CHECK_REFS,
     GIT_READ_ONLY_REPOSITORY_CHECK_REFS,
     GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,

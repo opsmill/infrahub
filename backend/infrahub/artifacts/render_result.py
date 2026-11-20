@@ -169,7 +169,7 @@ class RenderResultAcceptor:
                 outcome, artifact_event = await self._store_content(
                     db=db, branch=branch, artifact=artifact, content=content, content_type=content_type
                 )
-            validator_ids = await self._conclude_waiting_checks(db=db, branch=branch, outcome=outcome)
+            validator_ids = await conclude_waiting_checks(db=db, branch=branch, outcome=outcome)
 
         if artifact_event is not None:
             await self.event_service.send(event=artifact_event)
@@ -179,47 +179,9 @@ class RenderResultAcceptor:
                 db=self.db,
                 event_service=self.event_service,
                 validator_id=validator_id,
-                context=_system_event_context(branch=branch),
+                context=system_event_context(branch=branch),
             )
         return outcome
-
-    async def _conclude_waiting_checks(
-        self, db: InfrahubDatabase, branch: Branch, outcome: RenderResultOutcome
-    ) -> set[str]:
-        """Write the outcome to the proposed-change checks of this artifact that wait for it, and return their validators.
-
-        A check waits when its conclusion is still unknown and its proposed change's source branch is the branch the
-        artifact was rendered on.
-        """
-        checks = await registry.manager.query(
-            db=db,
-            schema=CoreArtifactCheck,
-            filters={"artifact_id__value": outcome.artifact_id, "conclusion__value": ValidatorConclusion.UNKNOWN.value},
-        )
-        validator_ids: set[str] = set()
-        for check in checks:
-            validator = await check.validator.get_peer(db=db, peer_type=CoreValidator, raise_on_error=True)
-            proposed_change = await validator.proposed_change.get_peer(
-                db=db, peer_type=CoreProposedChange, raise_on_error=True
-            )
-            if proposed_change.source_branch.value != branch.name:
-                continue
-
-            if outcome.status == ArtifactStatus.READY:
-                check.get_attribute("conclusion").value = ValidatorConclusion.SUCCESS.value
-                check.get_attribute("severity").value = Severity.INFO.value
-                check.message.value = RENDER_SUCCEEDED_MESSAGE
-            else:
-                check.get_attribute("conclusion").value = ValidatorConclusion.FAILURE.value
-                check.get_attribute("severity").value = Severity.CRITICAL.value
-                check.message.value = f"{RENDER_FAILED_MESSAGE}: {outcome.message}"
-            check.changed.value = outcome.changed
-            check.checksum.value = outcome.checksum
-            check.storage_id.value = outcome.storage_id
-            check.artifact_id.value = outcome.artifact_id
-            await check.save(db=db, user_id=SYSTEM_USER_ID)
-            validator_ids.add(validator.id)
-        return validator_ids
 
     async def _store_content(
         self, db: InfrahubDatabase, branch: Branch, artifact: CoreArtifact, content: str, content_type: str
@@ -261,7 +223,7 @@ class RenderResultAcceptor:
                 checksum_previous=previous_checksum,
                 storage_id=storage_id,
                 storage_id_previous=previous_storage_id,
-                meta=EventMeta.from_context(context=_system_event_context(branch=branch), branch=branch),
+                meta=EventMeta.from_context(context=system_event_context(branch=branch), branch=branch),
             )
 
         outcome = RenderResultOutcome(
@@ -275,7 +237,44 @@ class RenderResultAcceptor:
         return outcome, event
 
 
-def _system_event_context(branch: Branch) -> EventContext:
+async def conclude_waiting_checks(db: InfrahubDatabase, branch: Branch, outcome: RenderResultOutcome) -> set[str]:
+    """Write the outcome to the proposed-change checks of this artifact that wait for it, and return their validators.
+
+    A check waits when its conclusion is still unknown and its proposed change's source branch is the branch the
+    artifact was rendered on.
+    """
+    checks = await registry.manager.query(
+        db=db,
+        schema=CoreArtifactCheck,
+        filters={"artifact_id__value": outcome.artifact_id, "conclusion__value": ValidatorConclusion.UNKNOWN.value},
+    )
+    validator_ids: set[str] = set()
+    for check in checks:
+        validator = await check.validator.get_peer(db=db, peer_type=CoreValidator, raise_on_error=True)
+        proposed_change = await validator.proposed_change.get_peer(
+            db=db, peer_type=CoreProposedChange, raise_on_error=True
+        )
+        if proposed_change.source_branch.value != branch.name:
+            continue
+
+        if outcome.status == ArtifactStatus.READY:
+            check.get_attribute("conclusion").value = ValidatorConclusion.SUCCESS.value
+            check.get_attribute("severity").value = Severity.INFO.value
+            check.message.value = RENDER_SUCCEEDED_MESSAGE
+        else:
+            check.get_attribute("conclusion").value = ValidatorConclusion.FAILURE.value
+            check.get_attribute("severity").value = Severity.CRITICAL.value
+            check.message.value = f"{RENDER_FAILED_MESSAGE}: {outcome.message}"
+        check.changed.value = outcome.changed
+        check.checksum.value = outcome.checksum
+        check.storage_id.value = outcome.storage_id
+        check.artifact_id.value = outcome.artifact_id
+        await check.save(db=db, user_id=SYSTEM_USER_ID)
+        validator_ids.add(validator.id)
+    return validator_ids
+
+
+def system_event_context(branch: Branch) -> EventContext:
     return EventContext(
         branch=EventBranchContext(name=branch.name, id=str(branch.get_uuid())), account_id=SYSTEM_USER_ID
     )

@@ -38,7 +38,7 @@ These scenarios prove the spec's user stories from start to finish. Contracts: [
 
 1. With the engine in `fail` mode, repeat scenario 1. **Expect** the artifact to be `Error` and the check to fail with the engine's message.
 2. With the engine in `silent` mode and `timeout: 60`, repeat scenario 1. **Expect**, within 2 minutes, the artifact to be `Error` and the check to fail with "no response from engine".
-3. Send the callback for the request that timed out. **Expect** `409`, and the artifact stays unchanged.
+3. Send the callback for the request that timed out. **Expect** `401`, because the render token expires at the deadline, and the artifact stays unchanged.
 
 ## Scenario 4: token rules (SC-005)
 

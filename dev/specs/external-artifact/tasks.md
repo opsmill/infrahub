@@ -193,21 +193,21 @@ description: "Task list for artifacts rendered by an external engine"
 
 **Independent Test**: [quickstart.md](quickstart.md) scenario 3.
 
-- [ ] T027 [P] [US3] Component test in `backend/tests/component/artifacts/test_render_timeouts.py`. The sweep must:
+- [X] T027 [P] [US3] Component test in `backend/tests/component/artifacts/test_render_timeouts.py`. The sweep must:
   - set a pending artifact past its `render_deadline` to `Error`;
   - fail its check with "no response from engine";
   - recompute the validator;
   - leave artifacts before their deadline unchanged.
 
   A callback after the sweep must return 409.
-- [ ] T028 [US3] Create `backend/infrahub/artifacts/timeouts.py` with a flow that:
+- [X] T028 [US3] Create `backend/infrahub/artifacts/timeouts.py` with a flow that:
   - queries `CoreArtifact` on every branch with `status=Pending` and `render_deadline` earlier than now;
   - under the artifact render lock, sets `Error`, clears `render_deadline`, updates the linked check and calls `recompute_validator`;
   - logs each timeout with the artifact, the branch and the transformation name.
 
   Check whether `render_deadline` needs an index (`dev/knowledge/backend/database-indexes.md`).
-- [ ] T029 [US3] Register the sweep in `backend/infrahub/workflows/catalogue.py` as an `INTERNAL` workflow with `cron="* * * * *"`, `concurrency_limit=1` and `ConcurrencyLimitStrategy.CANCEL_NEW`, following `CRASH_ZOMBIE_FLOW_RUNS`.
-- [ ] T030 [US3] Extend `backend/tests/integration/artifacts/test_external_artifact.py` with the engine in `fail` mode (the check fails with the engine's message) and in `silent` mode with `timeout: 60` (`Error` within 2 minutes, and a late callback gets 409).
+- [X] T029 [US3] Register the sweep in `backend/infrahub/workflows/catalogue.py` as an `INTERNAL` workflow with `cron="* * * * *"`, `concurrency_limit=1` and `ConcurrencyLimitStrategy.CANCEL_NEW`, following `CRASH_ZOMBIE_FLOW_RUNS`.
+- [X] T030 [US3] Extend `backend/tests/integration/artifacts/test_external_artifact.py` with the engine in `fail` mode (the check fails with the engine's message) and in `silent` mode with `timeout: 60` (`Error` within 2 minutes, and a late callback gets 401 because its token expired at the deadline; the 409 after the sweep is covered by T027).
 
 **Checkpoint**: All three user stories work independently.
 
