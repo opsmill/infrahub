@@ -138,9 +138,12 @@ A schema load and a schema check call `from_schema_root` through
    without the IDs of the kinds and of their attributes and relationships: saving a schema gives a
    new kind or element a database ID whatever ID the file set, and the operations hold no ID.
 
-When the applier refuses an operation or a kind differs, the builder raises
+When the applier refuses an operation, raises a `ValueError` (a malformed operation, or an applied
+schema that processing refuses), or a kind differs, the builder raises
 `SchemaOperationsRebuildError` (HTTP 500), whose message says that the error is in Infrahub, not in
-the file, and names the kinds. The load saves nothing, and the check returns the same error. A load
+the file, and names the kinds. For a `ValueError` it names every kind that the operations name. The
+operation builder already processed the same file without an error, so such a `ValueError` comes
+from the operations, and it does not reach the API as `SchemaNotValidError` (HTTP 422). The load saves nothing, and the check returns the same error. A load
 therefore processes the schema twice. A file that gives a new kind, or a new attribute or
 relationship of an existing kind, an ID loads as if it gave none.
 

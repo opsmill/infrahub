@@ -1057,6 +1057,9 @@ tasks that name it.
       reuse it (spec, FR-017, decision 13). The applier picks the element that no earlier operation
       renamed when two elements share a name, and refuses a rename that leaves two elements with
       the same name. Regenerate `schema/schema.graphql` and the front-end types.
+- [X] T077 [US1] `from_schema_root` raises `SchemaOperationsRebuildError` (HTTP 500) when the
+      applier raises a `ValueError`, naming every kind that the operations name, so an error in
+      the operations does not reach the API as `SchemaNotValidError` (HTTP 422).
 
 ---
 
@@ -1113,5 +1116,5 @@ methods of one class run in the order they are defined.
 | 6. User Story 4 | T050 to T051 | 2 |
 | 7. User Story 5 | T052 to T055 | 4 |
 | 8. Documentation and polish | T056 to T064 | 9 |
-| 9. Changes decided in review | T066 to T076 | 11 |
-| Total | | 76 |
+| 9. Changes decided in review | T066 to T077 | 12 |
+| Total | | 77 |

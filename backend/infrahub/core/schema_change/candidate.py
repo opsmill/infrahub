@@ -69,8 +69,9 @@ class SchemaCandidateBuilder:
                 does not hold.
             SchemaNameReusedError: When the schema file frees a kind, or an attribute name of a kind, and gives it
                 to another kind or attribute of that kind.
-            SchemaOperationsRebuildError: When the operations cannot be applied, or when the schema they build
-                differs from the schema file laid over the branch schema.
+            SchemaOperationsRebuildError: When the operations cannot be applied, including a malformed operation or
+                a built schema that processing refuses, or when the schema they build differs from the schema file
+                laid over the branch schema.
 
         """
         self._refuse_an_unknown_id_for_an_existing_kind(branch_schema=branch_schema, schema_root=schema_root)
@@ -86,6 +87,11 @@ class SchemaCandidateBuilder:
             )
         except (SchemaOperationTargetNotFoundError, SchemaOperationTargetExistsError) as exc:
             raise SchemaOperationsRebuildError(kinds=[exc.kind]) from exc
+        except ValueError as exc:
+            # The operation builder already laid the same file over the branch schema and processed it without an error.
+            raise SchemaOperationsRebuildError(
+                kinds=sorted({operation.kind for operation in build_result.operations})
+            ) from exc
 
         differing_kinds = self.comparer.differing_kinds(
             direct_load_schema=build_result.direct_load_schema, applied_schema=schema

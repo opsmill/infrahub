@@ -133,9 +133,10 @@ class SchemaCandidateBuilder:
   builds the operations, and raises `SchemaNameReusedError` (HTTP 422) when they free an attribute
   name or a kind and give it to another owner (spec, FR-017) before it applies any. It then applies them to `branch_schema` with the applier, and compares the result
   with `direct_load_schema` with the comparer. It raises `SchemaOperationsRebuildError` (HTTP 500)
-  when the applier raises `SchemaOperationTargetNotFoundError` or
-  `SchemaOperationTargetExistsError`, or when the comparer returns kinds; the message says that the
-  error is in Infrahub, not in the file, and names the kinds. Otherwise `schema` is the applier's
+  when the applier raises `SchemaOperationTargetNotFoundError`,
+  `SchemaOperationTargetExistsError` or a `ValueError`, or when the comparer returns kinds; the
+  message says that the error is in Infrahub, not in the file, and names the kinds (for a
+  `ValueError`, every kind that the operations name). Otherwise `schema` is the applier's
   result and `validation.diff` is the diff between `branch_schema` and it. The schema is processed
   twice: once by the operation builder and once by the applier (spec, decision 8).
 - `from_operations`: `schema` is the applier's result, and `validation.diff` is the diff between

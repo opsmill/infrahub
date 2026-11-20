@@ -296,6 +296,23 @@ REBUILD_FAILURE_CASES = [
         expected_kinds="TestingDevice",
         expected_cause=SchemaOperationTargetExistsError,
     ),
+    RebuildFailureCase(
+        name="operation_names_a_property_that_the_applier_cannot_set",
+        schema_file=build_base_schema_root,
+        operations=[
+            SchemaOperation(
+                operation_type=SchemaOperationType.ELEMENT_PROPERTY,
+                kind=TestKind.TAG,
+                section=SchemaOperationSection.ATTRIBUTES,
+                element_name="name",
+                property_name="not_a_property",
+                value="value",
+                previous_value=None,
+            )
+        ],
+        expected_kinds="TestingTag",
+        expected_cause=ValueError,
+    ),
 ]
 
 
