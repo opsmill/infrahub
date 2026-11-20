@@ -8,7 +8,7 @@ import TabItem from '@theme/TabItem';
 
 With a custom webhook, Infrahub runs a Python Transformation on event data before it sends the result to an external endpoint. Choose a custom webhook when the receiving system requires a specific payload format, such as Slack, Microsoft Teams, GitHub Actions, or other third-party APIs.
 
-For general information about Python Transformations, see the [Python Transformation guide](../learn/tutorials/transformations/build-a-python-transformation). For details about webhook events and payloads, see [Webhooks](./overview).
+For general information about Python Transformations, see the [Python Transformation guide](../learn/tutorials/transformations/build-a-python-transformation). For the fields of the event payload, see [Receive webhooks](./receive-webhooks.mdx#what-a-request-contains).
 
 :::note
 
@@ -44,7 +44,7 @@ class SlackWebhookTransform(InfrahubTransform):
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"*Event:* `{event_type}`\n*Kind:* {node_kind}\n*Branch:* {data.get('branch') or 'default'}"
+                        "text": f"*Event:* `{event_type}`\n*Kind:* {node_kind}\n*Branch:* {data.get('branch') or 'none'}"
                     }
                 }
             ]
@@ -62,7 +62,7 @@ The `data` parameter contains:
 | `account_id` | UUID of the account that triggered the event |
 | `occured_at` | ISO 8601 timestamp of when the event occurred |
 
-See [Webhooks](./overview) for example event payloads.
+See [Example payloads](./receive-webhooks.mdx#example-payloads) for the content of `data` in common events.
 
 ## Create a placeholder GraphQL query
 
@@ -104,7 +104,7 @@ Add your repository containing the Transformation to Infrahub. See [Connect a re
 Create the webhook while working on the default branch. A custom webhook uses only the Transformation linked on the default branch, so the Transformation has to exist there before you link it. See [Where webhooks are stored and read](./overview#where-webhooks-are-stored-and-read) for the reason.
 
 <Tabs groupId="method" queryString>
-  <TabItem value="web" label="Via the Web Interface" default>
+  <TabItem value="web" label="Web interface" default>
 
 1. Navigate to **Integrations** > **Webhooks**.
 2. Click **+ Add Webhook**.
@@ -119,7 +119,7 @@ Create the webhook while working on the default branch. A custom webhook uses on
 
   </TabItem>
 
-  <TabItem value="graphql" label="Via the GraphQL Interface">
+  <TabItem value="graphql" label="GraphQL">
 
 First, get the Transformation ID. Run the query without selecting a branch, so that it queries the default branch. If it returns no result, the Transformation does not exist on the default branch yet.
 
@@ -169,7 +169,7 @@ When the branch scope of the webhook includes other branches, Infrahub still rea
 
 :::warning Events on data-only branches
 
-With a **Repository** (read-write), Infrahub sends nothing for an event on a [data-only branch](../branches/overview.mdx#branch-isolation-modes) (`sync_with_git: false`), because the repository has no Git branch with that name. The failure does not appear in the related tasks of the webhook. It is recorded only in the logs of the [task worker](../overview/architecture.mdx#task-workers).
+With a **Repository** (read-write), Infrahub sends nothing for an event on a [data-only branch](../branches/overview.mdx#branch-isolation-modes) (`sync_with_git: false`), because the repository has no Git branch with that name. The failure does not appear in the **Tasks** tab of the webhook. It is recorded only in the logs of the [task worker](../overview/architecture.mdx#task-workers).
 
 :::
 
@@ -180,6 +180,6 @@ With a **Repository** (read-write), Infrahub sends nothing for an event on a [da
 
 If the receiver gets the standard event payload instead of your transformed payload, the webhook has no Transformation linked on the default branch. Switch to the default branch, open the webhook, and set its **Transformation** field.
 
-If a delivery does not arrive, open the webhook and select the delivery from its related tasks. Its logs show the request that was sent and the delivery outcome, and on failure the [classified reason](./overview#when-a-delivery-fails). See [Header and payload logging](./overview#header-and-payload-logging) for what each delivery records.
+If the receiver does not get a request, open the webhook and select the delivery in its **Tasks** tab. Its log shows the request that was sent and the delivery outcome, and on failure the [failure class](./troubleshoot-deliveries.mdx#failure-classes). See [Header and payload logging](./troubleshoot-deliveries.mdx#header-and-payload-logging) for what each delivery records.
 
 If the event matches the branch scope and node kind of the webhook but the webhook has no delivery for it, Infrahub failed before it created the delivery, for example while it ran the Transformation. The error is recorded only in the task worker logs.
