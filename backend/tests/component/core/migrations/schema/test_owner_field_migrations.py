@@ -627,10 +627,9 @@ async def _target_owners(
     return {holder.attribute: state.owner_ids for holder, state in stored[node_id].holders.items()}
 
 
-async def _verify_no_duplicate_owner_sets(db: InfrahubDatabase) -> None:
-    # The rename of an attribute that all branches share leaves violations that are not about owners.
+async def _verify_graph_checks(db: InfrahubDatabase, expected: set[GraphCheck]) -> None:
     violations = await collect_graph_violations(db=db)
-    assert GraphCheck.DUPLICATE_OWNER_SETS not in {violation.check for violation in violations}
+    assert {violation.check for violation in violations} == expected
 
 
 @dataclass
@@ -700,7 +699,11 @@ async def test_owners_that_a_profile_that_all_branches_share_gives_follow_the_at
         assert await _target_owners(db=db, branch=default_branch, node_id=profile_id) == {
             new_name: (group_ids["network-emea"],)
         }
-    await _verify_no_duplicate_owner_sets(db=db)
+    # The rename of an attribute that all branches share leaves violations that are not about owners.
+    await _verify_graph_checks(
+        db=db,
+        expected={GraphCheck.DUPLICATE_ATTRIBUTES, GraphCheck.ATTRIBUTE_EDGE_BRANCH} if new_name else set(),
+    )
 
 
 @pytest.mark.parametrize("new_name", [pytest.param(None, id="removal"), pytest.param("serial_number", id="rename")])
@@ -736,4 +739,5 @@ async def test_owners_that_a_profile_that_all_branches_share_gives_follow_the_at
         assert await _target_owners(db=db, branch=default_branch, node_id=profile_id) == {
             new_name: (group_ids["network-emea"],)
         }
-    await _verify_no_duplicate_owner_sets(db=db)
+    # The rename of an attribute that all branches share leaves violations that are not about owners.
+    await _verify_graph_checks(db=db, expected={GraphCheck.ATTRIBUTE_EDGE_BRANCH} if new_name else set())
