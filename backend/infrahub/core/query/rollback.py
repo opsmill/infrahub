@@ -58,8 +58,10 @@ def _render_restore_metadata_pipeline() -> str:
     """Restore the metadata snapshots of the vertices an edge reversal touched.
 
     Matches the operation's exact timestamps on every pass, independent of branch and scope.
-    Vertices are stamped at one of the operation's timestamps. A restored vertex no longer holds one
-    of them because the writers keep the value from before the operation, so a later restore skips it.
+    A restored vertex stays restored after a later match only when every writer of the operation received
+    the operation's earlier timestamps, because the restored value is then the one from before the
+    operation. Otherwise the restored value can be one of those timestamps and a later match nulls
+    the metadata.
     """
     return """
     UNWIND [src, dst] AS endpoint

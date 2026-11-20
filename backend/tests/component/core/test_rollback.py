@@ -746,6 +746,9 @@ class SeveralTimestampsScenario:
     widget_b_after_rollback: dict[str, str | None]
     widget_a_after_second: dict[str, str | None]
     widget_b_after_second: dict[str, str | None]
+    widget_d_serial_before: list[EdgeState]
+    widget_d_closed_at_step1: list[EdgeState]
+    widget_d_serial_after_rollback: list[EdgeState]
 
 
 class TestRollbackOfStepsAtSeveralTimestamps:
@@ -760,11 +763,13 @@ class TestRollbackOfStepsAtSeveralTimestamps:
         widget_a = await create_widget(db=db, branch=main, name="widget-a", serial=1)
         widget_b = await create_widget(db=db, branch=main, name="widget-b", serial=2)
         other = await create_widget(db=db, branch=main, name="other", serial=3)
+        widget_d = await create_widget(db=db, branch=main, name="widget-d", serial=5)
         user_branch = await create_branch(branch_name="several-timestamps", db=db)
 
         main_before = await branch_edge_fingerprint(db=db, branch_name=main.name)
         widget_a_before = await _get_node_vertex_metadata(db=db, node_uuid=widget_a.id)
         widget_b_before = await _get_node_vertex_metadata(db=db, node_uuid=widget_b.id)
+        widget_d_serial_before = await attribute_global_edges(db=db, node_id=widget_d.id, attribute_name="serial")
 
         step1_at = Timestamp()
         await _add_widget_attribute(
@@ -776,6 +781,13 @@ class TestRollbackOfStepsAtSeveralTimestamps:
             attribute=AttributeSchema(name="tag", kind="Text", optional=True, branch=BranchSupportType.AGNOSTIC),
             at=step1_at,
         )
+        widget_d.serial.value = 6
+        await widget_d.save(db=db, at=step1_at)
+        widget_d_closed_at_step1 = [
+            edge
+            for edge in await attribute_global_edges(db=db, node_id=widget_d.id, attribute_name="serial")
+            if edge.to_time == step1_at.to_string()
+        ]
 
         other_on_branch = await NodeManager.get_one(db=db, id=other.id, branch=user_branch)
         other_on_branch.serial.value = 4
@@ -811,6 +823,9 @@ class TestRollbackOfStepsAtSeveralTimestamps:
         other_serial_after_rollback = await attribute_global_edges(db=db, node_id=other.id, attribute_name="serial")
         widget_a_after_rollback = await _get_node_vertex_metadata(db=db, node_uuid=widget_a.id)
         widget_b_after_rollback = await _get_node_vertex_metadata(db=db, node_uuid=widget_b.id)
+        widget_d_serial_after_rollback = await attribute_global_edges(
+            db=db, node_id=widget_d.id, attribute_name="serial"
+        )
 
         await _roll_back()
         main_after_second = await branch_edge_fingerprint(db=db, branch_name=main.name)
@@ -841,6 +856,9 @@ class TestRollbackOfStepsAtSeveralTimestamps:
             widget_b_after_rollback=widget_b_after_rollback,
             widget_a_after_second=widget_a_after_second,
             widget_b_after_second=widget_b_after_second,
+            widget_d_serial_before=widget_d_serial_before,
+            widget_d_closed_at_step1=widget_d_closed_at_step1,
+            widget_d_serial_after_rollback=widget_d_serial_after_rollback,
         )
 
     def test_the_steps_wrote_to_main_and_the_global_branch(self, scenario: SeveralTimestampsScenario) -> None:
@@ -886,6 +904,10 @@ class TestRollbackOfStepsAtSeveralTimestamps:
         after = scenario.widget_b_after_rollback
         assert (after["updated_at"], after["updated_by"]) == (scenario.between_at.to_string(), "another-writer")
 
+    def test_rollback_reopens_a_global_edge_closed_at_the_first_step(self, scenario: SeveralTimestampsScenario) -> None:
+        assert scenario.widget_d_closed_at_step1, "the save closed a global edge at the first step's timestamp"
+        assert edge_summary(scenario.widget_d_serial_after_rollback) == edge_summary(scenario.widget_d_serial_before)
+
     def test_a_second_rollback_changes_nothing(self, scenario: SeveralTimestampsScenario) -> None:
         assert (scenario.main_after_second, scenario.global_after_second) == (
             scenario.main_after,
@@ -899,7 +921,7 @@ class TestRollbackOfStepsAtSeveralTimestamps:
     async def test_rollback_refuses_an_empty_timestamp_list(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch
     ) -> None:
-        with pytest.raises(ValueError, match=r"at least one timestamp"):
+        with pytest.raises(ValueError, match=r"^A rollback needs at least one timestamp$"):
             await GraphRollbacker(db=db).rollback(
                 target_branch=default_branch_scope_class, ats=[], scope=RollbackScope.AT_TIMESTAMP
             )
