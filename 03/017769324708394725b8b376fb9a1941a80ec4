@@ -1,0 +1,51 @@
+dev/specs/ifc-2167-placeholder-automations-db/tasks.md
+  s_f2a37f527c8ddb::t_fe20cc74457c90 145-148,153-158
+  s_f2a37f527c8ddb::t_0a7449b61035d1 149
+dev/specs/ifc-2167-placeholder-automations-db/opsmill-implement-ledger.md
+  s_f2a37f527c8ddb::t_4391b398b91a58 134-175
+backend/infrahub/hfid/models.py
+  s_f2a37f527c8ddb::t_ac108ec665f86b 14
+backend/tests/unit/trigger/test_branch_scope.py
+  s_f2a37f527c8ddb::t_929abd3082aa33 33,51,58,77,88
+  s_f2a37f527c8ddb::t_31d251be9c8640 68
+backend/infrahub/display_labels/models.py
+  s_f2a37f527c8ddb::t_8593be06aee5e9 14
+backend/infrahub/computed_attribute/gather.py
+  s_f2a37f527c8ddb::t_e8e160484eca67 146,150
+  s_f2a37f527c8ddb::t_7029fd917ae530 144
+backend/tests/component/hfid/test_gather.py
+  s_f2a37f527c8ddb::t_e5da15f3c98e1b 1-59,63-73
+  s_f2a37f527c8ddb::t_cd0b5e17606e61 60-62
+backend/tests/component/computed_attribute/test_local_computation.py
+  s_f2a37f527c8ddb::t_0ebd9715450175 399-406,408-414,416,433
+  s_f2a37f527c8ddb::t_f6ff08e95f2ce9 407
+  s_f2a37f527c8ddb::t_8e2b95a5f26a3c 415,417-432
+  s_f2a37f527c8ddb::t_c311f75d62816b 200-246
+backend/tests/component/display_labels/test_gather.py
+  s_f2a37f527c8ddb::t_cd0b5e17606e61 23-25
+  s_f2a37f527c8ddb::t_9d3bfc8a03c499 22,26-27,84,86-87
+backend/tests/integration_docker/test_computed_attributes.py
+  s_f2a37f527c8ddb::t_ae4f3656f2d28d 164-174
+  s_f2a37f527c8ddb::t_601e753b70fb73 32
+  s_f2a37f527c8ddb::t_ca690857c2cf7c 197-214
+  s_f2a37f527c8ddb::t_43325961eda863 19-21
+backend/tests/functional/computed_attributes/test_local_computation.py
+  s_f2a37f527c8ddb::t_39b9ce6e3b4599 40,46,49,61
+  s_f2a37f527c8ddb::t_49d7df3e94d0b8 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "03017769324708394725b8b376fb9a1941a80ec4",
+  "prompts": {},
+  "sessions": {
+    "s_f2a37f527c8ddb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7e61824-0f0e-47e3-8301-c23213163596",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
