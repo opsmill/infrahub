@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, ClassVar
 
 import pytest
 from neo4j.exceptions import ClientError, TransientError
 from typing_extensions import Self
 
+import infrahub.core.migrations  # noqa: F401  imports every schema migration module, so every query class is defined
 from infrahub import config
 from infrahub.core.constants import SchemaPathType
-from infrahub.core.migrations.query import MigrationQuery
+from infrahub.core.migrations.query import AttributeMigrationQuery, MigrationQuery
+from infrahub.core.migrations.query.selection import MigrationSelectionQuery
+from infrahub.core.migrations.schema.node_relationship_remove import RelationshipMigrationQuery
 from infrahub.core.migrations.shared import GraphMigration, MigrationInput, SchemaMigration
 from infrahub.core.path import SchemaPath
 from infrahub.core.query import Query, QueryType
@@ -39,7 +43,7 @@ def _fast_retry() -> Generator[None, None, None]:
     config.SETTINGS.database.retry_jitter_max = original_jitter_max
 
 
-class DeadlockOnceMigrationQuery(MigrationQuery):
+class DeadlockOnceMigrationQuery(MigrationQuery, MigrationSelectionQuery):
     name = "test_deadlock_once_migration"
     type: QueryType = QueryType.WRITE
     insert_return = False
@@ -59,7 +63,7 @@ class DeadlockOnceMigrationQuery(MigrationQuery):
         return 1
 
 
-class AlwaysDeadlockMigrationQuery(MigrationQuery):
+class AlwaysDeadlockMigrationQuery(MigrationQuery, MigrationSelectionQuery):
     name = "test_always_deadlock_migration"
     type: QueryType = QueryType.WRITE
     insert_return = False
@@ -80,7 +84,7 @@ def _entity_not_found_error() -> ClientError:
     return error
 
 
-class EntityNotFoundOnceMigrationQuery(MigrationQuery):
+class EntityNotFoundOnceMigrationQuery(MigrationQuery, MigrationSelectionQuery):
     name = "test_entity_not_found_once_migration"
     type: QueryType = QueryType.WRITE
     insert_return = False
@@ -209,3 +213,85 @@ class TestMigrationTransientErrorRetry:
         assert not result.success
         assert result.errors == ["deadlock detected"]
         assert AlwaysDeadlockGraphQuery.calls == 1
+
+
+class _MigrationWithoutNodeScope(SchemaMigration):
+    applies_node_scope = False
+
+
+@dataclass
+class ScopedInputTestCase:
+    name: str
+    migration_class: type[SchemaMigration]
+    node_ids: frozenset[str] | None
+    expected_node_ids: frozenset[str] | None
+
+
+SCOPED_INPUT_TEST_CASES: list[ScopedInputTestCase] = [
+    ScopedInputTestCase(
+        name="applies_scope_keeps_node_ids",
+        migration_class=SchemaMigration,
+        node_ids=frozenset({"node-a", "node-b"}),
+        expected_node_ids=frozenset({"node-a", "node-b"}),
+    ),
+    ScopedInputTestCase(
+        name="applies_scope_keeps_empty_set",
+        migration_class=SchemaMigration,
+        node_ids=frozenset(),
+        expected_node_ids=frozenset(),
+    ),
+    ScopedInputTestCase(
+        name="applies_scope_keeps_no_scope",
+        migration_class=SchemaMigration,
+        node_ids=None,
+        expected_node_ids=None,
+    ),
+    ScopedInputTestCase(
+        name="ignores_scope_drops_node_ids",
+        migration_class=_MigrationWithoutNodeScope,
+        node_ids=frozenset({"node-a", "node-b"}),
+        expected_node_ids=None,
+    ),
+    ScopedInputTestCase(
+        name="ignores_scope_drops_empty_set",
+        migration_class=_MigrationWithoutNodeScope,
+        node_ids=frozenset(),
+        expected_node_ids=None,
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in SCOPED_INPUT_TEST_CASES])
+def test_scoped_input(db: InfrahubDatabase, test_case: ScopedInputTestCase) -> None:
+    migration = test_case.migration_class(
+        name="test.migration",
+        queries=[],
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestKind", field_name="name"),
+    )
+    migration_input = MigrationInput(db=db, user_id="test-user", node_ids=test_case.node_ids)
+
+    scoped = migration.scoped_input(migration_input=migration_input)
+
+    assert scoped.node_ids == test_case.expected_node_ids
+    assert scoped.db is db
+    assert scoped.at == migration_input.at
+    assert scoped.user_id == "test-user"
+
+
+def _all_subclasses(cls: type) -> set[type]:
+    subclasses: set[type] = set()
+    for subclass in cls.__subclasses__():
+        subclasses.add(subclass)
+        subclasses |= _all_subclasses(subclass)
+    return subclasses
+
+
+def test_every_migration_bound_query_is_a_selection_query() -> None:
+    query_classes = (
+        _all_subclasses(MigrationQuery)
+        | _all_subclasses(AttributeMigrationQuery)
+        | _all_subclasses(RelationshipMigrationQuery)
+    )
+
+    assert query_classes
+    assert {cls for cls in query_classes if not issubclass(cls, MigrationSelectionQuery)} == set()
