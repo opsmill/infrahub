@@ -1,0 +1,45 @@
+backend/tests/functional/schema_change/test_schema_change_history.py
+  s_82cad8e1a2b45b::t_1a7f54a490a807 3,403,415-428
+frontend/app/src/shared/api/graphql/generated/graphql-env.d.ts
+  s_82cad8e1a2b45b::t_1a7f54a490a807 766-774,1186,1235-1237,1245-1248
+backend/infrahub/graphql/loaders/schema_change.py
+  s_82cad8e1a2b45b::t_1a7f54a490a807 1-77
+backend/infrahub/graphql/schema.py
+  s_82cad8e1a2b45b::t_1a7f54a490a807 65,87,117
+dev/specs/ifc-3614-store-schema-changes/plan.md
+  s_82cad8e1a2b45b::t_1a7f54a490a807 151-152,179,233-235
+backend/infrahub/core/schema_change/history_reader.py
+  s_82cad8e1a2b45b::t_1a7f54a490a807 91,101-105
+backend/infrahub/graphql/resolvers/schema_change.py
+  s_82cad8e1a2b45b::t_1a7f54a490a807 1-193
+backend/infrahub/graphql/types/schema_change.py
+  s_82cad8e1a2b45b::t_1a7f54a490a807 1-192
+backend/infrahub/graphql/queries/__init__.py
+  s_82cad8e1a2b45b::t_1a7f54a490a807 21,46
+dev/specs/ifc-3614-store-schema-changes/data-model.md
+  s_82cad8e1a2b45b::t_1a7f54a490a807 167
+backend/infrahub/graphql/queries/schema_change.py
+  s_82cad8e1a2b45b::t_1a7f54a490a807 1-85
+dev/specs/ifc-3614-store-schema-changes/contracts/internal-interfaces.md
+  s_82cad8e1a2b45b::t_1a7f54a490a807 295-298,311-312
+dev/specs/ifc-3614-store-schema-changes/tasks.md
+  s_82cad8e1a2b45b::t_1a7f54a490a807 670,676,681,689,692
+schema/schema.graphql
+  s_82cad8e1a2b45b::t_1a7f54a490a807 9289-9417,27002-27012,28243-28270,28309-28340
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "420907c7446a617b5fd0ba41cac9ed22fa7fa7e3",
+  "prompts": {},
+  "sessions": {
+    "s_82cad8e1a2b45b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84871941-8054-4076-b8eb-47a62b4a732b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
