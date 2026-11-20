@@ -118,7 +118,7 @@ The engine reports an error, or does not answer before the timeout. The engineer
 - The engine sends results in a format Infrahub defines. For AWX, the last task of the playbook sends the result. Infrahub does not transform incoming results.
 - Template teams can commit a version change to the repository connected to Infrahub, for example from their template CI.
 - The default timeout for external transformations is 10 minutes, because external jobs such as AWX job templates take longer than the 60-second default of internal transformations. The user did not decide this value, so planning should confirm it.
-- The maximum content size for externally rendered artifacts is the same as for internal artifacts. The user did not decide this value, so planning should confirm what the current limit is.
+- The maximum content size for externally rendered artifacts is the existing maximum file size setting of the object store (50 MB by default). Internal artifacts have no size limit today, so planning chose this existing setting (research R5).
 - The query result for one target fits within the size limits of the event and the webhook delivery. Planning must check these limits.
 - After a merge, the engine receives a second render request for the destination branch. Teams accept this extra load.
 - Submitting a result is a new authentication path for an external system, and needs a security review.
