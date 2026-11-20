@@ -153,6 +153,7 @@ async def test_source_branch_migration(
 
 @pytest.mark.xfail(
     strict=True,
+    raises=AssertionError,
     reason="the merge of a kind migration loses the node owners that the default branch wrote after the branch start",
 )
 async def test_merge_of_a_kind_migration_keeps_the_node_owners_of_the_default_branch(
