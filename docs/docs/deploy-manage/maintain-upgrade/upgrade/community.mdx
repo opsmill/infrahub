@@ -4,6 +4,8 @@ title: Upgrade Community
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import SnippetTaskHistoryWarning from '../../../snippets/upgrade-task-history-warning.mdx';
+import SnippetTaskHistoryCleanup from '../../../snippets/upgrade-task-history-cleanup.mdx';
 
 # Upgrade Community
 
@@ -26,10 +28,14 @@ In Infrahub 1.2 and later, the upgrade process has been streamlined with a unifi
 For earlier versions, please refer to the [release notes](../../../release-notes/infrahub/) for specific upgrade instructions.
 :::
 
+<SnippetTaskHistoryWarning />
+
 ## Upgrading to Infrahub 1.2 and after
 
 <Tabs groupId="deployment" queryString>
 <TabItem value="docker" label="Docker" default>
+
+The upgrade runs while the instance is stopped. When the task manager reports at least 100,000 finished task runs older than the task history retention, the upgrade deletes them in its last step, which adds to the time the instance is down. In an OpsMill test on a restored backup with 7.3 GB of task history, PostgreSQL 18 and the instance running, the cleanup deleted 422,735 runs and took the task history from 7.3 GB to 1.3 GB in about 6 minutes, about 1,250 runs a second. Each run takes longer to delete on a larger task history: in OpsMill tests on 25.8 GB of task history, with PostgreSQL 18 and the instance running, the last step of the upgrade took about 14 to 16 minutes, and the cleanup command took 17 to 20 minutes. With Docker Compose, the time this adds to the downtime is an estimate, because the tests ran the upgrade with the instance running. The duration depends on the hardware and the data of your instance; see [Run the cleanup command](./overview.mdx#run-the-cleanup-command). To restart the instance sooner, run `docker compose run infrahub-server infrahub upgrade --no-task-history-cleanup` instead, then run the cleanup command below once the instance runs again.
 
 ```bash
 # Stop the current instance
@@ -43,6 +49,12 @@ docker compose run infrahub-server infrahub upgrade
 
 # Restart the instance
 docker compose up -d
+```
+
+<SnippetTaskHistoryCleanup />
+
+```bash
+docker compose exec infrahub-server infrahub tasks flush flow-runs --rewrite
 ```
 
 :::note
@@ -59,6 +71,9 @@ You can do this with: `docker image prune -a`
 ```bash
 # Upgrade the Helm release
 helm upgrade
+
+# Wait until the new task manager runs
+kubectl rollout status deployment/prefect-server
 
 # Run the unified upgrade command inside the server pod
 kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub upgrade
@@ -85,6 +100,16 @@ query {
     }
   }
 }
+```
+
+Run `infrahub upgrade` after the rollout of the task manager has finished. Before that, the upgrade reaches the task manager of the previous release. On the first upgrade to this release, that task manager does not report its task history, so the upgrade skips the task history cleanup.
+
+When the pre-upgrade hook of the chart runs the upgrade (`upgrade.enabled`), the chart passes `--no-task-history-cleanup` to it, because Helm waits at most 5 minutes for a hook by default. The hook also runs before Helm replaces the task manager. Run the cleanup command below after the upgrade.
+
+<SnippetTaskHistoryCleanup />
+
+```bash
+kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub tasks flush flow-runs --rewrite
 ```
 
 </TabItem>

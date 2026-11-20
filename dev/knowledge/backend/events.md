@@ -217,6 +217,8 @@ Webhook branch scoping matches an event against `meta.context.branch` (see [Webh
 
 | Situation | What happens |
 |---|---|
+| An Infrahub event is emitted | Prefect stores it and its related resources, keeps it for `task_manager.retention.activity_log` (7 days by default, 30 days with OpsMill's Enterprise Docker Compose file and Helm chart), then its hourly vacuum deletes both; see [Event retention](task-manager-retention.md#event-retention) |
+| Prefect records one of its own events (run states, heartbeats, workers) | It is never shown, and it is kept for `prefect_own_events` when its type is in `PREFECT_EVENT_TYPES`, otherwise for `activity_log` |
 | The Activities page loads its first page | The task manager reads newest first, one window at a time: the 2,000 newest events of the requested event types, then the next 48,000, then the rest of the range. It stops at the window that fills the page |
 | The user loads more events | The page sends the time of the oldest event shown as `until` (`since` in ascending order) and drops the events it already shows by ID |
 | Every event of a full page has the same time | The next request keeps that time and adds `offset`, the number of events of that time already shown, so the page continues inside that time. The task manager orders the events of one time by ID, so the offset skips exactly the events already shown. The page stops if a request adds no new event |
@@ -315,6 +317,13 @@ without an index, so a label filter reads every related row in the range, while 
 - A label-only filter is correct but slow on a long activity log; give a new filter an ID match
   before adding it to the Activities page.
 
+## Retention
+
+The activity log is kept for `task_manager.retention.activity_log`, and Prefect's own events for
+`prefect_own_events`, through Prefect's global and per-type event retention. The settings, the list
+of Prefect event types and the tests that guard it are described in
+[Task Manager Retention](task-manager-retention.md#event-retention).
+
 ## Key Locations
 
 | Component | Location |
@@ -332,6 +341,7 @@ without an index, so a label filter reads every related row in the range, while 
 ## See Also
 
 - [ADR-0002: Prefect Events System](../../adr/0002-events-system.md) - Why we use Prefect Events
+- [Task Manager Retention](task-manager-retention.md) - How long events and task runs are kept, and how they are deleted
 - [Creating Events Guide](../../guides/backend/creating-events.md) - How to create a new event
 - [Authentication](authentication.md) - SSO group resolution and auto-create group events
 - [Webhooks](webhooks.md) - HTTP notification delivery triggered by events

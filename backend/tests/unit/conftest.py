@@ -1,6 +1,9 @@
 import os
+from collections.abc import Generator
+from pathlib import Path
 
 import pytest
+from prefect.settings import PREFECT_CLIENT_MAX_RETRIES, temporary_settings
 
 from infrahub.core import registry
 from infrahub.core.constants import (
@@ -10,6 +13,7 @@ from infrahub.core.constants import (
     RelationshipKind,
 )
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
+from tests.helpers.task_manager_retention import unloaded_task_manager_retention
 
 
 @pytest.fixture(autouse=True)
@@ -22,6 +26,20 @@ def without_cache_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     """Unset every INFRAHUB_CACHE_* variable, so the shell running the tests cannot change what is loaded."""
     for name in [name for name in os.environ if name.startswith("INFRAHUB_CACHE_")]:
         monkeypatch.delenv(name)
+
+
+@pytest.fixture
+def prefect_client_without_retries() -> Generator[None, None, None]:
+    """Prefect's client raises a connection error at once, instead of retrying it with real waits once it has had an answer."""
+    with temporary_settings(updates={PREFECT_CLIENT_MAX_RETRIES: 0}):
+        yield
+
+
+@pytest.fixture
+def task_manager_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Generator[None, None, None]:
+    """Start in an empty directory with no configuration loaded and no Prefect setting from any source, then restore the process state."""
+    with unloaded_task_manager_retention(monkeypatch=monkeypatch, directory=tmp_path):
+        yield
 
 
 @pytest.fixture

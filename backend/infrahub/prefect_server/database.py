@@ -23,6 +23,25 @@ if TYPE_CHECKING:
 # they are sparse.
 NEWEST_FIRST_WINDOW_EVENT_COUNTS = (2_000, 48_000)
 
+# Steps from one event type to the next through the index on the event type, instead of reading every event.
+_STORED_EVENT_TYPES = sa.text(
+    """
+    WITH RECURSIVE event_types(event) AS (
+        SELECT min(event) FROM events
+        UNION ALL
+        SELECT (SELECT min(events.event) FROM events WHERE events.event > event_types.event)
+        FROM event_types
+        WHERE event_types.event IS NOT NULL
+    )
+    SELECT event FROM event_types WHERE event IS NOT NULL
+    """
+)
+
+
+async def read_stored_event_types(session: AsyncSession) -> list[str]:
+    """Return each event type stored in the task manager's database once."""
+    return list((await session.scalars(_STORED_EVENT_TYPES)).all())
+
 
 def _between(filter: EventFilter, since: datetime, until: datetime) -> EventFilter:
     return filter.model_copy(update={"occurred": EventOccurredFilter(since=since, until=until)})
