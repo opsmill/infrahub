@@ -495,6 +495,7 @@ async def test_same_owner_change_on_both_branches_gives_no_conflict_and_the_merg
             id=LINK_OWNER_PROPERTY.name,
             marks=pytest.mark.xfail(
                 strict=True,
+                raises=AssertionError,
                 reason="the merge changelog records the owner of a link also when the default branch already holds it",
             ),
         ),
@@ -622,6 +623,7 @@ async def test_different_owner_changes_on_both_branches_conflict_and_the_merge_a
 
 @pytest.mark.xfail(
     strict=True,
+    raises=AssertionError,
     reason="the merge changelog records the branch value of a link owner when the conflict selects the default branch",
 )
 async def test_merge_changelog_of_a_link_owner_conflict_that_selects_the_default_branch_records_no_change(
@@ -805,6 +807,7 @@ async def test_owner_added_on_a_branch_and_then_deleted_stays_in_the_owners_afte
 
 @pytest.mark.xfail(
     strict=True,
+    raises=AssertionError,
     reason="the merge does not copy the owner edge of a link to a deleted owner, so the default branch reads no owner",
 )
 async def test_link_owner_added_on_a_branch_and_then_deleted_stays_on_the_default_branch_after_the_merge(
