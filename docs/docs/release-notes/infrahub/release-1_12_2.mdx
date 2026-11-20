@@ -1,0 +1,62 @@
+---
+title: Release 1.12.2
+release_date: 2026-11-20
+release_type: security
+description: "Infrahub 1.12.2 adds a mitigation for CVE-2026-114938 to the Neo4j service of the Docker Compose file and updates OpenTelemetry to address GHSA-mf5v-w3w3-f6cg. It also speeds up IP address and prefix changes, branch diffs and finding nodes by attribute value, shows search anywhere results with the best matches first, and adds support for running the Docker image as a non-root user."
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.12.2</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>November 20th, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.12.2](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.12.2)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Security
+
+- Added a temporary mitigation for [CVE-2026-114938](https://access.redhat.com/security/vulnerabilities/RHSB-2026-018), a Java bug that can affect Neo4j on x86-64 servers whose processor has AVX-512 VBMI (Intel server processors from Ice Lake, AMD processors from Zen 4). The Neo4j service in the Docker Compose file now sets `NEO4J_server_jvm_additional` to `-XX:-UseBASE64Intrinsics`, and applying the new file restarts Neo4j, so requests fail until it is back. If you use your own Compose file or an override file that sets `NEO4J_server_jvm_additional`, or you run Neo4j yourself, add the same option to your Neo4j Java options: separate several options in the variable with a space, and put each option on its own `server.jvm.additional=` line in `neo4j.conf`.
+- Upgraded `opentelemetry-api` to 1.45.2, with the matching OpenTelemetry exporter and instrumentation packages, to fix [GHSA-mf5v-w3w3-f6cg](https://github.com/advisories/GHSA-mf5v-w3w3-f6cg). The new version limits the length of the incoming `traceparent` header.
+
+### Added
+
+- Added support for running the Docker image as a non-root user, which lets Podman users run Infrahub.
+- Added the INFRAHUB_CACHE_EXCLUSIVE_LOCK_WAIT_SECS setting, which sets how long a request for a lock in exclusive mode waits for the holders of the lock in shared mode to finish before it fails, and the INFRAHUB_CACHE_SHARED_LOCK_TTL_SECS setting, which sets how long the hold of a worker that stopped keeps requests in exclusive mode waiting.
+- Search anywhere now loads more objects as you scroll through the results, so you can view every matching object instead of only the first 4.
+
+### Changed
+
+- Allocating from an IP prefix or IP address pool on a branch where the pool's namespace does not exist, or where none of its source prefixes exist, now fails with an error that names the pool and the branch. An IP prefix pool with no room left now raises a `PoolExhaustedError`, the error type an IP address pool raises, instead of an unhandled `IndexError`.
+- Creating or updating an IP address or IP prefix is now faster in databases with many IP addresses and prefixes: finding the address or prefix to place in the IP hierarchy no longer reads every address or prefix.
+- Creating or updating an IP address or IP prefix is now faster in large IP namespaces: finding its parent reads either the relationships of the namespace or those of the possible parent prefixes, whichever are fewer, and no longer reads every child prefix of each possible parent.
+- Generating artifacts and running Generators for a subset of a group with many members is now faster.
+- Infrahub now reads only the changes made in the time window when it checks whether a branch has new changes, and when it lists the nodes with an added or removed attribute or relationship to update a branch diff. Previously, the check read every relationship in the database and the list could read every node. The first start of the Infrahub server after the upgrade creates 14 new database indexes that these reads use. The database builds them in the background, and the reads use them when they are ready.
+- Looking up nodes by the exact value of an attribute, other than a text area, JSON or list attribute, or by the IDs of related nodes is now faster on kinds with many nodes. The lookup starts from that value or those nodes when they have few links in the database, instead of reading every node of the kind.
+- Reading the attributes of an object that many other objects are related to, such as an IP namespace or a device type, is now faster: its time no longer grows with the number of related objects.
+- Search anywhere now shows the best matches first, follows the time machine date, and returns results faster by leaving out the content of Text area, JSON and List attributes.
+- Selecting the artifacts and Generators to run again after a merge or in a proposed change is now faster for groups with many members.
+- The `RelationshipAdd` mutation is now faster when it adds many peers: it reads each peer given by ID once instead of twice.
+
+### Fixed
+
+- Fixed the dropdown of a relationship that accepts several peers of a hierarchical kind, such as IP prefixes, opening as a narrow strip at the right edge of the field in object forms. ([#10888](https://github.com/opsmill/infrahub/issues/10888))
+- Fixed deleting an IP namespace by its human-friendly ID failing with an HTTP 500 error. Deleting a namespace by human-friendly ID now deletes it, and deleting the default namespace by human-friendly ID returns HTTP 422 with the message "Cannot delete default IPAM namespace", as it already did when deleting it by ID. ([#11240](https://github.com/opsmill/infrahub/issues/11240))
+- Fixed IP prefix and IP address pools allocating a new value on every request with the same identifier, on a branch that could not view the value first reserved under that identifier. ([#11249](https://github.com/opsmill/infrahub/issues/11249))
+- Fixed changes made by a Generator being recorded against the task worker's account instead of the account that ran the Generator. ([#11480](https://github.com/opsmill/infrahub/issues/11480))
+- Fixed deleting the default IP namespace when a request sent the name of the namespace, `default`, in the `id` field of `IpamNamespaceDelete`. Releases before this fix deleted the default namespace in that case. The request now returns HTTP 422 with the message "Cannot delete default IPAM namespace", the same as a request that names the namespace by ID or by human-friendly ID. ([#11633](https://github.com/opsmill/infrahub/issues/11633))
+- Creating an object from a template now takes the locks of the resource pools that the template, its component templates and the `NumberPool` attributes of its components draw from before it starts writing. Before, the create could block when another request took a number from the same number pool at the same time, and both requests waited for each other until the client gave up.
+- Fixed IP prefix and IP address pools allocating a value that another branch still holds, or that the default branch still holds after the pool's namespace was deleted on a branch.
+- Fixed Infrahub processes that run GraphQL queries keeping earlier versions of the GraphQL schema in memory after schema changes, which increased their memory use with each schema update.
+- Fixed a Proposed Change staying refused after the data that failed its Schema Integrity check was fixed, when the fix left the branch with no changes of its own, such as deleting the only object that the branch created. Running the checks now replaces the earlier failure of the Schema Integrity check with a passing result.
+- Fixed deleting a branch sometimes failing with an HTTP 503 error even though the branch was deleted, which also left the deleted branch listed in the branch selector.
+- Fixed merging a branch, merging its Proposed Change and rebasing a branch being accepted when an object on the default branch, created or changed after the branch was created or last rebased, does not comply with a schema change made on the branch. Infrahub now refuses the operation for an attribute made unique or mandatory, a uniqueness constraint added, a mandatory attribute added without a default value, a mandatory relationship added, the kind of an attribute changed, a regular expression, an enum or a length limit added or changed, Profiles turned off for a kind that has Profiles, and an element of a number pool's allocation scope removed or made optional.
+- Fixed merging or rebasing a branch that adds a mandatory relationship to a kind being refused for every object of that kind, including objects that set the relationship. Infrahub now refuses only the objects that do not set it.
+- Fixed screen readers not announcing an active filter on an object table column header: the header now reads "filtered" after the column name, as it already did for the sort direction.
