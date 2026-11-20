@@ -384,29 +384,31 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
         backup_path: Path,
         helper_container: Container,
     ) -> None:
-        with self._stopped_database(database_container, database_name):
-            with self._print_task_status(f"Beginning restore for '{database_name}' database...", "done"):
-                remote_path = Path(self.container_backup_dir) / backup_path.name
-                restore_command = [
-                    "neo4j-admin",
-                    "database",
-                    "restore",
-                    f"--from-path={remote_path}",
-                    "--overwrite-destination=true",
-                    database_name,
-                ]
-                success = self._execute_docker_container_command(
-                    helper_container,
-                    restore_command,
-                    failure_message=f"neo4j restore command failed for '{database_name}' database",
-                    display_error=True,
-                    continue_on_error=False,
-                )
-                if not success:
-                    raise DatabaseRestoreError(f"Failed to restore database '{database_name}'")
+        with (
+            self._stopped_database(database_container, database_name),
+            self._print_task_status(f"Beginning restore for '{database_name}' database...", "done"),
+        ):
+            remote_path = Path(self.container_backup_dir) / backup_path.name
+            restore_command = [
+                "neo4j-admin",
+                "database",
+                "restore",
+                f"--from-path={remote_path}",
+                "--overwrite-destination=true",
+                database_name,
+            ]
+            success = self._execute_docker_container_command(
+                helper_container,
+                restore_command,
+                failure_message=f"neo4j restore command failed for '{database_name}' database",
+                display_error=True,
+                continue_on_error=False,
+            )
+            if not success:
+                raise DatabaseRestoreError(f"Failed to restore database '{database_name}'")
 
-                database_command = f"CREATE DATABASE {database_name} IF NOT EXISTS"
-                self._execute_cypher_command(helper_container, database_container, database_command)
+            database_command = f"CREATE DATABASE {database_name} IF NOT EXISTS"
+            self._execute_cypher_command(helper_container, database_container, database_command)
 
         self._execute_restore_metadata_command(helper_container, database_container, database_name)
 

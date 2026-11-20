@@ -222,9 +222,11 @@ async def test_fan_out_raises_when_pinned_commit_unreachable(
         location=git_fixture_repo.get_location(),
         default_branch="main",
     )
-    with override_dependency(build_client, lambda: client, dependency_provider=dependency_provider):
-        with pytest.raises(RepositoryError, match=r"Commit not found in the local clone"):
-            await fetch.fn(message=message)
+    with (
+        override_dependency(build_client, lambda: client, dependency_provider=dependency_provider),
+        pytest.raises(RepositoryError, match=r"Commit not found in the local clone"),
+    ):
+        await fetch.fn(message=message)
 
     worktree_after = git_fixture_repo.get_git_repo_worktree(identifier=branch_name)
     assert str(worktree_after.head.commit) == head_before

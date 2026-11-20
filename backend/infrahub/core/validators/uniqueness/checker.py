@@ -273,9 +273,8 @@ class UniquenessChecker(ConstraintCheckerInterface):
             return []
 
         query = await NodeUniqueAttributeConstraintQuery.init(db=self.db, branch=branch, query_request=query_request)
-        async with self.semaphore:
-            async with self.db.start_session(read_only=True) as db:
-                query_results = await query.execute(db=db)
+        async with self.semaphore, self.db.start_session(read_only=True) as db:
+            query_results = await query.execute(db=db)
 
         return await self._parse_results(
             schema=schema, query_results=query_results.results, schema_branch=schema_branch

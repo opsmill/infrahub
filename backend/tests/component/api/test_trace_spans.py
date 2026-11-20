@@ -46,10 +46,9 @@ async def test_database_query_spans_descend_from_the_request_span(
     car_person_data: dict[str, Node],
 ) -> None:
     # The block starts the application first, so the spans of its startup queries are not recorded.
-    with client:
-        with recorded_spans() as exported:
-            response = client.post("/graphql", json={"query": QUERY}, headers=admin_headers)
-            spans = exported.get_finished_spans()
+    with client, recorded_spans() as exported:
+        response = client.post("/graphql", json={"query": QUERY}, headers=admin_headers)
+        spans = exported.get_finished_spans()
 
     assert response.status_code == 200
     edges = response.json()["data"]["TestPerson"]["edges"]
