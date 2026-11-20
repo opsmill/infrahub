@@ -227,7 +227,9 @@ the holders that are not attributes are in `core/ownership/fields.py` (see [Diff
 - `DiffOwnerHoldersQuery` (`core/diff/query/ownership.py`) lists the holders whose owner edges changed on a branch.
   A kind migration links the old and the new `Node` vertex of a UUID to the same attribute or set. So the query keeps
   the row of the vertex whose `HAS_ATTRIBUTE`, `HAS_OWNER_SET` or `HAS_TARGET_OWNER_SET` link to the holder is the
-  latest on the queried branch, and the diff gives one node for each UUID.
+  latest on the queried branch. The kind migration copies the owner edges and the source edges of the node to the
+  new vertex, so for these holders the query keeps the row of the vertex whose `IS_PART_OF` edge is the latest on
+  the queried branch. So the diff gives one node for each UUID.
 - `OwnershipDiffer` (`core/diff/ownership_differ.py`) takes the field name of a set or of a node holder from the
   schema of the diff branch. For a change of the base branch, it uses the schema of the base branch when the schema
   of the diff branch does not have the kind. So after a kind migration on the base branch, different owner changes on

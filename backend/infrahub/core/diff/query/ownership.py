@@ -121,8 +121,16 @@ CALL (n, holder) {
     ORDER BY link.branch_level DESC, link.from DESC, link.status ASC
     LIMIT 1
 }
+// The holder of the owners or the sources of a node is the node, so the latest link of the node to the root counts
+CALL (n, holder) {
+    OPTIONAL MATCH (vertex:Node {uuid: n.uuid})-[link:IS_PART_OF]->(:Root)
+    WHERE holder IS NULL AND %(link_filter)s
+    RETURN vertex
+    ORDER BY link.branch_level DESC, link.from DESC, link.status ASC
+    LIMIT 1
+}
 WITH n, holder_kind, holder, r
-WHERE linked IS NULL OR linked = n
+WHERE (linked IS NULL OR linked = n) AND (vertex IS NULL OR vertex = n)
 WITH n, holder_kind, holder,
     CASE WHEN r.to IS NOT NULL AND $from_time <= r.to < $to_time THEN r.to ELSE r.from END AS changed_at
 WHERE (holder_kind = "attribute" OR n.branch_support = "aware")
