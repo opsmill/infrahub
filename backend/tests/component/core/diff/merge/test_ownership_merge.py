@@ -10,6 +10,7 @@ from infrahub.core import registry
 from infrahub.core.changelog.builder import build_diff_changelog_collector
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.core.diff.model.field_specifiers_map import NodeFieldSpecifierMap
 from infrahub.core.diff.model.path import ConflictSelection, DiffNode, DiffRoot
 from infrahub.core.diff.ownership_differ import OwnerDiffRequest, OwnershipDiffer
 from infrahub.core.diff.query.ownership import DiffOwnerHoldersQuery
@@ -1085,6 +1086,49 @@ async def test_owner_diff_of_more_nodes_than_the_query_size_limit_reads_the_node
     assert all(len(batch) <= 2 for batch in node_batches)
 
 
+async def owner_diff_values(
+    db: InfrahubDatabase,
+    base_branch: Branch,
+    diff_branch: Branch,
+    branch_from_time: Timestamp,
+    from_time: Timestamp,
+    to_time: Timestamp,
+    previous_node_specifiers: NodeFieldSpecifierMap | None = None,
+) -> tuple[list[tuple[str | None, str | None]], list[tuple[str | None, str | None]]]:
+    """Return the node owner changes of the diff branch and of the base branch in one time range."""
+    request = OwnerDiffRequest(
+        base_branch=base_branch,
+        diff_branch=diff_branch,
+        branch_from_time=branch_from_time,
+        from_time=from_time,
+        to_time=to_time,
+        include_unchanged=False,
+        previous_node_specifiers=previous_node_specifiers,
+        node_kinds=None,
+        node_uuids=None,
+    )
+    branch_root = DiffRoot(from_time=from_time, to_time=to_time, uuid=diff_branch.name, branch=diff_branch.name)
+    base_root = DiffRoot(from_time=from_time, to_time=to_time, uuid=base_branch.name, branch=base_branch.name)
+    differ = OwnershipDiffer(db=db)
+    await differ.add_owner_changes(
+        request=request,
+        branch_root=branch_root,
+        base_root=base_root,
+        branch_changes=await differ.get_branch_changes(request=request),
+    )
+    branch_values, base_values = (
+        [
+            (prop.previous_value, prop.new_value)
+            for node in root.nodes
+            for attribute in node.attributes
+            if attribute.name == OWNERS_FIELD
+            for prop in attribute.properties
+        ]
+        for root in (branch_root, base_root)
+    )
+    return branch_values, base_values
+
+
 async def test_owner_write_at_the_end_of_a_diff_time_range_is_in_the_next_time_range(
     db: InfrahubDatabase, default_branch: Branch, dataset: OwnerDataset
 ) -> None:
@@ -1094,36 +1138,44 @@ async def test_owner_write_at_the_end_of_a_diff_time_range_is_in_the_next_time_r
     range_end = Timestamp()
     await set_owners(db=db, branch=branch, node_id=tenant_id, owner_ids=dataset.owners(("dc-emea",)), at=range_end)
 
-    async def owner_values(from_time: Timestamp, to_time: Timestamp) -> list[tuple[str | None, str | None]]:
-        request = OwnerDiffRequest(
-            base_branch=default_branch,
-            diff_branch=branch,
-            branch_from_time=branch_from_time,
-            from_time=from_time,
-            to_time=to_time,
-            include_unchanged=False,
-            previous_node_specifiers=None,
-            node_kinds=None,
-            node_uuids=None,
-        )
-        roots = [
-            DiffRoot(from_time=from_time, to_time=to_time, uuid=name, branch=name)
-            for name in (branch.name, default_branch.name)
-        ]
-        differ = OwnershipDiffer(db=db)
-        await differ.add_owner_changes(
-            request=request,
-            branch_root=roots[0],
-            base_root=roots[1],
-            branch_changes=await differ.get_branch_changes(request=request),
-        )
-        return [
-            (prop.previous_value, prop.new_value)
-            for node in roots[0].nodes
-            for attribute in node.attributes
-            if attribute.name == OWNERS_FIELD
-            for prop in attribute.properties
-        ]
+    first_range = await owner_diff_values(db, default_branch, branch, branch_from_time, branch_from_time, range_end)
+    second_range = await owner_diff_values(db, default_branch, branch, branch_from_time, range_end, Timestamp())
 
-    assert await owner_values(from_time=branch_from_time, to_time=range_end) == []
-    assert await owner_values(from_time=range_end, to_time=Timestamp()) == [(None, dataset.owner_list(("dc-emea",)))]
+    assert first_range == ([], [])
+    assert second_range == ([(None, dataset.owner_list(("dc-emea",)))], [])
+
+
+async def test_default_branch_owner_write_at_the_end_of_a_diff_time_range_is_in_the_next_time_range(
+    db: InfrahubDatabase, default_branch: Branch, dataset: OwnerDataset
+) -> None:
+    tenant_id = dataset.ids["tenant-a"]
+    branch = await create_branch(db=db, branch_name="base-owner-range-end")
+    branch_from_time = Timestamp(branch.get_branched_from())
+    previous_fields = NodeFieldSpecifierMap()
+    previous_fields.add_entry(node_uuid=tenant_id, kind="TestTenant", field_name=OWNERS_FIELD)
+    range_end = Timestamp()
+    await set_owners(
+        db=db, branch=default_branch, node_id=tenant_id, owner_ids=dataset.owners(("dc-emea",)), at=range_end
+    )
+
+    second_range = await owner_diff_values(
+        db, default_branch, branch, branch_from_time, range_end, Timestamp(), previous_node_specifiers=previous_fields
+    )
+
+    assert second_range == ([], [(None, dataset.owner_list(("dc-emea",)))])
+
+
+async def test_owner_write_at_the_start_of_a_default_branch_diff_is_in_the_diff(
+    db: InfrahubDatabase, default_branch: Branch, dataset: OwnerDataset
+) -> None:
+    tenant_id = dataset.ids["tenant-a"]
+    range_start = Timestamp()
+    await set_owners(
+        db=db, branch=default_branch, node_id=tenant_id, owner_ids=dataset.owners(("dc-emea",)), at=range_start
+    )
+
+    branch_values, _ = await owner_diff_values(
+        db, default_branch, default_branch, range_start, range_start, Timestamp()
+    )
+
+    assert branch_values == [(None, dataset.owner_list(("dc-emea",)))]
