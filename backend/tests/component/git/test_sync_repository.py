@@ -1319,8 +1319,6 @@ class TestRepositoryActivityRecords(TestInfrahubApp):
             ("applying", "main"),
             ("fetching", None),
             ("building", "broken"),
-            ("building", "main"),
-            ("applying", "main"),
         ]
         assert stored_run_keys(cache=cache, repository_id=node.id) == []
         last_run = json.loads(cache.storage[f"git:activity:last:{node.id}:sync"])

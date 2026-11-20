@@ -393,6 +393,40 @@ flow, the sync and the seed import of a fresh clone record it first. The seed im
 the periodic sync can clone a new repository before its add flow runs, while the graph has no commit.
 A clone made only to read files records nothing, because no import follows it.
 
+## First import of a new repository
+
+Import the default branch of a new repository once. Storage is per worker, so two flows clone a new
+repository and import its default branch, on different workers and in either order: the add flow
+(`git/sync.py::RepositoryAdder`) and the seed import of the periodic sync
+(`git/tasks.py::bootstrap_local_repository`). A second import of the same commit repeats the work and
+sets the branch back to `syncing` after the first one set it to `in-sync`.
+
+- **Skip a commit the graph holds or is importing.** Under the repository lock and after the clone,
+  both flows read the recorded commit and status of the branch
+  (`InfrahubRepository.read_recorded_import`). They skip the import when the graph records the cloned
+  commit and the branch reads `in-sync` or `syncing` (`RecordedImport.covers`). A branch that reads
+  `unknown` or `error-import` is imported, so a fresh clone still retries a failed import. The skip
+  relies on an import that stops not leaving `syncing` for good, see
+  [Imports that stop partway](#imports-that-stop-partway).
+- **Record the commit with `syncing` in one write, under the lock**
+  (`InfrahubRepository.record_commit_for_import`). The import is built after the lock is released, so
+  without the mark a clone that takes the lock in between reads the new commit next to the earlier
+  status, `unknown` for a new repository, and imports it too.
+- **Check before the flow's own write.** Both flows clone without recording and record the commit
+  after the check. For the seed import this holds for a re-cloned copy and for the fallback clone after
+  a failed `init()`.
+- **Keep a copy that this worker holds already.** The add flow reuses a usable copy instead of cloning
+  over it, because the seed import that cloned it may still read its files and would then import too
+  few objects or fail after the add flow skipped.
+- **Send the commit event from a seed import of a first commit.** The add flow skips a commit the seed
+  imported, so a seed import that records the first commit of a repository sends `CommitUpdatedEvent`
+  itself once it succeeds (`InfrahubRepositoryIntegrator.announce_commit_update`).
+- **Give the cycle the seeded commit only when its earlier read held none.** The cycle reads the
+  commits before the bootstrap, so without it the syncer imports the seeded commit again
+  (`BootstrappedRepository.recorded_commit`). A seed import that failed gives no commit, so the syncer
+  of the same cycle imports the branch again. An earlier commit is kept, so a fresh clone of a
+  rewritten remote is still recorded as a rewrite.
+
 ## Repository activity records
 
 The `InfrahubRepositoryActivity` query answers what is running on a repository across every branch.
