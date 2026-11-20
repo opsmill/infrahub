@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import uuid
+from copy import deepcopy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -505,22 +506,39 @@ async def test_attribute_rename_keeps_the_source_and_the_owner_that_are_the_same
 
 
 @pytest.mark.parametrize("new_name", [pytest.param(None, id="removal"), pytest.param("colour", id="rename")])
-async def test_owners_that_a_profile_of_an_inheriting_kind_gives_follow_the_attribute_of_the_generic(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot, new_name: str | None
+async def test_owners_that_a_profile_or_a_template_of_an_inheriting_kind_gives_follow_the_attribute_of_the_generic(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_generics_unregistered: dict[str, Any],
+    new_name: str | None,
 ) -> None:
+    raw_schema = deepcopy(car_person_schema_generics_unregistered)
+    for node in raw_schema["nodes"]:
+        if node["name"] in {"ElectricCar", "GazCar"}:
+            node["generate_template"] = True
+        if node["name"] == "GazCar":
+            node["attributes"].append({"name": "color", "kind": "Text", "optional": True})
+    registry.schema.register_schema(schema=SchemaRoot(**raw_schema), branch=default_branch.name)
     group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
     await group.new(db=db, name="dc-emea")
     await group.save(db=db)
-    profile = await Node.init(db=db, schema="ProfileTestElectricCar", branch=default_branch)
-    await profile.new(db=db, profile_name="electric-profile")
-    await profile.save(db=db)
-    await _write(
-        db=db,
-        branch=default_branch,
-        node_id=profile.id,
-        holder=HolderKey(kind=HolderKind.TARGET_SET, attribute="color"),
-        owner_id=group.id,
-    )
+    node_ids: dict[str, str] = {}
+    for kind, name_attribute in (
+        ("ProfileTestElectricCar", "profile_name"),
+        ("TemplateTestElectricCar", "template_name"),
+        ("TemplateTestGazCar", "template_name"),
+    ):
+        node = await Node.init(db=db, schema=kind, branch=default_branch)
+        await node.new(db=db, **{name_attribute: kind})
+        await node.save(db=db)
+        await _write(
+            db=db,
+            branch=default_branch,
+            node_id=node.id,
+            holder=HolderKey(kind=HolderKind.TARGET_SET, attribute="color"),
+            owner_id=group.id,
+        )
+        node_ids[kind] = node.id
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     previous_generic = schema.get(name="TestCar")
     previous_generic.get_attribute(name="color").id = str(uuid.uuid4())
@@ -544,9 +562,15 @@ async def test_owners_that_a_profile_of_an_inheriting_kind_gives_follow_the_attr
     result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
 
     assert not result.errors
-    stored = await OwnershipRepository(db=db, branch=default_branch, at=None).read(node_ids=[profile.id])
-    expected = {HolderKey(kind=HolderKind.TARGET_SET, attribute=new_name): (group.id,)} if new_name else {}
-    assert {holder: state.owner_ids for holder, state in stored[profile.id].holders.items()} == expected
+    inherited = {new_name: (group.id,)} if new_name else {}
+    assert {
+        kind: await _target_owners(db=db, branch=default_branch, node_id=node_id) for kind, node_id in node_ids.items()
+    } == {
+        "ProfileTestElectricCar": inherited,
+        "TemplateTestElectricCar": inherited,
+        # The kind declares its own attribute, so the change of the attribute of the generic does not apply to it.
+        "TemplateTestGazCar": {"color": (group.id,)},
+    }
 
 
 async def test_attribute_removal_closes_the_source_and_the_owner_that_are_the_same_node(

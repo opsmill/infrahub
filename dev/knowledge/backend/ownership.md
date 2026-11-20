@@ -271,7 +271,9 @@ the holders that are not attributes are in `core/ownership/fields.py` (see [Diff
 - A rename or a removal of an attribute, and a removal of a relationship, close or move the `OwnerSet` vertices with
   that key (`OwnerSetKeyMigrationQuery`). The key is a vertex property that all branches share, so a rename gives the
   branch an edge to another set and changes no key. For an attribute of a generic, the query also reads the
-  profiles and the templates of each kind that inherits the attribute (`profile_and_template_kinds`).
+  profiles and the templates of each kind that inherits the attribute (`profile_and_template_kinds`). It skips the
+  template of a kind that declares its own attribute with the same name, because that template also has the label of
+  the template of the generic.
   The query ends an edge of the branch of the migration. An edge of another branch, the global branch included,
   stays open and gets a `deleted` edge on the branch of the migration, as `AttributeRemoveQuery` does. So a branch
   with the schema before the change still reads the owners of the field. For a rename on the default branch, the

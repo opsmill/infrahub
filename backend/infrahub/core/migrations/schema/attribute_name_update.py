@@ -64,7 +64,7 @@ class AttributeNameUpdateMigrationQuery02(AttributeMigrationQuery, OwnerSetKeyMi
         )
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
-        self.node_kinds = profile_and_template_kinds(
+        self.node_kinds, self.kinds_to_skip = profile_and_template_kinds(
             db=db,
             branch=self.branch,
             node_kind=self.migration.previous_schema.kind,

@@ -12,13 +12,17 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-def profile_and_template_kinds(db: InfrahubDatabase, branch: Branch, node_kind: str, attribute_name: str) -> list[str]:
-    """Return the profile kinds and the template kinds of the kinds that get an attribute from a kind.
+def profile_and_template_kinds(
+    db: InfrahubDatabase, branch: Branch, node_kind: str, attribute_name: str
+) -> tuple[list[str], list[str]]:
+    """Return the profile and template kinds of the kinds that get an attribute from a kind, and the kinds to skip.
 
-    For a generic, these are the kind itself and each kind that inherits the attribute. A kind that declares its own
-    attribute with this name is not one of them.
+    For a generic, these are the kind itself and each kind that inherits the attribute. The template of a kind that
+    declares its own attribute with this name also has the label of the template of the generic, so it is a kind to
+    skip.
     """
     kinds = [node_kind]
+    kinds_to_skip = []
     schema = db.schema.get(name=node_kind, branch=branch, duplicate=False)
     if isinstance(schema, GenericSchema):
         for inheriting_kind in schema.used_by:
@@ -27,7 +31,9 @@ def profile_and_template_kinds(db: InfrahubDatabase, branch: Branch, node_kind: 
             ).get_attribute_or_none(name=attribute_name)
             if attribute is None or attribute.inherited:
                 kinds.append(inheriting_kind)
-    return [f"{prefix}{kind}" for kind in kinds for prefix in ("Profile", "Template")]
+            else:
+                kinds_to_skip.append(f"Template{inheriting_kind}")
+    return [f"{prefix}{kind}" for kind in kinds for prefix in ("Profile", "Template")], kinds_to_skip
 
 
 class OwnerSetKeyMigrationQuery(Query):
