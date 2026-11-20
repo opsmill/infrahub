@@ -18,13 +18,8 @@ from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from tests.helpers.ownership import ADD_ATTRIBUTE_OWNER, ADD_LINK_OWNER, add_owner_edge, create_car
+from tests.helpers.ownership import ADD_ATTRIBUTE_OWNER, ADD_LINK_OWNER, ADD_NAME_OWNER, add_owner_edge, create_car
 
-ADD_NAME_OWNER = """
-MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(holder:Attribute {name: "name"})
-MATCH (owner:Node {uuid: $owner_id})
-CREATE (holder)-[:HAS_OWNER {branch: $branch, branch_level: $branch_level, status: "active", from: $at}]->(owner)
-"""
 CLOSE_NAME_OWNER = """
 MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[r:HAS_OWNER]->(:Node {uuid: $owner_id})
 WHERE r.branch = $branch AND r.status = "active" AND r.to IS NULL

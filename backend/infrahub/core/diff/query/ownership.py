@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.ownership.models import HolderKey, HolderKind
 from infrahub.core.query import Query, QueryType
@@ -101,11 +102,13 @@ class DiffOwnerHoldersQuery(Query):
             (holder_kind, pattern, DatabaseEdgeType.HAS_OWNER_SOURCE, hint)
             for holder_kind, pattern in template_mark_patterns()
         ]
+        # The reads hide a repository owner from the upgrade, so its edges cannot give a change.
+        peer_filters = {DatabaseEdgeType.HAS_OWNER: f"AND NOT peer:{InfrahubKind.GENERICREPOSITORY}"}
         patterns = [
             f"""
-    MATCH {pattern}-[r:{edge_type.value}]->()
+    MATCH {pattern}-[r:{edge_type.value}]->(peer)
     {edge_hint.format(edge_type=edge_type.value)}
-    WHERE r.branch = $branch_name {scope}
+    WHERE r.branch = $branch_name {scope} {peer_filters.get(edge_type, "")}
     AND (($from_time <= r.from < $to_time) OR ($from_time <= r.to < $to_time))
     RETURN n, "{holder_kind.value}" AS holder_kind, {"holder" if "holder" in pattern else "NULL"} AS holder, r"""
             for holder_kind, pattern, edge_type, edge_hint in edge_patterns
