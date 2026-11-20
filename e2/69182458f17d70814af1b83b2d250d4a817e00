@@ -1,0 +1,31 @@
+dev/specs/ifc-3618-schema-migration-by-node/data-model.md
+  s_b636cf4e853527::t_5d0602b6f9a8aa 1-44
+dev/specs/ifc-3618-schema-migration-by-node/quickstart.md
+  s_b636cf4e853527::t_fbf78e3c46a36f 1-46,49-58
+  s_b636cf4e853527::t_ea435c3cc98c05 47-48
+dev/specs/ifc-3618-schema-migration-by-node/plan.md
+  s_b636cf4e853527::t_ab8812581f792f 1,3,5,9,11,13,15,17,19,21,23,25,27,29,37-47,54-64,70-102,105,107-122,124-147,149
+  s_b636cf4e853527::t_6b835ed51521d2 2,4,6-8,10,12,14,16,18,20,22,24,26,28,30,32-36,48-53,65-69,103-104,106,123,148
+  s_b636cf4e853527::t_f0eb2ffc89221a 31
+dev/specs/ifc-3618-schema-migration-by-node/research.md
+  s_b636cf4e853527::t_1d56ab61466342 1-91,95-112
+  s_b636cf4e853527::t_98dcb01a8e7f84 92-94
+dev/specs/ifc-3618-schema-migration-by-node/contracts/migration-node-scope.md
+  s_b636cf4e853527::t_2d4a754279a537 1-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e269182458f17d70814af1b83b2d250d4a817e00",
+  "prompts": {},
+  "sessions": {
+    "s_b636cf4e853527": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e2c2131-1be4-43e0-83d8-56224be168d9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
