@@ -172,7 +172,7 @@ branches and at all times, so a closed edge also makes the query read the holder
 ## Owner Kinds
 
 - An owner is an account or an account group (`OWNER_KINDS` in `core/ownership/input.py`). A repository is refused.
-- No code of this pull request checks the kind of a source. The input of pull request 2 adds that check.
+- No code checks the kind of a source.
 - The create and the update of a node check the `owner` property of each attribute and of each link before the first
   write (`check_field_owner_kinds`), so a refused owner leaves the node unchanged also outside a transaction. The
   update checks only an owner that the database does not hold yet, so an owner that was deleted later does not stop
@@ -197,7 +197,7 @@ rules are in `core/ownership/resolution.py`.
   result: when a parent or a profile that the rules need is not in the result, the resolver reads it with one more
   query for each level (`_needed`). The results are then the same if the walk misses a node.
 - A change of the rules must reach three places: `core/ownership/resolution.py`, `_needed`, and the walk. The
-  first two give the result. The owner list filter of pull request 2 must give the same result. The walk only
+  first two give the result. A filter on the owner list must give the same result. The walk only
   reads ahead: it copies the rules so that one query reads all the nodes. When the walk misses a node that the
   rules need, `_needed` reads that node with one more query, so a walk that does not follow a change of the rules
   costs queries but does not change the result.
@@ -211,8 +211,8 @@ The owners that apply to a node come from the first level that has a state:
 4. Its parent, with the same order on the parent (`PARENT`). The parent is the peer of the relationship of kind
    `Parent`, otherwise the peer of the hierarchy relationship `parent`.
 
-The resolution of the owners that apply to a field, and of the owners that a profile or an object template gives,
-is in pull request 2.
+The resolver does not resolve the owners that apply to a field, or the owners that a profile or an object template
+gives.
 
 - The walk stops after `MAX_INHERITANCE_DEPTH` parents. A node with more parents and no state below the limit
   gets no inherited owner.
@@ -326,7 +326,7 @@ holds, so it runs before the upgrade.
   edges of the branch, not the values of the diff, so the merge result does not change.
 - An event stores the owners of an attribute as the `owner` or the `owners` property of the attribute, in its payload
   only.
-- The owner of one link (the `HAS_OWNER` edge of a `Relationship` vertex) keeps the behavior of `develop` at a merge.
+- The owner of one link (the `HAS_OWNER` edge of a `Relationship` vertex) keeps the behavior before owner lists at a merge.
   Three tests in `test_ownership_scenarios.py` mark these cases as expected failures:
   - The changelog of the merge records the owner of a link also when the default branch already holds the same
     owner, for example after the same change on both branches.
