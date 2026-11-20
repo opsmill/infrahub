@@ -48,6 +48,23 @@ Anything that comes from outside the component's own domain — loaded settings,
 
 A component should generally expose a single entry point method (occasionally more, when justified by cohesive responsibility). That method only accepts the entities being operated on as arguments — it should not require additional dependencies to be passed in alongside the work payload.
 
+## Return an object with a method, not a function
+
+When a component gives its caller a check to apply later, return a small frozen dataclass that holds the data and exposes the check as a method. Do not return or pass a function: the dataclass names the check and shows the data it reads. A clock injected for tests stays a `Callable` (see [testing.md](testing.md)).
+
+```python
+# ✅ Good - the caller receives a named type (placeholder names)
+@dataclass(frozen=True)
+class MemberFilter:
+    member_ids: frozenset[str]
+
+    def selects(self, *, member_id: str) -> bool:
+        return not self.member_ids or member_id in self.member_ids
+
+# ❌ Bad - the caller receives a function it cannot inspect
+def build_member_filter(member_ids: list[str]) -> Callable[[str], bool]: ...
+```
+
 ## Constructor vs. method arguments
 
 - `db` is always injected to the constructor.

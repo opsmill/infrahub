@@ -7,6 +7,7 @@ React 19 with React Compiler enabled.
 The compiler automatically memoizes components and values.
 
 **Do NOT use:**
+
 - `memo()`
 - `useMemo()`
 - `useCallback()`
@@ -71,6 +72,19 @@ error outrank the retained data, and drive every rendered detail from it:
 const state = isPending ? "pending" : error || (data === undefined) ? "check-failed" : data;
 ```
 
+## A failed next page is not a failed list
+
+An infinite query keeps its loaded pages when `fetchNextPage` fails. Read `isFetchNextPageError` for
+that case, not `error`, which a failed background refetch also sets.
+
+- Render the loaded rows, and return the empty or error state only when no row is loaded.
+- Stop the scroll trigger while `isFetchNextPageError` is set, or it requests the failed page again
+  on every scroll.
+
+## Queries do not retry
+
+The query client sets `retry: false` app-wide (`shared/api/rest/client.ts`), so do not repeat it in the options of a query. A failed query stays failed until something re-triggers it. The one exception is a 429 load-shed, replayed in the transport below the cache (see `dev/knowledge/frontend/request-priority.md`).
+
 ## An effect-driven retry needs a dependency that changes on failure
 
-The REST client sets `retry: false` app-wide (`shared/api/rest/client.ts`), so a failed query stays failed until something re-triggers it. The one exception is a 429 load-shed, replayed in the transport below the cache (see `dev/knowledge/frontend/request-priority.md`). An effect that launches a must-eventually-succeed step re-runs only when a dependency changes; if every dependency is stable after a failure (same name, same boolean, a stable `refetch`), the step never retries and the screen wedges until reload. Give such an effect a fetch-identity dependency — TanStack Query's `dataUpdatedAt` — so each fresh response re-arms it.
+An effect that launches a must-eventually-succeed step re-runs only when a dependency changes; if every dependency is stable after a failure (same name, same boolean, a stable `refetch`), the step never retries and the screen wedges until reload. Give such an effect a fetch-identity dependency — TanStack Query's `dataUpdatedAt` — so each fresh response re-arms it.

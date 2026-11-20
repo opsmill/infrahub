@@ -78,6 +78,9 @@ does:
 - **A setup flag the component never reads.** Setting `isFetching: true` on a mocked query hook proves
   nothing if the component only destructures `isPending` — the test is indistinguishable from the one
   above it. Check the component actually reads what you varied.
+- **A call count alone.** `expect(fetchNextPage).toHaveBeenCalledTimes(1)` passes when the request names
+  the wrong object, and when the rows of the next page never render. Assert what the call was made with
+  and what the user then sees.
 
 A behavior change needs a test that exercises the new behavior, not the old default: replacing a
 hardcoded `"main"` with a `is_default` lookup is only covered by a case whose default branch *isn't*
@@ -138,12 +141,6 @@ Focus on testing component-specific behavior:
 - Error, loading, and empty states
 - Prop-driven variations
 - User-facing outcomes
-
-**Do not test**:
-
-- Behavior implemented by third-party libraries (e.g., radix-ui, react-aria-components)
-- Internal implementation details
-- Library functionality that's already tested
 
 ## Common Patterns
 
@@ -348,11 +345,9 @@ src/entities/schema/components/status-badge.test.tsx
 ### Don't
 
 - Don't use `getByTestId` unless absolutely necessary
-- Don't test behavior implemented by third-party libraries
+- Don't test behavior implemented by third-party libraries (e.g., radix-ui, react-aria-components)
 - Don't test internal implementation details
-- Don't mix GIVEN/WHEN/THEN comments
 - Don't repeat a marker within one test (two WHENs/THENs)
-- Don't test library functionality that's already tested
 
 ## Example: Complete Test File
 
