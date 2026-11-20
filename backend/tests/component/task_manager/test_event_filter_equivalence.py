@@ -28,7 +28,7 @@ from infrahub.task_manager.event.query import PrefectEvent, PrefectEventData, Pr
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-RETENTION = timedelta(days=365)
+READ_RANGE = timedelta(days=365)
 SUFFIX = uuid4().hex[:8]
 
 ACCOUNT_A = str(uuid4())
@@ -563,7 +563,7 @@ class YearOfEvents(PrefectEvent):
             event_filter=filters,
             limit=limit,
             offset=offset,
-            retention=RETENTION,
+            read_range=READ_RANGE,
             include_total=include_total,
         )
         return PrefectEventResponse(
@@ -619,7 +619,7 @@ async def test_filter_returns_the_events_of_the_label_filter(
     )
 
     id_events = await _merged_event_ids(client=prefect_client, filters=id_filters)
-    label_events = await filter_event_ids(client=prefect_client, event_filter=label_filter, retention=RETENTION)
+    label_events = await filter_event_ids(client=prefect_client, event_filter=label_filter, read_range=READ_RANGE)
 
     assert set(id_events) == {seeded[key] for key in test_case.expected}
     assert await _merged_event_ids(client=prefect_client, filters=past_merged_page_filters) == id_events
@@ -635,7 +635,7 @@ async def test_filter_returns_the_events_of_the_label_filter(
         for offset in (0, 2):
             id_page = await _merged_event_ids(client=prefect_client, filters=id_filters, limit=2, offset=offset)
             label_page = await filter_event_ids(
-                client=prefect_client, event_filter=label_filter, limit=2, offset=offset, retention=RETENTION
+                client=prefect_client, event_filter=label_filter, limit=2, offset=offset, read_range=READ_RANGE
             )
             assert id_page == label_page
             assert id_page == id_events[offset : offset + 2]

@@ -8,6 +8,7 @@ from infrahub.pools.division_reader import NodeNumberPoolDivisionReader
 from infrahub.pools.intent import FromPoolIntentResolver
 from infrahub.pools.number_pool_attribute_allocator import NumberPoolAttributeAllocator
 from infrahub.pools.number_pool_attribute_branch_values import NumberPoolAttributeBranchValues
+from infrahub.pools.number_pool_locker import NumberPoolLock
 from infrahub.pools.number_pool_lookup import NumberPoolLookup, NumberPoolRangeLookup
 from infrahub.pools.scope import AllocationScopeResolver
 
@@ -31,4 +32,5 @@ def build_attribute_pool_applier(
         ),
         range_reader=NumberPoolRangeLookup(db=db, node_manager=registry.manager),
         branch_values_reader=NumberPoolAttributeBranchValues(db=db),
+        pool_locker=NumberPoolLock(db=db),
     )

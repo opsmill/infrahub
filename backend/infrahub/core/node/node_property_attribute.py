@@ -75,7 +75,7 @@ class NodePropertyAttribute[T]:
     def get_value(self, node: Node, at: Timestamp) -> T | None:
         if isinstance(self._value, AttributeFromDB):
             attr = self.get_node_attribute(node=node, at=at)
-            return attr.value  # type: ignore
+            return attr.value  # ty: ignore[invalid-return-type]
 
         return self._value
 

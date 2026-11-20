@@ -116,8 +116,8 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         john = await NodeManager.get_one_by_id_or_default_filter(
             db=db, id="John", kind=TestKind.PERSON, branch=branch1.name
         )
-        john.name.value = "Johnny"  # type: ignore[attr-defined]
-        john.age.value = 26  # type: ignore[attr-defined]
+        john.name.value = "Johnny"
+        john.age.value = 26
         await john.save(db=db)
         return branch_name
 
@@ -146,14 +146,14 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
     async def conflict_dataset(self, db: InfrahubDatabase, initial_dataset: None) -> None:
         branch1 = await create_branch(db=db, branch_name="conflict_data")
         john = await NodeManager.get_one_by_id_or_default_filter(db=db, id="John", kind=TestKind.PERSON)
-        john.description.value = "Who is this?"  # type: ignore[attr-defined]
+        john.description.value = "Who is this?"
         await john.save(db=db)
 
         john_branch = await NodeManager.get_one_by_id_or_default_filter(
             db=db, id="John", kind=TestKind.PERSON, branch=branch1
         )
-        john_branch.description.value = "Oh boy"  # type: ignore[attr-defined]
-        john_branch.age.value = 30  # type: ignore[attr-defined]
+        john_branch.description.value = "Oh boy"
+        john_branch.age.value = 30
         await john_branch.save(db=db)
 
     async def test_conflict_pipeline(
@@ -226,7 +226,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         john = await NodeManager.get_one_by_default_filter(db=db, id="John", kind=TestKind.PERSON)
         # The value of the description should match that of the source branch that was selected
         # as the branch to keep in the data conflict
-        assert john.description.value == "Oh boy"  # type: ignore[attr-defined, union-attr]
+        assert john.description.value == "Oh boy"  # type: ignore[union-attr]
 
     async def test_happy_pipeline(
         self, db: InfrahubDatabase, default_branch: Branch, happy_data_branch: str, client: InfrahubClient
@@ -293,8 +293,8 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
 
         tags = await client.all(kind="TestingTag", branch=happy_data_branch)
         # The Generator defined in the repository is expected to have created this tag during the pipeline
-        assert "johnny-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
-        assert "InfrahubNode-johnny-jesko" in [tag.name.value for tag in tags]  # type: ignore[attr-defined]
+        assert "johnny-jesko" in [tag.name.value for tag in tags]
+        assert "InfrahubNode-johnny-jesko" in [tag.name.value for tag in tags]
 
         # -------------------------------------------------
         # Merge the proposed change and ensure everything looks good

@@ -131,13 +131,13 @@ class TestAttrRemovePoolRelCleanup(TestInfrahubApp):
         # Template without pool is accessible, pool rel has no peer
         tpl_no_pool = await registry.manager.get_one(db=db, id=initial_dataset["template_no_pool"])
         assert tpl_no_pool is not None
-        pool_peer = await tpl_no_pool.vlan_id_from_resource_pool.get_peer(db=db)  # type: ignore[attr-defined]
+        pool_peer = await tpl_no_pool.vlan_id_from_resource_pool.get_peer(db=db)
         assert pool_peer is None
 
         # Template with pool is accessible, pool rel points to the pool
         tpl_with_pool = await registry.manager.get_one(db=db, id=initial_dataset["template_with_pool"])
         assert tpl_with_pool is not None
-        pool_peer = await tpl_with_pool.vlan_id_from_resource_pool.get_peer(db=db)  # type: ignore[attr-defined]
+        pool_peer = await tpl_with_pool.vlan_id_from_resource_pool.get_peer(db=db)
         assert pool_peer is not None
         assert pool_peer.id == initial_dataset["pool"]
 

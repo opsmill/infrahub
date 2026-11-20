@@ -24,6 +24,8 @@ Assumption: every branch forks from the default branch. A branch-of-branch featu
 this logic.
 """
 
+from infrahub.core.query.branch_windows import render_branch_windows_clause
+
 # Expects `agnostic_candidates` in scope -- a list of the candidate `:Attribute` / `:Relationship`
 # vertices -- together with `branch_windows`, the collected read window of every retaining branch,
 # plus the `$global_branch_name` and `$at` parameters. Emits one row per candidate that no branch
@@ -113,25 +115,9 @@ WITH field
 # vertices, plus the `$global_branch_name` and `$at` parameters. Emits one row per candidate that no
 # branch retains, with `field` as the only variable in scope.
 UNRETAINED_AGNOSTIC_FIELD_PREDICATE = """
-MATCH (branch:Branch)
-WHERE branch.name <> $global_branch_name
-// ----------------------
-// Don't consider DELETING branches when determining reachability
-// ----------------------
-AND branch.status <> "DELETING"
-// ----------------------
-// The branches are read once for the whole run and carried as a list.
-// ----------------------
-WITH
-    agnostic_candidates,
-    collect({
-        name: branch.name,
-        origin_name: CASE WHEN branch.is_default THEN NULL ELSE branch.origin_branch END,
-        origin_at: CASE
-            WHEN branch.is_default THEN NULL
-            WHEN branch.branched_from < $at THEN branch.branched_from
-            ELSE $at
-        END
-    }) AS branch_windows
+%(branch_windows)s
 %(unretained_evaluation)s
-""" % {"unretained_evaluation": UNRETAINED_AGNOSTIC_FIELD_EVALUATION}
+""" % {
+    "branch_windows": render_branch_windows_clause(carry=["agnostic_candidates"], time_param="at"),
+    "unretained_evaluation": UNRETAINED_AGNOSTIC_FIELD_EVALUATION,
+}

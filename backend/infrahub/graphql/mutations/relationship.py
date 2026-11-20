@@ -283,7 +283,17 @@ class RelationshipAdd(Mutation):
                     if group_event_type != GroupUpdateType.NONE:
                         peers.append(EventNode(id=rel.get_peer_id(), kind=nodes[rel.get_peer_id()].get_kind()))
                     node_changelog.create_relationship(relationship=rel)
+                    # A relationship that holds only the id of its peer reads the peer from the database on save.
+                    if peer := nodes.get(rel.get_peer_id()):
+                        rel.set_peer(value=peer)
                     await rel.save(db=db, user_id=graphql_context.assigned_user_id)
+                    # The save creates nothing when another request deleted the peer after the validation read.
+                    if not rel.id:
+                        raise NodeNotFoundError(
+                            branch_name=graphql_context.branch.name,
+                            node_type=rel_schema.peer,
+                            identifier=rel.get_peer_id(),
+                        )
                     added_peer_ids.add(rel.get_peer_id())
                     relationship_modified = True
 

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipStatus
 from infrahub.core.graph.schema import GraphAttributeRelationships
-from infrahub.core.query import Query
+from infrahub.core.migrations.query.selection import MigrationSelectionQuery
 from infrahub.core.query.agnostic_field_closure import CLOSE_UNRETAINED_AGNOSTIC_FIELDS
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class AttributeRemoveQuery(Query):
+class AttributeRemoveQuery(MigrationSelectionQuery):
     name = "attribute_remove"
     insert_return: bool = False
 
@@ -28,7 +28,40 @@ class AttributeRemoveQuery(Query):
     ) -> None:
         self.attribute_name = attribute_name
         self.node_kinds = node_kinds
+        self.selection_kinds = ""
         super().__init__(**kwargs)
+
+    def render_selection(self) -> str:
+        branch_filter, _ = self.branch.get_query_filter_path(at=self.at.to_string())
+        return """
+        // ------------
+        // Find all the active nodes
+        // ------------
+        MATCH (node:%(node_kinds)s)
+        WHERE (size($kinds_to_ignore) = 0 OR NOT any(l IN labels(node) WHERE l IN $kinds_to_ignore))
+        AND exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name }))
+        CALL (node) {
+            MATCH (root:Root)<-[r:IS_PART_OF]-(node)
+            WHERE %(branch_filter)s
+            RETURN node as n1, r as r1
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH n1 as active_node, r1 as rb
+        WHERE rb.status = "active"
+        // ------------
+        // Find all the attributes that need to be updated
+        // ------------
+        CALL (active_node) {
+            MATCH (active_node)-[r:HAS_ATTRIBUTE]-(attr:Attribute { name: $attr_name })
+            WHERE %(branch_filter)s
+            RETURN active_node as n1, r as r1, attr as attr1
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH n1 as active_node, r1 as rb, attr1 as active_attr
+        WHERE rb.status = "active"
+        """ % {"node_kinds": self.selection_kinds, "branch_filter": branch_filter}
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
@@ -95,35 +128,9 @@ class AttributeRemoveQuery(Query):
         sub_queries = list(starmap(render_sub_query_per_rel_type, GraphAttributeRelationships.model_fields.items()))
         sub_query_all = "\nUNION\n".join(sub_queries)
 
-        node_kinds_str = "|".join(self.node_kinds + profile_kinds_to_update + template_kinds_to_update)
+        self.selection_kinds = "|".join(self.node_kinds + profile_kinds_to_update + template_kinds_to_update)
+        self.add_to_query(self.render_selection())
         query = """
-        // ------------
-        // Find all the active nodes
-        // ------------
-        MATCH (node:%(node_kinds)s)
-        WHERE (size($kinds_to_ignore) = 0 OR NOT any(l IN labels(node) WHERE l IN $kinds_to_ignore))
-        AND exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name }))
-        CALL (node) {
-            MATCH (root:Root)<-[r:IS_PART_OF]-(node)
-            WHERE %(branch_filter)s
-            RETURN node as n1, r as r1
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH n1 as active_node, r1 as rb
-        WHERE rb.status = "active"
-        // ------------
-        // Find all the attributes that need to be updated
-        // ------------
-        CALL (active_node) {
-            MATCH (active_node)-[r:HAS_ATTRIBUTE]-(attr:Attribute { name: $attr_name })
-            WHERE %(branch_filter)s
-            RETURN active_node as n1, r as r1, attr as attr1
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH n1 as active_node, r1 as rb, attr1 as active_attr
-        WHERE rb.status = "active"
         WITH active_node, active_attr
         MATCH (active_attr)-[]-(peer)
         WITH DISTINCT active_node, active_attr, peer
@@ -179,7 +186,6 @@ class AttributeRemoveQuery(Query):
         """ % {
             "branch_filter": branch_filter,
             "sub_query_all": sub_query_all,
-            "node_kinds": node_kinds_str,
             "close_unretained_agnostic_fields": CLOSE_UNRETAINED_AGNOSTIC_FIELDS,
         }
         self.add_to_query(query)

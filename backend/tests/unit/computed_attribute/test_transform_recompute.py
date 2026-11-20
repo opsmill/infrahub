@@ -54,7 +54,7 @@ class _FetcherReturning:
         raise_when_missing: bool,
     ) -> CoreTransformPython | None:
         self.requested_ids.append(id)
-        return self._transform  # type: ignore[return-value]  # ty: ignore[invalid-return-type]
+        return self._transform  # ty: ignore[invalid-return-type]
 
 
 def _computed_attribute(name: str, transform: str) -> AttributeSchema:

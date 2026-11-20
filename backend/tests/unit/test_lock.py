@@ -10,6 +10,7 @@ from redis.exceptions import RedisError
 from infrahub import config, lock
 from infrahub.config import CacheSettings
 from infrahub.core.timestamp import current_timestamp
+from infrahub.exceptions import InitializationError
 from infrahub.lock import (
     GLOBAL_SCHEMA_LOCK,
     GLOBAL_TASKMGR_INIT_LOCK,
@@ -19,6 +20,7 @@ from infrahub.lock import (
     InfrahubLock,
     InfrahubLockRegistry,
     InfrahubMultiLock,
+    UninitializedLockRegistry,
     get_lock_cache_key,
     get_requested_at_from_lock_token,
     get_worker_id_from_lock_token,
@@ -453,7 +455,7 @@ def test_lock_reserved_time_is_recorded_up_to_five_minutes() -> None:
 
 @pytest.fixture
 def without_registry(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(lock, "registry", None)
+    monkeypatch.setattr(lock, "registry", UninitializedLockRegistry())
 
 
 @pytest.mark.usefixtures("without_registry")
@@ -516,3 +518,37 @@ def test_initialize_lock_rebuilds_a_redis_registry_when_the_pool_size_changes(
     assert lock.registry is not first
     assert lock.registry.connection is not None
     assert lock.registry.connection.connection_pool.max_connections == 250
+
+
+@pytest.mark.usefixtures("without_registry")
+def test_getting_a_lock_before_initialization_raises() -> None:
+    assert not lock.is_initialized()
+
+    with pytest.raises(InitializationError, match="lock registry has not been initialized"):
+        lock.registry.get(name="my-repository", namespace="repository")
+
+
+@pytest.mark.usefixtures("without_registry")
+def test_looking_up_an_existing_lock_before_initialization_raises() -> None:
+    with pytest.raises(InitializationError, match="lock registry has not been initialized"):
+        lock.registry.get_existing(name="my-repository", namespace="repository")
+
+
+@pytest.mark.usefixtures("without_registry")
+async def test_acquiring_the_global_graph_lock_before_initialization_raises() -> None:
+    with pytest.raises(InitializationError, match="lock registry has not been initialized"):
+        await lock.registry.global_graph_lock().acquire()
+
+
+@pytest.mark.usefixtures("without_registry")
+def test_creating_a_lock_before_initialization_raises() -> None:
+    with pytest.raises(InitializationError, match="lock registry has not been initialized"):
+        lock.registry._create_lock(name="repository.my-repository", in_multi=False, metrics=True, ttl=None)
+
+
+@pytest.mark.usefixtures("without_registry")
+def test_registry_is_initialized_after_initialize_lock() -> None:
+    initialize_lock(local_only=True)
+
+    assert lock.is_initialized()
+    assert lock.registry.get(name="my-repository", namespace="repository").name == "repository.my-repository"

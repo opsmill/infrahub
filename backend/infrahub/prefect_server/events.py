@@ -1,10 +1,11 @@
 from fastapi import APIRouter
 from fastapi.param_functions import Depends
 from prefect.server.database import PrefectDBInterface, provide_database_interface
+from prefect.settings import get_current_settings
 from sqlalchemy import text
 
 from .database import query_events
-from .models import InfrahubEventfilterInput, InfrahubEventPage
+from .models import InfrahubEventfilterInput, InfrahubEventPage, default_range
 
 router = APIRouter(prefix="/events", tags=["Infrahub"])
 
@@ -26,7 +27,7 @@ async def read_events(
         events, total = await query_events(
             session=session,
             filter=event_filter.filter,
-            retention=event_filter.retention,
+            retention=default_range(event_retention=get_current_settings().server.events.retention_period),
             page_size=event_filter.limit,
             offset=event_filter.offset,
             include_total=event_filter.include_total,

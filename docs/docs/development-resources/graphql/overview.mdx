@@ -14,6 +14,27 @@ If you need to extract the current GraphQL schema in your environment you can is
 - `https://<host>/schema.graphql`
 - `https://<host>/schema.graphql?branch=some-other-branch`
 
+## GraphQL sandbox
+
+The GraphQL sandbox provides an interactive editor for exploring your schema and running operations against the selected branch. Open your account menu in the web interface and select **GraphQL Sandbox**.
+
+The sandbox uses GraphiQL 6 and includes these tools:
+
+- **Query Builder**: Select fields from the schema to build a query. This replaces the Explorer pane from earlier versions.
+- **Collections**: Save operations for reuse in your browser. To store queries in Infrahub for use by Transformations or API clients, create [stored queries](./stored-queries.mdx).
+- **JSON**, **Tree**, and **Table** response views: Choose how to inspect the returned data. For a query sent as a single request, the response header also shows its HTTP status, duration, and size.
+- **Settings**: Adjust the editor's display settings.
+
+For query syntax and mutation formats, see [Queries and mutations](./queries-and-mutations.mdx).
+
+### Request headers and authentication
+
+The sandbox uses your signed-in session by default. If a request using the session token returns HTTP 401, the sandbox refreshes the token and retries the request. If the refresh fails, Infrahub redirects you to the login page.
+
+Enter custom request headers in the **Headers** tab. An `Authorization` header entered there replaces the session token. For a bearer token, set its value to `Bearer <token>`.
+
+The sandbox does not refresh a token supplied in an `Authorization` header. If that token expires or is rejected, update or remove the header before retrying.
+
 ## Introduction to GraphQL videos
 
 <VideoPlayer url="https://www.youtube.com/watch?v=KrEY4P6Pgn4" light />

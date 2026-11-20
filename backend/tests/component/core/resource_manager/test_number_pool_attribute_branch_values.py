@@ -19,7 +19,7 @@ from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema, SchemaRoot
 from infrahub.pools.number_pool_attribute_branch_values import NumberPoolAttributeBranchValues
 from infrahub.pools.range_refusal import BranchValue
-from tests.component.core.resource_manager.conftest import delete_branch
+from tests.component.core.resource_manager.conftest import delete_branch, mark_branches_deleting
 from tests.helpers.schema import TICKET, load_schema
 
 if TYPE_CHECKING:
@@ -153,10 +153,7 @@ class TestAttributeBranchValues:
         await _set_on_branch(db=db, ticket=ticket, branch=own_value, ticket_id=602)
         inheriting = await create_branch(branch_name="deleting-while-inheriting", db=db)
 
-        await db.execute_query(
-            query='MATCH (b:Branch) WHERE b.name IN $names SET b.status = "DELETING"',
-            params={"names": [own_value.name, inheriting.name]},
-        )
+        await mark_branches_deleting(db=db, branches=[own_value, inheriting])
 
         assert await _read(db=db, attribute_ids=[attribute_id]) == [
             BranchValue(attribute_id=attribute_id, branch=ticket_schema.name, value=601)

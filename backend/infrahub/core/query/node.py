@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 import contextlib
-import ipaddress
 from collections import defaultdict
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
-from datetime import datetime
-from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 import ujson
@@ -19,8 +16,6 @@ from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
     HFID_ATTRIBUTE_NAME,
     NULL_VALUE,
-    PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
-    PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER,
     AttributeDBNodeType,
     InfrahubKind,
     MetadataOptions,
@@ -40,6 +35,12 @@ from infrahub.core.order import (
     OrderModel,
 )
 from infrahub.core.query import Query, QueryResult, QueryType
+from infrahub.core.query.node_get_list_filters import (
+    NODE_METADATA_PREFIX,
+    FieldAttributeRequirement,
+    FieldAttributeRequirementType,
+    get_filter_requirements,
+)
 from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.query.subquery import (
     build_subquery_filter,
@@ -65,17 +66,17 @@ from infrahub.core.utils import build_regex_attrs, extract_field_filters
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Callable, Generator, Iterable
+    from collections.abc import AsyncIterator, Generator, Iterable
 
     from neo4j.graph import Node as Neo4jNode
 
     from infrahub.core.attribute import AttributeCreateData, BaseAttribute
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.query.index_start import IndexStart
     from infrahub.core.relationship import RelationshipCreateData, RelationshipManager
-    from infrahub.core.schema import GenericSchema, NodeSchema
+    from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema
     from infrahub.core.schema.profile_schema import ProfileSchema
-    from infrahub.core.schema.relationship_schema import RelationshipSchema
     from infrahub.core.schema.template_schema import TemplateSchema
     from infrahub.database import InfrahubDatabase
 
@@ -83,21 +84,6 @@ if TYPE_CHECKING:
 # Grouped constants for validation/iteration
 METADATA_CREATED_FIELDS = (METADATA_CREATED_AT, METADATA_CREATED_BY)
 METADATA_UPDATED_FIELDS = (METADATA_UPDATED_AT, METADATA_UPDATED_BY)
-NODE_METADATA_PREFIX = f"{_NODE_METADATA_PREFIX}__"
-
-IP_ATTRIBUTE_KINDS = frozenset({"IPHost", "IPNetwork", "IPAddress"})
-
-
-def _compress_ipv6(text: str) -> str:
-    """Return a complete IPv6 address or interface in its compressed form.
-
-    Raises:
-        ValueError: When the text is not a complete IPv6 address or interface.
-
-    """
-    if "/" in text:
-        return ipaddress.IPv6Interface(text).with_prefixlen
-    return str(ipaddress.IPv6Address(text))
 
 
 @dataclass
@@ -951,8 +937,6 @@ CALL (a) {
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["ids"] = self.ids
-        self.params["profile_node_relationship_name"] = PROFILE_NODE_RELATIONSHIP_IDENTIFIER
-        self.params["profile_template_relationship_name"] = PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER
         self.params["field_names"] = list(self.fields.keys()) if self.fields else []
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
@@ -962,13 +946,9 @@ CALL (a) {
 
         query = """
         MATCH (n:Node) WHERE n.uuid IN $ids
-        WITH n, (
-            exists((n)-[:IS_RELATED]-(:Relationship {name: $profile_node_relationship_name})) OR
-            exists((n)-[:IS_RELATED]-(:Relationship {name: $profile_template_relationship_name}))
-        ) AS might_use_profile
         MATCH (n)-[:HAS_ATTRIBUTE]-(a:Attribute)
         WHERE (a.name IN $field_names OR size($field_names) = 0)
-        WITH DISTINCT n, a, might_use_profile
+        WITH DISTINCT n, a
         """
         self.add_to_query(query)
 
@@ -980,12 +960,13 @@ CALL (n, a) {
     ORDER BY r.branch_level DESC, r.from DESC
     LIMIT 1
 }
-WITH n, r1, a, might_use_profile
+WITH n, r1, a
 WHERE r1.status = "active"
-WITH n, r1, a, might_use_profile
-CALL (a, might_use_profile) {
+WITH n, r1, a
+// The profile source is read per attribute, so the cost does not grow with the relationships of the node
+CALL (a) {
     OPTIONAL MATCH (a)-[r:HAS_SOURCE]->(:CoreProfile)
-    WHERE might_use_profile = TRUE AND %(branch_filter)s
+    WHERE %(branch_filter)s
     RETURN r.status = "active" AS has_active_profile
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
     LIMIT 1
@@ -1884,82 +1865,39 @@ class NodeGetByHFIDQuery(Query):
         return [result.get_as_type(label="node_uuid", return_type=str) for result in self.get_results()]
 
 
-class FieldAttributeRequirementType(Enum):
-    FILTER = "filter"
-    ORDER = "order"
-
-
-@dataclass
-class FieldAttributeRequirement:
-    field_name: str
-    field: AttributeSchema | RelationshipSchema | None
-    field_attr_name: str
-    field_attr_value: Any
-    index: int
-    types: list[FieldAttributeRequirementType] = dataclass_field(default_factory=list)
-    order_direction: OrderDirection | None = None
-    # created_at, updated_at, created_by, updated_by
-    is_metadata: bool = False
-    schema_order_position: int | None = None
-
-    @property
-    def is_attribute_value(self) -> bool:
-        return bool(self.field and self.field.is_attribute and self.field_attr_name in ("value", "values", "isnull"))
-
-    @property
-    def is_filter(self) -> bool:
-        return FieldAttributeRequirementType.FILTER in self.types
-
-    @property
-    def is_order(self) -> bool:
-        return FieldAttributeRequirementType.ORDER in self.types
-
-    @property
-    def is_metadata_order(self) -> bool:
-        return self.is_metadata and FieldAttributeRequirementType.ORDER in self.types
-
-    @property
-    def is_metadata_filter(self) -> bool:
-        return self.is_metadata and FieldAttributeRequirementType.FILTER in self.types
-
-    @property
-    def node_value_query_variable(self) -> str:
-        return f"attr{self.index}_node_value"
-
-    @property
-    def comparison_operator(self) -> str:
-        if self.field_attr_name == "isnull":
-            return "=" if self.field_attr_value is True else "<>"
-        if self.field_attr_name in ("values", "ids"):
-            return "IN"
-        if self.field_attr_name == "before":
-            return "<"
-        if self.field_attr_name == "after":
-            return ">"
-        return "="
-
-    @property
-    def field_attr_comparison_value(self) -> Any:
-        if self.field_attr_name == "isnull":
-            return "NULL"
-        return self.field_attr_value
-
-
 class NodeGetListQuery(Query):
     name = "node_get_list"
     type = QueryType.READ
 
     def __init__(
         self,
-        schema: NodeSchema,
+        schema: MainSchemaTypes,
         filters: dict | None = None,
         partial_match: bool = False,
         order: OrderModel | None = None,
+        index_start: IndexStart | None = None,
         **kwargs: Any,
     ) -> None:
+        """Prepare the list query of a kind.
+
+        Args:
+            schema: The kind to list.
+            filters: The filters of the read.
+            partial_match: Match attribute values as substrings.
+            order: The order of the result.
+            index_start: The filter to enter the query from. Without one the query reads every node of the kind.
+            **kwargs: Passed to the base query.
+
+        Raises:
+            ValueError: When an index start comes with a filter on node ids.
+
+        """
         self.schema = schema
         self.filters = filters
         self.partial_match = partial_match
+        if index_start and filters and ("id" in filters or "ids" in filters):
+            raise ValueError("A list query filtered on node ids cannot start from an index")
+        self.index_start = index_start
         self._variables_to_track = ["n", "rb"]
         self._validate_filters()
 
@@ -2149,6 +2087,7 @@ WITH %(tracked_vars)s,
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.order_by = []
+        index_start = self.index_start
 
         self.return_labels = ["n.uuid", "rb.branch", f"{db.get_id_function_name()}(rb) as rb_id"]
 
@@ -2169,7 +2108,9 @@ WITH %(tracked_vars)s,
         # The initial subquery is used to filter out deleted nodes because we can have multiple valid results per branch
         #   and we need to filter out the one that have been deleted in the branch.
         # If we are on the default branch, the subquery is not required because only one valid result is expected at a given time
-        if not self.branch.is_default:
+        if index_start:
+            self._add_index_start_query(index_start=index_start, branch_filter=branch_filter)
+        elif not self.branch.is_default:
             topquery = """
             MATCH (n:%(node_labels)s)
             %(node_ids_where)s
@@ -2251,6 +2192,50 @@ WITH %(tracked_vars)s,
 
         # Always order by uuid to guarantee pagination, see https://github.com/opsmill/infrahub/pull/4704.
         self.order_by.append("n.uuid")
+
+    def _add_index_start_query(self, index_start: IndexStart, branch_filter: str) -> None:
+        """Match the nodes of the kind that the index start reaches.
+
+        They are a superset of the nodes the filters keep, so the filter subqueries that follow still decide
+        the result.
+        """
+        self.params.update(index_start.params)
+
+        # Collecting the indexed vertices first makes Neo4j expand from them instead of from the kind label.
+        query = """
+        %(indexed_vertex_match)s
+        WITH collect(%(indexed_vertex)s) AS index_start_vertices
+        UNWIND index_start_vertices AS %(indexed_vertex)s
+        MATCH (n:%(node_kind)s)%(path_to_indexed_vertex)s(%(indexed_vertex)s)
+        WITH DISTINCT n
+        """ % {
+            "indexed_vertex_match": index_start.indexed_vertex_match,
+            "indexed_vertex": index_start.indexed_vertex.name,
+            "node_kind": self.schema.kind,
+            "path_to_indexed_vertex": index_start.path_to_indexed_vertex,
+        }
+        self.add_to_query(query)
+
+        if self.branch.is_default:
+            query = """
+            MATCH (root:Root)<-[r:IS_PART_OF]-(n)
+            WHERE %(branch_filter)s
+            WITH n, r as rb
+            WHERE rb.status = "active"
+            """ % {"branch_filter": branch_filter}
+        else:
+            query = """
+            CALL (n) {
+                MATCH (root:Root)<-[r:IS_PART_OF]-(n)
+                WHERE %(branch_filter)s
+                RETURN r
+                ORDER BY r.branch_level DESC, r.from DESC
+                LIMIT 1
+            }
+            WITH n, r as rb
+            WHERE rb.status = "active"
+            """ % {"branch_filter": branch_filter}
+        self.add_to_query(query)
 
     async def _add_node_filter_attributes(
         self,
@@ -2382,160 +2367,6 @@ WITH %(tracked_vars)s,
 
         return f"WHERE {far.node_value_query_variable} {far.comparison_operator} ${var_name}"
 
-    def _get_metadata_field_details(self, filter_key: str) -> tuple[str, str] | None:
-        """Parse a metadata filter key into field name and operator.
-
-        Args:
-            filter_key: Filter key like "node_metadata__created_at__before"
-
-        Returns:
-            Tuple of (field_name, operator) like ("created_at", "before"), or None if not a metadata filter.
-
-        """
-        if not filter_key.startswith(NODE_METADATA_PREFIX):
-            return None
-        parts = filter_key.split("__")
-        metadata_field_name = parts[1]  # created_at, updated_at, created_by, updated_by
-        metadata_operator = parts[2] if len(parts) > 2 else "value"  # value, before, after, ids
-        return metadata_field_name, metadata_operator
-
-    def _build_metadata_filter_requirement(
-        self,
-        field_name: str,
-        operator: str,
-        value: Any,
-        index: int,
-    ) -> FieldAttributeRequirement:
-        """Build a FieldAttributeRequirement for a metadata filter."""
-        if isinstance(value, datetime):
-            value = Timestamp(value.isoformat()).to_string()
-        return FieldAttributeRequirement(
-            field_name=field_name,
-            field=None,
-            field_attr_name=operator,
-            field_attr_value=value,
-            index=index,
-            types=[FieldAttributeRequirementType.FILTER],
-            is_metadata=True,
-        )
-
-    def _build_attribute_filter_requirement(
-        self,
-        field_name: str,
-        field: AttributeSchema | RelationshipSchema | None,
-        attr_name: str,
-        attr_value: Any,
-        index: int,
-    ) -> FieldAttributeRequirement:
-        """Build a FieldAttributeRequirement for an attribute/relationship filter."""
-        if isinstance(attr_value, Enum):
-            attr_value = attr_value.value
-        return FieldAttributeRequirement(
-            field_name=field_name,
-            field=field,
-            field_attr_name=attr_name,
-            field_attr_value=self._normalize_ip_filter_value(
-                field_name=field_name, field=field, attr_name=attr_name, attr_value=attr_value
-            ),
-            index=index,
-            types=[FieldAttributeRequirementType.FILTER],
-        )
-
-    def _normalize_ip_filter_value(
-        self,
-        field_name: str,
-        field: AttributeSchema | RelationshipSchema | None,
-        attr_name: str,
-        attr_value: Any,
-    ) -> Any:
-        """Return an IP filter value in the form IP values are saved in, so any valid notation of it matches.
-
-        A value that does not parse as an IP is returned unchanged.
-        """
-        if attr_name not in ("value", "values"):
-            return attr_value
-
-        normalize: Callable[[str], str]
-        if field is None and field_name in ("any", "attribute"):
-            normalize = _compress_ipv6
-        elif isinstance(field, AttributeSchema) and field.kind in IP_ATTRIBUTE_KINDS:
-            # A full conversion would append a prefix length to IPv4 text, which then no longer matches as a substring.
-            normalize = _compress_ipv6 if self.partial_match else field.get_class()._normalize_value
-        else:
-            return attr_value
-
-        def _normalize(value: Any) -> Any:
-            if not isinstance(value, str):
-                return value
-            try:
-                return normalize(value)
-            except ValueError:
-                return value
-
-        if isinstance(attr_value, list):
-            return [_normalize(value) for value in attr_value]
-        return _normalize(attr_value)
-
-    def _get_filter_requirements(self, start_index: int) -> list[FieldAttributeRequirement]:
-        """Build filter requirements from self.filters.
-
-        Processes both metadata and attribute/relationship filters in a single pass.
-        Returns list of FieldAttributeRequirement objects.
-        """
-        if not self.filters:
-            return []
-
-        requirements: list[FieldAttributeRequirement] = []
-        internal_filters = ["any", "attribute", "relationship"]
-        processed_fields: set[str] = set()
-        index = start_index
-
-        for filter_key in self.filters:
-            # Check if this is a metadata filter
-            metadata_details = self._get_metadata_field_details(filter_key)
-            if metadata_details:
-                field_name, operator = metadata_details
-                requirements.append(
-                    self._build_metadata_filter_requirement(
-                        field_name=field_name,
-                        operator=operator,
-                        value=self.filters[filter_key],
-                        index=index,
-                    )
-                )
-                index += 1
-                continue
-
-            # Handle attribute/relationship filter
-            # "height__value" -> "height"
-            field_name = filter_key.split("__", maxsplit=1)[0]
-            if field_name not in self.schema.valid_input_names + internal_filters:
-                continue
-
-            # Skip if we've already processed this field (extract_field_filters handles all attrs for a field)
-            if field_name in processed_fields:
-                continue
-            processed_fields.add(field_name)
-
-            attr_filters = extract_field_filters(field_name=field_name, filters=self.filters)
-            if not attr_filters:
-                continue
-
-            field = self.schema.get_field(field_name, raise_on_error=False)
-            for attr_name, attr_value in attr_filters.items():
-                requirements.append(
-                    self._build_attribute_filter_requirement(
-                        field_name=field_name,
-                        field=field,
-                        attr_name=attr_name,
-                        attr_value=attr_value,
-                        index=index,
-                    )
-                )
-                index += 1
-
-        return requirements
-
     def _upsert_metadata_order_requirement(
         self,
         filter_requirements: list[FieldAttributeRequirement],
@@ -2653,7 +2484,9 @@ WITH %(tracked_vars)s,
 
     def _get_field_requirements(self, disable_order: bool = False) -> list[FieldAttributeRequirement]:
         """Build unified list of field requirements for filtering and ordering."""
-        filter_requirements = self._get_filter_requirements(start_index=1)
+        filter_requirements = get_filter_requirements(
+            schema=self.schema, filters=self.filters, partial_match=self.partial_match
+        )
         if disable_order:
             return filter_requirements
         return filter_requirements + self._get_order_requirements(filter_requirements)
@@ -2671,134 +2504,132 @@ class NodeGetListByAttributeValueQueryResult:
 
 
 class NodeGetListByAttributeValueQuery(Query):
-    """Query to find nodes by searching attribute values.
+    """Find the nodes whose indexed attribute values match a search text, best match first.
 
-    This query is optimized for search operations by starting from the AttributeValueIndexed
-    nodes and using a TEXT index for efficient CONTAINS searches. This approach is more
-    efficient than the standard NodeGetListQuery when searching for values across all nodes.
+    Matches are ranked and sorted before the branch and time checks, so the checks run only on
+    the rows read until the limit is filled, and the first row of a node that passes them is its
+    best match.
     """
 
     name = "node_get_list_by_attribute_value"
     type = QueryType.READ
+    insert_return = False
 
     def __init__(
         self,
         search_value: str,
         kinds: list[str] | None = None,
         partial_match: bool = True,
+        case_sensitive: bool = False,
         **kwargs: Any,
     ) -> None:
         self.search_value = search_value
         self.kinds = kinds
         self.partial_match = partial_match
+        self.case_sensitive = case_sensitive
 
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        self.order_by = ["n.uuid"]
-        self.return_labels = ["DISTINCT n.uuid as uuid", "n.kind as kind"]
+        self.return_labels = ["uuid", "kind"]
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
         )
         self.params.update(branch_params)
+        self.params["search_value"] = self.search_value
+        self.params["null_value"] = NULL_VALUE
+        self.params["label_attribute_name"] = DISPLAY_LABEL_ATTRIBUTE_NAME
 
-        # Build search values for case-insensitive matching without using toLower/toString
-        # which would disable index lookup. We search for four case variations:
-        # 1. Original (as provided), 2. lowercase, 3. UPPERCASE, 4. Title Case (first char upper, rest lower)
-        search_original = self.search_value
-        search_lower = self.search_value.lower()
-        search_upper = self.search_value.upper()
-        search_title = self.search_value.capitalize()
-
-        # Build the search predicate based on partial_match
-        # We avoid toLower/toString to allow TEXT index usage
-        if self.partial_match:
-            # Use CONTAINS with multiple case variations to leverage TEXT index
-            search_predicate = (
-                "(av.value CONTAINS $search_original OR av.value CONTAINS $search_lower "
-                "OR av.value CONTAINS $search_upper OR av.value CONTAINS $search_title)"
+        # A value stored as a list, such as a schema attribute's default value, converts to null and never matches.
+        value = "toLower(toStringOrNull(av.value))"
+        search = "toLower($search_value)"
+        operator = "CONTAINS" if self.partial_match else "="
+        if self.case_sensitive:
+            # Comparing the stored value to four spellings, rather than lowercasing it, keeps the value indexes usable.
+            match_predicate = (
+                f"(av.value {operator} $search_original OR av.value {operator} $search_lower "
+                f"OR av.value {operator} $search_upper OR av.value {operator} $search_title)"
             )
+            self.params["search_original"] = self.search_value
+            self.params["search_lower"] = self.search_value.lower()
+            self.params["search_upper"] = self.search_value.upper()
+            self.params["search_title"] = self.search_value.capitalize()
         else:
-            # Exact match with case variations
-            search_predicate = (
-                "(av.value = $search_original OR av.value = $search_lower "
-                "OR av.value = $search_upper OR av.value = $search_title)"
-            )
+            match_predicate = f"{value} {operator} {search}"
 
-        self.params["search_original"] = search_original
-        self.params["search_lower"] = search_lower
-        self.params["search_upper"] = search_upper
-        self.params["search_title"] = search_title
-
-        # Build kind filter if specified
         kind_filter = ""
         if self.kinds:
             kind_filter = "AND any(l IN labels(n) WHERE l in $kinds)"
             self.params["kinds"] = self.kinds
 
-        # The query starts from AttributeValueIndexed nodes to leverage the TEXT index
-        # This approach is more efficient for search operations as it:
-        # 1. Starts from AttributeValueIndexed nodes (smaller set when filtered)
-        # 2. Traverses from matching values back to their owning nodes
-        # 3. Filters nodes by branch and status
         query = """
         // --------------------------
-        // start with all possible Node-Attribute-AttributeValue combinations
+        // start with every attribute holding a matching value
         // --------------------------
-        MATCH (av:AttributeValueIndexed)<-[:HAS_VALUE]-(attr:Attribute)<-[:HAS_ATTRIBUTE]-(n)
-        WHERE %(search_predicate)s %(kind_filter)s
-        """
-        if ranks_latest_value(branch=self.branch, branch_agnostic=self.branch_agnostic):
-            query += """
+        MATCH (av:AttributeValueIndexed)<-[:HAS_VALUE]-(attr)
+        WHERE av.value <> $null_value
+        AND %(match_predicate)s
         // --------------------------
-        // Search the latest value of each candidate attribute:
-        // on a branch, the default branch's edge to a replaced value stays open
+        // rank each match, best first
         // --------------------------
-        WITH DISTINCT n, attr
+        WITH attr, av, attr.name = $label_attribute_name AS is_label, %(value)s AS value, %(search)s AS search
+        WITH attr, av, CASE
+            WHEN is_label AND value = search THEN 6
+            WHEN is_label AND value STARTS WITH search THEN 5
+            WHEN is_label THEN 4
+            WHEN value = search THEN 3
+            WHEN value STARTS WITH search THEN 2
+            ELSE 1
+        END AS match_quality, size(value) AS value_length
+        // Ties break on the attribute's uuid, not the node's, so that a node is read only when its row is checked.
+        ORDER BY match_quality DESC, value_length ASC, attr.uuid
+        // --------------------------
+        // find the node that owns the attribute, of a searched kind
+        // --------------------------
         CALL (attr) {
-            MATCH (attr)-[r:HAS_VALUE]->(av:AttributeValue)
-            WHERE %(branch_filter)s
-            RETURN r, av
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
-        }
-        WITH n, attr, av, r
-        WHERE r.status = "active" AND av:AttributeValueIndexed AND %(search_predicate)s
-        WITH n, attr
-        """
-        else:
-            query += """
-        WITH DISTINCT n, attr, av
-        // --------------------------
-        // filter HAS_VALUE edges
-        // --------------------------
-        CALL (av, attr) {
-            MATCH (av)<-[r:HAS_VALUE]-(attr)
-            WHERE %(branch_filter)s
-            RETURN r
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
-        }
-        WITH n, attr
-        WHERE r.status = "active"
-        """
-        query += """
-        // --------------------------
-        // filter HAS_ATTRIBUTE edges
-        // --------------------------
-        CALL (n, attr) {
             MATCH (attr)<-[r:HAS_ATTRIBUTE]-(n)
             WHERE %(branch_filter)s
+            RETURN r, n
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, attr, av, match_quality, value_length
+        WHERE r.status = "active"
+        %(kind_filter)s
+        // --------------------------
+        // keep the matches that are the attribute's current value
+        // --------------------------
+        // Only the attribute's latest HAS_VALUE edge counts, as a value changed on a branch leaves the old value's edge active on the parent branch.
+        CALL (attr) {
+            MATCH (attr)-[r:HAS_VALUE]->(current_value)
+            WHERE %(branch_filter)s
+            RETURN r, current_value
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, attr, match_quality, value_length
+        WHERE r.status = "active" AND current_value = av
+        // --------------------------
+        // keep the nodes that exist on the branch at the searched time
+        // --------------------------
+        CALL (n) {
+            MATCH (n)-[r:IS_PART_OF]->(:Root)
+            WHERE %(branch_filter)s
             RETURN r
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n, attr, r
+        WITH n, attr, match_quality, value_length
         WHERE r.status = "active"
-        """
-        query %= {
-            "search_predicate": search_predicate,
+        // An ORDER BY holds only for the clause right after it, so the ranking is applied again before the results.
+        WITH n
+        ORDER BY match_quality DESC, value_length ASC, attr.uuid
+        RETURN DISTINCT n.uuid AS uuid, n.kind AS kind
+        """ % {
+            "match_predicate": match_predicate,
+            "value": value,
+            "search": search,
             "kind_filter": kind_filter,
             "branch_filter": branch_filter,
         }
@@ -3019,8 +2850,7 @@ class NodeGetHierarchyQuery(Query):
 
     def get_peer_ids(self) -> Generator[str, None, None]:
         for result in self.get_results_group_by(("peer", "uuid")):
-            data = result.get_node("peer").get("uuid")
-            yield data
+            yield result.get_node("peer").get("uuid")
 
     def get_relatives(self) -> Generator[PeerInfo, None, None]:
         for result in self.get_results_group_by(("peer", "uuid")):

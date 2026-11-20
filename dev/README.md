@@ -136,8 +136,7 @@ folder, which is not a command.
 
 The `/reviewing-pull-requests <PR>` skill in [../.agents/skills/](../.agents/skills/) reviews a pull
 request in a subagent that has not seen the conversation, with the rules in
-[REVIEW.md](../REVIEW.md). Claude Code also runs it on its own after opening a pull request, though
-not every time.
+[REVIEW.md](../REVIEW.md). `AGENTS.md` asks agents to run it after opening a pull request.
 
 A hook makes it run after every `gh pr create`, and again when pushes add 300 or more changed lines
 to an open pull request since its last automatic review. The hook is off by default and runs only

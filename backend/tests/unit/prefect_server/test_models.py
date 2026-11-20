@@ -4,108 +4,30 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 import pytest
-from prefect.settings import temporary_settings
 
-from infrahub.prefect_server.models import InfrahubEventfilterInput
+from infrahub.prefect_server.models import default_range
 
 
 @dataclass
-class ReadWindowTestCase:
+class DefaultRangeTestCase:
     name: str
-    vacuum_enabled: set[str] | bool
-    events_retention: timedelta
-    retention_seconds: int | None
+    event_retention: timedelta
     expected: timedelta
-    event_persister_enabled: bool = True
 
 
-READ_WINDOW_TEST_CASES: list[ReadWindowTestCase] = [
-    ReadWindowTestCase(
-        name="event_persister_disabled_keeps_older_events",
-        vacuum_enabled={"events", "flow_runs"},
-        events_retention=timedelta(days=7),
-        retention_seconds=None,
-        expected=timedelta(days=180),
-        event_persister_enabled=False,
+DEFAULT_RANGE_TEST_CASES: list[DefaultRangeTestCase] = [
+    DefaultRangeTestCase(
+        name="retention_shorter_than_180_days", event_retention=timedelta(days=7), expected=timedelta(days=180)
     ),
-    ReadWindowTestCase(
-        name="event_persister_disabled_keeps_longer_retention",
-        vacuum_enabled={"events", "flow_runs"},
-        events_retention=timedelta(days=365),
-        retention_seconds=None,
-        expected=timedelta(days=365),
-        event_persister_enabled=False,
+    DefaultRangeTestCase(
+        name="retention_of_180_days", event_retention=timedelta(days=180), expected=timedelta(days=180)
     ),
-    ReadWindowTestCase(
-        name="request_sets_the_window_with_event_persister_disabled",
-        vacuum_enabled={"events", "flow_runs"},
-        events_retention=timedelta(days=7),
-        retention_seconds=86400,
-        expected=timedelta(days=1),
-        event_persister_enabled=False,
-    ),
-    ReadWindowTestCase(
-        name="events_deleted",
-        vacuum_enabled={"events", "flow_runs"},
-        events_retention=timedelta(days=7),
-        retention_seconds=None,
-        expected=timedelta(days=7),
-    ),
-    ReadWindowTestCase(
-        name="false_switch_still_deletes_events",
-        vacuum_enabled=False,
-        events_retention=timedelta(days=7),
-        retention_seconds=None,
-        expected=timedelta(days=7),
-    ),
-    ReadWindowTestCase(
-        name="events_kept_with_a_shorter_retention",
-        vacuum_enabled={"flow_runs"},
-        events_retention=timedelta(days=7),
-        retention_seconds=None,
-        expected=timedelta(days=180),
-    ),
-    ReadWindowTestCase(
-        name="nothing_deleted",
-        vacuum_enabled=set(),
-        events_retention=timedelta(days=30),
-        retention_seconds=None,
-        expected=timedelta(days=180),
-    ),
-    ReadWindowTestCase(
-        name="events_kept_with_a_longer_retention",
-        vacuum_enabled={"flow_runs"},
-        events_retention=timedelta(days=365),
-        retention_seconds=None,
-        expected=timedelta(days=365),
-    ),
-    ReadWindowTestCase(
-        name="unknown_vacuum_type",
-        vacuum_enabled={"evnts"},
-        events_retention=timedelta(days=7),
-        retention_seconds=None,
-        expected=timedelta(days=180),
-    ),
-    ReadWindowTestCase(
-        name="request_sets_the_window",
-        vacuum_enabled={"flow_runs"},
-        events_retention=timedelta(days=7),
-        retention_seconds=86400,
-        expected=timedelta(days=1),
+    DefaultRangeTestCase(
+        name="retention_longer_than_180_days", event_retention=timedelta(days=365), expected=timedelta(days=365)
     ),
 ]
 
 
-@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in READ_WINDOW_TEST_CASES])
-def test_read_window_without_a_start(test_case: ReadWindowTestCase) -> None:
-    """Without a retention in the request, the window is the event retention, or at least 180 days when events are kept."""
-    with temporary_settings(
-        updates={
-            "server.services.db_vacuum.enabled": test_case.vacuum_enabled,
-            "server.services.event_persister.enabled": test_case.event_persister_enabled,
-            "server.events.retention_period": test_case.events_retention,
-        }
-    ):
-        filter_input = InfrahubEventfilterInput(retention_seconds=test_case.retention_seconds)
-
-        assert filter_input.retention == test_case.expected
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in DEFAULT_RANGE_TEST_CASES])
+def test_default_range_is_the_event_retention_and_at_least_180_days(test_case: DefaultRangeTestCase) -> None:
+    assert default_range(event_retention=test_case.event_retention) == test_case.expected

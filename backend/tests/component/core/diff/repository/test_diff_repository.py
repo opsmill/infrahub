@@ -65,10 +65,9 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         original_size = config.SETTINGS.database.query_size_limit
         config.SETTINGS.database.max_depth_search_hierarchy = 10
         config.SETTINGS.database.query_size_limit = 50
-        diff_repository = DiffRepository(
+        yield DiffRepository(
             db=db, deserializer=EnrichedDiffDeserializer(DiffParentNodeAdder()), max_save_batch_size=30
         )
-        yield diff_repository
         config.SETTINGS.database.max_depth_search_hierarchy = original_depth
         config.SETTINGS.database.query_size_limit = original_size
 

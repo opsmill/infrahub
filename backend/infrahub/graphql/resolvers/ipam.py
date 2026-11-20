@@ -346,7 +346,7 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
     order_model = deserialize_order_input(input_data=order)
     fields = await extract_selection(info=info, schema=schema)
     resolve_available = bool(kwargs.pop("include_available", False))
-    kinds_to_filter: list[str] = kwargs.pop("kinds", [])  # type: ignore[assignment]
+    kinds_to_filter: list[str] = kwargs.pop("kinds", [])
 
     for kind in kinds_to_filter:
         if kind not in schema.used_by:

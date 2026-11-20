@@ -33,7 +33,7 @@ query($ids: [String!], $parent__ids: [String!], $branch: [String!], $since: Date
 }
 """
 
-# Older than 180 days, the longest range a query with no start reads.
+# Older than the 180 days that a query with no start reads on a test server with a 7-day event retention.
 OLDER_THAN_DEFAULT_RANGE = timedelta(days=200)
 
 _TEST_ID = uuid.uuid4().hex[:8]

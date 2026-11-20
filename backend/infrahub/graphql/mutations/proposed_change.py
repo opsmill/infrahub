@@ -33,7 +33,6 @@ from infrahub.exceptions import BranchNotFoundError, PermissionDeniedError, Vali
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
 from infrahub.graphql.types.task import TaskInfo
-from infrahub.lock import InfrahubLock
 from infrahub.proposed_change.approval_revoker import do_revoke_approvals_on_updated_pcs
 from infrahub.proposed_change.constants import ProposedChangeApprovalDecision, ProposedChangeState
 from infrahub.proposed_change.models import RequestProposedChangePipeline
@@ -312,7 +311,7 @@ class ProposedChangeReview(Mutation):
         )
         pc_id = str(data.id)
         lock_name = build_object_lock_name(pc_id)
-        async with InfrahubLock(name=lock_name, connection=lock.registry.connection):
+        async with lock.registry.get(name=lock_name):
             proposed_change = await NodeManager.get_one_by_id_or_default_filter(
                 id=pc_id,
                 kind=CoreProposedChange,
@@ -366,8 +365,8 @@ class ProposedChangeReview(Mutation):
         """
         approved_by = await proposed_change.approved_by.get_peers(db=db)
         rejected_by = await proposed_change.rejected_by.get_peers(db=db)
-        approved_by_ids = [node.id for _, node in approved_by.items()]
-        rejected_by_ids = [node.id for _, node in rejected_by.items()]
+        approved_by_ids = [node.id for node in approved_by.values()]
+        rejected_by_ids = [node.id for node in rejected_by.values()]
         event: InfrahubEvent | None = None
         # Proposed changes are branch-agnostic; scope the review events to the default branch regardless of the branch the review mutation ran on.
         default_branch = await registry.get_branch(db=db, branch=registry.default_branch)

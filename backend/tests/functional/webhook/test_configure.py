@@ -35,7 +35,7 @@ class TestWebhookConfigure(TestInfrahubApp):
         assert len(automations) == 1
         automation = automations[0]
         assert len(automation.actions) == 1
-        action: RunDeployment = automation.actions[0]  # type: ignore[assignment]
+        action: RunDeployment = automation.actions[0]
         assert action.parameters
         assert "webhook_id" in action.parameters.keys()
         assert action.parameters["webhook_id"] == webhook1.id
@@ -130,7 +130,7 @@ class TestWebhookConfigure(TestInfrahubApp):
 
         automation = automations_by_name[f"webhook::{webhook2.id}"]
         assert len(automation.actions) == 1
-        action: RunDeployment = automation.actions[0]  # type: ignore[assignment]
+        action: RunDeployment = automation.actions[0]
         assert action.parameters
         assert "webhook_id" in action.parameters.keys()
         assert action.parameters["webhook_id"] == webhook2.id
