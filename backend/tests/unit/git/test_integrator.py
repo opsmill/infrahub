@@ -10,7 +10,8 @@ from typing import Any, override
 import pytest
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.exceptions import ServerNotResponsiveError, TrackingGroupCleanupError, ValidationError
-from infrahub_sdk.schema import NodeSchemaAPI
+from infrahub_sdk.node import InfrahubNode
+from infrahub_sdk.schema import BranchSchema, NodeSchemaAPI
 from infrahub_sdk.schema.repository import (
     InfrahubJinja2TransformConfig,
     InfrahubRepositoryArtifactDefinitionConfig,
@@ -25,6 +26,7 @@ from infrahub.git.import_errors import describe_import_error
 from infrahub.git.integrator import (
     ImportProgress,
     ImportSummaryStep,
+    InfrahubRepositoryExternalTransform,
     InfrahubRepositoryIntegrator,
     collect_artifact_definitions,
     serialize_artifact_content,
@@ -372,3 +374,26 @@ class TestImportFilePaths:
             await git_repo_01._import_file_paths(
                 branch_name="main", commit="", files_pathes=[], object_type=RepositoryObjects.OBJECT
             )
+
+
+async def test_created_external_transform_keeps_its_timeout(
+    git_repo_01: InfrahubRepository, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The client's own request timeout must not swallow the transform's timeout attribute."""
+    kind = "CoreTransformExternal"
+    client = InfrahubClient(config=Config(address="http://mock"))
+    client.schema.set_cache(BranchSchema(hash="test", nodes={kind: load_core_node_schema_api(kind)}), branch="main")
+    git_repo_01.client = client
+    saved: list[InfrahubNode] = []
+
+    async def record_save(self: InfrahubNode, *args: Any, **kwargs: Any) -> None:
+        saved.append(self)
+
+    monkeypatch.setattr(InfrahubNode, "save", record_save)
+    transform = InfrahubRepositoryExternalTransform(
+        name="startup", query="device_inventory", version="1.0", timeout=300, repository="r"
+    )
+
+    await git_repo_01.create_external_transform(branch_name="main", data=transform, fingerprint="f")
+
+    assert [node.timeout.value for node in saved] == [300]

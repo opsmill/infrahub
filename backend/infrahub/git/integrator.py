@@ -1058,7 +1058,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         create_payload = self.sdk.schema.generate_payload_create(
             schema=schema, data={**data.payload, "fingerprint": fingerprint}, source=self.id, is_protected=True
         )
-        obj = await self.sdk.create(kind=CoreTransformExternal, branch=branch_name, **create_payload)
+        obj = await self.sdk.create(kind=CoreTransformExternal, branch=branch_name, data=create_payload)
         await obj.save()
         return obj
 

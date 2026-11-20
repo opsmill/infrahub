@@ -1,0 +1,1 @@
+Fixed the default security secret key of the task worker in `docker-compose.yml`, which had a stray quote and differed from the server key, so tokens signed by the task workers were refused by the server.
