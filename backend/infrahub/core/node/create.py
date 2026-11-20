@@ -769,8 +769,8 @@ async def create_node(
 
     fields_to_validate = list(data)
 
-    # A node created in a transaction this function opens draws its numbers through that transaction, so it
-    # gets components of its own.
+    # The node created under the lock gets components of its own, so that it reads the profiles after the lock and,
+    # in a transaction this function opens, draws its numbers through that transaction.
     schema_branch = db.schema.get_schema_branch(name=branch.name)
     components = _build_node_write_components(db=db, branch=branch, schema_branch=schema_branch)
     # The preview and the node created under the lock share one uuid, so the lock names hold the uuid of the node.
@@ -812,13 +812,14 @@ async def create_node(
     async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names, metrics=False):
         if db.is_transaction:
             node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
+            locked_components = _build_node_write_components(db=db, branch=branch, schema_branch=schema_branch)
 
             obj = await _do_create_node(
                 node_class=node_class,
                 node_constraint_runner=node_constraint_runner,
-                pool_applier=components.pool_applier,
-                profiles_mandatory_field_getter=components.profiles_mandatory_field_getter,
-                profiles_applier=components.profiles_applier,
+                pool_applier=locked_components.pool_applier,
+                profiles_mandatory_field_getter=locked_components.profiles_mandatory_field_getter,
+                profiles_applier=locked_components.profiles_applier,
                 mutation_context=mutation_context,
                 db=db,
                 schema=schema,
