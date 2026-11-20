@@ -1,0 +1,29 @@
+.agents/skills/speckit-opsmill-auto/SKILL.md
+  s_c084e8bac6e69f::t_7fefb55dd8bad6 38-45,116
+.agents/skills/speckit-opsmill-implement-chunk/SKILL.md
+  s_c084e8bac6e69f::t_6100f635957f3f 39-41,70
+.specify/extensions/opsmill/commands/auto.md
+  s_c084e8bac6e69f::t_3ae01f84bfcbfa 33-40,111
+.specify/extensions/opsmill/commands/implement-chunk.md
+  s_c084e8bac6e69f::t_09e4077c04699f 34-36
+.specify/workflows/opsmill-implement/workflow.yml
+  s_c084e8bac6e69f::t_775981fe43b7bd 61,75,86
+.specify/workflows/opsmill-prep/workflow.yml
+  s_c084e8bac6e69f::t_e473750d74dc0b 56,86,97,109,122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0a50e74014836fdfa5711ec9af428d41ee073f6c",
+  "prompts": {},
+  "sessions": {
+    "s_c084e8bac6e69f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a62b57c8-0237-436f-98fd-7089eb103a35",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
