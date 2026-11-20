@@ -109,7 +109,8 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
   [Merge Failure Recovery](merge-failure-recovery.md)), which refuses the other writes on the default branch and on
   the source branch during the merge.
   The attribute rename migration, the only other code that creates a set, takes the same lock before it reads the
-  sets of the node. After the lock, it gives no set to a node that is not active, with the same check of a later
+  sets of the node. It looks for the set with the new key in the same way, on all branches and on each `Node` vertex
+  of the UUID. After the lock, it gives no set to a node that is not active, with the same check of a later
   `deleted` `IS_PART_OF` edge as a write of owners.
 - Lock order: a writer of a node locks the node vertex first, and then an attribute vertex or a set vertex. A
   write of owners, `Node._update` and `Node.delete` take the lock on the node vertex (`NodeLockQuery`, or the same

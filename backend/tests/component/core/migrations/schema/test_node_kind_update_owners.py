@@ -6,6 +6,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.initialization import create_branch
+from infrahub.core.migrations.query.owner_set_attribute import OwnerSetKeyMigrationQuery
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.migrations.schema.tasks import get_derived_schema_pairs
 from infrahub.core.migrations.shared import MigrationInput
@@ -16,6 +17,7 @@ from infrahub.core.ownership.models import (
     NODE_SOURCES_HOLDER,
     NODE_TARGET_HOLDER,
     HolderKey,
+    HolderKind,
     StoredNodeOwnership,
     StoredOwnerState,
     field_holder,
@@ -377,3 +379,49 @@ ORDER BY edge_type
         ("Test2Gadget", "HAS_SOURCE", "TemplateTest2Gadget"),
     ]
     await verify_graph(db=db, kinds=["TestingGadget", "TemplateTestingGadget", "Test2Gadget", "TemplateTest2Gadget"])
+
+
+async def test_attribute_rename_reuses_the_set_that_another_vertex_of_the_node_holds_after_a_kind_change(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    registry.schema.register_schema(schema=SchemaRoot(nodes=[GADGET.duplicate()]), branch=default_branch.name)
+    group_ids = await create_groups(db=db)
+    profile = await Node.init(db=db, schema="ProfileTestingGadget")
+    await profile.new(db=db, profile_name="gadget-profile")
+    await profile.save(db=db)
+    await set_owners(
+        db=db,
+        branch=default_branch,
+        node_id=profile.id,
+        owner_ids=(group_ids["dc-emea"],),
+        holder=HolderKey(kind=HolderKind.TARGET_SET, attribute="name"),
+    )
+    branch = await create_branch(branch_name="branch2", db=db)
+    await _change_gadget_namespace(db=db, branch=branch)
+    await set_owners(
+        db=db,
+        branch=branch,
+        node_id=profile.id,
+        owner_ids=(group_ids["security"],),
+        holder=HolderKey(kind=HolderKind.TARGET_SET, attribute="label"),
+    )
+
+    query = await OwnerSetKeyMigrationQuery.init(
+        db=db,
+        branch=default_branch,
+        node_kinds=["ProfileTestingGadget"],
+        set_key={"attribute": "name"},
+        new_set_key={"attribute": "label"},
+    )
+    await query.execute(db=db)
+
+    rows = await db.execute_query(
+        query="""
+MATCH (:Node {uuid: $node_id})-[:HAS_TARGET_OWNER_SET]->(s:OwnerSet {attribute: "label"})
+RETURN count(DISTINCT s) AS sets
+        """,
+        params={"node_id": profile.id},
+        type=QueryType.READ,
+    )
+    assert rows[0]["sets"] == 1
+    await verify_graph(db=db, kinds=["ProfileTestingGadget", "ProfileTest2Gadget"])
