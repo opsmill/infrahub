@@ -324,8 +324,7 @@ UNWIND [
     ["HAS_ATTRIBUTE", "in"],
     ["HAS_VALUE", "out"],
     ["IS_PROTECTED", "out"],
-    ["HAS_SOURCE", "out"],
-    ["HAS_OWNER", "out"]
+    ["HAS_SOURCE", "out"]
 ] AS edge_details
 WITH a, edge_details[0] AS property_type, edge_details[1] AS direction
 CALL (a, property_type, direction) {
