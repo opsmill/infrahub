@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field, model_validator
 from infrahub.artifacts.content import artifact_checksum, format_artifact_content
 from infrahub.artifacts.render_lock import artifact_render_lock
 from infrahub.core import registry
-from infrahub.core.constants import SYSTEM_USER_ID, ArtifactStatus, Severity, ValidatorConclusion
+from infrahub.core.constants import SYSTEM_USER_ID, ArtifactStatus, ContentType, Severity, ValidatorConclusion
 from infrahub.core.protocols import (
     CoreArtifact,
     CoreArtifactCheck,
@@ -40,6 +40,7 @@ if TYPE_CHECKING:
     from infrahub.storage import InfrahubObjectStorage
 
 RENDER_FAILURE_MESSAGE_MAX_LENGTH = 4096
+STRUCTURED_CONTENT_TYPES = frozenset({ContentType.APPLICATION_JSON.value, ContentType.APPLICATION_YAML.value})
 
 
 RENDER_SUCCEEDED_MESSAGE = "Artifact rendered successfully"
@@ -51,8 +52,9 @@ RENDER_RESULT_FAILURE = "failure"
 
 class RenderResultPayload(BaseModel):
     status: Literal["success", "failure"]
-    content: str | dict[str, Any] | None = Field(
-        default=None, description="Rendered content, required when the status is success"
+    content: str | dict[str, Any] | list[Any] | None = Field(
+        default=None,
+        description="Rendered content, required when the status is success; an object or a list only for JSON or YAML",
     )
     content_type: str | None = Field(
         default=None, description="When present, must equal the content type of the artifact definition"
@@ -149,6 +151,10 @@ class RenderResultAcceptor:
                 if body.content_type is not None and body.content_type != content_type:
                     raise RenderResultInvalidError(
                         f"content_type {body.content_type} does not match the artifact definition ({content_type})"
+                    )
+                if not isinstance(body.content, str) and content_type not in STRUCTURED_CONTENT_TYPES:
+                    raise RenderResultInvalidError(
+                        f"content must be a string for the content type of the artifact definition ({content_type})"
                     )
                 content = format_artifact_content(content=body.content, content_type=content_type)
                 size = len(content.encode("utf-8"))

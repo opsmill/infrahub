@@ -4020,11 +4020,11 @@ export interface operations {
                     status: "success" | "failure";
                     /**
                      * Content
-                     * @description Rendered content, required when the status is success
+                     * @description Rendered content, required when the status is success; an object or a list only for JSON or YAML
                      */
                     content?: string | {
                         [key: string]: unknown;
-                    } | null;
+                    } | unknown[] | null;
                     /**
                      * Content Type
                      * @description When present, must equal the content type of the artifact definition

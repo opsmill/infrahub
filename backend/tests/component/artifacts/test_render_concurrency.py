@@ -22,6 +22,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreArtifact, CoreArtifactCheck, CoreValidator
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.core.timestamp import Timestamp
 from infrahub.events.validator_action import ValidatorFailedEvent, ValidatorPassedEvent
 from infrahub.exceptions import RenderRequestNotActiveError
 from infrahub.git.models import RequestArtifactGenerate
@@ -314,6 +315,81 @@ class TestRenderConcurrency(TestInfrahubAppWithoutLocalWorkflow):
             ValidatorConclusion.SUCCESS.value if body.status == "success" else ValidatorConclusion.FAILURE.value
             for body in case.bodies
         )
+
+    async def test_callback_keeps_a_recorded_failure_and_ignores_checks_of_earlier_runs(
+        self, db: InfrahubDatabase, default_branch: Branch, dataset: dict[str, Any]
+    ) -> None:
+        branch = await create_branch(branch_name=f"pc-{uuid4().hex[:8]}", db=db)
+        proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+        await proposed_change.new(
+            db=db, name=f"render {branch.name}", source_branch=branch.name, destination_branch=default_branch.name
+        )
+        await proposed_change.save(db=db)
+        earlier_run = Timestamp()
+        started_at = Timestamp()
+        validators = []
+        for previous_conclusion, earlier_check_conclusion in (
+            (ValidatorConclusion.FAILURE, ValidatorConclusion.SUCCESS),
+            (ValidatorConclusion.UNKNOWN, ValidatorConclusion.FAILURE),
+        ):
+            validator = await Node.init(db=db, schema=InfrahubKind.ARTIFACTVALIDATOR)
+            await validator.new(
+                db=db,
+                label="Artifact Validator: device-config",
+                state=ValidatorState.IN_PROGRESS.value,
+                conclusion=previous_conclusion.value,
+                started_at=started_at.to_string(),
+                proposed_change=proposed_change,
+                definition=dataset["definition"],
+            )
+            await validator.save(db=db)
+            earlier_check = await Node.init(db=db, schema=InfrahubKind.ARTIFACTCHECK)
+            await earlier_check.new(
+                db=db,
+                name="device-config: removed target",
+                origin="render-repo",
+                kind="ArtifactDefinition",
+                validator=validator,
+                conclusion=earlier_check_conclusion.value,
+                severity="info",
+                created_at=earlier_run.to_string(),
+            )
+            await earlier_check.save(db=db)
+            validators.append(validator)
+
+        artifact = dataset["artifacts"][0]
+        for validator in validators:
+            check = await Node.init(db=db, schema=InfrahubKind.ARTIFACTCHECK)
+            await check.new(
+                db=db,
+                name=f"device-config: {artifact.id}",
+                origin="render-repo",
+                kind="ArtifactDefinition",
+                validator=validator,
+                message="waiting for external engine",
+                conclusion=ValidatorConclusion.UNKNOWN.value,
+                severity="info",
+                artifact_id=artifact.id,
+                created_at=Timestamp().to_string(),
+            )
+            await check.save(db=db)
+        render = await _mark_pending(db=db, branch=branch, artifact_id=artifact.id)
+
+        async with db.start_session() as session:
+            await self._acceptor(db=session, event_service=MemoryInfrahubEvent()).accept_render_result(
+                render_id=render.render_id,
+                claims=render.claims,
+                body=RenderResultPayload(status="success", content="hostname edge-01\n"),
+            )
+
+        conclusions = []
+        for validator in validators:
+            stored = await registry.manager.get_one_by_id_or_default_filter(
+                db=db, id=validator.id, kind=CoreValidator, branch=default_branch
+            )
+            assert stored.state.get_value() == ValidatorState.COMPLETED.value
+            conclusions.append(stored.conclusion.get_value())
+        assert conclusions == [ValidatorConclusion.FAILURE.value, ValidatorConclusion.SUCCESS.value]
 
 
 async def _mark_pending(db: InfrahubDatabase, branch: Branch, artifact_id: str) -> PendingRender:

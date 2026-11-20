@@ -9,7 +9,7 @@ from infrahub import config
 from infrahub.artifacts.models import CheckArtifactCreate
 from infrahub.artifacts.render_request import request_external_render
 from infrahub.artifacts.render_result import RENDER_FAILED_MESSAGE, RENDER_SUCCEEDED_MESSAGE
-from infrahub.core.constants import InfrahubKind, ValidatorConclusion
+from infrahub.core.constants import ArtifactStatus, InfrahubKind, ValidatorConclusion
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.checks_runner import CheckPending, CheckResult
 from infrahub.git.repository import get_initialized_repo
@@ -72,7 +72,7 @@ async def create(model: CheckArtifactCreate) -> CheckResult:
         conclusion = ValidatorConclusion.FAILURE
         check_message += f": {exc!s}"
 
-    await _write_check(
+    await write_artifact_check(
         client=client,
         model=model,
         conclusion=conclusion,
@@ -87,7 +87,7 @@ async def _request_external_render(client: InfrahubClient, model: CheckArtifactC
     artifact, _ = await define_artifact(model=model)
     artifact_result = ArtifactCheckResult(artifact_id=artifact.id)
     # The check is stored before the request is emitted so that the engine's reply always finds it.
-    await _write_check(
+    await write_artifact_check(
         client=client,
         model=model,
         conclusion=ValidatorConclusion.UNKNOWN,
@@ -95,31 +95,38 @@ async def _request_external_render(client: InfrahubClient, model: CheckArtifactC
         message=WAITING_FOR_EXTERNAL_ENGINE_MESSAGE,
         artifact_result=artifact_result,
     )
-    request = await request_external_render(
-        client=client,
-        event_service=await get_event_service(),
-        artifact=artifact,
-        model=model,
-        transformation_name=model.transformation_name,
-        transformation_version=model.transformation_version,
-        public_url=config.SETTINGS.main.public_url,
-        max_event_size_bytes=get_current_settings().server.events.maximum_size_bytes,
-    )
-    if request.error is None:
+    # Check boundary: a failure after the waiting check is stored must conclude it, or it stays unknown.
+    try:
+        request = await request_external_render(
+            client=client,
+            event_service=await get_event_service(),
+            artifact=artifact,
+            model=model,
+            transformation_name=model.transformation_name,
+            transformation_version=model.transformation_version,
+            public_url=config.SETTINGS.main.public_url,
+            max_event_size_bytes=get_current_settings().server.events.maximum_size_bytes,
+        )
+        error = request.error
+    except Exception as exc:  # noqa: BLE001
+        artifact.status.value = ArtifactStatus.ERROR.value
+        await artifact.save()
+        error = str(exc)
+    if error is None:
         return CheckPending.PENDING
 
-    await _write_check(
+    await write_artifact_check(
         client=client,
         model=model,
         conclusion=ValidatorConclusion.FAILURE,
         severity="critical",
-        message=f"{RENDER_FAILED_MESSAGE}: {request.error}",
+        message=f"{RENDER_FAILED_MESSAGE}: {error}",
         artifact_result=artifact_result,
     )
     return ValidatorConclusion.FAILURE
 
 
-async def _write_check(
+async def write_artifact_check(
     client: InfrahubClient,
     model: CheckArtifactCreate,
     conclusion: ValidatorConclusion,

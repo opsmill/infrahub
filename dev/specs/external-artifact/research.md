@@ -137,7 +137,7 @@ The Prefect UI and API remain reachable only by operators of the deployment.
 ## R12. Failing before emitting
 
 **Decision**: Before emitting, the render request sets the artifact to `Error` with a specific message, and emits nothing, in these cases:
-- No active webhook has `event_type` `infrahub.artifact.render_requested` or `all`, and a branch scope that matches. Message: "no webhook subscribed to infrahub.artifact.render_requested".
+- No active webhook has `event_type` exactly `infrahub.artifact.render_requested`, a branch scope that matches, and a `node_kind` that is empty or equal to the target kind. A webhook subscribed to `all` does not count, because it gets no render token. Message: "no webhook subscribed to infrahub.artifact.render_requested".
 - `main.public_url` is not set. Message: "main.public_url must be set for external transformations".
 - The serialized event exceeds the size limit (R9).
 

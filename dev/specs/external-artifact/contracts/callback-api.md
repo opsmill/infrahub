@@ -32,7 +32,7 @@ Failure body:
 | Field | Required | Rules |
 |-------|----------|-------|
 | `status` | yes | `success` or `failure`. |
-| `content` | when `status = success` | UTF-8 text. JSON content types accept a JSON value, which is serialized as internal artifacts are today. Size at most `StorageSettings.max_file_size`. |
+| `content` | when `status = success` | UTF-8 text. The JSON and YAML content types also accept an object or a list, which is serialized as internal artifacts are today; any other content type refuses an object or a list with 400. Size at most `StorageSettings.max_file_size`. |
 | `content_type` | no | When present, it must equal the artifact definition's `content_type`. |
 | `message` | when `status = failure` | At most 4096 characters, stored on the artifact check. |
 

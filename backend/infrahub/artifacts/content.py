@@ -21,10 +21,10 @@ log = get_logger()
 
 
 def format_artifact_content(content: Any, content_type: str) -> str:
-    """Return the text stored for rendered content, serializing a mapping when the content type is JSON or YAML."""
-    if content_type == ContentType.APPLICATION_JSON.value and isinstance(content, dict):
+    """Return the text stored for rendered content, serializing a mapping or a list for JSON or YAML."""
+    if content_type == ContentType.APPLICATION_JSON.value and isinstance(content, dict | list):
         return ujson.dumps(content, indent=2)
-    if content_type == ContentType.APPLICATION_YAML.value and isinstance(content, dict):
+    if content_type == ContentType.APPLICATION_YAML.value and isinstance(content, dict | list):
         return yaml.dump(content, indent=2)
     return str(content)
 

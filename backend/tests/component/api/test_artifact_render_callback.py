@@ -71,6 +71,14 @@ REFUSED_BODY_TEST_CASES = [
         body={"status": "success", "content": RENDERED, "content_type": "application/json"},
         expected_status=400,
     ),
+    RefusedCallbackTestCase(
+        name="mapping_for_a_text_definition",
+        body={"status": "success", "content": {"hostname": "edge-01"}},
+        expected_status=400,
+    ),
+    RefusedCallbackTestCase(
+        name="list_for_a_text_definition", body={"status": "success", "content": ["edge-01"]}, expected_status=400
+    ),
     RefusedCallbackTestCase(name="failure_without_message", body={"status": "failure"}, expected_status=400),
     RefusedCallbackTestCase(name="unknown_status", body={"status": "done", "content": RENDERED}, expected_status=400),
 ]

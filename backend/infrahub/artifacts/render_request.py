@@ -26,7 +26,6 @@ if TYPE_CHECKING:
     from infrahub.services.adapters.event import InfrahubEventService
 
 RENDER_CALLBACK_PATH = "/api/artifact/render/{render_id}"
-WEBHOOK_EVENT_TYPE_ALL = "all"
 
 NO_SUBSCRIBED_WEBHOOK_MESSAGE = f"no webhook subscribed to {EventType.ARTIFACT_RENDER_REQUESTED.value}"
 PUBLIC_URL_MISSING_MESSAGE = "main.public_url must be set for external transformations"
@@ -57,7 +56,9 @@ async def request_external_render(
     is emitted.
     """
     async with artifact_render_lock(branch=model.branch_name, artifact_id=artifact.id):
-        if not await _has_subscribed_webhook(client=client, branch_name=model.branch_name):
+        if not await _has_subscribed_webhook(
+            client=client, branch_name=model.branch_name, target_kind=model.target_kind
+        ):
             return await _fail(artifact=artifact, model=model, message=NO_SUBSCRIBED_WEBHOOK_MESSAGE)
         if not public_url:
             return await _fail(artifact=artifact, model=model, message=PUBLIC_URL_MISSING_MESSAGE)
@@ -113,11 +114,20 @@ async def request_external_render(
         return RenderRequestResult(render_id=render_id)
 
 
-async def _has_subscribed_webhook(client: InfrahubClient, branch_name: str) -> bool:
-    webhooks = await client.filters(kind=CoreWebhook, active__value=True, branch=registry.default_branch)
+async def _has_subscribed_webhook(client: InfrahubClient, branch_name: str, target_kind: str) -> bool:
+    """Return whether an active webhook subscribed to render requests receives this one.
+
+    Only such a webhook gets a render token, so a webhook subscribed to all events does not count.
+    """
+    webhooks = await client.filters(
+        kind=CoreWebhook,
+        active__value=True,
+        event_type__value=EventType.ARTIFACT_RENDER_REQUESTED.value,
+        branch=registry.default_branch,
+    )
     is_default_branch = branch_name == registry.default_branch
     for webhook in webhooks:
-        if webhook.event_type.value not in {EventType.ARTIFACT_RENDER_REQUESTED.value, WEBHOOK_EVENT_TYPE_ALL}:
+        if webhook.node_kind.value and webhook.node_kind.value != target_kind:
             continue
         match webhook.branch_scope.value:
             case "all_branches":

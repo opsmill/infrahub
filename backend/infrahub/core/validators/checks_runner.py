@@ -109,8 +109,9 @@ async def recompute_validator(
 ) -> None:
     """Complete the validator from its stored checks once none of them is still waiting for a conclusion.
 
-    Sends the failed validator event only when the stored conclusion was not already a failure, since that event
-    was sent when the first check failed.
+    Only checks written since the validator started count, apart from checks still waiting, and a failure the
+    validator already recorded is kept. Sends the failed validator event only when the stored conclusion was not
+    already a failure, since that event was sent when the first check failed.
     """
     async with validator_lock(validator_id=validator_id):
         validator = await registry.manager.get_one(db=db, id=validator_id, kind=CoreValidatorNode)
@@ -120,11 +121,19 @@ async def recompute_validator(
         conclusions = {check.get_attribute("conclusion").get_value() for check in checks.values()}
         if ValidatorConclusion.UNKNOWN.value in conclusions:
             return
+        started_at = validator.started_at.value
+        if started_at:
+            conclusions = {
+                check.get_attribute("conclusion").get_value()
+                for check in checks.values()
+                if check.created_at.value and Timestamp(check.created_at.value) >= Timestamp(started_at)
+            }
 
         previous_conclusion = validator.get_attribute("conclusion").get_value()
         conclusion = (
             ValidatorConclusion.FAILURE
             if ValidatorConclusion.FAILURE.value in conclusions
+            or previous_conclusion == ValidatorConclusion.FAILURE.value
             else ValidatorConclusion.SUCCESS
         )
         validator.get_attribute("state").value = ValidatorState.COMPLETED.value

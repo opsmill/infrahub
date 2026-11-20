@@ -17,8 +17,9 @@ selection (generate / proposed-change check / post-merge)
 
 `artifacts/render_request.py::request_external_render` runs for both entry points: `git/tasks.py::generate_artifact` (manual generation, post-merge regeneration, version change) and `artifacts/tasks.py::_request_external_render` (proposed-change artifact check).
 
-- The check path writes the check with conclusion `unknown` and message `waiting for external engine` *before* emitting, so the callback always finds it. The check returns `CheckPending.PENDING`, and `core/validators/checks_runner.py::run_checks_and_update_validator` leaves the validator in progress; the callback or the sweep completes it through `recompute_validator`.
-- The artifact is set to `Error` without emitting when no active `CoreWebhook` on the default branch has event type `infrahub.artifact.render_requested` (or `all`) and a `branch_scope` covering the artifact's branch, when `main.public_url` is not set, or when the serialized event exceeds Prefect's `server.events.maximum_size_bytes`. Prefect refuses a larger event, so the check is done before sending.
+- For an external definition, `proposed_change/tasks.py::validate_artifacts_generation` writes every target's check with conclusion `unknown` before any check flow runs, so an early callback cannot complete the validator while other targets' checks do not exist yet. A check flow that raises or times out has its check written as `failure` by the same function.
+- The check path writes the check with conclusion `unknown` and message `waiting for external engine` *before* emitting, so the callback always finds it. The check returns `CheckPending.PENDING`, and `core/validators/checks_runner.py::run_checks_and_update_validator` leaves the validator in progress; the callback or the sweep completes it through `recompute_validator`. `recompute_validator` counts only checks created since the validator's `started_at` (plus every check still `unknown`) and never replaces a `failure` the validator already recorded.
+- The artifact is set to `Error` without emitting when no active `CoreWebhook` on the default branch has event type exactly `infrahub.artifact.render_requested`, a `branch_scope` covering the artifact's branch and a `node_kind` that is empty or equal to the target kind, when `main.public_url` is not set, or when the serialized event exceeds Prefect's `server.events.maximum_size_bytes`. Prefect refuses a larger event, so the check is done before sending.
 - The deadline is `now + transformation timeout`. The SDK default for `external_transforms[].timeout` is 600 s; internal transformations default to 60 s.
 - `render_request_id` and `render_deadline` on `CoreArtifact` identify the one request the artifact accepts a result for. A newer request overwrites both, which invalidates the previous one.
 
@@ -26,6 +27,8 @@ selection (generate / proposed-change check / post-merge)
 
 - The token is a JWT (`artifacts/render_token.py::mint_render_token`) signed with `security.secret_key`, with claims `type=render`, `render_id`, `artifact_id`, `branch` and `exp = deadline`.
 - Mint the token inside `webhook/tasks/process.py::webhook_post`, once per delivery attempt, never earlier: flow-run parameters, events and logs are stored and readable, so the token must not exist before the HTTP send. The flow receives only the non-secret `RenderTokenRequest`.
+- Only a webhook whose `event_type` is exactly `infrahub.artifact.render_requested` gets a token. A webhook subscribed to `all` receives the event without a token, so it cannot submit content.
+- When the delivery is a render request, `webhook_post` logs the payload with every `query_result` value replaced.
 - The token goes in the `X-Infrahub-Render-Token` header, and replaces every `${INFRAHUB_RENDER_TOKEN}` in the serialized body (`RENDER_TOKEN_PLACEHOLDER`), which is how a `CoreCustomWebhook` transformation places it in an engine-specific body.
 - `query_result` can hold data a reader has no permission to view, so `task_manager/event/query.py::PrefectEventData._readable_payload` drops it from the `Events` query, and `graphql/queries/task.py::_readable_parameters` drops it, at any depth, from the `Task` query parameters of render-request webhook runs.
 - Delivery uses the normal webhook retries (`WEBHOOK_SEND_RETRIES = 3`, 120 s apart). A timeout shorter than about 7 minutes can expire before the last attempt.
@@ -38,7 +41,7 @@ selection (generate / proposed-change check / post-merge)
 |----------|-----------|
 | 401 | Missing, badly signed, wrong `type` or expired token (`AuthorizationError`). A callback after the deadline lands here, because `exp` is the deadline |
 | 403 | Token `render_id` differs from the path (`check_render_id`) |
-| 400 | Invalid body, or `content_type` differs from the definition (`RenderResultInvalidError`) |
+| 400 | Invalid body, `content_type` differs from the definition, or `content` is an object or a list for a definition that is not JSON or YAML (`RenderResultInvalidError`) |
 | 413 | Content above `storage.max_file_size` MB (`RenderResultTooLargeError`) |
 | 409 | Token valid, but the artifact's `render_request_id` differs or `render_deadline` is cleared — replaced, or already concluded by an earlier callback or by the sweep (`RenderRequestNotActiveError`) |
 | 429 | Admission control sheds the request like any other API call |
@@ -47,7 +50,7 @@ selection (generate / proposed-change check / post-merge)
 
 ## Timeout
 
-`EXPIRE_ARTIFACT_RENDERS` (`artifacts/timeouts.py::expire_artifact_renders`) runs every minute with `CANCEL_NEW` concurrency. It lists `Pending` artifacts per branch, default branch first, and skips a `(artifact_id, render_request_id)` already seen: a branch reads the artifacts of the default branch that it did not change, so a request seen first on the default branch belongs to it and is not written again on other branches. Under the render lock it re-reads the deadline, because a callback or a new request may have replaced it, then sets `Error` and fails the waiting checks with `no response from engine`. An artifact therefore reaches `Error` up to about a minute after its deadline.
+`EXPIRE_ARTIFACT_RENDERS` (`artifacts/timeouts.py::expire_artifact_renders`) runs every minute with `CANCEL_NEW` concurrency. It lists `Pending` artifacts per branch, default branch first, and skips a `(artifact_id, render_request_id)` already seen: a branch reads the artifacts of the default branch that it did not change, so a request seen first on the default branch belongs to it and is not written again on other branches. Under the render lock it re-reads the deadline, because a callback or a new request may have replaced it, then sets `Error` and fails the waiting checks with `no response from engine`. An artifact whose definition or transformation cannot be read is still expired, with no transformation name in the log; a peer lookup error on one artifact is logged and the sweep continues. An artifact therefore reaches `Error` up to about a minute after its deadline.
 
 ## Fingerprint and regeneration
 

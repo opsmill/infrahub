@@ -9,6 +9,7 @@ from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.protocols import CoreArtifact, CoreArtifactCheck
 
 from infrahub import config
+from infrahub.artifacts import tasks as artifact_tasks
 from infrahub.artifacts.models import CheckArtifactCreate
 from infrahub.artifacts.render_request import RenderRequestResult, request_external_render
 from infrahub.artifacts.tasks import create
@@ -172,6 +173,14 @@ class TestRequestExternalRender(TestInfrahubAppWithoutLocalWorkflow):
                 branch_scope="other_branches",
             ),
             await _create_webhook(db=db, name="inactive", event_type="all", branch_scope="all_branches", active=False),
+            await _create_webhook(db=db, name="audit", event_type="all", branch_scope="all_branches"),
+            await _create_webhook(
+                db=db,
+                name="other-kind",
+                event_type=EventType.ARTIFACT_RENDER_REQUESTED.value,
+                branch_scope="all_branches",
+                node_kind="TestingRouter",
+            ),
         ]
         yield
         for webhook in webhooks:
@@ -338,6 +347,45 @@ class TestRequestExternalRender(TestInfrahubAppWithoutLocalWorkflow):
         ]
         assert [type(event) for event in event_service.events] == [ArtifactRenderRequestedEvent]
 
+    async def test_proposed_change_check_fails_when_the_request_raises(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        client: InfrahubClient,
+        dataset: dict[str, Any],
+        subscribed_webhook: Node,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        async def _raise(**kwargs: Any) -> RenderRequestResult:
+            raise RuntimeError("event broker unavailable")
+
+        monkeypatch.setattr(artifact_tasks, "request_external_render", _raise)
+        branch = await create_branch(branch_name="pc-check-raises", db=db)
+        proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+        await proposed_change.new(
+            db=db, name="check raises", source_branch=branch.name, destination_branch=default_branch.name
+        )
+        await proposed_change.save(db=db)
+        validator = await Node.init(db=db, schema=InfrahubKind.ARTIFACTVALIDATOR)
+        await validator.new(
+            db=db, label="Artifact Validator", proposed_change=proposed_change, definition=dataset["definition"]
+        )
+        await validator.save(db=db)
+        generate_model = _generate_model(dataset=dataset, branch=branch)
+        model = CheckArtifactCreate(
+            **generate_model.model_dump(exclude={"context"}), context=generate_model.context, validator_id=validator.id
+        )
+
+        result = await create(model=model)
+
+        assert result == ValidatorConclusion.FAILURE
+        checks = await client.filters(kind=CoreArtifactCheck, validator__ids=[validator.id])
+        assert [(check.conclusion.value, check.message.value) for check in checks] == [
+            (ValidatorConclusion.FAILURE.value, "Failed to render artifact: event broker unavailable")
+        ]
+        stored = await client.get(kind=CoreArtifact, id=dataset["artifact"].id, branch=branch.name)
+        assert stored.status.value == ArtifactStatus.ERROR.value
+
     async def test_generate_artifact_requests_an_external_render(
         self,
         default_branch: Branch,
@@ -359,7 +407,12 @@ class TestRequestExternalRender(TestInfrahubAppWithoutLocalWorkflow):
 
 
 async def _create_webhook(
-    db: InfrahubDatabase, name: str, event_type: str, branch_scope: str, active: bool = True
+    db: InfrahubDatabase,
+    name: str,
+    event_type: str,
+    branch_scope: str,
+    active: bool = True,
+    node_kind: str | None = None,
 ) -> Node:
     webhook = await Node.init(db=db, schema=InfrahubKind.STANDARDWEBHOOK)
     await webhook.new(
@@ -370,6 +423,7 @@ async def _create_webhook(
         event_type=event_type,
         branch_scope=branch_scope,
         active=active,
+        node_kind=node_kind,
     )
     await webhook.save(db=db)
     return webhook

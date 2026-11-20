@@ -10,6 +10,7 @@ RESPONSE_BODY_CAPTURE_LIMIT = 10_000
 
 RENDER_TOKEN_HEADER = "X-Infrahub-Render-Token"
 RENDER_TOKEN_PLACEHOLDER = "${INFRAHUB_RENDER_TOKEN}"
+QUERY_RESULT_LOG_PLACEHOLDER = "<query result not logged>"
 
 
 class WebhookAction(StrEnum):

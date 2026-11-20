@@ -1,6 +1,6 @@
 # Contract: Render request delivered to the engine
 
-Infrahub emits `infrahub.artifact.render_requested` once per artifact to render. A `CoreStandardWebhook` or `CoreCustomWebhook` subscribed to that event type delivers it to the engine.
+Infrahub emits `infrahub.artifact.render_requested` once per artifact to render. A `CoreStandardWebhook` or `CoreCustomWebhook` subscribed to exactly that event type delivers it to the engine. A webhook subscribed to `all` also receives the event, but without a render token, and does not count as a render engine. A webhook with a `node_kind` receives only render requests whose target is of that kind.
 
 ## Body without a webhook transformation
 
@@ -39,7 +39,7 @@ The `Events` GraphQL query returns this event without `data.query_result`, so th
 
 | Header | Value |
 |--------|-------|
-| `X-Infrahub-Render-Token` | Render token, minted on each delivery attempt and valid until `deadline`. |
+| `X-Infrahub-Render-Token` | Render token, minted on each delivery attempt and valid until `deadline`. Sent only by a webhook whose `event_type` is exactly `infrahub.artifact.render_requested`. |
 | `webhook-id`, `webhook-timestamp`, `webhook-signature` | Existing signature headers, present when the webhook has a `shared_key`. |
 | Custom headers | Existing `CoreWebhook.headers`. |
 

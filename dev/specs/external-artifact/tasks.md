@@ -125,7 +125,7 @@ description: "Task list for artifacts rendered by an external engine"
 ### Implementation for User Story 1
 
 - [X] T017 [US1] Create `backend/infrahub/artifacts/render_request.py` with `request_external_render(...)`. Under the artifact render lock (T010) it:
-  1. checks for an active webhook subscribed to `infrahub.artifact.render_requested` or `all` with a matching branch scope, and checks that `main.public_url` is set;
+  1. checks for an active webhook subscribed to exactly `infrahub.artifact.render_requested` with a matching branch scope and node kind, and checks that `main.public_url` is set;
   2. runs `client.query_gql_query(name=query_id, variables=..., update_group=True, subscribers=[artifact.id], branch_name=..., timeout=...)`;
   3. builds the event, measures its serialized size against the Prefect event size limit, and fails fast when it is over;
   4. writes `status=Pending`, a new UUID in `render_request_id`, and `render_deadline = now + transformation timeout`;

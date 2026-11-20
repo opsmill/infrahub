@@ -30,6 +30,8 @@ from pydantic import BaseModel
 
 from infrahub import config, lock
 from infrahub.artifacts.models import CheckArtifactCreate
+from infrahub.artifacts.render_result import RENDER_FAILED_MESSAGE
+from infrahub.artifacts.tasks import WAITING_FOR_EXTERNAL_ENGINE_MESSAGE, ArtifactCheckResult, write_artifact_check
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -886,7 +888,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
     if managed_branch:
         log.info("Query, definition or repository file change detected, all artifacts will be processed")
 
-    checks: list[Coroutine[Any, Any, CheckResult]] = []
+    check_models: list[CheckArtifactCreate] = []
 
     for relationship in group.members.peers:
         member = relationship.peer
@@ -925,11 +927,23 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
                 transformation_version=model.artifact_definition.transformation_version,
             )
 
-            checks.append(
-                get_workflow().execute_workflow(
-                    workflow=GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE, context=context, parameters={"model": check_model}
-                )
+            check_models.append(check_model)
+
+    if model.artifact_definition.transform_kind == InfrahubKind.TRANSFORMEXTERNAL:
+        # Every check exists, waiting, before any runs, so an early engine reply cannot complete the validator
+        # while the checks of other targets are not stored yet.
+        for check_model in check_models:
+            await write_artifact_check(
+                client=client,
+                model=check_model,
+                conclusion=ValidatorConclusion.UNKNOWN,
+                severity="info",
+                message=WAITING_FOR_EXTERNAL_ENGINE_MESSAGE,
+                artifact_result=ArtifactCheckResult(artifact_id=check_model.artifact_id),
             )
+    checks: list[Coroutine[Any, Any, CheckResult]] = [
+        _run_artifact_check(client=client, model=check_model, context=context) for check_model in check_models
+    ]
 
     event_service = await get_event_service()
     pending = await run_checks_and_update_validator(
@@ -941,9 +955,30 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
     )
     if pending:
         # A check concluded before the loop above ended found the validator still running, so complete it here.
-        await recompute_validator(
-            db=database, event_service=event_service, validator_id=validator.id, context=context.to_event_context()
+        async with database.start_session() as db:
+            await recompute_validator(
+                db=db, event_service=event_service, validator_id=validator.id, context=context.to_event_context()
+            )
+
+
+async def _run_artifact_check(
+    client: InfrahubClient, model: CheckArtifactCreate, context: InfrahubContext
+) -> CheckResult:
+    """Run one artifact check, storing a failed check when its flow raises or times out so the failure is kept."""
+    try:
+        return await get_workflow().execute_workflow(
+            workflow=GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE, context=context, parameters={"model": model}
         )
+    except Exception as exc:
+        await write_artifact_check(
+            client=client,
+            model=model,
+            conclusion=ValidatorConclusion.FAILURE,
+            severity="critical",
+            message=f"{RENDER_FAILED_MESSAGE}: {exc}",
+            artifact_result=ArtifactCheckResult(artifact_id=model.artifact_id),
+        )
+        raise
 
 
 @flow(

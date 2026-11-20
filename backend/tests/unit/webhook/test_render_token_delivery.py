@@ -49,11 +49,11 @@ def _use_webhook(monkeypatch: pytest.MonkeyPatch, webhook: Webhook) -> None:
     monkeypatch.setattr(process, "_resolve_webhook", _resolve)
 
 
-def _webhook(shared_key: str | None = None) -> StandardWebhook:
+def _webhook(shared_key: str | None = None, event_type: str = RENDER_REQUESTED) -> StandardWebhook:
     return StandardWebhook(
         name="engine",
         url="https://engine.example/render",
-        event_type=RENDER_REQUESTED,
+        event_type=event_type,
         validate_certificates=False,
         shared_key=shared_key,
     )
@@ -136,6 +136,47 @@ async def test_other_deliveries_carry_no_token(monkeypatch: pytest.MonkeyPatch, 
         "data": {"note": "${INFRAHUB_RENDER_TOKEN}"},
     }
     assert recording_http.posted["headers"] == {"Accept": "application/json", "Content-Type": "application/json"}
+
+
+async def test_webhook_subscribed_to_all_events_gets_no_token(
+    monkeypatch: pytest.MonkeyPatch, recording_http: _RecordingHTTP
+) -> None:
+    _use_webhook(monkeypatch, _webhook(event_type="all"))
+    payload = {"event": RENDER_REQUESTED, "data": {"note": "${INFRAHUB_RENDER_TOKEN}"}}
+
+    await webhook_post(
+        webhook_id="id-1",
+        webhook_kind="CoreStandardWebhook",
+        webhook_name="audit",
+        payload=payload,
+        attempt=1,
+        render_request=_render_request(),
+    )
+
+    assert recording_http.posted["json"] == payload
+    assert recording_http.posted["headers"] == {"Accept": "application/json", "Content-Type": "application/json"}
+
+
+async def test_render_request_query_result_is_sent_but_never_logged(
+    monkeypatch: pytest.MonkeyPatch, recording_http: _RecordingHTTP, caplog: pytest.LogCaptureFixture
+) -> None:
+    _use_webhook(monkeypatch, _webhook())
+    payload = {"event": RENDER_REQUESTED, "data": {"render_id": "render-1", "query_result": {"secret": "s3cr3t"}}}
+
+    with caplog.at_level(logging.DEBUG, logger=LOGGER_NAME):
+        await webhook_post(
+            webhook_id="id-1",
+            webhook_kind="CoreStandardWebhook",
+            webhook_name="engine",
+            payload=payload,
+            attempt=1,
+            render_request=_render_request(),
+        )
+
+    assert recording_http.posted["json"] == payload
+    messages = [record.getMessage() for record in caplog.records]
+    assert len(messages) == 2
+    assert all("s3cr3t" not in message and "render-1" in message for message in messages)
 
 
 def test_render_request_is_read_only_from_render_requested_events() -> None:

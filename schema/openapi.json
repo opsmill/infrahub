@@ -240,10 +240,14 @@
                                                 "type": "object"
                                             },
                                             {
+                                                "items": {},
+                                                "type": "array"
+                                            },
+                                            {
                                                 "type": "null"
                                             }
                                         ],
-                                        "description": "Rendered content, required when the status is success",
+                                        "description": "Rendered content, required when the status is success; an object or a list only for JSON or YAML",
                                         "title": "Content"
                                     },
                                     "content_type": {

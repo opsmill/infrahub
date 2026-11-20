@@ -101,7 +101,14 @@ class TestRenderTimeouts(TestInfrahubAppWithoutLocalWorkflow):
             await artifact.save(db=db)
             artifacts.append(artifact)
 
-        return {"definition": definition, "artifacts": artifacts}
+        return {
+            "definition": definition,
+            "artifacts": artifacts,
+            "devices": devices,
+            "query": query,
+            "repo": repo,
+            "group": group,
+        }
 
     async def test_sweep_fails_only_the_overdue_render_and_its_check(
         self,
@@ -189,6 +196,56 @@ class TestRenderTimeouts(TestInfrahubAppWithoutLocalWorkflow):
         assert response.status_code == 409
         after_callback = await _get_artifact(db=db, branch=branch, artifact_id=overdue.artifact_id)
         assert after_callback.status.get_value() == ArtifactStatus.ERROR.value
+
+    async def test_sweep_expires_an_artifact_whose_transformation_is_gone(
+        self, db: InfrahubDatabase, default_branch: Branch, dataset: dict[str, Any]
+    ) -> None:
+        orphan_transform = await Node.init(db=db, schema=InfrahubKind.TRANSFORMEXTERNAL)
+        await orphan_transform.new(
+            db=db, name="orphan", version="1.0.0", query=dataset["query"], repository=dataset["repo"]
+        )
+        await orphan_transform.save(db=db)
+        orphan_definition = await Node.init(db=db, schema=InfrahubKind.ARTIFACTDEFINITION)
+        await orphan_definition.new(
+            db=db,
+            name="orphan-config",
+            artifact_name="orphan-config",
+            targets=dataset["group"],
+            transformation=orphan_transform,
+            content_type=CONTENT_TYPE,
+            parameters={"value": {"name": "name__value"}},
+        )
+        await orphan_definition.save(db=db)
+        orphan = await Node.init(db=db, schema=InfrahubKind.ARTIFACT)
+        await orphan.new(
+            db=db,
+            name="orphan-config",
+            status="Ready",
+            object=dataset["devices"][0],
+            definition=orphan_definition,
+            content_type=CONTENT_TYPE,
+        )
+        await orphan.save(db=db)
+
+        branch = await create_branch(branch_name=f"sweep-{uuid4().hex[:8]}", db=db)
+        branch_transform = await registry.manager.get_one(db=db, id=orphan_transform.id, branch=branch)
+        assert branch_transform is not None
+        await branch_transform.delete(db=db)
+        deadline = datetime.now(UTC) + timedelta(minutes=10)
+        broken = await _mark_pending(db=db, branch=branch, artifact_id=orphan.id, deadline=deadline)
+        healthy = await _mark_pending(db=db, branch=branch, artifact_id=dataset["artifacts"][1].id, deadline=deadline)
+
+        timeouts = await expire_overdue_renders(
+            db=db, event_service=MemoryInfrahubEvent(), now=Timestamp((deadline + timedelta(seconds=1)).isoformat())
+        )
+
+        assert sorted(timeouts, key=lambda timeout: timeout.artifact_id == healthy.artifact_id) == [
+            RenderTimeout(artifact_id=broken.artifact_id, branch=branch.name, transformation_name=None),
+            RenderTimeout(artifact_id=healthy.artifact_id, branch=branch.name, transformation_name=TRANSFORMATION_NAME),
+        ]
+        for render in (broken, healthy):
+            expired = await _get_artifact(db=db, branch=branch, artifact_id=render.artifact_id)
+            assert expired.status.get_value() == ArtifactStatus.ERROR.value
 
 
 async def _get_artifact(db: InfrahubDatabase, branch: Branch, artifact_id: str) -> CoreArtifact:

@@ -30,6 +30,7 @@ from ..capture import CapturedHttp, build_http_capture
 from ..classifier import EXPECTED_DELIVERY_ERRORS, WebhookDeliveryError, WebhookFailureClassifier
 from ..constants import (
     CACHE_KEY_PREFIX,
+    QUERY_RESULT_LOG_PLACEHOLDER,
     RENDER_TOKEN_HEADER,
     RENDER_TOKEN_PLACEHOLDER,
     WEBHOOK_SEND_ATTEMPTS,
@@ -104,6 +105,18 @@ def render_request_from_event(event_type: str, event_data: dict[str, Any]) -> Re
     return RenderTokenRequest.model_validate(event_data)
 
 
+def _without_query_result(payload: Any) -> Any:
+    """Return `payload` with every `query_result` value replaced, since it holds the target's data."""
+    if isinstance(payload, dict):
+        return {
+            key: QUERY_RESULT_LOG_PLACEHOLDER if key == "query_result" else _without_query_result(value)
+            for key, value in payload.items()
+        }
+    if isinstance(payload, list):
+        return [_without_query_result(item) for item in payload]
+    return payload
+
+
 async def webhook_post(
     webhook_id: str,
     webhook_kind: str,
@@ -135,7 +148,10 @@ async def webhook_post(
         # The token is minted here, per attempt, so it never reaches a flow-run parameter, an event or a log line.
         sent_payload = payload
         render_token: str | None = None
-        if render_request is not None:
+        logged_payload = payload if render_request is None else _without_query_result(payload)
+        # Only an engine subscribed to render requests gets a token, so a webhook subscribed to all events cannot
+        # submit artifact content.
+        if render_request is not None and webhook.event_type == EventType.ARTIFACT_RENDER_REQUESTED.value:
             render_token = mint_render_token(**render_request.model_dump())
             sent_payload = ujson.loads(ujson.dumps(payload).replace(RENDER_TOKEN_PLACEHOLDER, render_token))
         headers = webhook.build_headers(payload=sent_payload)
@@ -147,11 +163,13 @@ async def webhook_post(
                 webhook_name=webhook_name,
                 url=url,
                 headers=redacted_headers,
-                payload=payload,
+                payload=logged_payload,
                 attempt=attempt,
             )
         )
-        log.debug(get_webhook_log_formatter().full_payload(webhook_name=webhook_name, payload=payload, attempt=attempt))
+        log.debug(
+            get_webhook_log_formatter().full_payload(webhook_name=webhook_name, payload=logged_payload, attempt=attempt)
+        )
         started = time.monotonic()
         with trace.get_tracer(__name__).start_as_current_span("webhook.post") as span:
             span.set_attribute("webhook.id", webhook_id)

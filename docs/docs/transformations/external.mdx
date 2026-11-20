@@ -81,12 +81,12 @@ A webhook delivery that fails is retried 3 times, 120 seconds apart, so the last
 
 ## Subscribe a webhook to render requests
 
-Create a webhook with the event type `infrahub.artifact.render_requested` and the URL of your engine. See [Create a webhook](../webhooks/create).
+Create a webhook with the event type `infrahub.artifact.render_requested` and the URL of your engine. Only a webhook with exactly this event type receives a render token. A webhook with the event type `all` receives the render request without a token, so it cannot send a result. See [Create a webhook](../webhooks/create).
 
 - Use a **Standard Webhook** when your engine accepts the Infrahub event body.
 - Use a **Custom Webhook** with a Python Transformation when your engine expects another body, such as an AWX job launch. See [Use a webhook Transformation to match your engine](#use-a-webhook-transformation-to-match-your-engine).
 
-Set the **Branch Scope** to include every branch on which you render artifacts, for example `all_branches`. When no active webhook for this event type covers the branch of the artifact, Infrahub sets the artifact to `Error` with the message `no webhook subscribed to infrahub.artifact.render_requested`.
+Set the **Branch Scope** to include every branch on which you render artifacts, for example `all_branches`. When you set a **Node Kind** on the webhook, it receives only the render requests of targets of that kind. When no active webhook for this event type covers the branch and the target kind of the artifact, Infrahub sets the artifact to `Error` with the message `no webhook subscribed to infrahub.artifact.render_requested`.
 
 The body sent by a standard webhook looks like this:
 
@@ -183,7 +183,7 @@ To report a failure:
 | Field | Required | Description |
 |-------|----------|-------------|
 | `status` | Yes | `success` or `failure`. |
-| `content` | When `status` is `success` | The rendered content as text. For the `application/json` and `application/yaml` content types, you can send an object instead, which Infrahub serializes. The size limit is the `storage.max_file_size` setting, 50 MB by default. |
+| `content` | When `status` is `success` | The rendered content as text. For the `application/json` and `application/yaml` content types, you can send an object or a list instead, which Infrahub serializes. For other content types, Infrahub refuses an object or a list with `400`. The size limit is the `storage.max_file_size` setting, 50 MB by default. |
 | `content_type` | No | When present, it must equal the `content_type` of the artifact definition. |
 | `message` | When `status` is `failure` | Why the render failed, at most 4096 characters. Infrahub shows it on the artifact check of the proposed change. |
 
@@ -192,7 +192,7 @@ The callback accepts only the render token. User sessions and API keys are refus
 | Response | Meaning |
 |----------|---------|
 | `204` | Infrahub accepted the result. The artifact is `Ready`, or `Error` for a failure. |
-| `400` | The body is not valid, for example `content` is missing or `content_type` does not match. |
+| `400` | The body is not valid, for example `content` is missing, `content_type` does not match, or `content` is an object for a content type other than JSON or YAML. |
 | `401` | The token is missing, not valid or expired. A callback after the `deadline` gets this response. |
 | `403` | The token was issued for another render request. |
 | `409` | A newer render request replaced this one, or the request already ended. The artifact is unchanged. |

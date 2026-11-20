@@ -36,6 +36,7 @@ from infrahub.exceptions import (
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.log import get_logger
 from infrahub.permissions.constants import PermissionDecisionFlag
+from infrahub.webhook.constants import RENDER_TOKEN_HEADER
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
 
 if TYPE_CHECKING:
@@ -47,7 +48,6 @@ if TYPE_CHECKING:
 log = get_logger()
 router = APIRouter(prefix="/artifact")
 
-RENDER_TOKEN_HEADER = "X-Infrahub-Render-Token"
 BYTES_PER_MEGABYTE = 1024 * 1024
 
 render_token_scheme = APIKeyHeader(name=RENDER_TOKEN_HEADER, auto_error=False)
