@@ -1,3 +1,4 @@
+import uuid
 from dataclasses import dataclass
 
 import pytest
@@ -6,7 +7,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.initialization import create_branch
-from infrahub.core.migrations.query.owner_set_attribute import OwnerSetKeyMigrationQuery
+from infrahub.core.migrations.schema.attribute_name_update import AttributeNameUpdateMigration
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.migrations.schema.tasks import get_derived_schema_pairs
 from infrahub.core.migrations.shared import MigrationInput
@@ -387,7 +388,27 @@ ORDER BY edge_type
     await verify_graph(db=db, kinds=["TestingGadget", "TemplateTestingGadget", "Test2Gadget", "TemplateTest2Gadget"])
 
 
-async def test_attribute_rename_reuses_the_set_that_another_vertex_of_the_node_holds_after_a_kind_change(
+def _rename_gadget_name(branch: Branch, kind: str) -> AttributeNameUpdateMigration:
+    """Rename the attribute `name` of the gadget kind to `label` in the schema of the branch, and return the migration."""
+    schema = registry.schema.get_schema_branch(name=branch.name)
+    previous_node = schema.get(name=kind)
+    previous_node.get_attribute(name="name").id = str(uuid.uuid4())
+    candidate = schema.duplicate()
+    new_node = candidate.get(name=kind)
+    new_attribute = new_node.get_attribute(name="name")
+    new_attribute.name = "label"
+    new_attribute.id = previous_node.get_attribute(name="name").id
+    candidate.set(name=kind, schema=new_node)
+    candidate.process()
+    registry.schema.set_schema_branch(name=branch.name, schema=candidate)
+    return AttributeNameUpdateMigration(
+        previous_node_schema=previous_node,
+        new_node_schema=new_node,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=kind, field_name="label"),
+    )
+
+
+async def test_attribute_rename_on_two_branches_after_a_kind_change_on_one_branch_gives_one_set(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     registry.schema.register_schema(schema=SchemaRoot(nodes=[GADGET.duplicate()]), branch=default_branch.name)
@@ -404,23 +425,18 @@ async def test_attribute_rename_reuses_the_set_that_another_vertex_of_the_node_h
     )
     branch = await create_branch(branch_name="branch2", db=db)
     await _change_gadget_namespace(db=db, branch=branch)
-    await set_owners(
-        db=db,
-        branch=branch,
-        node_id=profile.id,
-        owner_ids=(group_ids["security"],),
-        holder=HolderKey(kind=HolderKind.TARGET_SET, attribute="label"),
-    )
-
-    query = await OwnerSetKeyMigrationQuery.init(
-        db=db,
-        branch=default_branch,
-        node_kinds=["ProfileTestingGadget"],
-        set_key={"attribute": "name"},
-        new_set_key={"attribute": "label"},
-    )
-    await query.execute(db=db)
-
+    # The rename of the default branch runs after the rename of the branch, so it finds the set with the new key.
+    for migration_branch, kind in ((branch, "Test2Gadget"), (default_branch, "TestingGadget")):
+        migration = _rename_gadget_name(branch=migration_branch, kind=kind)
+        result = await migration.execute(migration_input=MigrationInput(db=db), branch=migration_branch)
+        assert not result.errors
+    renamed = {
+        HolderKey(kind=HolderKind.TARGET_SET, attribute="label"): StoredOwnerState(owner_ids=(group_ids["dc-emea"],))
+    }
+    for read_branch, kind in ((branch, "ProfileTest2Gadget"), (default_branch, "ProfileTestingGadget")):
+        assert await _read_holders(db=db, branch=read_branch, node_ids={"profile": profile.id}) == {
+            "profile": (kind, renamed)
+        }
     rows = await db.execute_query(
         query="""
 MATCH (:Node {uuid: $node_id})-[:HAS_TARGET_OWNER_SET]->(s:OwnerSet {attribute: "label"})
