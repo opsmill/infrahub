@@ -12,8 +12,8 @@ Encryption protects stored files from someone who has access to the storage, or 
 
 A key of at least 32 random characters, set to the same value on every API server. Generate it with a random generator, for example `openssl rand -hex 32`. Set it in one of two ways:
 
-- `INFRAHUB_STORAGE_ENCRYPTION_KEY`: a key used only for storage encryption. When it is set, `INFRAHUB_SECURITY_SECRET_KEY` plays no part in encryption, so changing the secret does not affect stored files. Infrahub refuses to start when this key is shorter than 32 characters or has the value from the example deployment files, and it does not fall back to `INFRAHUB_SECURITY_SECRET_KEY`.
-- `INFRAHUB_SECURITY_SECRET_KEY`: used when `INFRAHUB_STORAGE_ENCRYPTION_KEY` is not set or is empty. Infrahub refuses to start with a generated secret, with the value from the example deployment files, or with a secret shorter than 32 characters. Changing the secret ends every user session: users have to log in again, while API tokens keep working.
+- `INFRAHUB_STORAGE_ENCRYPTION_KEY`: a key used only for storage encryption. When it is set, `INFRAHUB_SECURITY_SECRET_KEY` plays no part in encryption, so changing the secret does not affect stored files. When storage encryption is enabled, Infrahub refuses to start when this key is shorter than 32 characters or has the value from the example deployment files, and it does not fall back to `INFRAHUB_SECURITY_SECRET_KEY`.
+- `INFRAHUB_SECURITY_SECRET_KEY`: used when `INFRAHUB_STORAGE_ENCRYPTION_KEY` is not set or is empty. When storage encryption is enabled, Infrahub refuses to start with a generated secret, with the value from the example deployment files, or with a secret shorter than 32 characters. Changing the secret ends every user session: users have to log in again, while API tokens keep working.
 
 :::warning
 The encryption key is never stored: Infrahub derives it from `INFRAHUB_STORAGE_ENCRYPTION_KEY`, or from `INFRAHUB_SECURITY_SECRET_KEY` when no dedicated key is set, when it starts. Keep that value in your secrets manager. Without it, encrypted files cannot be recovered, even from a backup.
