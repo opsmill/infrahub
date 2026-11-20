@@ -1,9 +1,9 @@
 ---
-name: commit
+name: opsmill-dev-commit
 description: >-
   Stages and commits the current changes onto a safe working branch, enforcing branch discipline
   and optionally pushing upstream. TRIGGER when: the user wants to commit, save, or check in the
-  current changes. DO NOT TRIGGER when: opening a pull request → pr.
+  current changes. DO NOT TRIGGER when: opening a pull request → opsmill-dev-pr.
 argument-hint: Optional `push` to push the branch upstream after committing.
 compatibility: Requires a Git working tree.
 metadata:

@@ -138,11 +138,9 @@ Run the specific test the test-writer wrote, using the same runner they used (th
 file tells you which).
 
 - If the test still FAILS, revisit your fix. Do NOT proceed until it passes.
+- Keep the test-run output in your report; "the test passes" without the run is not evidence.
 - Before continuing, verify `git diff` shows **no changes to the test file(s)** from the
   test-writer's PR. If you accidentally modified a test file, revert those changes.
-
-> **Gate (T2-verify · P1):** paste the actual test-run output proving PASS. Do not write "the
-> test passes" without it. See `../quality-gates/gates/primitives/evidence-before-done.md`.
 
 ### Step 6: Pre-CI checks
 
@@ -160,24 +158,13 @@ issues as separate commits (do NOT amend previous commits):
 4. **Unit tests** for the affected area (e.g. `uv run invoke backend.test-unit`,
    `npm run test`). Run the broader suite the project expects for a change of this size.
 
-Stage any files changed by generation by name -- never `git add .` / `git add -A`.
+Stage any files changed by generation by name -- never `git add .` / `git add -A`. Report each
+command's actual output (or its tail with the exit status), not a one-word "clean".
 
-**Changelog:** if the project has a changelog mechanism, add an entry for this fix:
-
-- towncrier (a `[tool.towncrier]` config or a `changelog.d`/`newsfragments` dir): create a
-  fragment named after the issue, e.g.
-  `uv run towncrier create -c "<user-facing description>" <issue_number>.fixed.md`. When there is
-  no issue number (free-text bug), towncrier has no number to anchor on -- use its issue-less
-  form with a `+` prefix, e.g. `+<key>.fixed.md` (in the free-text case `<key>` is the slug, with
-  no issue prefix).
-- a `dev/guidelines/changelog.md` describing another process: follow it.
-- otherwise a top-level `CHANGELOG.md`: add a line under the appropriate section.
-
-Write changelog text from the user's perspective, past tense, one sentence, no jargon. Commit
-the generated/edited file. If the project has no changelog mechanism, skip this and note it.
-
-> **Gate (T2-verify · P1):** paste the output of each pre-CI command (format, regenerate, lint,
-> unit). A claim of "clean" without output fails the gate.
+**Changelog:** record this fix with the `opsmill-dev-creating-changelog-entries` skill (use the
+project's bug-fix change type, e.g. `fixed`), and commit the file it stages. That skill covers
+towncrier projects only -- where there is no towncrier config, follow whatever changelog
+convention the project does have, or skip and note it.
 
 ### Step 7: Scope check
 
@@ -208,12 +195,7 @@ Step 9.
 
 ### Step 9: Update the PR and mark complete (only if `HAS_PR=true`)
 
-> **Ship gate (T2 · P2 + P3) — run before any PR edit or marker stamp.**
-> Run the ship gate per `../quality-gates/gates/primitives/independent-judge.md` (judge → on-FAIL
-> STOP → R2 degrade → write receipt on PASS, all defined there). R1 criteria: the
-> `.bug-analysis-<key>.md` file verbatim (the root cause + fix strategy — NOT your summary).
-> Artifact: `git diff <default-branch>...HEAD`. Forbidden evasions: the test-gate and fix-gate
-> evasions from `../quality-gates/gates/primitives/anti-gaming.md`.
+> **Optional independent verdict:** run `/opsmill-dev-judging-changes .bug-analysis-<key>.md` (gate kind `fix`) before editing the PR or stamping `AGENT_FIX_COMPLETE`. Only repos that enforce ship-gate receipts (`.claude/quality-gates/enabled`) require it.
 
 With the commits already pushed, finalize the PR **last**:
 
@@ -239,17 +221,6 @@ If at any point you determine that:
 then inform the developer explaining your findings and **STOP**. Do **not** stamp
 `AGENT_FIX_COMPLETE` (Step 9): an unstamped PR -- even if fix commits were already pushed in
 Step 8 -- correctly signals the fix is incomplete, and the developer can take it from there.
-
-## Quality gates
-
-Gates for this skill follow `../quality-gates/gates/gate-model.md`. `fixing-bugs` is **Tier 2** — it
-ships a fix and stamps a completion marker.
-
-| Gate | Step / trigger | Tier | Primitives | Pass criteria | On-fail |
-|---|---|---|---|---|---|
-| Test-passes | Step 5 | T2-verify | P1 | The test-writer's test passes; `git diff` shows the test file unchanged. Paste the test run. | STOP; revisit fix |
-| Pre-CI | Step 6 | T2-verify | P1 | Format/lint/unit all clean. Paste each command's output. | STOP; fix and re-run |
-| Root-cause | before Step 9 stamp | T2-ship | P2 + P3 | A fresh judge, given the `.bug-analysis-<key>.md` verbatim (R1) and `git diff <base>...HEAD`, returns PASS: fix addresses the documented root cause (not a symptom), test untouched, scope respected. | STOP; do NOT stamp `AGENT_FIX_COMPLETE`; fix and re-judge |
 
 ## Common mistakes
 
