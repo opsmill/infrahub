@@ -23,7 +23,7 @@ export function SearchAnywhereDialog({ children }: { children: React.ReactNode }
           aria-label="Search anywhere"
           data-testid="search-anywhere"
           // biome-ignore lint/nursery/noTailwindArbitraryValue: third-party: React Aria injects --visual-viewport-height at runtime; not ours to declare
-          className="no-scrollbar max-h-[calc(var(--visual-viewport-height)*0.95)] overflow-auto rounded-xl bg-background p-2 outline-hidden"
+          className="no-scrollbar flex max-h-[calc(var(--visual-viewport-height)*0.95)] flex-col overflow-auto rounded-xl bg-background p-2 outline-hidden"
         >
           {children}
         </Dialog>

@@ -22,6 +22,7 @@ from infrahub.pools.scope import Division, DivisionElementPath
 from tests.adapters.lock.timeline import LockAction
 from tests.helpers.agnostic_edges import IsReservedEdge, is_reserved_edge_on
 from tests.helpers.constants import LOCK_WAIT_TIMEOUT_SECONDS
+from tests.helpers.lock import wait_until_waiting
 from tests.helpers.number_pool import (
     SCOPED_ATTRIBUTE_NAME,
     SCOPED_CARD,
@@ -65,15 +66,19 @@ def device_payload(name: str, site: Node, pool: CoreNumberPool, role: str | None
     return payload
 
 
-async def create_device_in_own_session(db: InfrahubDatabase, branch: Branch, payload: dict[str, Any]) -> Node:
+async def create_in_own_session(db: InfrahubDatabase, branch: Branch, kind: str, payload: dict[str, Any]) -> Node:
     # A session holds a single connection, which cannot serve two racing coroutines.
     async with db.start_session() as session_db:
         return await create_node(
             data=deepcopy(payload),
             db=session_db,
             branch=branch,
-            schema=session_db.schema.get(name=SCOPED_DEVICE.kind, branch=branch, duplicate=False),
+            schema=session_db.schema.get(name=kind, branch=branch, duplicate=False),
         )
+
+
+async def create_device_in_own_session(db: InfrahubDatabase, branch: Branch, payload: dict[str, Any]) -> Node:
+    return await create_in_own_session(db=db, branch=branch, kind=SCOPED_DEVICE.kind, payload=payload)
 
 
 async def save_templated_scoped_schema(db: InfrahubDatabase) -> None:
@@ -879,3 +884,75 @@ class TestSubtemplateNamingAPool:
             (expected_lock_name, LockAction.ACQUIRE),
             (expected_lock_name, LockAction.RELEASE),
         ]
+
+
+async def test_a_template_create_and_a_create_in_the_division_of_its_second_component_both_complete(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    recording_lock_registry: RecordingLockRegistry,
+) -> None:
+    """A card created in site-b holds the site's lock while the chassis template reaches its card of site-b."""
+    await save_sited_component_pool_schema(db=db)
+    pool = await scoped_pool(db=db, name="vlan-per-site", allocation_scope=["site"], kind=SCOPED_CARD.kind)
+    site_a = await scoped_site(db=db, branch=default_branch, name="site-a")
+    site_b = await scoped_site(db=db, branch=default_branch, name="site-b")
+    chassis_a = await Node.init(db=db, schema=SCOPED_CHASSIS.kind, branch=default_branch)
+    await chassis_a.new(db=db, name="chassis-a")
+    await chassis_a.save(db=db)
+    template = await Node.init(db=db, schema=f"Template{SCOPED_CHASSIS.kind}", branch=default_branch)
+    await template.new(db=db, template_name="chassis-template")
+    await template.save(db=db)
+    for site in (site_a, site_b):
+        subtemplate = await Node.init(db=db, schema=f"Template{SCOPED_CARD.kind}", branch=default_branch)
+        await subtemplate.new(
+            db=db,
+            template_name=f"card-template-{site.get_attribute('name').value}",
+            name=f"card-{site.get_attribute('name').value}",
+            chassis=template.id,
+            site=site,
+            vlan_id_from_resource_pool={"id": pool.id},
+        )
+        await subtemplate.save(db=db)
+    site_b_lock_name = f"resource_pool.{pool.id}.{site_b.id}"
+    card_gate = recording_lock_registry.gate(f"resource_pool.{pool.id}:shared")
+    card_write = asyncio.create_task(
+        create_in_own_session(
+            db=db,
+            branch=default_branch,
+            kind=SCOPED_CARD.kind,
+            payload={
+                "name": {"value": "card-b1"},
+                "chassis": {"id": chassis_a.id},
+                "site": {"id": site_b.id},
+                "vlan_id": {"from_pool": {"id": pool.id}},
+            },
+        )
+    )
+    await card_gate.wait_reached()
+    chassis_write = asyncio.create_task(
+        create_in_own_session(
+            db=db,
+            branch=default_branch,
+            kind=SCOPED_CHASSIS.kind,
+            payload={"name": {"value": "chassis-b"}, "object_template": {"id": template.id}},
+        )
+    )
+    await wait_until_waiting(timeline=recording_lock_registry.timeline, name=site_b_lock_name)
+
+    card_gate.release()
+    _, blocked = await asyncio.wait([card_write, chassis_write], timeout=LOCK_WAIT_TIMEOUT_SECONDS)
+    for write in blocked:
+        write.cancel()
+    await asyncio.gather(*blocked, return_exceptions=True)
+
+    assert len(blocked) == 0
+    chassis = chassis_write.result()
+    cards = await NodeManager.query(
+        db=db, schema=SCOPED_CARD.kind, branch=default_branch, filters={"chassis__ids": [chassis.id]}
+    )
+    card_sites = [await card.get_relationship("site").get_peer(db=db) for card in cards]
+    assert sorted((site.id, vlan_id(card)) for site, card in zip(card_sites, cards, strict=True)) == sorted(
+        [(site_a.id, 1), (site_b.id, 2)]
+    )
+    assert vlan_id(card_write.result()) == 1
