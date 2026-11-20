@@ -147,7 +147,7 @@ class ConflictsEnricher:
             selected_branch = None
         resolvable = True
         # this condition should always be true, but it's good to be explicit
-        if DiffAction.REMOVED in [base_node.action, branch_node.action]:
+        if DiffAction.REMOVED in {base_node.action, branch_node.action}:
             resolvable = False
         branch_node.conflict = EnrichedDiffConflict(
             uuid=conflict_uuid,

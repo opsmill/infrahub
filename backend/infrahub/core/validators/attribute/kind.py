@@ -68,7 +68,7 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         infrahub_attribute_class = infrahub_data_type.get_infrahub_class()
         for result in self.get_results():
             value = result.get("attribute_value")
-            if value in (None, NULL_VALUE):
+            if value in {None, NULL_VALUE}:
                 continue
             try:
                 attr_value = result.get("attribute_value")

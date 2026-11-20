@@ -323,7 +323,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             }
             for prop_diff in properties_by_type.values():
                 assert prop_diff.action is DiffAction.REMOVED
-                assert prop_diff.new_value in [None, NULL_VALUE]
+                assert prop_diff.new_value in {None, NULL_VALUE}
         relationships_by_name = {r.name: r for r in ed_209_node.relationships}
         assert set(relationships_by_name.keys()) == {"manufacturer", "owner"}
         manufacturer_rel = relationships_by_name["manufacturer"]

@@ -226,7 +226,7 @@ class Registry:
         return [
             name
             for name, branch in self.branch.items()
-            if name not in [registry.default_branch, GLOBAL_BRANCH_NAME]
+            if name not in {registry.default_branch, GLOBAL_BRANCH_NAME}
             and branch.active_schema_hash.main != default_branch.active_schema_hash.main
         ]
 

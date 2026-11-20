@@ -110,7 +110,7 @@ class ConstraintValidatorDeterminer:
         """
         if prop_name == "uniqueness_constraints":
             return self.uniqueness_scoper.requires_validation(schema_branch=schema_branch, schema=schema)
-        if prop_name in ("parent", "children"):
+        if prop_name in {"parent", "children"}:
             return self.node_diff_index.has_relationship_diff(kind=schema.kind, name=prop_name)
         return True
 
@@ -142,17 +142,17 @@ class ConstraintValidatorDeterminer:
         constraints: list[SchemaUpdateConstraintInfo] = []
         for prop_name, prop_field_info in schema.__class__.model_fields.items():
             if (
-                prop_name in ["attributes", "relationships"]
+                prop_name in {"attributes", "relationships"}
                 or not prop_field_info.json_schema_extra
                 or not isinstance(prop_field_info.json_schema_extra, dict)
             ):
                 continue
 
             prop_field_update = prop_field_info.json_schema_extra.get("update")
-            if prop_field_update not in (
+            if prop_field_update not in {
                 UpdateSupport.VALIDATE_CONSTRAINT.value,
                 UpdateSupport.MIGRATION_REQUIRED.value,
-            ):
+            }:
                 continue
 
             if getattr(schema, prop_name) is None:
@@ -235,10 +235,10 @@ class ConstraintValidatorDeterminer:
                 continue
 
             prop_field_update = prop_field_info.json_schema_extra.get("update")
-            if prop_field_update not in (
+            if prop_field_update not in {
                 UpdateSupport.VALIDATE_CONSTRAINT.value,
                 UpdateSupport.MIGRATION_REQUIRED.value,
-            ):
+            }:
                 continue
 
             if prop_value is None:

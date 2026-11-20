@@ -212,7 +212,7 @@ class SchemaUpdateValidationResult(BaseModel):
             #     pass
 
             for node_field_name, node_field_diff in schema_diff.changed.items():
-                if node_field_diff and node_field_name in ["attributes", "relationships"]:
+                if node_field_diff and node_field_name in {"attributes", "relationships"}:
                     self._process_attrs_rels(
                         schema=schema_node, node_field_name=node_field_name, node_field_diff=node_field_diff
                     )

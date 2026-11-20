@@ -56,7 +56,7 @@ def _describe_hash_diff(before: SchemaBranch, after: SchemaBranch) -> str:
             v1, v2 = dump_before.get(key), dump_after.get(key)
             if v1 == v2:
                 continue
-            if key not in ("attributes", "relationships"):
+            if key not in {"attributes", "relationships"}:
                 lines.append(f"  {key}: {v1!r} -> {v2!r}")
                 continue
             items1 = {i["name"]: i for i in v1} if v1 else {}

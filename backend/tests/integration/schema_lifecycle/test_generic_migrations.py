@@ -412,7 +412,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
     ) -> dict[str, Any]:
         schema_dict = schema_generic_with_weight_updates.copy()
         for attr in schema_dict["attributes"]:
-            if attr["name"] in ("generic_attr_text", "generic_required_attr"):
+            if attr["name"] in {"generic_attr_text", "generic_required_attr"}:
                 attr["state"] = HashableModelState.ABSENT.value
         for rel in schema_dict["relationships"]:
             if rel["name"] == "things":
@@ -439,7 +439,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
     ) -> dict[str, Any]:
         schema_dict = schema_generic_with_weight_updates.copy()
         schema_dict["attributes"] = [
-            a for a in schema_dict["attributes"] if a["name"] not in ("generic_attr_text", "generic_required_attr")
+            a for a in schema_dict["attributes"] if a["name"] not in {"generic_attr_text", "generic_required_attr"}
         ]
         schema_dict["relationships"] = [r for r in schema_dict["relationships"] if r["name"] != "things"]
         return schema_dict

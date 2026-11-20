@@ -55,7 +55,7 @@ async def wait_for_artifact_to_be_ready(
         artifact_statuses = [artifact.status.value for artifact in artifacts]
 
         if all(
-            artifact_status in [ArtifactStatus.READY.value, ArtifactStatus.ERROR.value]
+            artifact_status in {ArtifactStatus.READY.value, ArtifactStatus.ERROR.value}
             for artifact_status in artifact_statuses
         ):
             return artifacts

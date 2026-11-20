@@ -171,7 +171,7 @@ MERGE (is_visible_value:Boolean { value: $is_visible_default })
         """
         self.add_to_query(create_av_query)
 
-        if self.branch.name in [registry.default_branch, GLOBAL_BRANCH_NAME]:
+        if self.branch.name in {registry.default_branch, GLOBAL_BRANCH_NAME}:
             query = """
 // ------------
 // Create the display_label attribute with NULL value for nodes

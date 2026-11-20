@@ -113,6 +113,6 @@ class NodeSchema(GeneratedNodeSchema):
 
         """
         labels: list[str] = [self.kind] + self.inherit_from
-        if self.namespace not in ["Schema", "Internal"] and InfrahubKind.GENERICGROUP not in self.inherit_from:
+        if self.namespace not in {"Schema", "Internal"} and InfrahubKind.GENERICGROUP not in self.inherit_from:
             labels.append(InfrahubKind.NODE)
         return labels

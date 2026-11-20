@@ -92,7 +92,7 @@ class NodeDuplicateQuery(MigrationSelectionQuery):
             f"WITH peer_node, {rel_name}, active_node, new_node",
             f'WHERE type({rel_name}) = "{rel_type}"',
         ]
-        if rel_dir in [GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER]:
+        if rel_dir in {GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER}:
             subquery.append(f"""
                 CREATE (new_node)-[new_active_edge:{rel_type} $rel_props_new ]->(peer_node)
                 SET new_active_edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
@@ -105,7 +105,7 @@ class NodeDuplicateQuery(MigrationSelectionQuery):
                 SET deleted_edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
                 SET deleted_edge.hierarchy = COALESCE({rel_name}.hierarchy, NULL)
                 """)
-        elif rel_dir in [GraphRelDirection.INBOUND, GraphRelDirection.EITHER]:
+        elif rel_dir in {GraphRelDirection.INBOUND, GraphRelDirection.EITHER}:
             subquery.append(f"""
                 CREATE (new_node)<-[new_active_edge:{rel_type} $rel_props_new ]-(peer_node)
                 SET new_active_edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
@@ -127,7 +127,7 @@ class NodeDuplicateQuery(MigrationSelectionQuery):
         sub_queries_out = [
             cls._render_sub_query_per_rel_type(rel_name=rel_name, rel_type=rel_type, rel_dir=GraphRelDirection.OUTBOUND)
             for rel_type, field_info in GraphNodeRelationships.model_fields.items()
-            if field_info.default.direction in (GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER)
+            if field_info.default.direction in {GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER}
         ]
         sub_query_out = "\nUNION\n".join(sub_queries_out)
         return sub_query_out, sub_query_out_args
@@ -139,7 +139,7 @@ class NodeDuplicateQuery(MigrationSelectionQuery):
         sub_queries_in = [
             cls._render_sub_query_per_rel_type(rel_name=rel_name, rel_type=rel_type, rel_dir=GraphRelDirection.INBOUND)
             for rel_type, field_info in GraphNodeRelationships.model_fields.items()
-            if field_info.default.direction in (GraphRelDirection.INBOUND, GraphRelDirection.EITHER)
+            if field_info.default.direction in {GraphRelDirection.INBOUND, GraphRelDirection.EITHER}
         ]
         sub_query_in = "\nUNION\n".join(sub_queries_in)
         return sub_query_in, sub_query_in_args

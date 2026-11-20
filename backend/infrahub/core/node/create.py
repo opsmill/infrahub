@@ -203,12 +203,12 @@ async def extract_peer_data(
         rel_manager: RelationshipManager = getattr(template_peer, rel_name)
         if (
             rel_manager.schema.kind
-            not in [
+            not in {
                 RelationshipKind.COMPONENT,
                 RelationshipKind.PARENT,
                 RelationshipKind.PROFILE,
                 RelationshipKind.ATTRIBUTE,
-            ]
+            }
             or rel_manager.schema.name not in obj_peer_schema.relationship_names
         ):
             continue
@@ -218,11 +218,11 @@ async def extract_peer_data(
             relationship for relationship in await rel_manager.get_relationships(db=db) if relationship.peer_id
         ]
         peer_ids = [relationship.peer_id for relationship in relationships]
-        if rel_manager.schema.kind in [
+        if rel_manager.schema.kind in {
             RelationshipKind.COMPONENT,
             RelationshipKind.PARENT,
             RelationshipKind.PROFILE,
-        ] and peer_ids == [current_template.id]:
+        } and peer_ids == [current_template.id]:
             # This relationship points back at the template being applied, so the peer on the new
             # object is the node created from that template — which the caller holds. Hand the node
             # over, so every step that needs the peer already has it.

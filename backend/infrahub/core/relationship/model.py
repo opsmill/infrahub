@@ -271,7 +271,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
     def _process_dict_data(self, data: dict) -> None:
         for key, value in data.items():
-            if key in ["peer", "id"]:
+            if key in {"peer", "id"}:
                 self.set_peer(value=value)
             elif key == "hfid" and self.peer_id is None:
                 self.peer_hfid = value

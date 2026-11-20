@@ -129,7 +129,7 @@ class TestSchemaLifecycleRelRemoveDefaultBranchTemplateProfile(TestSchemaLifecyc
         """TestingTag with persons and categories marked as absent."""
         schema = copy.deepcopy(schema_tag_base)
         for rel in schema["relationships"]:
-            if rel["name"] in ("persons", "categories"):
+            if rel["name"] in {"persons", "categories"}:
                 rel["state"] = "absent"
         return schema
 

@@ -767,7 +767,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
                 continue
             local_value = local_text_values[field_name]
             # keep current local value if it's already None or ""
-            setattr(self, field_name, local_value if local_value in (None, "") else None)
+            setattr(self, field_name, local_value if local_value in {None, ""} else None)
 
         return self
 

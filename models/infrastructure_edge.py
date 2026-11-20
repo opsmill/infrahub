@@ -1598,7 +1598,7 @@ async def generate_site(
                     # TODO: Refactor that part for the sake of readability
                     address = f"{str(next(peer_network_hosts[device._idx][intf_idx]))}/31"
 
-                if intf_role in ["upstream", "peering"]:
+                if intf_role in {"upstream", "peering"}:
                     prefix_identifier = f"{intf_role}: {intf.name.value}.{device_name}"
                     subnet = await client.allocate_next_ip_prefix(
                         kind=IpamIPPrefix,
@@ -1630,7 +1630,7 @@ async def generate_site(
                 address_batch.add(task=ip.save, node=ip, allow_upsert=True)
 
             # Create Circuit and BGP session for upstream and peering
-            if intf_role in ["upstream", "peering"]:
+            if intf_role in {"upstream", "peering"}:
                 circuit_id_unique = str(uuid.UUID(int=abs(hash(f"{device_name}-{intf_role}-{address}"))))[24:]
                 circuit_id = f"DUFF-{circuit_id_unique}"
                 upstream_providers = ["Arelion", "Colt Technology Services"]

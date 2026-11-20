@@ -523,7 +523,7 @@ async def test_branch_node_delete_with_base_updates(
         properties_by_type = {prop.property_type: prop for prop in attribute_diff.properties}
         diff_property = properties_by_type[DatabaseEdgeType.HAS_VALUE]
         assert diff_property.action is DiffAction.REMOVED
-        assert diff_property.new_value in (None, "NULL")
+        assert diff_property.new_value in {None, "NULL"}
     assert len(node_diff.relationships) == 1
     relationship_diff = node_diff.relationships[0]
     assert relationship_diff.name == "owner"
@@ -804,7 +804,7 @@ async def test_relationship_updated_then_node_deleted(
             DatabaseEdgeType.IS_PROTECTED,
         }
 
-        if attr_diff.name in ["display_label", "human_friendly_id"]:
+        if attr_diff.name in {"display_label", "human_friendly_id"}:
             # HFID or display_label don't work with getattr
             continue
 
@@ -817,7 +817,7 @@ async def test_relationship_updated_then_node_deleted(
             assert prop_diff.previous_value in (
                 (previous_value, "NULL") if previous_value is None else (previous_value,)
             )
-            assert prop_diff.new_value in (None, "NULL")
+            assert prop_diff.new_value in {None, "NULL"}
     relationships_by_name = {r.name: r for r in car_base_diff.relationships}
     assert set(relationships_by_name.keys()) == {"owner"}
     relationship_diff = relationships_by_name["owner"]
@@ -838,7 +838,7 @@ async def test_relationship_updated_then_node_deleted(
         prop_diff = properties_by_type[prop_type]
         assert prop_diff.action is DiffAction.REMOVED
         assert prop_diff.previous_value == previous_value
-        assert prop_diff.new_value in (None, "NULL")
+        assert prop_diff.new_value in {None, "NULL"}
     person_base_diff = nodes_by_id[person_jane_main.id]
     assert person_base_diff.action is DiffAction.UPDATED
     assert person_base_diff.is_node_kind_migration is False
@@ -863,7 +863,7 @@ async def test_relationship_updated_then_node_deleted(
         prop_diff = properties_by_type[prop_type]
         assert prop_diff.action is DiffAction.REMOVED
         assert prop_diff.previous_value == previous_value
-        assert prop_diff.new_value in (None, "NULL")
+        assert prop_diff.new_value in {None, "NULL"}
 
     base_diff_root = calculated_diffs.base_branch_diff
     nodes_by_id = {n.uuid: n for n in base_diff_root.nodes}
@@ -892,7 +892,7 @@ async def test_relationship_updated_then_node_deleted(
         prop_diff = properties_by_type[prop_type]
         assert prop_diff.action is DiffAction.REMOVED
         assert prop_diff.previous_value == previous_value
-        assert prop_diff.new_value in (None, "NULL")
+        assert prop_diff.new_value in {None, "NULL"}
     added_element_diff = elements_by_peer_id[person_alfred_main.id]
     assert added_element_diff.action is DiffAction.ADDED
     properties_by_type = {p.property_type: p for p in added_element_diff.properties}
@@ -906,7 +906,7 @@ async def test_relationship_updated_then_node_deleted(
     ):
         prop_diff = properties_by_type[prop_type]
         assert prop_diff.action is DiffAction.ADDED
-        assert prop_diff.previous_value in (None, "NULL")
+        assert prop_diff.previous_value in {None, "NULL"}
         assert prop_diff.new_value == new_value
 
     person_base_diff = nodes_by_id[person_jane_main.id]
@@ -933,7 +933,7 @@ async def test_relationship_updated_then_node_deleted(
         prop_diff = properties_by_type[prop_type]
         assert prop_diff.action is DiffAction.REMOVED
         assert prop_diff.previous_value == previous_value
-        assert prop_diff.new_value in (None, "NULL")
+        assert prop_diff.new_value in {None, "NULL"}
 
 
 async def test_property_update_then_relationship_deleted(
@@ -989,7 +989,7 @@ async def test_property_update_then_relationship_deleted(
         prop_diff = properties_by_type[prop_type]
         assert prop_diff.action is DiffAction.REMOVED
         assert prop_diff.previous_value == previous_value
-        assert prop_diff.new_value in (None, "NULL")
+        assert prop_diff.new_value in {None, "NULL"}
     added_element_diff = elements_by_peer_id[person_john_main.id]
     assert added_element_diff.action is DiffAction.ADDED
     properties_by_type = {p.property_type: p for p in added_element_diff.properties}
@@ -1003,7 +1003,7 @@ async def test_property_update_then_relationship_deleted(
     ):
         prop_diff = properties_by_type[prop_type]
         assert prop_diff.action is DiffAction.ADDED
-        assert prop_diff.previous_value in (None, "NULL")
+        assert prop_diff.previous_value in {None, "NULL"}
         assert prop_diff.new_value == new_value
 
     person_removed_branch_diff = nodes_by_id[person_jane_main.id]
@@ -1030,7 +1030,7 @@ async def test_property_update_then_relationship_deleted(
         prop_diff = properties_by_type[prop_type]
         assert prop_diff.action is DiffAction.REMOVED
         assert prop_diff.previous_value == previous_value
-        assert prop_diff.new_value in (None, "NULL")
+        assert prop_diff.new_value in {None, "NULL"}
 
     person_added_branch_diff = nodes_by_id[person_john_main.id]
     assert person_added_branch_diff.action is DiffAction.UPDATED
@@ -1055,7 +1055,7 @@ async def test_property_update_then_relationship_deleted(
     ):
         prop_diff = properties_by_type[prop_type]
         assert prop_diff.action is DiffAction.ADDED
-        assert prop_diff.previous_value in (None, "NULL")
+        assert prop_diff.previous_value in {None, "NULL"}
         assert prop_diff.new_value == new_value
 
     base_diff_root = calculated_diffs.base_branch_diff
