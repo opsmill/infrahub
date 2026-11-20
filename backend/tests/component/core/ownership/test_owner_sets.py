@@ -10,8 +10,10 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.query.owner_set_attribute import OwnerSetKeyMigrationQuery
 from infrahub.core.node import Node
+from infrahub.core.ownership.fields import NODE_OWNERS_FIELD, owner_list_value
 from infrahub.core.ownership.models import NODE_HOLDER, HolderKey, HolderKind, StoredOwnerState, field_holder
 from infrahub.core.ownership.repository import OwnershipRepository
+from infrahub.core.ownership.writer import OwnershipWriter
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -141,6 +143,23 @@ async def test_write_of_a_repeated_owner_creates_one_edge(
     assert await read_owners(db=db, branch=default_branch, node_id=person.id, holder=NODE_HOLDER) == tuple(
         group_ids[1:]
     )
+
+
+async def test_writer_records_a_repeated_owner_once_in_the_changelog(
+    db: InfrahubDatabase, default_branch: Branch, person: Node, group_ids: list[str]
+) -> None:
+    owner_id = group_ids[0]
+    writer = OwnershipWriter(repository=OwnershipRepository(db=db, branch=default_branch, at=None))
+
+    await writer.apply(
+        node=person,
+        holder=NODE_HOLDER,
+        state=StoredOwnerState(owner_ids=(owner_id, owner_id)),
+        at=Timestamp(),
+        user_id=USER_ID,
+    )
+
+    assert person.node_changelog.attributes[NODE_OWNERS_FIELD].value == owner_list_value(owner_ids=(owner_id,))
 
 
 async def test_write_reuses_a_set_that_has_another_property(
