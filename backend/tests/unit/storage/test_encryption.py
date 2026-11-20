@@ -250,7 +250,7 @@ class FailingS3Storage(InfrahubS3ObjectStorage):
     """An S3 object storage whose reads fail with a given client error."""
 
     def __init__(self, error: botocore.exceptions.ClientError) -> None:
-        self._bucket = FailingBucket(error)  # type: ignore[assignment]
+        self._bucket = FailingBucket(error)
 
 
 def build_s3_storage_failing_with(path: Path, code: str) -> InfrahubObjectStorage:
@@ -377,7 +377,7 @@ def test_page_after_an_object_that_vanished_between_the_scan_and_the_read_still_
 ) -> None:
     write_listed_objects(tmp_path)
     storage = build_storage(tmp_path, encryption_enabled=True, key=KEY)
-    storage._storage._path = vanishing_directory(tmp_path, frozenset({LISTED_IDENTIFIERS[1]}))  # type: ignore[union-attr]
+    storage._storage._path = vanishing_directory(tmp_path, frozenset({LISTED_IDENTIFIERS[1]}))
 
     pages = list_pages(storage, limit=3)
 
@@ -390,7 +390,7 @@ def test_page_after_an_object_that_vanished_between_the_scan_and_the_read_still_
 def test_page_whose_objects_all_vanished_is_empty_and_points_to_the_next_page(tmp_path: Path) -> None:
     write_listed_objects(tmp_path)
     storage = build_storage(tmp_path, encryption_enabled=True, key=KEY)
-    storage._storage._path = vanishing_directory(tmp_path, frozenset(LISTED_IDENTIFIERS[:2]))  # type: ignore[union-attr]
+    storage._storage._path = vanishing_directory(tmp_path, frozenset(LISTED_IDENTIFIERS[:2]))
 
     first = storage.list_page(start_after=None, limit=2)
 
@@ -503,7 +503,7 @@ class ListingBucket:
 
 class ListingS3Storage(InfrahubS3ObjectStorage):
     def __init__(self, keys: list[str]) -> None:
-        self._bucket = ListingBucket(keys)  # type: ignore[assignment]
+        self._bucket = ListingBucket(keys)
 
 
 def test_s3_pages_cover_every_key_once_and_the_last_page_ends_exactly_at_the_limit(tmp_path: Path) -> None:

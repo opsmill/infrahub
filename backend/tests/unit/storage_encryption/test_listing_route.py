@@ -74,7 +74,7 @@ async def test_paging_the_route_reaches_every_object_when_one_vanishes_during_a_
     storage = InfrahubObjectStorage(
         settings=StorageSettings(local=FileSystemStorageSettings.model_validate({"path": tmp_path})), key=None
     )
-    storage._storage._path = vanishing_directory(tmp_path, frozenset({"obj-1"}))  # type: ignore[union-attr]
+    storage._storage._path = vanishing_directory(tmp_path, frozenset({"obj-1"}))
     monkeypatch.setattr(registry, "_storage", storage)
 
     pages = []
