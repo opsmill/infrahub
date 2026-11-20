@@ -146,7 +146,7 @@ class NodeProfilesRefresher:
                     schema=node.get_schema(), profile_ids=[rel.peer_id for rel in profile_rels if rel.peer_id]
                 )
             applier = self.applier_class(db=dbt, branch=branch, profile_data_reader=reader)
-            # Each writer of several nodes locks them in the order of their IDs, so two writers cannot deadlock.
+            # Writers of several nodes lock them sorted by ID, so two writers lock their shared nodes in one order.
             for node in sorted(nodes.values(), key=lambda node: node.get_id()):
                 profile_fields = await applier.apply_profiles(node=node)
                 if not profile_fields:

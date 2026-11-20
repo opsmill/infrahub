@@ -1467,7 +1467,7 @@ class NodeManager:
                 nodes_to_delete += list(node_map.values())
 
         if len(nodes_to_delete) > 1:
-            # Each writer of several nodes locks them in the order of their IDs, so two writers cannot deadlock.
+            # Writers of several nodes lock them sorted by ID, so two writers lock their shared nodes in one order.
             for node in sorted(nodes_to_delete, key=lambda node: node.get_id()):
                 lock_query = await NodeLockQuery.init(db=db, node=node)
                 await lock_query.execute(db=db)
