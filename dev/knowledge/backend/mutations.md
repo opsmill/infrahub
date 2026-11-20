@@ -161,6 +161,8 @@ The Profile update and upsert mutations also submit the refresh for the peers th
 
 Before the commit, `RelationshipProfileRemovalConstraint` refuses a Profile update or upsert, or a `RelationshipRemove` on a relationship of the Profile, that leaves that relationship with no peer, when a related node requires the relationship and inherits it from the Profile. This includes the Profile of a generic. The refresh flow runs after the commit, so it could not refuse the change, and it could not clear the relationship.
 
+The check reads the related nodes of the Profile on the branch of the request only. A node that another branch links to the Profile is not checked, so a merge or a rebase can bring together a Profile that no longer sets a required relationship and a node that inherits that relationship from it. When the refresh flow meets such a node, for example in the refresh after a rebase, it skips the node: the node keeps the old peer and the other old Profile values, and the flow logs a warning.
+
 These refusals do not look at the other Profiles of the node. If another Profile sets the same relationship or attribute, the refresh would apply its value, but the request is refused all the same. The node update and the Profile delete have the same limit.
 
 ### UUID vs HFID References

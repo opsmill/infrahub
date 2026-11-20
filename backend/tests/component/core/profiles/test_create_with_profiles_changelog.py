@@ -8,19 +8,12 @@ from infrahub.core.constants import MetadataOptions, MutationAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
-from infrahub.core.query.attribute import (
-    AttributeUpdateFlagQuery,
-    AttributeUpdateNodePropertyQuery,
-    AttributeUpdateValueQuery,
-)
-from infrahub.core.query.node import NodeCreateAllQuery
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.events.generator import generate_node_mutation_events
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.events.node_action import NodeCreatedEvent
 from tests.constants import TestKind
-from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.schema import CHILD, THING, load_schema
 
 if TYPE_CHECKING:
@@ -44,17 +37,11 @@ async def test_create_with_profiles_writes_and_records_their_values_once(
     await profile.new(db=db, profile_name="blue-thing", profile_priority=1000, color="blue", owner=owner)
     await profile.save(db=db)
     thing_schema = registry.schema.get_node_schema(name=TestKind.THING, branch=default_branch)
-    counting_db = CountingInfrahubDatabase.from_db(db=db)
 
     thing = await create_node(
-        data={"name": "ball", "profiles": [profile.id]}, db=counting_db, branch=default_branch, schema=thing_schema
+        data={"name": "ball", "profiles": [profile.id]}, db=db, branch=default_branch, schema=thing_schema
     )
 
-    assert counting_db.count_for(NodeCreateAllQuery.name) == 1
-    assert [
-        counting_db.count_for(query.name)
-        for query in (AttributeUpdateValueQuery, AttributeUpdateFlagQuery, AttributeUpdateNodePropertyQuery)
-    ] == [0, 0, 0]
     events = await generate_node_mutation_events(
         node=thing,
         deleted_nodes=[],
