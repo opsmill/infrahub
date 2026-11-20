@@ -34,7 +34,7 @@ THRESHOLD_VARIABLE = "MALLOC_MMAP_THRESHOLD_"
 """Environment variable with which glibc reads the same threshold at the start of the process."""
 TUNABLES_VARIABLE = "GLIBC_TUNABLES"
 TUNABLE_NAME = "glibc.malloc.mmap_threshold"
-"""The glibc tunable that sets the same threshold, inside the value of `GLIBC_TUNABLES`."""
+"""The glibc tunable that sets the same threshold. `GLIBC_TUNABLES` lists tunables as `name=value`, separated by colons."""
 
 
 class Mallopt(Protocol):
@@ -62,7 +62,9 @@ def _gnu_libc_version() -> str | None:
 
 def operator_set_threshold(environ: Mapping[str, str]) -> bool:
     """Whether the environment already sets the threshold, in which case the operator's value is kept."""
-    return THRESHOLD_VARIABLE in environ or TUNABLE_NAME in environ.get(TUNABLES_VARIABLE, "")
+    if THRESHOLD_VARIABLE in environ:
+        return True
+    return any(entry.split("=", 1)[0] == TUNABLE_NAME for entry in environ.get(TUNABLES_VARIABLE, "").split(":"))
 
 
 def set_mmap_threshold(
