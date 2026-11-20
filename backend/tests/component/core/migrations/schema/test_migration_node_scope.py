@@ -424,6 +424,48 @@ async def test_migration_task_changes_only_the_nodes_in_the_set(
     await verify_graph(db=db, kinds=WIDGET_POPULATION)
 
 
+async def test_migration_task_on_an_empty_set_changes_no_node(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset
+) -> None:
+    size = AttributeSchema(name="size", kind="Text", optional=True, branch=BranchSupportType.AWARE)
+    migration = build_attribute_add_migration(NodeAttributeAddMigration, default_branch, WIDGET_KIND, size)
+
+    at = Timestamp()
+    result = await schema_path_migrate(
+        branch=default_branch,
+        migration_name="node.attribute.add",
+        schema_path=migration.schema_path,
+        database=db,
+        at=at,
+        new_node_schema=migration.new_node_schema,
+        previous_node_schema=migration.previous_node_schema,
+        node_ids=quote([]),
+    )
+    assert result.errors == []
+    assert result.nbr_migrations_executed == 0
+
+    assert await changed_node_ids(db=db, kinds=CHECKED_KINDS, at=at) == {}
+
+    await verify_graph(db=db, kinds=WIDGET_POPULATION)
+
+
+async def test_relationship_remove_on_an_empty_set_changes_no_node(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset
+) -> None:
+    migration, _ = build_relationship_remove_params(db, default_branch, WIDGET_KIND, "gadget")
+
+    at = Timestamp()
+    result = await migration.execute(
+        migration_input=MigrationInput(db=db, at=at, node_ids=frozenset()), branch=default_branch
+    )
+    assert result.errors == []
+    assert result.nbr_migrations_executed == 0
+
+    assert await changed_node_ids(db=db, kinds=[*CHECKED_KINDS, GADGET_KIND], at=at) == {}
+
+    await verify_graph(db=db, kinds=[*WIDGET_POPULATION, GADGET_KIND])
+
+
 def test_every_data_migration_has_a_scope_case_or_ignores_the_scope() -> None:
     covered = {case.migration_class for case in SCOPE_CASES}
     uncovered = sorted(
@@ -594,17 +636,20 @@ def _inherit_generic(branch: Branch, generic: GenericSchema, kind: str) -> NodeK
     )
 
 
-async def test_node_kind_update_adds_a_newly_inherited_attribute_to_the_nodes_in_the_set(
-    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset
-) -> None:
-    nodes = selection_dataset.nodes
-    generic = GenericSchema(
+def _tagged_generic() -> GenericSchema:
+    return GenericSchema(
         name="Tagged",
         namespace="Sel",
         branch=BranchSupportType.AWARE,
         attributes=[AttributeSchema(name="status", kind="Text", default_value="active", optional=True)],
     )
-    migration = _inherit_generic(branch=default_branch, generic=generic, kind=WIDGET_KIND)
+
+
+async def test_node_kind_update_adds_a_newly_inherited_attribute_to_the_nodes_in_the_set(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset
+) -> None:
+    nodes = selection_dataset.nodes
+    migration = _inherit_generic(branch=default_branch, generic=_tagged_generic(), kind=WIDGET_KIND)
 
     at = Timestamp()
     scope_ids = _ids(nodes, {"w1", "pw1", "tw1", "b1"}) | {UNKNOWN_NODE_ID}
@@ -623,6 +668,31 @@ async def test_node_kind_update_adds_a_newly_inherited_attribute_to_the_nodes_in
         attribute_names=["status"],
     )
     assert set(holders) == _ids(nodes, {"w1", "pw1", "tw1"})
+
+    await verify_graph(db=db, kinds=WIDGET_POPULATION)
+
+
+async def test_node_kind_update_on_an_empty_set_changes_no_node(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset
+) -> None:
+    nodes = selection_dataset.nodes
+    migration = _inherit_generic(branch=default_branch, generic=_tagged_generic(), kind=WIDGET_KIND)
+
+    at = Timestamp()
+    result = await migration.execute(
+        migration_input=MigrationInput(db=db, at=at, node_ids=frozenset()), branch=default_branch
+    )
+    assert result.errors == []
+    assert result.nbr_migrations_executed == 0
+
+    assert await changed_node_ids(db=db, kinds=CHECKED_KINDS, at=at) == {}
+    holders = await _active_attribute_values_on_default_branch(
+        db=db,
+        default_branch=default_branch,
+        node_ids=_ids(nodes, {"w1", "w2", "w3", "pw1", "tw1"}),
+        attribute_names=["status"],
+    )
+    assert holders == {}
 
     await verify_graph(db=db, kinds=WIDGET_POPULATION)
 
@@ -660,9 +730,8 @@ async def servers(
     return nodes
 
 
-async def test_number_pool_attribute_add_allocates_numbers_to_the_nodes_in_the_set(
-    db: InfrahubDatabase, default_branch: Branch, servers: dict[str, Node]
-) -> None:
+def _add_rack_unit(default_branch: Branch) -> NodeAttributeAddMigration:
+    """Register the server kind with a number pool attribute and return the migration that adds it."""
     previous_schema = registry.schema.get_node_schema(name=SERVER_KIND, branch=default_branch)
     new_schema = NodeSchema(
         name="Server",
@@ -677,6 +746,20 @@ async def test_number_pool_attribute_add_allocates_numbers_to_the_nodes_in_the_s
     )
     registry.schema.set(name=SERVER_KIND, schema=new_schema, branch=default_branch.name)
     registry.schema.process_schema_branch(name=default_branch.name)
+    return migration
+
+
+async def _rack_units(db: InfrahubDatabase, default_branch: Branch, servers: dict[str, Node]) -> dict[str, Any]:
+    read = await NodeManager.get_many(db=db, ids=sorted(_ids(servers, set(servers))), branch=default_branch)
+    return {
+        str(node.get_attribute(name="name").value): node.get_attribute(name="rack_unit").value for node in read.values()
+    }
+
+
+async def test_number_pool_attribute_add_allocates_numbers_to_the_nodes_in_the_set(
+    db: InfrahubDatabase, default_branch: Branch, servers: dict[str, Node]
+) -> None:
+    migration = _add_rack_unit(default_branch=default_branch)
 
     at = Timestamp()
     scope_ids = _ids(servers, {"server-0", "server-2"}) | {UNKNOWN_NODE_ID}
@@ -688,12 +771,34 @@ async def test_number_pool_attribute_add_allocates_numbers_to_the_nodes_in_the_s
     assert await changed_node_ids(db=db, kinds=[SERVER_KIND], at=at) == {
         SERVER_KIND: _ids(servers, {"server-0", "server-2"})
     }
-    read = await NodeManager.get_many(db=db, ids=sorted(_ids(servers, set(servers))), branch=default_branch)
-    rack_units = {
-        str(node.get_attribute(name="name").value): node.get_attribute(name="rack_unit").value for node in read.values()
-    }
+    rack_units = await _rack_units(db=db, default_branch=default_branch, servers=servers)
     assert len(rack_units) == 3
     assert rack_units["server-1"] is None
     assert sorted([rack_units["server-0"], rack_units["server-2"]]) == [1, 2]
+
+    await verify_graph(db=db, kinds=[SERVER_KIND])
+
+
+async def test_number_pool_attribute_add_on_an_empty_set_allocates_no_number(
+    db: InfrahubDatabase, default_branch: Branch, servers: dict[str, Node]
+) -> None:
+    migration = _add_rack_unit(default_branch=default_branch)
+    # Every server holds the attribute row before the run, so a number given to a server outside the set is saved
+    add_rows = await NodeAttributeAddMigrationQuery01.init(db=db, branch=default_branch, migration=migration)
+    await add_rows.execute(db=db)
+
+    at = Timestamp()
+    result = await migration.execute(
+        migration_input=MigrationInput(db=db, at=at, node_ids=frozenset()), branch=default_branch
+    )
+    assert result.errors == []
+    assert result.nbr_migrations_executed == 0
+
+    assert await changed_node_ids(db=db, kinds=[SERVER_KIND], at=at) == {}
+    assert await _rack_units(db=db, default_branch=default_branch, servers=servers) == {
+        "server-0": None,
+        "server-1": None,
+        "server-2": None,
+    }
 
     await verify_graph(db=db, kinds=[SERVER_KIND])
