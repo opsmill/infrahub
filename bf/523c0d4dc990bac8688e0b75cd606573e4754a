@@ -1,0 +1,19 @@
+dev/specs/ifc-3618-schema-migration-by-node/alignment-check.md
+  s_b636cf4e853527::t_9983b428fd8809 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bf523c0d4dc990bac8688e0b75cd606573e4754a",
+  "prompts": {},
+  "sessions": {
+    "s_b636cf4e853527": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e2c2131-1be4-43e0-83d8-56224be168d9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
