@@ -40,7 +40,7 @@ INFRAHUB_DEBUG_TRACE: bool = str_to_bool(value=os.getenv("INFRAHUB_DEBUG_TRACE",
 
 DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
 MEMGRAPH_DOCKER_IMAGE = os.getenv("MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-mage:1.19-memgraph-2.19-no-ml")
-NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:2026.05.0-enterprise")
+NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:2026.05.0-community")
 MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv("MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:4.2.1-management")
 CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:8.4.0")
 
@@ -70,6 +70,7 @@ AVAILABLE_SERVICES = [
 SUPPORTED_DATABASES = [DatabaseType.MEMGRAPH.value, DatabaseType.NEO4J.value]
 
 COMPOSE_FILE_DEPS = Path("development/docker-compose-deps.yml")
+COMPOSE_FILE_NEO4J_ENTERPRISE = Path("development/docker-compose-database-neo4j-enterprise.yml")
 
 IMAGE_NAME = os.getenv("INFRAHUB_IMAGE_NAME", "registry.opsmill.io/opsmill/infrahub")
 REQUESTED_IMAGE_VER = os.getenv("INFRAHUB_IMAGE_VER")
@@ -251,6 +252,8 @@ def build_compose_files_cmd(database: str, namespace: Namespace = Namespace.DEFA
         COMPOSE_FILES = COMPOSE_FILES_MEMGRAPH.copy()
     elif database == DatabaseType.NEO4J.value:
         COMPOSE_FILES = COMPOSE_FILES_NEO4J.copy()
+        if "enterprise" in (DATABASE_DOCKER_IMAGE or NEO4J_DOCKER_IMAGE):
+            COMPOSE_FILES.append(COMPOSE_FILE_NEO4J_ENTERPRISE)
 
     if OVERRIDE_FILE.exists():
         print("!! Found an override file for docker-compose !!")
@@ -276,6 +279,8 @@ def build_dev_compose_files_cmd(database: str) -> str:
         DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_MEMGRAPH.copy()
     elif database == DatabaseType.NEO4J.value:
         DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_NEO4J.copy()
+        if "enterprise" in (DATABASE_DOCKER_IMAGE or NEO4J_DOCKER_IMAGE):
+            DEV_COMPOSE_FILES.append(COMPOSE_FILE_NEO4J_ENTERPRISE)
 
     if DEV_OVERRIDE_FILE.exists():
         print("!! Found a dev override file for docker-compose !!")
