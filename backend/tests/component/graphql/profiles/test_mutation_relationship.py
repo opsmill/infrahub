@@ -9,10 +9,17 @@ from structlog.testing import capture_logs
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.core.account import ObjectPermission
-from infrahub.core.constants import MetadataOptions, PermissionAction, PermissionDecision
+from infrahub.core.changelog.models import RelationshipCardinalityOneChangelog
+from infrahub.core.constants import (
+    MetadataOptions,
+    PermissionAction,
+    PermissionDecision,
+    RelationshipCardinality,
+    RelationshipKind,
+)
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -36,6 +43,8 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
+ROOM = NodeSchema(name="Room", namespace="Test", attributes=[AttributeSchema(name="name", kind="Text", unique=True)])
+
 DEVICE = NodeSchema(
     name="Device",
     namespace="Test",
@@ -43,6 +52,15 @@ DEVICE = NodeSchema(
     attributes=[
         AttributeSchema(name="name", kind="Text", unique=True),
         AttributeSchema(name="description", kind="Text", optional=True),
+    ],
+    relationships=[
+        RelationshipSchema(
+            name="room",
+            peer="TestRoom",
+            kind=RelationshipKind.GENERIC,
+            optional=True,
+            cardinality=RelationshipCardinality.ONE,
+        )
     ],
 )
 
@@ -55,6 +73,21 @@ SERVER = NodeSchema(
     ],
 )
 
+RACK = NodeSchema(
+    name="Rack",
+    namespace="Test",
+    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    relationships=[
+        RelationshipSchema(
+            name="room",
+            peer="TestRoom",
+            kind=RelationshipKind.GENERIC,
+            optional=False,
+            cardinality=RelationshipCardinality.ONE,
+        )
+    ],
+)
+
 RELATIONSHIP_MUTATION = """
 mutation Relationship($id: String!, $name: String!, $nodes: [RelatedNodeInput]!) {
     %(mutation)s(data: {id: $id, name: $name, nodes: $nodes}) { ok }
@@ -64,12 +97,17 @@ mutation Relationship($id: String!, $name: String!, $nodes: [RelatedNodeInput]!)
 
 @pytest.fixture
 async def device_schema(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> None:
-    await load_schema(db=db, schema=SchemaRoot(nodes=[DEVICE]), branch_name=default_branch.name)
+    await load_schema(db=db, schema=SchemaRoot(nodes=[ROOM, DEVICE]), branch_name=default_branch.name)
 
 
 @pytest.fixture
 async def server_schema(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> None:
     await load_schema(db=db, schema=SchemaRoot(nodes=[SERVER]), branch_name=default_branch.name)
+
+
+@pytest.fixture
+async def rack_schema(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> None:
+    await load_schema(db=db, schema=SchemaRoot(nodes=[ROOM, RACK]), branch_name=default_branch.name)
 
 
 @pytest.fixture
@@ -367,14 +405,28 @@ class NodeProfilesChangeTestCase:
     linked: bool
     description: str | None
     description_previous: str | None
+    has_room: bool
+    had_room: bool
 
 
 NODE_PROFILES_CHANGE_TEST_CASES: list[NodeProfilesChangeTestCase] = [
     NodeProfilesChangeTestCase(
-        name="add", mutation="RelationshipAdd", linked=False, description="from-profile", description_previous=None
+        name="add",
+        mutation="RelationshipAdd",
+        linked=False,
+        description="from-profile",
+        description_previous=None,
+        has_room=True,
+        had_room=False,
     ),
     NodeProfilesChangeTestCase(
-        name="remove", mutation="RelationshipRemove", linked=True, description=None, description_previous="from-profile"
+        name="remove",
+        mutation="RelationshipRemove",
+        linked=True,
+        description=None,
+        description_previous="from-profile",
+        has_room=False,
+        had_room=True,
     ),
 ]
 
@@ -387,6 +439,7 @@ async def test_node_profiles_change_records_the_profile_values_as_the_requesting
     editor_session: AccountSession,
     test_case: NodeProfilesChangeTestCase,
 ) -> None:
+    room = await _create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
     profile = await _create_node(
         db=db,
         branch=default_branch,
@@ -394,6 +447,7 @@ async def test_node_profiles_change_records_the_profile_values_as_the_requesting
         profile_name="profile-1",
         profile_priority=10,
         description="from-profile",
+        room=room,
     )
     device = await _create_node(
         db=db, branch=default_branch, kind="TestDevice", name="device-1", profiles=[profile] if test_case.linked else []
@@ -422,9 +476,15 @@ async def test_node_profiles_change_records_the_profile_values_as_the_requesting
     device_events = [
         event for event in events.events if isinstance(event, NodeUpdatedEvent) and event.node_id == device.id
     ]
-    assert [sorted(event.fields) for event in device_events] == [["description", "profiles"]]
+    assert [sorted(event.fields) for event in device_events] == [["description", "profiles", "room"]]
     description = device_events[0].changelog.attributes["description"]
     assert (description.value, description.value_previous) == (test_case.description, test_case.description_previous)
+    room_changelog = device_events[0].changelog.relationships["room"]
+    assert isinstance(room_changelog, RelationshipCardinalityOneChangelog)
+    assert (room_changelog.peer_id, room_changelog.peer_id_previous) == (
+        room.id if test_case.has_room else None,
+        room.id if test_case.had_room else None,
+    )
     reloaded = await NodeManager.get_one(
         db=db,
         id=device.id,
@@ -437,3 +497,69 @@ async def test_node_profiles_change_records_the_profile_values_as_the_requesting
         test_case.description,
         editor_session.account_id,
     )
+    assert [rel.peer_id for rel in await reloaded.get_relationship(name="room").get_relationships(db=db)] == (
+        [room.id] if test_case.has_room else []
+    )
+
+
+async def test_relationship_remove_refuses_the_profile_that_gives_a_node_a_required_relationship(
+    db: InfrahubDatabase, default_branch: Branch, rack_schema: None, editor_session: AccountSession
+) -> None:
+    room = await _create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
+    profile = await _create_node(
+        db=db, branch=default_branch, kind="ProfileTestRack", profile_name="profile-1", profile_priority=10, room=room
+    )
+    events = MemoryInfrahubEvent()
+    gql_params = await prepare_graphql_params(
+        db=db,
+        branch=default_branch,
+        account_session=editor_session,
+        service=await InfrahubServices.new(workflow=WorkflowRecorder(), event=events),
+    )
+    create_result = await graphql(
+        schema=gql_params.schema,
+        source="""
+        mutation Create($profile: String!) {
+            TestRackCreate(data: {name: {value: "rack-1"}, profiles: [{id: $profile}]}) { object { id } }
+        }
+        """,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"profile": profile.id},
+    )
+    assert create_result.errors is None
+    assert create_result.data
+    rack_id = create_result.data["TestRackCreate"]["object"]["id"]
+    events = MemoryInfrahubEvent()
+    gql_params = await prepare_graphql_params(
+        db=db,
+        branch=default_branch,
+        account_session=editor_session,
+        service=await InfrahubServices.new(workflow=WorkflowRecorder(), event=events),
+    )
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=RELATIONSHIP_MUTATION % {"mutation": "RelationshipRemove"},
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": rack_id, "name": "profiles", "nodes": [{"id": profile.id}]},
+    )
+
+    assert result.errors is not None
+    assert [error.message for error in result.errors] == [
+        f"Cannot remove profile '{profile.id}' because node 'TestRack(ID: {rack_id})' (ID: {rack_id}) "
+        "inherits required relationship 'room' from this profile."
+    ]
+    assert gql_params.context.background
+    await gql_params.context.background()
+    assert events.events == []
+    rack = await NodeManager.get_one(
+        db=db, branch=default_branch, id=rack_id, include_metadata=MetadataOptions.SOURCE, raise_on_error=True
+    )
+    assert [rel.peer_id for rel in await rack.get_relationship(name="profiles").get_relationships(db=db)] == [
+        profile.id
+    ]
+    assert [
+        (rel.peer_id, rel.is_from_profile) for rel in await rack.get_relationship(name="room").get_relationships(db=db)
+    ] == [(room.id, True)]

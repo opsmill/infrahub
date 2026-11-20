@@ -26,7 +26,7 @@ from infrahub.core.query.relationship import (
 )
 from infrahub.core.relationship import Relationship
 from infrahub.core.relationship.constraints.profiles_removal import RelationshipProfileRemovalConstraint
-from infrahub.core.schema import ProfileSchema
+from infrahub.core.schema import NodeSchema, ProfileSchema
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events import EventMeta
@@ -373,7 +373,7 @@ class RelationshipRemove(Mutation):
         removed_peer_ids = {
             str(node_data.get("id")) for node_data in data.get("nodes") if node_data.get("id") in existing_peers
         }
-        await _validate_profile_related_nodes_removal(
+        await _validate_profile_removal(
             graphql_context=graphql_context,
             source=source,
             relationship_name=relationship_name,
@@ -780,18 +780,26 @@ async def _detach_relationship_from_profiles(
         await rel.update(db=db, properties_to_update=["source"], data=peer_data, user_id=user_id)
 
 
-async def _validate_profile_related_nodes_removal(
+async def _validate_profile_removal(
     graphql_context: GraphqlContext, source: Node, relationship_name: str, removed_peer_ids: set[str]
 ) -> None:
     source_schema = source.get_schema()
-    if not removed_peer_ids or relationship_name != "related_nodes" or not isinstance(source_schema, ProfileSchema):
+    if not removed_peer_ids:
         return
-    constraint = await get_component_registry().get_component(
-        RelationshipProfileRemovalConstraint, db=graphql_context.db, branch=graphql_context.branch
-    )
-    await constraint.validate_related_nodes_removal(
-        profile=source, profile_schema=source_schema, node_ids=sorted(removed_peer_ids)
-    )
+    if relationship_name == "related_nodes" and isinstance(source_schema, ProfileSchema):
+        constraint = await get_component_registry().get_component(
+            RelationshipProfileRemovalConstraint, db=graphql_context.db, branch=graphql_context.branch
+        )
+        await constraint.validate_related_nodes_removal(
+            profile=source, profile_schema=source_schema, node_ids=sorted(removed_peer_ids)
+        )
+    elif relationship_name == PROFILES_RELATIONSHIP_NAME and isinstance(source_schema, NodeSchema):
+        constraint = await get_component_registry().get_component(
+            RelationshipProfileRemovalConstraint, db=graphql_context.db, branch=graphql_context.branch
+        )
+        await constraint.validate_node_profiles_removal(
+            node=source, node_schema=source_schema, profile_ids=sorted(removed_peer_ids)
+        )
 
 
 async def _submit_profile_peers_refresh(
