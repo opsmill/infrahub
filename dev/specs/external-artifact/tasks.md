@@ -22,7 +22,7 @@ description: "Task list for artifacts rendered by an external engine"
 
 **Purpose**: The `.infrahub.yml` model lives in the `python_sdk` submodule. It must land upstream before the backend can import external transformations.
 
-- [ ] T001 In `python_sdk/infrahub_sdk/schema/repository.py`, add `InfrahubExternalTransformConfig` with these fields:
+- [X] T001 In `python_sdk/infrahub_sdk/schema/repository.py`, add `InfrahubExternalTransformConfig` with these fields:
   - `name: str`
   - `query: str`
   - `version: str` (non-empty, `min_length=1`)
@@ -30,12 +30,12 @@ description: "Task list for artifacts rendered by an external engine"
   - `timeout: int = 600` (`ge=1`)
 
   Add `external_transforms: list[InfrahubExternalTransformConfig]` (default empty) to `InfrahubRepositoryConfig`, include it in the `unique_items` validator, and add `has_external_transform` / `get_external_transform` next to the existing `has_*` / `get_*` methods. Contract: [contracts/infrahub-yml.md](contracts/infrahub-yml.md).
-- [ ] T002 [P] Add SDK unit tests in `python_sdk/tests/unit/sdk/test_repository_config.py` (or the existing test module for `InfrahubRepositoryConfig`). Cover:
+- [X] T002 [P] Add SDK unit tests in `python_sdk/tests/unit/sdk/test_repository_config.py` (or the existing test module for `InfrahubRepositoryConfig`). Cover:
   - parsing `external_transforms`;
   - refusing duplicate names;
   - refusing an empty `version`;
   - the default `timeout` of 600.
-- [ ] T003 Commit the SDK change locally inside the `python_sdk` submodule, on a new submodule branch `external-artifact`, and build the backend against it. Do not push and do not open the upstream pull request: the user opens and merges it in `infrahub-sdk-python` (branch `infrahub-develop`) before the submodule pointer lands upstream (user decision, 2026-11-20).
+- [X] T003 Commit the SDK change locally inside the `python_sdk` submodule, on a new submodule branch `external-artifact`, and build the backend against it. Do not push and do not open the upstream pull request: the user opens and merges it in `infrahub-sdk-python` (branch `infrahub-develop`) before the submodule pointer lands upstream (user decision, 2026-11-20).
 
 ---
 
