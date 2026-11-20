@@ -148,6 +148,7 @@ jobs:
       - name: "Set environment variables"
         run: |
           echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+          echo NEO4J_DOCKER_IMAGE=neo4j:2026.05.0-enterprise >> $GITHUB_ENV
 
       - name: Build Demo
         run: uv run invoke dev.build
