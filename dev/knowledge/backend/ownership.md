@@ -132,9 +132,10 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
   `DeadlockDetected`. The update, upsert and delete mutations retry this error (`retry_db_transaction`), so a user
   sees a delay.
   - The cascade of `NodeManager.delete`, the profile refresh and the IPAM reconciler lock their nodes in the order
-    of the node IDs, so two of these writers do not deadlock. The cascade locks all its nodes first and then
-    deletes them in its own order, because a delete leaves out of its changelog the links that an earlier delete
-    closed.
+    of the node IDs, so two of these writers lock their shared nodes in one order. A node delete also locks its
+    peer nodes in no fixed order, so these writers can still deadlock through the peers of a deleted node. The
+    cascade locks all its nodes first and then deletes them in its own order, because a delete leaves out of its
+    changelog the links that an earlier delete closed.
   - A caller that saves several nodes in one transaction in another order can still deadlock against one of
     these writers or against another caller, for example two scripts that each call `node.save()` on the same two
     nodes in the reverse order.
