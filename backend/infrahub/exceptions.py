@@ -839,3 +839,33 @@ class ArtifactChecksumMissingError(Error):
             "so it was not served. Regenerate the artifact to restore it."
         )
         super().__init__(self.message)
+
+
+class RenderResultInvalidError(Error):
+    """The result an external engine returned for a render request is not valid."""
+
+    HTTP_CODE: int = 400
+
+    def __init__(self, message: str) -> None:
+        self.message = message
+        super().__init__(self.message)
+
+
+class RenderResultTooLargeError(Error):
+    """The content an external engine returned for a render request is larger than the storage limit."""
+
+    HTTP_CODE: int = 413
+
+    def __init__(self, size: int, limit: int) -> None:
+        self.message = f"Rendered content is {size} bytes, larger than the limit of {limit} bytes"
+        super().__init__(self.message)
+
+
+class RenderRequestNotActiveError(Error):
+    """A render result arrived for a request that a newer request replaced or that already ended."""
+
+    HTTP_CODE: int = 409
+
+    def __init__(self) -> None:
+        self.message = "This render request was replaced by a newer one or has already ended"
+        super().__init__(self.message)

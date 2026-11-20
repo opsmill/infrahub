@@ -38,6 +38,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/artifact/render/{render_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Render Result
+         * @description Accept the content, or the failure, an external engine returns for a render request.
+         *
+         *     Only the render token authenticates this request, so account sessions and API keys are refused.
+         *
+         *     Raises:
+         *         AuthorizationError: When the render token is missing or not valid.
+         *         RenderResultInvalidError: When the body is not a valid render result.
+         */
+        post: operations["submit_render_result_api_artifact_render__render_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/login": {
         parameters: {
             query?: never;
@@ -3963,6 +3989,62 @@ export interface operations {
                 content: {
                     "application/json": unknown;
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_render_result_api_artifact_render__render_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                render_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Status
+                     * @enum {string}
+                     */
+                    status: "success" | "failure";
+                    /**
+                     * Content
+                     * @description Rendered content, required when the status is success
+                     */
+                    content?: string | {
+                        [key: string]: unknown;
+                    } | null;
+                    /**
+                     * Content Type
+                     * @description When present, must equal the content type of the artifact definition
+                     */
+                    content_type?: string | null;
+                    /**
+                     * Message
+                     * @description Why the render failed, required when the status is failure
+                     */
+                    message?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

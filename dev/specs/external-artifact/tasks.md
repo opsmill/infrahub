@@ -100,7 +100,7 @@ description: "Task list for artifacts rendered by an external engine"
 
 ### Tests for User Story 1
 
-- [ ] T013 [P] [US1] Component tests for the callback endpoint in `backend/tests/component/api/test_artifact_render_callback.py`. Cover every row of the responses table in [contracts/callback-api.md](contracts/callback-api.md):
+- [X] T013 [P] [US1] Component tests for the callback endpoint in `backend/tests/component/api/test_artifact_render_callback.py`. Cover every row of the responses table in [contracts/callback-api.md](contracts/callback-api.md):
   - 204 success and 204 failure;
   - 400 missing `content`, and 400 mismatched `content_type`;
   - 401 no token, 401 expired token, 401 API key only;
@@ -132,14 +132,14 @@ description: "Task list for artifacts rendered by an external engine"
   5. emits the event, with `callback_url = <main.public_url>/api/artifact/render/<render_id>`.
 
   For each fail-fast case it sets `Error` with the exact messages from research R12 and emits nothing.
-- [ ] T018 [US1] Create `backend/infrahub/artifacts/render_result.py` with `accept_render_result(render_id, claims, body)`. Under the artifact render lock it:
+- [X] T018 [US1] Create `backend/infrahub/artifacts/render_result.py` with `accept_render_result(render_id, claims, body)`. Under the artifact render lock it:
   1. checks that `render_id == claims.render_id == artifact.render_request_id` and that `render_deadline` is set;
   2. on success: serializes the content, compares the MD5 checksum, uploads to the object store when it changed, sets `Ready`, `checksum`, `storage_id` and `content_type`, clears `render_deadline`, and emits `ArtifactCreatedEvent` / `ArtifactUpdatedEvent` when the content changed;
   3. on failure: sets `Error` and clears `render_deadline`;
   4. when a proposed-change check is linked, updates the check and calls the validator recomputation (T021).
 
   Reuse the storage logic of `git/integrator.py::InfrahubRepositoryIntegrator.render_artifact` by extracting the shared part rather than duplicating it.
-- [ ] T019 [US1] Add `POST /api/artifact/render/{render_id}` in `backend/infrahub/api/artifact.py`:
+- [X] T019 [US1] Add `POST /api/artifact/render/{render_id}` in `backend/infrahub/api/artifact.py`:
   - It reads `X-Infrahub-Render-Token`, calls `validate_render_token` and refuses API keys and account sessions.
   - It validates the body model: `status` is `success` or `failure`; `content` is required for success; `message` is required for failure, at most 4096 characters; `content` is at most `StorageSettings.max_file_size`.
   - It calls `accept_render_result` and maps errors to 400, 401, 403, 409 and 413 as in [contracts/callback-api.md](contracts/callback-api.md).

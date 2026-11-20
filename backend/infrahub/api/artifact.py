@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Body, Depends, Request, Response
+from fastapi import APIRouter, Body, Depends, Request, Response, status
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
+from pydantic import ValidationError as PydanticValidationError
 
 from infrahub import config
 from infrahub.api.dependencies import (
@@ -15,6 +17,8 @@ from infrahub.api.dependencies import (
     get_permission_manager,
 )
 from infrahub.artifacts.content import ArtifactContentReader
+from infrahub.artifacts.render_result import RenderResultAcceptor, RenderResultPayload, check_render_id
+from infrahub.artifacts.render_token import validate_render_token
 from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
@@ -22,7 +26,13 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, Permission
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.protocols import CoreArtifact, CoreArtifactDefinition
 from infrahub.database import InfrahubDatabase  # noqa: TC001
-from infrahub.exceptions import BranchStatusError, NodeNotFoundError, ValidationError
+from infrahub.exceptions import (
+    AuthorizationError,
+    BranchStatusError,
+    NodeNotFoundError,
+    RenderResultInvalidError,
+    ValidationError,
+)
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.log import get_logger
 from infrahub.permissions.constants import PermissionDecisionFlag
@@ -36,6 +46,11 @@ if TYPE_CHECKING:
 
 log = get_logger()
 router = APIRouter(prefix="/artifact")
+
+RENDER_TOKEN_HEADER = "X-Infrahub-Render-Token"
+BYTES_PER_MEGABYTE = 1024 * 1024
+
+render_token_scheme = APIKeyHeader(name=RENDER_TOKEN_HEADER, auto_error=False)
 
 
 class ArtifactGeneratePayload(BaseModel):
@@ -125,3 +140,54 @@ async def generate_artifact(
         context=context,
         parameters={"model": model},
     )
+
+
+@router.post(
+    "/render/{render_id:str}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {"application/json": {"schema": RenderResultPayload.model_json_schema()}},
+        }
+    },
+)
+async def submit_render_result(
+    request: Request,
+    render_id: str,
+    render_token: str | None = Depends(render_token_scheme),
+    db: InfrahubDatabase = Depends(get_db),
+) -> Response:
+    """Accept the content, or the failure, an external engine returns for a render request.
+
+    Only the render token authenticates this request, so account sessions and API keys are refused.
+
+    Raises:
+        AuthorizationError: When the render token is missing or not valid.
+        RenderResultInvalidError: When the body is not a valid render result.
+
+    """
+    if not render_token:
+        raise AuthorizationError(f"A render token is required in the {RENDER_TOKEN_HEADER} header")
+    claims = validate_render_token(token=render_token)
+    check_render_id(render_id=render_id, claims=claims)
+
+    # The body is parsed here, after the token checks, so that a request without a valid token gets 401, not 400.
+    try:
+        body = RenderResultPayload.model_validate_json(await request.body())
+    except PydanticValidationError as exc:
+        raise RenderResultInvalidError(
+            "; ".join(
+                f"{'.'.join(str(loc) for loc in error['loc']) or 'body'}: {error['msg']}" for error in exc.errors()
+            )
+        ) from None
+
+    service: InfrahubServices = request.app.state.service
+    acceptor = RenderResultAcceptor(
+        db=db,
+        storage=registry.storage,
+        event_service=service.event,
+        max_content_bytes=config.SETTINGS.storage.max_file_size * BYTES_PER_MEGABYTE,
+    )
+    await acceptor.accept_render_result(render_id=render_id, claims=claims, body=body)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

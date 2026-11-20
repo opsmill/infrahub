@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import importlib
 import sys
 from contextlib import asynccontextmanager
@@ -10,7 +9,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import httpx
-import ujson
 import yaml
 from infrahub_sdk import InfrahubClient  # noqa: TC002
 from infrahub_sdk.exceptions import Error as SdkError
@@ -55,9 +53,10 @@ from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
 
 from infrahub import config, lock
+from infrahub.artifacts.content import artifact_checksum, format_artifact_content
 from infrahub.auth.session import AnonymousSession
 from infrahub.context import InfrahubContext
-from infrahub.core.constants import ArtifactStatus, ContentType, InfrahubKind, RepositoryObjects, RepositorySyncStatus
+from infrahub.core.constants import ArtifactStatus, InfrahubKind, RepositoryObjects, RepositorySyncStatus
 from infrahub.core.registry import registry
 from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
 from infrahub.events.models import EventMeta
@@ -301,12 +300,7 @@ def serialize_artifact_content(
             message=f"The transform at {location} did not return a payload",
         )
 
-    if content_type == ContentType.APPLICATION_JSON.value and isinstance(content, dict):
-        return ujson.dumps(content, indent=2)
-    if content_type == ContentType.APPLICATION_YAML.value and isinstance(content, dict):
-        return yaml.dump(content, indent=2)
-
-    return str(content)
+    return format_artifact_content(content=content, content_type=content_type)
 
 
 def _graphql_query_label(query_config: InfrahubRepositoryGraphQLConfig) -> str:
@@ -2698,7 +2692,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             location=transformation_location,
         )
 
-        checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8"), usedforsecurity=False).hexdigest()
+        checksum = artifact_checksum(content=artifact_content_str)
 
         if artifact.checksum.value == checksum:
             return ArtifactGenerateResult(
@@ -2734,7 +2728,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             if exc.response.status_code not in {404, 409}:
                 raise
             return False
-        return hashlib.md5(bytes(content, encoding="utf-8"), usedforsecurity=False).hexdigest() == checksum
+        return artifact_checksum(content=content) == checksum
 
     async def render_artifact(
         self,
@@ -2778,7 +2772,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             location=message.transform_location,
         )
 
-        checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8"), usedforsecurity=False).hexdigest()
+        checksum = artifact_checksum(content=artifact_content_str)
 
         # Same content: keep the stored file, unless it was asked to be checked and is missing or refused.
         if artifact.checksum.value == checksum and (

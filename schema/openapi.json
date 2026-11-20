@@ -180,6 +180,109 @@
                 }
             }
         },
+        "/api/artifact/render/{render_id}": {
+            "post": {
+                "summary": "Submit Render Result",
+                "description": "Accept the content, or the failure, an external engine returns for a render request.\n\nOnly the render token authenticates this request, so account sessions and API keys are refused.\n\nRaises:\n    AuthorizationError: When the render token is missing or not valid.\n    RenderResultInvalidError: When the body is not a valid render result.",
+                "operationId": "submit_render_result_api_artifact_render__render_id__post",
+                "security": [
+                    {
+                        "APIKeyHeader": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "render_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Render Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "status": {
+                                        "enum": [
+                                            "success",
+                                            "failure"
+                                        ],
+                                        "title": "Status",
+                                        "type": "string"
+                                    },
+                                    "content": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "additionalProperties": true,
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "description": "Rendered content, required when the status is success",
+                                        "title": "Content"
+                                    },
+                                    "content_type": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "description": "When present, must equal the content type of the artifact definition",
+                                        "title": "Content Type"
+                                    },
+                                    "message": {
+                                        "anyOf": [
+                                            {
+                                                "maxLength": 4096,
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "description": "Why the render failed, required when the status is failure",
+                                        "title": "Message"
+                                    }
+                                },
+                                "required": [
+                                    "status"
+                                ],
+                                "title": "RenderResultPayload",
+                                "type": "object"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/auth/login": {
             "post": {
                 "summary": "Login User",

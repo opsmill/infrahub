@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import hashlib
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+import ujson
+import yaml
 
 from infrahub.artifacts.queries import ArtifactChecksumsQuery
+from infrahub.core.constants import ContentType
 from infrahub.exceptions import ArtifactChecksumMismatchError, ArtifactChecksumMissingError
 from infrahub.log import get_logger
 
@@ -14,6 +18,19 @@ if TYPE_CHECKING:
     from infrahub.storage import InfrahubObjectStorage
 
 log = get_logger()
+
+
+def format_artifact_content(content: Any, content_type: str) -> str:
+    """Return the text stored for rendered content, serializing a mapping when the content type is JSON or YAML."""
+    if content_type == ContentType.APPLICATION_JSON.value and isinstance(content, dict):
+        return ujson.dumps(content, indent=2)
+    if content_type == ContentType.APPLICATION_YAML.value and isinstance(content, dict):
+        return yaml.dump(content, indent=2)
+    return str(content)
+
+
+def artifact_checksum(content: str) -> str:
+    return hashlib.md5(bytes(content, encoding="utf-8"), usedforsecurity=False).hexdigest()
 
 
 class ArtifactContentReader:
