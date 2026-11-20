@@ -4,6 +4,7 @@ import hashlib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+import botocore.exceptions
 import pytest
 from structlog.testing import capture_logs
 
@@ -19,10 +20,13 @@ from infrahub.storage_encryption.migrate import (
     precheck_object,
     require_encryption_ready,
 )
+from infrahub.storage_encryption.status import HEADER_PEEK_LENGTH
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection
     from pathlib import Path
+
+    from infrahub.storage_encryption.status import EncryptionCheck
 
 KEY = StorageKey.derive("unit-test-secret-key-0123456789abcdef")
 OTHER_KEY = StorageKey.derive("another-unit-test-secret-key-987654321")
@@ -401,3 +405,66 @@ def test_storage_with_encryption_disabled_is_refused_even_with_a_key(tmp_path: P
 
 def test_ready_storage_gives_its_key(tmp_path: Path) -> None:
     assert require_encryption_ready(storage=build_storage(tmp_path)) is KEY
+
+
+class BrokenStorage(InfrahubObjectStorage):
+    """A storage whose network breaks in one step: the header read, the content read or the write."""
+
+    def __init__(self, settings: StorageSettings, key: StorageKey | None, broken_step: str, error: Exception) -> None:
+        super().__init__(settings, key=key)
+        self.broken_step = broken_step
+        self.error = error
+
+    def inspect_encryption(self, identifier: str, request_length: int = HEADER_PEEK_LENGTH) -> EncryptionCheck:
+        if self.broken_step == "header":
+            raise self.error
+        return super().inspect_encryption(identifier=identifier, request_length=request_length)
+
+    def read_stored_bounded(
+        self, identifier: str, max_size: int, before_read: Callable[[int], None] | None = None
+    ) -> tuple[int, bytes | None] | None:
+        if self.broken_step == "read":
+            raise self.error
+        return super().read_stored_bounded(identifier=identifier, max_size=max_size, before_read=before_read)
+
+    def replace(self, identifier: str, content: bytes) -> None:
+        if self.broken_step == "write":
+            raise self.error
+        super().replace(identifier=identifier, content=content)
+
+
+NETWORK_ERRORS = [
+    pytest.param(botocore.exceptions.ResponseStreamingError(error="Connection broken"), id="response-streaming"),
+    pytest.param(
+        botocore.exceptions.ReadTimeoutError(endpoint_url="http://storage:3900", error="timed out"), id="read-timeout"
+    ),
+    pytest.param(botocore.exceptions.ConnectionClosedError(endpoint_url="http://storage:3900"), id="connection-closed"),
+]
+
+
+@pytest.mark.parametrize("error", NETWORK_ERRORS)
+@pytest.mark.parametrize(
+    ("broken_step", "reason"),
+    [
+        ("header", "the header could not be read"),
+        ("read", "the object could not be read"),
+        ("write", "the object could not be replaced"),
+    ],
+)
+def test_network_error_of_the_storage_fails_the_object_and_not_the_request(
+    tmp_path: Path, broken_step: str, reason: str, error: Exception
+) -> None:
+    (tmp_path / IDENTIFIER).write_bytes(CONTENT)
+    storage = BrokenStorage(
+        settings=StorageSettings(
+            local=FileSystemStorageSettings.model_validate({"path": tmp_path}), encryption_enabled=True
+        ),
+        key=KEY,
+        broken_step=broken_step,
+        error=error,
+    )
+
+    result = encrypt_checked(storage=storage, identifier=IDENTIFIER, checksums={CONTENT_MD5}, max_size=MAX_SIZE)
+
+    assert (result.outcome, result.reason) == (EncryptOutcome.FAILED, reason)
+    assert (tmp_path / IDENTIFIER).read_bytes() == CONTENT
