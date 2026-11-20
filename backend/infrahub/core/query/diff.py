@@ -60,7 +60,8 @@ class DiffCountChanges(Query):
     """Count the edges of each branch that were opened or closed in a time window.
 
     An edge counts once for each of its two vertices that is a `Node`, `Attribute` or `Relationship`, when at
-    least one of the two is branch-aware.
+    least one of the two is branch-aware. An `OwnerSet` vertex has no branch support, so an edge that starts at one
+    counts once, and the edge from the node to it counts from the node.
     """
 
     name = "diff_count_changes"
@@ -87,9 +88,9 @@ class DiffCountChanges(Query):
         # each read sums its own edges, which costs less than passing every edge to one sum at the end
         count_vertices = """
             AND diff_rel.branch IN $branch_names
-            AND (p.branch_support = "aware" OR q.branch_support = "aware")
+            AND (p.branch_support = "aware" OR q.branch_support = "aware" OR p:OwnerSet)
             RETURN diff_rel.branch AS branch_name, sum(
-                (CASE WHEN p:Node|Attribute|Relationship THEN 1 ELSE 0 END)
+                (CASE WHEN p:Node|Attribute|Relationship|OwnerSet THEN 1 ELSE 0 END)
                 + (CASE WHEN q:Node|Attribute|Relationship THEN 1 ELSE 0 END)
             ) AS num_vertices
         """

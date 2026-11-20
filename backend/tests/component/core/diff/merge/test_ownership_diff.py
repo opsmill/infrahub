@@ -14,20 +14,30 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m085_close_repository_owner_edges import Migration085
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
-from infrahub.core.ownership.models import NODE_HOLDER, NODE_SOURCES_HOLDER, HolderKey, OwnerOrigin
+from infrahub.core.ownership.models import (
+    NODE_HOLDER,
+    NODE_SOURCES_HOLDER,
+    NODE_TARGET_HOLDER,
+    HolderKey,
+    OwnerOrigin,
+    field_holder,
+)
+from infrahub.exceptions import MergeConflictsUnresolvedError
 from tests.helpers.ownership import (
     ADD_ATTRIBUTE_OWNER,
     ADD_NAME_OWNER,
     OWNERS_FIELD,
     SOURCES_FIELD,
+    TARGET_OWNERS_FIELD,
     OwnerDataset,
     add_owner_edge,
     create_groups,
+    read_owners,
     resolve_owners,
     set_owners,
 )
 
-from ._ownership import owner_property, update_diff
+from ._ownership import merge, owner_property, profile_with_device, update_diff
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -138,6 +148,53 @@ async def test_later_diff_update_keeps_the_whole_owner_lists(
     assert (owners.conflict.base_branch_value, owners.conflict.diff_branch_value) == (
         dataset.owner_list(("security",)),
         dataset.owner_list(third),
+    )
+
+
+@pytest.mark.parametrize("holder_kind", ["field_set", "profile_target_set"])
+async def test_owner_changes_in_an_existing_owner_set_reach_a_later_diff_update(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    diff_repository: DiffRepository,
+    dataset: OwnerDataset,
+    holder_kind: str,
+) -> None:
+    if holder_kind == "field_set":
+        node_id, field_name = dataset.ids["device-a"], "rack__owners"
+        holder = field_holder(
+            schema=registry.schema.get(name="TestDevice", branch=default_branch, duplicate=False), field_name="rack"
+        )
+        assert holder is not None
+    else:
+        node_id, _ = await profile_with_device(db=db, dataset=dataset)
+        field_name, holder = TARGET_OWNERS_FIELD, NODE_TARGET_HOLDER
+    await set_owners(
+        db=db, branch=default_branch, node_id=node_id, owner_ids=dataset.owners(("dc-emea",)), holder=holder
+    )
+    branch = await create_branch(db=db, branch_name="owner-set-update")
+    first_diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+    assert [node.uuid for node in first_diff.nodes] == []
+    await set_owners(db=db, branch=branch, node_id=node_id, owner_ids=dataset.owners(("network-emea",)), holder=holder)
+    await set_owners(
+        db=db, branch=default_branch, node_id=node_id, owner_ids=dataset.owners(("security",)), holder=holder
+    )
+
+    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+
+    owners = owner_property(diff=diff, node_id=node_id, field_name=field_name)
+    assert (owners.previous_value, owners.new_value) == (
+        dataset.owner_list(("dc-emea",)),
+        dataset.owner_list(("network-emea",)),
+    )
+    assert owners.conflict is not None
+    assert (owners.conflict.base_branch_value, owners.conflict.diff_branch_value) == (
+        dataset.owner_list(("security",)),
+        dataset.owner_list(("network-emea",)),
+    )
+    with pytest.raises(MergeConflictsUnresolvedError):
+        await merge(db=db, branch=branch)
+    assert await read_owners(db=db, branch=default_branch, node_id=node_id, holder=holder) == dataset.owners(
+        ("security",)
     )
 
 
