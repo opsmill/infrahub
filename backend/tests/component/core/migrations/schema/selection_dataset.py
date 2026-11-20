@@ -358,11 +358,13 @@ async def assert_count_matches_write(
     expected: dict[str, int],
     population: list[str],
     check_remaining: bool = True,
+    expected_ids: dict[str, set[str]] | None = None,
 ) -> None:
     """Count with the last query, run every query in order, then check the count against the changes.
 
     The changes are read for every kind in `population`, so a kind the write changes but the count misses
     fails the check. With `check_remaining`, a count taken after the write must find nothing left to change.
+    With `expected_ids`, the IDs of the nodes the write changed must equal it, per kind.
     """
     at = Timestamp()
     instances = [await query_cls.init(db=db, branch=branch, at=at, **init_kwargs) for query_cls in queries]
@@ -372,8 +374,11 @@ async def assert_count_matches_write(
         await instance.execute(db=db)
 
     assert counted == expected, f"counted {counted}, expected {expected}"
-    changed = {kind: len(ids) for kind, ids in (await changed_node_ids(db=db, kinds=population, at=at)).items()}
+    changed_ids = await changed_node_ids(db=db, kinds=population, at=at)
+    changed = {kind: len(ids) for kind, ids in changed_ids.items()}
     assert counted == changed, f"counted {counted}, the write changed {changed}"
+    if expected_ids is not None:
+        assert changed_ids == expected_ids, f"the write changed {changed_ids}, expected {expected_ids}"
 
     if not check_remaining:
         return
