@@ -1,0 +1,33 @@
+dev/specs/ifc-2167-placeholder-automations-db/opsmill-implement-ledger.md
+  s_c37be6db977640::t_c048b01020a2b9 50-72
+backend/infrahub/trigger/setup.py
+  s_c37be6db977640::t_61d1cc96b54e74 200-238,242-274
+  s_c37be6db977640::t_4361d8c6e679ee 1-2
+  s_c37be6db977640::t_c1d498b49e62d5 4,16-18,20-21,33-34
+  s_c37be6db977640::t_2ac7f58673852c 239-241
+  s_c37be6db977640::t_d2f5789684bcd6 29-32
+  s_c37be6db977640::t_5ec43d1f435924 35
+backend/tests/component/trigger/test_definition_record_setup.py
+  s_c37be6db977640::t_5f0870c8078bf3 1-104,106-156,164-165
+  s_c37be6db977640::t_8f8c4d421f391c 105
+  s_c37be6db977640::t_d70d694ca8d360 157-163
+dev/specs/ifc-2167-placeholder-automations-db/tasks.md
+  s_c37be6db977640::t_25826bb651a79d 88
+  s_c37be6db977640::t_24514f38dc8f71 81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d43de123af2d020c9b0238fcda96548e3872e5ae",
+  "prompts": {},
+  "sessions": {
+    "s_c37be6db977640": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2cb1e2fb-d221-4d6b-850b-e6b2285f0c79",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
