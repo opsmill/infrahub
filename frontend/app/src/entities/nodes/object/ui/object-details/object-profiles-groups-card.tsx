@@ -12,6 +12,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
+import { GROUP_GENERIC } from "@/entities/groups/domain/model/group";
 import { GroupsManager } from "@/entities/groups/ui/groups-manager";
 import type {
   NodeCore,
@@ -278,7 +279,7 @@ export function ObjectProfilesGroupsCard({
 }: ObjectProfilesGroupsCardProps) {
   const schemaSupportsProfiles =
     "generate_profile" in objectSchema && objectSchema.generate_profile;
-  const showGroups = !isOfKind("CoreGroup", objectSchema);
+  const showGroups = !isOfKind(GROUP_GENERIC, objectSchema);
 
   // Check if object already has assigned profiles
   const objectProfileEdges = getRelationshipManyEdges(objectData, "profiles");
