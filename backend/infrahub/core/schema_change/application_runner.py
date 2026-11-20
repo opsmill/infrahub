@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from typing import TYPE_CHECKING, Protocol
 
 from infrahub.core.schema_change.record_errors import RECORD_WRITE_ERRORS
@@ -179,8 +180,10 @@ class SchemaChangeApplicationRunner:
         try:
             return await asyncio.shield(start)
         except asyncio.CancelledError:
-            recording = await asyncio.shield(start)
-            await asyncio.shield(self._record_cancellation(recording=recording, user_id=user_id))
+            while not start.done():
+                with contextlib.suppress(asyncio.CancelledError):
+                    await asyncio.shield(start)
+            await asyncio.shield(self._record_cancellation(recording=start.result(), user_id=user_id))
             raise
 
     async def _record_cancellation(self, *, recording: SchemaChangeRecording, user_id: str) -> None:
