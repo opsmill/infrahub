@@ -593,6 +593,46 @@ async def test_relationship_remove_refuses_the_profile_that_gives_a_node_a_requi
     ] == [(room.id, True)]
 
 
+async def test_relationship_remove_refuses_the_profile_that_gives_a_node_a_required_attribute(
+    db: InfrahubDatabase, default_branch: Branch, server_schema: None, editor_session: AccountSession
+) -> None:
+    profile = await _create_node(
+        db=db,
+        branch=default_branch,
+        kind="ProfileTestServer",
+        profile_name="profile-1",
+        profile_priority=10,
+        role="from-profile",
+    )
+    server = await _create_node(db=db, branch=default_branch, kind="TestServer", name="server-1", profiles=[profile])
+    await _apply_profile_values(db=db, branch=default_branch, node_id=server.id)
+
+    result, workflow = await _run_relationship_mutation(
+        db=db,
+        branch=default_branch,
+        account_session=editor_session,
+        mutation="RelationshipRemove",
+        profile_id=server.id,
+        rel_name="profiles",
+        peer_ids=[profile.id],
+    )
+
+    assert result.errors is not None
+    assert [error.message for error in result.errors] == [
+        f"Cannot remove profile '{profile.id}' because node 'TestServer(ID: {server.id})' (ID: {server.id}) "
+        "inherits required attribute 'role' from this profile."
+    ]
+    assert workflow.submit_calls == []
+    server = await NodeManager.get_one(
+        db=db, branch=default_branch, id=server.id, include_metadata=MetadataOptions.SOURCE, raise_on_error=True
+    )
+    assert [rel.peer_id for rel in await server.get_relationship(name="profiles").get_relationships(db=db)] == [
+        profile.id
+    ]
+    role = server.get_attribute(name="role")
+    assert (role.value, role.is_from_profile) == ("from-profile", True)
+
+
 async def test_relationship_remove_refuses_to_clear_a_profile_relationship_that_a_node_requires(
     db: InfrahubDatabase, default_branch: Branch, rack_schema: None, editor_session: AccountSession
 ) -> None:
