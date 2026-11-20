@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from prefect.events import emit_event
 
 if TYPE_CHECKING:
+    from infrahub.event_export.service import EventExportService
     from infrahub.events import InfrahubEvent
     from infrahub.log_forwarding.service import LogForwardingService
     from infrahub.services.adapters.message_bus import InfrahubMessageBus
@@ -21,16 +22,31 @@ class InfrahubEventService:
         self,
         message_bus: InfrahubMessageBus | None = None,
         log_forwarding: LogForwardingService | None = None,
+        event_export: EventExportService | None = None,
     ) -> None:
         # Ideally message_bus should not be optional, we let it like this for existing tests that
         #  pass without a bus as corresponding tested events do not send bus messages.
         self.message_bus = message_bus
         self.log_forwarding = log_forwarding
+        self.event_export = event_export
 
     async def send(self, event: InfrahubEvent) -> None:
-        tasks = [self._send_bus(event=event), self._send_prefect(event=event)]
-        await asyncio.gather(*tasks)
+        try:
+            tasks = [self._send_bus(event=event), self._send_prefect(event=event)]
+            await asyncio.gather(*tasks)
+        finally:
+            await self._capture_export(event=event)
         self._send_log_forwarding(event=event)
+
+    async def _capture_export(self, event: InfrahubEvent) -> None:
+        if self.event_export is None:
+            return
+
+        try:
+            await self.event_export.capture(event)
+        except Exception:
+            # An export failure must never fail the operation that sent the event.
+            logger.exception("Unable to capture event %s (%s) for export", event.get_id(), event.event_name)
 
     async def _send_bus(self, event: InfrahubEvent) -> None:
         for message in event.get_messages():

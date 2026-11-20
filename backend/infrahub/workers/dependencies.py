@@ -8,7 +8,9 @@ from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.core.registry import registry
+from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase, get_db
+from infrahub.event_export.service import EventExportService, EventExportServiceCommunity
 from infrahub.ldap_auth.service import LDAPAuthService, LDAPAuthServiceCommunity
 from infrahub.log_forwarding.service import LogForwardingService, LogForwardingServiceCommunity
 from infrahub.serve.processes import processes_per_container
@@ -123,7 +125,9 @@ async def get_message_bus(message_bus: InfrahubMessageBus = Depends(build_messag
 
 async def build_event_service() -> InfrahubEventService:
     if "event_service" not in _singletons:
-        _singletons["event_service"] = InfrahubEventService(message_bus=await get_message_bus())
+        _singletons["event_service"] = InfrahubEventService(
+            message_bus=await get_message_bus(), event_export=get_event_export_service()
+        )
     return _singletons["event_service"]
 
 
@@ -212,3 +216,28 @@ def get_ldap_auth_service(
     ldap_auth_service: LDAPAuthService = Depends(build_ldap_auth_service),  # noqa: B008
 ) -> LDAPAuthService:
     return ldap_auth_service
+
+
+def build_event_export_service() -> EventExportService:
+    if "event_export_service" not in _singletons:
+        _singletons["event_export_service"] = EventExportServiceCommunity()
+    return _singletons["event_export_service"]
+
+
+@inject
+def get_event_export_service(
+    event_export_service: EventExportService = Depends(build_event_export_service),  # noqa: B008
+) -> EventExportService:
+    return event_export_service
+
+
+def build_extra_core_schemas() -> list[SchemaRoot]:
+    """Return schema fragments loaded together with the core schema."""
+    return []
+
+
+@inject
+def get_extra_core_schemas(
+    schemas: list[SchemaRoot] = Depends(build_extra_core_schemas),  # noqa: B008
+) -> list[SchemaRoot]:
+    return schemas

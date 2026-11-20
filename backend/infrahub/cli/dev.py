@@ -16,6 +16,7 @@ from infrahub.api.schema import SchemaLoadAPI
 from infrahub.core.initialization import (
     first_time_initialization,
     initialization,
+    load_extra_core_schemas,
 )
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -46,6 +47,7 @@ async def export_graphql_schema(
 
     schema_branch = SchemaBranch(cache={}, name="default")
     schema_branch.load_schema(schema=full_schema)
+    load_extra_core_schemas(schema_branch=schema_branch)
 
     schema_branch.process()
 

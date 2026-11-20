@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
     from infrahub.database import InfrahubDatabase
+    from infrahub.event_export.service import EventExportService
     from infrahub.log_forwarding.service import LogForwardingService
     from infrahub.message_bus import InfrahubMessage
     from infrahub.message_bus.types import MessageTTL
@@ -39,6 +40,7 @@ class InfrahubServices:
     _workflow: InfrahubWorkflow | None
     _component: InfrahubComponent | None
     _log_forwarding: LogForwardingService | None
+    _event_export: EventExportService | None
 
     log: InfrahubLogger
     component_type: ComponentType
@@ -60,6 +62,7 @@ class InfrahubServices:
         workflow: InfrahubWorkflow | None = None,
         component: InfrahubComponent | None = None,
         log_forwarding: LogForwardingService | None = None,
+        event_export: EventExportService | None = None,
     ) -> None:
         """This method should not be called directly, use `new` instead for a proper initialization."""
         self._cache = cache
@@ -69,6 +72,7 @@ class InfrahubServices:
         self._workflow = workflow
         self._component = component
         self._log_forwarding = log_forwarding
+        self._event_export = event_export
         self.log = log
         self.component_type = component_type
         self.http = http
@@ -89,6 +93,7 @@ class InfrahubServices:
         component_type: ComponentType | None = None,
         http: InfrahubHTTP | None = None,
         log_forwarding: LogForwardingService | None = None,
+        event_export: EventExportService | None = None,
     ) -> InfrahubServices:
         """Instantiate InfrahubServices object, and finalize initializations of underlying services having a circular.
 
@@ -96,6 +101,11 @@ class InfrahubServices:
 
         """
         component_type = component_type or ComponentType.NONE
+        if event_export is None:
+            # Imported here because the dependency module imports this package.
+            from infrahub.workers.dependencies import get_event_export_service  # noqa: PLC0415
+
+            event_export = get_event_export_service()
 
         heartbeat = (
             WorkerHeartbeat(component_type=component_type, cache_factory=build_heartbeat_cache)
@@ -113,9 +123,10 @@ class InfrahubServices:
             component=component,
             component_type=component_type,
             scheduler=scheduler,
-            event=event or InfrahubEventService(message_bus, log_forwarding=log_forwarding),
+            event=event or InfrahubEventService(message_bus, log_forwarding=log_forwarding, event_export=event_export),
             http=http or HttpxAdapter(tls_registry=TlsContextRegistry()),
             log_forwarding=log_forwarding,
+            event_export=event_export,
         )
 
         # This circular dependency could be removed if InfrahubScheduler only depends on what it needs.
@@ -179,9 +190,15 @@ class InfrahubServices:
     def log_forwarding(self) -> LogForwardingService | None:
         return self._log_forwarding
 
+    @property
+    def event_export(self) -> EventExportService | None:
+        return self._event_export
+
     async def shutdown(self) -> None:
         if self._log_forwarding is not None:
             await self._log_forwarding.shutdown()
+        if self._event_export is not None:
+            await self._event_export.shutdown()
         await self.scheduler.shutdown()
         await self.message_bus.shutdown()
         if self._cache is not None:

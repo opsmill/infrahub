@@ -33,6 +33,7 @@ from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.manager import SchemaManager
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp, current_timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.memgraph import IndexManagerMemgraph
@@ -43,6 +44,7 @@ from infrahub.log import get_logger
 from infrahub.menu.utils import create_default_menu
 from infrahub.permissions import PermissionBackend, get_or_create_global_permission
 from infrahub.storage import InfrahubObjectStorage
+from infrahub.workers.dependencies import get_extra_core_schemas
 
 if TYPE_CHECKING:
     from infrahub.database.index import IndexManagerBase
@@ -553,6 +555,12 @@ async def create_default_account_groups(
     )
 
 
+def load_extra_core_schemas(schema_branch: SchemaBranch) -> None:
+    """Load the schema fragments that are registered to extend the core schema."""
+    for schema in get_extra_core_schemas():
+        schema_branch.load_schema(schema=schema)
+
+
 async def first_time_initialization(db: InfrahubDatabase) -> None:
     # --------------------------------------------------
     # Create the default Branch
@@ -568,6 +576,7 @@ async def first_time_initialization(db: InfrahubDatabase) -> None:
     schema = SchemaRoot(**internal_schema)
     schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
     schema_branch.load_schema(schema=SchemaRoot(**core_models))
+    load_extra_core_schemas(schema_branch=schema_branch)
     schema_branch.load_schema(schema=SchemaRoot(**deprecated_models))
     schema_branch.process()
     await registry.schema.load_schema_to_db(schema=schema_branch, branch=default_branch, db=db, at=Timestamp())

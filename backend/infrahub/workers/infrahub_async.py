@@ -38,6 +38,7 @@ from infrahub.workers.dependencies import (
     get_cache,
     get_component,
     get_database,
+    get_event_export_service,
     get_http,
     get_log_forwarding_service,
     get_message_bus,
@@ -312,6 +313,7 @@ class InfrahubWorkerAsync(BaseWorker):
         client = await self._init_infrahub_client(client=client)
 
         log_forwarding = get_log_forwarding_service()
+        event_export = get_event_export_service()
         service = await InfrahubServices.new(
             cache=await get_cache(),
             client=client,
@@ -322,8 +324,10 @@ class InfrahubWorkerAsync(BaseWorker):
             component_type=self.component_type,
             http=get_http(),
             log_forwarding=log_forwarding,
+            event_export=event_export,
         )
         await log_forwarding.start()
+        await event_export.start(component_type=self.component_type)
 
         self.service = service
 

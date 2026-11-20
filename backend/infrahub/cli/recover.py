@@ -11,7 +11,7 @@ from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.core.branch import Branch
 from infrahub.core.diff.diff_locker import DiffLocker
-from infrahub.core.initialization import initialize_registry
+from infrahub.core.initialization import initialize_registry, load_extra_core_schemas
 from infrahub.core.merge.failure_identifier import MergeFailureIdentifier
 from infrahub.core.merge.failure_recoverer import MergeFailureRecoverer, RecoveryOutcome, RecoveryReport
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
@@ -110,6 +110,7 @@ async def recover_cmd(
         schema_manager = SchemaManager()
         schema_branch = schema_manager.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
         schema_branch.load_schema(schema=SchemaRoot(**core_models))
+        load_extra_core_schemas(schema_branch=schema_branch)
         schema_branch.process()
         db.add_schema(schema=schema_branch, name=default_branch.name)
 

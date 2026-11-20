@@ -44,7 +44,12 @@ from infrahub.core.graph.schema import (
     GraphRelationshipIsPartOf,
     GraphRelationshipProperties,
 )
-from infrahub.core.initialization import get_root_node, initialize_registry, reset_deployment_id
+from infrahub.core.initialization import (
+    get_root_node,
+    initialize_registry,
+    load_extra_core_schemas,
+    reset_deployment_id,
+)
 from infrahub.core.merge.merge_locker import MergeLocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.graph import MIGRATIONS, get_graph_migrations, get_migration_by_number
@@ -944,6 +949,7 @@ async def check_core_schema_diff(db: InfrahubDatabase) -> bool:
     candidate_schema = branch_schema.duplicate()
     candidate_schema.load_schema(schema=SchemaRoot(**internal_schema))
     candidate_schema.load_schema(schema=SchemaRoot(**core_models))
+    load_extra_core_schemas(schema_branch=candidate_schema)
     candidate_schema.load_schema(schema=SchemaRoot(**deprecated_models))
     candidate_schema.process()
 
@@ -1039,6 +1045,7 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
     candidate_schema = branch_schema.duplicate()
     candidate_schema.load_schema(schema=SchemaRoot(**internal_schema))
     candidate_schema.load_schema(schema=SchemaRoot(**core_models))
+    load_extra_core_schemas(schema_branch=candidate_schema)
     candidate_schema.load_schema(schema=SchemaRoot(**deprecated_models))
     candidate_schema.process()
 
