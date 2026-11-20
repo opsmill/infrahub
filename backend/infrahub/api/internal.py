@@ -44,6 +44,9 @@ class ConfigAPI(BaseModel):
 class InfoAPI(BaseModel):
     deployment_id: str
     version: str
+    storage_encryption_enabled: bool = Field(
+        default=False, description="Whether new artifacts and files are stored encrypted"
+    )
 
 
 @router.get("/config")
@@ -66,7 +69,11 @@ async def get_config() -> ConfigAPI:
 
 @router.get("/info")
 async def get_info(request: Request, _: AccountSession = Depends(get_current_user)) -> InfoAPI:
-    return InfoAPI(deployment_id=str(registry.id), version=request.app.version)
+    return InfoAPI(
+        deployment_id=str(registry.id),
+        version=request.app.version,
+        storage_encryption_enabled=config.SETTINGS.storage.encryption_enabled,
+    )
 
 
 class ResponseDelayAPI(BaseModel):

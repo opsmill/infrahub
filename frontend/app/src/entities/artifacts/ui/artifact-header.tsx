@@ -2,6 +2,7 @@ import { RefreshButton } from "@/shared/components/buttons/refresh-button";
 
 import type { ArtifactObject } from "@/entities/artifacts/domain/model/artifact";
 import { ArtifactDetailsMenu } from "@/entities/artifacts/ui/artifact-details-menu";
+import { ArtifactEncryptionBadge } from "@/entities/artifacts/ui/artifact-encryption-badge";
 import { ArtifactGenerateButton } from "@/entities/artifacts/ui/artifact-generate-button";
 import { ArtifactStatusBadge } from "@/entities/artifacts/ui/artifact-status-badge";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
@@ -18,6 +19,7 @@ export function ArtifactHeader({ artifact }: ArtifactHeaderProps) {
       <h1 className="font-bold text-xl">{getNodeLabel(artifact)}</h1>
       <NodeMetadataPopover objectKind={artifact.__typename} objectId={artifact.id} />
       <ArtifactStatusBadge status={artifact.status.value} />
+      <ArtifactEncryptionBadge artifact={artifact} />
 
       <div className="ml-auto flex items-center gap-1">
         <RefreshButton queryKeys={[objectQueryKeys.all]} />

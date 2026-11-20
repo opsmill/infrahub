@@ -1,0 +1,1 @@
+Added the `infrahubctl storage encrypt` command and the server routes behind it, so an administrator can encrypt the files stored before storage encryption was enabled, with a progress display, stop and resume, and settings that limit the pace and the memory of the API server. Files that no artifact or file object records a checksum for are reported and left unchanged.

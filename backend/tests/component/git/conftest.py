@@ -843,6 +843,17 @@ async def mock_upload_content(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 
 @pytest.fixture
+async def mock_artifact_encryption_check(httpx_mock: HTTPXMock) -> HTTPXMock:
+    httpx_mock.add_response(
+        method="POST",
+        url=re.compile(r".*/api/artifact/[^/]+/encryption\?branch=main$"),
+        json={"encryption": "plaintext", "reason": None, "updated": False},
+        match_headers={"X-Infrahub-Tracker": "artifact-encryption-check"},
+    )
+    return httpx_mock
+
+
+@pytest.fixture
 async def artifact_definition_data_01() -> dict[str, Any]:
     return {
         "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
