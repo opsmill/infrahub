@@ -218,6 +218,12 @@ ORDER BY edge_type, owner_id
         *[(NEW_KIND, "HAS_OWNER", owner_id) for owner_id in node_owners],
         (NEW_KIND, "HAS_OWNER_SET", group_ids["network-emea"]),
     ]
+    sets = await db.execute_query(
+        query="MATCH (:Node {uuid: $node_id})-[:HAS_OWNER_SET]->(s:OwnerSet) RETURN count(DISTINCT s) AS sets",
+        params={"node_id": person.id},
+        type=QueryType.READ,
+    )
+    assert sets[0]["sets"] == 1
     await verify_graph(db=db, kinds=[PREVIOUS_KIND, NEW_KIND])
 
 

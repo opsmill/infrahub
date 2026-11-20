@@ -78,6 +78,11 @@ async def _count_vertices_with_uuid(db: InfrahubDatabase, uuid: str) -> int:
     return result[0].get("c")
 
 
+async def _count_no_owner_edges(db: InfrahubDatabase) -> int:
+    result = await db.execute_query(query="MATCH ()-[r:HAS_NO_OWNER]->(:NoOwner) RETURN count(r) AS c")
+    return result[0].get("c")
+
+
 async def _get_node_vertex_metadata(db: InfrahubDatabase, node_uuid: str) -> dict[str, str | None]:
     result = await db.execute_query(
         query="""
@@ -119,11 +124,13 @@ async def test_reset_to_a_time_keeps_the_no_owner_vertex_when_it_deletes_its_onl
 ) -> None:
     person = await add_node(db=db, kind="TestPerson", name="John", height=180)
     reset_time = Timestamp()
-    await set_owners(db=db, branch=default_branch, node_id=person.id, owner_ids=())
+    await set_owners(db=db, branch=default_branch, node_id=person.id, owner_ids=(), at=reset_time.add(microseconds=1))
+    assert await _count_no_owner_edges(db=db) == 1
 
     query = await DeleteAfterTimeQuery.init(db=db, timestamp=reset_time)
     await query.execute(db=db)
 
+    assert await _count_no_owner_edges(db=db) == 0
     assert await _count_vertices_with_uuid(db=db, uuid=NO_OWNER_VERTEX_UUID) == 1
 
 
