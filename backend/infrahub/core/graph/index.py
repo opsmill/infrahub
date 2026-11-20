@@ -60,9 +60,17 @@ rel_indexes: list[IndexItem] = [
     IndexItem(name="owner_branch", label="HAS_OWNER", properties=["branch"], type=IndexType.RANGE),
     IndexItem(name="is_part_of_from", label="IS_PART_OF", properties=["from"], type=IndexType.RANGE),
     IndexItem(name="is_part_of_to", label="IS_PART_OF", properties=["to"], type=IndexType.RANGE),
+    IndexItem(name="no_owner_from", label="HAS_NO_OWNER", properties=["from"], type=IndexType.RANGE),
+    IndexItem(name="no_owner_to", label="HAS_NO_OWNER", properties=["to"], type=IndexType.RANGE),
     IndexItem(name="no_owner_branch", label="HAS_NO_OWNER", properties=["branch"], type=IndexType.RANGE),
+    IndexItem(name="owner_source_from", label="HAS_OWNER_SOURCE", properties=["from"], type=IndexType.RANGE),
+    IndexItem(name="owner_source_to", label="HAS_OWNER_SOURCE", properties=["to"], type=IndexType.RANGE),
     IndexItem(name="owner_source_branch", label="HAS_OWNER_SOURCE", properties=["branch"], type=IndexType.RANGE),
+    IndexItem(name="owner_set_from", label="HAS_OWNER_SET", properties=["from"], type=IndexType.RANGE),
+    IndexItem(name="owner_set_to", label="HAS_OWNER_SET", properties=["to"], type=IndexType.RANGE),
     IndexItem(name="owner_set_branch", label="HAS_OWNER_SET", properties=["branch"], type=IndexType.RANGE),
+    IndexItem(name="target_owner_set_from", label="HAS_TARGET_OWNER_SET", properties=["from"], type=IndexType.RANGE),
+    IndexItem(name="target_owner_set_to", label="HAS_TARGET_OWNER_SET", properties=["to"], type=IndexType.RANGE),
     IndexItem(
         name="target_owner_set_branch", label="HAS_TARGET_OWNER_SET", properties=["branch"], type=IndexType.RANGE
     ),

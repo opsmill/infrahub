@@ -259,6 +259,10 @@ the holders that are not attributes are in `core/ownership/fields.py` (see [Diff
   closes the active edge on each `Node` vertex of the UUID.
 - `ConflictsEnricher._have_same_value` (`core/diff/conflicts_enricher.py`) gives no conflict for an owner list or a
   source list with the same owner IDs on both branches, or with an update that keeps the same list.
+- `core/graph/index.py` has a range index on `branch`, on `from` and on `to` of each of `HAS_NO_OWNER`,
+  `HAS_OWNER_SOURCE`, `HAS_OWNER_SET` and `HAS_TARGET_OWNER_SET`. The diff and the merge read these edges by branch,
+  and the `from` and `to` indexes serve a read of the edges that changed in a time window. The server creates each
+  missing index when it starts, so they need no migration.
 - `OwnerDiffResolution` (`core/diff/merger/exclusion_plan.py`) is a holder whose owner conflict the branch side won.
   `DiffMerger._apply_owner_diff_resolutions` (`core/diff/merger/merger.py`) then writes the list of the branch on the
   holder, with `keep_deleted_owners` and `skip_inactive`. When the node is not active on the target branch, the merge
