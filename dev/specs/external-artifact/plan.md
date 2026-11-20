@@ -27,6 +27,15 @@ Teams declare an external transformation in `.infrahub.yml`: a GraphQL query, a 
 - sets the artifact to `Ready` or `Error`;
 - completes the proposed-change check and recomputes the validator (R5, R6).
 
+**Before emitting**, the request fails at once with a specific `Error` message in three cases:
+- no active webhook subscribes to the event type;
+- `main.public_url` is not set;
+- the event would exceed the size limit (critique X1).
+
+**Concurrency.** Every change to an artifact's render state runs under a lock per artifact and branch. The render ID is checked inside that lock. Validator recomputation runs under a lock per validator and reads the stored checks (critique E1, E2).
+
+**Permissions.** The `Events` and `Task` GraphQL queries leave `query_result` out of this event type's payload, so query data stays behind object permissions (critique E5).
+
 **Timeout.** A cron workflow that runs every minute sets pending artifacts past their deadline to `Error` (R7).
 
 **Fingerprint.** It hashes the version and does not fold in the commit ID. A version change therefore selects every target, and an unrelated commit selects none (R8).
@@ -77,7 +86,7 @@ Teams declare an external transformation in `.infrahub.yml`: a GraphQL query, a 
 | III. Type Safety & Explicit Contracts | Pass | Pydantic models for the event, the callback body and the SDK config. The exhaustive `match` in `FingerprintComposer` gets a new case. The other `if/elif` dispatches get an explicit external branch, and an `else` that raises. |
 | IV. Test Discipline | Pass | The tests are listed under Testing, and each functional requirement is mapped to a test in [quickstart.md](quickstart.md). |
 | V. Query Performance | Pass | The sweep reads `CoreArtifact` filtered on `status = Pending` and `render_deadline < now`. The query runs once per target, as for internal renders. |
-| VI. Security & Input Boundaries | Pass with gates | The new endpoint validates the token, the body schema, the content size and the content type. The token is scoped to one render, branch and artifact, and expires at the deadline. Error messages expose no internals. The token is kept out of stored data. **Gate:** authentication change and new REST endpoint, see below. |
+| VI. Security & Input Boundaries | Pass with gates | The new endpoint validates the token, the body schema, the content size and the content type. The `Events` and `Task` queries leave out `query_result` for this event type (critique E5). The token is scoped to one render, branch and artifact, and expires at the deadline. Error messages expose no internals. The token is kept out of stored data. **Gate:** authentication change and new REST endpoint, see below. |
 | VII. Simplicity | Pass | Reuses webhooks, webhook transformations, the artifact storage path, artifact checks, the fingerprint and cron workflows. No new dependency. No second pipeline. |
 
 **Governance gates crossed, which need the user's confirmation before implementation**:
@@ -128,13 +137,16 @@ backend/infrahub/
 ├── git/fingerprint/composer.py                        # ExternalTransformationFingerprintInput
 ├── git/tasks.py                                       # generate path: external branch
 ├── artifacts/
-│   ├── render_request.py                              # run query, set Pending, emit event
+│   ├── render_request.py                              # fail-fast checks, run query, set Pending, emit event
+│   ├── render_lock.py                                 # per-artifact/branch and per-validator lock names
 │   ├── render_result.py                               # accept result: store, status, check, events
 │   ├── render_token.py                                # mint and validate the render JWT
 │   ├── timeouts.py                                    # cron sweep flow
 │   └── tasks.py                                       # proposed-change check: external branch
 ├── api/artifact.py                                    # POST /api/artifact/render/{render_id}
 ├── events/artifact_action.py                          # ArtifactRenderRequestedEvent
+├── task_manager/event/query.py                        # leave query_result out for render_requested
+├── graphql/queries/task.py                            # leave query_result out of webhook flow parameters
 ├── webhook/tasks/process.py                           # mint token per attempt, header and placeholder
 ├── webhook/log_formatter.py                           # redact the token from logged bodies
 └── workflows/catalogue.py                             # sweep cron workflow

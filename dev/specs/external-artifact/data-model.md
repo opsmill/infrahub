@@ -38,9 +38,10 @@ Inherits `CoreTransformation` (`core/schema/definitions/core/transform.py::core_
   render_deadline cleared           render_deadline cleared           render_deadline cleared
 ```
 
+- Every transition runs under the lock `artifact-render:<branch>:<artifact_id>`, and the render ID and deadline are checked inside it (research R11).
 - A new request while `Pending` overwrites `render_request_id` and `render_deadline`. The earlier token is then refused (FR-009, FR-013).
 - A callback with an ID other than the current `render_request_id`, or after `render_deadline` is cleared, is refused and changes nothing.
-- If the query result is too large for an event (research R9), the artifact goes straight to `Error` and no request is emitted.
+- If no webhook subscribes, `main.public_url` is not set, or the query result is too large for an event, the artifact goes straight to `Error` with a specific message and no request is emitted (research R12).
 
 ## ArtifactRenderRequestedEvent (new event)
 
@@ -61,7 +62,7 @@ Payload fields, which go in the event's `data`:
 | `content_type` | str | Required content type of the result. |
 | `target_id`, `target_kind`, `target_name` | str | |
 | `branch` | str | |
-| `query_result` | dict | The full GraphQL query result for the target (spec FR-002). |
+| `query_result` | dict | The full GraphQL query result for the target (spec FR-002). Left out of the `Events` and `Task` GraphQL query results (research R9). |
 
 The token is **not** a payload field (research R3).
 

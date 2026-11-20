@@ -69,6 +69,8 @@ The engine reports an error, or does not answer before the timeout. The engineer
 - **The engine sends content with a token issued for another artifact or another branch**: Infrahub rejects it and no artifact changes.
 - **The template changes outside Infrahub and nobody updates the version value**: Infrahub does not detect the change. The team triggers regeneration manually (User Story 2, scenario 2).
 - **A device leaves the target group**: Infrahub removes its artifact, the same as for internal artifacts, and emits no render request for it.
+- **No webhook subscribes to render requests, or Infrahub's public address is not configured**: Infrahub sets the artifact to `Error` at once, with a message that names the cause, and sends no request.
+- **A user without permission to read the queried data views the event history**: the render request is listed without its query result.
 - **The engine cannot be reached from Infrahub**: the webhook delivery fails and the render request times out, so the artifact becomes `Error`. Engines that Infrahub cannot reach over the network are not supported in this version.
 - **The query result for a target is very large**: the render request still carries the full query result (see Assumptions).
 

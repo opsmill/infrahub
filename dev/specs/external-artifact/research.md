@@ -79,7 +79,7 @@ Replacement uses state stored on the artifact (data-model.md). Each new request 
 **Decision**:
 - For an external definition, the check flow emits the render request, writes the check with conclusion `unknown` and returns a pending result.
 - `run_checks_and_update_validator` leaves the validator `in_progress` when any result is pending.
-- The callback handler and the timeout sweep (R7) update the check, then call one shared function that recomputes the validator state and conclusion from all its checks and sends the existing passed or failed validator events.
+- The callback handler and the timeout sweep (R7) update the check under the per-artifact lock (R11), then call one shared function that recomputes the validator state and conclusion from all its checks and sends the existing passed or failed validator events.
 
 **Alternatives considered**: The check flow waits by polling until the artifact is `Ready` or `Error`. Rejected because it holds a flow run for up to the timeout (10 minutes) per target, and for a 500-device group that would occupy the workers for the whole time.
 
@@ -114,10 +114,31 @@ Replacement uses state stored on the artifact (data-model.md). Each new request 
 
 **Decision**: Keep the full query result in the event, as the user decided. Before emitting, measure the serialized payload. If it exceeds the Prefect limit, mark the artifact `Error` with the message "query result too large for a render request (N bytes, limit M)", and do not emit.
 
-**Open risk**: Query results are stored in event history and are readable through the `Events` query by users who may not be allowed to read every field the query returns. This is recorded for the critique.
+**Permissions** (critique E5): query results would otherwise be readable through the `Events` query by users who may not be allowed to read every field the query returns. So:
+- `task_manager/event/query.py` leaves `query_result` out of the payload it returns for `infrahub.artifact.render_requested`;
+- the `Task` query does the same for the webhook flow-run parameters of these events.
+
+The Prefect UI and API remain reachable only by operators of the deployment.
 
 ## R10. Merge regeneration
 
 **Findings**: Post-merge regeneration goes through `PostMergeRegenerationDispatcher` to `REQUEST_ARTIFACT_DEFINITION_GENERATE` and then `git/tasks.py::generate_artifact`.
 
 **Decision**: No change to selection. `generate_artifact` takes the external branch from R1 and emits a render request for the destination branch (spec FR-001, User Story 1 scenario 4).
+
+## R11. Concurrent changes to render state
+
+**Findings**: A callback, a new render request and the timeout sweep can change the same artifact at the same time. Without serialization, a callback that validated render ID R can store its content after a new request has set R2. `infrahub.lock` provides named locks (`InfrahubLockRegistry`) that the backend already uses.
+
+**Decision**: Every read-check-write of `render_request_id`, `render_deadline` and the render status runs under the lock `artifact-render:<branch>:<artifact_id>`. The render ID and the deadline are checked inside that lock. Validator recomputation runs under `validator:<validator_id>` and reads the stored checks, not the caller's result.
+
+**Alternatives considered**: An optimistic compare-and-set in Cypher. Rejected because node saves go through the node manager, and a dedicated Cypher write would bypass it.
+
+## R12. Failing before emitting
+
+**Decision**: Before emitting, the render request sets the artifact to `Error` with a specific message, and emits nothing, in these cases:
+- No active webhook has `event_type` `infrahub.artifact.render_requested` or `all`, and a branch scope that matches. Message: "no webhook subscribed to infrahub.artifact.render_requested".
+- `main.public_url` is not set. Message: "main.public_url must be set for external transformations".
+- The serialized event exceeds the size limit (R9).
+
+**Rationale**: Otherwise each of these would show as "no response from engine" after the full timeout, which hides the cause (critique P4, P5, X1).

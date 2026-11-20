@@ -33,6 +33,8 @@ This is the standard webhook body (`webhook/models.py::Webhook.compute_payload`)
 }
 ```
 
+The `Events` GraphQL query returns this event without `data.query_result`, so the query data stays behind object permissions.
+
 ## Headers
 
 | Header | Value |
