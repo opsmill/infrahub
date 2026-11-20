@@ -32,6 +32,7 @@ from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
+from infrahub.exceptions import MergeConflictsUnresolvedError
 from tests.helpers.ownership import (
     OWNERS_FIELD,
     TARGET_OWNERS_FIELD,
@@ -53,6 +54,7 @@ from ._ownership import (
     has_owner_change,
     holder_edges,
     merge,
+    merge_without_conflict_check,
     owner_property,
     profile_with_device,
     update_diff,
@@ -311,9 +313,6 @@ async def test_merge_closes_the_owners_that_the_default_branch_gave_to_a_node_th
     edge_types: tuple[str, ...],
 ) -> None:
     device_id = dataset.ids["device-a"]
-    await set_owners(
-        db=db, branch=default_branch, node_id=device_id, owner_ids=dataset.owners(("dc-emea",)), holder=holder
-    )
     branch = await create_branch(db=db, branch_name="node-deleted")
     # The branch does not read these owners, so its delete does not close them.
     owners_after_branch_start = dataset.owners(("network-emea", "security"))
@@ -322,10 +321,15 @@ async def test_merge_closes_the_owners_that_the_default_branch_gave_to_a_node_th
     )
     device = await NodeManager.get_one(db=db, branch=branch, id=device_id, raise_on_error=True)
     await device.delete(db=db)
-    await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+    conflict = get_one_diff_node(diff_root=diff, node_uuid=device_id).conflict
+    assert conflict is not None
+    assert conflict.resolvable is False
+    with pytest.raises(MergeConflictsUnresolvedError):
+        await merge(db=db, branch=branch)
     assert await count_active_holder_edges(db=db, branch=default_branch, node_id=device_id, edge_types=edge_types) == 2
 
-    await merge(db=db, branch=branch)
+    await merge_without_conflict_check(db=db, branch=branch)
 
     assert await NodeManager.get_one(db=db, branch=default_branch, id=device_id) is None
     assert await count_active_holder_edges(db=db, branch=default_branch, node_id=device_id, edge_types=edge_types) == 0
@@ -751,7 +755,12 @@ async def test_merge_closes_the_owners_that_the_default_branch_gave_through_a_pr
     )
     profile = await NodeManager.get_one(db=db, branch=branch, id=profile_id, raise_on_error=True)
     await profile.delete(db=db)
-    await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+    conflict = get_one_diff_node(diff_root=diff, node_uuid=profile_id).conflict
+    assert conflict is not None
+    assert conflict.resolvable is False
+    with pytest.raises(MergeConflictsUnresolvedError):
+        await merge(db=db, branch=branch)
     assert (
         await count_active_holder_edges(
             db=db, branch=default_branch, node_id=profile_id, edge_types=(*OWNER_EDGE_TYPES, *SET_EDGE_TYPES)
@@ -759,7 +768,7 @@ async def test_merge_closes_the_owners_that_the_default_branch_gave_through_a_pr
         == 3
     )
 
-    await merge(db=db, branch=branch)
+    await merge_without_conflict_check(db=db, branch=branch)
 
     assert (
         await count_active_holder_edges(

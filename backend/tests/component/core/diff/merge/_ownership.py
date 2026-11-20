@@ -10,8 +10,12 @@ from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.core.diff.model.path import BranchTrackingId
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
+from infrahub.dependencies.registry import get_component_registry
+from infrahub.exceptions import MergeConflictsUnresolvedError
 from infrahub.workers.dependencies import build_database
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.ownership import OWNERS_FIELD, OwnerDataset
@@ -24,7 +28,6 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.diff.model.path import EnrichedDiffProperty, EnrichedDiffRoot
-    from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.database import InfrahubDatabase
 
 OWNER_EDGE_TYPES = ("HAS_OWNER", "HAS_NO_OWNER", "HAS_SOURCE", "HAS_OWNER_SOURCE")
@@ -41,7 +44,27 @@ async def update_diff(
 
 
 async def merge(db: InfrahubDatabase, branch: Branch, at: Timestamp | None = None) -> None:
-    """Merge the branch with its latest diff, the way the merge of a branch does after the diff update."""
+    """Merge the branch with its latest diff, the way the merge of a branch does after the diff update.
+
+    Raises:
+        MergeConflictsUnresolvedError: When a conflict has no selection or cannot be resolved.
+
+    """
+    diff_repository = await get_component_registry().get_component(DiffRepository, db=db, branch=branch)
+    unresolved = [
+        conflict_path
+        async for conflict_path, conflict in diff_repository.get_all_conflicts_for_diff(
+            diff_branch_name=branch.name, tracking_id=BranchTrackingId(name=branch.name)
+        )
+        if conflict.selected_branch is None or conflict.resolvable is False
+    ]
+    if unresolved:
+        raise MergeConflictsUnresolvedError(conflict_paths=unresolved, branch_name=branch.name)
+    await merge_without_conflict_check(db=db, branch=branch, at=at)
+
+
+async def merge_without_conflict_check(db: InfrahubDatabase, branch: Branch, at: Timestamp | None = None) -> None:
+    """Merge the branch with its latest diff, also when a conflict has no selection or cannot be resolved."""
     merger = await get_diff_merger(db=db, branch=branch)
     await merger.merge_graph(at=at or Timestamp())
 
