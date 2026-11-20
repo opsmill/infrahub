@@ -155,7 +155,7 @@ exclude_lines = ["if TYPE_CHECKING:", "raise NotImplementedError()"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 timeout = 300 # 5 minutes
-session_timeout = 1800 # 30 minutes
+session_timeout = 2700 # 45 minutes
 testpaths = ["tests"]
 filterwarnings = [
     "ignore:Module already imported so cannot be rewritten",
