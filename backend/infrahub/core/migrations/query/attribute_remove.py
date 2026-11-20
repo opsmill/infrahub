@@ -95,7 +95,6 @@ class AttributeRemoveQuery(MigrationSelectionQuery):
         self.params["kinds_to_ignore"] = kinds_to_ignore
         self.params["attr_name"] = self.attribute_name
         self.params["at"] = self.at.to_string()
-        self.params["operation_ats"] = self.operation_ats_param
         self.params["branch_name"] = self.branch.name
         self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
 
@@ -132,6 +131,10 @@ class AttributeRemoveQuery(MigrationSelectionQuery):
 
         self.selection_kinds = "|".join(self.node_kinds + profile_kinds_to_update + template_kinds_to_update)
         self.add_to_query(self.render_selection())
+        stamp_attr, stamp_params = stamp_vertex_metadata("active_attr", at=self.at, operation_ats=self.operation_ats)
+        self.params.update(stamp_params)
+        stamp_node, stamp_params = stamp_vertex_metadata("active_node", at=self.at, operation_ats=self.operation_ats)
+        self.params.update(stamp_params)
         query = """
         WITH active_node, active_attr
         MATCH (active_attr)-[]-(peer)
@@ -173,7 +176,7 @@ class AttributeRemoveQuery(MigrationSelectionQuery):
             "branch_filter": branch_filter,
             "sub_query_all": sub_query_all,
             "close_unretained_agnostic_fields": CLOSE_UNRETAINED_AGNOSTIC_FIELDS,
-            "stamp_attr": stamp_vertex_metadata("active_attr"),
-            "stamp_node": stamp_vertex_metadata("active_node"),
+            "stamp_attr": stamp_attr,
+            "stamp_node": stamp_node,
         }
         self.add_to_query(query)

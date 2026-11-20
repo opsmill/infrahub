@@ -122,7 +122,6 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery, Migration
         self.params["kinds_to_skip"] = params.kinds_to_skip
         self.params["rel_identifiers"] = params.rel_identifiers
         self.params["at"] = self.at.to_string()
-        self.params["operation_ats"] = self.operation_ats_param
         self.params["branch_name"] = self.branch.name
         self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
         self.params["user_id"] = self.user_id
@@ -198,13 +197,21 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery, Migration
         UNWIND agnostic_candidates AS rel
         RETURN DISTINCT rel
         """
+        stamp_rel, stamp_params = stamp_vertex_metadata("rel", at=self.at, operation_ats=self.operation_ats)
+        self.params.update(stamp_params)
+        stamp_active_node, stamp_params = stamp_vertex_metadata(
+            "active_node", at=self.at, operation_ats=self.operation_ats
+        )
+        self.params.update(stamp_params)
+        stamp_peer, stamp_params = stamp_vertex_metadata("peer", at=self.at, operation_ats=self.operation_ats)
+        self.params.update(stamp_params)
         query = query_template % {
             "branch_filter": branch_filter,
             "selection": self.render_selection(),
             "close_unretained_agnostic_fields": CLOSE_UNRETAINED_AGNOSTIC_FIELDS,
-            "stamp_rel": stamp_vertex_metadata("rel"),
-            "stamp_active_node": stamp_vertex_metadata("active_node"),
-            "stamp_peer": stamp_vertex_metadata("peer"),
+            "stamp_rel": stamp_rel,
+            "stamp_active_node": stamp_active_node,
+            "stamp_peer": stamp_peer,
         }
         self.add_to_query(query)
 

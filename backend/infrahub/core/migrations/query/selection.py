@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
-    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -19,19 +16,6 @@ class MigrationSelectionQuery(Query):
     """
 
     selected_node: ClassVar[str] = "active_node"
-
-    def __init__(self, *, operation_ats: Sequence[Timestamp] = (), **kwargs: Any) -> None:
-        self.operation_ats = list(operation_ats)
-        super().__init__(**kwargs)
-
-    @property
-    def operation_ats_param(self) -> list[str]:
-        """Return the timestamps of the operation this write belongs to, its own included, as strings.
-
-        A vertex last stamped at one of them was already changed by this operation, so its previous stamp
-        is the one from before the operation and is kept.
-        """
-        return list(dict.fromkeys([at.to_string() for at in self.operation_ats] + [self.at.to_string()]))
 
     def render_selection(self) -> str:
         """Return the Cypher that selects the nodes to change, ending with ``selected_node`` in scope.

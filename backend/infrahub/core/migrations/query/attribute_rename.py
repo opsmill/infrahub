@@ -84,7 +84,6 @@ class AttributeRenameQuery(MigrationSelectionQuery):
         self.params["prev_attr"] = self.previous_attr.model_dump()
 
         self.params["current_time"] = self.at.to_string()
-        self.params["operation_ats"] = self.operation_ats_param
         self.params["branch_name"] = self.branch.name
 
         self.params["user_id"] = self.user_id
@@ -173,6 +172,10 @@ class AttributeRenameQuery(MigrationSelectionQuery):
         """ % {"branch_filter": branch_filter, "add_uuid": add_uuid}
         self.add_to_query(query)
 
+        stamp_node, stamp_params = stamp_vertex_metadata(
+            "active_node", at=self.at, operation_ats=self.operation_ats, at_param="current_time"
+        )
+        self.params.update(stamp_params)
         query = """
         // --------------
         // An edge owned by another branch cannot be modified from here, so on a branch other than the
@@ -224,6 +227,6 @@ class AttributeRenameQuery(MigrationSelectionQuery):
         RETURN nbr_new_attributes
         """ % {
             "close_unretained_agnostic_fields": CLOSE_UNRETAINED_AGNOSTIC_FIELDS,
-            "stamp_node": stamp_vertex_metadata("active_node", at_param="current_time"),
+            "stamp_node": stamp_node,
         }
         self.add_to_query(query)

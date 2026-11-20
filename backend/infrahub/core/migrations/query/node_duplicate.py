@@ -162,7 +162,6 @@ class NodeDuplicateQuery(MigrationSelectionQuery):
         }
 
         self.params["current_time"] = self.at.to_string()
-        self.params["operation_ats"] = self.operation_ats_param
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
 
@@ -188,6 +187,10 @@ class NodeDuplicateQuery(MigrationSelectionQuery):
 
         self.add_to_query(self.render_selection())
 
+        stamp_node, stamp_params = stamp_vertex_metadata(
+            "active_node", at=self.at, operation_ats=self.operation_ats, at_param="current_time"
+        )
+        self.params.update(stamp_params)
         query = """
         CREATE (new_node:Node:$(target.new_labels) {
             uuid: active_node.uuid, kind: target.new_kind, namespace: target.new_namespace, branch_support: target.new_branch_support
@@ -255,6 +258,6 @@ class NodeDuplicateQuery(MigrationSelectionQuery):
             "sub_query_in": sub_query_in,
             "sub_query_out_args": sub_query_out_args,
             "sub_query_in_args": sub_query_in_args,
-            "stamp_node": stamp_vertex_metadata("active_node", at_param="current_time"),
+            "stamp_node": stamp_node,
         }
         self.add_to_query(query)

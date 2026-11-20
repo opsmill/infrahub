@@ -185,7 +185,6 @@ CALL (n, attr) {
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["at"] = self.at.to_string()
-        self.params["operation_ats"] = self.operation_ats_param
         self.params["attr_name"] = self.migration.previous_attribute_schema.name
         self.params["user_id"] = self.user_id
 
@@ -193,9 +192,13 @@ CALL (n, attr) {
         self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
 
         template = TOWARD_INDEXED_QUERY if needs_index else TOWARD_LARGE_QUERY
+        stamp_attr, stamp_params = stamp_vertex_metadata("attr", at=self.at, operation_ats=self.operation_ats)
+        self.params.update(stamp_params)
+        stamp_n, stamp_params = stamp_vertex_metadata("n", at=self.at, operation_ats=self.operation_ats)
+        self.params.update(stamp_params)
         edge_updates = EDGE_UPDATES_QUERY % {
-            "stamp_attr": stamp_vertex_metadata("attr"),
-            "stamp_n": stamp_vertex_metadata("n"),
+            "stamp_attr": stamp_attr,
+            "stamp_n": stamp_n,
         }
         self.add_to_query(template % {"selection": self.render_selection(), "edge_updates": edge_updates})
 

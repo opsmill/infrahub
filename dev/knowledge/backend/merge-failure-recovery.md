@@ -96,8 +96,9 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
 
    A migration writer saves the previous value only when the vertex's `updated_at` is unset or is not
    one of the operation's timestamps (`stamp_vertex_metadata` in `core/query/vertex_metadata.py`).
-   The operation's timestamps are `MigrationInput.operation_ats`, always including the write's own
-   `at` (`MigrationSelectionQuery.operation_ats_param`). A vertex changed by several steps therefore
+   The operation's timestamps are the query's `operation_ats` (a `Query` argument that schema
+   migrations fill from `MigrationInput.operation_ats`), and the stamp helper always adds the
+   write's own `at`. A vertex changed by several steps therefore
    keeps the value from before the operation, not the one a step before it wrote. This is what
    lets the metadata restore cover both merge-diff and migration collateral without enumerating
    which step touched which node. The number pool writers that a NumberPool attribute-add migration

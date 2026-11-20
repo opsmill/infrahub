@@ -83,7 +83,6 @@ class AttributeAddQuery(MigrationSelectionQuery):
         self.params["attr_name"] = self.attribute_name
         self.params["branch_support"] = self.branch_support
         self.params["current_time"] = write_time
-        self.params["operation_ats"] = self.operation_ats_param
 
         if self.default_value is not None:
             self.params["attr_value"] = self.default_value
@@ -128,6 +127,10 @@ class AttributeAddQuery(MigrationSelectionQuery):
             LIMIT 1
             """ % {"attr_value_label": attr_value_label}
 
+        stamp_node, stamp_params = stamp_vertex_metadata(
+            "n", at=self.at, operation_ats=self.operation_ats, at_param="current_time"
+        )
+        self.params.update(stamp_params)
         query = """
         %(match_query)s
         MERGE (is_protected_value:Boolean { value: $is_protected_default })
@@ -173,7 +176,7 @@ class AttributeAddQuery(MigrationSelectionQuery):
             "match_query": match_query,
             "selection": self.render_selection(carry=("av", "is_protected_value")),
             "uuid_generation": db.render_uuid_generation(node_label="a", node_attr="uuid"),
-            "stamp_node": stamp_vertex_metadata("n", at_param="current_time"),
+            "stamp_node": stamp_node,
         }
 
         self.add_to_query(query)

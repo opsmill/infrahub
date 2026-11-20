@@ -304,6 +304,8 @@ class NodeCreateAllQuery(NodeQuery):
             "{ branch: rel.branch, branch_level: rel.branch_level, "
             "status: rel.status, hierarchy: rel.hierarchical, from: $at, from_user_id: $user_id }"
         )
+        stamp_pool, stamp_params = stamp_vertex_metadata("pool", at=at, operation_ats=self.operation_ats)
+        self.params.update(stamp_params)
         pool_reservation_subquery = """
             WITH *
             CALL (a, attr) {
@@ -317,7 +319,7 @@ class NodeCreateAllQuery(NodeQuery):
                 CREATE (pool)-[reserved:IS_RESERVED $pool_rel_prop]->(a)
                 SET reserved.allocated_values = CASE WHEN prop.allocated_value IS NULL THEN [] ELSE [prop.allocated_value] END
                 %(stamp_pool)s
-            }""" % {"number_pool": InfrahubKind.NUMBERPOOL, "stamp_pool": stamp_vertex_metadata("pool")}
+            }""" % {"number_pool": InfrahubKind.NUMBERPOOL, "stamp_pool": stamp_pool}
 
         rel_vertex_prop_str = "{ uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support"
         if self.branch.is_default or self.branch.is_global:
@@ -615,7 +617,6 @@ class NodeCreateAllQuery(NodeQuery):
         }
 
         self.params["at"] = at.to_string()
-        self.params["operation_ats"] = [self.params["at"]]
 
         self.add_to_query(query)
         self.return_labels = ["n", "rn", "rv"]

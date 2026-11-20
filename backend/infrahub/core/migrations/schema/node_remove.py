@@ -46,7 +46,6 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery, MigrationSelectionQuery):
             },
             # Set metadata for vertex properties on default/global branch
             "set_metadata": self.branch.is_default or self.branch.is_global,
-            "operation_ats": self.operation_ats_param,
         }
 
     def render_selection(self) -> str:
@@ -99,6 +98,10 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
+        stamp_peer_node, stamp_params = stamp_vertex_metadata(
+            "peer_node", at=self.at, operation_ats=self.operation_ats, at_param="current_time"
+        )
+        self.params.update(stamp_params)
         query = (
             """
     %(selection)s
@@ -195,7 +198,7 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
         ) % {
             "branch_filter": branch_filter,
             "selection": self.render_selection(),
-            "stamp_peer_node": stamp_vertex_metadata("peer_node", at_param="current_time"),
+            "stamp_peer_node": stamp_peer_node,
         }
         self.add_to_query(query)
 
@@ -225,6 +228,14 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
+        stamp_active_node, stamp_params = stamp_vertex_metadata(
+            "active_node", at=self.at, operation_ats=self.operation_ats, at_param="current_time"
+        )
+        self.params.update(stamp_params)
+        stamp_peer_node, stamp_params = stamp_vertex_metadata(
+            "peer_node", at=self.at, operation_ats=self.operation_ats, at_param="current_time"
+        )
+        self.params.update(stamp_params)
         query = (
             """
     %(selection)s
@@ -328,8 +339,8 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
         ) % {
             "branch_filter": branch_filter,
             "selection": self.render_selection(),
-            "stamp_active_node": stamp_vertex_metadata("active_node", at_param="current_time"),
-            "stamp_peer_node": stamp_vertex_metadata("peer_node", at_param="current_time"),
+            "stamp_active_node": stamp_active_node,
+            "stamp_peer_node": stamp_peer_node,
         }
         self.add_to_query(query)
 
