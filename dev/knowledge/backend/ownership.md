@@ -316,6 +316,10 @@ holds, so it runs before the upgrade.
   [Diff Conflicts](diff-conflicts.md).
 - The diff shows a holder that lost only its `HAS_OWNER_SOURCE` mark as an update with the same list at both ends.
   It cannot show that the origin of the owners changed from `TEMPLATE` to `SELF`.
+  `DiffCombiner` compares only the owner IDs when it combines two diffs of one branch. So when the mark alone
+  changes between the start of the first diff and the end of the second diff, and the owner IDs end the same, the
+  combined diff shows no change, while a full diff of the same time range shows an update. The merge copies the
+  edges of the branch, not the values of the diff, so the merge result does not change.
 - An event stores the owners of an attribute as the `owner` or the `owners` property of the attribute, in its payload
   only.
 - The owner of one link (the `HAS_OWNER` edge of a `Relationship` vertex) keeps the behavior of `develop` at a merge.
