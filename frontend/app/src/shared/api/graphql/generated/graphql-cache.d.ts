@@ -272,10 +272,10 @@ declare module 'gql.tada' {
     /** @gql.tada/hash sha256:e074c566ae76478c19931944c9bedc66 */
     "\n  query REPOSITORY_PUSH_STATE($repositoryId: ID!) {\n    CoreRepository(ids: [$repositoryId]) {\n      edges {\n        node {\n          id\n          delivery_status {\n            value\n            label\n            color\n          }\n          delivery_failure_cause {\n            value\n            label\n          }\n          delivery_error {\n            value\n          }\n          delivery_queue {\n            value\n          }\n          delivery_last_abandonment {\n            value\n          }\n        }\n      }\n    }\n  }\n":
       TadaDocumentNode<{ CoreRepository: { edges: { node: { id: string; delivery_status: { value: string | null; label: string | null; color: string | null; } | null; delivery_failure_cause: { value: string | null; label: string | null; } | null; delivery_error: { value: string | null; } | null; delivery_queue: { value: unknown; } | null; delivery_last_abandonment: { value: unknown; } | null; } | null; }[]; }; }, { repositoryId: string; }, void>;
-    /** @gql.tada/hash sha256:f782e07396aa91d5cf0c0af70dadff90 */
+    /** @gql.tada/hash sha256:c3a6870bbe671be75a8f76b4f4915eb6 */
     "\n  query Search($search: String!, $limit: Int!, $caseSensitive: Boolean) {\n    InfrahubSearchAnywhere(\n      q: $search\n      limit: $limit\n      partial_match: true\n      case_sensitive: $caseSensitive\n    ) {\n      edges {\n        node {\n          id\n          kind\n        }\n      }\n      parent_prefixes {\n        node {\n          id\n          kind\n        }\n      }\n    }\n  }\n":
       TadaDocumentNode<{ InfrahubSearchAnywhere: { edges: { node: { id: string; kind: string; }; }[]; parent_prefixes: { node: { id: string; kind: string; }; }[] | null; }; }, { caseSensitive?: boolean | null | undefined; limit: number; search: string; }, void>;
-    /** @gql.tada/hash sha256:16bfe52682caf0369bf97608beb36cbe */
+    /** @gql.tada/hash sha256:20d385b642bd0bde4e8a561e6ba75fce */
     "\n  query TASKS_BRANCH_STATUS_COUNT($branch: String!) {\n    InfrahubTaskBranchStatus(branch: $branch) {\n      count\n    }\n  }\n":
       TadaDocumentNode<{ InfrahubTaskBranchStatus: { count: number; }; }, { branch: string; }, void>;
     /** @gql.tada/hash sha256:0758f2f4b0672607e3f57f576c5f8f9e */

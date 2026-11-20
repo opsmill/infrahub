@@ -194,7 +194,7 @@ class FakeS3Bucket:
 
 class FakeS3Storage(InfrahubS3ObjectStorage):
     def __init__(self, bucket: FakeS3Bucket) -> None:
-        self._bucket = bucket  # type: ignore[assignment]
+        self._bucket = bucket
 
 
 def build_s3_storage(
