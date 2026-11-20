@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from infrahub.core.changelog.models import AttributeChangelog
@@ -54,6 +55,8 @@ class OwnershipWriter:
             False when the holder already stores this state. Nothing is written then.
 
         """
+        if state.owner_ids is not None:
+            state = replace(state, owner_ids=tuple(dict.fromkeys(state.owner_ids)))
         node_id = node.get_id()
         if stored is None:
             stored = await self.repository.read(node_ids=[node_id], attributes=holder.kind == HolderKind.ATTRIBUTE)
