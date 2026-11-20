@@ -6,6 +6,7 @@ from git.exc import GitCommandError
 from jinja2 import TemplateError
 
 from infrahub.git.closure_builder.canonicalizer import InvalidDependencyPathError
+from infrahub.git.closure_builder.external_closure import ExternalClosure
 from infrahub.git.closure_builder.jinja2_closure import Jinja2Closure
 from infrahub.git.closure_builder.jinja2_reference_resolver import Jinja2ReferenceResolver
 from infrahub.git.closure_builder.python_closure import PythonClosure
@@ -89,6 +90,7 @@ def build_default_closure_builder(
         builders=(
             Jinja2Closure(reference_resolver=Jinja2ReferenceResolver(), logger=logger),
             PythonClosure(),
+            ExternalClosure(),
         ),
         logger=logger,
     )

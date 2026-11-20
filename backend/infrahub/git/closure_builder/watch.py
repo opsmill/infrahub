@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from git import Repo
+from infrahub_sdk.schema.repository import InfrahubExternalTransformConfig
 
 from infrahub.git.closure_builder.canonicalizer import canonicalize_path
 from infrahub.git.closure_builder.result import ClosureResult
@@ -22,6 +23,8 @@ def union_watch_files(
     logger: logging.Logger | logging.LoggerAdapter[logging.Logger],
 ) -> ClosureResult:
     """Merge a transform's user-declared ``watch.files`` into its auto-detected closure.
+
+    A config without a ``watch`` field, such as an external transform, keeps its closure unchanged.
 
     Directory entries are expanded recursively to the git-tracked files beneath them;
     symlinks, ``.pyc`` files and ``__pycache__`` entries are skipped, and gitignored
@@ -45,6 +48,8 @@ def union_watch_files(
             transform's closure falls back to ``complete=False`` rather than aborting.
 
     """
+    if isinstance(transform_config, InfrahubExternalTransformConfig):
+        return result
     watch = transform_config.watch
     if watch is None or not watch.files:
         return result

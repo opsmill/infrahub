@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol
 
 from infrahub_sdk.schema.repository import (
+    InfrahubExternalTransformConfig,
     InfrahubGeneratorDefinitionConfig,
     InfrahubJinja2TransformConfig,
     InfrahubPythonTransformConfig,
@@ -13,7 +14,12 @@ if TYPE_CHECKING:
 
     from infrahub.git.closure_builder.result import ClosureResult
 
-type TransformConfig = InfrahubJinja2TransformConfig | InfrahubPythonTransformConfig | InfrahubGeneratorDefinitionConfig
+type TransformConfig = (
+    InfrahubJinja2TransformConfig
+    | InfrahubPythonTransformConfig
+    | InfrahubGeneratorDefinitionConfig
+    | InfrahubExternalTransformConfig
+)
 
 
 class ClosureBuilder[ConfigType](Protocol):

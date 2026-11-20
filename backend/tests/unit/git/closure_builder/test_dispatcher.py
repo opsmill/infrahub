@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from git import Repo
 from infrahub_sdk.schema.repository import (
+    InfrahubExternalTransformConfig,
     InfrahubJinja2TransformConfig,
     InfrahubPythonTransformConfig,
     InfrahubWatchConfig,
@@ -46,6 +47,16 @@ def test_jinja2_config_dispatches_to_jinja2_closure(tmp_path: Path) -> None:
 
     assert result.dependencies == ("templates/device.j2",)
     assert result.complete is True
+
+
+def test_external_config_has_an_empty_complete_closure(tmp_path: Path) -> None:
+    config = InfrahubExternalTransformConfig(name="device", query="any-query", version="1.0")
+
+    result = build_default_closure_builder(logger=LOGGER).build(transform_config=config, worktree_root=tmp_path)
+
+    assert result.dependencies == ()
+    assert result.complete is True
+    assert result.unresolved == ()
 
 
 def test_python_config_dispatches_to_python_closure(tmp_path: Path) -> None:

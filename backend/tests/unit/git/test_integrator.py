@@ -146,8 +146,8 @@ IMPORT_SUMMARY_CASES = [
         step=ImportSummaryStep.SCHEMA,
         expected=(
             "Import of branch 'feature-x' stopped while importing the schema. Completed: none. "
-            "Not run: GraphQL queries; Python transforms; Jinja2 transforms; objects and menus; check definitions; "
-            "generator definitions; artifact definitions; generator actions and trigger rules from object files; "
+            "Not run: GraphQL queries; Python transforms; Jinja2 transforms; external transforms; objects and menus; "
+            "check definitions; generator definitions; artifact definitions; generator actions and trigger rules from object files; "
             "deletion of removed GraphQL queries, transforms, checks and generators."
         ),
     ),
@@ -156,7 +156,7 @@ IMPORT_SUMMARY_CASES = [
         step=ImportSummaryStep.OBJECTS,
         expected=(
             "Import of branch 'feature-x' stopped while importing objects and menus. "
-            "Completed: schema; GraphQL queries; Python transforms; Jinja2 transforms. "
+            "Completed: schema; GraphQL queries; Python transforms; Jinja2 transforms; external transforms. "
             "Not run: check definitions; generator definitions; artifact definitions; "
             "generator actions and trigger rules from object files; "
             "deletion of removed GraphQL queries, transforms, checks and generators."
@@ -167,8 +167,8 @@ IMPORT_SUMMARY_CASES = [
         step=ImportSummaryStep.STALE_NODE_DELETION,
         expected=(
             "Import of branch 'feature-x' stopped while deleting removed GraphQL queries, transforms, checks and "
-            "generators. Completed: schema; GraphQL queries; Python transforms; Jinja2 transforms; objects and menus; "
-            "check definitions; generator definitions; artifact definitions; "
+            "generators. Completed: schema; GraphQL queries; Python transforms; Jinja2 transforms; external transforms; "
+            "objects and menus; check definitions; generator definitions; artifact definitions; "
             "generator actions and trigger rules from object files. Not run: none."
         ),
     ),

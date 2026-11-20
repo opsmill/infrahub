@@ -6,6 +6,7 @@ import pytest
 from infrahub_sdk.schema.repository import InfrahubWatchConfig
 
 from infrahub.git.fingerprint.composer import (
+    ExternalTransformationFingerprintInput,
     Jinja2TransformationFingerprintInput,
     PythonTransformationFingerprintInput,
 )
@@ -244,3 +245,35 @@ def test_jinja2_commit_id_folding(case: Jinja2CommitFoldCase) -> None:
     first = digest(commit="commit-1")
     second = digest(commit="commit-2")
     assert (first == second) is case.stable
+
+
+def _external_input(version: str = "1.0") -> ExternalTransformationFingerprintInput:
+    return ExternalTransformationFingerprintInput(
+        name="report", query_name="q", dependencies=(), dependencies_complete=True, version=version
+    )
+
+
+def _external_digest(*, version: str = "1.0", query_fingerprint: str = "query-fp", commit: str = "commit-aaaa") -> str:
+    registry = FingerprintRegistry()
+    _seed_query(registry, query_fingerprint)
+    return build_composer(registry=registry, commit=commit).compose_transformation(_external_input(version=version))
+
+
+def test_external_changes_with_version() -> None:
+    assert _external_digest(version="1.0") != _external_digest(version="1.1")
+
+
+def test_external_changes_with_query_fingerprint() -> None:
+    assert _external_digest(query_fingerprint="query-fp-1") != _external_digest(query_fingerprint="query-fp-2")
+
+
+def test_external_is_stable_across_commits() -> None:
+    assert _external_digest(commit="commit-aaaa") == _external_digest(commit="commit-bbbb")
+
+
+def test_external_is_registered_for_artifact_definitions() -> None:
+    registry = FingerprintRegistry()
+    _seed_query(registry)
+    fingerprint = build_composer(registry=registry).compose_transformation(_external_input())
+
+    assert registry.get(kind=FingerprintKind.TRANSFORMATION, name="report") == fingerprint

@@ -25,11 +25,13 @@ from infrahub_sdk.protocols import (
     CoreGenericRepository,
     CoreGraphQLQuery,
     CoreTransformation,
+    CoreTransformExternal,
     CoreTransformJinja2,
     CoreTransformPython,
 )
 from infrahub_sdk.schema.repository import (
     InfrahubCheckDefinitionConfig,
+    InfrahubExternalTransformConfig,
     InfrahubGeneratorDefinitionConfig,
     InfrahubJinja2TransformConfig,
     InfrahubPythonTransformConfig,
@@ -77,6 +79,7 @@ from infrahub.git.closure_builder.canonicalizer import canonicalize_path
 from infrahub.git.closure_builder.dispatcher import build_default_closure_builder
 from infrahub.git.fingerprint.composer import (
     ArtifactDefinitionFingerprintInput,
+    ExternalTransformationFingerprintInput,
     FingerprintComposer,
     GeneratorDefinitionFingerprintInput,
     Jinja2TransformationFingerprintInput,
@@ -127,6 +130,16 @@ class InfrahubRepositoryJinja2(InfrahubJinja2TransformConfig):
         data = self.model_dump(exclude_none=True, exclude={"watch"})
         data["template_path"] = self.template_path_value
         return data
+
+
+class InfrahubRepositoryExternalTransform(InfrahubExternalTransformConfig):
+    repository: str
+    dependencies: list[str] = Field(default_factory=list)
+    dependencies_complete: bool = False
+
+    @property
+    def payload(self) -> dict[str, Any]:
+        return self.model_dump(exclude_none=True)
 
 
 class CheckDefinitionInformation(BaseModel):
@@ -219,6 +232,7 @@ class ObjectImportPlan:
     query_strings: dict[str, str]
     transform_definitions: list[TransformPythonInformation]
     jinja2_definitions: dict[str, InfrahubRepositoryJinja2]
+    external_transform_definitions: dict[str, InfrahubRepositoryExternalTransform]
     check_definitions: list[CheckDefinitionInformation]
     generator_definitions: list[GeneratorDefinitionWithClosure]
     artifact_definitions: dict[str, InfrahubRepositoryArtifactDefinitionConfig]
@@ -231,6 +245,7 @@ class ImportSummaryStep(Enum):
     GRAPHQL_QUERIES = ("GraphQL queries", "importing GraphQL queries")
     PYTHON_TRANSFORMS = ("Python transforms", "importing Python transforms")
     JINJA2_TRANSFORMS = ("Jinja2 transforms", "importing Jinja2 transforms")
+    EXTERNAL_TRANSFORMS = ("external transforms", "importing external transforms")
     OBJECTS = ("objects and menus", "importing objects and menus")
     CHECK_DEFINITIONS = ("check definitions", "importing check definitions")
     GENERATOR_DEFINITIONS = ("generator definitions", "importing generator definitions")
@@ -300,6 +315,10 @@ def _graphql_query_label(query_config: InfrahubRepositoryGraphQLConfig) -> str:
 
 def _jinja2_transform_label(name: str, template_path: Path | str) -> str:
     return f"Jinja2 transform '{name}' ({template_path})"
+
+
+def _external_transform_label(name: str) -> str:
+    return f"External transform '{name}'"
 
 
 def _python_transform_label(name: str, file_path: Path | str) -> str:
@@ -519,6 +538,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             jinja2_definitions = await self._build_jinja2_transform_definitions(
                 branch_name=infrahub_branch_name, commit=commit, config_file=config_file
             )
+            external_transform_definitions = await self._build_external_transform_definitions(
+                branch_name=infrahub_branch_name, commit=commit, config_file=config_file
+            )
             check_definitions = await self._build_python_check_definitions(
                 branch_name=infrahub_branch_name, commit=commit, config_file=config_file
             )
@@ -536,6 +558,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             query_strings=query_strings,
             transform_definitions=transform_definitions,
             jinja2_definitions=jinja2_definitions,
+            external_transform_definitions=external_transform_definitions,
             check_definitions=check_definitions,
             generator_definitions=generator_definitions,
             artifact_definitions=artifact_definitions,
@@ -595,6 +618,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 local_transforms=plan.jinja2_definitions,
                 fingerprint_composer=fingerprint_composer,
             )
+            progress.step = ImportSummaryStep.EXTERNAL_TRANSFORMS
+            stale_external_transforms = await self._apply_external_transform_definitions(
+                branch_name=plan.infrahub_branch_name,
+                local_transforms=plan.external_transform_definitions,
+                fingerprint_composer=fingerprint_composer,
+            )
             progress.step = ImportSummaryStep.OBJECTS
             await self.import_objects(
                 branch_name=plan.infrahub_branch_name,
@@ -636,6 +665,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 stale_checks,
                 stale_python_transforms,
                 stale_jinja2_transforms,
+                stale_external_transforms,
                 stale_queries,
             ]
             for stale_nodes in stale_nodes_in_delete_order:
@@ -906,6 +936,171 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         if existing_transform.template_path.value != local_transform.template_path_value:
             existing_transform.template_path.value = local_transform.template_path_value
+
+        if existing_transform.dependencies.value != local_transform.dependencies:
+            existing_transform.dependencies.value = local_transform.dependencies
+
+        if existing_transform.dependencies_complete.value != local_transform.dependencies_complete:
+            existing_transform.dependencies_complete.value = local_transform.dependencies_complete
+
+        await existing_transform.save()
+
+    async def _build_external_transform_definitions(
+        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
+    ) -> dict[str, InfrahubRepositoryExternalTransform]:
+        """Build the desired external transform definitions from the repository config.
+
+        Performs no graph mutation, so it does not need to be serialized against concurrent imports.
+
+        Raises:
+            ValidationError: When an entry sets a field that the transform's kind does not have.
+
+        """
+        log = get_run_logger()
+
+        schema = await self.sdk.schema.get(kind=InfrahubKind.TRANSFORMEXTERNAL, branch=branch_name)
+        worktree = self.get_worktree(identifier=commit or branch_name)
+        closure_builder = build_default_closure_builder(logger=log)
+
+        log.info(f"Found {len(config_file.external_transforms)} external transforms in the repository")
+
+        local_transforms: dict[str, InfrahubRepositoryExternalTransform] = {}
+        for config_transform in config_file.external_transforms:
+            with import_entry(_external_transform_label(config_transform.name)):
+                self.sdk.schema.validate_data_against_schema(
+                    schema=schema, data=config_transform.model_dump(exclude_none=True)
+                )
+                closure = closure_builder.build(
+                    transform_config=config_transform, worktree_root=Path(worktree.directory)
+                )
+                transform = InfrahubRepositoryExternalTransform(
+                    repository=str(self.id),
+                    dependencies=list(closure.dependencies),
+                    dependencies_complete=closure.complete,
+                    **config_transform.model_dump(),
+                )
+            local_transforms[transform.name] = transform
+
+        return local_transforms
+
+    async def _apply_external_transform_definitions(
+        self,
+        branch_name: str,
+        local_transforms: dict[str, InfrahubRepositoryExternalTransform],
+        fingerprint_composer: FingerprintComposer,
+    ) -> dict[str, CoreTransformExternal]:
+        """Reconcile the desired external transform definitions against the graph by creating and updating.
+
+        Returns the transforms the repository no longer declares, left for the caller to delete once
+        whatever references them has been reconciled.
+
+        Mutates graph nodes whose names are globally unique, so it must run serialized against any
+        concurrent import of the same repository.
+        """
+        log = get_run_logger()
+
+        # Compose the fingerprint while the query reference is still the query name, so the
+        # connected query's freshly-computed fingerprint can be looked up in the registry.
+        transform_fingerprints = {
+            transform.name: fingerprint_composer.compose_transformation(
+                ExternalTransformationFingerprintInput(
+                    name=transform.name,
+                    query_name=transform.query,
+                    dependencies=tuple(transform.dependencies),
+                    dependencies_complete=transform.dependencies_complete,
+                    version=transform.version,
+                )
+            )
+            for transform in local_transforms.values()
+        }
+
+        for transform in local_transforms.values():
+            with import_entry(_external_transform_label(transform.name)):
+                graphql_query = await self._get_graphql_query(branch_name=branch_name, query=transform.query)
+            transform.query = graphql_query.id
+
+        transforms_in_graph = {
+            transform.name.value: transform
+            for transform in await self.sdk.filters(
+                kind=CoreTransformExternal, branch=branch_name, repository__ids=[str(self.id)]
+            )
+        }
+
+        present_in_both, only_graph, only_local = compare_lists(
+            list1=list(transforms_in_graph.keys()), list2=list(local_transforms.keys())
+        )
+
+        for transform_name in only_local:
+            log.info(f"New external transform {transform_name!r} found, creating")
+            with import_entry(_external_transform_label(transform_name)):
+                await self.create_external_transform(
+                    branch_name=branch_name,
+                    data=local_transforms[transform_name],
+                    fingerprint=transform_fingerprints[transform_name],
+                )
+
+        for transform_name in present_in_both:
+            existing_transform = transforms_in_graph[transform_name]
+            local_transform = local_transforms[transform_name]
+            fingerprint = transform_fingerprints[transform_name]
+            unchanged = self.compare_external_transform(
+                existing_transform=existing_transform, local_transform=local_transform
+            )
+            if not unchanged or existing_transform.fingerprint.value != fingerprint:
+                log.info(f"New version of the external transform {transform_name!r} found, updating")
+                with import_entry(_external_transform_label(transform_name)):
+                    await self.update_external_transform(
+                        existing_transform=existing_transform,
+                        local_transform=local_transform,
+                        fingerprint=fingerprint,
+                    )
+
+        return {transform_name: transforms_in_graph[transform_name] for transform_name in only_graph}
+
+    async def create_external_transform(
+        self, branch_name: str, data: InfrahubRepositoryExternalTransform, fingerprint: str
+    ) -> CoreTransformExternal:
+        schema = await self.sdk.schema.get(kind=InfrahubKind.TRANSFORMEXTERNAL, branch=branch_name)
+        create_payload = self.sdk.schema.generate_payload_create(
+            schema=schema, data={**data.payload, "fingerprint": fingerprint}, source=self.id, is_protected=True
+        )
+        obj = await self.sdk.create(kind=CoreTransformExternal, branch=branch_name, **create_payload)
+        await obj.save()
+        return obj
+
+    @staticmethod
+    def compare_external_transform(
+        existing_transform: CoreTransformExternal, local_transform: InfrahubRepositoryExternalTransform
+    ) -> bool:
+        return (
+            existing_transform.description.value == local_transform.description
+            and existing_transform.query.id == local_transform.query
+            and existing_transform.version.value == local_transform.version
+            and existing_transform.timeout.value == local_transform.timeout
+            and existing_transform.dependencies.value == local_transform.dependencies
+            and existing_transform.dependencies_complete.value == local_transform.dependencies_complete
+        )
+
+    async def update_external_transform(
+        self,
+        existing_transform: CoreTransformExternal,
+        local_transform: InfrahubRepositoryExternalTransform,
+        fingerprint: str,
+    ) -> None:
+        if existing_transform.fingerprint.value != fingerprint:
+            existing_transform.fingerprint.value = fingerprint
+
+        if existing_transform.description.value != local_transform.description:
+            existing_transform.description.value = local_transform.description
+
+        if existing_transform.query.id != local_transform.query:
+            existing_transform.query = {"id": local_transform.query, "source": str(self.id), "is_protected": True}
+
+        if existing_transform.version.value != local_transform.version:
+            existing_transform.version.value = local_transform.version
+
+        if existing_transform.timeout.value != local_transform.timeout:
+            existing_transform.timeout.value = local_transform.timeout
 
         if existing_transform.dependencies.value != local_transform.dependencies:
             existing_transform.dependencies.value = local_transform.dependencies

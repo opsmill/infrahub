@@ -67,20 +67,20 @@ description: "Task list for artifacts rendered by an external engine"
   - the fields listed in [data-model.md](data-model.md#artifactrenderrequestedevent-new-event): `render_id`, `callback_url`, `deadline`, `artifact_id`, `artifact_name`, `artifact_definition_id`, `artifact_definition_name`, `transformation_name`, `transformation_version`, `content_type`, `target_id`, `target_kind`, `target_name`, `branch` and `query_result`.
 
   `get_resource()` must include `infrahub.branch.name`, and `get_related()` must call `super()`. Export it in `backend/infrahub/events/__init__.py`. Add the choice to `frontend/app/src/entities/events/domain/model/event-constants.ts::EVENT_TYPE_CHOICES`.
-- [ ] T009 [P] Create `backend/infrahub/artifacts/render_token.py` with two functions:
+- [X] T009 [P] Create `backend/infrahub/artifacts/render_token.py` with two functions:
   - `mint_render_token(render_id, artifact_id, branch, deadline) -> str`: an HS256 JWT signed with `config.SETTINGS.security.secret_key`, with claims `type="render"`, `render_id`, `artifact_id`, `branch` and `exp=deadline`.
   - `validate_render_token(token) -> RenderTokenClaims`: raises an authentication error when the signature is bad, the token is expired, `type != "render"` or a claim is missing.
 
   Unit tests in `backend/tests/unit/artifacts/test_render_token.py` must also show that `auth/auth.py::validate_jwt_access_token` refuses a render token.
-- [ ] T010 [P] Create `backend/infrahub/artifacts/render_lock.py` with helpers that return the lock names `artifact-render:<branch>:<artifact_id>` and `validator:<validator_id>`, using the `infrahub.lock` registry (research R11).
-- [ ] T011 Add the external-transformation fingerprint:
+- [X] T010 [P] Create `backend/infrahub/artifacts/render_lock.py` with helpers that return the lock names `artifact-render:<branch>:<artifact_id>` and `validator:<validator_id>`, using the `infrahub.lock` registry (research R11).
+- [X] T011 Add the external-transformation fingerprint:
   - In `backend/infrahub/git/fingerprint/`, add `ExternalTransformationFingerprintInput` (`name`, `query_name`, `dependencies`, `dependencies_complete`, `version`).
   - In `FingerprintComposer.compose_transformation`, add a `match` case that adds a `version` term, sets `watch_required=False` and does not fold the commit ID.
   - In `backend/infrahub/git/closure_builder/`, add an empty, complete closure for external configs, add it to the `TransformConfig` union and wire it in `build_default_closure_builder`.
   - Add `(InfrahubKind.TRANSFORMEXTERNAL, "fingerprint")` to `backend/infrahub/core/diff/conflicts_enricher.py::_IMPORT_COMPUTED_ATTRIBUTES`.
 
   Unit tests in `backend/tests/unit/git/fingerprint/` must show that the fingerprint changes with `version` and with the query fingerprint, and does not change with the commit ID.
-- [ ] T012 Import external transformations from `.infrahub.yml` in `backend/infrahub/git/integrator.py`. Copy the Jinja2 pattern:
+- [X] T012 Import external transformations from `.infrahub.yml` in `backend/infrahub/git/integrator.py`. Copy the Jinja2 pattern:
   - `_build_external_transform_definitions`, `_apply_external_transform_definitions`, `create_external_transform`, `compare_external_transform` and `update_external_transform`;
   - a new `ImportSummaryStep` member placed before artifact definitions;
   - a new `ObjectImportPlan` field;

@@ -27,6 +27,7 @@ _IMPORT_COMPUTED_ATTRIBUTES = {
     (InfrahubKind.GRAPHQLQUERY, "fingerprint"),
     (InfrahubKind.TRANSFORMJINJA2, "fingerprint"),
     (InfrahubKind.TRANSFORMPYTHON, "fingerprint"),
+    (InfrahubKind.TRANSFORMEXTERNAL, "fingerprint"),
     (InfrahubKind.ARTIFACTDEFINITION, "fingerprint"),
     (InfrahubKind.GENERATORDEFINITION, "fingerprint"),
 }

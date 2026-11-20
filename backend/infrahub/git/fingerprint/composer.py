@@ -98,6 +98,15 @@ class Jinja2TransformationFingerprintInput:
 
 
 @dataclass(frozen=True, kw_only=True)
+class ExternalTransformationFingerprintInput:
+    name: str
+    query_name: str
+    dependencies: tuple[str, ...]
+    dependencies_complete: bool
+    version: str
+
+
+@dataclass(frozen=True, kw_only=True)
 class ArtifactDefinitionFingerprintInput:
     name: str
     transformation_name: str
@@ -154,7 +163,10 @@ class FingerprintComposer:
         return fingerprint
 
     def compose_transformation(
-        self, inputs: PythonTransformationFingerprintInput | Jinja2TransformationFingerprintInput
+        self,
+        inputs: PythonTransformationFingerprintInput
+        | Jinja2TransformationFingerprintInput
+        | ExternalTransformationFingerprintInput,
     ) -> str:
         query_fingerprint = self._registry.get(kind=FingerprintKind.QUERY, name=inputs.query_name)
         terms = [
@@ -177,17 +189,25 @@ class FingerprintComposer:
                 # so anything it imports is absent from the list: the author has to name those
                 # files in `watch` before the fingerprint can drop the commit id.
                 watch_required = True
+                watch = inputs.watch
             case Jinja2TransformationFingerprintInput():
                 terms.append(f"template_path={inputs.template_path}")
                 # A Jinja2 transform's dependencies come from parsing the template and following
                 # every include/import/extends it declares, so a complete list already names
                 # every file that affects the rendered output.
                 watch_required = False
+                watch = inputs.watch
+            case ExternalTransformationFingerprintInput():
+                terms.append(f"version={inputs.version}")
+                # The template lives outside the repository, so its declared version is the only
+                # signal that it changed and no commit in the repository can affect the output.
+                watch_required = False
+                watch = None
             case _:  # pragma: no cover - exhaustiveness guard for a new transform kind
                 assert_never(inputs)
 
         commit_term = self._resolve_commit_term(
-            watch=inputs.watch,
+            watch=watch,
             closure_complete=inputs.dependencies_complete,
             upstream_resolved=query_fingerprint is not None,
             watch_required=watch_required,

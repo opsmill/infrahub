@@ -30,6 +30,7 @@ class RecordingImporter(RepositoryImporter):
             query_strings={},
             transform_definitions=[],
             jinja2_definitions={},
+            external_transform_definitions={},
             check_definitions=[],
             generator_definitions=[],
             artifact_definitions={},

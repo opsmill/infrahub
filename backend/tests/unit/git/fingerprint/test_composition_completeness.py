@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from git import Repo
 from infrahub_sdk.schema.repository import (
+    InfrahubExternalTransformConfig,
     InfrahubGeneratorDefinitionConfig,
     InfrahubJinja2TransformConfig,
     InfrahubPythonTransformConfig,
@@ -28,6 +29,7 @@ from infrahub_sdk.schema.repository import (
 from infrahub.git.closure_builder.dispatcher import build_default_closure_builder
 from infrahub.git.fingerprint.composer import (
     ArtifactDefinitionFingerprintInput,
+    ExternalTransformationFingerprintInput,
     FingerprintComposer,
     GeneratorDefinitionFingerprintInput,
     Jinja2TransformationFingerprintInput,
@@ -84,6 +86,14 @@ PYTHON_INPUTS: dict[str, Any] = {
     "convert_query_response": False,
 }
 
+EXTERNAL_INPUTS: dict[str, Any] = {
+    "name": TRANSFORMATION_NAME,
+    "query_name": QUERY_NAME,
+    "dependencies": (),
+    "dependencies_complete": True,
+    "version": "1.0",
+}
+
 GENERATOR_INPUTS: dict[str, Any] = {
     "name": "tags",
     "query_name": QUERY_NAME,
@@ -128,6 +138,13 @@ def _python_digest(**overrides: Any) -> str:
     registry = _registry_with_query(overrides)
     return build_composer(blob_shas=BLOBS, registry=registry).compose_transformation(
         PythonTransformationFingerprintInput(**{**PYTHON_INPUTS, **overrides})
+    )
+
+
+def _external_digest(**overrides: Any) -> str:
+    registry = _registry_with_query(overrides)
+    return build_composer(blob_shas=BLOBS, registry=registry).compose_transformation(
+        ExternalTransformationFingerprintInput(**{**EXTERNAL_INPUTS, **overrides})
     )
 
 
@@ -208,6 +225,20 @@ DEFINITION_KINDS = [
         excluded={"name": NOT_AN_INPUT, "description": NOT_RENDERED},
     ),
     DefinitionKind(
+        name="external_transform",
+        config_model=InfrahubExternalTransformConfig,
+        digest=_external_digest,
+        folded=(
+            FoldedField(manifest_field="query", input_override={"query_fingerprint": "other-fp"}),
+            FoldedField(manifest_field="version", input_override={"version": "1.1"}),
+        ),
+        excluded={
+            "name": NOT_AN_INPUT,
+            "description": NOT_RENDERED,
+            "timeout": "bounds how long the external engine has to reply, not what it renders",
+        },
+    ),
+    DefinitionKind(
         name="generator_definition",
         config_model=InfrahubGeneratorDefinitionConfig,
         digest=_generator_digest,
@@ -248,6 +279,7 @@ DEFINITION_KINDS = [
 SECTIONS_WITH_A_DEFINITION_KIND: dict[str, type[BaseModel]] = {
     "jinja2_transforms": InfrahubJinja2TransformConfig,
     "python_transforms": InfrahubPythonTransformConfig,
+    "external_transforms": InfrahubExternalTransformConfig,
     "generator_definitions": InfrahubGeneratorDefinitionConfig,
     "artifact_definitions": InfrahubRepositoryArtifactDefinitionConfig,
 }
