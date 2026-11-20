@@ -69,10 +69,12 @@ async def load_data(
 
     tags: dict[str, Node] = {}
     repository: dict[str, Node] = {}
+    repository_owner: dict[str, Node] = {}
     gqlquery: dict[str, Node] = {}
 
     tag_schema = registry.schema.get_node_schema(name=InfrahubKind.TAG, branch=default_branch)
     repository_schema = registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
+    group_schema = registry.schema.get_node_schema(name=InfrahubKind.ACCOUNTGROUP, branch=default_branch)
     gqlquery_schema = registry.schema.get_node_schema(name=InfrahubKind.GRAPHQLQUERY, branch=default_branch)
 
     # -------------------------------------------------------------------------------------
@@ -94,6 +96,10 @@ async def load_data(
         await obj.new(db=db, name=repo_name, location=f"git://{repo_name}", tags=random_tags)
         await obj.save(db=db)
         repository[repo_name] = obj
+        group = await Node.init(db=db, schema=group_schema, branch=default_branch)
+        await group.new(db=db, name=f"{repo_name}-owners")
+        await group.save(db=db)
+        repository_owner[repo_name] = group
 
     # -------------------------------------------------------------------------------------
     # GRAPHQL_QUERY
@@ -104,9 +110,12 @@ async def load_data(
 
     for _idx in range(nbr_query):
         random_tags = [tags[tag] for tag in random.choices(TAGS, k=3)]
-        random_repo = repository[random.choice(list(repository.keys()))]
+        random_repo_name = random.choice(list(repository.keys()))
+        random_repo = repository[random_repo_name]
+        random_owner = repository_owner[random_repo_name]
         random_repo_tags = [
-            {"id": tags[tag].id, "_relation__source": random_repo.id} for tag in random.choices(TAGS, k=3)
+            {"id": tags[tag].id, "_relation__owner": random_owner.id, "_relation__source": random_repo.id}
+            for tag in random.choices(TAGS, k=3)
         ]
 
         name = f"query-{nbr_query:04}"
@@ -114,10 +123,10 @@ async def load_data(
         obj = await Node.init(db=db, schema=gqlquery_schema, branch=default_branch)
         await obj.new(
             db=db,
-            name={"value": name, "source": random_repo.id},
+            name={"value": name, "source": random_repo.id, "owner": random_owner.id},
             query=query_str,
             tags=random_repo_tags,
-            repository={"id": random_repo.id, "_relation__source": random_repo.id},
+            repository={"id": random_repo.id, "_relation__owner": random_owner.id, "_relation__source": random_repo.id},
         )
         await obj.save(db=db)
         gqlquery[name] = obj
