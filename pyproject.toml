@@ -615,13 +615,6 @@ allow-dunder-method-names = [
     "RUF073",  # `%` operator used on an f-string
 ]
 
-"backend/infrahub/core/registry.py" = [
-    ##################################################################################################
-    # Refactor code and remove the ignore rule
-    ##################################################################################################
-    "D420",    # Docstring sections are in the wrong order
-]
-
 "backend/infrahub/core/utils.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
