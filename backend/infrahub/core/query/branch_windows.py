@@ -1,4 +1,4 @@
-"""The read window of every live branch, for queries that need an answer across branches.
+"""The read window of every live branch, or of one branch, for queries that need an answer across branches.
 
 A branch reads its own edges and the global branch's edges at the read time, and its origin branch's edges at the
 time it branched, capped at the read time. A live branch is any branch but the global one and those being deleted.
@@ -90,6 +90,28 @@ def build_branch_windows_query(
         carry=carry, variable_name=variable_name, time_param=time_param, include_deleting=include_deleting
     )
     return query, {time_param: at.to_string(), "global_branch_name": GLOBAL_BRANCH_NAME}
+
+
+def build_branch_window_query(
+    *,
+    branch_name: str,
+    at: Timestamp,
+    variable_name: str = "window",
+    time_param: str = "windows_at",
+) -> tuple[str, dict[str, Any]]:
+    """Return the clause that reads the window of the branch `branch_name` into `variable_name`, with its parameters.
+
+    The clause opens the query and returns no row when no branch has that name.
+    """
+    query = """
+    MATCH (branch:Branch {name: $window_branch_name})
+    WITH %(window)s AS %(variable_name)s
+    """ % {"window": _render_window(time_param=time_param), "variable_name": variable_name}
+    return query, {
+        time_param: at.to_string(),
+        "global_branch_name": GLOBAL_BRANCH_NAME,
+        "window_branch_name": branch_name,
+    }
 
 
 def render_window_filter(*, edge: str, window: str = "window", time_param: str = "windows_at") -> str:
