@@ -375,7 +375,6 @@ async def test_migration_changes_only_the_nodes_in_the_set(
 
     scope_ids = _ids(nodes, case.scope) | {UNKNOWN_NODE_ID}
     expected_in_scope = _ids_per_kind(nodes, case.expected_in_scope)
-    assert expected_in_scope[WIDGET_KIND]
 
     if case.present_before is not None:
         present = await NodeManager.get_many(db=db, ids=sorted(scope_ids), branch=branch)

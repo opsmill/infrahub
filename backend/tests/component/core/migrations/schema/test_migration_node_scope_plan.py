@@ -97,6 +97,8 @@ class PlanCase:
     """The variable the selection binds to the migrated nodes."""
     unscoped_kind_scan: str | None
     """The one operator that scans the kinds without IDs, or `None` when the planner starts from another index."""
+    scoped_seeks: int = 1
+    """The number of times the scoped write reads its selection, each read starting with a seek on the node IDs."""
 
 
 def _size_attribute() -> AttributeSchema:
@@ -229,12 +231,13 @@ PLAN_CASES: list[PlanCase] = [
         unscoped_kind_scan=f"UnionNodeByLabelsScan@neo4j: node:{WIDGET_POPULATION_LABELS}",
     ),
     PlanCase(
-        # Without IDs the node and its attribute are one pattern, which the planner starts from the attribute name.
+        # Without IDs the planner starts from the attribute name, and toward a large kind the write reads its selection twice.
         name="AttributeKindUpdateMigrationQuery",
         query_class=AttributeKindUpdateMigrationQuery,
         init_kwargs=_attribute_kind_update,
         variable="n",
         unscoped_kind_scan=None,
+        scoped_seeks=2,
     ),
     PlanCase(
         name="NodeKindUpdateMigrationQuery01",
@@ -349,7 +352,9 @@ class TestMigrationQueryPlan:
         unscoped = await _explain(db, await case.query_class.init(db=db, branch=branch, **init_kwargs))
 
         node_id_seek = f"NodeIndexSeek@neo4j: RANGE INDEX {case.variable}:Node(uuid) WHERE uuid IN $node_ids"
-        assert [operator for operator in scoped if operator.startswith(node_id_seek)] != []
+        # The planner appends the properties it caches, such as ", cache[n.uuid]", to the details of a seek.
+        node_id_operators = [operator.split(", cache[")[0] for operator in scoped if "Node(uuid)" in operator]
+        assert node_id_operators == [node_id_seek] * case.scoped_seeks
         assert _kind_scans(scoped, case.variable) == []
 
         assert [operator for operator in unscoped if "Node(uuid)" in operator] == []
