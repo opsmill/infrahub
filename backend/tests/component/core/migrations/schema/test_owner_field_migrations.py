@@ -706,8 +706,11 @@ async def test_owners_that_a_profile_that_all_branches_share_gives_follow_the_at
     assert not result.errors
     after = {new_name: (group_ids["dc-emea"],)} if new_name else {}
     assert await _target_owners(db=db, branch=default_branch, node_id=profile_id) == after
-    on_branch = await _target_owners(db=db, branch=branch_with_previous_schema, node_id=profile_id)
-    assert on_branch[SHARED_ATTRIBUTE] == (group_ids["dc-emea"],)
+    # A branch reads the global edges at its start and at the current time, so it also reads the set of a new name.
+    assert await _target_owners(db=db, branch=branch_with_previous_schema, node_id=profile_id) == {
+        SHARED_ATTRIBUTE: (group_ids["dc-emea"],),
+        **after,
+    }
     # A second run changes nothing.
     result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
     assert not result.errors

@@ -371,6 +371,13 @@ empty.
 - After a rename of an attribute on a branch other than the default branch, a write of owners on that branch cannot
   replace the owners that a branch-agnostic profile or object template gives to the attribute. The write goes to
   the global branch and the copy of the rename is on the branch.
+- A branch made before a rename of an attribute on the default branch reads the owners that a branch-agnostic
+  profile or object template gives under the old name and under the new name. A branch reads the global edges at its
+  start and at the current time, and the old set and the new set are two vertices. No code of this release that
+  maps a holder to a field shows the new name on that branch, because the schema of the branch does not have it.
+- The removal of a relationship closes only the sets whose key is the identifier of the relationship. The own set of
+  the relationship on a profile or on an object template has the key `profile_<identifier>` or
+  `template_<identifier>`, so it stays open. No code of this release writes such a set, and no API reads it.
 - When a branch changes the kind of a node (a kind migration) and then merges, the default branch loses the owner
   changes of the node and the relationship changes that it made on the old `Node` vertex after the start of the
   branch. Three causes are older than the owner model: the kind migration copies only the open edges
