@@ -69,9 +69,9 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     We close its other sub-edges (IS_PROTECTED, HAS_SOURCE, HAS_OWNER, far-side IS_RELATED)
     on the same branch.
 
-    For inbound HAS_SOURCE/HAS_OWNER/HAS_OWNER_SOURCE the peer is another Node, or an
-    Attribute/Relationship/OwnerSet belonging to a different Node, so its sub-edges are left alone;
-    only the inbound pointer itself is closed.
+    For the other closed edges (HAS_SOURCE and HAS_OWNER from a Relationship, HAS_OWNER_SOURCE),
+    the peer belongs to a different Node, so its sub-edges are left alone; only the inbound
+    pointer itself is closed.
     """
 
     name = "migration_node_remove_in"

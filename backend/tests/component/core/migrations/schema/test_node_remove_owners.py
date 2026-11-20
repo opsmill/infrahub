@@ -228,6 +228,9 @@ async def test_removal_of_a_kind_keeps_the_owners_and_sources_that_are_its_nodes
             owner_ids=(accord_id,),
             template_id=None if holder is NODE_SOURCES_HOLDER else camry_id,
         )
+    person = await NodeManager.get_one(db=db, branch=default_branch, id=person_id, raise_on_error=True)
+    person.name.source = accord_id
+    await person.save(db=db)
     branch = await create_branch(branch_name="branch2", db=db) if on_branch else default_branch
     person_edges = await _active_edges(db=db, branch=default_branch, node_ids=[person_id])
 
@@ -236,6 +239,7 @@ async def test_removal_of_a_kind_keeps_the_owners_and_sources_that_are_its_nodes
     assert person_edges == [
         ("Attribute", "HAS_OWNER", CAR_KIND),
         ("Attribute", "HAS_OWNER_SOURCE", CAR_KIND),
+        ("Attribute", "HAS_SOURCE", CAR_KIND),
         ("OwnerSet", "HAS_OWNER", CAR_KIND),
         ("OwnerSet", "HAS_OWNER_SOURCE", CAR_KIND),
         (PERSON_KIND, "HAS_OWNER", CAR_KIND),
@@ -245,6 +249,7 @@ async def test_removal_of_a_kind_keeps_the_owners_and_sources_that_are_its_nodes
     ]
     assert await _active_edges(db=db, branch=branch, node_ids=[person_id]) == [
         ("Attribute", "HAS_OWNER", CAR_KIND),
+        ("Attribute", "HAS_SOURCE", CAR_KIND),
         ("OwnerSet", "HAS_OWNER", CAR_KIND),
         (PERSON_KIND, "HAS_OWNER", CAR_KIND),
         (PERSON_KIND, "HAS_OWNER_SET", "OwnerSet"),
