@@ -11,6 +11,12 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.11.13](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.13) - 2026-11-20
+
+### Security
+
+- Added a temporary mitigation for [CVE-2026-114938](https://access.redhat.com/security/vulnerabilities/RHSB-2026-018), a Java bug that can affect Neo4j on x86-64 servers whose processor has AVX-512 VBMI (Intel server processors from Ice Lake, AMD processors from Zen 4). The Neo4j service in the Docker Compose file now sets `NEO4J_server_jvm_additional` to `-XX:-UseBASE64Intrinsics`, and applying the new file restarts Neo4j, so requests fail until it is back. If you use your own Compose file or an override file that sets `NEO4J_server_jvm_additional`, or you run Neo4j yourself, add the same option to your Neo4j Java options: separate several options in the variable with a space, and put each option on its own `server.jvm.additional=` line in `neo4j.conf`.
+
 ## [Infrahub - v1.11.12](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.12) - 2026-11-10
 
 ### Changed
