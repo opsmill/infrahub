@@ -148,12 +148,9 @@ class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery, MigrationSelect
         branch_filter, _ = self.branch.get_query_filter_path(at=self.at)
         kind = self.migration.previous_schema.kind
         schema_kinds = [kind, f"Profile{kind}", f"Template{kind}"]
-        if self.node_ids is None:
-            node_attribute_match = f"MATCH (n:{'|'.join(schema_kinds)})-[:HAS_ATTRIBUTE]->(attr:Attribute)"
-        else:
-            # The index hint applies only to a MATCH that holds the node alone.
-            node_match = self.render_node_match("n", schema_kinds)
-            node_attribute_match = f"{node_match}\nMATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute)"
+        # The index hint of the node scope applies only to a MATCH that holds the node alone.
+        node_match = self.render_node_match("n", schema_kinds)
+        node_attribute_match = f"{node_match}\nMATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute)"
         return """
 %(node_attribute_match)s
 WHERE attr.name = $attr_name
