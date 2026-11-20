@@ -221,8 +221,9 @@ Webhook branch scoping matches an event against `meta.context.branch` (see [Webh
 | The user loads more events | The page sends the time of the oldest event shown as `until` (`since` in ascending order) and drops the events it already shows by ID |
 | Every event of a full page has the same time | The next request keeps that time and adds `offset`, the number of events of that time already shown, so the page continues inside that time. The task manager orders the events of one time by ID, so the offset skips exactly the events already shown. The page stops if a request adds no new event |
 | A filter names a branch | The resolver sends the ID of the current branch with that name, else the ID from the newest stored `infrahub.branch.deleted` event for that name, however old; with neither, it returns an empty page without querying |
-| A query sets no `since` | The task manager reads back to its event retention, which can reach past Prefect's 180-day default, or at least 180 days when it does not delete old events |
+| A query sets no `since` | The task manager reads back to its event retention, and at least 180 days, Prefect's own default. The range does not depend on whether the process that serves the query deletes old events, because the background services that delete them can run in another container with other settings |
 | A query selects events by `ids` or `parent__ids` and sets no `since` | The resolver sends the earliest time as the start, so the query returns an event however old it is. A list reaches such an event by paging, because each request counts its range back from `until` |
+| An account, parent or branch filter holds `*` or `?`, or an account or parent ID starts with `!` | The resolver returns an error. These filters match exact IDs, and only a label match reads these characters as a pattern. A branch name can start with `!`, so a branch filter accepts it |
 | A query selects `count` | The task manager counts the whole range; otherwise `total` is null and no count runs |
 | An API client pages with `offset` | Still accepted; each window is read from the newest event with the offset until one returns events, and the wider windows then add only older events, so the result equals one read of the whole range, but deep offsets get slower |
 
@@ -250,9 +251,8 @@ those few and the page is read in the widest one. A login stores an `infrahub.ac
 event, so one login on a restored backup has this effect.
 A filter that few of the 50,000 newest events match is read over the rest of the range.
 Within one time, events are ordered by ID, so an `offset` skips the same events in every request.
-The range starts at the filter's `since` when the caller set one, and otherwise at the request's `retention_seconds`, else the task
-manager's event retention, or at least 180 days when the task manager does not delete old events,
-back from `until`. `InfrahubEventFilter.to_request` leaves an unset `since` out of the request so
+The range starts at the filter's `since` when the caller set one, and otherwise at the task manager's
+event retention, and at least 180 days (`default_range`), back from `until`. `InfrahubEventFilter.to_request` leaves an unset `since` out of the request so
 that this default applies. A wider window reads only the events older than the window before it,
 and the page keeps the events found so far. With an `offset`, each window is read from the newest
 event until one returns events, because the offset counts matches back from there. A filter that keeps

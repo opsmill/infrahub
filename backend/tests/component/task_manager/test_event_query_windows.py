@@ -31,6 +31,7 @@ SAME_TIME_ACCOUNT = str(uuid4())
 # Neither ascending nor descending, so the order the events are stored in is not the order of their IDs.
 SAME_TIME_STORE_ORDER = [2, 0, 4, 1, 5, 3]
 BRANCH_ID = str(uuid4())
+READ_RANGE = timedelta(days=365)
 
 DENSE_AGES = [timedelta(minutes=4 * index + 1) for index in range(12)] + [
     timedelta(hours=3),
@@ -113,7 +114,6 @@ class WindowCase:
     limit: int
     expected: list[int]
     offset: int | None = None
-    retention: timedelta = timedelta(days=365)
     until_age: timedelta | None = None
     since_age: timedelta | None = None
     order: EventSortOrder = EventSortOrder.DESC
@@ -137,10 +137,10 @@ WINDOW_CASES = [
         expected=[3, 4, 5],
     ),
     WindowCase(
-        name="retention_bounds_the_widest_window",
+        name="explicit_start_older_than_180_days",
         account=SPARSE_ACCOUNT,
         limit=10,
-        retention=timedelta(days=250),
+        since_age=timedelta(days=250),
         expected=[0, 1, 2, 3, 4],
     ),
     WindowCase(
@@ -198,7 +198,7 @@ async def test_windows_return_the_events_of_a_single_read(
 ) -> None:
     """Reading newest first through widening windows returns the page a single read over the whole range returns."""
     until = seeded.now - test_case.until_age if test_case.until_age else seeded.now
-    since = seeded.now - test_case.since_age if test_case.since_age else None
+    since = seeded.now - test_case.since_age if test_case.since_age else until - READ_RANGE
     event_filter = InfrahubEventFilter.from_filters(
         order=test_case.order, account__ids=[test_case.account], since=since, until=until
     )
@@ -208,14 +208,13 @@ async def test_windows_return_the_events_of_a_single_read(
         event_filter=event_filter,
         limit=test_case.limit,
         offset=test_case.offset,
-        retention=test_case.retention,
     )
 
     account_events = seeded.account_events(test_case.account)
     assert page == [account_events[index] for index in test_case.expected]
     assert page == await _read_once(
         event_filter=event_filter,
-        since=since or until - test_case.retention,
+        since=since,
         limit=test_case.limit,
         offset=test_case.offset,
     )
@@ -230,7 +229,7 @@ async def test_events_of_one_time_are_paged_in_the_order_of_their_ids(
 
     pages = [
         await filter_event_ids(
-            client=prefect_client, event_filter=event_filter, limit=2, offset=offset, retention=timedelta(days=365)
+            client=prefect_client, event_filter=event_filter, limit=2, offset=offset, read_range=READ_RANGE
         )
         for offset in (None, 2, 4)
     ]
@@ -249,36 +248,32 @@ async def test_one_event_per_resource_is_the_newest_of_the_whole_range(
     event_filter.resource = EventResourceFilter(
         id=[f"infrahub.node.{node_id}" for node_id in REPEATED_NODE_IDS], distinct=True
     )
-    retention = timedelta(days=365)
-
-    page = await filter_event_ids(client=prefect_client, event_filter=event_filter, limit=2, retention=retention)
+    page = await filter_event_ids(client=prefect_client, event_filter=event_filter, limit=2, read_range=READ_RANGE)
 
     assert page == [seeded.repeated_node[0], seeded.repeated_node[2]]
-    assert page == await _read_once(event_filter=event_filter, since=seeded.now - retention, limit=2, offset=None)
+    assert page == await _read_once(event_filter=event_filter, since=seeded.now - READ_RANGE, limit=2, offset=None)
 
 
-async def test_task_manager_retention_bounds_the_widest_window_by_default(
-    seeded: Seeded, prefect_client: PrefectClient
-) -> None:
-    """Without a retention in the request, the widest window is the task manager's 7-day event retention."""
+async def test_a_query_with_no_start_reads_at_least_180_days(seeded: Seeded, prefect_client: PrefectClient) -> None:
+    """A query that sets no start reads back 180 days, more than the test server's 7-day event retention."""
     event_filter = InfrahubEventFilter.from_filters(order=EventSortOrder.DESC, account__ids=[SPARSE_ACCOUNT])
 
     page = await filter_event_ids(client=prefect_client, event_filter=event_filter, limit=10)
 
-    assert page == seeded.sparse[:2]
+    assert page == seeded.sparse[:4]
 
 
 async def test_total_is_counted_over_the_whole_range_only_when_requested(
     seeded: Seeded, prefect_client: PrefectClient
 ) -> None:
-    """The total counts every match up to the retention when requested, and is null otherwise."""
+    """The total counts every match of the range when requested, and is null otherwise."""
     event_filter = InfrahubEventFilter.from_filters(order=EventSortOrder.DESC, account__ids=[SPARSE_ACCOUNT])
 
     counted = await filter_events(
-        client=prefect_client, event_filter=event_filter, limit=1, retention=timedelta(days=365), include_total=True
+        client=prefect_client, event_filter=event_filter, limit=1, read_range=READ_RANGE, include_total=True
     )
     not_counted = await filter_events(
-        client=prefect_client, event_filter=event_filter, limit=1, retention=timedelta(days=365), include_total=False
+        client=prefect_client, event_filter=event_filter, limit=1, read_range=READ_RANGE, include_total=False
     )
 
     assert [event["id"] for event in counted["events"]] == seeded.sparse[:1]
@@ -292,7 +287,7 @@ async def test_total_is_counted_over_the_whole_range_only_when_requested(
 async def test_a_range_reaching_before_year_1_starts_at_the_earliest_time(
     order: EventSortOrder, prefect_client: PrefectClient
 ) -> None:
-    """A range whose retention reaches before year 1 starts at the earliest datetime instead of failing."""
+    """A default range that reaches before year 1 starts at the earliest datetime instead of failing."""
     event_filter = InfrahubEventFilter.from_filters(
         order=order, account__ids=[SPARSE_ACCOUNT], until=datetime(1, 1, 2, tzinfo=UTC)
     )

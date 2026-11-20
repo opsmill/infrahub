@@ -1,5 +1,6 @@
 import uuid
 from collections.abc import AsyncGenerator
+from dataclasses import dataclass
 from typing import Any, Generator
 
 import pytest
@@ -787,6 +788,60 @@ async def test_event_query_rejects_a_negative_offset(
 
     assert result.errors
     assert [error.message for error in result.errors] == ["The parameter 'offset' can't be negative"]
+
+
+@dataclass
+class MatchPatternCase:
+    name: str
+    variables: dict[str, Any]
+    expected_errors: list[str]
+
+
+MATCH_PATTERN_CASES = [
+    MatchPatternCase(
+        name="wildcard_in_a_branch_name",
+        variables={"branch": ["release-*"]},
+        expected_errors=["The parameter 'branches' takes exact values, not match patterns: 'release-*'"],
+    ),
+    MatchPatternCase(
+        name="negated_account_id",
+        variables={"account": ["!4a1f6c1e-6f0c-4c56-9d0a-0c6d5a3b2e10"]},
+        expected_errors=[
+            "The parameter 'account__ids' takes exact values, not match patterns: '!4a1f6c1e-6f0c-4c56-9d0a-0c6d5a3b2e10'"
+        ],
+    ),
+    MatchPatternCase(
+        name="single_character_wildcard_in_a_parent_id",
+        variables={"parent__ids": ["4a1f6c1e-6f0c-4c56-9d0a-0c6d5a3b2e1?"]},
+        expected_errors=[
+            "The parameter 'parent__ids' takes exact values, not match patterns: '4a1f6c1e-6f0c-4c56-9d0a-0c6d5a3b2e1?'"
+        ],
+    ),
+    MatchPatternCase(
+        name="branch_name_that_starts_with_an_exclamation_mark",
+        variables={"branch": [f"!no-such-branch-{_TEST_ID}"]},
+        expected_errors=[],
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in MATCH_PATTERN_CASES])
+async def test_event_query_rejects_match_patterns_in_exact_filters(
+    test_case: MatchPatternCase,
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    prefect_client: PrefectClient,
+    session_admin: AccountSession,
+) -> None:
+    """Account, parent and branch filters match exact values, so a match pattern is refused instead of matching nothing."""
+    result = await run_query(
+        db=db, branch=default_branch, query=QUERY_EVENT, variables=test_case.variables, account_session=session_admin
+    )
+
+    assert [error.message for error in result.errors or []] == test_case.expected_errors
+    if not test_case.expected_errors:
+        assert result.data == {"InfrahubEvent": {"count": 0, "edges": []}}
 
 
 async def test_event_query_branch_name_without_a_current_branch(

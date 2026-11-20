@@ -18,7 +18,7 @@ class RecordedRequest:
 
 
 class ScriptedTaskManager:
-    """Answers the task history cleanup routes with the scripted responses in order, recording each request.
+    """Answers the requests to the task manager with the scripted responses in order, recording each request.
 
     A scripted exception is raised instead of answering, as the transport raises it.
     """

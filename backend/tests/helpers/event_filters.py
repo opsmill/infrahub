@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from prefect.events.filters import EventNameFilter, EventRelatedFilter, EventResourceFilter
+from prefect.events.filters import EventNameFilter, EventOccurredFilter, EventRelatedFilter, EventResourceFilter
 from prefect.events.filters import EventOrder as PrefectEventOrder
 from prefect.events.schemas.events import ResourceSpecification
 
@@ -130,18 +130,26 @@ async def filter_events(
     event_filter: InfrahubEventFilter,
     limit: int = 50,
     offset: int | None = None,
-    retention: timedelta | None = None,
+    read_range: timedelta | None = None,
     include_total: bool = False,
 ) -> dict[str, Any]:
-    """Post the filter to the task manager's event filter route and return its JSON page."""
+    """Post the filter to the task manager's event filter route and return its JSON page.
+
+    Args:
+        read_range: When the filter sets no start, start the range this long before its end.
+
+    """
+    if read_range is not None and "since" not in event_filter.occurred.model_fields_set:
+        until = event_filter.occurred.until
+        event_filter = event_filter.model_copy(
+            update={"occurred": EventOccurredFilter(since=until - read_range, until=until)}
+        )
     body: dict[str, Any] = {
         "limit": limit,
         "offset": offset,
         "filter": event_filter.to_request(),
         "include_total": include_total,
     }
-    if retention is not None:
-        body["retention_seconds"] = int(retention.total_seconds())
     response = await client._client.post("/infrahub/events/filter", json=body)
     return response.json()
 
@@ -151,10 +159,10 @@ async def filter_event_ids(
     event_filter: InfrahubEventFilter,
     limit: int = 50,
     offset: int | None = None,
-    retention: timedelta | None = None,
+    read_range: timedelta | None = None,
 ) -> list[str]:
     """Return the ids of the events the task manager's event filter route returns, in its order."""
     page = await filter_events(
-        client=client, event_filter=event_filter, limit=limit, offset=offset, retention=retention
+        client=client, event_filter=event_filter, limit=limit, offset=offset, read_range=read_range
     )
     return [event["id"] for event in page["events"]]
