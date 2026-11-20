@@ -48,9 +48,9 @@ Failure body:
 |--------|------|
 | `204 No Content` | Result accepted. The artifact is `Ready` (success) or `Error` (failure). |
 | `400 Bad Request` | Body invalid: missing `content` or `message`, or a mismatched `content_type`. |
-| `401 Unauthorized` | Token missing, badly signed, wrong `type` or expired. |
+| `401 Unauthorized` | Token missing, badly signed, wrong `type` or expired. A callback after the render deadline gets this response, because the token expires at the deadline. |
 | `403 Forbidden` | Token valid, but its `render_id` does not match the path. |
-| `409 Conflict` | The render request was replaced by a newer one, or already ended (timeout, or an earlier callback). The artifact is unchanged. |
+| `409 Conflict` | The token is still valid, but the render request was replaced by a newer one or already ended (an earlier callback, or a timeout set by the sweep before the token expired). The artifact is unchanged. |
 | `413 Payload Too Large` | `content` larger than `StorageSettings.max_file_size`. |
 | `429 Too Many Requests` | Shed by admission control. The engine retries after `Retry-After`. |
 
