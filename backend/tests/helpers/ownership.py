@@ -44,6 +44,11 @@ MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(holder:Attribute {name: "color
 MATCH (owner:Node {uuid: $owner_id})
 CREATE (holder)-[:HAS_OWNER {branch: $branch, branch_level: $branch_level, status: "active", from: $at}]->(owner)
 """
+ADD_NAME_OWNER = """
+MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(holder:Attribute {name: "name"})
+MATCH (owner:Node {uuid: $owner_id})
+CREATE (holder)-[:HAS_OWNER {branch: $branch, branch_level: $branch_level, status: "active", from: $at}]->(owner)
+"""
 ADD_LINK_OWNER = """
 MATCH (:Node {uuid: $node_id})-[:IS_RELATED]-(holder:Relationship)
 MATCH (owner:Node {uuid: $owner_id})

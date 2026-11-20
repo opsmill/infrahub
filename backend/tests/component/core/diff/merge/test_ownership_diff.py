@@ -5,16 +5,24 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core.constants import DiffAction, PathType
+from infrahub.core import registry
+from infrahub.core.constants import DiffAction, InfrahubKind, PathType
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.conflicts_extractor import DiffConflictsExtractor
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.graph.m085_close_repository_owner_edges import Migration085
+from infrahub.core.migrations.shared import MigrationInput
+from infrahub.core.node import Node
 from infrahub.core.ownership.models import NODE_HOLDER, NODE_SOURCES_HOLDER, HolderKey, OwnerOrigin
 from tests.helpers.ownership import (
+    ADD_ATTRIBUTE_OWNER,
+    ADD_NAME_OWNER,
     OWNERS_FIELD,
     SOURCES_FIELD,
     OwnerDataset,
+    add_owner_edge,
+    create_groups,
     resolve_owners,
     set_owners,
 )
@@ -204,3 +212,52 @@ async def test_owner_changes_on_both_branches_conflict_when_the_lists_differ(
         (default_branch.name, dataset.owner_list(("dc-emea",)), dataset.owner_list(test_case.default_branch_owners)),
         (branch.name, dataset.owner_list(("dc-emea",)), dataset.owner_list(test_case.branch_owners)),
     ]
+
+
+@pytest.mark.parametrize("owner_branch", ["default_branch", "global_branch"])
+async def test_repository_owner_that_the_upgrade_closes_gives_no_change_in_the_diff_of_an_older_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    diff_repository: DiffRepository,
+    car_accord_main: Node,
+    owner_branch: str,
+) -> None:
+    repository = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
+    await repository.new(db=db, name="repo01", location="git@github.com:user/repo01.git")
+    await repository.save(db=db)
+    if owner_branch == "default_branch":
+        await add_owner_edge(
+            db=db, query=ADD_ATTRIBUTE_OWNER, branch=default_branch, node_id=car_accord_main.id, owner_id=repository.id
+        )
+    else:
+        group_id = (await create_groups(db=db, names=("network-team",)))["network-team"]
+        await add_owner_edge(
+            db=db, query=ADD_NAME_OWNER, branch=registry.get_global_branch(), node_id=group_id, owner_id=repository.id
+        )
+    branch = await create_branch(db=db, branch_name="before-upgrade")
+    result = await Migration085().execute(migration_input=MigrationInput(db=db))
+    assert result.errors == []
+
+    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+
+    assert [(node.kind, node.action) for node in diff.nodes] == []
+
+
+async def test_repository_owner_that_the_upgrade_closes_gives_no_conflict_with_a_delete_on_an_older_branch(
+    db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, car_accord_main: Node
+) -> None:
+    repository = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
+    await repository.new(db=db, name="repo01", location="git@github.com:user/repo01.git")
+    await repository.save(db=db)
+    await add_owner_edge(
+        db=db, query=ADD_ATTRIBUTE_OWNER, branch=default_branch, node_id=car_accord_main.id, owner_id=repository.id
+    )
+    branch = await create_branch(db=db, branch_name="before-upgrade")
+    result = await Migration085().execute(migration_input=MigrationInput(db=db))
+    assert result.errors == []
+    car = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id, raise_on_error=True)
+    await car.delete(db=db)
+
+    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+
+    assert diff.get_all_conflicts() == {}
