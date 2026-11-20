@@ -35,7 +35,7 @@ from infrahub.core.ownership.models import (
 from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import MergeConflictsUnresolvedError, ValidationError
 from tests.helpers.ownership import (
     OWNERS_FIELD,
     SOURCES_FIELD,
@@ -54,6 +54,7 @@ from ._ownership import (
     count_active_holder_edges,
     holder_edges,
     merge,
+    merge_without_conflict_check,
     profile_with_device,
     rebase_with_conflict_check,
     update_diff,
@@ -871,8 +872,10 @@ async def test_node_deleted_on_the_default_branch_conflicts_with_an_owner_change
         False,
     )
     assert [found.uuid for found in diff.get_all_conflicts().values()] == [conflict.uuid]
+    with pytest.raises(MergeConflictsUnresolvedError):
+        await merge(db=db, branch=branch)
 
-    await merge(db=db, branch=branch)
+    await merge_without_conflict_check(db=db, branch=branch)
 
     assert await NodeManager.get_one(db=db, branch=default_branch, id=node_id) is None
     assert (
