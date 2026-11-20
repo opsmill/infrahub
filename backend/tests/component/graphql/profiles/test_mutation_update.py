@@ -341,6 +341,50 @@ async def test_node_update_records_the_relationship_that_a_profile_sets(
     ] == [(room.id, True)]
 
 
+async def test_node_update_records_the_relationship_that_the_removed_profile_set(
+    db: InfrahubDatabase, default_branch: Branch, device_schema: None, session_admin: AccountSession
+) -> None:
+    room = await _create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
+    profile = await _create_node(
+        db=db, branch=default_branch, kind="ProfileTestDevice", profile_name="profile-1", profile_priority=10, room=room
+    )
+    device_id = await _create_with_profiles(
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+        kind="TestDevice",
+        payload=f'name: {{ value: "device-1" }}, profiles: [{{ id: "{profile.id}" }}]',
+    )
+    events = MemoryInfrahubEvent()
+    gql_params = await prepare_graphql_params(
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+        service=await InfrahubServices.new(workflow=WorkflowRecorder(), event=events),
+    )
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=f'mutation {{ TestDeviceUpdate(data: {{ id: "{device_id}", profiles: [] }}) {{ ok }} }}',
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert gql_params.context.background
+    await gql_params.context.background()
+
+    assert result.errors is None
+    device_events = [
+        event for event in events.events if isinstance(event, NodeUpdatedEvent) and event.node_id == device_id
+    ]
+    assert [sorted(event.fields) for event in device_events] == [["profiles", "room"]]
+    room_changelog = device_events[0].changelog.relationships["room"]
+    assert isinstance(room_changelog, RelationshipCardinalityOneChangelog)
+    assert (room_changelog.peer_id, room_changelog.peer_id_previous) == (None, room.id)
+    device = await NodeManager.get_one(db=db, branch=default_branch, id=device_id, raise_on_error=True)
+    assert await device.get_relationship(name="room").get_relationships(db=db) == []
+
+
 @dataclass(frozen=True)
 class CountedMutation:
     query_counts: Counter[str]
