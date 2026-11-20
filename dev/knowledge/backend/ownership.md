@@ -139,7 +139,9 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
   time after the lock, because each caller gives the time that its other writes use: the merge writes at the merge
   time, and a save writes the owners at the time of its other fields.
 - `verify_graph` reports an open owner edge on a deleted attribute (`GraphCheck.ORPHANED_ACTIVE_EDGES`). It does not
-  report an open owner edge or source edge on a deleted node when the edge starts before the delete.
+  report a `HAS_OWNER` or `HAS_SOURCE` edge from a `Node`, `Attribute` or `OwnerSet` vertex to a deleted node, also
+  when a write adds the edge after the delete, because a copy of a list keeps a deleted owner. It reports such an
+  edge from a `Relationship` vertex when a write adds it after the delete (`GraphCheck.EDGES_AFTER_NODE_DELETE`).
 - `verify_graph` reports a node that has two sets with the same key (`GraphCheck.DUPLICATE_OWNER_SETS`). A read
   gives the owners of both sets together, so this state gives owners that no write stored.
 
