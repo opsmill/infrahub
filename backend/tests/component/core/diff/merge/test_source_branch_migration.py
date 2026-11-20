@@ -13,15 +13,17 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core import registry
+from infrahub.core.constants import DiffAction
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.ownership.models import NODE_HOLDER, NODE_SOURCES_HOLDER
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
-from tests.helpers.ownership import create_groups, read_owners, set_owners
+from tests.helpers.ownership import OWNERS_FIELD, SOURCES_FIELD, create_groups, read_owners, set_owners
 
 from ._matrix_setup import stage_all_change_types
 from ._migrations import migrate_testcar_to_test2newcar
-from ._ownership import merge
+from ._ownership import merge, update_diff
 from ._validators import (
     validate_added_node,
     validate_added_relationship,
@@ -39,7 +41,9 @@ from .conftest import get_diff_coordinator, get_diff_merger
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.core.node import Node
+    from infrahub.core.ownership.models import HolderKey
     from infrahub.database import InfrahubDatabase
 
 
@@ -170,3 +174,37 @@ async def test_merge_of_a_kind_migration_keeps_the_node_owners_of_the_default_br
     await merge(db=db, branch=branch)
 
     assert await read_owners(db=db, branch=default_branch, node_id=car_id) == (groups["security"],)
+
+
+@pytest.mark.parametrize(
+    ("holder", "field_name"),
+    [
+        pytest.param(NODE_HOLDER, OWNERS_FIELD, id="owners"),
+        pytest.param(NODE_SOURCES_HOLDER, SOURCES_FIELD, id="sources"),
+    ],
+)
+@pytest.mark.parametrize("delete_old_schema", [False, True], ids=["old_kind_kept", "old_kind_deleted"])
+async def test_node_owner_change_before_a_kind_migration_on_a_branch_shows_on_one_diff_node(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    diff_repository: DiffRepository,
+    car_accord_main: Node,
+    holder: HolderKey,
+    field_name: str,
+    delete_old_schema: bool,
+) -> None:
+    groups = await create_groups(db=db)
+    main_schema = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.update_schema_branch(db=db, branch=default_branch, schema=main_schema, update_db=True)
+    branch = await create_branch(db=db, branch_name="src-migration-owner-diff")
+    await set_owners(db=db, branch=branch, node_id=car_accord_main.id, owner_ids=(groups["security"],), holder=holder)
+    await migrate_testcar_to_test2newcar(db=db, target_branch=branch, delete_old_schema=delete_old_schema)
+
+    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+
+    owner_nodes = sorted(
+        (node.kind, node.action)
+        for node in diff.nodes
+        if any(attribute.name == field_name for attribute in node.attributes)
+    )
+    assert owner_nodes == [("Test2NewCar", DiffAction.UPDATED)]
