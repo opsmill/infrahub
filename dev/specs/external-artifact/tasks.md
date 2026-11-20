@@ -107,7 +107,7 @@ description: "Task list for artifacts rendered by an external engine"
   - 403 path and token mismatch;
   - 409 replaced request, 409 already ended;
   - 413 content over `StorageSettings.max_file_size`.
-- [ ] T014 [P] [US1] Component test in `backend/tests/component/artifacts/test_render_request.py` covering:
+- [X] T014 [P] [US1] Component test in `backend/tests/component/artifacts/test_render_request.py` covering:
   - The request runs the query with `update_group=True` and `subscribers=[artifact.id]`, sets `Pending`, `render_request_id` and `render_deadline`, and emits one `ArtifactRenderRequestedEvent`.
   - It fails fast to `Error`, emitting no event, with these messages:
     - when no webhook subscribes: "no webhook subscribed to infrahub.artifact.render_requested";
@@ -124,7 +124,7 @@ description: "Task list for artifacts rendered by an external engine"
 
 ### Implementation for User Story 1
 
-- [ ] T017 [US1] Create `backend/infrahub/artifacts/render_request.py` with `request_external_render(...)`. Under the artifact render lock (T010) it:
+- [X] T017 [US1] Create `backend/infrahub/artifacts/render_request.py` with `request_external_render(...)`. Under the artifact render lock (T010) it:
   1. checks for an active webhook subscribed to `infrahub.artifact.render_requested` or `all` with a matching branch scope, and checks that `main.public_url` is set;
   2. runs `client.query_gql_query(name=query_id, variables=..., update_group=True, subscribers=[artifact.id], branch_name=..., timeout=...)`;
   3. builds the event, measures its serialized size against the Prefect event size limit, and fails fast when it is over;
