@@ -72,6 +72,8 @@ InitKwargsBuilder = Callable[["InfrahubDatabase", "Branch"], dict[str, Any]]
 
 SCOPED_NODE_NAMES = ["w1", "w3", "pw1"]
 
+GRAPH_MIGRATIONS_PACKAGE = "infrahub.core.migrations.graph"
+
 WIDGET_POPULATION_LABELS = "SelWidget|ProfileSelWidget|TemplateSelWidget"
 
 BUILT_ONLY_THROUGH_SUBCLASSES: set[type[MigrationSelectionQuery]] = {
@@ -300,7 +302,12 @@ async def _explain(db: InfrahubDatabase, query: MigrationSelectionQuery) -> list
 
 def test_every_selection_query_has_a_plan_case() -> None:
     covered = {case.query_class for case in PLAN_CASES}
-    selection_queries = _all_subclasses(MigrationSelectionQuery)
+    # Graph migrations take no node scope, and whether their modules are imported depends on the other tests collected.
+    selection_queries = {
+        cls
+        for cls in _all_subclasses(MigrationSelectionQuery)
+        if not cls.__module__.startswith(f"{GRAPH_MIGRATIONS_PACKAGE}.")
+    }
 
     assert (
         sorted(
