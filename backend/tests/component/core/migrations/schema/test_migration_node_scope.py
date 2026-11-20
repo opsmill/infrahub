@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from prefect.utilities.annotations import quote
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, HashableModelState, InfrahubKind, SchemaPathType
@@ -43,6 +44,7 @@ from infrahub.core.migrations.schema.node_remove import (
     NodeRemoveMigrationQueryIn,
     NodeRemoveMigrationQueryOut,
 )
+from infrahub.core.migrations.schema.tasks import schema_path_migrate
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
@@ -395,6 +397,31 @@ async def test_migration_changes_only_the_nodes_in_the_set(
     assert await unscoped.count_changes(db=db) == {}
 
     await verify_graph(db=db, kinds=case.verified_kinds)
+
+
+async def test_migration_task_changes_only_the_nodes_in_the_set(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset
+) -> None:
+    nodes = selection_dataset.nodes
+    size = AttributeSchema(name="size", kind="Text", optional=True, branch=BranchSupportType.AWARE)
+    migration = build_attribute_add_migration(NodeAttributeAddMigration, default_branch, WIDGET_KIND, size)
+
+    at = Timestamp()
+    result = await schema_path_migrate(
+        branch=default_branch,
+        migration_name="node.attribute.add",
+        schema_path=migration.schema_path,
+        database=db,
+        at=at,
+        new_node_schema=migration.new_node_schema,
+        previous_node_schema=migration.previous_node_schema,
+        node_ids=quote(sorted(_ids(nodes, {"w1", "w3"}))),
+    )
+    assert result.errors == []
+
+    assert await changed_node_ids(db=db, kinds=CHECKED_KINDS, at=at) == {WIDGET_KIND: _ids(nodes, {"w1", "w3"})}
+
+    await verify_graph(db=db, kinds=WIDGET_POPULATION)
 
 
 def test_every_data_migration_has_a_scope_case_or_ignores_the_scope() -> None:
