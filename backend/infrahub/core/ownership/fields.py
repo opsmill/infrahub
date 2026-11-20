@@ -96,11 +96,13 @@ def diff_field_name(holder: HolderKey, kind: str, schema_branches: list[SchemaBr
     """Return the field name that the diff shows the owners of a holder under, from the first schema with the kind.
 
     Returns:
-        None when no schema has the kind, or when the kind has no field for the holder.
+        None when no schema has the kind of a set holder, or when the kind has no field for the holder.
 
     """
     if holder.kind == HolderKind.ATTRIBUTE:
         return holder.attribute
+    if holder in NODE_FIELDS:
+        return NODE_FIELDS[holder]
     schema_branch = next((schema for schema in schema_branches if schema.has(name=kind)), None)
     if schema_branch is None:
         return None

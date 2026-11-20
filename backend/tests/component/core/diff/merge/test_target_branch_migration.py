@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core import registry
+from infrahub.core.changelog.builder import build_diff_changelog_collector
 from infrahub.core.diff.model.path import ConflictSelection
 from infrahub.core.initialization import create_branch
 from infrahub.core.ownership.fields import owner_list_value
@@ -222,3 +223,39 @@ async def test_target_branch_migration_owner_conflict(
     assert await read_owners(db=db, branch=default_branch, node_id=car_id, holder=holder) == (merged,)
     assert await count_active_holder_edges(db=db, branch=default_branch, node_id=car_id) == 1
     await verify_graph(db=db)
+
+
+@pytest.mark.parametrize(
+    "holder",
+    [
+        pytest.param(NODE_HOLDER, id="node-owner"),
+        pytest.param("driver", id="field-set"),
+    ],
+)
+async def test_merge_changelog_records_no_owner_change_that_the_migrated_default_branch_holds(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    diff_repository: DiffRepository,
+    holder: HolderKey | str,
+) -> None:
+    groups = await create_groups(db=db)
+    if isinstance(holder, str):
+        car_schema = registry.schema.get(name="TestCar", branch=default_branch, duplicate=False)
+        field = field_holder(schema=car_schema, field_name=holder)
+        assert field is not None
+        holder = field
+    car_id = car_accord_main.id
+    branch = await create_branch(db=db, branch_name="tgt-migration-owner-changelog")
+    await migrate_testcar_to_test2newcar(db=db, target_branch=default_branch, delete_old_schema=True)
+    for owner_branch in (default_branch, branch):
+        await set_owners(db=db, branch=owner_branch, node_id=car_id, owner_ids=(groups["security"],), holder=holder)
+    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+    merge_at = Timestamp()
+    await merge(db=db, branch=branch, at=merge_at)
+
+    changelogs = await build_diff_changelog_collector(
+        diff=diff, db=db, branch=default_branch, merge_at=merge_at
+    ).collect_changelogs()
+
+    assert [changelog.model_dump()["attributes"] for _, changelog in changelogs if changelog.node_id == car_id] == []

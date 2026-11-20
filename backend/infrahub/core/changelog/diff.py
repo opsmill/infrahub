@@ -203,11 +203,14 @@ class DiffChangelogCollector:
             at=self._merge_at.subtract(microseconds=1),
             node_ids=sorted({node.uuid for node, _, _ in owner_lists}),
         )
-        schema_branch = self._db.schema.get_schema_branch(name=self._branch.name)
+        # After a kind change on the destination branch, only the schema of the merged branch has the kind of the diff.
+        schema_branches = [
+            self._db.schema.get_schema_branch(name=name) for name in (self._branch.name, self._diff.diff_branch_name)
+        ]
         field_states = {}
         for (node_id, holder), state in states.items():
             kind = self.get_node(node_id=node_id).kind
-            if field_name := diff_field_name(holder=holder, kind=kind, schema_branches=[schema_branch]):
+            if field_name := diff_field_name(holder=holder, kind=kind, schema_branches=schema_branches):
                 field_states[node_id, field_name] = state
         held = set()
         for node, field_name, diff_property in owner_lists:
