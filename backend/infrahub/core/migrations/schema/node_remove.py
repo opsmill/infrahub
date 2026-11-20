@@ -53,7 +53,7 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery, MigrationSelectionQuery):
     // ----------------------------------------------------------
     // Find all active nodes of the kind being removed
     // ----------------------------------------------------------
-    MATCH (node:%(node_kind)s)
+    %(node_match)s
     CALL (node) {
         MATCH (root:Root)<-[r:IS_PART_OF]-(node)
         WHERE %(branch_filter)s
@@ -63,7 +63,10 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery, MigrationSelectionQuery):
     }
     WITH node AS active_node, root_edge
     WHERE root_edge.status = "active"
-    """ % {"node_kind": self.migration.previous_schema.kind, "branch_filter": branch_filter}
+    """ % {
+            "node_match": self.render_node_match("node", [self.migration.previous_schema.kind]),
+            "branch_filter": branch_filter,
+        }
 
     def get_nbr_migrations_executed(self) -> int:
         return self.stats.get_counter(name="nodes_created")

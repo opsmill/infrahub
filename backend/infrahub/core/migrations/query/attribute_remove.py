@@ -28,7 +28,7 @@ class AttributeRemoveQuery(MigrationSelectionQuery):
     ) -> None:
         self.attribute_name = attribute_name
         self.node_kinds = node_kinds
-        self.selection_kinds = ""
+        self.selection_kinds: list[str] = []
         super().__init__(**kwargs)
 
     def render_selection(self) -> str:
@@ -37,9 +37,7 @@ class AttributeRemoveQuery(MigrationSelectionQuery):
         // ------------
         // Find all the active nodes
         // ------------
-        MATCH (node:%(node_kinds)s)
-        WHERE (size($kinds_to_ignore) = 0 OR NOT any(l IN labels(node) WHERE l IN $kinds_to_ignore))
-        AND exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name }))
+        %(node_match)s
         CALL (node) {
             MATCH (root:Root)<-[r:IS_PART_OF]-(node)
             WHERE %(branch_filter)s
@@ -61,7 +59,17 @@ class AttributeRemoveQuery(MigrationSelectionQuery):
         }
         WITH n1 as active_node, r1 as rb, attr1 as active_attr
         WHERE rb.status = "active"
-        """ % {"node_kinds": self.selection_kinds, "branch_filter": branch_filter}
+        """ % {
+            "node_match": self.render_node_match(
+                "node",
+                self.selection_kinds,
+                conditions=[
+                    "size($kinds_to_ignore) = 0 OR NOT any(l IN labels(node) WHERE l IN $kinds_to_ignore)",
+                    "exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name }))",
+                ],
+            ),
+            "branch_filter": branch_filter,
+        }
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
@@ -128,7 +136,7 @@ class AttributeRemoveQuery(MigrationSelectionQuery):
         sub_queries = list(starmap(render_sub_query_per_rel_type, GraphAttributeRelationships.model_fields.items()))
         sub_query_all = "\nUNION\n".join(sub_queries)
 
-        self.selection_kinds = "|".join(self.node_kinds + profile_kinds_to_update + template_kinds_to_update)
+        self.selection_kinds = self.node_kinds + profile_kinds_to_update + template_kinds_to_update
         self.add_to_query(self.render_selection())
         query = """
         WITH active_node, active_attr
