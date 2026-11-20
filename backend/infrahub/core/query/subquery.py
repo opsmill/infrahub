@@ -14,11 +14,11 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 # A branch that changes one of these adds its own edge and leaves the default branch's edge open.
+# An owner write hides each owner edge that the branch inherits, so that an attribute can have several owners.
 VERSIONED_VALUE_EDGE_TYPES = {
     DatabaseEdgeType.HAS_VALUE.value,
     DatabaseEdgeType.IS_PROTECTED.value,
     DatabaseEdgeType.HAS_SOURCE.value,
-    DatabaseEdgeType.HAS_OWNER.value,
 }
 
 

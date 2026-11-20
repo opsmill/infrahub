@@ -125,11 +125,11 @@ class AttributeRemoveQuery(Query):
         WITH n1 as active_node, r1 as rb, attr1 as active_attr
         WHERE rb.status = "active"
         WITH active_node, active_attr
-        MATCH (active_attr)-[]-(peer)
-        WITH DISTINCT active_node, active_attr, peer
-        CALL (active_attr, peer) {
+        MATCH (active_attr)-[edge]-(peer)
+        WITH DISTINCT active_node, active_attr, peer, type(edge) AS edge_type
+        CALL (active_attr, peer, edge_type) {
             MATCH (active_attr)-[r]-(peer)
-            WHERE %(branch_filter)s
+            WHERE type(r) = edge_type AND %(branch_filter)s
             RETURN active_attr as a1, r as r1, peer as p1
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1

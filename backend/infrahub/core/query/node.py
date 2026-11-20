@@ -738,6 +738,19 @@ SET n.updated_at = $at, n.updated_by = $user_id
         self.add_to_query(query)
 
 
+class NodeLockQuery(NodeQuery):
+    """Take the write lock of the node vertex, which lasts until the transaction commits."""
+
+    name = "node_lock"
+    type: QueryType = QueryType.WRITE
+    insert_return = False
+    raise_error_if_empty = False
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["uuid"] = self.node_id
+        self.add_to_query("MATCH (n:Node { uuid: $uuid }) SET n.uuid = n.uuid")
+
+
 class NodeCheckIDQuery(Query):
     name = "node_check_id"
 
@@ -838,17 +851,19 @@ WITH *,
     def _add_owner_to_query(self, branch_filter_str: str) -> None:
         if not self._include_owner:
             return
+        # An attribute with several own owners, or with none, has no single owner to give.
         owner_query = """
 CALL (a) {
-    OPTIONAL MATCH (a)-[rel_owner:HAS_OWNER]-(owner)
+    MATCH (a)-[rel_owner:HAS_OWNER]->(owner)
     WHERE all(r IN [rel_owner] WHERE ( %(branch_filter)s ))
-    RETURN owner, rel_owner
+    WITH owner, rel_owner
     ORDER BY rel_owner.branch_level DESC, rel_owner.from DESC, rel_owner.status ASC
-    LIMIT 1
+    WITH owner, head(collect(rel_owner)) AS rel_owner
+    WHERE rel_owner.status = "active"
+    WITH collect([owner, rel_owner]) AS own_owners
+    RETURN CASE WHEN size(own_owners) = 1 THEN own_owners[0][0] ELSE NULL END AS owner,
+        CASE WHEN size(own_owners) = 1 THEN own_owners[0][1] ELSE NULL END AS rel_owner
 }
-WITH *,
-    CASE WHEN rel_owner.status = "active" THEN owner ELSE NULL END AS owner,
-    CASE WHEN rel_owner.status = "active" THEN rel_owner ELSE NULL END AS rel_owner
         """ % {"branch_filter": branch_filter_str}
         self.add_to_query(owner_query)
         self.return_labels.extend(["owner", "rel_owner"])

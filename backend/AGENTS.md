@@ -124,6 +124,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/graphql-execution.md` - How graphql-core resolves fields and why each query resolver opens its own database session; read before adding a GraphQL query resolver or middleware
 - `dev/knowledge/backend/mutations.md` - GraphQL mutation flow, upsert and HFID derivation; read before adding or overriding a mutation
 - `dev/knowledge/backend/permissions.md` - Global/object permission model and checker pipeline; read before touching authorization
+- `dev/knowledge/backend/ownership.md` - How the owners and the sources of a node and of its fields are stored, written, resolved and migrated; read before touching `core/ownership/` or an owner or source edge
 - `dev/knowledge/backend/api-backpressure.md` - Priority-aware load shedding (admission middleware, CoDel, slot pool) and the database-stress signal; read before touching the admission layer or request prioritization
 - `dev/knowledge/backend/authentication.md` - Authentication flow, SSO group resolution, auto-create groups; read when touching login, SSO, or LDAP
 - `dev/knowledge/backend/branch-status.md` - Branch status enforcement (`BranchStatusChecker`, middleware allowlists, permission integration); read when touching branch lifecycle or write-protection

@@ -19,10 +19,14 @@ from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.mutation_context import NodeMutationContext
 from infrahub.core.node import Node
 from infrahub.core.node.lock_utils import get_lock_names_on_object_mutation
+from infrahub.core.ownership.models import NODE_HOLDER, HolderKind, holder_field, receiving_holder
+from infrahub.core.ownership.repository import OwnershipRepository
+from infrahub.core.ownership.writer import OwnershipWriter
 from infrahub.core.protocols_base import CoreNode
 from infrahub.core.query.resource_manager import TrackingPool
 from infrahub.core.relationship.model import PeerWithRelationshipMetadata
 from infrahub.core.schema import GenericSchema
+from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.lock import InfrahubMultiLock
 from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
@@ -33,17 +37,19 @@ from infrahub.profiles.node_applier import NodeProfilesApplier
 from infrahub.templates.node_applier import get_relationship_names_to_read
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Awaitable, Callable, Iterable, Mapping
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import SchemaProtocol
+    from infrahub.core.ownership.models import HolderKey, StoredNodeOwnership
     from infrahub.core.protocols import CoreObjectTemplate
     from infrahub.core.relationship.model import Relationship, RelationshipManager
     from infrahub.core.schema import MainSchemaTypes, NonGenericSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
     from infrahub.pools.attribute_pool_applier import AttributePoolApplier, AttributePoolApplierInterface
+
+    type AfterSave = Callable[[InfrahubDatabase, Node], Awaitable[None]]
 
 
 @dataclass
@@ -56,6 +62,8 @@ class TemplateComponent:
     subtemplate: CoreObjectTemplate
     schema: NonGenericSchemaTypes
     components: list[TemplateComponent] = field(default_factory=list)
+    given_owners: dict[HolderKey, tuple[str, ...]] = field(default_factory=dict)
+    """The owners that the subtemplate gives to the node it describes and to its fields, by holder of the node."""
 
 
 @dataclass
@@ -350,7 +358,17 @@ async def create_component(
         )
         await node_profiles_applier.apply_profiles(node=obj_peer)
 
-    await obj_peer.save(db=db, user_id=user_id)
+    await obj_peer.save(db=db, user_id=user_id, at=at)
+    writer = OwnershipWriter(repository=OwnershipRepository(db=db, branch=branch, at=at))
+    for holder, owner_ids in component.given_owners.items():
+        await writer.copy_from_template(
+            node=obj_peer,
+            template_id=component.subtemplate.get_id(),
+            owner_ids=owner_ids,
+            at=Timestamp(at),
+            user_id=user_id,
+            holder=holder,
+        )
     NodeMutationContext.record_if_active(node=obj_peer, action=MutationAction.CREATED)
     return obj_peer
 
@@ -409,7 +427,7 @@ async def handle_template_relationships(
     at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
 ) -> None:
-    """Create the objects the components of a template describe.
+    """Create the nodes the components of a template describe, and copy the owners that the templates give.
 
     The template is read a level at a time and the objects are created depth first. Those are two
     different walks on purpose: reading a whole level at once costs one read per level rather than
@@ -418,6 +436,9 @@ async def handle_template_relationships(
     """
     components = await read_template_components(
         db=db, branch=branch, schema=obj.get_schema(), template=template, fields=fields
+    )
+    await copy_template_owners(
+        db=db, branch=branch, obj=obj, template=template, components=components, at=at, user_id=user_id
     )
     if not components:
         return
@@ -435,6 +456,61 @@ async def handle_template_relationships(
         at=at,
         user_id=user_id,
     )
+
+
+async def copy_template_owners(
+    db: InfrahubDatabase,
+    branch: Branch,
+    obj: Node,
+    template: CoreObjectTemplate,
+    components: list[TemplateComponent],
+    at: Timestamp | None = None,
+    user_id: str = SYSTEM_USER_ID,
+) -> None:
+    """Give the new node a copy of the owners that its template gives, and record what each subtemplate gives.
+
+    One read covers the node, the template and the whole tree of subtemplates. A node that the create
+    already gave an owner state to keeps it.
+    """
+    tree: list[TemplateComponent] = []
+    pending = list(components)
+    while pending:
+        component = pending.pop()
+        tree.append(component)
+        pending.extend(component.components)
+
+    repository = OwnershipRepository(db=db, branch=branch, at=at)
+    stored = await repository.read(
+        node_ids=[obj.get_id(), template.get_id(), *(component.subtemplate.get_id() for component in tree)],
+        attributes=True,
+    )
+    for component in tree:
+        component.given_owners = _given_owners(template=stored[component.subtemplate.get_id()], schema=component.schema)
+
+    writer = OwnershipWriter(repository=repository)
+    for holder, owner_ids in _given_owners(template=stored[template.get_id()], schema=obj.get_schema()).items():
+        if stored[obj.get_id()].get(holder).owner_ids is None:
+            await writer.copy_from_template(
+                node=obj,
+                template_id=template.get_id(),
+                owner_ids=owner_ids,
+                at=Timestamp(at),
+                user_id=user_id,
+                holder=holder,
+            )
+
+
+def _given_owners(template: StoredNodeOwnership, schema: MainSchemaTypes) -> dict[HolderKey, tuple[str, ...]]:
+    """Return the owners that a template gives to a node of the schema and to its fields, by holder of the node."""
+    given: dict[HolderKey, tuple[str, ...]] = {}
+    for given_key, state in template.holders.items():
+        if given_key.kind != HolderKind.TARGET_SET or state.owner_ids is None:
+            continue
+        holder = receiving_holder(given=given_key)
+        # A schema change can remove a field that the template gives owners to.
+        if holder == NODE_HOLDER or holder_field(schema=schema, holder=holder) is not None:
+            given[holder] = state.owner_ids
+    return given
 
 
 async def get_profile_ids(db: InfrahubDatabase, obj: Node | CoreObjectTemplate) -> set[str]:
@@ -513,6 +589,7 @@ async def _do_create_node(
     at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
     object_template: CoreObjectTemplate | None = None,
+    after_save: AfterSave | None = None,
 ) -> Node:
     with mutation_context:
         obj = await node_class.init(db=db, schema=schema, branch=branch)
@@ -528,6 +605,8 @@ async def _do_create_node(
             node=obj, field_filters=_with_pooled_attributes(node=obj, fields=fields_to_validate)
         )
         await obj.save(db=db, at=at, user_id=user_id)
+        if after_save:
+            await after_save(db, obj)
 
         if object_template:
             await handle_template_relationships(
@@ -553,6 +632,7 @@ async def create_node(
     schema: type[SchemaProtocol],
     at: Timestamp | None = ...,
     user_id: str = ...,
+    after_save: AfterSave | None = ...,
 ) -> SchemaProtocol: ...
 
 
@@ -564,6 +644,7 @@ async def create_node(
     schema: MainSchemaTypes,
     at: Timestamp | None = ...,
     user_id: str = ...,
+    after_save: AfterSave | None = ...,
 ) -> Node: ...
 
 
@@ -574,11 +655,13 @@ async def create_node(
     schema: MainSchemaTypes | type[SchemaProtocol],
     at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
+    after_save: AfterSave | None = None,
 ) -> Node | SchemaProtocol:
     """Create a node in the database if constraint checks succeed.
 
     A schema protocol class may be passed instead of a schema object; the return type is then
-    narrowed to that protocol.
+    narrowed to that protocol. `after_save` runs after the node is saved, in the transaction of the save.
+    `at` must not be earlier than the creation of the object template and of each of its subtemplates.
 
     Raises:
         ValueError: When the schema is a `GenericSchema` and cannot be instantiated, or when a
@@ -636,6 +719,7 @@ async def create_node(
                 at=at,
                 user_id=user_id,
                 object_template=object_template,
+                after_save=after_save,
             )
         else:
             async with db.start_transaction() as dbt:
@@ -660,6 +744,7 @@ async def create_node(
                     at=at,
                     user_id=user_id,
                     object_template=object_template,
+                    after_save=after_save,
                 )
 
     # The node was written from its in-memory state, so the profiles it is linked to are the ones

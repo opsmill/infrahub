@@ -5,11 +5,12 @@ from typing import TYPE_CHECKING, Any, Self
 from graphene import Boolean, InputObjectType, Mutation, String
 from graphene.types.generic import GenericScalar
 from graphql import GraphQLResolveInfo
+from infrahub_sdk.convert_object_type import ConversionFieldInput
 
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.constants.infrahubkind import READONLYREPOSITORY, REPOSITORY
-from infrahub.core.convert_object_type.object_conversion import ConversionFieldInput, convert_and_validate_object_type
+from infrahub.core.convert_object_type.object_conversion import convert_and_validate_object_type
 from infrahub.core.convert_object_type.repository_conversion import convert_repository_type
 from infrahub.core.convert_object_type.schema_mapping import get_schema_mapping
 from infrahub.core.manager import NodeManager
@@ -101,6 +102,7 @@ class ConvertObjectType(Mutation):
                     default_branch=registry.get_branch_from_registry(branch=registry.default_branch),
                     clock=partial(datetime.now, tz=UTC),
                 ),
+                user_id=graphql_context.assigned_user_id,
             )
         else:
             new_node = await convert_and_validate_object_type(
@@ -109,6 +111,7 @@ class ConvertObjectType(Mutation):
                 mapping=fields_mapping,
                 branch=graphql_context.branch,
                 db=graphql_context.db,
+                user_id=graphql_context.assigned_user_id,
             )
 
         dict_node = await new_node.to_graphql(db=graphql_context.db, fields={})

@@ -83,7 +83,7 @@ The Technical Context of the plan has no open "NEEDS CLARIFICATION" item. The op
 - Decision: two filters on list and count queries, computed in the database before pagination (FR-018 to FR-020):
   - `node_metadata__owners__ids`: a node matches if any owner that applies matches, own or inherited.
   - `node_metadata__owners__isnull`: `true` gives the nodes with no live owner.
-  - Code: `core/ownership/filter.py`, called from `core/query/node.py::NodeGetListQuery`. The names are in `core/ownership/constants.py`.
+  - Code: `core/ownership/filter.py`, called from `core/query/node.py::NodeGetListQuery`. The names are in `core/ownership/constants.py`. This code is in pull request 2.
 - SC-003 is not met with this filter: about 19 seconds for 480,000 interfaces in plain Cypher, and 6.7 seconds for 200,000 interfaces through GraphQL. Most of the cost is the walk to the parents and to the profiles.
 - Proposal for the spike, in this order:
   1. Start the query from the owner: find the nodes with the own owner (15.3 ms in the benchmark), then go down to the nodes that inherit. The earlier draft with option A met SC-003 for one owner group in this way, and missed it for all 50 groups.
@@ -125,7 +125,7 @@ The Technical Context of the plan has no open "NEEDS CLARIFICATION" item. The op
 - Decision: a separate path for owner edges, as in the prototype.
   - `core/diff/query/ownership.py`: the diff query, with one pattern for each edge type.
   - `core/diff/ownership_differ.py`: builds one property for each holder. Its value is the sorted list of owner IDs, and `[]` for no owner.
-  - `core/diff/ownership_fields.py`: holders that are not attributes appear under reserved names: `node_metadata__owners`, `<relationship>__owners`, `node_metadata__target_owners`, `<field>__target_owners`.
+  - `core/ownership/fields.py`: holders that are not attributes appear under reserved names: `node_metadata__owners`, `<relationship>__owners`, `node_metadata__target_owners`, `<field>__target_owners`.
   - `core/diff/calculator.py` and `core/diff/query_parser.py` call the differ.
   - `core/diff/query/bulk_merge.py`, `core/diff/merger/merger.py` and `core/diff/merger/exclusion_plan.py`: the merge copies owner edges as a set for each holder, edge type and owner. It adds what the branch added and closes what the branch removed.
 - The merge keeps the `HAS_OWNER` edges to an owner that the branch deleted, so the node shows "deleted group" (FR-008).

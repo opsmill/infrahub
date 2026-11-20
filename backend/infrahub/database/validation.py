@@ -19,6 +19,8 @@ class GraphCheck(InfrahubStringEnum):
     RELATIONSHIP_EDGE_COUNTS = "relationship_edge_counts"
     DUPLICATE_ATTRIBUTES = "duplicate_attributes"
     ATTRIBUTE_EDGE_BRANCH = "attribute_edge_branch"
+    DUPLICATE_OWNER_SETS = "duplicate_owner_sets"
+    NO_OWNER_VERTEX = "no_owner_vertex"
 
 
 @dataclass(frozen=True)
@@ -130,6 +132,11 @@ END AS delete_time
 MATCH (n)-[added_e]-(peer)
 WHERE added_e.from > delete_time
 AND type(added_e) <> "IS_PART_OF"
+// a deleted owner or source stays in the list of its holder, so a later write can copy or hide the edge to it
+AND NOT (
+    type(added_e) IN ["HAS_OWNER", "HAS_SOURCE"] AND endNode(added_e) = n AND NOT startNode(added_e):Relationship
+    AND NOT (type(added_e) = "HAS_SOURCE" AND startNode(added_e):Attribute)
+)
 // ------------
 // if the node was deleted on a branch (delete_branch_level > 1), and then updated on main/global (added_e.branch_level = 1), we can ignore it
 // ------------
@@ -256,7 +263,7 @@ WHERE open_edges = 0 AND delete_time IS NOT NULL
 // The delete writes the field's edges at the same instant, so only what is still open, or what carries a
 // later time, is a violation
 // ----------------
-MATCH (field)-[child:HAS_VALUE|IS_PROTECTED|HAS_OWNER|HAS_SOURCE|IS_RELATED]-(peer)
+MATCH (field)-[child:HAS_VALUE|IS_PROTECTED|HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE|HAS_SOURCE|IS_RELATED]-(peer)
 WHERE coalesce(peer.uuid, "") <> node_id
 // ----------------
 // A branch that forked after the delete inherits it, so writing the field there is an update to something
@@ -520,6 +527,52 @@ RETURN n.uuid AS node_id, a.name AS field_name, a.branch_support AS branch_suppo
     return violations
 
 
+async def _check_duplicate_owner_sets(db: InfrahubDatabase, kinds: list[str] | None) -> list[GraphViolation]:
+    """Verify that a node has one set of owners for each key, on all branches together.
+
+    A read gives the owners of all sets with the same key, so two sets give owners that no write stored.
+    """
+    query = """
+MATCH (n:%(node_labels)s)-[e:HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(s:OwnerSet)
+WITH n.uuid AS node_id, type(e) AS edge_type, s.attribute AS attribute, s.identifier AS identifier,
+    s.direction AS direction, count(DISTINCT s) AS num_sets
+WHERE num_sets > 1
+RETURN node_id, edge_type, attribute, identifier, direction, num_sets
+    """ % {"node_labels": _node_labels(kinds)}
+    records = await db.execute_query(query=query)
+    violations = []
+    for record in records:
+        node_id = record.get("node_id")
+        edge_type = record.get("edge_type")
+        attribute = record.get("attribute")
+        identifier = record.get("identifier")
+        direction = record.get("direction")
+        num_sets = record.get("num_sets")
+        violations.append(
+            GraphViolation(
+                check=GraphCheck.DUPLICATE_OWNER_SETS,
+                message=(
+                    f"{num_sets} owner sets ({edge_type=},{attribute=},{identifier=},{direction=}) for node '{node_id}'"
+                ),
+            )
+        )
+    return violations
+
+
+async def _check_no_owner_vertex(db: InfrahubDatabase, kinds: list[str] | None) -> list[GraphViolation]:
+    """Verify that the graph has exactly one `NoOwner` vertex, the end of every "no owner" edge.
+
+    A filter on kinds skips the check, because the vertex has no kind.
+    """
+    if kinds:
+        return []
+    records = await db.execute_query(query="MATCH (n:NoOwner) RETURN count(n) AS num_vertices")
+    num_vertices = records[0].get("num_vertices")
+    if num_vertices == 1:
+        return []
+    return [GraphViolation(check=GraphCheck.NO_OWNER_VERTEX, message=f"{num_vertices} NoOwner vertices, expected 1")]
+
+
 async def collect_graph_violations(db: InfrahubDatabase, kinds: list[str] | None = None) -> list[GraphViolation]:
     """Run every graph-integrity check and return all violations found.
 
@@ -536,6 +589,8 @@ async def collect_graph_violations(db: InfrahubDatabase, kinds: list[str] | None
     violations.extend(await _check_orphaned_active_edges(db=db, kinds=kinds))
     violations.extend(await _check_relationship_edge_counts(db=db, kinds=kinds))
     violations.extend(await _check_attribute_edge_branch(db=db, kinds=kinds))
+    violations.extend(await _check_duplicate_owner_sets(db=db, kinds=kinds))
+    violations.extend(await _check_no_owner_vertex(db=db, kinds=kinds))
     return violations
 
 

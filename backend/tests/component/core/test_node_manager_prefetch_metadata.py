@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from infrahub.core.branch import Branch
-from infrahub.core.constants import MetadataOptions
+from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 from infrahub.core.diff.merger.merger import DiffMerger
@@ -93,7 +93,12 @@ class TestGetManyPrefetchRelationshipMetadataFiltering:
     """`include_metadata` selectively populates relationship metadata under prefetch."""
 
     @pytest.fixture(scope="class", autouse=True)
-    async def _schema(self, db: InfrahubDatabase, default_branch_scope_class: Branch) -> SchemaBranch:
+    async def _schema(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> SchemaBranch:
         return registry.schema.register_schema(
             schema=do_car_person_schema_unregistered(), branch=default_branch_scope_class.name
         )
@@ -102,8 +107,8 @@ class TestGetManyPrefetchRelationshipMetadataFiltering:
     async def fixture_data(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, _schema: SchemaBranch
     ) -> dict[str, Node]:
-        owner_node = await Node.init(db=db, schema="TestPerson")
-        await owner_node.new(db=db, name="Owner", height=180)
+        owner_node = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+        await owner_node.new(db=db, name="Owner", password="OwnerPassword123")
         await owner_node.save(db=db)
 
         source_node = await Node.init(db=db, schema="TestPerson")
@@ -211,9 +216,9 @@ class TestGetManyPrefetchRelationshipMetadataCleared:
         return await component_registry.get_component(DiffMerger, db=db, branch=branch)
 
     async def _build_car(self, db: InfrahubDatabase, branch: Branch) -> dict[str, Node]:
-        owner_person = await Node.init(db=db, schema="TestPerson", branch=branch)
-        await owner_person.new(db=db, name="Owner", height=180)
-        await owner_person.save(db=db)
+        owner_account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT, branch=branch)
+        await owner_account.new(db=db, name="Owner", password="OwnerPassword123")
+        await owner_account.save(db=db)
 
         source_person = await Node.init(db=db, schema="TestPerson", branch=branch)
         await source_person.new(db=db, name="Source", height=170)
@@ -232,11 +237,11 @@ class TestGetManyPrefetchRelationshipMetadataCleared:
             owner={
                 "id": driver.id,
                 "_relation__source": source_person.id,
-                "_relation__owner": owner_person.id,
+                "_relation__owner": owner_account.id,
             },
         )
         await car.save(db=db)
-        return {"car": car, "driver": driver, "source": source_person, "owner": owner_person}
+        return {"car": car, "driver": driver, "source": source_person, "owner": owner_account}
 
     async def _assert_cleared(self, db: InfrahubDatabase, branch: Branch, car_id: str, driver_id: str) -> None:
         nodes = await NodeManager.get_many(

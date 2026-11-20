@@ -9,6 +9,17 @@ from opentelemetry import trace
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import ConflictSelection
+from infrahub.core.diff.ownership_differ import OwnershipDiffer
+from infrahub.core.ownership.fields import (
+    OWNERS_CHANGELOG_KIND,
+    attribute_owners_change,
+    diff_field_name,
+    is_list_property,
+    is_owners_field_name,
+    owner_list_value,
+    stored_owner_ids,
+)
+from infrahub.core.ownership.models import INHERIT
 from infrahub.exceptions import SchemaNotFoundError
 
 from .models import (
@@ -32,6 +43,7 @@ if TYPE_CHECKING:
     )
     from infrahub.core.models import SchemaUpdateMigrationInfo
     from infrahub.core.schema import MainSchemaTypes
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
     from .hfid_resolver import ChangelogHfidResolver
@@ -52,13 +64,20 @@ class DiffChangelogCollector:
         db: InfrahubDatabase,
         hfid_resolver: ChangelogHfidResolver,
         migration_tracker: MigrationTracker | None = None,
+        merge_at: Timestamp | None = None,
     ) -> None:
+        """Set `merge_at` to the time of a merge into `branch`.
+
+        The changelog then leaves out each owner list that `branch` held just before the merge.
+        """
         self._diff = diff
         self._branch = branch
         self._db = db
         self._hfid_resolver = hfid_resolver
         self._diff_nodes: dict[str, NodeInDiff]
         self.migration = migration_tracker or MigrationTracker()
+        self._merge_at = merge_at
+        self._owner_lists_held: set[tuple[str, str]] = set()
 
     def _populate_diff_nodes(self) -> None:
         self._diff_nodes = {
@@ -99,6 +118,11 @@ class DiffChangelogCollector:
     def _process_node_attribute(
         self, node: NodeChangelog, attribute: EnrichedDiffAttribute, schema: MainSchemaTypes | None
     ) -> None:
+        if is_owners_field_name(field_name=attribute.name) and (
+            schema is None or attribute.name not in schema.attribute_names
+        ):
+            self._process_owner_list(node=node, attribute=attribute)
+            return
         if schema is None:
             attribute_kind = "n/a"
         else:
@@ -135,14 +159,68 @@ class DiffChangelogCollector:
                             value_previous=attr_property.previous_value,
                         )
                 case DatabaseEdgeType.HAS_OWNER:
-                    if _keep_branch_update(diff_property=attr_property):
-                        changelog_attribute.add_property(
-                            name="owner",
-                            value_current=attr_property.new_value,
-                            value_previous=attr_property.previous_value,
-                        )
+                    if self._is_owner_list_change(node=node, field_name=attribute.name, owner_list=attr_property):
+                        _add_owners_property(attribute=changelog_attribute, diff_property=attr_property)
 
         node.add_attribute(attribute=changelog_attribute)
+
+    def _process_owner_list(self, node: NodeChangelog, attribute: EnrichedDiffAttribute) -> None:
+        for owner_list in attribute.properties:
+            if is_list_property(
+                field_name=attribute.name, property_type=owner_list.property_type
+            ) and self._is_owner_list_change(node=node, field_name=attribute.name, owner_list=owner_list):
+                node.add_attribute(
+                    attribute=AttributeChangelog(
+                        name=attribute.name,
+                        kind=OWNERS_CHANGELOG_KIND,
+                        value=owner_list.new_value,
+                        value_previous=owner_list.previous_value,
+                    )
+                )
+
+    def _is_owner_list_change(self, node: NodeChangelog, field_name: str, owner_list: EnrichedDiffProperty) -> bool:
+        return (
+            _keep_branch_update(diff_property=owner_list) and (node.node_id, field_name) not in self._owner_lists_held
+        )
+
+    async def _read_owner_lists_held(self, nodes: list[EnrichedDiffNode]) -> set[tuple[str, str]]:
+        """Return the node ID and the field name of each owner list of the diff that the branch held before the merge.
+
+        The merge writes no edge for such a list.
+        """
+        owner_lists = [
+            (node, attribute.name, diff_property)
+            for node in nodes
+            for attribute in node.attributes
+            for diff_property in attribute.properties
+            if is_list_property(field_name=attribute.name, property_type=diff_property.property_type)
+        ]
+        if self._merge_at is None or not owner_lists:
+            return set()
+        # The edges that the merge writes start at the merge time.
+        states = await OwnershipDiffer(db=self._db).read_states(
+            branch=self._branch,
+            at=self._merge_at.subtract(microseconds=1),
+            node_ids=sorted({node.uuid for node, _, _ in owner_lists}),
+        )
+        # After a kind change on the destination branch, only the schema of the merged branch has the kind of the diff.
+        schema_branches = [
+            self._db.schema.get_schema_branch(name=name) for name in (self._branch.name, self._diff.diff_branch_name)
+        ]
+        field_states = {}
+        for (node_id, holder), state in states.items():
+            kind = self.get_node(node_id=node_id).kind
+            if field_name := diff_field_name(holder=holder, kind=kind, schema_branches=schema_branches):
+                field_states[node_id, field_name] = state
+        held = set()
+        for node, field_name, diff_property in owner_lists:
+            state = field_states.get((node.uuid, field_name), INHERIT)
+            # A template mark that the branch closes is a change also when the owners stay the same.
+            if state.template_id is None and owner_list_value(owner_ids=state.owner_ids) == owner_list_value(
+                owner_ids=stored_owner_ids(value=diff_property.new_value)
+            ):
+                held.add((node.uuid, field_name))
+        return held
 
     def _process_node_relationship(self, node: NodeChangelog, relationship: EnrichedDiffRelationship) -> None:
         match relationship.cardinality:
@@ -257,6 +335,7 @@ class DiffChangelogCollector:
             # A node whose kind was dropped by a schema migration in the merge has no schema to resolve
             # labels against; leave it out of the load so one such node cannot fail the whole batch.
             resolvable_ids = [node.uuid for node in changed_nodes if self._is_resolvable_kind(node.kind)]
+            self._owner_lists_held = await self._read_owner_lists_held(nodes=changed_nodes)
             with trace.get_tracer(__name__).start_as_current_span("changelog.build_from_diff"):
                 changelogs = [
                     (node.action, node_changelog)
@@ -272,6 +351,14 @@ class DiffChangelogCollector:
     def _is_resolvable_kind(self, kind: str) -> bool:
         """Whether a node kind still exists on the branch, so its labels can be loaded."""
         return self._db.schema.has(name=kind, branch=self._branch)
+
+
+def _add_owners_property(attribute: AttributeChangelog, diff_property: EnrichedDiffProperty) -> None:
+    name, value, value_previous = attribute_owners_change(
+        owner_ids=stored_owner_ids(value=diff_property.new_value),
+        previous_owner_ids=stored_owner_ids(value=diff_property.previous_value),
+    )
+    attribute.add_property(name=name, value_current=value, value_previous=value_previous)
 
 
 def _keep_branch_update(diff_property: EnrichedDiffProperty) -> bool:

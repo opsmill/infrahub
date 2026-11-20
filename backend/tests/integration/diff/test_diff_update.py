@@ -139,6 +139,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         people = await Node.init(schema=InfrahubKind.STANDARDGROUP, db=db)
         await people.new(db=db, name="people", members=[john])
         await people.save(db=db)
+        main_owner = await Node.init(schema=InfrahubKind.ACCOUNT, db=db)
+        await main_owner.new(db=db, name="main-owner", password="MainOwnerPassword123")
+        await main_owner.save(db=db)
+        branch_owner = await Node.init(schema=InfrahubKind.ACCOUNT, db=db)
+        await branch_owner.new(db=db, name="branch-owner", password="BranchOwnerPassword123")
+        await branch_owner.save(db=db)
 
         jesko = await Node.init(schema=TestKind.CAR, db=db)
         await jesko.new(
@@ -179,6 +185,8 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             "omnicorp": omnicorp,
             "cyberdyne": cyberdyne,
             "people": people,
+            "main_owner": main_owner,
+            "branch_owner": branch_owner,
             "jesko": jesko,
             "t_800": t_800,
             "ed_209": ed_209,
@@ -536,17 +544,17 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         john_id = initial_dataset["john"].get_id()
         john_node = await NodeManager.get_one(db=db, id=john_id)
         john_label = await john_node.get_display_label(db=db)
-        cyberdyne_id = initial_dataset["cyberdyne"].get_id()
-        cyberdyne_node = await NodeManager.get_one(db=db, id=cyberdyne_id)
-        cyberdyne_label = await cyberdyne_node.get_display_label(db=db)
-        omnicorp_id = initial_dataset["omnicorp"].get_id()
-        omnicorp_node = await NodeManager.get_one(db=db, id=omnicorp_id)
-        omnicorp_label = await omnicorp_node.get_display_label(db=db)
+        main_owner_id = initial_dataset["main_owner"].get_id()
+        main_owner_node = await NodeManager.get_one(db=db, id=main_owner_id)
+        main_owner_label = await main_owner_node.get_display_label(db=db)
+        branch_owner_id = initial_dataset["branch_owner"].get_id()
+        branch_owner_node = await NodeManager.get_one(db=db, id=branch_owner_id)
+        branch_owner_label = await branch_owner_node.get_display_label(db=db)
         t_800_main = await NodeManager.get_one(db=db, branch=default_branch, id=t_800_id)
-        await t_800_main.owner.update(db=db, data={"id": john_id, "_relation__owner": cyberdyne_id})
+        await t_800_main.owner.update(db=db, data={"id": john_id, "_relation__owner": main_owner_id})
         await t_800_main.save(db=db)
         t_800_branch = await NodeManager.get_one(db=db, branch=diff_branch, id=t_800_id)
-        await t_800_branch.owner.update(db=db, data={"id": john_id, "_relation__owner": omnicorp_id})
+        await t_800_branch.owner.update(db=db, data={"id": john_id, "_relation__owner": branch_owner_id})
         await t_800_branch.save(db=db)
         t_800_label = await t_800_main.get_display_label(db=db)
         changes_done_time = Timestamp()
@@ -587,15 +595,15 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         owner_property = properties_by_type[DatabaseEdgeType.HAS_OWNER]
         assert owner_property.action is DiffAction.ADDED
         assert owner_property.previous_value is None
-        assert owner_property.new_value == omnicorp_id
-        assert owner_property.new_label == omnicorp_label
+        assert owner_property.new_value == branch_owner_id
+        assert owner_property.new_label == branch_owner_label
         assert owner_property.conflict
         assert owner_property.conflict.base_branch_action is DiffAction.ADDED
-        assert owner_property.conflict.base_branch_value == cyberdyne_id
-        assert owner_property.conflict.base_branch_label == cyberdyne_label
+        assert owner_property.conflict.base_branch_value == main_owner_id
+        assert owner_property.conflict.base_branch_label == main_owner_label
         assert owner_property.conflict.diff_branch_action is DiffAction.ADDED
-        assert owner_property.conflict.diff_branch_value == omnicorp_id
-        assert owner_property.conflict.diff_branch_label == omnicorp_label
+        assert owner_property.conflict.diff_branch_value == branch_owner_id
+        assert owner_property.conflict.diff_branch_label == branch_owner_label
         assert owner_property.conflict.selected_branch is None
         self.track_item(
             "cardinality_one_property_conflict_a",
@@ -603,7 +611,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
                 conflict_id=owner_property.conflict.uuid,
                 keep_branch=BranchConflictKeep.SOURCE,
                 conflict_selection=ConflictSelection.DIFF_BRANCH,
-                expected_value=omnicorp_id,
+                expected_value=branch_owner_id,
                 node_id=t_800_id,
             ),
         )
@@ -632,14 +640,14 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         owner_property = properties_by_type[DatabaseEdgeType.HAS_OWNER]
         assert owner_property.action is DiffAction.ADDED
         assert owner_property.previous_value is None
-        assert owner_property.new_value == omnicorp_id
+        assert owner_property.new_value == branch_owner_id
         assert owner_property.conflict
         assert owner_property.conflict.base_branch_action is DiffAction.ADDED
-        assert owner_property.conflict.base_branch_value == cyberdyne_id
-        assert owner_property.conflict.base_branch_label == cyberdyne_label
+        assert owner_property.conflict.base_branch_value == main_owner_id
+        assert owner_property.conflict.base_branch_label == main_owner_label
         assert owner_property.conflict.diff_branch_action is DiffAction.ADDED
-        assert owner_property.conflict.diff_branch_value == omnicorp_id
-        assert owner_property.conflict.diff_branch_label == omnicorp_label
+        assert owner_property.conflict.diff_branch_value == branch_owner_id
+        assert owner_property.conflict.diff_branch_label == branch_owner_label
         assert owner_property.conflict.selected_branch is None
         self.track_item(
             "cardinality_one_property_conflict_b",
@@ -647,7 +655,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
                 conflict_id=owner_property.conflict.uuid,
                 keep_branch=BranchConflictKeep.SOURCE,
                 conflict_selection=ConflictSelection.DIFF_BRANCH,
-                expected_value=omnicorp_id,
+                expected_value=branch_owner_id,
                 node_id=john_id,
             ),
         )
@@ -658,12 +666,14 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
         omnicorp_id = initial_dataset["omnicorp"].get_id()
         murphy_id = initial_dataset["murphy"].get_id()
+        main_owner_id = initial_dataset["main_owner"].get_id()
+        branch_owner_id = initial_dataset["branch_owner"].get_id()
 
         omnicorp_main = await NodeManager.get_one(db=db, branch=default_branch, id=omnicorp_id)
-        await omnicorp_main.customers.update(db=db, data={"id": murphy_id, "_relation__owner": omnicorp_id})
+        await omnicorp_main.customers.update(db=db, data={"id": murphy_id, "_relation__owner": main_owner_id})
         await omnicorp_main.save(db=db)
         omnicorp_branch = await NodeManager.get_one(db=db, branch=diff_branch, id=omnicorp_id)
-        await omnicorp_branch.customers.update(db=db, data={"id": murphy_id, "_relation__owner": murphy_id})
+        await omnicorp_branch.customers.update(db=db, data={"id": murphy_id, "_relation__owner": branch_owner_id})
         await omnicorp_branch.save(db=db)
         changes_done_time = Timestamp()
 
@@ -702,12 +712,12 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         owner_property = properties_by_type[DatabaseEdgeType.HAS_OWNER]
         assert owner_property.action is DiffAction.ADDED
         assert owner_property.previous_value is None
-        assert owner_property.new_value == murphy_id
+        assert owner_property.new_value == branch_owner_id
         assert owner_property.conflict
         assert owner_property.conflict.base_branch_action is DiffAction.ADDED
-        assert owner_property.conflict.base_branch_value == omnicorp_id
+        assert owner_property.conflict.base_branch_value == main_owner_id
         assert owner_property.conflict.diff_branch_action is DiffAction.ADDED
-        assert owner_property.conflict.diff_branch_value == murphy_id
+        assert owner_property.conflict.diff_branch_value == branch_owner_id
         assert owner_property.conflict.selected_branch is None
         self.track_item(
             "cardinality_many_property_conflict",
@@ -715,7 +725,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
                 conflict_id=owner_property.conflict.uuid,
                 keep_branch=BranchConflictKeep.SOURCE,
                 conflict_selection=ConflictSelection.DIFF_BRANCH,
-                expected_value=murphy_id,
+                expected_value=branch_owner_id,
                 node_id=omnicorp_id,
             ),
         )
@@ -925,8 +935,8 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
         t_800_id = initial_dataset["t_800"].get_id()
         john_id = initial_dataset["john"].get_id()
-        omnicorp_id = initial_dataset["omnicorp"].get_id()
-        cyberdyne_id = initial_dataset["cyberdyne"].get_id()
+        branch_owner_id = initial_dataset["branch_owner"].get_id()
+        main_owner_id = initial_dataset["main_owner"].get_id()
         diff = await self.get_branch_diff(db=db, branch=diff_branch)
 
         # check EnrichedDiff
@@ -948,13 +958,13 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         owner_property = properties_by_type[DatabaseEdgeType.HAS_OWNER]
         assert owner_property.action is DiffAction.ADDED
         assert owner_property.previous_value is None
-        assert owner_property.new_value == omnicorp_id
+        assert owner_property.new_value == branch_owner_id
         assert owner_property.conflict
         assert owner_property.conflict.uuid == cardinality_one_property_conflict_a.conflict_id
         assert owner_property.conflict.base_branch_action is DiffAction.ADDED
-        assert owner_property.conflict.base_branch_value == cyberdyne_id
+        assert owner_property.conflict.base_branch_value == main_owner_id
         assert owner_property.conflict.diff_branch_action is DiffAction.ADDED
-        assert owner_property.conflict.diff_branch_value == omnicorp_id
+        assert owner_property.conflict.diff_branch_value == branch_owner_id
         assert owner_property.conflict.selected_branch is cardinality_one_property_conflict_a.conflict_selection
         # person-side
         john_node = nodes_by_id[john_id]
@@ -976,13 +986,13 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         owner_property = properties_by_type[DatabaseEdgeType.HAS_OWNER]
         assert owner_property.action is DiffAction.ADDED
         assert owner_property.previous_value is None
-        assert owner_property.new_value == omnicorp_id
+        assert owner_property.new_value == branch_owner_id
         assert owner_property.conflict
         assert owner_property.conflict.uuid == cardinality_one_property_conflict_b.conflict_id
         assert owner_property.conflict.base_branch_action is DiffAction.ADDED
-        assert owner_property.conflict.base_branch_value == cyberdyne_id
+        assert owner_property.conflict.base_branch_value == main_owner_id
         assert owner_property.conflict.diff_branch_action is DiffAction.ADDED
-        assert owner_property.conflict.diff_branch_value == omnicorp_id
+        assert owner_property.conflict.diff_branch_value == branch_owner_id
         assert owner_property.conflict.selected_branch is cardinality_one_property_conflict_b.conflict_selection
 
         # check CoreDataChecks
@@ -1012,6 +1022,8 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_branch = registry.get_branch_from_registry(branch=BRANCH_NAME)
         omnicorp_id = initial_dataset["omnicorp"].get_id()
         murphy_id = initial_dataset["murphy"].get_id()
+        main_owner_id = initial_dataset["main_owner"].get_id()
+        branch_owner_id = initial_dataset["branch_owner"].get_id()
         diff = await self.get_branch_diff(db=db, branch=diff_branch)
 
         # check EnrichedDiff
@@ -1038,13 +1050,13 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         owner_property = properties_by_type[DatabaseEdgeType.HAS_OWNER]
         assert owner_property.action is DiffAction.ADDED
         assert owner_property.previous_value is None
-        assert owner_property.new_value == murphy_id
+        assert owner_property.new_value == branch_owner_id
         assert owner_property.conflict
         assert owner_property.conflict.uuid == cardinality_many_property_conflict.conflict_id
         assert owner_property.conflict.base_branch_action is DiffAction.ADDED
-        assert owner_property.conflict.base_branch_value == omnicorp_id
+        assert owner_property.conflict.base_branch_value == main_owner_id
         assert owner_property.conflict.diff_branch_action is DiffAction.ADDED
-        assert owner_property.conflict.diff_branch_value == murphy_id
+        assert owner_property.conflict.diff_branch_value == branch_owner_id
         assert owner_property.conflict.selected_branch is cardinality_many_property_conflict.conflict_selection
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)

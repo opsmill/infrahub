@@ -28,10 +28,12 @@ from infrahub.core.constants import (
     RelationshipCardinality,
     RelationshipKind,
 )
-from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
+from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX, NodeProperty
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo, MetadataQueryOptions
 from infrahub.core.mutation_context import NodeMutationContext
+from infrahub.core.ownership.input import check_owner_kinds
+from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.property import (
     FlagPropertyMixin,
     NodePropertyData,
@@ -457,6 +459,13 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         return different_properties
 
+    async def _check_owner_kind(self, db: InfrahubDatabase) -> None:
+        await check_owner_kinds(
+            lookup=OwnershipRepository(db=db, branch=self.branch, at=None),
+            owner_ids=[str(self.owner_id)],
+            path=f"{self.name}.{NodeProperty.OWNER.value}",
+        )
+
     async def _create(self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None) -> None:
         """Add a relationship with another object by creating a new relationship node."""
         create_at = Timestamp(at)
@@ -464,6 +473,9 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self._set_created_at(value=create_at)
         self._set_updated_by(value=user_id)
         self._set_updated_at(value=create_at)
+
+        if self.owner_id:
+            await self._check_owner_kind(db=db)
 
         # Assuming nothing is present in the database yet
         # Create a new Relationship node and attach each object to it
@@ -513,6 +525,9 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         if not flag_properties_to_update and not node_properties_to_update:
             return
+
+        if node_properties_to_update.get(NodeProperty.OWNER.value):
+            await self._check_owner_kind(db=db)
 
         query = await RelationshipUpdatePropertyQuery.init(
             db=db,

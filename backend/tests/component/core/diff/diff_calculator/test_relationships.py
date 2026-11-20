@@ -680,14 +680,16 @@ async def test_relationship_property_owner_conflicting_updates(
     default_branch: Branch,
     person_john_main: Node,
     car_accord_main: Node,
+    first_account: Node,
+    second_account: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     main_john = await NodeManager.get_one(db=db, branch=default_branch, id=person_john_main.id)
-    await main_john.cars.update(db=db, data={"id": car_accord_main.id, "_relation__owner": person_john_main.id})
+    await main_john.cars.update(db=db, data={"id": car_accord_main.id, "_relation__owner": first_account.id})
     await main_john.save(db=db)
     branch_john = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
-    await branch_john.cars.update(db=db, data={"id": car_accord_main.id, "_relation__owner": car_accord_main.id})
+    await branch_john.cars.update(db=db, data={"id": car_accord_main.id, "_relation__owner": second_account.id})
     await branch_john.save(db=db)
 
     diff_calculator = DiffCalculator(db=db)
@@ -726,7 +728,7 @@ async def test_relationship_property_owner_conflicting_updates(
     owner_rel = properties_by_type[DatabaseEdgeType.HAS_OWNER]
     assert owner_rel.action is DiffAction.ADDED
     assert owner_rel.previous_value is None
-    assert owner_rel.new_value == car_accord_main.get_id()
+    assert owner_rel.new_value == second_account.get_id()
     # car node on branch
     car_node = nodes_by_id[car_accord_main.get_id()]
     assert car_node.action is DiffAction.UPDATED
@@ -749,7 +751,7 @@ async def test_relationship_property_owner_conflicting_updates(
     owner_rel = properties_by_type[DatabaseEdgeType.HAS_OWNER]
     assert owner_rel.action is DiffAction.ADDED
     assert owner_rel.previous_value is None
-    assert owner_rel.new_value == car_accord_main.get_id()
+    assert owner_rel.new_value == second_account.get_id()
     # check main
     base_root_path = calculated_diffs.base_branch_diff
     assert base_root_path.branch == default_branch.name
@@ -778,7 +780,7 @@ async def test_relationship_property_owner_conflicting_updates(
     owner_rel = properties_by_type[DatabaseEdgeType.HAS_OWNER]
     assert owner_rel.action is DiffAction.ADDED
     assert owner_rel.previous_value is None
-    assert owner_rel.new_value == person_john_main.get_id()
+    assert owner_rel.new_value == first_account.get_id()
     # car node on main
     car_node = nodes_by_id[car_accord_main.get_id()]
     assert car_node.action is DiffAction.UPDATED
@@ -801,7 +803,7 @@ async def test_relationship_property_owner_conflicting_updates(
     owner_rel = properties_by_type[DatabaseEdgeType.HAS_OWNER]
     assert owner_rel.action is DiffAction.ADDED
     assert owner_rel.previous_value is None
-    assert owner_rel.new_value == person_john_main.get_id()
+    assert owner_rel.new_value == first_account.get_id()
 
 
 async def test_agnostic_source_relationship_update(
@@ -891,6 +893,7 @@ async def test_agnostic_owner_relationship_added(
     db: InfrahubDatabase,
     default_branch: Branch,
     car_person_schema_global: None,
+    first_account: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
@@ -899,7 +902,7 @@ async def test_agnostic_owner_relationship_added(
     await person_1.save(db=db)
     new_car = await Node.init(db=db, branch=branch, schema="TestCar")
     await new_car.new(db=db, name="Batmobile", color="#000000", nbr_seats=1, is_electric=False, owner=person_1)
-    await new_car.owner.update(db=db, data={"id": person_1.id, "_relation__owner": person_1.id})
+    await new_car.owner.update(db=db, data={"id": person_1.id, "_relation__owner": first_account.id})
     await new_car.save(db=db)
 
     diff_calculator = DiffCalculator(db=db)
@@ -947,7 +950,7 @@ async def test_agnostic_owner_relationship_added(
     }
     assert diff_prop_tuples == {
         (DatabaseEdgeType.IS_RELATED, DiffAction.ADDED, None, person_1.get_id()),
-        (DatabaseEdgeType.HAS_OWNER, DiffAction.ADDED, None, person_1.get_id()),
+        (DatabaseEdgeType.HAS_OWNER, DiffAction.ADDED, None, first_account.get_id()),
         (DatabaseEdgeType.IS_PROTECTED, DiffAction.ADDED, None, False),
     }
     diff_node_person = diff_nodes_by_id[person_1.get_id()]
@@ -975,7 +978,7 @@ async def test_agnostic_owner_relationship_added(
     }
     assert diff_prop_tuples == {
         (DatabaseEdgeType.IS_RELATED, DiffAction.ADDED, None, new_car.get_id()),
-        (DatabaseEdgeType.HAS_OWNER, DiffAction.ADDED, None, person_1.get_id()),
+        (DatabaseEdgeType.HAS_OWNER, DiffAction.ADDED, None, first_account.get_id()),
         (DatabaseEdgeType.IS_PROTECTED, DiffAction.ADDED, None, False),
     }
 

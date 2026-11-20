@@ -42,7 +42,7 @@ All edges below carry the branch and time properties of Infrahub edges (`branch`
 | `HAS_SOURCE` | `Node` | source `Node` | new use | Sources of a node |
 | `HAS_OWNER`, `HAS_SOURCE` | `Relationship` | `Node` | existing, unchanged | Owner and source of one link (D-9) |
 
-No two edges from a node vertex end at the same vertex, because the owners of fields and the given owners start at an `OwnerSet`.
+No two owner edges from a node vertex end at the same vertex, because the owners of fields and the given owners start at an `OwnerSet`. Two edges of different types can end at the same vertex: for example, one account group can be an owner and a source of the same node, with a `HAS_OWNER` edge and a `HAS_SOURCE` edge.
 
 ### Owner state of a holder
 
@@ -74,6 +74,7 @@ A write on a branch hides each owner edge that the branch inherits with a `delet
 | `owner_branch` on `HAS_OWNER(branch)` | existing in `core/graph/index.py` |
 | `source_branch` on `HAS_SOURCE(branch)` | existing |
 | `no_owner_branch` on `HAS_NO_OWNER(branch)` | new. The spike measured it, and it stays ([measurements.md](measurements.md)). It needs no migration: the server creates each missing index of `core/graph/index.py` when it starts |
+| `owner_source_branch`, `owner_set_branch` and `target_owner_set_branch` on `HAS_OWNER_SOURCE(branch)`, `HAS_OWNER_SET(branch)` and `HAS_TARGET_OWNER_SET(branch)` | new. The diff and the merge of owners read these edges by branch. Like `no_owner_branch`, they need no migration |
 | An index for the lookup of an `OwnerSet` by key | none. The spike decided that the lookup needs no index ([measurements.md](measurements.md)) |
 
 ### Graph migrations
@@ -83,7 +84,7 @@ The numbers are the next free numbers when the work starts.
 | Migration | Requirement |
 |---|---|
 | `m084`: hide the attribute owner of the default branch that a branch replaced. It runs before `m085`, so a branch that replaced an account group with a repository reads as inherit | FR-037 |
-| `m085`: close the `HAS_OWNER` edges from attributes to repositories, on every branch | FR-036 |
+| `m085`: close the `HAS_OWNER` edges from attributes to repositories, on every branch, and add a `deleted` edge on each branch that still reads a closed edge of the default branch, and on the global branch for a closed global edge that a branch still reads | FR-036 |
 | `m086`: create the `NoOwner` vertex, so that two first "no owner" writes at the same time cannot each create one | none |
 | `m087`: set `applies_to = all_objects` on every object permission and recompute its human-friendly ID. It runs on the default branch at the upgrade, and on each other branch after the rebase of that branch | FR-047 |
 

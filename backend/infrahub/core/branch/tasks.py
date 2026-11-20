@@ -58,6 +58,7 @@ from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.runner import MigrationRunner
+from infrahub.core.ownership.fields import is_owner_list_path
 from infrahub.core.query.node_agnostic_retirement import NodesToCheckForGlobalEdgesQuery, RetireNodeAgnosticFieldsQuery
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
@@ -114,13 +115,20 @@ RETIREMENT_BATCH_SIZE = 500
 """How many deleted-node uuids one retirement query evaluates at a time."""
 
 
-def _rebase_keeps_branch_side(conflict_level: ConflictLevel, conflict: EnrichedDiffConflict) -> bool:
+def _rebase_keeps_branch_side(
+    conflict_path: str, conflict_level: ConflictLevel, conflict: EnrichedDiffConflict
+) -> bool:
     """Whether a rebase, which keeps the branch's edges, leaves the branch with its side of the conflict.
 
     The default branch can disconnect a relationship's vertex, which the branch's edges on that relationship hang
-    from, and an attribute it removed leaves the branch's value edge on nothing.
+    from, and an attribute it removed leaves the branch's value edge on nothing. An owner list or a source list is a
+    set of edges, so the branch would read the owners or the sources that the default branch added next to its own.
     """
-    return conflict_level is ConflictLevel.ATTRIBUTE_PROPERTY and conflict.base_branch_action is not DiffAction.REMOVED
+    return (
+        conflict_level is ConflictLevel.ATTRIBUTE_PROPERTY
+        and conflict.base_branch_action is not DiffAction.REMOVED
+        and not is_owner_list_path(path=conflict_path)
+    )
 
 
 def _build_unrebasable_conflicts_message(
@@ -268,7 +276,9 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         async for conflict_path, conflict_level, conflict in diff_repository.get_all_conflicts_with_level_for_diff(
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         ):
-            if not _rebase_keeps_branch_side(conflict_level=conflict_level, conflict=conflict):
+            if not _rebase_keeps_branch_side(
+                conflict_path=conflict_path, conflict_level=conflict_level, conflict=conflict
+            ):
                 conflicts_to_update.append(conflict_path)
             elif conflict.selected_branch is not ConflictSelection.DIFF_BRANCH:
                 conflicts_to_resolve.append(conflict_path)

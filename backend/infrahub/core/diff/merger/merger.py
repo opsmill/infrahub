@@ -8,11 +8,14 @@ from infrahub.core.diff.query.bulk_merge import (
     BulkMergeAttributePropertyEdgesQuery,
     BulkMergeCardinalityOneResolutionQuery,
     BulkMergeNodeExistenceQuery,
+    BulkMergeOwnershipEdgesQuery,
     BulkMergeRelationshipEdgesQuery,
     BulkMergeRelationshipPropertyEdgesQuery,
 )
 from infrahub.core.diff.query.filters import EnrichedDiffQueryFilters
 from infrahub.core.diff.query.merge import DiffMergeMetadataQuery
+from infrahub.core.ownership.models import StoredOwnerState
+from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.query.node_agnostic_retirement import RetireNodeAgnosticFieldsQuery
 from infrahub.core.query.rollback import RollbackScope
 from infrahub.database import retry_db_transaction
@@ -76,13 +79,16 @@ class DiffMerger:
                 tracking_id=tracking_id,
                 filters=EnrichedDiffQueryFilters(ids=list(conflict_uuids)),
             )
-            plan = self.exclusion_plan_builder.build(diff=enriched_diff)
+            plan = self.exclusion_plan_builder.build(
+                diff=enriched_diff, schema_branch=self.db.schema.get_schema_branch(name=self.source_branch.name)
+            )
         else:
             plan = MergeExclusionPlan()
         log.info(
             "Merge exclusion plan built",
             excluded_nodes=len(plan.excluded_node_uuids),
             excluded_attr_props=len(plan.excluded_attribute_property_paths),
+            owner_diff_resolutions=len(plan.owner_diff_resolutions),
             excluded_rels=len(plan.excluded_relationship_paths),
             excluded_rel_props=len(plan.excluded_relationship_property_paths),
             cardinality_one_diff_resolutions=len(plan.cardinality_one_diff_resolutions),
@@ -111,6 +117,10 @@ class DiffMerger:
 
         log.info("Running bulk relationship property edge merge")
         await self._bulk_merge_relationship_property_edges(at=at, plan=plan)
+
+        log.info("Running bulk owner edge merge")
+        await self._bulk_merge_ownership_edges(at=at, plan=plan)
+        await self._apply_owner_diff_resolutions(at=at, plan=plan, user_id=user_id)
 
         if affected_node_uuids:
             for i in range(0, len(affected_node_uuids), self.metadata_batch_size):
@@ -231,6 +241,40 @@ class DiffMerger:
             excluded_relationship_property_paths=plan.excluded_relationship_property_paths,
         )
         await query.execute(db=self.db)
+
+    @retry_db_transaction(name="bulk_merge_ownership_edges")
+    async def _bulk_merge_ownership_edges(self, at: Timestamp, plan: MergeExclusionPlan) -> None:
+        query = await BulkMergeOwnershipEdgesQuery.init(
+            db=self.db,
+            branch=self.source_branch,
+            at=at,
+            target_branch=self.destination_branch,
+            excluded_node_uuids=plan.excluded_node_uuids,
+            excluded_owner_holders=plan.excluded_owner_holders,
+        )
+        await query.execute(db=self.db)
+
+    @retry_db_transaction(name="merge_owner_diff_resolutions")
+    async def _apply_owner_diff_resolutions(self, at: Timestamp, plan: MergeExclusionPlan, user_id: str) -> None:
+        repository = OwnershipRepository(db=self.db, branch=self.destination_branch, at=None)
+        for resolution in plan.owner_diff_resolutions:
+            # The destination branch can delete the node after the last diff update.
+            written = await repository.write(
+                node_id=resolution.node_uuid,
+                holder=resolution.holder,
+                state=StoredOwnerState(owner_ids=resolution.owner_ids),
+                write_branch=self.destination_branch,
+                at=at,
+                user_id=user_id,
+                skip_inactive=True,
+                keep_deleted_owners=True,
+            )
+            if not written:
+                log.warning(
+                    "Skipping the owner resolution of a node that is not active on the destination branch",
+                    node_id=resolution.node_uuid,
+                    holder=resolution.holder,
+                )
 
     async def rollback(self, merge_started_at: Timestamp) -> None:
         """Reverse every destination-branch write stamped at or after the merge start.

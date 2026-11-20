@@ -4,6 +4,12 @@ from dataclasses import dataclass
 
 from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.core.ownership.fields import (
+    DELETED_OWNER_LABEL,
+    OWNER_LABEL_SEPARATOR,
+    deleted_label,
+    owner_ids_from_value,
+)
 from infrahub.core.query.node import NodeGetKindQuery
 from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
@@ -117,41 +123,54 @@ class DiffLabelsEnricher(DiffEnricherInterface):
         self, property_diff: EnrichedDiffProperty
     ) -> Generator[DisplayLabelRequest, str | None, None]:
         if property_diff.property_type in PROPERTY_TYPES_WITH_LABELS:
+            deleted = deleted_label(is_source=property_diff.property_type is DatabaseEdgeType.HAS_SOURCE)
             if property_diff.previous_value and not self._conflicts_only:
-                label = yield DisplayLabelRequest(
-                    node_id=property_diff.previous_value, branch_name=self.base_branch_name
+                labels: list[str] = []
+                yield from self._labels_iterator(
+                    value=property_diff.previous_value,
+                    branch_name=self.base_branch_name,
+                    labels=labels,
+                    deleted=deleted,
                 )
-                if label:
-                    property_diff.previous_label = label
+                if labels:
+                    property_diff.previous_label = OWNER_LABEL_SEPARATOR.join(labels)
             if property_diff.new_value and not self._conflicts_only:
-                label = yield DisplayLabelRequest(node_id=property_diff.new_value, branch_name=self.diff_branch_name)
-                if label:
-                    property_diff.new_label = label
+                labels = []
+                yield from self._labels_iterator(
+                    value=property_diff.new_value, branch_name=self.diff_branch_name, labels=labels, deleted=deleted
+                )
+                if labels:
+                    property_diff.new_label = OWNER_LABEL_SEPARATOR.join(labels)
             if property_diff.conflict:
-                conflict_iterator = self._conflict_iterator(conflict_diff=property_diff.conflict)
-                label = None
-                try:
-                    while True:
-                        display_label_request = conflict_iterator.send(label)
-                        label = yield display_label_request
-                except StopIteration:
-                    ...
+                yield from self._conflict_iterator(conflict_diff=property_diff.conflict, deleted=deleted)
 
     def _conflict_iterator(
-        self, conflict_diff: EnrichedDiffConflict
+        self, conflict_diff: EnrichedDiffConflict, deleted: str = DELETED_OWNER_LABEL
     ) -> Generator[DisplayLabelRequest, str | None, None]:
         if conflict_diff.base_branch_value:
-            label = yield DisplayLabelRequest(
-                node_id=conflict_diff.base_branch_value, branch_name=self.base_branch_name
+            labels: list[str] = []
+            yield from self._labels_iterator(
+                value=conflict_diff.base_branch_value, branch_name=self.base_branch_name, labels=labels, deleted=deleted
             )
-            if label:
-                conflict_diff.base_branch_label = label
+            if labels:
+                conflict_diff.base_branch_label = OWNER_LABEL_SEPARATOR.join(labels)
         if conflict_diff.diff_branch_value:
-            label = yield DisplayLabelRequest(
-                node_id=conflict_diff.diff_branch_value, branch_name=self.diff_branch_name
+            labels = []
+            yield from self._labels_iterator(
+                value=conflict_diff.diff_branch_value, branch_name=self.diff_branch_name, labels=labels, deleted=deleted
             )
-            if label:
-                conflict_diff.diff_branch_label = label
+            if labels:
+                conflict_diff.diff_branch_label = OWNER_LABEL_SEPARATOR.join(labels)
+
+    def _labels_iterator(
+        self, value: str, branch_name: str, labels: list[str], deleted: str
+    ) -> Generator[DisplayLabelRequest, str | None, None]:
+        """Add to `labels` the label of a node ID, or one label for each node of a list, or `deleted` in its place."""
+        owner_ids = owner_ids_from_value(value=value)
+        for node_id in [value] if owner_ids is None else owner_ids:
+            label = yield DisplayLabelRequest(node_id=node_id, branch_name=branch_name)
+            if label or owner_ids is not None:
+                labels.append(label or deleted)
 
     def _update_relationship_labels(self, enriched_diff: EnrichedDiffRoot) -> None:
         for node in enriched_diff.nodes:

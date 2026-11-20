@@ -19,17 +19,27 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
+from infrahub.core import registry
+from infrahub.core.changelog.builder import build_diff_changelog_collector
+from infrahub.core.diff.model.path import ConflictSelection
 from infrahub.core.initialization import create_branch
+from infrahub.core.ownership.fields import owner_list_value
+from infrahub.core.ownership.models import NODE_HOLDER, NODE_SOURCES_HOLDER, HolderKey, HolderKind, field_holder
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
+from tests.helpers.ownership import create_groups, read_owners, set_owners
 
 from ._matrix_setup import stage_all_change_types
 from ._migrations import migrate_testcar_to_test2newcar
+from ._ownership import SET_EDGE_TYPES, count_active_holder_edges, merge, update_diff
 from ._validators import validate_all_applied, validate_all_rolled_back
 from .conftest import get_diff_coordinator, get_diff_merger
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
 
@@ -115,3 +125,137 @@ async def test_target_branch_migration(
     await merger.rollback(merge_started_at=merge_at)
     await validate_all_rolled_back(db=db, branch=default_branch, contexts=contexts)
     await verify_graph(db=db)
+
+
+@pytest.mark.parametrize(
+    ("holder", "start", "end"),
+    [
+        pytest.param(NODE_HOLDER, None, ("dc-emea",), id="node-owner-added"),
+        pytest.param(NODE_HOLDER, ("dc-emea",), None, id="node-owner-removed"),
+        pytest.param(NODE_SOURCES_HOLDER, None, ("dc-emea",), id="node-source-added"),
+        pytest.param("driver", None, ("dc-emea",), id="new-field-set"),
+        pytest.param("color", None, ("dc-emea",), id="attribute-owner"),
+    ],
+)
+async def test_target_branch_migration_owners(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    diff_repository: DiffRepository,
+    holder: HolderKey | str,
+    start: tuple[str, ...] | None,
+    end: tuple[str, ...] | None,
+) -> None:
+    """The merge writes the owners of the branch on the vertex that the kind migration of the default branch made."""
+    groups = await create_groups(db=db)
+    if isinstance(holder, str):
+        car_schema = registry.schema.get(name="TestCar", branch=default_branch, duplicate=False)
+        field = field_holder(schema=car_schema, field_name=holder)
+        assert field is not None
+        holder = field
+    car_id = car_accord_main.id
+
+    def owner_ids(names: tuple[str, ...] | None) -> tuple[str, ...] | None:
+        return None if names is None else tuple(sorted(groups[name] for name in names))
+
+    if start is not None:
+        await set_owners(db=db, branch=default_branch, node_id=car_id, owner_ids=owner_ids(start), holder=holder)
+    branch = await create_branch(db=db, branch_name="tgt-migration-owners")
+    await migrate_testcar_to_test2newcar(db=db, target_branch=default_branch, delete_old_schema=True)
+    await set_owners(db=db, branch=branch, node_id=car_id, owner_ids=owner_ids(end), holder=holder)
+
+    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+    assert [node.kind for node in diff.nodes if node.uuid == car_id] == ["TestCar"]
+
+    await merge(db=db, branch=branch)
+
+    assert await read_owners(db=db, branch=default_branch, node_id=car_id, holder=holder) == owner_ids(end)
+    assert await count_active_holder_edges(db=db, branch=default_branch, node_id=car_id) == len(end or ())
+    set_edges = 1 if holder.kind is HolderKind.FIELD_SET else 0
+    assert (
+        await count_active_holder_edges(db=db, branch=default_branch, node_id=car_id, edge_types=SET_EDGE_TYPES)
+        == set_edges
+    )
+    await verify_graph(db=db)
+
+
+@pytest.mark.parametrize("selection", [ConflictSelection.DIFF_BRANCH, ConflictSelection.BASE_BRANCH])
+@pytest.mark.parametrize(
+    "holder",
+    [
+        pytest.param(NODE_HOLDER, id="node-owner"),
+        pytest.param(NODE_SOURCES_HOLDER, id="node-source"),
+        pytest.param("driver", id="field-set"),
+        pytest.param("color", id="attribute-owner"),
+    ],
+)
+async def test_target_branch_migration_owner_conflict(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    diff_repository: DiffRepository,
+    holder: HolderKey | str,
+    selection: ConflictSelection,
+) -> None:
+    """Different owner changes on the migrated default branch and on the branch conflict."""
+    groups = await create_groups(db=db)
+    if isinstance(holder, str):
+        car_schema = registry.schema.get(name="TestCar", branch=default_branch, duplicate=False)
+        field = field_holder(schema=car_schema, field_name=holder)
+        assert field is not None
+        holder = field
+    car_id = car_accord_main.id
+    branch = await create_branch(db=db, branch_name="tgt-migration-owner-conflict")
+    await migrate_testcar_to_test2newcar(db=db, target_branch=default_branch, delete_old_schema=True)
+    await set_owners(db=db, branch=default_branch, node_id=car_id, owner_ids=(groups["security"],), holder=holder)
+    await set_owners(db=db, branch=branch, node_id=car_id, owner_ids=(groups["dc-emea"],), holder=holder)
+
+    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+    conflicts = list(diff.get_all_conflicts().values())
+    assert [(conflict.base_branch_value, conflict.diff_branch_value) for conflict in conflicts] == [
+        (owner_list_value((groups["security"],)), owner_list_value((groups["dc-emea"],)))
+    ]
+    await diff_repository.update_conflict_by_id(conflict_id=conflicts[0].uuid, selection=selection)
+
+    await merge(db=db, branch=branch)
+
+    merged = groups["dc-emea"] if selection is ConflictSelection.DIFF_BRANCH else groups["security"]
+    assert await read_owners(db=db, branch=default_branch, node_id=car_id, holder=holder) == (merged,)
+    assert await count_active_holder_edges(db=db, branch=default_branch, node_id=car_id) == 1
+    await verify_graph(db=db)
+
+
+@pytest.mark.parametrize(
+    "holder",
+    [
+        pytest.param(NODE_HOLDER, id="node-owner"),
+        pytest.param("driver", id="field-set"),
+    ],
+)
+async def test_merge_changelog_records_no_owner_change_that_the_migrated_default_branch_holds(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    diff_repository: DiffRepository,
+    holder: HolderKey | str,
+) -> None:
+    groups = await create_groups(db=db)
+    if isinstance(holder, str):
+        car_schema = registry.schema.get(name="TestCar", branch=default_branch, duplicate=False)
+        field = field_holder(schema=car_schema, field_name=holder)
+        assert field is not None
+        holder = field
+    car_id = car_accord_main.id
+    branch = await create_branch(db=db, branch_name="tgt-migration-owner-changelog")
+    await migrate_testcar_to_test2newcar(db=db, target_branch=default_branch, delete_old_schema=True)
+    for owner_branch in (default_branch, branch):
+        await set_owners(db=db, branch=owner_branch, node_id=car_id, owner_ids=(groups["security"],), holder=holder)
+    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+    merge_at = Timestamp()
+    await merge(db=db, branch=branch, at=merge_at)
+
+    changelogs = await build_diff_changelog_collector(
+        diff=diff, db=db, branch=default_branch, merge_at=merge_at
+    ).collect_changelogs()
+
+    assert [changelog.model_dump()["attributes"] for _, changelog in changelogs if changelog.node_id == car_id] == []

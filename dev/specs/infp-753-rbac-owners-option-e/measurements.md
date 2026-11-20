@@ -1,5 +1,12 @@
 # Measurements: owner and source metadata, storage option E
 
+## Source of the numbers and the test files in pull request 1
+
+- All numbers in this file come from the branch `rbac-owners-option-e-impl-infp-753`. "This branch" in this file means that branch. Pull request 1 does not measure them again.
+- Pull request 1 holds `conftest.py` and `test_no_owner_overhead.py` of `backend/tests/query_benchmark/ownership/`, and they pass.
+- The spike test `test_plain_cypher.py` stays on the branch `rbac-owners-option-e-impl-infp-753`. It is not in pull request 1. The numbers of the spike stay in this file.
+- A later pull request adds `test_owner_queries.py`, `option_specific.py` and `test_change_check_overhead.py`. `test_owner_queries.py` writes owners through the GraphQL owner API, and `test_change_check_overhead.py` needs the change check.
+
 ## "Today" numbers of SC-001 and SC-002, before any change
 
 SC-001 and SC-002 of [spec.md](spec.md) allow at most 5% more time than "today". This section records "today" (task T008).
@@ -116,7 +123,9 @@ uv run pytest backend/tests/query_benchmark/ownership/test_no_owner_overhead.py 
   - Since task T042, the delete of a node runs one more database query, `ownership_node_owner_edges_close`. The query closes the owner edges of the node. It runs also when the node has no owner.
   - This query alone takes 3.9 ms for a node without owners: the median of 50 calls on 2026-11-12, on a test database with one node, after 10 calls that are not counted. This is 17% of the "today" median of the delete.
   - The delete of one device with 4 interfaces deletes 5 nodes. Five more queries add about 20 ms to 150 seconds, so the table cannot show them.
-- Not decided: how the delete of a node closes its owner edges without one more query. One way is to close the edges in the query that deletes the node. No task of the list covers this change.
+- Decided: the delete of a node keeps the query that closes its owner edges, and the lock of the node (decision of the maintainer, finding 5 of the first review in [opsmill-implement-report.md](opsmill-implement-report.md)).
+  - An `EXISTS` check after the lock skips the reads of the holders for a node with no owner.
+  - After this change, a cascade delete of 550 nodes took about 6% more time than the base, and a plain delete was within the noise between runs ([opsmill-implement-report.md](opsmill-implement-report.md)). So SC-002 is not met for a cascade delete.
 
 ### Environment of the run
 
@@ -130,6 +139,31 @@ uv run pytest backend/tests/query_benchmark/ownership/test_no_owner_overhead.py 
 - One run at full size gives the numbers. It is not known how many runs, or which machine, give a stable comparison with a limit of 5%.
 - The 3.9 ms of the added query come from a small database. The query starts from the node by its ID, so the size of the data set is not expected to change this time. This was not measured on the reference data set.
 - The test measures a customer who uses no owner. It does not measure a write of an owner on an attribute or a link, which now runs one more read query to check the kind of the owner.
+
+## Update and upsert with the lock of the node (2026-11-20)
+
+`Node._update` locks the node vertex at its start, so each update runs one more query. This section compares one update and one upsert that changes nothing with `develop`.
+
+### Run
+
+- Code: the head of the pull request, and `develop` at `ee2d2dc402`.
+- Test: a component test that is not committed. It creates one `TestPerson` on the default branch, then runs each GraphQL mutation 210 times and does not count the first 10.
+  - Update: `TestPersonUpdate` with a new `name` each time.
+  - Upsert that changes nothing: `TestPersonUpsert` with the same `id`, `name` and `height`. The upsert of an existing node saves it, so it takes the lock. The table uses the second series of upserts, which runs after the updates; the first series still includes the start of the database.
+- The time is the time of the GraphQL call only.
+- 3 runs on each code, in turn: head, `develop`, `develop`, head, `develop`, head.
+- Machine: the shared VM, 16 CPUs. Another agent ran tests at the same time. The load average of the last minute was 3.6 after the runs.
+- Database: Neo4j in a test container.
+
+### Results
+
+| Mutation | Runs of 200 | `develop` medians | Head medians |
+|---|---|---|---|
+| Update of one attribute | 3 | 22.65, 23.69, 21.72 ms | 22.29, 22.42, 18.11 ms |
+| Upsert that changes nothing | 3 | 11.54, 11.48, 11.20 ms | 11.80, 12.18, 10.53 ms |
+
+- In each round, the median of the head minus the median of `develop` is between 3.61 ms less and 0.70 ms more. The medians of one code differ by up to 4.31 ms between runs (the update on the head). So the run shows no added time, and it cannot show a difference smaller than this noise.
+- No query count was measured.
 
 ## Spike on the storage of option E (tasks T022 and T023)
 
@@ -170,7 +204,7 @@ The fixture of the first data set is in commit `5deaf7a9f9` of this branch. The 
 
 - Date of the run: 2026-11-12, from 15:50 to 16:23 UTC.
 - Code: commit `3b7b68eee7`, with the test file of the spike.
-- Test: [test_plain_cypher.py](../../../backend/tests/query_benchmark/ownership/test_plain_cypher.py). It is not product code. The tasks T144 and T145 can reuse its owner data and its helpers.
+- Test: `backend/tests/query_benchmark/ownership/test_plain_cypher.py` on the branch `rbac-owners-option-e-impl-infp-753`. It is not product code, and it is not in pull request 1. The tasks T144 and T145 can reuse its owner data and its helpers from that branch.
 - Command: `uv run pytest backend/tests/query_benchmark/ownership/test_plain_cypher.py -s -p no:cacheprovider --no-cov -q --durations=10 --session-timeout=14400`
 - Result of the run: 9 tests passed in 1,955 seconds. The setup took 1,384 seconds: the load of the data set, then the write of the owner edges.
 - Machine: AMD EPYC 9R45, 16 CPUs, 61 GiB of memory.
@@ -386,7 +420,7 @@ Measured on the first data set of option E (interface → device → location).
 
 ### Method
 
-- The test is [test_change_check_overhead.py](../../../backend/tests/query_benchmark/ownership/test_change_check_overhead.py). It uses the common data set of [conftest.py](../../../backend/tests/query_benchmark/ownership/conftest.py).
+- The test is `backend/tests/query_benchmark/ownership/test_change_check_overhead.py` (a later pull request adds this file). It uses the common data set of [conftest.py](../../../backend/tests/query_benchmark/ownership/conftest.py).
 - The mutations run in the test process, through the GraphQL schema and without the HTTP layer. A mutation through the API takes longer, so the share of the change check through the API is smaller than in the table below.
 - "Without a session" is a request without an account session. Such a request builds no change set and calls no change check.
 - "With a session" is a request with the session of the administrator account. It builds the change set and calls the change check of Infrahub Community.
@@ -479,7 +513,7 @@ Date: 2026-11-13. The test is a temporary component test. It is not in the repos
 - Run: 2026-11-14, from 11:50:50 to 13:02:11 UTC. Result of the test runner: `10 passed, 1 warning in 4272.90s (1:11:12)`.
 - Code: commit `0f54daade5` of the branch `rbac-owners-option-e-impl-infp-753`.
   - The work tree was at commit `fc07690f315da522a00901da438781aa12ed38d2`. This commit adds one Markdown file to `0f54daade5` and changes no code.
-- Test: [test_owner_queries.py](../../../backend/tests/query_benchmark/ownership/test_owner_queries.py). The file is the same in each branch that implements owners. The parts that depend on the storage are in [option_specific.py](../../../backend/tests/query_benchmark/ownership/option_specific.py).
+- Test: `backend/tests/query_benchmark/ownership/test_owner_queries.py` (a later pull request adds this file). The file is the same in each branch that implements owners. The parts that depend on the storage are in `option_specific.py` of the same folder, which the same later pull request adds.
 - Real size of the data set: the full reference data set of the spec, from [conftest.py](../../../backend/tests/query_benchmark/ownership/conftest.py).
   - 10,000 devices
   - 480,000 interfaces (48 for each device)
@@ -588,7 +622,7 @@ The test plans each owner query with `EXPLAIN`, then runs it one time with `PROF
 | merge of the owner edges of a branch | `DirectedRelationshipTypeScan:HAS_OWNER_SOURCE`, `DirectedRelationshipTypeScan:HAS_TARGET_OWNER_SET`, `NodeByLabelScan:OwnerSet` | 1,201 |
 
 - No plan has a scan of all nodes (`AllNodesScan`).
-- The test passed. No plan has a scan outside the accepted list of [option_specific.py](../../../backend/tests/query_benchmark/ownership/option_specific.py).
+- The test passed. No plan has a scan outside the accepted list of `option_specific.py`.
 - In the first run, the test failed because the plan of "diff of the owner changes of a branch" has the scan `NodeByLabelScan:OwnerSet`. The accepted list did not have it for this query.
 - Commit `3232ec2960` added the scan to the accepted list for this query. The reasons:
   - The whole query costs 455 database hits, so the label has fewer than 455 vertices in this data set.

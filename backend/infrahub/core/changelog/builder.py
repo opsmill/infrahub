@@ -15,6 +15,7 @@ from .secondary_merger import SecondaryChangelogMerger
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.diff.model.path import EnrichedDiffRoot
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
     from .diff import MigrationTracker
@@ -36,6 +37,7 @@ def build_diff_changelog_collector(
     db: InfrahubDatabase,
     branch: Branch,
     migration_tracker: MigrationTracker | None = None,
+    merge_at: Timestamp | None = None,
 ) -> DiffChangelogCollector:
     """Build a changelog collector that reads the schema and the HFIDs on ``branch``, where the events are emitted."""
     label_loader = build_node_label_loader(db=db, branch=branch)
@@ -45,6 +47,7 @@ def build_diff_changelog_collector(
         branch=branch,
         hfid_resolver=ChangelogHfidResolver(label_loader=label_loader),
         migration_tracker=migration_tracker,
+        merge_at=merge_at,
     )
 
 

@@ -10,6 +10,8 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.ownership.constants import NO_OWNER_VERTEX_UUID
+from infrahub.core.query.delete import DeleteAfterTimeQuery
 from infrahub.core.query.rollback import RollbackScope
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.timestamp import Timestamp
@@ -20,6 +22,7 @@ from tests.helpers.agnostic_edges import (
     edge_summary,
     open_edges,
 )
+from tests.helpers.ownership import add_node, set_owners
 from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA, WIDGET_KIND
 
 if TYPE_CHECKING:
@@ -48,10 +51,11 @@ async def assert_no_changes_at_or_after(db: InfrahubDatabase, branch: Branch, at
 async def assert_no_orphan_vertices(db: InfrahubDatabase) -> None:
     """Assert that no vertex is left without a single connection.
 
-    The rollback's edge deletions must take the vertices they orphan down with them.
+    The rollback's edge deletions must take the vertices they orphan down with them. The `NoOwner` vertex exists
+    also without edges.
     """
     result = await db.execute_query(
-        query="MATCH (n) WHERE NOT exists((n)--()) RETURN count(n) AS orphan_count",
+        query="MATCH (n) WHERE NOT exists((n)--()) AND NOT n:NoOwner RETURN count(n) AS orphan_count",
     )
     assert result[0].get("orphan_count") == 0
 
@@ -61,6 +65,11 @@ async def _count_vertices_with_uuid(db: InfrahubDatabase, uuid: str) -> int:
         query="MATCH (n {uuid: $uuid}) RETURN count(n) AS c",
         params={"uuid": uuid},
     )
+    return result[0].get("c")
+
+
+async def _count_no_owner_edges(db: InfrahubDatabase) -> int:
+    result = await db.execute_query(query="MATCH ()-[r:HAS_NO_OWNER]->(:NoOwner) RETURN count(r) AS c")
     return result[0].get("c")
 
 
@@ -96,6 +105,39 @@ async def _get_node_vertex_metadata(db: InfrahubDatabase, node_uuid: str) -> dic
         "previous_updated_at": record.get("previous_updated_at"),
         "previous_updated_by": record.get("previous_updated_by"),
     }
+
+
+async def test_rollback_keeps_the_no_owner_vertex_when_it_deletes_its_only_edge(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+) -> None:
+    person = await add_node(db=db, kind="TestPerson", name="John", height=180)
+    at = Timestamp()
+    await set_owners(db=db, branch=default_branch, node_id=person.id, owner_ids=(), at=at)
+    assert await _count_branch_edges_at(db=db, branch=default_branch, at=at) > 0
+
+    await GraphRollbacker(db=db).rollback(target_branch=default_branch, at=at, scope=RollbackScope.AT_TIMESTAMP)
+
+    assert await _count_branch_edges_at(db=db, branch=default_branch, at=at) == 0
+    assert await _count_vertices_with_uuid(db=db, uuid=NO_OWNER_VERTEX_UUID) == 1
+
+
+async def test_reset_to_a_time_keeps_the_no_owner_vertex_when_it_deletes_its_only_edge(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+) -> None:
+    person = await add_node(db=db, kind="TestPerson", name="John", height=180)
+    reset_time = Timestamp()
+    await set_owners(db=db, branch=default_branch, node_id=person.id, owner_ids=(), at=reset_time.add(microseconds=1))
+    assert await _count_no_owner_edges(db=db) == 1
+
+    query = await DeleteAfterTimeQuery.init(db=db, timestamp=reset_time)
+    await query.execute(db=db)
+
+    assert await _count_no_owner_edges(db=db) == 0
+    assert await _count_vertices_with_uuid(db=db, uuid=NO_OWNER_VERTEX_UUID) == 1
 
 
 async def test_rollback_at_timestamp_only_reverses_that_timestamp(

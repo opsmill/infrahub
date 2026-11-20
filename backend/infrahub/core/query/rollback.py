@@ -158,7 +158,8 @@ CALL (edge, src, dst) {
     WITH src, dst
     UNWIND [src, dst] AS endpoint
     WITH DISTINCT endpoint
-    WHERE NOT exists((endpoint)--())
+    // every "no owner" write on any branch ends at the NoOwner vertex
+    WHERE NOT exists((endpoint)--()) AND NOT endpoint:NoOwner
     DELETE endpoint
 } IN TRANSACTIONS OF 500 ROWS
 """ % {"restore": _render_restore_metadata_pipeline()}

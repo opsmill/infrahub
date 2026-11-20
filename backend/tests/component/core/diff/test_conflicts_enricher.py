@@ -7,8 +7,9 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.conflicts_enricher import ConflictsEnricher
-from infrahub.core.diff.model.path import EnrichedDiffConflict, EnrichedDiffRoot
+from infrahub.core.diff.model.path import EnrichedDiffConflict, EnrichedDiffProperty, EnrichedDiffRoot
 from infrahub.core.initialization import create_branch
+from infrahub.core.ownership.fields import NODE_SOURCES_FIELD
 from infrahub.core.schema import AttributeSchema, NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -1047,6 +1048,82 @@ class TestConflictsEnricher:
         await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
 
         assert self._get_value_conflict(branch_root, node_uuid, "fingerprint") is not None
+
+    @staticmethod
+    def _build_property_conflict_roots(
+        attribute_name: str,
+        property_type: DatabaseEdgeType,
+        base_values: tuple[str, str],
+        branch_values: tuple[str, str],
+    ) -> tuple[EnrichedDiffRoot, EnrichedDiffRoot, EnrichedDiffProperty]:
+        """Two diff roots that both update one property of the same attribute, from (previous, new) values."""
+        node_uuid = str(uuid4())
+
+        def _make(values: tuple[str, str]) -> tuple[EnrichedDiffRoot, EnrichedDiffProperty]:
+            prop = EnrichedPropertyFactory.build(
+                property_type=property_type,
+                action=DiffAction.UPDATED,
+                previous_value=values[0],
+                new_value=values[1],
+                conflict=None,
+            )
+            attribute = EnrichedAttributeFactory.build(
+                name=attribute_name, action=DiffAction.UPDATED, properties={prop}
+            )
+            node = EnrichedNodeFactory.build(
+                uuid=node_uuid,
+                kind="SomethingSmelly",
+                action=DiffAction.UPDATED,
+                attributes={attribute},
+                relationships=set(),
+            )
+            return EnrichedRootFactory.build(nodes={node}), prop
+
+        base_root, _ = _make(base_values)
+        branch_root, branch_property = _make(branch_values)
+        return base_root, branch_root, branch_property
+
+    @pytest.mark.parametrize(
+        ("attribute_name", "property_type", "conflicts"),
+        [
+            pytest.param("smell", DatabaseEdgeType.HAS_OWNER, False, id="owner_list"),
+            pytest.param(NODE_SOURCES_FIELD, DatabaseEdgeType.HAS_SOURCE, False, id="source_list"),
+            pytest.param("smell", DatabaseEdgeType.HAS_VALUE, True, id="value"),
+            pytest.param("smell", DatabaseEdgeType.HAS_SOURCE, True, id="source_of_an_attribute"),
+        ],
+    )
+    async def test_update_that_keeps_the_value_clears_the_conflict_only_for_a_list(
+        self, db: InfrahubDatabase, attribute_name: str, property_type: DatabaseEdgeType, conflicts: bool
+    ) -> None:
+        base_root, branch_root, branch_property = self._build_property_conflict_roots(
+            attribute_name=attribute_name,
+            property_type=property_type,
+            base_values=('["a"]', '["a"]'),
+            branch_values=('["a"]', '["b"]'),
+        )
+
+        await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
+
+        assert (branch_property.conflict is not None) is conflicts
+
+    @pytest.mark.parametrize(
+        ("branch_owners", "conflicts"),
+        [pytest.param('["b"]', False, id="same_owner"), pytest.param('["c"]', True, id="other_owner")],
+    )
+    async def test_owner_that_an_earlier_release_stored_in_the_diff_is_an_owner_list(
+        self, db: InfrahubDatabase, branch_owners: str, conflicts: bool
+    ) -> None:
+        # An earlier release stored the owner ID alone, not a list of owner IDs.
+        base_root, branch_root, branch_property = self._build_property_conflict_roots(
+            attribute_name="smell",
+            property_type=DatabaseEdgeType.HAS_OWNER,
+            base_values=("a", "b"),
+            branch_values=('["a"]', branch_owners),
+        )
+
+        await self.__call_system_under_test(db=db, base_enriched_diff=base_root, branch_enriched_diff=branch_root)
+
+        assert (branch_property.conflict is not None) is conflicts
 
     async def test_manually_fixed_node_conflict_cleared(self, db: InfrahubDatabase) -> None:
         node_uuid = str(uuid4())

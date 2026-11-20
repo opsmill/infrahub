@@ -4,7 +4,7 @@
 
 **Input**: Feature specification from `dev/specs/infp-753-rbac-owners-option-e/spec.md`
 
-**Sibling plan**: [`infp-753-rbac-owners-option-b`](../infp-753-rbac-owners-option-b/plan.md) plans the same behaviour with storage option B. Decided on 2026-11-16: the team builds option E ([provisional-decisions.md](provisional-decisions.md), "Storage decision of 2026-11-16").
+**Sibling plan**: `infp-753-rbac-owners-option-b` (not in this repository) plans the same behaviour with storage option B. Decided on 2026-11-16: the team builds option E ([provisional-decisions.md](provisional-decisions.md), "Storage decision of 2026-11-16").
 
 ## Summary
 
@@ -110,9 +110,10 @@ backend/infrahub/
 │   ├── resolution.py                        # P: order of sources for a node and for a field
 │   ├── resolver.py                          # P: batch read of the owners that apply
 │   ├── writer.py                            # P: states, template copy, legacy `owner` write
-│   ├── input.py                             # P: parse and validate owner input
-│   ├── filter.py                            # P: owner filter in list and count queries
-│   ├── sources.py                           # Node sources: write, filter. The read is in queries.py
+│   ├── fields.py                            # Reserved field names of the changelog and the diff, in both directions
+│   ├── input.py                             # P: owner kind check; the input parser is in pull request 2
+│   ├── filter.py                            # P: owner filter in list and count queries (pull request 2)
+│   ├── sources.py                           # Node sources: write. The filter is in pull request 2. The read is in queries.py
 │   └── report.py                            # Upgrade report queries
 ├── core/constants/database.py               # P: new edge types
 ├── core/graph/schema.py                     # P: new vertices and edges
@@ -125,7 +126,6 @@ backend/infrahub/
 ├── core/node/__init__.py                    # P: owner input, delete closes owner edges
 ├── core/node/create.py                      # P: template copy; change check for a create
 ├── core/diff/ownership_differ.py            # P: owner changes in the diff
-├── core/diff/ownership_fields.py            # P: reserved field names in the diff
 ├── core/diff/query/ownership.py             # P: diff query for owner edges
 ├── core/diff/calculator.py                  # P
 ├── core/diff/query_parser.py                # P
@@ -215,7 +215,7 @@ The decisions, the API review and the spike produce no pull request. The spike b
 
 | Order | Pull request | Content | Layers | Needs |
 |---|---|---|---|---|
-| 1 | Storage, branch and upgrade | Graph structure, `core/ownership/` (storage, resolution, owner filter, node sources), the copy of template owners at the create, query benchmarks, `dev/knowledge/backend/database-schema.md`. Diff, merge, conflicts, rebase and changelog of owners and sources. Graph migrations, schema migrations, the kind change, the upgrade report, the refusal of repositories as owners | Database layer, branch layer, upgrade | The spike. The storage option is decided: option E |
+| 1 | Storage, branch and upgrade | Graph structure, `core/ownership/` (storage, resolution of node owners, node sources; the owner filter moved to pull request 2 on 2026-11-19), the copy of template owners at the create, query benchmarks, `dev/knowledge/backend/database-schema.md`. Diff, merge, conflicts, rebase and changelog of owners and sources. Graph migrations, schema migrations, the kind change, the object conversion, the upgrade report, the refusal of repositories as owners | Database layer, branch layer, upgrade | The spike. The storage option is decided: option E |
 | 2 | GraphQL API | Types, resolvers, fields, inputs and filters, the deprecated `owner` and `is_protected`, owner labels in the activity log, E2E tests | GraphQL layer | Pull request 1 |
 | 3 | Permissions and object files | The change check and its calls in the mutations, "applies to" and its graph migration, the permission report of each node, `dev/knowledge/backend/permissions.md` and `dev/knowledge/backend/mutations.md`. The account group tree: the setting, the permission queries, the report. Object files: the backend part and the submodule pointer | Permission layer, account group tree, object files | Pull request 2, and the pull request on the SDK repository |
 
@@ -228,15 +228,15 @@ Order of the pull requests:
 
 - Each pull request needs the one before it.
 - The branch layer and the upgrade are in pull request 1, so they merge before the GraphQL API. So no user can write owners that Infrahub cannot merge or migrate.
-- Nothing reaches the API before pull request 2. In pull request 1, the database layer and the branch layer must change no result for users, and only the upgrade gets a changelog fragment.
+- Nothing reaches the API before pull request 2. Pull request 1 still changes some results for users: the list is in "What this split costs" below.
 - The storage option changes pull request 1 only. Pull requests 2 and 3 are the same for option B and option E.
 - Infrahub Enterprise can start its own work after pull request 3.
 - If the target becomes 2 pull requests, pull requests 2 and 3 become one pull request.
 
 Rules for every pull request:
 
-- The tests of a layer are in the same pull request. Pull request 1 uses no GraphQL test, because the API does not exist yet.
-- Each pull request that users can notice has its Towncrier fragments: the upgrade in pull request 1, the GraphQL layer in pull request 2, and the permission layer, the account group tree and the object files in pull request 3.
+- The tests of a layer are in the same pull request. Pull request 1 has one GraphQL test: `backend/tests/component/graphql/mutations/test_object_conversion.py` checks that the object conversion mutation keeps the owners and sources of a node. The mutation exists before the API of owners, so the test writes the owners through the storage layer.
+- The Towncrier fragments are one consolidated set. They come in one step when all pull requests are in the feature branch, not in each pull request (decided on 2026-11-17, T149 in [tasks.md](tasks.md)).
 - Each pull request regenerates the files that it changes.
 - Each pull request leaves `stable` and `develop` releasable.
 
@@ -245,7 +245,11 @@ What this split costs:
 - A user can set and read owners only after pull request 2.
 - All owner types arrive together. Node owners cannot be released before field owners or node sources.
 - Pull request 1 is the largest pull request, because it holds three layers.
-- Pull request 1 has one change that users notice before the API exists: a repository is no longer accepted as an owner, and the upgrade removes those owners.
+- Pull request 1 has changes that users notice before the API exists:
+  - The save of an attribute or of a link refuses an owner that is not an account or an account group. The graph migration `m085` ends the ownership of attributes by repositories on every branch, and deletes nothing.
+  - The diff gives the owner of an attribute as a JSON list of the sorted owner IDs, for example `["<id>"]`. Before, the diff gave the owner ID alone.
+  - A rebase stops on a conflict of an owner list or a source list until both branches hold the same list.
+  - The new command `infrahub db ownership-report`.
 
 Not decided: the base branch of the pull requests (`develop` or a feature branch).
 

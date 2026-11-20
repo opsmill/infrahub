@@ -113,11 +113,11 @@ class AttributeRenameQuery(Query):
         CREATE (new_attr:Attribute { name: $new_attr.name, branch_support: $new_attr.branch_support })
         %(add_uuid)s
         WITH active_node, active_attr, new_attr
-        MATCH (active_attr)-[]-(peer_node)
-        WITH DISTINCT active_node, active_attr, new_attr, peer_node
-        CALL (active_attr, peer_node) {
+        MATCH (active_attr)-[edge]-(peer_node)
+        WITH DISTINCT active_node, active_attr, new_attr, peer_node, type(edge) AS edge_type
+        CALL (active_attr, peer_node, edge_type) {
             MATCH (active_attr)-[r]-(peer_node)
-            WHERE %(branch_filter)s
+            WHERE type(r) = edge_type AND %(branch_filter)s
             RETURN r
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1

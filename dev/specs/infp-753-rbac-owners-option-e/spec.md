@@ -12,7 +12,7 @@
 
 **Related tickets**: [INFP-477][INFP-477] asks to enforce `is_protected`, which the design replaces. [INFP-478][INFP-478] asks for node-level metadata, and the design uses its owner and source parts.
 
-**Sibling spec**: [`infp-753-rbac-owners-option-b`](../infp-753-rbac-owners-option-b/spec.md) describes the same behaviour with storage option B. Decided on 2026-11-16: the team builds option E ([provisional-decisions.md](provisional-decisions.md), "Storage decision of 2026-11-16"). The two specs differ only in the section "Storage constraint" and in the requirements, risks and open points that refer to it.
+**Sibling spec**: `infp-753-rbac-owners-option-b` (not in this repository) describes the same behaviour with storage option B. Decided on 2026-11-16: the team builds option E ([provisional-decisions.md](provisional-decisions.md), "Storage decision of 2026-11-16"). The two specs differ only in the section "Storage constraint" and in the requirements, risks and open points that refer to it.
 
 ## Summary
 
@@ -460,7 +460,7 @@ This section is a constraint for the plan. It comes from the request to write on
   - no edge: inherit
   - only a `HAS_NO_OWNER` edge to the shared `NoOwner` vertex: no owner
   - at least one `HAS_OWNER` edge: those owners. They win over a `HAS_NO_OWNER` edge that a merge leaves active.
-- A `HAS_OWNER_SOURCE` edge, from the vertex that holds the owners to the template, marks the owners copied from an object template. A write closes the mark when a user changes those owners. The merge closes it when the template is deleted.
+- A `HAS_OWNER_SOURCE` edge, from the vertex that holds the owners to the template, marks the owners copied from an object template. A write closes the mark when a user changes those owners. The delete of the template, and the merge of a branch that deletes it, close the mark. The copied owners stay.
 - The links do not change. The owner of one link stays on its relationship vertex (D-9).
 - No edge needs a property, and no two owner edges from a node vertex end at the same vertex.
 - Node sources break this rule for edges of different types (FR-033). Two cases are known:
