@@ -1,0 +1,21 @@
+dev/specs/ifc-3618-schema-migration-by-node/spec.md
+  s_b636cf4e853527::t_b569f76a358b90 1-172
+dev/specs/ifc-3618-schema-migration-by-node/checklists/requirements.md
+  s_b636cf4e853527::t_3cb4bb3432e4bd 1-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d267bf688354ca7ccdec5b7090f17ba72c9849ae",
+  "prompts": {},
+  "sessions": {
+    "s_b636cf4e853527": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e2c2131-1be4-43e0-83d8-56224be168d9",
+        "model": "unknown"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
