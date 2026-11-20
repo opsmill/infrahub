@@ -192,7 +192,7 @@ async def schema_path_migrate(
     user_id: str = SYSTEM_USER_ID,
     node_ids: list[str] | None = None,
 ) -> SchemaMigrationPathResponseData:
-    """Run one schema migration on the nodes in `node_ids`, or on every node when it is `None`.
+    """Run one schema migration on the nodes in `node_ids`, or on every node when it is `None` or the migration does not apply a node scope.
 
     A caller passes `node_ids` wrapped in `quote()`, because the list grows with the data.
 
@@ -209,13 +209,17 @@ async def schema_path_migrate(
         elif previous_node_schema:
             node_kind = previous_node_schema.kind
 
-        node_scope = f"on {len(node_ids)} nodes" if node_ids is not None else "on all nodes"
-        log.info(
-            f"Migration for {node_kind} starting {schema_path.get_path()} {node_scope}",
-        )
         migration_class = MIGRATION_MAP.get(migration_name)
         if not migration_class:
             raise ValueError(f"Unable to find the migration class for {migration_name}")
+
+        if node_ids is not None and migration_class.applies_node_scope:
+            node_scope = f"on {len(node_ids)} nodes"
+        else:
+            node_scope = "on all nodes"
+        log.info(
+            f"Migration for {node_kind} starting {schema_path.get_path()} {node_scope}",
+        )
 
         migration = migration_class(  # type: ignore[call-arg]  # ty: ignore[missing-argument]
             new_node_schema=new_node_schema,
