@@ -1,1 +1,0 @@
-Fixed merging or rebasing a branch that adds a mandatory relationship to a kind being refused for every object of that kind, including objects that set the relationship. Infrahub now refuses only the objects that do not set it.
