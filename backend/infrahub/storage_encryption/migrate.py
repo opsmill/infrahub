@@ -55,6 +55,10 @@ HEADER_REQUEST_LENGTH = 4096
 """Bytes a header read from S3 asks for: a ranged read shorter than about 1,400 bytes can wait 40 ms on some services."""
 
 
+STORAGE_ERRORS = (OSError, botocore.exceptions.ClientError, botocore.exceptions.BotoCoreError)
+"""What the storage raises for a read or a write that fails: a file system error, a refusal of the S3 service, or a broken connection."""
+
+
 class EncryptOutcome(StrEnum):
     ENCRYPTED = "encrypted"
     """The object was not encrypted and now is."""
@@ -123,7 +127,7 @@ def precheck_object(storage: InfrahubObjectStorage, identifier: str) -> EncryptR
     """
     try:
         check = storage.inspect_encryption(identifier=identifier, request_length=HEADER_REQUEST_LENGTH)
-    except (OSError, botocore.exceptions.ClientError) as exc:
+    except STORAGE_ERRORS as exc:
         return _failed_by_storage(identifier=identifier, reason="the header could not be read", exc=exc)
     if check.encryption is None:
         return EncryptResult(identifier=identifier, outcome=EncryptOutcome.MISSING)
@@ -166,7 +170,7 @@ def _seal_and_replace(
         check = storage.inspect_encryption(identifier=identifier, request_length=HEADER_REQUEST_LENGTH)
     except NodeNotFoundError:
         return EncryptResult(identifier=identifier, outcome=EncryptOutcome.MISSING)
-    except (OSError, botocore.exceptions.ClientError) as exc:
+    except STORAGE_ERRORS as exc:
         return _failed_by_storage(identifier=identifier, size=size, reason="the object could not be replaced", exc=exc)
     if check.encryption is not ArtifactEncryption.ENCRYPTED:
         return _failed(
@@ -214,7 +218,7 @@ def encrypt_object(
     with budget.holding(wait_seconds=wait_seconds) as hold:
         try:
             stored = storage.read_stored_bounded(identifier=identifier, max_size=limit, before_read=hold.take)
-        except (OSError, botocore.exceptions.ClientError) as exc:
+        except STORAGE_ERRORS as exc:
             return _failed_by_storage(identifier=identifier, reason="the object could not be read", exc=exc)
         if stored is None:
             return EncryptResult(identifier=identifier, outcome=EncryptOutcome.MISSING)
