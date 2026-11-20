@@ -37,6 +37,7 @@ import botocore.exceptions
 from infrahub.core.constants import ArtifactEncryption, InfrahubKind
 from infrahub.exceptions import NodeNotFoundError, StorageEncryptionError
 from infrahub.log import get_logger
+from infrahub.storage_encryption.allocator import fix_mmap_threshold
 from infrahub.storage_encryption.checksums import matches_recorded_checksum
 from infrahub.storage_encryption.crypto import has_envelope_magic, seal
 from infrahub.storage_encryption.queries import StorageChecksumsQuery
@@ -281,6 +282,7 @@ async def encrypt_stored_objects(
 
     """
     require_encryption_ready(storage=storage)
+    fix_mmap_threshold()
     results: dict[str, EncryptResult] = {}
     for identifier in identifiers:
         stopped = await asyncio.to_thread(precheck_object, storage, identifier)
