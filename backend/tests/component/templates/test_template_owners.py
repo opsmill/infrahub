@@ -12,6 +12,7 @@ from infrahub.core.node.create import create_node
 from infrahub.core.ownership.models import (
     NODE_HOLDER,
     NODE_TARGET_HOLDER,
+    HolderKind,
     OwnerOrigin,
     OwnerState,
     ResolvedOwnership,
@@ -439,4 +440,27 @@ async def test_template_deleted_on_the_default_branch_leaves_its_copies_as_own_o
         OwnerOrigin.SELF,
         site_id,
     )
+    await verify_graph(db=db)
+
+
+async def test_attribute_owner_given_at_the_create_replaces_the_copy_from_the_template(
+    db: InfrahubDatabase, default_branch: Branch, owner_dataset: OwnerDataset
+) -> None:
+    dataset = owner_dataset
+    template = await site_template(db=db, default_branch=default_branch, dataset=dataset)
+
+    site = await create_node(
+        data={
+            "name": {"value": "site-b", "owner": dataset.ids["network-emea"]},
+            "object_template": {"id": template.id},
+        },
+        db=db,
+        branch=default_branch,
+        schema=registry.schema.get_node_schema(name="TestSite", branch=default_branch),
+    )
+
+    assert await template_copies(db=db, branch=default_branch, node_id=site.id) == {
+        **copies(dataset.owners(("dc-emea",)), template.id),
+        HolderKind.ATTRIBUTE: (dataset.owners(("network-emea",)), None),
+    }
     await verify_graph(db=db)
