@@ -308,7 +308,9 @@ class NodeCreateAllQuery(NodeQuery):
             WITH *
             CALL (a, attr) {
                 UNWIND attr.pool_prop AS prop
-                MATCH (pool:%(number_pool)s { uuid: prop.peer_id })
+                // Without the hint, Neo4j can plan a read of the whole uuid index instead of a seek
+                MATCH (pool:Node:%(number_pool)s { uuid: prop.peer_id })
+                USING INDEX SEEK pool:Node(uuid)
                 // -------------------
                 // Lock the NumberPool vertex, so concurrent writes do not deadlock adding IS_RESERVED
                 // -------------------
