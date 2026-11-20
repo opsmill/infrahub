@@ -1,0 +1,1 @@
+Added external Transformations, so that an engine outside Infrahub, such as AWX, renders the content of an artifact: Infrahub sends each render request through a webhook subscribed to `infrahub.artifact.render_requested` and stores the content the engine returns through `POST /api/artifact/render/{render_id}`.

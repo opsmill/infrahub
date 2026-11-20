@@ -317,4 +317,5 @@ Two built-in triggers in `triggers.py` react to webhook-related node lifecycle e
 - [Events System](events.md) — How events are emitted and dispatched to Prefect
 - [Changelog Enrichment](changelog-enrichment.md) — The display labels and HFIDs a node event's changelog carries into the payload
 - [Async Tasks](async-tasks.md) — Prefect workflow and task infrastructure
+- [External Artifacts](external-artifacts.md) — Render requests delivered to an external engine through a webhook, with a per-attempt render token
 - [Webhook Headers Spec](../../specs/archive/infp-445-webhook-headers/spec.md) — Feature spec for custom HTTP headers on webhooks

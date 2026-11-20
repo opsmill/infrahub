@@ -319,6 +319,7 @@ const sidebars: SidebarsConfig = {
           items: [
             { type: 'doc', id: 'transformations/jinja2', label: 'Jinja2' },
             { type: 'doc', id: 'transformations/python', label: 'Python' },
+            { type: 'doc', id: 'transformations/external', label: 'External engine' },
           ],
         },
         {

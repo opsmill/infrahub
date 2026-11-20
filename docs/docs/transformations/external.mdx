@@ -1,0 +1,271 @@
+---
+title: Render artifacts with an external engine
+---
+
+# Render artifacts with an external engine
+
+An external Transformation lets an engine outside Infrahub, such as AWX, Ansible or a custom API, render the content of an artifact. You keep your templates in that engine. Infrahub decides when each artifact must be rendered again, sends the engine the result of the artifact's GraphQL query, and stores the content the engine returns as a normal artifact, with diffs in proposed changes.
+
+This guide covers how to declare an external Transformation, deliver render requests to your engine with a webhook, and return the rendered content to Infrahub.
+
+For conceptual background on Transformations and artifacts, see [Transformations](./overview) and [Artifacts](../artifacts/overview).
+
+> Assumes a working Infrahub instance and a connected Git repository. See [Connect a repository](../git-integration/connect-repository) if you're starting fresh.
+
+## How a render works
+
+1. Infrahub selects an artifact for rendering, with the same rules it uses for Jinja2 and Python Transformations.
+2. Infrahub runs the artifact definition's GraphQL query for the target, sets the artifact to `Pending`, and emits an `infrahub.artifact.render_requested` event.
+3. A webhook subscribed to that event sends the render request to your engine, with a render token in the `X-Infrahub-Render-Token` header.
+4. Your engine renders the content and sends it to the callback URL in the request, with the render token.
+5. Infrahub stores the content and sets the artifact to `Ready`. If the engine reports a failure, or does not answer before the timeout, Infrahub sets the artifact to `Error`.
+
+Infrahub requests a render when:
+
+- data that the GraphQL query reads changes on a branch, and when a proposed change opens on that branch;
+- a branch is merged, for the artifacts on the destination branch;
+- the `version` of the external Transformation changes in `.infrahub.yml`;
+- you trigger generation of the artifact definition manually.
+
+Infrahub cannot detect changes to templates stored in your engine. Change the `version` value, or trigger generation manually, after you change a template.
+
+## Set the public URL of Infrahub
+
+The callback URL in each render request is built from the `main.public_url` setting, the `INFRAHUB_PUBLIC_URL` environment variable. Set it to an address your engine can reach, for example `https://infrahub.example.com`.
+
+When it is not set, Infrahub sets the artifact to `Error` with the message `main.public_url must be set for external transformations` and sends no render request.
+
+## Declare the external Transformation
+
+Add the GraphQL query, the external Transformation and the artifact definition to the `.infrahub.yml` file of your repository:
+
+```yaml title=".infrahub.yml"
+queries:
+  - name: device_startup_config
+    file_path: queries/device_startup_config.gql
+
+external_transforms:
+  - name: ansible-startup-config
+    query: device_startup_config
+    version: "1.5.0"
+    description: Startup configuration rendered by the AWX job template "startup-config"
+    timeout: 600
+
+artifact_definitions:
+  - name: startup-config
+    artifact_name: startup-config
+    parameters:
+      device: name__value
+    content_type: text/plain
+    targets: edge-routers
+    transformation: ansible-startup-config
+```
+
+| Key | Required | Description |
+|-----|----------|-------------|
+| `name` | Yes | Name of the Transformation. It must be unique across all Transformations. |
+| `query` | Yes | Name of a query declared in the same repository. |
+| `version` | Yes | Version of the templates in your engine, for example a release tag or a commit SHA. Changing it renders every artifact of the definitions that use the Transformation again. |
+| `description` | No | Description of the Transformation. |
+| `timeout` | No | Seconds the engine has to return the content, counted from the render request. Default `600`, minimum `1`. |
+
+An external Transformation has no file path and no `watch` block, because its templates are not in the repository. A commit that changes other files does not render its artifacts again.
+
+Commit the file. Infrahub imports the external Transformation when the repository syncs.
+
+### Choose a timeout that covers webhook retries
+
+When the engine does not answer before the timeout, Infrahub sets the artifact to `Error` with the message `no response from engine`. Infrahub checks for these artifacts every minute.
+
+A webhook delivery that fails is retried 3 times, 120 seconds apart, so the last attempt starts about 6 minutes after the first. Set `timeout` to at least 420 seconds (7 minutes) plus the time your engine needs to render, so that a request delivered by a retry can still be answered.
+
+## Subscribe a webhook to render requests
+
+Create a webhook with the event type `infrahub.artifact.render_requested` and the URL of your engine. See [Create a webhook](../webhooks/create).
+
+- Use a **Standard Webhook** when your engine accepts the Infrahub event body.
+- Use a **Custom Webhook** with a Python Transformation when your engine expects another body, such as an AWX job launch. See [Use a webhook Transformation to match your engine](#use-a-webhook-transformation-to-match-your-engine).
+
+Set the **Branch Scope** to include every branch on which you render artifacts, for example `all_branches`. When no active webhook for this event type covers the branch of the artifact, Infrahub sets the artifact to `Error` with the message `no webhook subscribed to infrahub.artifact.render_requested`.
+
+The body sent by a standard webhook looks like this:
+
+```json
+{
+  "data": {
+    "render_id": "1a2b...",
+    "callback_url": "https://infrahub.example.com/api/artifact/render/1a2b...",
+    "deadline": "2026-11-20T10:10:00Z",
+    "artifact_id": "...",
+    "artifact_name": "startup-config",
+    "artifact_definition_id": "...",
+    "artifact_definition_name": "startup-config",
+    "transformation_name": "ansible-startup-config",
+    "transformation_version": "1.5.0",
+    "content_type": "text/plain",
+    "target_id": "...",
+    "target_kind": "DcimDevice",
+    "target_name": "edge-01",
+    "branch": "change-123",
+    "query_result": { "DcimDevice": { "edges": [] } }
+  },
+  "id": "<event id>",
+  "branch": "change-123",
+  "account_id": "...",
+  "occured_at": "...",
+  "event": "infrahub.artifact.render_requested"
+}
+```
+
+Each delivery has the render token in the `X-Infrahub-Render-Token` header. Infrahub creates a new token for each delivery attempt. Every token of a render request is valid until its `deadline`.
+
+The `Events` GraphQL query and the task list return render requests without `query_result`, so users who view the event history do not view the data of the query.
+
+## Use a webhook Transformation to match your engine
+
+A Custom Webhook runs a Python Transformation on the event and sends its output as the body. The Transformation runs before the render token exists, so it cannot read the token. Write the string `${INFRAHUB_RENDER_TOKEN}` where the token belongs. Infrahub replaces every occurrence of that string with the token before it sends the body.
+
+This Transformation builds an AWX job launch body:
+
+```python title="transforms/awx_render_request.py"
+from typing import Any
+
+from infrahub_sdk.transforms import InfrahubTransform
+
+
+class AwxRenderRequest(InfrahubTransform):
+    query = "placeholder_query"  # Required but not used for webhooks
+
+    async def transform(self, data: dict[str, Any]) -> dict[str, Any]:
+        request = data["data"]
+        return {
+            "extra_vars": {
+                "infrahub_callback_url": request["callback_url"],
+                "infrahub_render_token": "${INFRAHUB_RENDER_TOKEN}",
+                "device": request["query_result"],
+            }
+        }
+```
+
+The last task of the AWX job template then sends the rendered content to `infrahub_callback_url` with `infrahub_render_token` in the `X-Infrahub-Render-Token` header.
+
+See [Webhook with custom Transformation](../webhooks/custom-transformation) for how to register the Transformation and link it to the webhook.
+
+## Return the rendered content
+
+Send the result of each render request to its `callback_url`:
+
+```text
+POST /api/artifact/render/{render_id}
+X-Infrahub-Render-Token: <render token>
+Content-Type: application/json
+```
+
+To return content:
+
+```json
+{
+  "status": "success",
+  "content": "hostname edge-01\n...",
+  "content_type": "text/plain"
+}
+```
+
+To report a failure:
+
+```json
+{
+  "status": "failure",
+  "message": "template variable mtu undefined"
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `status` | Yes | `success` or `failure`. |
+| `content` | When `status` is `success` | The rendered content as text. For the `application/json` and `application/yaml` content types, you can send an object instead, which Infrahub serializes. The size limit is the `storage.max_file_size` setting, 50 MB by default. |
+| `content_type` | No | When present, it must equal the `content_type` of the artifact definition. |
+| `message` | When `status` is `failure` | Why the render failed, at most 4096 characters. Infrahub shows it on the artifact check of the proposed change. |
+
+The callback accepts only the render token. User sessions and API keys are refused.
+
+| Response | Meaning |
+|----------|---------|
+| `204` | Infrahub accepted the result. The artifact is `Ready`, or `Error` for a failure. |
+| `400` | The body is not valid, for example `content` is missing or `content_type` does not match. |
+| `401` | The token is missing, not valid or expired. A callback after the `deadline` gets this response. |
+| `403` | The token was issued for another render request. |
+| `409` | A newer render request replaced this one, or the request already ended. The artifact is unchanged. |
+| `413` | `content` is larger than the size limit. |
+| `429` | Infrahub is under load. Retry after the number of seconds in the `Retry-After` header. |
+
+Retry on `429`. Do not retry on the other error responses, because the same request gets the same response.
+
+## Test with a reference engine
+
+Before you connect your engine, you can test the flow with a small HTTP server that uses no Infrahub libraries. This script answers each render request with `hostname <target name>`:
+
+```python title="reference_engine.py"
+import json
+import threading
+import time
+import urllib.error
+import urllib.request
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+
+def send_result(callback_url: str, token: str, body: dict) -> None:
+    request = urllib.request.Request(
+        callback_url,
+        data=json.dumps(body).encode(),
+        headers={"Content-Type": "application/json", "X-Infrahub-Render-Token": token},
+        method="POST",
+    )
+    while True:
+        try:
+            urllib.request.urlopen(request)
+            return
+        except urllib.error.HTTPError as error:
+            if error.code != 429:
+                print(f"Callback refused: {error.code} {error.read().decode()}")
+                return
+            time.sleep(int(error.headers.get("Retry-After", "1")))
+
+
+class Engine(BaseHTTPRequestHandler):
+    def do_POST(self) -> None:
+        event = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        token = self.headers["X-Infrahub-Render-Token"]
+        self.send_response(202)
+        self.end_headers()
+        request = event["data"]
+        content = f"hostname {request['target_name']}\n"
+        body = {"status": "success", "content": content}
+        threading.Thread(target=send_result, args=(request["callback_url"], token, body)).start()
+
+
+HTTPServer(("0.0.0.0", 8081), Engine).serve_forever()
+```
+
+1. Run the script on a host that Infrahub can reach, and that can reach the `main.public_url` of Infrahub.
+2. Create a Standard Webhook for `infrahub.artifact.render_requested` with the URL `http://<host>:8081/`.
+3. Change data that the query of your artifact definition reads, on a branch, and open a proposed change.
+
+## Verify
+
+1. Open the proposed change and go to the **Checks** tab. While Infrahub waits for the engine, the artifact check shows the message `waiting for external engine`.
+<!-- vale off -->
+2. After the engine answers, the check passes and the **Artifacts** tab shows the diff of the content.
+<!-- vale on -->
+3. If the check fails, read its message:
+   - `Failed to render artifact: no response from engine`: the engine did not answer before the timeout. Check the delivery of the webhook in the task list.
+   - `Failed to render artifact: <message>`: the engine reported a failure with that message.
+
+## Related
+
+- [Transformations](./overview)
+- [Use artifacts](../artifacts/use)
+- [Webhooks](../webhooks/overview)
+- [Webhook with custom Transformation](../webhooks/custom-transformation)
+- [infrahub.yml configuration](../git-integration/infrahub-yml)
+- [Events for artifacts](../reference/infrahub-events/artifact)

@@ -7,7 +7,7 @@ title: Transformations
 A `Transformation` is a generic plugin to transform a dataset into a different format to simplify it's ingestion by third-party systems.
 
 The output of a Transformation can be either in JSON or any text-based format.
->*Currently Transformations must be written in Python or Jinja2, but in the future more languages could be supported.*
+Transformations are written in Python or Jinja2. To render artifacts with an engine outside Infrahub, such as AWX or Ansible, use an [external Transformation](./external.mdx).
 
 :::note Examples
 
@@ -48,6 +48,7 @@ The Transformation will automatically inherit the parameters (variables) defined
 | --------- | ------------------- | -------------------------------------- | -------- | ------------- |
 | Core      | **TransformJinja2** | A file rendered from a Jinja2 template | Jinja2   | Plain Text    |
 | Core      | **TransformPython** | A Transformation function written in Python | Python   | JSON          |
+| Core      | **TransformExternal** | Content rendered by an engine outside Infrahub | Any | Any text-based format |
 
 ### Rendered file (Jinja2 plugin)
 

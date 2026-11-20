@@ -151,4 +151,5 @@ A per-merge line records the path taken (selective, with generator/artifact coun
 - [Coalesced Recompute on Merge and Rebase](merge-recompute.md) - the sibling merge-followup path for computed attributes, display labels, and human-friendly ids
 - [Code Generation](code-generation.md) - fingerprints and dependency closures computed at repository import
 - [Events System](events.md) - node mutation events consumed by the non-coalesced regeneration paths
+- [External Artifacts](external-artifacts.md) - artifacts selected here whose render is requested from an external engine
 - Feature spec: `dev/specs/archive/ifc-2704-incremental-merge-regen/`

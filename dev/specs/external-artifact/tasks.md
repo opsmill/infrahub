@@ -215,7 +215,7 @@ description: "Task list for artifacts rendered by an external engine"
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T031 [P] Write user documentation in `docs/docs/` (follow `docs/AGENTS.md`). Cover:
+- [X] T031 [P] Write user documentation in `docs/docs/` (follow `docs/AGENTS.md`). Cover:
   - declaring `external_transforms`;
   - subscribing a webhook to `infrahub.artifact.render_requested`;
   - using a webhook transformation with `${INFRAHUB_RENDER_TOKEN}` (AWX example from [contracts/render-request.md](contracts/render-request.md));
@@ -226,9 +226,10 @@ description: "Task list for artifacts rendered by an external engine"
   - local testing with a reference engine.
 
   Run `uv run invoke docs.lint`.
-- [ ] T032 [P] Add `changelog/+external-artifact.added.md` with the `creating-changelog-entries` skill.
-- [ ] T033 [P] Add `dev/knowledge/backend/external-artifacts.md` describing the request, delivery, callback and timeout flow, and link it from `dev/knowledge/backend/` neighbours (`webhooks.md`, `selective-merge-regeneration.md`).
+- [X] T032 [P] Add `changelog/+external-artifact.added.md` with the `creating-changelog-entries` skill.
+- [X] T033 [P] Add `dev/knowledge/backend/external-artifacts.md` describing the request, delivery, callback and timeout flow, and link it from `dev/knowledge/backend/` neighbours (`webhooks.md`, `selective-merge-regeneration.md`).
 - [ ] T034 Run `uv run invoke format`, `uv run invoke lint`, `cd frontend && pnpm biome:fix` and `uv run invoke docs.validate`, then run [quickstart.md](quickstart.md) scenarios 1 to 5 against a local stack.
+  - ⚠️ Partial: format, lint, biome and docs.lint pass. Scenarios 1 to 5 were not run by hand against `dev.start`; their automated coverage passed instead (`backend/tests/integration/artifacts/test_external_artifact.py`, the render callback and artifact component tests).
 
 ---
 
