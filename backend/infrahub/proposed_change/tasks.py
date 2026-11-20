@@ -4,7 +4,7 @@ import asyncio
 import os
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from infrahub_sdk.exceptions import ModuleImportError, NodeNotFoundError, URLNotFoundError
@@ -66,7 +66,7 @@ from infrahub.core.regeneration.predicates import (
 )
 from infrahub.core.regeneration.profiles import SchemaProfileExpander
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.validators.checks_runner import run_checks_and_update_validator
+from infrahub.core.validators.checks_runner import CheckResult, recompute_validator, run_checks_and_update_validator
 from infrahub.core.validators.constraint_merge import build_constraint_info_merger
 from infrahub.core.validators.determiner import build_constraint_validator_determiner
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
@@ -139,6 +139,8 @@ from .branch_diff import get_diff_summary_cache, get_modified_kinds
 from .checker import verify_proposed_change_is_mergeable
 
 if TYPE_CHECKING:
+    from collections.abc import Coroutine
+
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
@@ -884,7 +886,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
     if managed_branch:
         log.info("Query, definition or repository file change detected, all artifacts will be processed")
 
-    checks = []
+    checks: list[Coroutine[Any, Any, CheckResult]] = []
 
     for relationship in group.members.peers:
         member = relationship.peer
@@ -919,24 +921,29 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
                 target_name=member.display_label,
                 timeout=model.artifact_definition.timeout,
                 validator_id=validator.id,
+                transformation_name=model.artifact_definition.transformation_name,
+                transformation_version=model.artifact_definition.transformation_version,
             )
 
             checks.append(
                 get_workflow().execute_workflow(
-                    workflow=GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
-                    context=context,
-                    parameters={"model": check_model},
-                    expected_return=ValidatorConclusion,
+                    workflow=GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE, context=context, parameters={"model": check_model}
                 )
             )
 
-    await run_checks_and_update_validator(
-        event_service=await get_event_service(),
+    event_service = await get_event_service()
+    pending = await run_checks_and_update_validator(
+        event_service=event_service,
         checks=checks,
         validator=validator,
         proposed_change_id=model.proposed_change,
         context=context,
     )
+    if pending:
+        # A check concluded before the loop above ended found the validator still running, so complete it here.
+        await recompute_validator(
+            db=database, event_service=event_service, validator_id=validator.id, context=context.to_event_context()
+        )
 
 
 @flow(

@@ -29,6 +29,9 @@ query GatherArtifactDefinitions {
         transformation {
           node {
             __typename
+            name {
+                value
+            }
             timeout {
                 value
             }
@@ -62,6 +65,11 @@ query GatherArtifactDefinitions {
                 value
               }
               convert_query_response {
+                value
+              }
+            }
+            ... on CoreTransformExternal {
+              version {
                 value
               }
             }
@@ -102,6 +110,7 @@ def parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeAr
             dependencies=transformation["dependencies"]["value"],
             dependencies_complete=transformation["dependencies_complete"]["value"],
             fingerprint=definition["node"]["fingerprint"]["value"],
+            transformation_name=transformation["name"]["value"],
         )
         if artifact_definition.transform_kind == InfrahubKind.TRANSFORMJINJA2:
             artifact_definition.template_path = transformation["template_path"]["value"]
@@ -109,6 +118,8 @@ def parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeAr
             artifact_definition.class_name = transformation["class_name"]["value"]
             artifact_definition.file_path = transformation["file_path"]["value"]
             artifact_definition.convert_query_response = transformation["convert_query_response"]["value"]
+        elif artifact_definition.transform_kind == InfrahubKind.TRANSFORMEXTERNAL:
+            artifact_definition.transformation_version = transformation["version"]["value"]
 
         parsed.append(artifact_definition)
 

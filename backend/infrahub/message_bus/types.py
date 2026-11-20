@@ -122,6 +122,8 @@ class ProposedChangeArtifactDefinition(BaseModel):
         default=None,
         description="Content hash of the definition's inputs, recomputed on each import. None when not yet computed.",
     )
+    transformation_name: str = Field(default="")
+    transformation_version: str = Field(default="", description="Set only for external transformations")
 
     @property
     def source_noun(self) -> str:
@@ -137,6 +139,8 @@ class ProposedChangeArtifactDefinition(BaseModel):
             return self.template_path
         if self.transform_kind == InfrahubKind.TRANSFORMPYTHON:
             return f"{self.file_path}::{self.class_name}"
+        if self.transform_kind == InfrahubKind.TRANSFORMEXTERNAL:
+            return ""
 
         raise ValueError("Invalid kind for Transform")
 

@@ -116,6 +116,10 @@ class RequestArtifactGenerate(BaseModel):
         default=False,
         description="Store the file again when the content is unchanged but the stored copy is missing or refused",
     )
+    transformation_name: str = Field(default="", description="Name of the transformation")
+    transformation_version: str = Field(
+        default="", description="Version of the transformation, set only for external transformations"
+    )
 
 
 class GitRepositoryAdd(BaseModel):

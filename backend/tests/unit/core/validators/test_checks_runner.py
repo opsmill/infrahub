@@ -15,7 +15,7 @@ from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import ValidatorConclusion, ValidatorState
-from infrahub.core.validators.checks_runner import run_checks_and_update_validator
+from infrahub.core.validators.checks_runner import CheckPending, CheckResult, run_checks_and_update_validator
 from infrahub.events.validator_action import ValidatorFailedEvent, ValidatorPassedEvent, ValidatorStartedEvent
 from tests.adapters.event import MemoryInfrahubEvent
 
@@ -55,7 +55,7 @@ class FakeValidator:
         self.save_count += 1
 
 
-async def _check(result: ValidatorConclusion | Exception) -> ValidatorConclusion:
+async def _check(result: CheckResult | Exception) -> CheckResult:
     if isinstance(result, Exception):
         raise result
     return result
@@ -123,11 +123,11 @@ async def test_run_checks_and_update_validator_emits_terminal_event_but_never_st
     event_service = MemoryInfrahubEvent()
     validator = FakeValidator(validator_id="18b00000-0000-0000-0000-0000000000aa", kind="CoreDataValidator")
     checks = cast(
-        "list[Coroutine[Any, None, ValidatorConclusion]]",
+        "list[Coroutine[Any, None, CheckResult]]",
         [_check(result) for result in case.check_results],
     )
 
-    await run_checks_and_update_validator(
+    pending = await run_checks_and_update_validator(
         checks=checks,
         validator=cast("CoreValidator", validator),
         context=_make_context(),
@@ -142,3 +142,22 @@ async def test_run_checks_and_update_validator_emits_terminal_event_but_never_st
     # The validator did complete — so a completed-successfully validator still emits no started.
     assert validator.state.value == ValidatorState.COMPLETED.value
     assert validator.conclusion.value == case.expected_conclusion
+    assert pending is False
+
+
+async def test_a_pending_check_leaves_the_validator_in_progress() -> None:
+    event_service = MemoryInfrahubEvent()
+    validator = FakeValidator(validator_id="18b00000-0000-0000-0000-0000000000aa", kind="CoreArtifactValidator")
+
+    pending = await run_checks_and_update_validator(
+        checks=[_check(ValidatorConclusion.SUCCESS), _check(CheckPending.PENDING)],
+        validator=cast("CoreValidator", validator),
+        context=_make_context(),
+        event_service=event_service,
+        proposed_change_id="18b00000-0000-0000-0000-0000000000bb",
+    )
+
+    assert pending is True
+    assert validator.state.value == ValidatorState.IN_PROGRESS.value
+    assert validator.conclusion.value == ValidatorConclusion.UNKNOWN.value
+    assert event_service.events == []

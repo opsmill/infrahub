@@ -8,6 +8,7 @@ from git.exc import InvalidGitRepositoryError
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.branch import BranchData
 from infrahub_sdk.exceptions import Error as SdkError
+from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import (
     CoreArtifact,
     CoreArtifactDefinition,
@@ -29,9 +30,11 @@ from prefect.client.schemas.objects import State
 from prefect.context import TaskRunContext
 from prefect.logging import get_run_logger
 from prefect.runtime import flow_run
+from prefect.settings import get_current_settings
 from prefect.states import Completed, Failed
 
 from infrahub import config, lock
+from infrahub.artifacts.render_request import request_external_render
 from infrahub.auth.session import AnonymousSession
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import (
@@ -1037,6 +1040,23 @@ async def generate_artifact(model: RequestArtifactGenerate) -> None:
     log = get_run_logger()
     client = get_client()
     client.request_context = model.context.to_request_context()
+
+    if model.transform_type == InfrahubKind.TRANSFORMEXTERNAL:
+        artifact, _ = await define_artifact(model=model)
+        request = await request_external_render(
+            client=client,
+            event_service=await get_event_service(),
+            artifact=artifact,
+            model=model,
+            transformation_name=model.transformation_name,
+            transformation_version=model.transformation_version,
+            public_url=config.SETTINGS.main.public_url,
+            max_event_size_bytes=get_current_settings().server.events.maximum_size_bytes,
+        )
+        if request.error:
+            log.error(f"Failed to request an external render: {request.error}")
+        return
+
     repo = await get_initialized_repo(
         client=client,
         repository_id=model.repository_id,
@@ -1058,6 +1078,22 @@ async def generate_artifact(model: RequestArtifactGenerate) -> None:
         artifact.status.value = "Error"
         await artifact.save()
         raise
+
+
+def _transformation_render_settings(transform: InfrahubNode) -> tuple[str, bool, str]:
+    """Return the transform location, whether to convert the query response, and the external version.
+
+    Raises:
+        ValueError: When the transformation kind is not supported.
+
+    """
+    if transform.typename == InfrahubKind.TRANSFORMJINJA2:
+        return transform.template_path.value, False, ""
+    if transform.typename == InfrahubKind.TRANSFORMPYTHON:
+        return f"{transform.file_path.value}::{transform.class_name.value}", transform.convert_query_response.value, ""
+    if transform.typename == InfrahubKind.TRANSFORMEXTERNAL:
+        return "", False, transform.version.value
+    raise ValueError(f"Unsupported transformation kind {transform.typename}")
 
 
 @flow(
@@ -1109,14 +1145,7 @@ async def generate_request_artifact_definition(
     branch = await client.branch.get(branch_name=model.branch)
     if branch.sync_with_git:
         repository = await client.get(kind=CoreGenericRepository, id=repository.id, branch=model.branch, fragment=True)
-    transform_location = ""
-
-    convert_query_response = False
-    if transform.typename == InfrahubKind.TRANSFORMJINJA2:
-        transform_location = transform.template_path.value
-    elif transform.typename == InfrahubKind.TRANSFORMPYTHON:
-        transform_location = f"{transform.file_path.value}::{transform.class_name.value}"
-        convert_query_response = transform.convert_query_response.value
+    transform_location, convert_query_response, transformation_version = _transformation_render_settings(transform)
 
     batch = await client.create_batch()
     member_filter = model.get_member_filter()
@@ -1149,6 +1178,8 @@ async def generate_request_artifact_definition(
             convert_query_response=convert_query_response,
             context=context,
             check_stored_file=bool(model.limit),
+            transformation_name=transform.name.value,
+            transformation_version=transformation_version,
         )
 
         batch.add(

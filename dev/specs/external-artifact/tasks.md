@@ -113,7 +113,7 @@ description: "Task list for artifacts rendered by an external engine"
     - when no webhook subscribes: "no webhook subscribed to infrahub.artifact.render_requested";
     - when `main.public_url` is not set: "main.public_url must be set for external transformations";
     - when the event is too large: "query result too large for a render request (N bytes, limit M)".
-- [ ] T015 [P] [US1] Concurrency tests in `backend/tests/component/artifacts/test_render_concurrency.py`:
+- [X] T015 [P] [US1] Concurrency tests in `backend/tests/component/artifacts/test_render_concurrency.py`:
   - a callback for render R runs at the same time as a new request R2, and the artifact never ends `Ready` with R's content while `render_request_id` is R2;
   - two callbacks for checks of the same validator leave the validator `completed` with the right conclusion.
 - [ ] T016 [P] [US1] Unit test in `backend/tests/unit/webhook/test_render_token_delivery.py`:
@@ -145,11 +145,11 @@ description: "Task list for artifacts rendered by an external engine"
   - It calls `accept_render_result` and maps errors to 400, 401, 403, 409 and 413 as in [contracts/callback-api.md](contracts/callback-api.md).
 
   Regenerate `schema/openapi.json` (`uv run invoke schema.generate-jsonschema`) and `frontend/app/src/shared/api/rest/types.generated.ts` (`pnpm codegen`).
-- [ ] T020 [US1] Branch the generate path on the external kind:
+- [X] T020 [US1] Branch the generate path on the external kind:
   - In `backend/infrahub/git/tasks.py::generate_request_artifact_definition`, accept `TRANSFORMEXTERNAL` when building the request: no `transform_location`, `convert_query_response=False`. Raise on any unknown kind.
   - In `backend/infrahub/git/tasks.py::generate_artifact`, call `request_external_render` instead of `render_artifact` for the external kind.
   - In `backend/infrahub/git/integrator.py::InfrahubRepositoryIntegrator.render_artifact`, add an `else` that raises for unknown kinds.
-- [ ] T021 [US1] Make proposed-change checks complete later:
+- [X] T021 [US1] Make proposed-change checks complete later:
   - In `backend/infrahub/core/regeneration/definitions.py`, add the `... on CoreTransformExternal` fragment and fill the model.
   - In `backend/infrahub/message_bus/types.py::ProposedChangeArtifactDefinition.transform_location`, return an empty location for the external kind.
   - In `backend/infrahub/artifacts/tasks.py::create`, for the external kind, call `request_external_render`, write the check with `conclusion=unknown` and the message "waiting for external engine", and return a pending result.

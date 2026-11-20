@@ -13,8 +13,16 @@ from pydantic import BaseModel, Field, model_validator
 from infrahub.artifacts.content import artifact_checksum, format_artifact_content
 from infrahub.artifacts.render_lock import artifact_render_lock
 from infrahub.core import registry
-from infrahub.core.constants import SYSTEM_USER_ID, ArtifactStatus
-from infrahub.core.protocols import CoreArtifact, CoreArtifactDefinition, CoreArtifactTarget
+from infrahub.core.constants import SYSTEM_USER_ID, ArtifactStatus, Severity, ValidatorConclusion
+from infrahub.core.protocols import (
+    CoreArtifact,
+    CoreArtifactCheck,
+    CoreArtifactDefinition,
+    CoreArtifactTarget,
+    CoreProposedChange,
+    CoreValidator,
+)
+from infrahub.core.validators.checks_runner import recompute_validator
 from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
 from infrahub.events.models import EventBranchContext, EventContext, EventMeta
 from infrahub.exceptions import (
@@ -33,6 +41,9 @@ if TYPE_CHECKING:
 
 RENDER_FAILURE_MESSAGE_MAX_LENGTH = 4096
 
+
+RENDER_SUCCEEDED_MESSAGE = "Artifact rendered successfully"
+RENDER_FAILED_MESSAGE = "Failed to render artifact"
 
 RENDER_RESULT_SUCCESS = "success"
 RENDER_RESULT_FAILURE = "failure"
@@ -148,13 +159,59 @@ class RenderResultAcceptor:
                 artifact.get_attribute("status").value = ArtifactStatus.ERROR.value
                 artifact.render_deadline.value = None
                 await artifact.save(db=self.db, user_id=SYSTEM_USER_ID)
-                return RenderResultOutcome(
+                outcome = RenderResultOutcome(
                     artifact_id=artifact.id, branch=branch.name, status=ArtifactStatus.ERROR, message=body.message
                 )
+            else:
+                outcome = await self._store_content(
+                    branch=branch, artifact=artifact, content=content, content_type=content_type
+                )
+            validator_ids = await self._conclude_waiting_checks(branch=branch, outcome=outcome)
 
-            return await self._store_content(
-                branch=branch, artifact=artifact, content=content, content_type=content_type
+        for validator_id in validator_ids:
+            await recompute_validator(
+                db=self.db,
+                event_service=self.event_service,
+                validator_id=validator_id,
+                context=_system_event_context(branch=branch),
             )
+        return outcome
+
+    async def _conclude_waiting_checks(self, branch: Branch, outcome: RenderResultOutcome) -> set[str]:
+        """Write the outcome to the proposed-change checks of this artifact that wait for it, and return their validators.
+
+        A check waits when its conclusion is still unknown and its proposed change's source branch is the branch the
+        artifact was rendered on.
+        """
+        checks = await registry.manager.query(
+            db=self.db,
+            schema=CoreArtifactCheck,
+            filters={"artifact_id__value": outcome.artifact_id, "conclusion__value": ValidatorConclusion.UNKNOWN.value},
+        )
+        validator_ids: set[str] = set()
+        for check in checks:
+            validator = await check.validator.get_peer(db=self.db, peer_type=CoreValidator, raise_on_error=True)
+            proposed_change = await validator.proposed_change.get_peer(
+                db=self.db, peer_type=CoreProposedChange, raise_on_error=True
+            )
+            if proposed_change.source_branch.value != branch.name:
+                continue
+
+            if outcome.status == ArtifactStatus.READY:
+                check.get_attribute("conclusion").value = ValidatorConclusion.SUCCESS.value
+                check.get_attribute("severity").value = Severity.INFO.value
+                check.message.value = RENDER_SUCCEEDED_MESSAGE
+            else:
+                check.get_attribute("conclusion").value = ValidatorConclusion.FAILURE.value
+                check.get_attribute("severity").value = Severity.CRITICAL.value
+                check.message.value = f"{RENDER_FAILED_MESSAGE}: {outcome.message}"
+            check.changed.value = outcome.changed
+            check.checksum.value = outcome.checksum
+            check.storage_id.value = outcome.storage_id
+            check.artifact_id.value = outcome.artifact_id
+            await check.save(db=self.db, user_id=SYSTEM_USER_ID)
+            validator_ids.add(validator.id)
+        return validator_ids
 
     async def _store_content(
         self, branch: Branch, artifact: CoreArtifact, content: str, content_type: str
@@ -195,13 +252,7 @@ class RenderResultAcceptor:
                     checksum_previous=previous_checksum,
                     storage_id=storage_id,
                     storage_id_previous=previous_storage_id,
-                    meta=EventMeta.from_context(
-                        context=EventContext(
-                            branch=EventBranchContext(name=branch.name, id=str(branch.get_uuid())),
-                            account_id=SYSTEM_USER_ID,
-                        ),
-                        branch=branch,
-                    ),
+                    meta=EventMeta.from_context(context=_system_event_context(branch=branch), branch=branch),
                 )
             )
 
@@ -213,3 +264,9 @@ class RenderResultAcceptor:
             storage_id=storage_id,
             changed=changed,
         )
+
+
+def _system_event_context(branch: Branch) -> EventContext:
+    return EventContext(
+        branch=EventBranchContext(name=branch.name, id=str(branch.get_uuid())), account_id=SYSTEM_USER_ID
+    )

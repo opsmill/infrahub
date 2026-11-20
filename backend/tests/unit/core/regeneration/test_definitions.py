@@ -29,6 +29,7 @@ def _artifact_definition_edge(
     """Build one edge of the artifact-definition gathering query's response."""
     transformation: dict[str, Any] = {
         "__typename": transform_typename,
+        "name": _attribute("car-transform"),
         "timeout": _attribute(30),
         "dependencies": _attribute(dependencies),
         "dependencies_complete": _attribute(dependencies_complete),
@@ -47,6 +48,8 @@ def _artifact_definition_edge(
         transformation["class_name"] = _attribute("CarTransform")
         transformation["file_path"] = _attribute("transforms/car.py")
         transformation["convert_query_response"] = _attribute(True)
+    elif transform_typename == InfrahubKind.TRANSFORMEXTERNAL:
+        transformation["version"] = _attribute("1.5.0")
 
     return {
         "node": {
@@ -117,6 +120,15 @@ def test_python_transform_carries_its_entry_point() -> None:
         "",
     )
     assert definition.convert_query_response is True
+
+
+def test_external_transform_carries_its_name_and_version_and_has_no_location() -> None:
+    parsed = parse_artifact_definitions([_artifact_definition_edge(transform_typename=InfrahubKind.TRANSFORMEXTERNAL)])
+
+    definition = parsed[0]
+    assert definition.transform_kind == InfrahubKind.TRANSFORMEXTERNAL
+    assert (definition.transformation_name, definition.transformation_version) == ("car-transform", "1.5.0")
+    assert not definition.transform_location
 
 
 @dataclass(frozen=True, kw_only=True)

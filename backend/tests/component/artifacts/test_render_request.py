@@ -6,19 +6,25 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 from infrahub_sdk import Config, InfrahubClient
-from infrahub_sdk.protocols import CoreArtifact
+from infrahub_sdk.protocols import CoreArtifact, CoreArtifactCheck
 
+from infrahub import config
+from infrahub.artifacts.models import CheckArtifactCreate
 from infrahub.artifacts.render_request import RenderRequestResult, request_external_render
+from infrahub.artifacts.tasks import create
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
-from infrahub.core.constants import ArtifactStatus, EventType, InfrahubKind
+from infrahub.core.constants import ArtifactStatus, EventType, InfrahubKind, ValidatorConclusion
+from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.core.validators.checks_runner import CheckPending
 from infrahub.events.artifact_action import ArtifactRenderRequestedEvent
 from infrahub.git.models import RequestArtifactGenerate
+from infrahub.git.tasks import generate_artifact
 from infrahub.server import app
-from infrahub.workers.dependencies import build_client
+from infrahub.workers.dependencies import build_client, build_event_service
 from infrahub.workflows.catalogue import GRAPHQL_QUERY_GROUP_UPDATE
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.workflow import WorkflowRecorder
@@ -292,6 +298,64 @@ class TestRequestExternalRender(TestInfrahubAppWithoutLocalWorkflow):
         assert stored.status.value == ArtifactStatus.ERROR.value
         assert stored.render_request_id.value is None
         assert event_service.events == []
+
+    async def test_proposed_change_check_waits_for_the_external_engine(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        client: InfrahubClient,
+        dataset: dict[str, Any],
+        subscribed_webhook: Node,
+        dependency_provider: Provider,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(config.SETTINGS.main, "public_url", PUBLIC_URL)
+        branch = await create_branch(branch_name="pc-check-waits", db=db)
+        proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+        await proposed_change.new(
+            db=db, name="check waits", source_branch=branch.name, destination_branch=default_branch.name
+        )
+        await proposed_change.save(db=db)
+        validator = await Node.init(db=db, schema=InfrahubKind.ARTIFACTVALIDATOR)
+        await validator.new(
+            db=db, label="Artifact Validator", proposed_change=proposed_change, definition=dataset["definition"]
+        )
+        await validator.save(db=db)
+        model = CheckArtifactCreate(
+            **_generate_model(dataset=dataset, branch=branch).model_dump(exclude={"context"}),
+            context=_generate_model(dataset=dataset, branch=branch).context,
+            validator_id=validator.id,
+        )
+        event_service = MemoryInfrahubEvent()
+
+        with override_dependency(build_event_service, lambda: event_service, dependency_provider=dependency_provider):
+            result = await create(model=model)
+
+        assert result == CheckPending.PENDING
+        checks = await client.filters(kind=CoreArtifactCheck, validator__ids=[validator.id])
+        assert [(check.conclusion.value, check.message.value, check.artifact_id.value) for check in checks] == [
+            (ValidatorConclusion.UNKNOWN.value, "waiting for external engine", dataset["artifact"].id)
+        ]
+        assert [type(event) for event in event_service.events] == [ArtifactRenderRequestedEvent]
+
+    async def test_generate_artifact_requests_an_external_render(
+        self,
+        default_branch: Branch,
+        client: InfrahubClient,
+        dataset: dict[str, Any],
+        subscribed_webhook: Node,
+        dependency_provider: Provider,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(config.SETTINGS.main, "public_url", PUBLIC_URL)
+        event_service = MemoryInfrahubEvent()
+
+        with override_dependency(build_event_service, lambda: event_service, dependency_provider=dependency_provider):
+            await generate_artifact(model=_generate_model(dataset=dataset, branch=default_branch))
+
+        stored = await client.get(kind=CoreArtifact, id=dataset["artifact"].id, branch=default_branch.name)
+        assert stored.status.value == ArtifactStatus.PENDING.value
+        assert [type(event) for event in event_service.events] == [ArtifactRenderRequestedEvent]
 
 
 async def _create_webhook(

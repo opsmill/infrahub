@@ -2763,6 +2763,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 data=quote(response),
                 convert_query_response=message.convert_query_response,
             )  # type: ignore[call-overload]
+        else:
+            raise ValueError(f"Unsupported transformation kind {message.transform_type}")
 
         artifact_content_str = serialize_artifact_content(
             content=artifact_content,
