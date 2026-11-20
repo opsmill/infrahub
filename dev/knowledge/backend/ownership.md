@@ -177,7 +177,10 @@ owners of the attribute. A cleared `owner` property gives the inherit state.
 with `NodeOwnerEdgesCloseQuery`. The query closes a `HAS_SOURCE` edge only when the edge starts at the node vertex:
 the delete of an attribute closes the source edge of the attribute. The query also closes each `HAS_OWNER_SOURCE`
 edge that ends at the node, with the branch rules of a write: a `to` time for an edge of the write branch, a
-`deleted` edge for an edge that the branch inherits. This is one more write query for each deleted node.
+`deleted` edge for an edge that the branch inherits. The write branch of the owner edges of a branch-aware attribute
+is the branch of the query, as for a write, also when the node is branch-agnostic. A branch-agnostic attribute of a
+branch-aware node uses the branch of the node, so its global owner edges stay open until the retirement of the
+branch-agnostic fields closes them. This is one more write query for each deleted node.
 After the lock, the query reads no holder when the node, its attributes and its sets have no owner edge, no source
 edge and no template mark, and no `HAS_OWNER_SOURCE` edge ends at the node. This check reads the edges on all
 branches and at all times, so a closed edge also makes the query read the holders.

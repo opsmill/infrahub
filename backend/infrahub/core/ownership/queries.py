@@ -409,6 +409,9 @@ class OwnerStateWriteQuery(Query):
     edge_condition = ""
     """A Cypher condition on the edge `r` from the holder `h` of the node `n` to `peer`, to not close all edges."""
 
+    close_branch = "{name: $branch, level: $branch_level, is_global: $write_is_global}"
+    """The Cypher map of the branch that closes an edge of the holder `h`: its `name`, `level` and `is_global`."""
+
     def __init__(
         self,
         node_id: str,
@@ -567,27 +570,27 @@ CALL (n, h) {
 }
 CALL (h, current) {
     UNWIND current AS item
-    WITH item.peer AS peer, item.edge_type AS edge_type, item.latest AS latest
+    WITH item.peer AS peer, item.edge_type AS edge_type, item.latest AS latest, %(close_branch)s AS w
     WHERE NOT (edge_type = "%(listed_edge)s" AND peer.uuid IN $owner_ids)
     AND NOT (edge_type = "HAS_NO_OWNER" AND $no_owner)
-    CALL (latest) {
-        WITH latest
+    CALL (latest, w) {
+        WITH latest, w
         // A branch reads a global edge at its start, so the edge can be closed already
-        WHERE latest.branch = $branch AND latest.to IS NULL
+        WHERE latest.branch = w.name AND latest.to IS NULL
         SET latest.to = $at, latest.to_user_id = $user_id
     }
-    CALL (h, peer, edge_type, latest) {
-        WITH latest
+    CALL (h, peer, edge_type, latest, w) {
+        WITH latest, w
         // A branch reads a global edge that was open at its start, also after the global branch closes it
-        WHERE $write_is_global
-        OR latest.branch_level < $branch_level
+        WHERE w.is_global
+        OR latest.branch_level < w.level
         OR EXISTS {
             MATCH (h)-[inherited:%(edge_types)s]->(peer)
-            WHERE type(inherited) = edge_type AND inherited.branch_level < $branch_level
+            WHERE type(inherited) = edge_type AND inherited.branch_level < w.level
             AND inherited.status = "active" AND %(inherited_filter)s
         }
         CREATE (h)-[:$(edge_type) {
-            branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, from_user_id: $user_id
+            branch: w.name, branch_level: w.level, status: "deleted", from: $at, from_user_id: $user_id
         }]->(peer)
     }
 }
@@ -632,6 +635,7 @@ CALL (h) {
             "edge_types": self.closed_edge_types,
             "listed_edge": self.listed_edge_type,
             "edge_condition": self.edge_condition,
+            "close_branch": self.close_branch,
             "owner_edge": _active_edge_query(
                 edge_type=self.listed_edge_type, peer="owner", inherited_filter=inherited_filter
             ),
@@ -672,6 +676,18 @@ class NodeOwnerEdgesCloseQuery(OwnerStateWriteQuery):
         OR EXISTS { (n)-[:HAS_OWNER_SET|HAS_TARGET_OWNER_SET|HAS_ATTRIBUTE]->(h) }
         OR (type(r) = "HAS_OWNER_SOURCE" AND peer = n)
     )"""
+
+    # A write puts the owner edges of a branch-aware attribute on the branch of the query, also for a shared node.
+    close_branch = """CASE WHEN h:Attribute AND h.branch_support <> "agnostic" THEN $attribute_branch
+    ELSE {name: $branch, level: $branch_level, is_global: $write_is_global} END"""
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+        self.params["attribute_branch"] = {
+            "name": self.branch.name,
+            "level": self.branch.hierarchy_level,
+            "is_global": self.branch.is_global,
+        }
+        await super().query_init(db=db, **kwargs)
 
     def _holders_query(self, branch_filter: str) -> str:  # noqa: ARG002
         # Most nodes have no owner, so this check skips their holders; it comes after the lock to read committed edges.

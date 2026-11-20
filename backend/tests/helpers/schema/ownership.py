@@ -1,4 +1,4 @@
-from infrahub.core.constants import RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import BranchSupportType, RelationshipCardinality, RelationshipKind
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
 
 NAME_ATTRIBUTE = AttributeSchema(name="name", kind="Text", unique=True)
@@ -39,4 +39,26 @@ OWNERSHIP_SCHEMA = SchemaRoot(
             ],
         ),
     ],
+)
+
+MIXED_SUPPORT_SCHEMA = SchemaRoot(
+    nodes=[
+        NodeSchema(
+            name="AwareThing",
+            namespace="Test",
+            attributes=[
+                AttributeSchema(name="name", kind="Text", unique=True),
+                AttributeSchema(name="serial", kind="Text", optional=True, branch=BranchSupportType.AGNOSTIC),
+            ],
+        ),
+        NodeSchema(
+            name="SharedThing",
+            namespace="Test",
+            branch=BranchSupportType.AGNOSTIC,
+            attributes=[
+                AttributeSchema(name="name", kind="Text", unique=True, branch=BranchSupportType.AGNOSTIC),
+                AttributeSchema(name="note", kind="Text", optional=True, branch=BranchSupportType.AWARE),
+            ],
+        ),
+    ]
 )

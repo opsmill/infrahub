@@ -2,14 +2,16 @@ from dataclasses import dataclass
 
 import pytest
 
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.ownership.constants import NO_OWNER_VERTEX_UUID
-from infrahub.core.ownership.models import NODE_HOLDER, NODE_SOURCES_HOLDER, HolderKey, StoredOwnerState
+from infrahub.core.ownership.models import NODE_HOLDER, NODE_SOURCES_HOLDER, HolderKey, HolderKind, StoredOwnerState
 from infrahub.core.ownership.repository import OwnershipRepository
+from infrahub.core.ownership.writer import OwnershipWriter
 from infrahub.core.query import QueryType
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -17,6 +19,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
 from infrahub.exceptions import QueryError
 from tests.helpers.ownership import USER_ID, create_groups, set_owners
+from tests.helpers.schema.ownership import MIXED_SUPPORT_SCHEMA
 
 
 async def _create_person(db: InfrahubDatabase, name: str) -> Node:
@@ -313,6 +316,111 @@ RETURN count(r) AS open_edges
     )
     assert records[0]["open_edges"] == 0
     await verify_graph(db=db)
+
+
+@dataclass
+class MixedSupportDeleteTestCase:
+    name: str
+    kind: str
+    attribute: str
+    owners: tuple[str, ...]
+    """Group names; an empty tuple is "no owner"."""
+
+    from_template: bool
+    edge_branch: str
+    """The branch of the owner edges and of the source edge of the attribute."""
+
+
+MIXED_SUPPORT_DELETE_TEST_CASES = [
+    MixedSupportDeleteTestCase(
+        name="aware_attribute_one_owner_from_template",
+        kind="TestSharedThing",
+        attribute="note",
+        owners=("dc-emea",),
+        from_template=True,
+        edge_branch="main",
+    ),
+    MixedSupportDeleteTestCase(
+        name="aware_attribute_two_owners",
+        kind="TestSharedThing",
+        attribute="note",
+        owners=("dc-emea", "security"),
+        from_template=False,
+        edge_branch="main",
+    ),
+    MixedSupportDeleteTestCase(
+        name="aware_attribute_no_owner",
+        kind="TestSharedThing",
+        attribute="note",
+        owners=(),
+        from_template=False,
+        edge_branch="main",
+    ),
+    MixedSupportDeleteTestCase(
+        name="agnostic_attribute_one_owner",
+        kind="TestAwareThing",
+        attribute="serial",
+        owners=("dc-emea",),
+        from_template=False,
+        edge_branch=GLOBAL_BRANCH_NAME,
+    ),
+]
+
+
+async def _attribute_edges(db: InfrahubDatabase, node_id: str, attribute: str) -> set[tuple[str, str, str, str, bool]]:
+    """Return the type, the peer ID, the branch, the status and the open state of each edge that the attribute holds."""
+    rows = await db.execute_query(
+        query="""
+        MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(:Attribute {name: $attribute})
+            -[r:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE|HAS_SOURCE]->(peer)
+        WITH DISTINCT r, peer
+        RETURN type(r) AS edge_type, peer.uuid AS peer_id, r.branch AS branch, r.status AS status,
+            r.to IS NULL AS is_open
+        """,
+        params={"node_id": node_id, "attribute": attribute},
+        name="test_read_attribute_edges",
+        type=QueryType.READ,
+    )
+    return {(row["edge_type"], row["peer_id"], row["branch"], row["status"], row["is_open"]) for row in rows}
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in MIXED_SUPPORT_DELETE_TEST_CASES])
+async def test_node_delete_closes_the_attribute_edges_on_the_branch_of_the_attribute(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    test_case: MixedSupportDeleteTestCase,
+) -> None:
+    registry.schema.register_schema(schema=MIXED_SUPPORT_SCHEMA, branch=default_branch.name)
+    group_ids = await create_groups(db=db)
+    node = await Node.init(db=db, schema=test_case.kind, branch=default_branch)
+    await node.new(db=db, name="thing-a", **{test_case.attribute: "value"})
+    getattr(node, test_case.attribute).source = group_ids["network-emea"]
+    await node.save(db=db)
+    owner_ids = _owner_ids(group_ids=group_ids, names=test_case.owners)
+    assert owner_ids is not None
+    template_id = group_ids["network-emea"] if test_case.from_template else None
+    await OwnershipWriter(repository=OwnershipRepository(db=db, branch=default_branch, at=None)).apply(
+        node=node,
+        holder=HolderKey(kind=HolderKind.ATTRIBUTE, attribute=test_case.attribute),
+        state=StoredOwnerState(owner_ids=owner_ids, template_id=template_id),
+        at=Timestamp(),
+        user_id=USER_ID,
+    )
+
+    node = await NodeManager.get_one(db=db, branch=default_branch, id=node.id, raise_on_error=True)
+    await node.delete(db=db)
+
+    closed = "active", False
+    expected = {("HAS_OWNER", owner_id, test_case.edge_branch, *closed) for owner_id in owner_ids}
+    expected |= {("HAS_NO_OWNER", NO_OWNER_VERTEX_UUID, test_case.edge_branch, *closed)} if not owner_ids else set()
+    expected |= {("HAS_OWNER_SOURCE", template_id, test_case.edge_branch, *closed)} if template_id else set()
+    expected |= {
+        ("HAS_SOURCE", group_ids["network-emea"], test_case.edge_branch, *closed),
+        ("HAS_SOURCE", group_ids["network-emea"], default_branch.name, "deleted", True),
+    }
+    assert await _attribute_edges(db=db, node_id=node.id, attribute=test_case.attribute) == expected
+    await verify_graph(db=db, kinds=[test_case.kind])
 
 
 async def test_write_on_node_that_is_not_active_raises(
