@@ -17,7 +17,7 @@ EXTRA_SCHEMA = SchemaRoot(
 
 
 def test_community_has_no_extra_core_schemas() -> None:
-    assert get_extra_core_schemas() == []
+    assert build_extra_core_schemas() == []
 
 
 def test_extra_core_schemas_come_from_the_override(dependency_provider: Provider) -> None:
@@ -34,9 +34,10 @@ def test_load_extra_core_schemas_adds_the_nodes(dependency_provider: Provider) -
     assert schema_branch.has(name="TestingExtraNode")
 
 
-def test_load_extra_core_schemas_adds_nothing_by_default() -> None:
+def test_load_extra_core_schemas_adds_nothing_by_default(dependency_provider: Provider) -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
 
-    load_extra_core_schemas(schema_branch=schema_branch)
+    with override_dependency(build_extra_core_schemas, build_extra_core_schemas, dependency_provider=dependency_provider):
+        load_extra_core_schemas(schema_branch=schema_branch)
 
     assert schema_branch.node_names == []
