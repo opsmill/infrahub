@@ -268,6 +268,47 @@ def test_dedicated_key_does_not_need_a_usable_secret(monkeypatch: pytest.MonkeyP
     assert generated == published == StorageKey.derive(DEDICATED_KEY)
 
 
+@dataclass
+class PublishedDedicatedKeyCase:
+    name: str
+    key: str
+
+
+PUBLISHED_DEDICATED_KEY_CASES = [
+    PublishedDedicatedKeyCase(name="published_example", key=PUBLISHED_SECRET),
+    PublishedDedicatedKeyCase(name="published_example_in_single_quotes", key=f"'{PUBLISHED_SECRET}'"),
+    PublishedDedicatedKeyCase(name="published_example_with_trailing_quote", key=f'{PUBLISHED_SECRET}"'),
+    PublishedDedicatedKeyCase(name="published_example_in_upper_case", key=PUBLISHED_SECRET.upper()),
+]
+
+
+@pytest.mark.parametrize("case", PUBLISHED_DEDICATED_KEY_CASES, ids=lambda case: case.name)
+def test_dedicated_key_with_the_published_example_value_is_refused_even_when_the_secret_is_usable(
+    case: PublishedDedicatedKeyCase,
+) -> None:
+    with pytest.raises(
+        StorageEncryptionError,
+        match=(
+            r"^INFRAHUB_STORAGE_ENCRYPTION_KEY still has the value published in Infrahub's example deployment files; "
+            r"set a unique random key before using storage encryption$"
+        ),
+    ):
+        storage_key_from_settings(
+            storage=StorageSettings(encryption_key=case.key), security=SecuritySettings(secret_key=SECRET)
+        )
+
+
+@pytest.mark.parametrize("case", PUBLISHED_DEDICATED_KEY_CASES, ids=lambda case: case.name)
+def test_no_key_for_reading_comes_from_a_dedicated_key_with_the_published_example_value(
+    case: PublishedDedicatedKeyCase,
+) -> None:
+    key = storage_key_if_set(
+        storage=StorageSettings(encryption_key=case.key), security=SecuritySettings(secret_key=SECRET)
+    )
+
+    assert key is None
+
+
 def test_dedicated_key_that_is_too_short_is_refused_even_when_the_secret_is_usable() -> None:
     with pytest.raises(
         StorageEncryptionError, match=r"^INFRAHUB_STORAGE_ENCRYPTION_KEY must be at least 32 characters long$"

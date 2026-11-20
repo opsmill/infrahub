@@ -73,6 +73,10 @@ class StorageKey:
         return cls(fingerprint=fingerprint.hex(), _fingerprint=fingerprint, _cipher=AESGCM(key))
 
 
+def _is_published(value: str) -> bool:
+    return value.strip().strip("'\"").lower() in PUBLISHED_SECRET_KEYS
+
+
 def _unfit_secret_reason(settings: SecuritySettings) -> str | None:
     """Why INFRAHUB_SECURITY_SECRET_KEY cannot be used as the storage key, or None when it can."""
     if "secret_key" not in settings.model_fields_set:
@@ -80,7 +84,7 @@ def _unfit_secret_reason(settings: SecuritySettings) -> str | None:
             "Storage encryption requires INFRAHUB_STORAGE_ENCRYPTION_KEY or INFRAHUB_SECURITY_SECRET_KEY to be set, "
             "with the same value on every API server; without either, each process generates its own random secret"
         )
-    if settings.secret_key.strip().strip("'\"").lower() in PUBLISHED_SECRET_KEYS:
+    if _is_published(settings.secret_key):
         return (
             "INFRAHUB_SECURITY_SECRET_KEY still has the value published in Infrahub's example deployment files; "
             "set a unique random secret, or set INFRAHUB_STORAGE_ENCRYPTION_KEY, before using storage encryption"
@@ -95,6 +99,11 @@ def _unfit_secret_reason(settings: SecuritySettings) -> str | None:
 
 def _unfit_dedicated_key_reason(key: str) -> str | None:
     """Why INFRAHUB_STORAGE_ENCRYPTION_KEY cannot be used as the storage key, or None when it can."""
+    if _is_published(key):
+        return (
+            "INFRAHUB_STORAGE_ENCRYPTION_KEY still has the value published in Infrahub's example deployment files; "
+            "set a unique random key before using storage encryption"
+        )
     if len(key) < MINIMUM_SECRET_LENGTH:
         return f"INFRAHUB_STORAGE_ENCRYPTION_KEY must be at least {MINIMUM_SECRET_LENGTH} characters long"
     return None
