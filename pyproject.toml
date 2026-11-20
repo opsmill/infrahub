@@ -70,7 +70,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-enterprise = ["bonsai>=1.5.5"]
+enterprise = ["bonsai>=1.5.5", "aiokafka>=0.13,<0.14"]
 # pyarrow is only used by the SDK's line-delimited JSON importer (`infrahubctl object load`),
 # which is not exercised by the server or worker runtime. Keep it out of the default image and
 # install it explicitly (or via `infrahub-sdk[ctl]`) when the object-transfer tooling is needed.
