@@ -1,0 +1,21 @@
+dev/specs/ifc-2167-placeholder-automations-db/tasks.md
+  s_66a5726e988042::t_03265dc7ff368d 110
+  s_66a5726e988042::t_cc1c11d8aa9390 1-108,111-305
+  s_66a5726e988042::t_5b5dfc5da012ce 109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "75721525dad31a4261f2aed80845dabf01d60829",
+  "prompts": {},
+  "sessions": {
+    "s_66a5726e988042": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46d40a08-368e-45e4-9585-ed0b91343566",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
