@@ -123,7 +123,9 @@ uv run pytest backend/tests/query_benchmark/ownership/test_no_owner_overhead.py 
   - Since task T042, the delete of a node runs one more database query, `ownership_node_owner_edges_close`. The query closes the owner edges of the node. It runs also when the node has no owner.
   - This query alone takes 3.9 ms for a node without owners: the median of 50 calls on 2026-11-12, on a test database with one node, after 10 calls that are not counted. This is 17% of the "today" median of the delete.
   - The delete of one device with 4 interfaces deletes 5 nodes. Five more queries add about 20 ms to 150 seconds, so the table cannot show them.
-- Not decided: how the delete of a node closes its owner edges without one more query. One way is to close the edges in the query that deletes the node. No task of the list covers this change.
+- Decided: the delete of a node keeps the query that closes its owner edges, and the lock of the node (decision of the maintainer, finding 5 of the first review in [opsmill-implement-report.md](opsmill-implement-report.md)).
+  - An `EXISTS` check after the lock skips the reads of the holders for a node with no owner.
+  - After this change, a cascade delete of 550 nodes took about 6% more time than the base, and a plain delete was within the noise between runs ([opsmill-implement-report.md](opsmill-implement-report.md)). So SC-002 is not met for a cascade delete.
 
 ### Environment of the run
 
@@ -137,6 +139,31 @@ uv run pytest backend/tests/query_benchmark/ownership/test_no_owner_overhead.py 
 - One run at full size gives the numbers. It is not known how many runs, or which machine, give a stable comparison with a limit of 5%.
 - The 3.9 ms of the added query come from a small database. The query starts from the node by its ID, so the size of the data set is not expected to change this time. This was not measured on the reference data set.
 - The test measures a customer who uses no owner. It does not measure a write of an owner on an attribute or a link, which now runs one more read query to check the kind of the owner.
+
+## Update and upsert with the lock of the node (2026-11-20)
+
+`Node._update` locks the node vertex at its start, so each update runs one more query. This section compares one update and one upsert that changes nothing with `develop`.
+
+### Run
+
+- Code: the head of the pull request, and `develop` at `ee2d2dc402`.
+- Test: a component test that is not committed. It creates one `TestPerson` on the default branch, then runs each GraphQL mutation 210 times and does not count the first 10.
+  - Update: `TestPersonUpdate` with a new `name` each time.
+  - Upsert that changes nothing: `TestPersonUpsert` with the same `id`, `name` and `height`. The upsert of an existing node saves it, so it takes the lock. The table uses the second series of upserts, which runs after the updates; the first series still includes the start of the database.
+- The time is the time of the GraphQL call only.
+- 3 runs on each code, in turn: head, `develop`, `develop`, head, `develop`, head.
+- Machine: the shared VM, 16 CPUs. Another agent ran tests at the same time. The load average of the last minute was 3.6 after the runs.
+- Database: Neo4j in a test container.
+
+### Results
+
+| Mutation | Runs of 200 | `develop` medians | Head medians |
+|---|---|---|---|
+| Update of one attribute | 3 | 22.65, 23.69, 21.72 ms | 22.29, 22.42, 18.11 ms |
+| Upsert that changes nothing | 3 | 11.54, 11.48, 11.20 ms | 11.80, 12.18, 10.53 ms |
+
+- In each round, the median of the head minus the median of `develop` is between 3.61 ms less and 0.70 ms more. The medians of one code differ by up to 4.31 ms between runs (the update on the head). So the run shows no added time, and it cannot show a difference smaller than this noise.
+- No query count was measured.
 
 ## Spike on the storage of option E (tasks T022 and T023)
 
