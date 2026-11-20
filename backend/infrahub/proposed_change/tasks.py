@@ -1579,18 +1579,16 @@ def _parse_repositories(repositories: list[dict]) -> list[Repository]:
     * SOURCE_REPOSITORIES
     * SOURCE_READONLY_REPOSITORIES
     """
-    parsed = []
-    for repo in repositories:
-        parsed.append(
-            Repository(
-                repository_id=repo["node"]["id"],
-                repository_name=repo["node"]["name"]["value"],
-                read_only=repo["node"]["__typename"] == InfrahubKind.READONLYREPOSITORY,
-                commit=repo["node"]["commit"]["value"] or "",
-                internal_status=repo["node"]["internal_status"]["value"],
-            )
+    return [
+        Repository(
+            repository_id=repo["node"]["id"],
+            repository_name=repo["node"]["name"]["value"],
+            read_only=repo["node"]["__typename"] == InfrahubKind.READONLYREPOSITORY,
+            commit=repo["node"]["commit"]["value"] or "",
+            internal_status=repo["node"]["internal_status"]["value"],
         )
-    return parsed
+        for repo in repositories
+    ]
 
 
 async def _get_proposed_change_repositories(

@@ -840,9 +840,7 @@ class GraphTraversalCypherRenderer:
             for start in sorted(starts):
                 rel_map = plan.get_relationship_map_for_kind(start)
                 for rel_name in sorted(rel_map):
-                    for end in rel_map[rel_name]:
-                        if end in ends:
-                            hop_tuples.append(HopTuple(start, rel_name, end))
+                    hop_tuples.extend(HopTuple(start, rel_name, end) for end in rel_map[rel_name] if end in ends)
             if not hop_tuples:
                 return None
             tuples_per_hop.append(hop_tuples)

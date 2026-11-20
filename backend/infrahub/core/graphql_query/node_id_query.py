@@ -46,9 +46,11 @@ class NodeIDQuery(BaseModel):
     def parse_response(self, response: dict[str, Any]) -> list[str]:
         result: list[str] = []
         if kind_payload := response.get(self.kind):
-            for edge in kind_payload.get("edges", []):
-                if (node := edge.get("node")) and (node_id := node.get("id")):
-                    result.append(node_id)
+            result.extend(
+                node_id
+                for edge in kind_payload.get("edges", [])
+                if (node := edge.get("node")) and (node_id := node.get("id"))
+            )
         return result
 
     async def fetch_all_paginated(

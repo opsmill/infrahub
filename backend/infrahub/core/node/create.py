@@ -85,8 +85,13 @@ async def get_component_subtemplates(
         if relationship.kind != RelationshipKind.COMPONENT or relationship.name in fields:
             continue
         template_relationship_manager: RelationshipManager = getattr(template, relationship.name)
-        for template_relationship in await template_relationship_manager.get_relationships(db=db):
-            subtemplates.append(cast("CoreObjectTemplate", await template_relationship.get_peer(db=db)))
+        template_relationships = await template_relationship_manager.get_relationships(db=db)
+        subtemplates.extend(
+            [
+                cast("CoreObjectTemplate", await template_relationship.get_peer(db=db))
+                for template_relationship in template_relationships
+            ]
+        )
     return subtemplates
 
 

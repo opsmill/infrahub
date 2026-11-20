@@ -391,10 +391,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
     def get_relationships_by_identifier(self, id: str) -> list[RelationshipSchema]:
         """Return a list of relationship instead of a single one."""
-        rels: list[RelationshipSchema] = []
-        for item in self.relationships:
-            if item.identifier == id:
-                rels.append(item)
+        rels: list[RelationshipSchema] = [item for item in self.relationships if item.identifier == id]
 
         return rels
 

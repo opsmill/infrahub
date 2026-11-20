@@ -183,7 +183,7 @@ def _describe_hash_diff(before: SchemaBranch, after: SchemaBranch) -> str:
     """
     lines: list[str] = []
     all_names = sorted(set(before.node_names + before.generic_names + after.node_names + after.generic_names))
-    for name in all_names:  # noqa: PLR1702
+    for name in all_names:
         try:
             obj_before = before.get(name=name, duplicate=False)
             dump_before = obj_before.model_dump()
@@ -217,9 +217,11 @@ def _describe_hash_diff(before: SchemaBranch, after: SchemaBranch) -> str:
                 elif i2 is None:
                     lines.append(f"  {key}.{iname}: REMOVED")
                 else:
-                    for fk in sorted(set(i1.keys()) | set(i2.keys())):
-                        if i1.get(fk) != i2.get(fk):
-                            lines.append(f"  {key}.{iname}.{fk}: {i1.get(fk)!r} -> {i2.get(fk)!r}")
+                    lines.extend(
+                        f"  {key}.{iname}.{fk}: {i1.get(fk)!r} -> {i2.get(fk)!r}"
+                        for fk in sorted(set(i1.keys()) | set(i2.keys()))
+                        if i1.get(fk) != i2.get(fk)
+                    )
     return "\n".join(lines) if lines else "(no per-schema diffs found)"
 
 

@@ -59,7 +59,4 @@ class NodeDataLoader(DataLoader[str, Node | None]):
                 prefetch_relationships=self.query_params.prefetch_relationships,
                 branch_agnostic=self.query_params.branch_agnostic,
             )
-        results = []
-        for node_id in keys:
-            results.append(nodes_by_id.get(node_id, None))
-        return results
+        return [nodes_by_id.get(node_id, None) for node_id in keys]

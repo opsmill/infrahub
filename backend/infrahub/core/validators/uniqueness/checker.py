@@ -210,19 +210,19 @@ class UniquenessChecker(ConstraintCheckerInterface):
                 peer_id = None
                 # value is always a str
                 path_value = None if value is None else str(value)
-            for node_id in involved_node_ids:
-                data_paths.append(
-                    DataPath(
-                        branch=branch_name,
-                        path_type=path_type,
-                        node_id=node_id,
-                        kind=schema.kind,
-                        field_name=field_name,
-                        property_name=property_name,
-                        value=path_value,
-                        peer_id=peer_id,
-                    )
+            data_paths.extend(
+                DataPath(
+                    branch=branch_name,
+                    path_type=path_type,
+                    node_id=node_id,
+                    kind=schema.kind,
+                    field_name=field_name,
+                    property_name=property_name,
+                    value=path_value,
+                    peer_id=peer_id,
                 )
+                for node_id in involved_node_ids
+            )
         return data_paths
 
     async def build_query_request(self, schema: MainSchemaTypes) -> NodeUniquenessQueryRequest:

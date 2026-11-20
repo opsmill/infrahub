@@ -146,9 +146,10 @@ class TestSchemaLifecyclePeerParentUpdate(TestSchemaLifecycleBase):
         response = await client.execute_graphql(query=query, branch_name=self.branch_name, tracker="add-members-to-lag")
         assert response["RelationshipAdd"]["ok"]
 
-        nodes = []
-        for i in lag.members.peer_ids:
-            nodes.append(await client.get(branch=self.branch_name, kind=TestKind.PHYSICAL_INTERFACE, id=i))
+        nodes = [
+            await client.get(branch=self.branch_name, kind=TestKind.PHYSICAL_INTERFACE, id=i)
+            for i in lag.members.peer_ids
+        ]
 
         assert {n.device.id for n in nodes} == {device.id}
 
@@ -189,9 +190,10 @@ class TestSchemaLifecyclePeerParentUpdate(TestSchemaLifecycleBase):
         assert "do not have the same parent" in exc.value.errors[0]["message"]
 
         await lag.members.fetch()
-        nodes = []
-        for i in lag.members.peer_ids:
-            nodes.append(await client.get(branch=self.branch_name, kind=TestKind.PHYSICAL_INTERFACE, id=i))
+        nodes = [
+            await client.get(branch=self.branch_name, kind=TestKind.PHYSICAL_INTERFACE, id=i)
+            for i in lag.members.peer_ids
+        ]
 
         assert {n.device.id for n in nodes} == {device1.id}
 

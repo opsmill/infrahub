@@ -166,8 +166,7 @@ async def search_resolver(
             )
             await query.execute(db=db)
 
-            for result in query.get_data():
-                results.append({"id": result.uuid, "kind": result.kind})
+            results.extend({"id": result.uuid, "kind": result.kind} for result in query.get_data())
 
     if "edges" in fields:
         response["edges"] = [{"node": result} for result in results]

@@ -14,8 +14,10 @@ if TYPE_CHECKING:
 async def get_permissions(schema: MainSchemaTypes, graphql_context: GraphqlContext) -> dict[str, Any]:
     schema_objects = [schema]
     if isinstance(schema, GenericSchema):
-        for node_name in schema.used_by:
-            schema_objects.append(registry.schema.get(name=node_name, branch=graphql_context.branch, duplicate=False))
+        schema_objects.extend(
+            registry.schema.get(name=node_name, branch=graphql_context.branch, duplicate=False)
+            for node_name in schema.used_by
+        )
 
     response: dict[str, Any] = {"count": len(schema_objects), "edges": []}
 
