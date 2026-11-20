@@ -2,6 +2,7 @@ import asyncio
 from typing import Any
 
 import pytest
+from neo4j.exceptions import TransientError
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -371,6 +372,44 @@ async def test_owner_writes_of_two_attributes_and_node_delete_in_open_transactio
     results = await asyncio.gather(write_owners(), delete_node(), return_exceptions=True)
 
     assert results == [None, None]
+    await verify_graph(db=db, kinds=["TestPerson"])
+
+
+@pytest.mark.parametrize("on_branch", [False, True], ids=["default-branch", "branch"])
+async def test_updates_of_two_nodes_in_reverse_order_in_open_transactions_deadlock(
+    db: InfrahubDatabase, default_branch: Branch, person: Node, on_branch: bool
+) -> None:
+    other = await Node.init(db=db, schema="TestPerson")
+    await other.new(db=db, name="Jane")
+    await other.save(db=db)
+    branch = await create_branch(db=db, branch_name="reverse-order") if on_branch else default_branch
+    first_is_written = asyncio.Event()
+    second_is_written = asyncio.Event()
+
+    async def update(
+        node_ids: tuple[str, str], name: str, is_written: asyncio.Event, other_is_written: asyncio.Event
+    ) -> None:
+        async with db.start_session() as session_db, session_db.start_transaction() as dbt:
+            first = await NodeManager.get_one(db=dbt, branch=branch, id=node_ids[0], raise_on_error=True)
+            first.name.value = name
+            await first.save(db=dbt)
+            is_written.set()
+            await other_is_written.wait()
+            second = await NodeManager.get_one(db=dbt, branch=branch, id=node_ids[1], raise_on_error=True)
+            second.height.value = 180
+            await second.save(db=dbt)
+
+    # Both writes run to their end, so a failed one leaves no open transaction for the next test.
+    results = await asyncio.gather(
+        update((person.id, other.id), "John Doe", first_is_written, second_is_written),
+        update((other.id, person.id), "Jane Doe", second_is_written, first_is_written),
+        return_exceptions=True,
+    )
+
+    errors = [result for result in results if result is not None]
+    assert len(errors) == 1
+    assert isinstance(errors[0], TransientError)
+    assert errors[0].code == "Neo.TransientError.Transaction.DeadlockDetected"
     await verify_graph(db=db, kinds=["TestPerson"])
 
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -22,6 +24,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
+from infrahub.database.validation import verify_graph
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.events.node_action import NodeUpdatedEvent
@@ -45,6 +48,7 @@ if TYPE_CHECKING:
 ROOM_KIND = "TestRoom"
 SERVER_KIND = "TestServer"
 PORT_KIND = "TestPort"
+SECONDS_TO_WAIT_FOR_THE_OTHER_REFRESH = 1.0
 
 ROOM = NodeSchema(
     name="Room",
@@ -552,3 +556,91 @@ async def test_refresh_reports_a_node_that_does_not_exist(
         "role-1",
         dataset.room_id,
     )
+
+
+def _pausing_applier(first_is_saved: asyncio.Event, other_first_is_saved: asyncio.Event) -> type[NodeProfilesApplier]:
+    class PausingProfilesApplier(NodeProfilesApplier):
+        """Waits before its second node until the other refresh saved its first node, or a timeout ends."""
+
+        applied_nodes = 0
+
+        async def apply_profiles(self, node: Node) -> list[str]:
+            if self.applied_nodes:
+                first_is_saved.set()
+                # The other refresh never saves its first node while it waits for a lock that this one holds.
+                with contextlib.suppress(TimeoutError):
+                    await asyncio.wait_for(other_first_is_saved.wait(), timeout=SECONDS_TO_WAIT_FOR_THE_OTHER_REFRESH)
+            self.applied_nodes += 1
+            return await super().apply_profiles(node=node)
+
+    return PausingProfilesApplier
+
+
+@pytest.fixture
+def _one_attempt(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(config.SETTINGS.database, "retry_limit", 1)
+    monkeypatch.setattr(config.SETTINGS.database, "retry_base_delay", 0.0)
+    monkeypatch.setattr(config.SETTINGS.database, "retry_jitter_max", 0.0)
+
+
+@pytest.mark.usefixtures("_one_attempt")
+async def test_two_refreshes_of_the_same_nodes_in_reverse_order_do_not_deadlock(
+    db: InfrahubDatabase, default_branch: Branch, server_schema: None
+) -> None:
+    dataset = await _create_servers(db=db, count=2, profile_sets_room=False)
+    forward_is_saved = asyncio.Event()
+    backward_is_saved = asyncio.Event()
+    forward = _refresher(
+        db=db, branch=default_branch, applier_class=_pausing_applier(forward_is_saved, backward_is_saved)
+    )
+    backward = _refresher(
+        db=db, branch=default_branch, applier_class=_pausing_applier(backward_is_saved, forward_is_saved)
+    )
+
+    # Both refreshes run to their end, so a failed one leaves no open transaction for the next test.
+    results = await asyncio.gather(
+        forward.refresher.refresh(
+            branch=default_branch, node_ids=dataset.server_ids, context=_context(branch=default_branch)
+        ),
+        backward.refresher.refresh(
+            branch=default_branch, node_ids=dataset.server_ids[::-1], context=_context(branch=default_branch)
+        ),
+        return_exceptions=True,
+    )
+
+    assert results == [[], []]
+    assert [await _role_and_room(db=db, branch=default_branch, node_id=node_id) for node_id in dataset.server_ids] == [
+        ("role-1", None),
+        ("role-1", None),
+    ]
+    await verify_graph(db=db, kinds=[SERVER_KIND])
+
+
+@pytest.mark.usefixtures("_one_attempt")
+async def test_refresh_and_delete_of_the_same_nodes_in_reverse_order_do_not_deadlock(
+    db: InfrahubDatabase, default_branch: Branch, server_schema: None
+) -> None:
+    dataset = await _create_servers(db=db, count=2, profile_sets_room=False)
+    first_is_saved = asyncio.Event()
+    doubles = _refresher(db=db, branch=default_branch, applier_class=_pausing_applier(first_is_saved, asyncio.Event()))
+
+    async def delete_nodes() -> None:
+        await first_is_saved.wait()
+        async with db.start_session() as session_db, session_db.start_transaction() as dbt:
+            nodes = await NodeManager.get_many(db=dbt, ids=dataset.server_ids, branch=default_branch)
+            await NodeManager.delete(
+                db=dbt, nodes=[nodes[node_id] for node_id in dataset.server_ids[::-1]], cascade_delete=False
+            )
+
+    # Both writes run to their end, so a failed one leaves no open transaction for the next test.
+    results = await asyncio.gather(
+        doubles.refresher.refresh(
+            branch=default_branch, node_ids=dataset.server_ids, context=_context(branch=default_branch)
+        ),
+        delete_nodes(),
+        return_exceptions=True,
+    )
+
+    assert results == [[], None]
+    assert await NodeManager.get_many(db=db, ids=dataset.server_ids, branch=default_branch) == {}
+    await verify_graph(db=db, kinds=[SERVER_KIND])
