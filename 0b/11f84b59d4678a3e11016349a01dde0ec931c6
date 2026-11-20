@@ -1,0 +1,24 @@
+dev/specs/ifc-2167-placeholder-automations-db/spec.md
+  s_764ed6e5ccb4d5::t_e5db062caf931f 138
+  s_764ed6e5ccb4d5::t_aa99d64da1a846 150
+  s_764ed6e5ccb4d5::t_3a425a4f6c9d21 98
+  s_764ed6e5ccb4d5::t_d679e027ea8217 1-97,99-137,139-149,151-155
+dev/specs/ifc-2167-placeholder-automations-db/checklists/requirements.md
+  s_764ed6e5ccb4d5::t_aad2748eaa314a 1-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0b11f84b59d4678a3e11016349a01dde0ec931c6",
+  "prompts": {},
+  "sessions": {
+    "s_764ed6e5ccb4d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74317329-d3b1-4a5a-8a0b-6755864edb8b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
