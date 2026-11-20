@@ -118,6 +118,20 @@ SET_CASES = [
         expected_result=False,
     ),
     SetCase(
+        name="a tunable whose name only starts like the threshold tunable does not stop the call",
+        libc_version=GLIBC,
+        environ={"GLIBC_TUNABLES": "glibc.malloc.mmap_threshold_backup=4194304"},
+        expected_calls=[(-3, 1048576)],
+        expected_result=True,
+    ),
+    SetCase(
+        name="a tunable whose name ends like the threshold tunable does not stop the call",
+        libc_version=GLIBC,
+        environ={"GLIBC_TUNABLES": "x.glibc.malloc.mmap_threshold=4194304"},
+        expected_calls=[(-3, 1048576)],
+        expected_result=True,
+    ),
+    SetCase(
         name="another tunable does not stop the call",
         libc_version=GLIBC,
         environ={"GLIBC_TUNABLES": "glibc.malloc.arena_max=2"},
