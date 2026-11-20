@@ -8,6 +8,7 @@ from infrahub_sdk.convert_object_type import ConversionFieldInput, ConversionFie
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.convert_object_type.object_conversion import convert_and_validate_object_type
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.ownership.models import (
@@ -26,6 +27,7 @@ from infrahub.core.ownership.resolver import OwnershipResolver
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.timestamp import Timestamp
+from infrahub.database.validation import verify_graph
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.mutations import convert_object_type as convert_object_type_mutation
 from tests.helpers.graphql import graphql
@@ -452,6 +454,48 @@ async def test_convert_object_type_keeps_the_owners_of_mapped_attributes(
         for holder, state in stored[new_id].holders.items()
         if holder.kind == HolderKind.ATTRIBUTE
     } == {"name": (group.id,), "height": ()}
+
+
+async def test_convert_object_type_on_a_branch_keeps_the_owners_of_the_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    schemas_conversion: dict[str, Any],
+) -> None:
+    registry.schema.register_schema(schema=SchemaRoot(**schemas_conversion), branch=default_branch.name)
+    default_branch.update_schema_hash()
+    group_ids: dict[str, str] = {}
+    for name in ("dc-emea", "network-emea"):
+        group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+        await group.new(db=db, name=name)
+        await group.save(db=db)
+        group_ids[name] = group.id
+    person = await Node.init(db=db, schema="TestconvPerson1")
+    await person.new(db=db, name="branch-owners")
+    await person.save(db=db)
+    name_holder = HolderKey(kind=HolderKind.ATTRIBUTE, attribute="name")
+    main_owners = StoredOwnerState(owner_ids=(group_ids["dc-emea"],))
+    await _write_owners(
+        db=db, branch=default_branch, node_id=person.id, states={NODE_HOLDER: main_owners, name_holder: main_owners}
+    )
+    branch = await create_branch(db=db, branch_name="conversion")
+    branch_owners = StoredOwnerState(owner_ids=(group_ids["network-emea"],))
+    await _write_owners(db=db, branch=branch, node_id=person.id, states={NODE_HOLDER: branch_owners})
+
+    new_id = await _convert_person(
+        db=db,
+        branch=branch,
+        node_id=person.id,
+        fields_mapping={"name": {"source_field": "name"}, "age": {"data": {"attribute_value": 30}}},
+    )
+
+    on_branch = await OwnershipRepository(db=db, branch=branch, at=None).read(node_ids=[new_id], attributes=True)
+    assert dict(on_branch[new_id].holders) == {NODE_HOLDER: branch_owners, name_holder: main_owners}
+    on_default_branch = await OwnershipRepository(db=db, branch=default_branch, at=None).read(
+        node_ids=[person.id], attributes=True
+    )
+    assert dict(on_default_branch[person.id].holders) == {NODE_HOLDER: main_owners, name_holder: main_owners}
+    await verify_graph(db=db)
 
 
 async def _field_owners(db: InfrahubDatabase, branch: Branch, node_id: str) -> dict[str | None, tuple[str, ...] | None]:
