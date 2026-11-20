@@ -17,6 +17,8 @@ def stamp_vertex_metadata(
     so a write leaves it alone when the vertex was last stamped by the same operation, at one of the timestamps
     in `$operation_ats`.
 
+    `at` must be the timestamp bound to `$<at_param>`, because it only feeds the `operation_ats` parameter.
+
     The returned `operation_ats` parameter holds `operation_ats` and `at`, as strings, so a write always
     recognizes its own stamp. Every call in one query returns the same parameters, so the caller merges them
     into the query's parameters.
