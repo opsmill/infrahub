@@ -5,6 +5,7 @@ export interface InfiniteTriggerProps extends React.HTMLAttributes<HTMLDivElemen
   onLoadMore: () => void;
   isFetchingNextPage?: boolean;
   threshold?: number;
+  rootRef?: React.RefObject<HTMLElement | null>;
 }
 
 export const InfiniteTrigger = ({
@@ -12,6 +13,7 @@ export const InfiniteTrigger = ({
   onLoadMore,
   isFetchingNextPage,
   threshold = 200,
+  rootRef,
   ...props
 }: InfiniteTriggerProps) => {
   const loadMoreRef = React.useRef<HTMLDivElement>(null);
@@ -25,7 +27,10 @@ export const InfiniteTrigger = ({
           }
         });
       },
-      { rootMargin: `${threshold}px 0px` }
+      {
+        root: rootRef?.current,
+        rootMargin: `${threshold}px 0px`,
+      }
     );
 
     const currentContainer = loadMoreRef.current;
@@ -36,7 +41,7 @@ export const InfiniteTrigger = ({
     return () => {
       observer.disconnect();
     };
-  }, [onLoadMore, hasNextPage, isFetchingNextPage]);
+  }, [onLoadMore, hasNextPage, isFetchingNextPage, threshold, rootRef]);
 
   return <div ref={loadMoreRef} className="h-px" aria-hidden="true" {...props} />;
 };

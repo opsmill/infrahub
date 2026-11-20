@@ -11,7 +11,6 @@ from .diff_get import QUERY_MATCH_NODES
 from .filters import EnrichedDiffQueryFilters
 
 
-# type: ignore[call-overload]
 class DiffSummaryCounters(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     num_added: int = 0

@@ -279,17 +279,17 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         )
         assert len(persons) == 1
         john = persons[0]
-        assert john.firstname.value == "John"  # type: ignore[attr-defined]
+        assert john.firstname.value == "John"
 
         # Set a value to the new attribute
-        john.lastname.value = "Doe"  # type: ignore[attr-defined]
+        john.lastname.value = "Doe"
         await john.save(db=db)
 
         # And ensure that we can still query them with the original schema in MAIN
         persons = await registry.manager.query(db=db, schema=PERSON_KIND, filters={"name__value": "John"})
         assert len(persons) == 1
         john = persons[0]
-        assert john.name.value == "John"  # type: ignore[attr-defined]
+        assert john.name.value == "John"
 
     async def test_step03_check(
         self,
@@ -420,16 +420,16 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         persons = await registry.manager.query(db=db, schema=PERSON_KIND, filters={"firstname__value": "John"})
         assert len(persons) == 1
         john = persons[0]
-        assert john.firstname.value == "John"  # type: ignore[attr-defined]
-        assert john.lastname.value == "Doe"  # type: ignore[attr-defined]
+        assert john.firstname.value == "John"
+        assert john.lastname.value == "Doe"
         assert not hasattr(john, "height")
         assert not hasattr(john, "name")
 
         persons = await registry.manager.query(db=db, schema=PERSON_KIND, filters={"firstname__value": "Jane"})
         assert len(persons) == 1
         jane = persons[0]
-        assert jane.firstname.value == "Jane"  # type: ignore[attr-defined]
-        assert jane.lastname.value is None  # type: ignore[attr-defined]
+        assert jane.firstname.value == "Jane"
+        assert jane.lastname.value is None
         assert not hasattr(jane, "height")
         assert not hasattr(jane, "name")
 

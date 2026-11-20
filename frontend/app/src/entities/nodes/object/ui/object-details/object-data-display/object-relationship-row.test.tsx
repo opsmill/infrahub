@@ -121,10 +121,10 @@ describe("ObjectRelationshipRow", () => {
       );
 
       // WHEN - click the metadata button to open the tooltip
-      await component.getByTestId("view-metadata-button").click();
+      await component.getByRole("button", { name: "View metadata" }).click();
 
       // THEN
-      const editButton = component.getByTestId("edit-metadata-button");
+      const editButton = component.getByRole("button", { name: "Edit metadata" });
       await expect.element(editButton).toBeVisible();
       await expect.element(editButton).toBeEnabled();
     });
@@ -142,10 +142,10 @@ describe("ObjectRelationshipRow", () => {
       );
 
       // WHEN - click the metadata button to open the tooltip
-      await component.getByTestId("view-metadata-button").click();
+      await component.getByRole("button", { name: "View metadata" }).click();
 
       // THEN
-      const editButton = component.getByTestId("edit-metadata-button");
+      const editButton = component.getByRole("button", { name: "Edit metadata" });
       await expect.element(editButton).toBeVisible();
       await expect.element(editButton).toBeDisabled();
     });
@@ -170,6 +170,27 @@ describe("ObjectRelationshipRow", () => {
       // THEN - LockClosedIcon renders as an SVG element
       const lockIcon = component.container.querySelector("svg");
       expect(lockIcon).not.toBeNull();
+    });
+
+    it("keeps the metadata icon visible while its details are open", async () => {
+      // GIVEN
+      const component = await render(
+        <ObjectRelationshipRow
+          relationshipSchema={relationshipSchemaOne}
+          relationshipData={relationshipDataWithNode}
+          permission={allowedPermission}
+          objectKind="TestDevice"
+        />
+      );
+      const metadataButton = component.getByRole("button", { name: "View metadata" });
+
+      // WHEN
+      await metadataButton.click();
+
+      // THEN
+      await expect.element(component.getByTestId("metadata-tooltip")).toBeVisible();
+      const metadataIcon = metadataButton.element().querySelector("iconify-icon");
+      await expect.poll(() => metadataIcon && getComputedStyle(metadataIcon).opacity).toBe("1");
     });
   });
 

@@ -115,16 +115,11 @@ class InfrahubIPNamespaceMutation(InfrahubMutationMixin, Mutation):
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
     @classmethod
-    async def mutate_delete(
-        cls,
-        info: GraphQLResolveInfo,
-        data: InputObjectType,
-        branch: Branch,
-    ) -> DeleteResult:
-        if data["id"] == registry.default_ipnamespace:
+    async def _delete_obj(cls, graphql_context: "GraphqlContext", branch: Branch, obj: Node) -> list[Node]:
+        if obj.get_id() == registry.default_ipnamespace:
             raise ValidationError(input_value="Cannot delete default IPAM namespace")
 
-        return await super().mutate_delete(info=info, data=data, branch=branch)
+        return await super()._delete_obj(graphql_context=graphql_context, branch=branch, obj=obj)
 
 
 class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):

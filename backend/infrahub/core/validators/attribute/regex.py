@@ -20,7 +20,9 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
     name: str = "attribute_constraints_regex_validator"
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), is_isolated=self.is_isolated
+        )
         self.params.update(branch_params)
 
         self.params["attr_name"] = self.attribute_schema.name
@@ -91,7 +93,11 @@ class AttributeRegexChecker(ConstraintCheckerInterface):
         for query_class in self.query_classes:
             # TODO add exception handling
             query = await query_class.init(
-                db=self.db, branch=self.branch, node_schema=request.node_schema, schema_path=request.schema_path
+                db=self.db,
+                branch=self.branch,
+                node_schema=request.node_schema,
+                schema_path=request.schema_path,
+                is_isolated=request.is_isolated,
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())

@@ -1,108 +1,55 @@
 # How to migrate number pools to `ranges`
 
-With Infrahub version 1.12, a number pool can hold several weighted ranges. `start_range` and
-`end_range` are deprecated in favor of `ranges`. They still work as a way to declare a single
-range, and will be removed in a later version.
+Before Infrahub 1.12, a number pool held one range, set with `start_range` and `end_range`. From Infrahub 1.12, a number pool holds a list of ranges, set with `ranges`. `start_range` and `end_range` are deprecated.
 
-What you migrate depends on how the pool was created:
+## What the deprecation means for you
 
-- **Schema pools.** Infrahub creates one pool for each `NumberPool` attribute of
-  your schema and sets its ranges from the attribute's `parameters`. You change these ranges only in
-  the schema. Follow [Migrate schema pools](#migrate-schema-pools).
-- **User pools.** Every other number pool, created in the web interface, with a GraphQL
-  mutation or with the Python SDK. You change their ranges on the pool. Follow
-  [Migrate user pools](#migrate-user-pools).
+- The upgrade to 1.12 needs no change to your schema files, scripts or queries. It converts the `start_range` and `end_range` of each pool into one range with the same bounds. Each pool keeps the numbers it allocated.
+- `start_range` and `end_range` keep working on a pool that holds one range. A schema load that uses them returns a deprecation warning, and the GraphQL schema marks them as deprecated.
+- On a pool that holds several ranges, `start_range` and `end_range` return null, and setting them returns an error that lists the ranges to change instead. Migrate the code that uses a pool before you add a second range to it.
+- A later version of Infrahub will remove `start_range` and `end_range`. The version is not announced yet. After that version, schema files, scripts and queries that still use `start_range` or `end_range` fail. Migrate them now instead of waiting for the removal.
 
-To find out which kind a pool is, go to **Object Management** → **Resource Managers** and open the
-pool. The page of a schema pool shows a **Managed by schema** tag next to the pool name:
+## Find what you need to migrate
 
-![The header of a schema pool page, with the Managed by schema tag next to the pool name](../../media/guides/resources-manager/number_pool_managed_by_schema.png)
+Search your schema files, scripts, Generators and GraphQL queries for `start_range` and `end_range`. Each match is one of these cases:
 
-In GraphQL and the Python SDK, the pool's `pool_type` is `Schema` for a schema pool and `User` for a
-user pool.
+- A `NumberPool` attribute declares `start_range` or `end_range` in its `parameters`. Follow [Migrate `NumberPool` attributes in your schema](#migrate-numberpool-attributes-in-your-schema).
+- A GraphQL mutation, a Python SDK script or a Generator creates or updates a `CoreNumberPool` with `start_range` or `end_range`. Follow [Migrate code that creates or updates pools](#migrate-code-that-creates-or-updates-pools).
+- A GraphQL query or a Python SDK script reads the `start_range` or `end_range` of a pool. Follow [Migrate code that reads pools](#migrate-code-that-reads-pools).
 
-For both kinds of pools, [upgrade infrahubctl and the Python SDK](#upgrade-infrahubctl-and-the-python-sdk)
-and [update the scripts that read pools](#update-scripts-that-read-pools). If two pools for the same
-unique attribute have overlapping ranges, also
-[separate their ranges](#separate-pools-that-overlap-on-a-unique-attribute).
+You also need to act in these cases:
 
-:::info
+- You run `infrahubctl` or the Python SDK outside Infrahub, for example on a laptop, in a CI pipeline or in another application. Follow [Upgrade infrahubctl and the Python SDK](#upgrade-infrahubctl-and-the-python-sdk).
+- Two pools allocate numbers for the same unique attribute and their ranges overlap. Follow [Separate pools that overlap on a unique attribute](#separate-pools-that-overlap-on-a-unique-attribute).
 
-What the upgrade changes:
+You have nothing to migrate in these cases:
 
-- **All pools:** Each pool holds one range with the bounds of its former `start_range` and
-  `end_range`, and keeps the numbers it allocated.
-- **All pools:** Infrahub refuses a change to a pool's ranges that leaves an allocated number
-  outside every range, and lists the objects that hold those numbers.
-- **Schema pools:** A schema load that uses `start_range` or `end_range` returns a
-  deprecation warning.
-- **Schema pools:** The first schema load after the upgrade reports a change on each
-  `NumberPool` attribute that declares only `start_range` or only `end_range`. The change is
-  expected, and the pool allocates from the same numbers.
-- **Pools on a unique attribute:** Infrahub refuses a range that overlaps a range of another
-  pool for the same unique attribute. Pools whose ranges already overlap keep their ranges.
+- You create and edit pools only in the web interface. From 1.12, the pool form sets ranges.
+- A `NumberPool` attribute declares none of `start_range`, `end_range` and `ranges`. Its pool holds one range from `1` to the largest number Infrahub supports, as before 1.12.
 
-:::
+## Migrate with an AI coding agent
+
+The prompt below covers every case on this page. Each migration section also has a prompt for that case only.
 
 <details>
-<summary>Schema used in this guide</summary>
+    <summary><b>Prompt for AI assisted refactoring</b></summary>
 
-The examples use the following schema. Infrahub creates a pool for the `NumberPool` attribute
-`service_identifier`. For the `Number` attribute `vlan_id`, you create a pool yourself.
-Adapt the type names to match your own schema.
+Copy this prompt into your AI coding agent at the root of the repository that holds your schema files and code. Review each change before you load the schema or run the code.
 
-```yaml
-nodes:
-  - name: Service
-    namespace: Infra
-    display_label: "{{ name__value }}"
-    attributes:
-      - name: name
-        kind: Text
-        unique: true
-      - name: service_identifier
-        kind: NumberPool
-        read_only: true
-        parameters:
-          start_range: 100
-          end_range: 4094
-  - name: VLAN
-    namespace: Ipam
-    attributes:
-      - name: name
-        kind: Text
-        unique: true
-      - name: vlan_id
-        kind: Number
-        parameters:
-          min_value: 1
-          max_value: 4094
-```
+````md
+# Task: Migrate Infrahub number pools from start_range and end_range to ranges
 
-</details>
+## Context
 
-## Upgrade infrahubctl and the Python SDK
+Infrahub 1.12 deprecates the `start_range` and `end_range` fields of number pools in favor of `ranges`, a list of ranges. Each range has `start`, `end` and `allocation_weight`, and each of them is optional. A later version of Infrahub removes `start_range` and `end_range`.
 
-With Infrahub 1.12, use `infrahub-sdk` version 1.24.0 or later:
+## Migration rules
 
-```shell
-pip install --upgrade 'infrahub-sdk[ctl]>=1.24.0'
-```
+### 1. NumberPool attributes in schema files
 
-Earlier versions do not support `ranges`, and the SDK can create a pool with the wrong ranges without
-an error.
+In the `parameters` of each attribute with `kind: NumberPool`, replace `start_range` and `end_range` with one range under `ranges`.
 
-## Migrate schema pools
-
-### Update schema files
-
-In the `parameters` of each `NumberPool` attribute, replace `start_range` and `end_range` with
-`ranges`. Each range has a `start` and an `end`, both included and both optional, and an optional
-`weight`.
-
-#### Both bounds
-
-**Before:**
+Before:
 
 ```yaml
 parameters:
@@ -110,7 +57,7 @@ parameters:
   end_range: 4094
 ```
 
-**After:**
+After:
 
 ```yaml
 parameters:
@@ -119,68 +66,222 @@ parameters:
       end: 4094
 ```
 
-#### One bound
+When only one of the two is set, write only that bound, for example `- start: 100`. Do not keep `start_range` or `end_range` next to `ranges`.
 
-Declare only the bound that the old declaration sets:
+### 2. GraphQL mutations that create or update a CoreNumberPool
 
-**Before:**
+Before:
+
+```graphql
+start_range: {value: 100}
+end_range: {value: 1000}
+```
+
+After:
+
+```graphql
+ranges: [{start: 100, end: 1000}]
+```
+
+In `CoreNumberPoolUpdate` and `CoreNumberPoolUpsert`, `ranges` replaces all the ranges of the pool, so send both bounds. When the old mutation set only one bound, read the stored bounds of the pool first and send the stored value for the other bound.
+
+### 3. Python SDK code that creates or updates a CoreNumberPool
+
+Before:
+
+```python
+pool = await client.create(
+    kind="CoreNumberPool",
+    name="VLAN ID pool",
+    node="IpamVLAN",
+    node_attribute="vlan_id",
+    start_range=100,
+    end_range=1000,
+)
+await pool.save()
+```
+
+After:
+
+```python
+pool = await client.create(
+    kind="CoreNumberPool",
+    name="VLAN ID pool",
+    node="IpamVLAN",
+    node_attribute="vlan_id",
+    ranges=[{"start": 100, "end": 1000}],
+)
+await pool.save()
+```
+
+For code that sets `start_range.value` or `end_range.value` on an existing pool, declare the pool with `client.create()` with the same `name`, `node` and `node_attribute` and the complete `ranges` list, then call `save(allow_upsert=True)`. When the old code set only one bound, read the stored bounds first and keep the stored value for the other bound.
+
+### 4. Code that reads start_range or end_range
+
+Read the `ranges` relationship of the pool instead, and loop over every range. `start` and `end` are null for a range without that bound.
+
+GraphQL before:
+
+```graphql
+start_range { value }
+end_range { value }
+```
+
+GraphQL after:
+
+```graphql
+ranges {
+  edges {
+    node {
+      start { value }
+      end { value }
+      allocation_weight { value }
+    }
+  }
+}
+```
+
+Python SDK after:
+
+```python
+pool = await client.get(kind="CoreNumberPool", name__value="VLAN ID pool", include=["ranges"])
+await pool.ranges.fetch()
+for pool_range in pool.ranges.peers:
+    print(pool_range.peer.start.value, pool_range.peer.end.value, pool_range.peer.allocation_weight.value)
+```
+
+## Instructions
+
+1. Find every use of `start_range` and `end_range` in YAML and JSON schema files, in Python code, in `.gql` and `.graphql` files, and in GraphQL strings inside the code.
+2. Apply the migration rule that matches each use.
+3. Where the repository sets a version of `infrahub-sdk`, for example in `pyproject.toml` or `requirements.txt`, require 1.24.0 or later.
+4. List every file you changed and every place you left for review.
+
+## Notes
+
+- Do not change the bounds of any range.
+- Ignore uses of `start_range` and `end_range` that are not about Infrahub number pools.
+- When a change is unclear, leave the code as it is and report it.
+- Do not use `add()`, `extend()` or `remove()` on the `ranges` relationship of a pool.
+````
+
+</details>
+
+The agent finds only what is in the repository it reads. Repeat the prompt for each repository that holds schema files or code that uses number pools.
+
+## Upgrade infrahubctl and the Python SDK
+
+With Infrahub 1.12, use `infrahub-sdk` version 1.24.0 or later wherever you run `infrahubctl` or the Python SDK yourself:
+
+```shell
+pip install --upgrade 'infrahub-sdk[ctl]>=1.24.0'
+```
+
+Earlier versions do not support `ranges`, and can create a pool with the wrong ranges without returning an error.
+
+Generators, Transformations and checks that Infrahub runs from a Git repository use the SDK installed with Infrahub, so they need no upgrade. When you run a Generator with `infrahubctl` on your own machine, it uses your local SDK.
+
+## Migrate `NumberPool` attributes in your schema
+
+Infrahub creates one pool for each `NumberPool` attribute of your schema and sets the ranges of that pool from the `parameters` of the attribute. You change these ranges only in the schema.
+
+<details>
+    <summary><b>Prompt for AI assisted refactoring</b></summary>
+
+Copy this prompt into your AI coding agent at the root of the repository that holds your schema files. Review each change before you load the schema.
+
+````md
+# Task: Migrate NumberPool attributes from start_range and end_range to ranges
+
+## Context
+
+Infrahub 1.12 deprecates the `start_range` and `end_range` fields of number pools in favor of `ranges`, a list of ranges. Each range has `start`, `end` and `allocation_weight`, and each of them is optional. A later version of Infrahub removes `start_range` and `end_range`.
+
+## Migration rule
+
+### NumberPool attributes in schema files
+
+In the `parameters` of each attribute with `kind: NumberPool`, replace `start_range` and `end_range` with one range under `ranges`.
+
+Before:
 
 ```yaml
 parameters:
   start_range: 100
+  end_range: 4094
 ```
 
-**After:**
+After:
 
 ```yaml
 parameters:
   ranges:
     - start: 100
+      end: 4094
 ```
 
-Infrahub stores no value for the missing bound. A range without a `start` begins at `1`, and a range
-without an `end` stops at the largest number Infrahub supports. The pool page shows that number as
-`MAX`.
+When only one of the two is set, write only that bound, for example `- start: 100`. Do not keep `start_range` or `end_range` next to `ranges`.
 
-#### Several ranges
+## Instructions
 
-The range with the highest `weight` is allocated first. A missing weight counts as `0`; on a tie,
-the lowest `start` comes first. Nothing between two ranges is allocated.
+1. Find every attribute with `kind: NumberPool` in the YAML and JSON schema files whose `parameters` set `start_range` or `end_range`.
+2. Apply the migration rule to each of them.
+3. List the attributes you changed.
+
+## Notes
+
+- Do not change the bounds of any range.
+- Ignore uses of `start_range` and `end_range` that are not about Infrahub number pools.
+- When a change is unclear, leave the code as it is and report it.
+````
+
+</details>
+
+### Update the schema files
+
+In the `parameters` of each `NumberPool` attribute, replace `start_range` and `end_range` with one range under `ranges`. Each range has a `start` and an `end`, both included.
+
+When the attribute declares both bounds:
 
 ```yaml
+# Before
+parameters:
+  start_range: 100
+  end_range: 4094
+```
+
+```yaml
+# After
 parameters:
   ranges:
     - start: 100
-      end: 199
-      weight: 100
-    - start: 300
-      end: 399
+      end: 4094
 ```
 
-#### No range
+When the attribute declares one bound, declare only that bound:
 
-For an attribute that declares neither `ranges` nor `start_range` / `end_range`, Infrahub creates a
-pool with one range without a start or an end. The range runs from `1` to the largest number Infrahub
-supports, like the default range before 1.12. When a later load declares neither, the pool keeps the
-ranges it holds.
+```yaml
+# Before
+parameters:
+  start_range: 100
+```
 
-With `ranges: []`, Infrahub creates a pool that allocates nothing, or removes every range from an
-existing pool. The load is refused while an object holds a number from the pool.
+```yaml
+# After
+parameters:
+  ranges:
+    - start: 100
+```
 
-#### Refused declarations
+A range without a `start` begins at `1`, and a range without an `end` stops at the largest number Infrahub supports, so the pool allocates from the same numbers as before.
 
-| Declaration | Error |
-|---|---|
-| `start_range` or `end_range` with `ranges` | `start_range/end_range cannot be combined with ranges` |
-| Overlapping ranges | `Range 100 - 200 overlaps 150 - 300` |
-| `end` lower than `start` | `Range end (200) cannot be lower than start (300)` |
-| A range shortened below a number already allocated, for example `100`–`200` changed to `100`–`100` while `101` is allocated | `Attribute-level 'number_pool' constraint violation on schema 'InfraService'. Node (<SERVICE-NAME>) is not compliant. The error relates to field service_identifier=101.` |
+Remove `start_range` and `end_range` when you add `ranges`. Infrahub refuses a schema that declares both, with the error `start_range/end_range cannot be combined with ranges`.
 
 ### Load the schema
 
-If you're using Git integration, commit the changes and let Infrahub import them.
+If you use Git integration, commit the changes and let Infrahub import them.
 
-If you're using `infrahubctl`:
+If you use `infrahubctl`:
 
 1. Check the schema:
 
@@ -194,33 +295,97 @@ If you're using `infrahubctl`:
    infrahubctl schema load path/to/your/schema/files
    ```
 
-The load returns a deprecation warning for each attribute still using `start_range` or `end_range`.
-
-A schema pool is shared by every branch, and Infrahub sets its ranges from the schema of the default
-branch. When you load a range change on another branch, Infrahub accepts the load, but the pool keeps
-its current ranges until you merge the branch into the default branch.
+The load returns a deprecation warning for each attribute that still uses `start_range` or `end_range`.
 
 :::success
-If the load returns no deprecation warning and every `NumberPool` attribute declares `ranges`,
-your schema files are migrated.
+If the load returns no deprecation warning and every `NumberPool` attribute that sets bounds declares `ranges`, your schema files are migrated.
 :::
 
-### Change schema pool ranges only in the schema
+## Migrate code that creates or updates pools
 
-Infrahub refuses a change to the ranges of a schema pool made with a GraphQL mutation or with the
-Python SDK:
+These pools are the ones you create with a GraphQL mutation, the Python SDK or a Generator. In GraphQL and the Python SDK, their `pool_type` is `User`.
 
-- Setting `start_range` or `end_range` on the pool: `start_range or end_range can't be updated on
-  schema defined pools, update the schema in the default branch instead`.
-- Setting `ranges` on the pool, or creating, changing or deleting one of its `CoreNumberPoolRange`
-  objects: `ranges can't be updated on schema defined pools, update the schema in the default branch
-  instead`.
+From 1.12, creating a pool or changing its ranges also creates, updates or deletes `CoreNumberPoolRange` objects. Grant the accounts that run your scripts and Generators the matching create, update and delete permissions on `CoreNumberPoolRange`, in addition to their permissions on `CoreNumberPool`.
 
-## Migrate user pools
+<details>
+    <summary><b>Prompt for AI assisted refactoring</b></summary>
+
+Copy this prompt into your AI coding agent at the root of the repository that holds your scripts and Generators. Review each change before you run the code.
+
+````md
+# Task: Migrate code that creates or updates Infrahub number pools to ranges
+
+## Context
+
+Infrahub 1.12 deprecates the `start_range` and `end_range` fields of number pools in favor of `ranges`, a list of ranges. Each range has `start`, `end` and `allocation_weight`, and each of them is optional. A later version of Infrahub removes `start_range` and `end_range`.
+
+## Migration rules
+
+### GraphQL mutations that create or update a CoreNumberPool
+
+Before:
+
+```graphql
+start_range: {value: 100}
+end_range: {value: 1000}
+```
+
+After:
+
+```graphql
+ranges: [{start: 100, end: 1000}]
+```
+
+In `CoreNumberPoolUpdate` and `CoreNumberPoolUpsert`, `ranges` replaces all the ranges of the pool, so send both bounds. When the old mutation set only one bound, read the stored bounds of the pool first and send the stored value for the other bound.
+
+### Python SDK code that creates or updates a CoreNumberPool
+
+Before:
+
+```python
+pool = await client.create(
+    kind="CoreNumberPool",
+    name="VLAN ID pool",
+    node="IpamVLAN",
+    node_attribute="vlan_id",
+    start_range=100,
+    end_range=1000,
+)
+await pool.save()
+```
+
+After:
+
+```python
+pool = await client.create(
+    kind="CoreNumberPool",
+    name="VLAN ID pool",
+    node="IpamVLAN",
+    node_attribute="vlan_id",
+    ranges=[{"start": 100, "end": 1000}],
+)
+await pool.save()
+```
+
+For code that sets `start_range.value` or `end_range.value` on an existing pool, declare the pool with `client.create()` with the same `name`, `node` and `node_attribute` and the complete `ranges` list, then call `save(allow_upsert=True)`. When the old code set only one bound, read the stored bounds first and keep the stored value for the other bound.
+
+## Instructions
+
+1. Find every GraphQL mutation and every Python SDK call that creates or updates a `CoreNumberPool` with `start_range` or `end_range`, in Python code, in `.gql` and `.graphql` files, and in GraphQL strings inside the code.
+2. Apply the migration rule that matches each of them.
+3. List every file you changed and every place you left for review.
+
+## Notes
+
+- Do not change the bounds of any range.
+- Ignore uses of `start_range` and `end_range` that are not about Infrahub number pools.
+- When a change is unclear, leave the code as it is and report it.
+- Do not use `add()`, `extend()` or `remove()` on the `ranges` relationship of a pool.
+````
+
+</details>
 
 ### In GraphQL
-
-In GraphQL, the weight is `allocation_weight`.
 
 #### Create a pool
 
@@ -259,33 +424,23 @@ mutation {
 }
 ```
 
-A range can leave out `start` or `end`, for example `ranges: [{start: 100}]`. Infrahub reads the
-missing bound from the attribute the pool allocates for:
+A range can leave out `start` or `end`, for example `ranges: [{start: 100}]`. Infrahub then reads the missing bound from the attribute the pool allocates for:
 
-- A range without a `start` begins at the attribute's `min_value`, or at `1` when the attribute has
-  no `min_value` or a `min_value` below `1`.
-- A range without an `end` stops at the attribute's `max_value`, or at the largest number Infrahub
-  supports when the attribute has no `max_value`.
-
-When a `CoreNumberPoolCreate` sends none of `ranges`, `start_range` and `end_range`, Infrahub creates
-the pool with one range without a start or an end. The account that sends the mutation needs the
-permission to create `CoreNumberPoolRange` objects. To create a pool that holds no range, send
-`ranges: []`.
+- A range without a `start` begins at the `min_value` of the attribute, or at `1` when the attribute has no `min_value` or a `min_value` below `1`.
+- A range without an `end` stops at the `max_value` of the attribute, or at the largest number Infrahub supports when the attribute has no `max_value`.
 
 #### Update a pool
 
-`ranges` replaces all the pool's ranges. A range with the same bounds as a stored one keeps its
-weight unless `allocation_weight` is set. `ranges: []` removes every range.
+`ranges` replaces all the ranges of the pool. Send both bounds of the range, even when the old mutation changed only one. Read the stored bound first, as described in [Migrate code that reads pools](#migrate-code-that-reads-pools). The example below keeps the stored start, `100`.
+
+**Before:**
 
 ```graphql
 mutation {
   CoreNumberPoolUpdate(
     data: {
       id: "<POOL-ID>"
-      ranges: [
-        {start: 100, end: 199, allocation_weight: 100}
-        {start: 300, end: 399}
-      ]
+      end_range: {value: 2000}
     }
   ) {
     ok
@@ -293,14 +448,24 @@ mutation {
 }
 ```
 
-Each range must stay within the `min_value` and `max_value` of the attribute the pool allocates
-for. With `min_value: 1` and `max_value: 4094` on `vlan_id`, a range from `100` to `5000` is refused.
-A range that starts below `min_value` is refused the same way.
+**After:**
 
-### With the Python SDK
+```graphql
+mutation {
+  CoreNumberPoolUpdate(
+    data: {
+      id: "<POOL-ID>"
+      ranges: [{start: 100, end: 2000}]
+    }
+  ) {
+    ok
+  }
+}
+```
 
-The SDK takes the same fields as GraphQL: each range is a dictionary with `start`, `end` and
-`allocation_weight`, any of which can be left out.
+### With the Python SDK and in Generators
+
+The SDK takes the same fields as GraphQL. Each range is a dictionary with `start`, `end` and `allocation_weight`, and each of them can be left out.
 
 #### Create a pool
 
@@ -333,9 +498,17 @@ await pool.save()
 
 #### Update a pool
 
-To replace all the ranges of an existing pool, declare the pool with its complete list of ranges
-and save it with `allow_upsert=True`. Infrahub finds the pool by its name, keeps the ranges whose
-bounds match, creates the new ones and deletes the others.
+To change the ranges of an existing pool, declare the pool with its complete list of ranges and save it with `allow_upsert=True`. When the old code changed only one bound, read the stored bounds first, as described in [Migrate code that reads pools](#migrate-code-that-reads-pools), and keep the stored value for the other bound. Infrahub finds the pool by its name, keeps the ranges whose bounds match, creates the new ones and deletes the others.
+
+**Before:**
+
+```python
+pool = await client.get(kind="CoreNumberPool", name__value="VLAN ID pool")
+pool.end_range.value = 2000
+await pool.save()
+```
+
+**After:**
 
 ```python
 pool = await client.create(
@@ -343,53 +516,83 @@ pool = await client.create(
     name="VLAN ID pool",
     node="IpamVLAN",
     node_attribute="vlan_id",
-    ranges=[
-        {"start": 100, "end": 199, "allocation_weight": 100},
-        {"start": 300, "end": 399},
-    ],
+    ranges=[{"start": 100, "end": 2000}],
 )
 await pool.save(allow_upsert=True)
 ```
 
-To add, change or delete a single range, create, update or delete the matching
-`CoreNumberPoolRange` object:
-
-```python
-pool = await client.get(kind="CoreNumberPool", name__value="VLAN ID pool")
-
-new_range = await client.create(kind="CoreNumberPoolRange", start=3000, end=3999, pool=pool)
-await new_range.save()
-
-new_range.allocation_weight.value = 50
-await new_range.save()
-
-await new_range.delete()
-```
-
 :::warning
 
-Do not change ranges with `add()`, `extend()` or `remove()` on the pool's `ranges` relationship.
-The `CoreNumberPool` mutations accept ranges as bounds, not as references to `CoreNumberPoolRange`
-objects.
+Do not change ranges with `add()`, `extend()` or `remove()` on the `ranges` relationship of the pool. The `CoreNumberPool` mutations accept ranges as bounds, not as references to `CoreNumberPoolRange` objects.
 
 :::
 
-### How `start_range` and `end_range` behave on writes
+## Migrate code that reads pools
 
-Existing scripts that set `start_range` and `end_range`, in GraphQL or with the SDK, keep working
-while each pool holds one range, which is the case for every user pool after the upgrade.
+This applies to every pool, whether a `NumberPool` attribute or your own code created it. Before 1.12, a pool held one range, so code read `start_range` and `end_range`. A pool can now hold several ranges, so loop over all of them.
 
-- On a pool with one range, setting `start_range` or `end_range` changes the bounds of that range,
-  for example `end_range: 299` changes `100`–`199` to `100`–`299`. The bound you leave out keeps its
-  value, and setting a bound to null removes it from the range.
-- On a pool with several ranges, setting either field is refused. The error lists the ranges to edit
-  instead.
-- A request that creates a pool can set `start_range` alone or `end_range` alone. The range then has
-  no value for the other bound.
+<details>
+    <summary><b>Prompt for AI assisted refactoring</b></summary>
 
-## Update scripts that read pools
+Copy this prompt into your AI coding agent at the root of the repository that holds your scripts and queries. Review each change before you run the code.
 
-This section applies to schema pools and user pools.
+````md
+# Task: Migrate code that reads Infrahub number pools to ranges
+
+## Context
+
+Infrahub 1.12 deprecates the `start_range` and `end_range` fields of number pools in favor of `ranges`, a list of ranges. Each range has `start`, `end` and `allocation_weight`, and each of them is optional. A later version of Infrahub removes `start_range` and `end_range`.
+
+## Migration rule
+
+### Code that reads start_range or end_range
+
+Read the `ranges` relationship of the pool instead, and loop over every range. `start` and `end` are null for a range without that bound.
+
+GraphQL before:
+
+```graphql
+start_range { value }
+end_range { value }
+```
+
+GraphQL after:
+
+```graphql
+ranges {
+  edges {
+    node {
+      start { value }
+      end { value }
+      allocation_weight { value }
+    }
+  }
+}
+```
+
+Python SDK after:
+
+```python
+pool = await client.get(kind="CoreNumberPool", name__value="VLAN ID pool", include=["ranges"])
+await pool.ranges.fetch()
+for pool_range in pool.ranges.peers:
+    print(pool_range.peer.start.value, pool_range.peer.end.value, pool_range.peer.allocation_weight.value)
+```
+
+## Instructions
+
+1. Find every GraphQL query and every Python SDK call that reads `start_range` or `end_range` of a `CoreNumberPool`.
+2. Apply the migration rule to each of them.
+3. List every file you changed, and every place where the code assumes that a pool holds one range.
+
+## Notes
+
+- Do not change the bounds of any range.
+- Ignore uses of `start_range` and `end_range` that are not about Infrahub number pools.
+- When a change is unclear, leave the code as it is and report it.
+````
+
+</details>
 
 ### In GraphQL
 
@@ -432,13 +635,16 @@ query {
 
 `start` and `end` return null for a range without that bound.
 
-Reading the deprecated fields:
-
-- On a pool with one range, `start_range` and `end_range` return the bounds of that range, and null
-  for a bound the range leaves out.
-- On a pool with zero or several ranges, both return null.
-
 ### With the Python SDK
+
+**Before:**
+
+```python
+pool = await client.get(kind="CoreNumberPool", name__value="VLAN ID pool")
+print(pool.start_range.value, pool.end_range.value)
+```
+
+**After:**
 
 ```python
 pool = await client.get(kind="CoreNumberPool", name__value="VLAN ID pool", include=["ranges"])
@@ -451,37 +657,19 @@ for pool_range in pool.ranges.peers:
 
 ## Separate pools that overlap on a unique attribute
 
-With Infrahub version 1.12, Infrahub refuses a range that overlaps a range of another pool for the
-same kind and unique attribute, as described in
-[Pools for the same unique attribute](../../resource-manager/allocate-number#pools-on-a-unique-attribute).
-Infrahub checks ranges only when you save them, so pools whose ranges overlapped before the upgrade
-still overlap after it.
+From 1.12, Infrahub refuses a range that overlaps a range of another pool for the same kind and unique attribute, as described in [Pools for the same unique attribute](../../resource-manager/allocate-number#pools-on-a-unique-attribute). Infrahub checks ranges only when you save them, so pools whose ranges overlapped before the upgrade still overlap after it.
 
-When one of those pools allocates a number that the other pool tracks for an object, Infrahub
-refuses the save. The message names the pool, the number, the object that holds the number and the
-other pool, and tells you to attach the numbers in the overlap to one of the pools and change the
-ranges of the other pool.
+When one of those pools allocates a number that the other pool tracks for an object, Infrahub refuses the save. The error names the pool, the number, the object that holds the number and the other pool.
 
 To separate the two pools:
 
 1. Choose the pool that keeps the numbers in the overlap.
-2. List the numbers the other pool tracks in the overlap, in its allocations table or with
-   `InfrahubNumberPoolAllocations`, as described in
-   [View how much of a pool is in use](../../resource-manager/allocate-number#view-how-much-of-a-pool-is-in-use).
-3. Attach each of those numbers to the pool you chose: update the object with the number as `value`
-   and that pool as `from_pool`. Infrahub removes the number from the other pool, as described in
-   [Move a number to another pool](../../resource-manager/track-existing-numbers#move-a-number-to-another-pool).
-4. Change the ranges of the other pool so that they no longer overlap. Infrahub refuses this change
-   while the pool still tracks a number outside its new ranges, as described in
-   [Change the ranges of a pool](../../resource-manager/allocate-number#change-the-ranges-of-a-pool).
-   For a schema pool, change the ranges in the schema, as described in
-   [Update schema files](#update-schema-files).
+2. List the numbers the other pool tracks in the overlap, in its allocations table or with `InfrahubNumberPoolAllocations`, as described in [View how much of a pool is in use](../../resource-manager/allocate-number#view-how-much-of-a-pool-is-in-use).
+3. Attach each of those numbers to the pool you chose. To do so, update the object with the number as `value` and that pool as `from_pool`. Infrahub removes the number from the other pool, as described in [Move a number to another pool](../../resource-manager/track-existing-numbers#move-a-number-to-another-pool).
+4. Change the ranges of the other pool so that they no longer overlap, as described in [Change the ranges of a pool](../../resource-manager/allocate-number#change-the-ranges-of-a-pool). Infrahub refuses this change while the pool still tracks a number outside its new ranges. For a pool that a `NumberPool` attribute creates, change the ranges in the schema, as described in [Update the schema files](#update-the-schema-files).
 
 ## Related resources
 
-- [Number pools in the schema](../../schema/number-pool): declare a `NumberPool` attribute and the
-  ranges of its pool.
-- [Allocate numbers](../../resource-manager/allocate-number): create a number pool and allocate
-  numbers from it.
-- [Weighted allocation](../../resource-manager/weighted-allocation): set the order in which IP
-  address and IP prefix pools allocate their resources.
+- [Number pools in the schema](../../schema/number-pool): declare a `NumberPool` attribute and the ranges of its pool.
+- [Allocate numbers](../../resource-manager/allocate-number): create a number pool, set several ranges and their weights, and allocate numbers from the pool.
+- [Track existing numbers](../../resource-manager/track-existing-numbers): record in a pool the numbers your objects already hold.

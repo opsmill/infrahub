@@ -57,7 +57,7 @@ class NodeKindUpdateMigrationQuery01(MigrationQuery, NodeDuplicateQuery):
 
 class NodeKindUpdateMigration(SchemaMigration):
     name: str = "node.kind.update"
-    queries: Sequence[type[MigrationQuery]] = [NodeKindUpdateMigrationQuery01]  # type: ignore[assignment]
+    queries: Sequence[type[MigrationQuery]] = [NodeKindUpdateMigrationQuery01]
 
     async def execute(
         self,

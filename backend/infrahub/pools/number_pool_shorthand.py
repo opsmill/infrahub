@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from infrahub.core.node import Node
-    from infrahub.core.protocols import CoreNumberPoolRange
+    from infrahub.core.protocols import CoreNumberPool, CoreNumberPoolRange
     from infrahub.core.timestamp import Timestamp
     from infrahub.pools.number_pool_repository import NumberPoolRangeStore
 
@@ -18,6 +18,12 @@ def shorthand_bounds(bounds: Sequence[tuple[int | None, int | None]]) -> tuple[i
     if len(bounds) == 1:
         return bounds[0]
     return None, None
+
+
+def is_mirrored(pool: Node | CoreNumberPool, ranges: Sequence[CoreNumberPoolRange]) -> bool:
+    """Return whether the pool's start and end bounds already carry the shorthand of the range set."""
+    start, end = shorthand_bounds(bounds=[(pool_range.start.value, pool_range.end.value) for pool_range in ranges])
+    return pool.get_attribute("start_range").value == start and pool.get_attribute("end_range").value == end
 
 
 class NumberPoolShorthandMirror:
@@ -50,9 +56,8 @@ class NumberPoolShorthandMirror:
         if ranges is None:
             ranges = await self.repository.get_ranges(pool_id=pool.get_id(), at=at)
 
-        start, end = shorthand_bounds(bounds=[(pool_range.start.value, pool_range.end.value) for pool_range in ranges])
-
-        if pool.get_attribute("start_range").value == start and pool.get_attribute("end_range").value == end:
+        if is_mirrored(pool=pool, ranges=ranges):
             return
 
+        start, end = shorthand_bounds(bounds=[(pool_range.start.value, pool_range.end.value) for pool_range in ranges])
         await self.repository.save_shorthand(pool=pool, start=start, end=end, at=at, user_id=user_id)

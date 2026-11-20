@@ -72,6 +72,14 @@ describe("RelationshipHierarchicalField", () => {
     hierarchical: "IpamIPPrefix",
   });
 
+  const manyRelationship = generateRelationshipSchema({
+    name: "ip_prefixes",
+    peer: "IpamIPPrefix",
+    kind: "Attribute",
+    cardinality: "many",
+    hierarchical: "IpamIPPrefix",
+  });
+
   const poolProps = {
     name: "ip_prefix",
     label: "IP Prefix",
@@ -116,13 +124,7 @@ describe("RelationshipHierarchicalField", () => {
       <TestForm>
         <RelationshipHierarchicalField
           {...poolProps}
-          relationship={generateRelationshipSchema({
-            name: "ip_prefixes",
-            peer: "IpamIPPrefix",
-            kind: "Attribute",
-            cardinality: "many",
-            hierarchical: "IpamIPPrefix",
-          })}
+          relationship={manyRelationship}
           defaultValue={DEFAULT_FORM_FIELD_VALUE}
         />
       </TestForm>
@@ -131,6 +133,37 @@ describe("RelationshipHierarchicalField", () => {
     // A pool only satisfies a cardinality-one field, so no strip even though the schema gave one.
     await expect.element(component.getByText("IP Prefix")).toBeVisible();
     await expect.poll(() => component.getByRole("tab", { name: "From pool" }).query()).toBeNull();
+  });
+
+  test("opens the dropdown of a cardinality-many relationship at the width of the field", async () => {
+    // GIVEN
+    const component = await render(
+      <TestForm>
+        <RelationshipHierarchicalField
+          name="ip_prefixes"
+          label="IP Prefixes"
+          relationship={manyRelationship}
+          defaultValue={DEFAULT_FORM_FIELD_VALUE}
+        />
+      </TestForm>
+    );
+    const openButton = component.getByRole("button", { name: "Open IpamIPPrefix" });
+    const fieldWidth = Math.round(
+      component
+        .getByTestId("relationship-hierarchical-many-input")
+        .element()
+        .getBoundingClientRect().width
+    );
+
+    // WHEN
+    await openButton.click();
+
+    // THEN
+    const dropdown = component.getByRole("dialog");
+    await expect.element(dropdown).toBeVisible();
+    await expect
+      .poll(() => Math.round(dropdown.element().getBoundingClientRect().width))
+      .toBe(fieldWidth);
   });
 
   test("presents the two ways of satisfying the field as tabs, starting on Object", async () => {

@@ -29,7 +29,7 @@ class ObjectConflictValidatorRecorder:
         validator = await self.get_or_create_validator(proposed_change)
         await self.initialize_validator(validator)
 
-        previous_checks = await validator.checks.get_peers(db=self.db, peer_type=Node)  # type: ignore[attr-defined]
+        previous_checks = await validator.checks.get_peers(db=self.db, peer_type=Node)
         previous_checks_by_conflict_id = {check.enriched_conflict_id.value: check for check in previous_checks.values()}  # type: ignore[attr-defined]
         is_success = False
 
@@ -95,6 +95,25 @@ class ObjectConflictValidatorRecorder:
         await self.finalize_validator(validator, is_success)
         return current_checks
 
+    async def clear_failure(self, proposed_change_id: str, recorded_before: Timestamp) -> None:
+        """Record a passing result when the validator's last result is a failure completed before `recorded_before`.
+
+        A failure completed at or after `recorded_before`, or with no completion time, is kept.
+        """
+        try:
+            proposed_change = await NodeManager.get_one_by_id_or_default_filter(
+                id=proposed_change_id, kind=CoreProposedChange, db=self.db
+            )
+        except NodeNotFoundError:
+            return
+        validator = await self.get_validator(proposed_change=proposed_change)
+        if validator is None or validator.conclusion.value.value != ValidatorConclusion.FAILURE.value:
+            return
+        completed_at = validator.completed_at.value
+        if not completed_at or Timestamp(completed_at) >= recorded_before:
+            return
+        await self.record_conflicts(proposed_change_id=proposed_change_id, conflicts=[])
+
     async def get_validator(self, proposed_change: CoreProposedChange) -> CoreValidator | None:
         validations = await proposed_change.validations.get_peers(db=self.db)
 
@@ -123,8 +142,8 @@ class ObjectConflictValidatorRecorder:
     async def initialize_validator(self, validator: CoreValidator) -> None:
         validator.state.value = ValidatorState.IN_PROGRESS.value  # type: ignore[misc]  # ty: ignore[invalid-assignment]
         validator.conclusion.value = ValidatorConclusion.UNKNOWN.value  # type: ignore[misc]  # ty: ignore[invalid-assignment]
-        validator.started_at.value = Timestamp().to_string()  # type: ignore[attr-defined]
-        validator.completed_at.value = ""  # type: ignore[attr-defined]
+        validator.started_at.value = Timestamp().to_string()
+        validator.completed_at.value = ""
         await validator.save(db=self.db)
 
     async def finalize_validator(self, validator: CoreValidator, is_success: bool) -> None:
@@ -132,5 +151,5 @@ class ObjectConflictValidatorRecorder:
         validator.conclusion.value = (  # type: ignore[misc]  # ty: ignore[invalid-assignment]
             ValidatorConclusion.SUCCESS.value if is_success else ValidatorConclusion.FAILURE.value
         )
-        validator.completed_at.value = Timestamp().to_string()  # type: ignore[attr-defined]
+        validator.completed_at.value = Timestamp().to_string()
         await validator.save(db=self.db)

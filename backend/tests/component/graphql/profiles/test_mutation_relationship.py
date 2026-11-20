@@ -264,8 +264,8 @@ async def test_relationship_add_to_a_profile_runs_no_profile_query_per_added_nod
     many = await _count_relationship_add(db=db, branch=default_branch, account_session=editor_session, peer_count=6)
 
     growth = {name: many[name] - few[name] for name in many.keys() | few.keys() if many[name] != few[name]}
-    # Four more peers cost four relationship writes and four peer reads, as any RelationshipAdd does.
-    assert growth == {"node_list_get_attribute": 4, "node_list_get_info": 4, "relationship_create": 4}
+    # Four more peers cost four relationship writes and no peer read, because the mutation reads all peers at once.
+    assert growth == {"relationship_create": 4}
     assert few["profile_get_data"] == 0
 
 

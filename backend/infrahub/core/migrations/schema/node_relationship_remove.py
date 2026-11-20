@@ -12,6 +12,7 @@ from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import retry_db_transaction
 
 from ..query import MigrationBaseQuery
+from ..query.selection import MigrationSelectionQuery
 from ..shared import MigrationResult, RelationshipSchemaMigration
 
 if TYPE_CHECKING:
@@ -38,7 +39,7 @@ class RelationshipMigrationQuery(MigrationBaseQuery):
         super().__init__(**kwargs)
 
 
-class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery):
+class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery, MigrationSelectionQuery):
     """Close the graph data for a relationship, given a precomputed set of parameters.
 
     For every node of the given kinds, every ``Relationship`` vertex carrying one of the given
@@ -62,27 +63,9 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery):
         self.query_params = query_params
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        params = self.query_params
-
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
-        self.params.update(branch_params)
-        self.params["kinds_to_skip"] = params.kinds_to_skip
-        self.params["rel_identifiers"] = params.rel_identifiers
-        self.params["at"] = self.at.to_string()
-        self.params["branch_name"] = self.branch.name
-        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
-        self.params["user_id"] = self.user_id
-        self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
-        self.params["rel_prop"] = {
-            "branch": self.branch.name,
-            "branch_level": self.branch.hierarchy_level,
-            "status": RelationshipStatus.DELETED.value,
-            "from": self.at.to_string(),
-            "from_user_id": self.user_id,
-        }
-
-        query_template = """
+    def render_selection(self) -> str:
+        branch_filter, _ = self.branch.get_query_filter_path(at=self.at.to_string())
+        return """
         // ----------------------------------------------------------
         // Find all active nodes of the kind the relationship was removed from
         // ----------------------------------------------------------
@@ -128,6 +111,30 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery):
         WITH active_node, rel, far_peer, far_edge
         WHERE far_edge.status = "active"
           AND none(label IN labels(far_peer) WHERE label IN $kinds_to_skip)
+        """ % {"node_kinds": "|".join(self.query_params.node_kinds), "branch_filter": branch_filter}
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        params = self.query_params
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        self.params.update(branch_params)
+        self.params["kinds_to_skip"] = params.kinds_to_skip
+        self.params["rel_identifiers"] = params.rel_identifiers
+        self.params["at"] = self.at.to_string()
+        self.params["branch_name"] = self.branch.name
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
+        self.params["user_id"] = self.user_id
+        self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
+        self.params["rel_prop"] = {
+            "branch": self.branch.name,
+            "branch_level": self.branch.hierarchy_level,
+            "status": RelationshipStatus.DELETED.value,
+            "from": self.at.to_string(),
+            "from_user_id": self.user_id,
+        }
+
+        query_template = """
+        %(selection)s
 
         // ----------------------------------------------------------
         // Update metadata on the Relationship vertex and node on default/global branch
@@ -215,7 +222,7 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery):
         """
         query = query_template % {
             "branch_filter": branch_filter,
-            "node_kinds": "|".join(params.node_kinds),
+            "selection": self.render_selection(),
             "close_unretained_agnostic_fields": CLOSE_UNRETAINED_AGNOSTIC_FIELDS,
         }
         self.add_to_query(query)
@@ -223,7 +230,7 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery):
 
 class NodeRelationshipRemoveMigration(RelationshipSchemaMigration):
     name: str = "node.relationship.remove"
-    queries: Sequence[type[RelationshipMigrationQuery]] = [NodeRelationshipRemoveMigrationQuery]  # type: ignore[assignment]
+    queries: Sequence[type[RelationshipMigrationQuery]] = [NodeRelationshipRemoveMigrationQuery]
 
     def _build_query_params(self, db: InfrahubDatabase, branch: Branch) -> RelationshipRemoveQueryParams | None:
         """Analyse the schema and return the query parameters, or None if there is nothing to close.

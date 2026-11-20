@@ -1087,7 +1087,7 @@ async def generate_request_artifact_definition(
 
     group = await fetch_artifact_definition_targets(client=client, branch=model.branch, definition=artifact_definition)
 
-    current_members = [member.id for member in group.members.peers]
+    current_members = {member.id for member in group.members.peers}
 
     artifacts_by_member = {}
     stale_artifacts = []
@@ -1119,10 +1119,11 @@ async def generate_request_artifact_definition(
         convert_query_response = transform.convert_query_response.value
 
     batch = await client.create_batch()
+    member_filter = model.get_member_filter()
     for relationship in group.members.peers:
         member = relationship.peer
         artifact_id = artifacts_by_member.get(member.id)
-        if not model.selects_member(member_id=member.id, artifact_id=artifact_id):
+        if not member_filter.selects(member_id=member.id, artifact_id=artifact_id):
             continue
 
         request_artifact_generate_model = RequestArtifactGenerate(
