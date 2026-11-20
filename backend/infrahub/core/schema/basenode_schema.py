@@ -419,10 +419,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
     @property
     def has_parent_relationship(self) -> bool:
-        for rel in self.relationships:
-            if rel.kind == RelationshipKind.PARENT:
-                return True
-        return False
+        return any(rel.kind == RelationshipKind.PARENT for rel in self.relationships)
 
     @property
     def valid_input_names(self) -> list[str]:

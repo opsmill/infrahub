@@ -549,11 +549,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Return True if a worktree with a given identifier already exist."""
         worktrees = self.get_worktrees(timeout_seconds=timeout_seconds)
 
-        for worktree in worktrees:
-            if worktree.identifier == identifier:
-                return True
-
-        return False
+        return any(worktree.identifier == identifier for worktree in worktrees)
 
     def get_worktree(self, identifier: str, timeout_seconds: float | None = None) -> Worktree:
         """Access a specific worktree by its identifier.
