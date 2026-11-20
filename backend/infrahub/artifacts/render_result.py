@@ -129,10 +129,13 @@ class RenderResultAcceptor:
         check_render_id(render_id=render_id, claims=claims)
         branch = await registry.get_branch(db=self.db, branch=claims.branch)
 
-        async with artifact_render_lock(branch=claims.branch, artifact_id=claims.artifact_id):
-            artifact = await registry.manager.get_one(
-                db=self.db, id=claims.artifact_id, branch=branch, kind=CoreArtifact
-            )
+        # One transaction, so a reader never sees the artifact Ready with the checksum of the previous content.
+        artifact_event: ArtifactCreatedEvent | ArtifactUpdatedEvent | None = None
+        async with (
+            artifact_render_lock(branch=claims.branch, artifact_id=claims.artifact_id),
+            self.db.start_transaction() as db,
+        ):
+            artifact = await registry.manager.get_one(db=db, id=claims.artifact_id, branch=branch, kind=CoreArtifact)
             if artifact is None:
                 raise RenderRequestNotActiveError()
 
@@ -140,7 +143,7 @@ class RenderResultAcceptor:
             content_type: str | None = None
             if body.status == RENDER_RESULT_SUCCESS:
                 definition = await artifact.definition.get_peer(
-                    db=self.db, peer_type=CoreArtifactDefinition, raise_on_error=True
+                    db=db, peer_type=CoreArtifactDefinition, raise_on_error=True
                 )
                 content_type = str(definition.get_attribute("content_type").get_value())
                 if body.content_type is not None and body.content_type != content_type:
@@ -158,15 +161,18 @@ class RenderResultAcceptor:
             if content is None or content_type is None:
                 artifact.get_attribute("status").value = ArtifactStatus.ERROR.value
                 artifact.render_deadline.value = None
-                await artifact.save(db=self.db, user_id=SYSTEM_USER_ID)
+                await artifact.save(db=db, user_id=SYSTEM_USER_ID)
                 outcome = RenderResultOutcome(
                     artifact_id=artifact.id, branch=branch.name, status=ArtifactStatus.ERROR, message=body.message
                 )
             else:
-                outcome = await self._store_content(
-                    branch=branch, artifact=artifact, content=content, content_type=content_type
+                outcome, artifact_event = await self._store_content(
+                    db=db, branch=branch, artifact=artifact, content=content, content_type=content_type
                 )
-            validator_ids = await self._conclude_waiting_checks(branch=branch, outcome=outcome)
+            validator_ids = await self._conclude_waiting_checks(db=db, branch=branch, outcome=outcome)
+
+        if artifact_event is not None:
+            await self.event_service.send(event=artifact_event)
 
         for validator_id in validator_ids:
             await recompute_validator(
@@ -177,22 +183,24 @@ class RenderResultAcceptor:
             )
         return outcome
 
-    async def _conclude_waiting_checks(self, branch: Branch, outcome: RenderResultOutcome) -> set[str]:
+    async def _conclude_waiting_checks(
+        self, db: InfrahubDatabase, branch: Branch, outcome: RenderResultOutcome
+    ) -> set[str]:
         """Write the outcome to the proposed-change checks of this artifact that wait for it, and return their validators.
 
         A check waits when its conclusion is still unknown and its proposed change's source branch is the branch the
         artifact was rendered on.
         """
         checks = await registry.manager.query(
-            db=self.db,
+            db=db,
             schema=CoreArtifactCheck,
             filters={"artifact_id__value": outcome.artifact_id, "conclusion__value": ValidatorConclusion.UNKNOWN.value},
         )
         validator_ids: set[str] = set()
         for check in checks:
-            validator = await check.validator.get_peer(db=self.db, peer_type=CoreValidator, raise_on_error=True)
+            validator = await check.validator.get_peer(db=db, peer_type=CoreValidator, raise_on_error=True)
             proposed_change = await validator.proposed_change.get_peer(
-                db=self.db, peer_type=CoreProposedChange, raise_on_error=True
+                db=db, peer_type=CoreProposedChange, raise_on_error=True
             )
             if proposed_change.source_branch.value != branch.name:
                 continue
@@ -209,13 +217,14 @@ class RenderResultAcceptor:
             check.checksum.value = outcome.checksum
             check.storage_id.value = outcome.storage_id
             check.artifact_id.value = outcome.artifact_id
-            await check.save(db=self.db, user_id=SYSTEM_USER_ID)
+            await check.save(db=db, user_id=SYSTEM_USER_ID)
             validator_ids.add(validator.id)
         return validator_ids
 
     async def _store_content(
-        self, branch: Branch, artifact: CoreArtifact, content: str, content_type: str
-    ) -> RenderResultOutcome:
+        self, db: InfrahubDatabase, branch: Branch, artifact: CoreArtifact, content: str, content_type: str
+    ) -> tuple[RenderResultOutcome, ArtifactCreatedEvent | ArtifactUpdatedEvent | None]:
+        """Store the content and set the artifact Ready, and return the event to send once the transaction commits."""
         checksum = artifact_checksum(content=content)
         previous_checksum = artifact.checksum.value
         previous_storage_id = artifact.storage_id.value
@@ -233,30 +242,29 @@ class RenderResultAcceptor:
         artifact.storage_id.value = storage_id
         artifact.get_attribute("content_type").value = content_type
         artifact.render_deadline.value = None
-        await artifact.save(db=self.db, user_id=SYSTEM_USER_ID)
+        await artifact.save(db=db, user_id=SYSTEM_USER_ID)
 
+        event: ArtifactCreatedEvent | ArtifactUpdatedEvent | None = None
         if changed and storage_id:
-            target = await artifact.object.get_peer(db=self.db, peer_type=CoreArtifactTarget, raise_on_error=True)
+            target = await artifact.object.get_peer(db=db, peer_type=CoreArtifactTarget, raise_on_error=True)
             definition = await artifact.definition.get_peer(
-                db=self.db, peer_type=CoreArtifactDefinition, raise_on_error=True
+                db=db, peer_type=CoreArtifactDefinition, raise_on_error=True
             )
             event_class = ArtifactUpdatedEvent if previous_checksum else ArtifactCreatedEvent
-            await self.event_service.send(
-                event=event_class(
-                    node_id=artifact.id,
-                    target_id=target.id,
-                    target_kind=target.get_kind(),
-                    artifact_definition_id=definition.id,
-                    artifact_definition_name=definition.name.value,
-                    checksum=checksum,
-                    checksum_previous=previous_checksum,
-                    storage_id=storage_id,
-                    storage_id_previous=previous_storage_id,
-                    meta=EventMeta.from_context(context=_system_event_context(branch=branch), branch=branch),
-                )
+            event = event_class(
+                node_id=artifact.id,
+                target_id=target.id,
+                target_kind=target.get_kind(),
+                artifact_definition_id=definition.id,
+                artifact_definition_name=definition.name.value,
+                checksum=checksum,
+                checksum_previous=previous_checksum,
+                storage_id=storage_id,
+                storage_id_previous=previous_storage_id,
+                meta=EventMeta.from_context(context=_system_event_context(branch=branch), branch=branch),
             )
 
-        return RenderResultOutcome(
+        outcome = RenderResultOutcome(
             artifact_id=artifact.id,
             branch=branch.name,
             status=ArtifactStatus.READY,
@@ -264,6 +272,7 @@ class RenderResultAcceptor:
             storage_id=storage_id,
             changed=changed,
         )
+        return outcome, event
 
 
 def _system_event_context(branch: Branch) -> EventContext:

@@ -165,7 +165,7 @@ description: "Task list for artifacts rendered by an external engine"
   - In `backend/infrahub/graphql/queries/task.py::_serialize_node`, leave `query_result` out of the webhook flow-run parameters of these events.
 
   Component test: the `Events` query returns the event without `query_result`.
-- [ ] T024 [US1] Integration test in `backend/tests/integration/artifacts/test_external_artifact.py`, with an in-process reference engine (plain HTTP, no Infrahub libraries). Cover quickstart scenario 1, including the merge rendering on `main`, and scenario 5 (no token in events, task parameters or logs).
+- [X] T024 [US1] Integration test in `backend/tests/integration/artifacts/test_external_artifact.py`, with an in-process reference engine (plain HTTP, no Infrahub libraries). Cover quickstart scenario 1, including the merge rendering on `main`, and scenario 5 (no token in events, task parameters or logs).
 
 **Checkpoint**: User Story 1 works on its own with the engine in `ok` mode.
 
