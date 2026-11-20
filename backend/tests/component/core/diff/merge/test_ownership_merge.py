@@ -922,7 +922,7 @@ async def test_owners_of_a_branch_aware_attribute_of_a_branch_agnostic_node_are_
     await verify_graph(db=db)
 
 
-async def test_merge_keeps_the_global_owner_edges_of_a_branch_agnostic_node(
+async def test_owner_write_on_a_branch_writes_the_owners_of_a_branch_agnostic_node_on_the_global_branch(
     db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, dataset: OwnerDataset
 ) -> None:
     group_id = dataset.ids["security"]
