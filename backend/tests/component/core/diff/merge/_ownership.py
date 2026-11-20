@@ -8,14 +8,20 @@ from uuid import uuid4
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
+from infrahub.core import registry
 from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants.database import DatabaseEdgeType
-from infrahub.core.diff.model.path import BranchTrackingId
+from infrahub.core.diff.diff_locker import DiffLocker
 from infrahub.core.diff.repository.repository import DiffRepository
+from infrahub.core.merge.constraints import MergeConstraintValidator
+from infrahub.core.merge.graph_merger import GraphMerger
+from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
+from infrahub.core.validators.constraint_merge import build_constraint_info_merger
+from infrahub.core.validators.determiner import build_constraint_validator_determiner
+from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.exceptions import MergeConflictsUnresolvedError
 from infrahub.workers.dependencies import build_database
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.ownership import OWNERS_FIELD, OwnerDataset
@@ -51,15 +57,31 @@ async def merge(db: InfrahubDatabase, branch: Branch, at: Timestamp | None = Non
 
     """
     diff_repository = await get_component_registry().get_component(DiffRepository, db=db, branch=branch)
-    unresolved = [
-        conflict_path
-        async for conflict_path, conflict in diff_repository.get_all_conflicts_for_diff(
-            diff_branch_name=branch.name, tracking_id=BranchTrackingId(name=branch.name)
-        )
-        if conflict.selected_branch is None or conflict.resolvable is False
-    ]
-    if unresolved:
-        raise MergeConflictsUnresolvedError(conflict_paths=unresolved, branch_name=branch.name)
+    default_branch = registry.get_branch_from_registry()
+    graph_merger = GraphMerger(
+        db=db,
+        source_branch=branch,
+        destination_branch=default_branch,
+        diff_coordinator=await get_diff_coordinator(db=db, branch=branch),
+        diff_merger=await get_diff_merger(db=db, branch=branch),
+        diff_repository=diff_repository,
+        diff_locker=DiffLocker(),
+        schema_analyzer=MergeSchemaAnalyzer(
+            db=db,
+            source_branch=branch,
+            destination_branch=default_branch,
+            diff_repository=diff_repository,
+            schema_manager=registry.schema,
+        ),
+        constraint_validator=MergeConstraintValidator(
+            branch=branch,
+            diff_repository=diff_repository,
+            determiner=build_constraint_validator_determiner(db=db, branch=branch),
+            constraint_info_merger=build_constraint_info_merger(),
+            migration_validator=schema_validate_migrations,
+        ),
+    )
+    await graph_merger._validate_no_unresolved_conflicts()
     await merge_without_conflict_check(db=db, branch=branch, at=at)
 
 
