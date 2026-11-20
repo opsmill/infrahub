@@ -148,14 +148,15 @@ CALL (s) {
     RETURN collect(latest) AS held
 }
 // ------------
-// Give the owners to the set with the new key, which is looked for on all branches as a write of owners does
+// Give the owners to the set with the new key, which is looked for on all branches and on each vertex of the UUID
+// as a write of owners does
 // ------------
 CALL (n, attached, held) {
     WITH n, attached, held
     WHERE $new_set_key IS NOT NULL
-    CALL (n) {
-        OPTIONAL MATCH (n)-[:HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(existing:OwnerSet)
-        WHERE %(same_new_key)s
+    CALL (n, attached) {
+        OPTIONAL MATCH (:Node {uuid: n.uuid})-[e:HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(existing:OwnerSet)
+        WHERE type(e) = type(attached) AND %(same_new_key)s
         RETURN existing
         ORDER BY elementId(existing)
         LIMIT 1
