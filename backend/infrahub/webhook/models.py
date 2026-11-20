@@ -22,6 +22,7 @@ from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubReposito
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import EventTrigger, ExecuteWorkflow, TriggerDefinition, TriggerType, jinja_parameter
 from infrahub.trigger.setup import gather_all_automations
+from infrahub.webhook.constants import RENDER_TOKEN_HEADER
 from infrahub.workflows.catalogue import WEBHOOK_PROCESS
 
 logger = logging.getLogger(__name__)
@@ -207,7 +208,8 @@ class EventContext(BaseModel):
 MASKED_HEADER_VALUE = "***"
 WEBHOOK_SIGNATURE_HEADER = "webhook-signature"
 SENSITIVE_HEADER_NAMES = frozenset(
-    name.lower() for name in ("Authorization", "Proxy-Authorization", "Cookie", "Set-Cookie", "X-API-Key")
+    name.lower()
+    for name in ("Authorization", "Proxy-Authorization", "Cookie", "Set-Cookie", "X-API-Key", RENDER_TOKEN_HEADER)
 )
 
 

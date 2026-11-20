@@ -6,6 +6,8 @@ from pydantic import Field
 from .constants import EVENT_NAMESPACE
 from .models import InfrahubEvent
 
+RENDER_REQUEST_QUERY_RESULT_FIELD = "query_result"
+
 
 class ArtifactEvent(InfrahubEvent):
     """Event generated when an artifact has been created or updated."""

@@ -20,6 +20,12 @@ class RenderTokenClaims(BaseModel):
     branch: str
 
 
+class RenderTokenRequest(RenderTokenClaims):
+    """The non-secret fields from which a delivery attempt mints the token of one render request."""
+
+    deadline: datetime
+
+
 def mint_render_token(render_id: str, artifact_id: str, branch: str, deadline: datetime) -> str:
     claims = {
         "type": RENDER_TOKEN_TYPE,

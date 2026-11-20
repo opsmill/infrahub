@@ -116,7 +116,7 @@ description: "Task list for artifacts rendered by an external engine"
 - [X] T015 [P] [US1] Concurrency tests in `backend/tests/component/artifacts/test_render_concurrency.py`:
   - a callback for render R runs at the same time as a new request R2, and the artifact never ends `Ready` with R's content while `render_request_id` is R2;
   - two callbacks for checks of the same validator leave the validator `completed` with the right conclusion.
-- [ ] T016 [P] [US1] Unit test in `backend/tests/unit/webhook/test_render_token_delivery.py`:
+- [X] T016 [P] [US1] Unit test in `backend/tests/unit/webhook/test_render_token_delivery.py`:
   - delivery of a render-requested event adds `X-Infrahub-Render-Token`;
   - `${INFRAHUB_RENDER_TOKEN}` in a transformed body is replaced;
   - the token is absent from the payload passed to `WebhookLogFormatter`;
@@ -155,12 +155,12 @@ description: "Task list for artifacts rendered by an external engine"
   - In `backend/infrahub/artifacts/tasks.py::create`, for the external kind, call `request_external_render`, write the check with `conclusion=unknown` and the message "waiting for external engine", and return a pending result.
   - In `backend/infrahub/core/validators/checks_runner.py::run_checks_and_update_validator`, leave the validator `in_progress` when any result is pending.
   - Add a shared `recompute_validator(validator_id)` there. Under the validator lock, it reads the stored checks, sets the state and conclusion, and sends the existing passed or failed validator events.
-- [ ] T022 [US1] Deliver the token in `backend/infrahub/webhook/tasks/process.py::webhook_send`:
+- [X] T022 [US1] Deliver the token in `backend/infrahub/webhook/tasks/process.py::webhook_send`:
   - for `infrahub.artifact.render_requested` events only, mint the token on each attempt from `data.render_id`, `data.artifact_id`, `data.branch` and `data.deadline`;
   - add the `X-Infrahub-Render-Token` header;
   - replace `${INFRAHUB_RENDER_TOKEN}` in the serialized body;
   - pass a redacted body to `backend/infrahub/webhook/log_formatter.py::WebhookLogFormatter`.
-- [ ] T023 [US1] Hide query data from read APIs:
+- [X] T023 [US1] Hide query data from read APIs:
   - In `backend/infrahub/task_manager/event/query.py`, leave `query_result` out of the payload for `infrahub.artifact.render_requested`.
   - In `backend/infrahub/graphql/queries/task.py::_serialize_node`, leave `query_result` out of the webhook flow-run parameters of these events.
 

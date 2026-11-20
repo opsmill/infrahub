@@ -17,7 +17,8 @@ from prefect.logging import get_run_logger
 from prefect.runtime import flow_run
 from prefect.states import Cancelled, Failed
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.artifacts.render_token import RenderTokenRequest, mint_render_token
+from infrahub.core.constants import EventType, InfrahubKind
 from infrahub.events.models import EventContext as InfrahubEventContext
 from infrahub.message_bus.types import KVTTL
 from infrahub.task_manager.flow_run.constants import WEBHOOK_HTTP_ARTIFACT_KEY, WEBHOOK_HTTP_ARTIFACT_TYPE
@@ -29,6 +30,8 @@ from ..capture import CapturedHttp, build_http_capture
 from ..classifier import EXPECTED_DELIVERY_ERRORS, WebhookDeliveryError, WebhookFailureClassifier
 from ..constants import (
     CACHE_KEY_PREFIX,
+    RENDER_TOKEN_HEADER,
+    RENDER_TOKEN_PLACEHOLDER,
     WEBHOOK_SEND_ATTEMPTS,
     WEBHOOK_SEND_RETRIES,
     WEBHOOK_SEND_RETRY_DELAY_SECONDS,
@@ -95,8 +98,19 @@ async def _record_http_capture(capture: CapturedHttp) -> None:
         get_run_logger().warning(f"Could not record the delivery capture: {exc}")
 
 
+def render_request_from_event(event_type: str, event_data: dict[str, Any]) -> RenderTokenRequest | None:
+    if event_type != EventType.ARTIFACT_RENDER_REQUESTED.value:
+        return None
+    return RenderTokenRequest.model_validate(event_data)
+
+
 async def webhook_post(
-    webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any, attempt: int | None
+    webhook_id: str,
+    webhook_kind: str,
+    webhook_name: str,
+    payload: Any,
+    attempt: int | None,
+    render_request: RenderTokenRequest | None = None,
 ) -> Response:
     """Resolve the webhook config, log the outgoing request, and POST the prepared payload.
 
@@ -118,7 +132,15 @@ async def webhook_post(
     try:
         webhook = await _resolve_webhook(webhook_id=webhook_id, webhook_kind=webhook_kind)
         url = webhook.url
-        headers = webhook.build_headers(payload=payload)
+        # The token is minted here, per attempt, so it never reaches a flow-run parameter, an event or a log line.
+        sent_payload = payload
+        render_token: str | None = None
+        if render_request is not None:
+            render_token = mint_render_token(**render_request.model_dump())
+            sent_payload = ujson.loads(ujson.dumps(payload).replace(RENDER_TOKEN_PLACEHOLDER, render_token))
+        headers = webhook.build_headers(payload=sent_payload)
+        if render_token is not None:
+            headers[RENDER_TOKEN_HEADER] = render_token
         redacted_headers = webhook.redact_headers(headers)
         log.info(
             get_webhook_log_formatter().outgoing_request(
@@ -134,7 +156,7 @@ async def webhook_post(
         with trace.get_tracer(__name__).start_as_current_span("webhook.post") as span:
             span.set_attribute("webhook.id", webhook_id)
             span.set_attribute("webhook.kind", webhook_kind)
-            response = await webhook.send_payload(payload=payload, http_service=http_service, headers=headers)
+            response = await webhook.send_payload(payload=sent_payload, http_service=http_service, headers=headers)
             span.set_attribute("http.status_code", response.status_code)
             span.set_attribute("webhook.request_body_bytes", len(response.request.content))
         latency_ms = (time.monotonic() - started) * 1_000
@@ -172,7 +194,12 @@ async def webhook_post(
     retry_delay_seconds=WEBHOOK_SEND_RETRY_DELAY_SECONDS,
 )
 async def webhook_send(
-    webhook_id: str, webhook_kind: str, webhook_name: str, payload: Any, branch_name: str | None = None
+    webhook_id: str,
+    webhook_kind: str,
+    webhook_name: str,
+    payload: Any,
+    branch_name: str | None = None,
+    render_request: RenderTokenRequest | None = None,
 ) -> Response | State:
     """Send the webhook delivery, retrying the whole send on failure.
 
@@ -203,6 +230,7 @@ async def webhook_send(
             webhook_name=webhook_name,
             payload=payload,
             attempt=attempt,
+            render_request=render_request,
         )
     except WebhookDeliveryError as error:
         elapsed_ms = (time.monotonic() - started) * 1_000
@@ -343,6 +371,7 @@ async def webhook_process(
         webhook_name=webhook_name,
         payload=payload,
         branch_name=branch_name,
+        render_request=render_request_from_event(event_type=event_type, event_data=event_data),
         return_state=True,
     )
     if state.is_completed():

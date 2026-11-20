@@ -6,7 +6,8 @@ from graphene import Field, Int, List, NonNull, ObjectType, String
 from prefect.client.orchestration import get_client
 from prefect.client.schemas.objects import StateType
 
-from infrahub.core.constants import TaskConclusion
+from infrahub.core.constants import EventType, TaskConclusion
+from infrahub.events.artifact_action import RENDER_REQUEST_QUERY_RESULT_FIELD
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.queries.task_actions import TaskActionGenerator
 from infrahub.graphql.types.task import TaskNodes, TaskState
@@ -58,7 +59,7 @@ class FlowRunConnectionSerializer:
             "conclusion": CONCLUSION_STATE_MAPPING.get(str(flow.state_name), TaskConclusion.UNKNOWN).value,
             "state": flow.state_type,
             "progress": run.progress,
-            "parameters": flow.parameters,
+            "parameters": _readable_parameters(flow.parameters),
             "branch": run.branch,
             "tags": flow.tags,
             "workflow": run.workflow_name,
@@ -75,6 +76,25 @@ class FlowRunConnectionSerializer:
             "http_request": http.get("request"),
             "http_response": http.get("response"),
         }
+
+
+def _without_key(value: Any, key: str) -> Any:
+    if isinstance(value, dict):
+        return {item_key: _without_key(item, key) for item_key, item in value.items() if item_key != key}
+    if isinstance(value, list):
+        return [_without_key(item, key) for item in value]
+    return value
+
+
+def _readable_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
+    """Leave out the query data of render-request webhook runs, at any depth because a transform can place it anywhere."""
+    is_render_request = (
+        parameters.get("event_type") == EventType.ARTIFACT_RENDER_REQUESTED.value
+        or parameters.get("render_request") is not None
+    )
+    if not is_render_request:
+        return parameters
+    return _without_key(parameters, RENDER_REQUEST_QUERY_RESULT_FIELD)
 
 
 def _build_fetch_options(fields: dict[str, Any], log_limit: int | None, log_offset: int | None) -> FlowRunFetchOptions:

@@ -134,6 +134,47 @@ class TestFlowRunConnectionSerializer:
         assert node["http_response"] is None
         assert node["error"] is None
 
+    def test_query_result_is_hidden_from_render_request_webhook_parameters(self) -> None:
+        render_data = {"render_id": "render-1", "query_result": {"device": "edge-01"}}
+        runs = [
+            EnrichedFlowRun(
+                flow_run=make_flow_run(
+                    parameters={
+                        "event_type": "infrahub.artifact.render_requested",
+                        "event_payload": {"data": render_data},
+                    }
+                ),
+                workflow_name="webhook_process",
+            ),
+            EnrichedFlowRun(
+                flow_run=make_flow_run(
+                    parameters={
+                        "payload": {"event": "infrahub.artifact.render_requested", "data": render_data},
+                        "render_request": {"render_id": "render-1"},
+                    }
+                ),
+                workflow_name="webhook_send",
+            ),
+            EnrichedFlowRun(
+                flow_run=make_flow_run(
+                    parameters={"event_type": "infrahub.node.created", "event_payload": {"data": render_data}}
+                ),
+                workflow_name="webhook_process",
+            ),
+        ]
+
+        edges = FlowRunConnectionSerializer().serialize(result=FlowRunQueryResult(count=3, runs=runs))["edges"]
+
+        assert [edge["node"]["parameters"] for edge in edges] == [
+            {"event_type": "infrahub.artifact.render_requested", "event_payload": {"data": {"render_id": "render-1"}}},
+            {
+                "payload": {"event": "infrahub.artifact.render_requested", "data": {"render_id": "render-1"}},
+                "render_request": {"render_id": "render-1"},
+            },
+            {"event_type": "infrahub.node.created", "event_payload": {"data": render_data}},
+        ]
+        assert render_data == {"render_id": "render-1", "query_result": {"device": "edge-01"}}
+
     def test_unknown_state_name_falls_back_to_unknown_conclusion(self) -> None:
         run = EnrichedFlowRun(flow_run=make_flow_run(state_name="Surprise"))
 

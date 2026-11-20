@@ -8,6 +8,9 @@ WEBHOOK_SEND_ATTEMPTS: int = WEBHOOK_SEND_RETRIES + 1  # the initial try plus it
 
 RESPONSE_BODY_CAPTURE_LIMIT = 10_000
 
+RENDER_TOKEN_HEADER = "X-Infrahub-Render-Token"
+RENDER_TOKEN_PLACEHOLDER = "${INFRAHUB_RENDER_TOKEN}"
+
 
 class WebhookAction(StrEnum):
     CONFIGURE = "configure"

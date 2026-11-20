@@ -1,5 +1,6 @@
 import uuid
 from collections.abc import AsyncGenerator
+from datetime import UTC, datetime, timedelta
 from typing import Any, Generator
 
 import pytest
@@ -14,6 +15,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.events.artifact_action import ArtifactRenderRequestedEvent
 from infrahub.events.branch_action import BranchCreatedEvent, BranchRebasedEvent
 from infrahub.events.group_action import (
     GroupAutoCreateCappedEvent,
@@ -1136,3 +1138,65 @@ async def test_event_query_group_auto_create_empty_filter_restricts_to_auto_crea
     }
     for edge in edges:
         assert edge["node"]["event"] in auto_create_event_names
+
+
+QUERY_RENDER_REQUESTED_EVENT = """
+query($event_type: [String!]) {
+  InfrahubEvent(event_type: $event_type, limit: 50) {
+    edges {
+      node {
+        id
+        event
+        ... on StandardEvent {
+          payload
+        }
+      }
+    }
+  }
+}
+"""
+
+
+async def test_event_query_hides_the_query_result_of_render_requests(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    prefect_client: PrefectClient,
+    session_admin: AccountSession,
+) -> None:
+    event = ArtifactRenderRequestedEvent(
+        render_id=f"render-{_TEST_ID}",
+        callback_url=f"https://infrahub.example.com/api/artifact/render/render-{_TEST_ID}",
+        deadline=datetime.now(tz=UTC) + timedelta(hours=1),
+        artifact_id="artifact-1",
+        artifact_name="startup-config",
+        artifact_definition_id="definition-1",
+        artifact_definition_name="startup-config",
+        transformation_name="ansible-startup-config",
+        transformation_version="1.5.0",
+        content_type="text/plain",
+        target_id="device-1",
+        target_kind="DcimDevice",
+        target_name="edge-01",
+        branch=default_branch.name,
+        query_result={"DcimDevice": {"edges": [{"node": {"name": {"value": "edge-01"}}}]}},
+        meta=dummy_event_meta(branch=default_branch),
+    )
+    await send_events(client=prefect_client, events=[event])
+
+    result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_RENDER_REQUESTED_EVENT,
+        variables={"event_type": ["infrahub.artifact.render_requested"]},
+        account_session=session_admin,
+    )
+
+    assert result.errors is None
+    assert result.data
+    nodes = [edge["node"] for edge in result.data["InfrahubEvent"]["edges"] if edge["node"]["id"] == str(event.meta.id)]
+    assert len(nodes) == 1
+    data = nodes[0]["payload"]["data"]
+    assert "query_result" not in data
+    assert data["render_id"] == f"render-{_TEST_ID}"
+    assert data["target_name"] == "edge-01"

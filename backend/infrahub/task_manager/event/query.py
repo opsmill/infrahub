@@ -9,7 +9,8 @@ from prefect.events.schemas.events import Event as PrefectEventModel
 from prefect.exceptions import PrefectHTTPStatusError
 from pydantic import BaseModel, Field, TypeAdapter
 
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, EventType, InfrahubKind
+from infrahub.events.artifact_action import RENDER_REQUEST_QUERY_RESULT_FIELD
 from infrahub.events.group_action import (
     GroupAutoCreateCappedEvent,
     GroupAutoCreatedEvent,
@@ -365,6 +366,17 @@ class PrefectEventData(PrefectEventModel):
 
         return event_specifics
 
+    def _readable_payload(self) -> dict[str, Any]:
+        """Return the payload without the query data of a render request, which can hold data the reader may not view."""
+        if self.event != EventType.ARTIFACT_RENDER_REQUESTED.value:
+            return self.payload
+        data = {
+            key: value
+            for key, value in self.payload.get("data", {}).items()
+            if key != RENDER_REQUEST_QUERY_RESULT_FIELD
+        }
+        return {**self.payload, "data": data}
+
     def to_graphql(self) -> dict[str, Any]:
         response = {
             "id": str(self.id),
@@ -373,7 +385,7 @@ class PrefectEventData(PrefectEventModel):
             "account_id": self.get_account_id(),
             "occurred_at": self.occurred,
             "has_children": self.has_children(),
-            "payload": self.payload,
+            "payload": self._readable_payload(),
             "level": self.get_level(),
             "primary_node": self.get_primary_node(),
             "parent_id": self.get_parent(),
