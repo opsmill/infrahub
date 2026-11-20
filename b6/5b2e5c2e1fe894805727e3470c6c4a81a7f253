@@ -1,0 +1,56 @@
+dev/specs/ifc-2167-placeholder-automations-db/critiques/critique-20261120-112830.md
+  s_87c006488d9945::t_cb5bcd1a07c4a4 1-172
+dev/specs/ifc-2167-placeholder-automations-db/quickstart.md
+  s_87c006488d9945::t_d0d55e59f8bc30 54-55
+dev/specs/ifc-2167-placeholder-automations-db/data-model.md
+  s_87c006488d9945::t_0d4ecf67cd6ca5 11,17,21
+  s_87c006488d9945::t_f1c90401d8750c 29
+  s_87c006488d9945::t_e50d09f4e006cd 64-67
+  s_87c006488d9945::t_de035cfecd5ca2 72,76-77,79,81-83
+dev/specs/ifc-2167-placeholder-automations-db/plan.md
+  s_87c006488d9945::t_566c50b8e60b34 37
+  s_87c006488d9945::t_0342ed6505ff6c 82
+  s_87c006488d9945::t_ab13e3f1e333fc 1
+  s_87c006488d9945::t_d75faac2057828 51
+  s_87c006488d9945::t_683665e42443a2 105,109,111,113-120,124,126-130
+  s_87c006488d9945::t_f57430830e8f0f 27
+  s_87c006488d9945::t_02f41789034280 149-151
+  s_87c006488d9945::t_3f2031841b1171 137,139
+  s_87c006488d9945::t_454dc4ef67364c 9,14-16
+  s_87c006488d9945::t_3fcb44b50dcb96 33
+dev/specs/ifc-2167-placeholder-automations-db/contracts/definition-record-store.md
+  s_87c006488d9945::t_a2f7caf71cea4a 42-47
+  s_87c006488d9945::t_79827a67a08819 52,58
+  s_87c006488d9945::t_a91ea756b8ea4b 21-22
+dev/specs/ifc-2167-placeholder-automations-db/research.md
+  s_87c006488d9945::t_928d37046c5034 11-13
+  s_87c006488d9945::t_c8931b02b90726 22
+  s_87c006488d9945::t_3e3ccbd90ac641 90-91,93,95-98,100,102
+  s_87c006488d9945::t_5fcda9ff92c552 133-134
+  s_87c006488d9945::t_5140aaa71bf743 51-53
+dev/specs/ifc-2167-placeholder-automations-db/spec.md
+  s_87c006488d9945::t_52ba25873e66a4 75-76
+  s_87c006488d9945::t_d3e2914d6db554 124
+  s_87c006488d9945::t_7ae76fe3557b48 1
+  s_87c006488d9945::t_c4d200ee1df5b4 112
+  s_87c006488d9945::t_4d4b3c1377967e 129
+  s_87c006488d9945::t_ac3e8eb85548ef 147-148
+  s_87c006488d9945::t_38781601697886 104-105
+  s_87c006488d9945::t_39a206c05d39a3 120-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b65b2e5c2e1fe894805727e3470c6c4a81a7f253",
+  "prompts": {},
+  "sessions": {
+    "s_87c006488d9945": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a8bb1ce-b0c5-4f44-883b-500fdb8504b6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
