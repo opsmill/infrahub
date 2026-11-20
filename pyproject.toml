@@ -607,13 +607,6 @@ allow-dunder-method-names = [
     "PLR0915", # Too many statements
 ]
 
-"backend/infrahub/core/query/node.py" = [
-    ##################################################################################################
-    # Refactor code and remove the ignore rule
-    ##################################################################################################
-    "RUF073",  # `%` operator used on an f-string
-]
-
 "backend/infrahub/core/utils.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule

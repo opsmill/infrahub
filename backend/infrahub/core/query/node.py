@@ -597,9 +597,10 @@ class NodeCreateAllQuery(NodeQuery):
             "dest_node_subquery": dest_node_subquery,
         }
 
+        labels = ":".join(self.node.get_labels())
         query = f"""
         MATCH (root:Root)
-        CREATE (n:Node:%(labels)s $node_prop )
+        CREATE (n:Node:{labels} $node_prop )
         CREATE (n)-[r:IS_PART_OF $node_branch_prop ]->(root)
         {attrs_nonindexed_query if self.params["attrs"] else ""}
         {attrs_indexed_query if self.params["attrs_indexed"] else ""}
@@ -610,9 +611,7 @@ class NodeCreateAllQuery(NodeQuery):
         {rels_in_query if self.params["rels_in"] else ""}
         WITH distinct n
         MATCH (n)-[:HAS_ATTRIBUTE|IS_RELATED]-(rn)-[:HAS_VALUE|IS_RELATED]-(rv)
-        """ % {
-            "labels": ":".join(self.node.get_labels()),
-        }
+        """
 
         self.params["at"] = at.to_string()
 
