@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Sequence
+    from collections.abc import Sequence
 
     from infrahub.database import InfrahubDatabase
 
@@ -19,7 +19,7 @@ class MigrationSelectionQuery(Query):
 
     selected_node: ClassVar[str] = "active_node"
 
-    def __init__(self, node_ids: Collection[str] | None = None, **kwargs: Any) -> None:
+    def __init__(self, node_ids: frozenset[str] | list[str] | None = None, **kwargs: Any) -> None:
         self.node_ids: tuple[str, ...] | None = None if node_ids is None else tuple(node_ids)
         super().__init__(**kwargs)
         if self.node_ids is not None:
