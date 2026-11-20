@@ -1795,10 +1795,7 @@ class SchemaBranch:
         def check_if_need_to_update_label(node: MainSchemaTypes) -> bool:
             if not node.label:
                 return True
-            for item in node.relationships + node.attributes:
-                if not item.label:
-                    return True
-            return False
+            return any(not item.label for item in node.relationships + node.attributes)
 
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)

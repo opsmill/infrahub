@@ -556,7 +556,6 @@ allow-dunder-method-names = [
     "S311",     # Standard pseudo-random generators are not suitable for crypto
     "SIM103",   # Return the condition directly
     "SIM108",   # Use ternary operator instead of `if`-`else`-block
-    "SIM110",   # Use `return any(...)` instead of `for` loop
     "SIM114",   # Combine `if` branches using logical `or` operator
     "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
     "SLF001",   # Private member accessed
