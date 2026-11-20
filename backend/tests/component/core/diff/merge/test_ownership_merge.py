@@ -8,7 +8,7 @@ import pytest
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.changelog.builder import build_diff_changelog_collector
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, DiffAction, InfrahubKind
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, DiffAction, InfrahubKind
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.field_specifiers_map import NodeFieldSpecifierMap
 from infrahub.core.diff.model.path import ConflictSelection, DiffNode, DiffRoot
@@ -29,7 +29,6 @@ from infrahub.core.ownership.models import (
     field_holder,
 )
 from infrahub.core.ownership.repository import OwnershipRepository
-from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
 from infrahub.exceptions import MergeConflictsUnresolvedError
@@ -45,6 +44,7 @@ from tests.helpers.ownership import (
     site_template,
     template_copies,
 )
+from tests.helpers.schema.ownership import MIXED_SUPPORT_SCHEMA
 
 from ..get_one_node import get_one_diff_node
 from ._ownership import (
@@ -941,29 +941,6 @@ async def test_two_branches_that_each_set_the_first_owners_of_a_relationship_lea
     )
     assert await _count_field_owner_sets(db=db, branch=default_branch, node_id=device_id) == (1, 1)
     await verify_graph(db=db)
-
-
-MIXED_SUPPORT_SCHEMA = SchemaRoot(
-    nodes=[
-        NodeSchema(
-            name="AwareThing",
-            namespace="Test",
-            attributes=[
-                AttributeSchema(name="name", kind="Text", unique=True),
-                AttributeSchema(name="serial", kind="Text", optional=True, branch=BranchSupportType.AGNOSTIC),
-            ],
-        ),
-        NodeSchema(
-            name="SharedThing",
-            namespace="Test",
-            branch=BranchSupportType.AGNOSTIC,
-            attributes=[
-                AttributeSchema(name="name", kind="Text", unique=True, branch=BranchSupportType.AGNOSTIC),
-                AttributeSchema(name="note", kind="Text", optional=True, branch=BranchSupportType.AWARE),
-            ],
-        ),
-    ]
-)
 
 
 async def _create_mixed_support_node(db: InfrahubDatabase, default_branch: Branch, kind: str) -> str:
