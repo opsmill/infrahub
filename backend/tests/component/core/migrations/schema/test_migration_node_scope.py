@@ -26,6 +26,9 @@ from infrahub.core.migrations.schema.attribute_name_update import (
     AttributeNameUpdateMigration,
     AttributeNameUpdateMigrationQuery01,
 )
+from infrahub.core.migrations.schema.attribute_supports_generated_schema import (
+    AttributeSupportsGeneratedSchemaMigration,
+)
 from infrahub.core.migrations.schema.node_attribute_add import (
     NodeAttributeAddMigration,
     NodeAttributeAddMigrationQuery01,
@@ -44,6 +47,7 @@ from infrahub.core.migrations.schema.node_remove import (
     NodeRemoveMigrationQueryIn,
     NodeRemoveMigrationQueryOut,
 )
+from infrahub.core.migrations.schema.node_uniqueness_constraints_update import NodeUniquenessConstraintsUpdateMigration
 from infrahub.core.migrations.schema.tasks import schema_path_migrate
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
@@ -802,3 +806,78 @@ async def test_number_pool_attribute_add_on_an_empty_set_allocates_no_number(
     }
 
     await verify_graph(db=db, kinds=[SERVER_KIND])
+
+
+# ---------------------------------------------------------------------------
+# Migrations that change every profile and template node whatever the set
+# ---------------------------------------------------------------------------
+
+
+def _color_unique(branch: Branch) -> SchemaMigration:
+    return build_attribute_migration(
+        AttributeSupportsGeneratedSchemaMigration, branch, WIDGET_KIND, "color", unique=True
+    )
+
+
+def _color_in_uniqueness_constraints(branch: Branch) -> SchemaMigration:
+    schema = registry.schema.get_schema_branch(name=branch.name)
+    previous_node = schema.get(name=WIDGET_KIND)
+    new_node = schema.duplicate().get(name=WIDGET_KIND)
+    new_node.uniqueness_constraints = [*(new_node.uniqueness_constraints or []), ["color__value"]]
+    return NodeUniquenessConstraintsUpdateMigration(
+        previous_node_schema=previous_node,
+        new_node_schema=new_node,
+        schema_path=SchemaPath(
+            path_type=SchemaPathType.NODE,
+            schema_kind=WIDGET_KIND,
+            field_name="uniqueness_constraints",
+            property_name="uniqueness_constraints",
+        ),
+    )
+
+
+@dataclass
+class IgnoredScopeCase:
+    name: str
+    build: Callable[[Branch], SchemaMigration]
+    expected_changed: dict[str, set[str]]
+    """Names of the nodes the run changes, per kind: each of them no longer holds the color attribute."""
+
+
+IGNORED_SCOPE_CASES = [
+    IgnoredScopeCase(
+        name="attribute-unique-update",
+        build=_color_unique,
+        expected_changed={PROFILE_WIDGET_KIND: {"pw1"}, TEMPLATE_WIDGET_KIND: {"tw1"}},
+    ),
+    IgnoredScopeCase(
+        name="uniqueness-constraints-update",
+        build=_color_in_uniqueness_constraints,
+        expected_changed={PROFILE_WIDGET_KIND: {"pw1"}},
+    ),
+]
+
+
+@pytest.mark.parametrize("case", IGNORED_SCOPE_CASES, ids=lambda case: case.name)
+async def test_profile_and_template_migration_changes_every_profile_and_template_node(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: IgnoredScopeCase
+) -> None:
+    nodes = selection_dataset.nodes
+    migration = case.build(default_branch)
+    expected_changed = _ids_per_kind(nodes, case.expected_changed)
+    changed_names = set().union(*case.expected_changed.values())
+
+    at = Timestamp()
+    scope_ids = _ids(nodes, {"w1", "w4", "b1"}) | {UNKNOWN_NODE_ID}
+    result = await migration.execute(
+        migration_input=MigrationInput(db=db, at=at, node_ids=frozenset(scope_ids)), branch=default_branch
+    )
+    assert result.errors == []
+
+    assert await changed_node_ids(db=db, kinds=CHECKED_KINDS, at=at) == expected_changed
+    holders = await _active_attribute_values_on_default_branch(
+        db=db, default_branch=default_branch, node_ids=_ids(nodes, changed_names), attribute_names=["color"]
+    )
+    assert holders == {}
+
+    await verify_graph(db=db, kinds=WIDGET_POPULATION)

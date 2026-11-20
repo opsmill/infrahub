@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence  # noqa: TC003  needed for pydantic
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from infrahub.core import registry
 from infrahub.core.migrations.query.attribute_remove import AttributeRemoveQuery
@@ -112,6 +112,7 @@ class TemplatesAttributeRemoveMigrationQuery(AttributeMigrationQuery, AttributeR
 class AttributeSupportsGeneratedSchemaMigration(AttributeSchemaMigration):
     name: str = "attribute.supports_generated_schema.update"
     queries: Sequence[type[MigrationBaseQuery]] = []
+    applies_node_scope: ClassVar[bool] = False
 
     async def execute(
         self,
