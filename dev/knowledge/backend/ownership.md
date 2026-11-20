@@ -273,9 +273,10 @@ the holders that are not attributes are in `core/ownership/fields.py` (see [Diff
   On another branch, the new set gets its edges on that branch until the merge runs the migration on the default
   branch.
 - The removal of a kind (`core/migrations/schema/node_remove.py`) closes the owner edges and the source edges that
-  start at each node of the kind, at its attributes and at its `OwnerSet` vertices. It also closes the `HAS_OWNER`,
-  `HAS_SOURCE` and `HAS_OWNER_SOURCE` edges that end at a node of the kind. The other node keeps the edge to its
-  `OwnerSet`.
+  start at each node of the kind, at its attributes and at its `OwnerSet` vertices. For the edges that end at a node
+  of the kind, it does what a delete of the node does: it closes each `HAS_OWNER_SOURCE` edge, and the `HAS_OWNER`
+  and `HAS_SOURCE` edges from a node, an attribute or an `OwnerSet` stay, so a removed owner or source stays in the
+  list. It closes the `HAS_OWNER` and `HAS_SOURCE` edges from a `Relationship` vertex.
 - The attribute rename (`AttributeRenameQuery`) copies each edge type between the attribute and each other vertex,
   so an attribute keeps a source and an owner that are the same node.
 - The attribute removal (`AttributeRemoveQuery`) ends each edge type between the attribute and each other vertex,

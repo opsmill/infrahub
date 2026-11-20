@@ -8,6 +8,7 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, SchemaPathType
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_remove import NodeRemoveMigration
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.ownership.models import (
@@ -27,6 +28,8 @@ from infrahub.database.validation import verify_graph
 from tests.helpers.ownership import USER_ID, add_node
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
@@ -191,11 +194,23 @@ async def test_removal_of_a_kind_closes_the_owner_edges_and_the_source_edges_of_
     await verify_graph(db=db)
 
 
+async def _delete_cars(db: InfrahubDatabase, branch: Branch) -> None:
+    cars = await NodeManager.query(db=db, schema=CAR_KIND, branch=branch)
+    await NodeManager.delete(db=db, nodes=cars, branch=branch, cascade_delete=False)
+
+
 @pytest.mark.parametrize("on_branch", [pytest.param(False, id="default_branch"), pytest.param(True, id="branch")])
-async def test_removal_of_a_kind_closes_the_edges_to_its_nodes_that_are_owners_or_sources(
-    db: InfrahubDatabase, default_branch: Branch, cars_and_person: CarsAndPerson, on_branch: bool
+@pytest.mark.parametrize(
+    "remove_cars", [pytest.param(_remove_car_kind, id="kind_removal"), pytest.param(_delete_cars, id="node_delete")]
+)
+async def test_removal_of_a_kind_keeps_the_owners_and_sources_that_are_its_nodes_as_a_delete_does(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    cars_and_person: CarsAndPerson,
+    on_branch: bool,
+    remove_cars: Callable[..., Awaitable[None]],
 ) -> None:
-    """The person keeps the edge to its set of owners, which then holds no owner."""
+    """A deleted owner or source stays in the list of its holder, and the mark of a copy from the deleted node closes."""
     accord_id, camry_id = cars_and_person.car_ids
     person_id = cars_and_person.person_id
     person_schema = registry.schema.get(name=PERSON_KIND, branch=default_branch, duplicate=False)
@@ -203,24 +218,20 @@ async def test_removal_of_a_kind_closes_the_edges_to_its_nodes_that_are_owners_o
     name = field_holder(schema=person_schema, field_name="name")
     assert cars_set
     assert name
-    for holder, template_id in (
-        (NODE_HOLDER, camry_id),
-        (NODE_SOURCES_HOLDER, None),
-        (cars_set, camry_id),
-        (name, camry_id),
-    ):
+    holders = (NODE_HOLDER, NODE_SOURCES_HOLDER, cars_set, name)
+    for holder in holders:
         await _write(
             db=db,
             branch=default_branch,
             node_id=person_id,
             holder=holder,
             owner_ids=(accord_id,),
-            template_id=template_id,
+            template_id=None if holder is NODE_SOURCES_HOLDER else camry_id,
         )
     branch = await create_branch(branch_name="branch2", db=db) if on_branch else default_branch
     person_edges = await _active_edges(db=db, branch=default_branch, node_ids=[person_id])
 
-    await _remove_car_kind(db=db, branch=branch)
+    await remove_cars(db=db, branch=branch)
 
     assert person_edges == [
         ("Attribute", "HAS_OWNER", CAR_KIND),
@@ -233,11 +244,14 @@ async def test_removal_of_a_kind_closes_the_edges_to_its_nodes_that_are_owners_o
         (PERSON_KIND, "HAS_SOURCE", CAR_KIND),
     ]
     assert await _active_edges(db=db, branch=branch, node_ids=[person_id]) == [
-        (PERSON_KIND, "HAS_OWNER_SET", "OwnerSet")
+        ("Attribute", "HAS_OWNER", CAR_KIND),
+        ("OwnerSet", "HAS_OWNER", CAR_KIND),
+        (PERSON_KIND, "HAS_OWNER", CAR_KIND),
+        (PERSON_KIND, "HAS_OWNER_SET", "OwnerSet"),
+        (PERSON_KIND, "HAS_SOURCE", CAR_KIND),
     ]
-    assert await _read(db=db, branch=branch, node_id=person_id) == {
-        person_id: StoredNodeOwnership(node_id=person_id, kind=PERSON_KIND)
-    }
+    stored = await _read(db=db, branch=branch, node_id=person_id)
+    assert dict(stored[person_id].holders) == {holder: StoredOwnerState(owner_ids=(accord_id,)) for holder in holders}
     if on_branch:
         assert await _active_edges(db=db, branch=default_branch, node_ids=[person_id]) == person_edges
     await verify_graph(db=db)
