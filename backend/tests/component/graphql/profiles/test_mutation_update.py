@@ -6,9 +6,11 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from structlog.testing import capture_logs
 
+from infrahub.core.changelog.models import RelationshipCardinalityOneChangelog
+from infrahub.core.constants import MetadataOptions, RelationshipCardinality, RelationshipKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -28,6 +30,8 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
+ROOM = NodeSchema(name="Room", namespace="Test", attributes=[AttributeSchema(name="name", kind="Text", unique=True)])
+
 DEVICE = NodeSchema(
     name="Device",
     namespace="Test",
@@ -36,12 +40,41 @@ DEVICE = NodeSchema(
         AttributeSchema(name="name", kind="Text", unique=True),
         AttributeSchema(name="description", kind="Text", optional=True),
     ],
+    relationships=[
+        RelationshipSchema(
+            name="room",
+            peer="TestRoom",
+            kind=RelationshipKind.GENERIC,
+            optional=True,
+            cardinality=RelationshipCardinality.ONE,
+        )
+    ],
+)
+
+RACK = NodeSchema(
+    name="Rack",
+    namespace="Test",
+    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    relationships=[
+        RelationshipSchema(
+            name="room",
+            peer="TestRoom",
+            kind=RelationshipKind.GENERIC,
+            optional=False,
+            cardinality=RelationshipCardinality.ONE,
+        )
+    ],
 )
 
 
 @pytest.fixture
 async def device_schema(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> None:
-    await load_schema(db=db, schema=SchemaRoot(nodes=[DEVICE]), branch_name=default_branch.name)
+    await load_schema(db=db, schema=SchemaRoot(nodes=[ROOM, DEVICE]), branch_name=default_branch.name)
+
+
+@pytest.fixture
+async def rack_schema(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> None:
+    await load_schema(db=db, schema=SchemaRoot(nodes=[ROOM, RACK]), branch_name=default_branch.name)
 
 
 async def _create_node(db: InfrahubDatabase, branch: Branch, kind: str, **data: Any) -> Node:
@@ -206,6 +239,53 @@ async def test_profile_update_succeeds_when_the_refresh_submission_fails(
     ]
 
 
+async def test_node_update_records_the_relationship_that_a_profile_sets(
+    db: InfrahubDatabase, default_branch: Branch, device_schema: None, session_admin: AccountSession
+) -> None:
+    room = await _create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
+    profile = await _create_node(
+        db=db, branch=default_branch, kind="ProfileTestDevice", profile_name="profile-1", profile_priority=10, room=room
+    )
+    device = await _create_node(db=db, branch=default_branch, kind="TestDevice", name="device-1")
+    events = MemoryInfrahubEvent()
+    gql_params = await prepare_graphql_params(
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+        service=await InfrahubServices.new(workflow=WorkflowRecorder(), event=events),
+    )
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=f"""
+        mutation {{
+            TestDeviceUpdate(data: {{ id: "{device.id}", profiles: [{{ id: "{profile.id}" }}] }}) {{ ok }}
+        }}
+        """,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert gql_params.context.background
+    await gql_params.context.background()
+
+    assert result.errors is None
+    device_events = [
+        event for event in events.events if isinstance(event, NodeUpdatedEvent) and event.node_id == device.id
+    ]
+    assert [sorted(event.fields) for event in device_events] == [["profiles", "room"]]
+    room_changelog = device_events[0].changelog.relationships["room"]
+    assert isinstance(room_changelog, RelationshipCardinalityOneChangelog)
+    assert (room_changelog.peer_id, room_changelog.peer_id_previous) == (room.id, None)
+    device = await NodeManager.get_one(
+        db=db, branch=default_branch, id=device.id, include_metadata=MetadataOptions.SOURCE, raise_on_error=True
+    )
+    assert [
+        (rel.peer_id, rel.is_from_profile)
+        for rel in await device.get_relationship(name="room").get_relationships(db=db)
+    ] == [(room.id, True)]
+
+
 @dataclass(frozen=True)
 class CountedMutation:
     query_counts: Counter[str]
@@ -275,3 +355,61 @@ async def test_profile_update_without_peers_in_payload_does_not_read_them(
     assert many.workflow.submit_calls == []
     renamed = await NodeManager.get_one(db=db, branch=default_branch, id=profiles[6].id, raise_on_error=True)
     assert renamed.profile_name.value == "renamed-6"
+
+
+async def test_profile_update_refuses_to_clear_a_required_relationship_that_a_node_inherits(
+    db: InfrahubDatabase, default_branch: Branch, rack_schema: None, session_admin: AccountSession
+) -> None:
+    """The refresh flow could not clear the relationship, so the request refuses the change before it commits."""
+    room = await _create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
+    profile = await _create_node(
+        db=db, branch=default_branch, kind="ProfileTestRack", profile_name="profile-1", profile_priority=10, room=room
+    )
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch, account_session=session_admin)
+    gql_params.context.service = await InfrahubServices.new(workflow=WorkflowRecorder())
+    create_result = await graphql(
+        schema=gql_params.schema,
+        source=f"""
+        mutation {{
+            TestRackCreate(data: {{ name: {{ value: "rack-1" }}, profiles: [{{ id: "{profile.id}" }}] }}) {{
+                object {{ id }}
+            }}
+        }}
+        """,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert create_result.errors is None
+    assert create_result.data
+    rack_id = create_result.data["TestRackCreate"]["object"]["id"]
+    workflow = WorkflowRecorder()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch, account_session=session_admin)
+    gql_params.context.service = await InfrahubServices.new(workflow=workflow)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=f"""
+        mutation {{
+            ProfileTestRackUpdate(data: {{ id: "{profile.id}", room: null }}) {{ ok }}
+        }}
+        """,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is not None
+    assert [error.message for error in result.errors] == [
+        f"Cannot remove the peer of relationship 'room' from profile '{profile.id}' because node "
+        f"'TestRack(ID: {rack_id})' (ID: {rack_id}) inherits required relationship 'room' from this profile."
+    ]
+    assert workflow.submit_calls == []
+    profile = await NodeManager.get_one(db=db, branch=default_branch, id=profile.id, raise_on_error=True)
+    assert [rel.peer_id for rel in await profile.get_relationship(name="room").get_relationships(db=db)] == [room.id]
+    rack = await NodeManager.get_one(
+        db=db, branch=default_branch, id=rack_id, include_metadata=MetadataOptions.SOURCE, raise_on_error=True
+    )
+    assert [
+        (rel.peer_id, rel.is_from_profile) for rel in await rack.get_relationship(name="room").get_relationships(db=db)
+    ] == [(room.id, True)]

@@ -32,6 +32,8 @@ mutate_create()
                  -> _process_fields()  # validates, hydrates attrs & rels
                  -> _process_macros()  # evaluates mandatory computed attrs
             -> NodeConstraintRunner.check()
+            -> NodeProfilesApplier.apply_profiles()  # if the node has profiles
+                 -> _process_macros()  # again, if the profiles changed a field
             -> Node.save()
                  -> resolve_relationships()  # loads peers with extra_filters
                  -> _create()
@@ -39,7 +41,6 @@ mutate_create()
                       -> add_display_label()
                       -> NodeCreateAllQuery  # bulk Neo4j insert
             -> create_components()  # template instantiation, created depth first
-       -> apply profiles if applicable
   -> emit NodeCreatedEvent
 ```
 
@@ -116,7 +117,7 @@ decoration:
 
 - Wrap only a scope whose writes are fully contained in a transaction the retry can roll back. The
   create path is the trap: `create_node()` commits its own transaction and then does post-commit
-  work (profiles, response reads), so a decorator on the whole mutation replays a commit that
+  work (response reads), so a decorator on the whole mutation replays a commit that
   already succeeded and creates a duplicate node. The update path keeps its response build inside
   `db.start_transaction()`, which is what makes it replay-safe.
 - Skip the retry when `db.is_transaction` — a caller-supplied transaction is already failed after a
@@ -150,11 +151,15 @@ A relationship's peers are all-or-nothing with respect to Profile sourcing: eith
 
 `NodeProfilesApplier` then treats such a relationship as user-defined and does not re-apply Profile peers to it.
 
-`NodeProfilesApplier.apply_profiles()` changes the node in memory only, relationships included, and returns the names of the fields it changed. Save the node with those fields: the save writes the Profile values and records them in the node changelog, so they reach the node event. Node creation applies the Profiles before its single save, inside the create transaction. `RelationshipAdd` and `RelationshipRemove` on a node's `profiles` save the Profile values as the requesting user and add their changes to the event of the mutation.
+`NodeProfilesApplier.apply_profiles()` changes the node in memory only, relationships included, and returns the names of the fields it changed. Save the node with those fields: the save writes the Profile values and records them in the node changelog, so they reach the node event.
+
+`RelationshipRemove` on a node's `profiles` runs `RelationshipProfileRemovalConstraint` before the transaction, as a node update does: it refuses to remove a Profile that gives the node a required attribute or relationship.
 
 On the Profile side, `RelationshipAdd` and `RelationshipRemove` on `related_nodes` or `related_templates` apply no Profile value in the request. Before the transaction, `RelationshipRemove` on `related_nodes` runs `RelationshipProfileRemovalConstraint`, as a Profile update or delete does: it refuses to remove a node that inherits a required attribute or relationship from the Profile, because the refresh flow could not clear that value. After the transaction commits, they submit the chunked profile refresh for the peers they added or removed, so the values arrive with the refresh flows and their readers recompute. A failed submission is logged and the mutation still returns `ok`: the change is committed, and a retry would add or remove no peer, so it would submit nothing.
 
 The Profile update and upsert mutations also submit the refresh for the peers that a `related_nodes` or `related_templates` payload adds or removes. The refresh automation of a Profile does not trigger on these two relationships, so without it the peers that the payload adds would not get the Profile values. As for `RelationshipAdd` and `RelationshipRemove`, a failed submission is logged and the mutation still returns `ok`.
+
+Before the commit, `RelationshipProfileRemovalConstraint` refuses a Profile update or upsert that leaves a relationship with no peer, when a related node requires that relationship and inherits it from the Profile. The refresh flow runs after the commit, so it could not refuse the change, and it could not clear the relationship.
 
 ### UUID vs HFID References
 
