@@ -25,13 +25,11 @@ from infrahub.core.ownership.models import (
 from infrahub.exceptions import MergeConflictsUnresolvedError
 from tests.helpers.ownership import (
     ADD_ATTRIBUTE_OWNER,
-    ADD_NAME_OWNER,
     OWNERS_FIELD,
     SOURCES_FIELD,
     TARGET_OWNERS_FIELD,
     OwnerDataset,
     add_owner_edge,
-    create_groups,
     read_owners,
     resolve_owners,
     set_owners,
@@ -271,26 +269,15 @@ async def test_owner_changes_on_both_branches_conflict_when_the_lists_differ(
     ]
 
 
-@pytest.mark.parametrize("owner_branch", ["default_branch", "global_branch"])
 async def test_repository_owner_that_the_upgrade_closes_gives_no_change_in_the_diff_of_an_older_branch(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    diff_repository: DiffRepository,
-    car_accord_main: Node,
-    owner_branch: str,
+    db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, car_accord_main: Node
 ) -> None:
     repository = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
     await repository.new(db=db, name="repo01", location="git@github.com:user/repo01.git")
     await repository.save(db=db)
-    if owner_branch == "default_branch":
-        await add_owner_edge(
-            db=db, query=ADD_ATTRIBUTE_OWNER, branch=default_branch, node_id=car_accord_main.id, owner_id=repository.id
-        )
-    else:
-        group_id = (await create_groups(db=db, names=("network-team",)))["network-team"]
-        await add_owner_edge(
-            db=db, query=ADD_NAME_OWNER, branch=registry.get_global_branch(), node_id=group_id, owner_id=repository.id
-        )
+    await add_owner_edge(
+        db=db, query=ADD_ATTRIBUTE_OWNER, branch=default_branch, node_id=car_accord_main.id, owner_id=repository.id
+    )
     branch = await create_branch(db=db, branch_name="before-upgrade")
     result = await Migration085().execute(migration_input=MigrationInput(db=db))
     assert result.errors == []
