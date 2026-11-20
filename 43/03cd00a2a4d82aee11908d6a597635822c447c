@@ -1,0 +1,38 @@
+backend/tests/component/core/test_branch.py
+  s_6bcf82c9e22576::t_c50bb5c66c32c5 13-14
+  s_6bcf82c9e22576::t_caedfd6d8ab648 354-396
+dev/specs/ifc-2167-placeholder-automations-db/tasks.md
+  s_6bcf82c9e22576::t_f0c10c02c24a90 213
+  s_6bcf82c9e22576::t_69f859c30db1dc 218
+  s_6bcf82c9e22576::t_810a1292d880b5 214
+dev/specs/ifc-2167-placeholder-automations-db/opsmill-implement-ledger.md
+  s_6bcf82c9e22576::t_b7972d3e804ade 211-232
+backend/tests/component/display_labels/test_setup.py
+  s_6bcf82c9e22576::t_45a125090f388c 251,254-260
+  s_6bcf82c9e22576::t_1b70a0c00c9c79 23
+  s_6bcf82c9e22576::t_358f54cc9dbe87 7-9,12,15,18
+  s_6bcf82c9e22576::t_ae28770c2e7254 202-218,221-250,252-253,261-276
+  s_6bcf82c9e22576::t_4ffbb3646ddd54 219-220
+  s_6bcf82c9e22576::t_5f3015feb054a9 37-38
+  s_6bcf82c9e22576::t_849034d3595dad 277-281
+backend/infrahub/core/branch/data_deleter.py
+  s_6bcf82c9e22576::t_a2ac373dc39d1e 105,108-114
+  s_6bcf82c9e22576::t_da310c2487ecac 16
+  s_6bcf82c9e22576::t_08b62a227daff9 115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4303cd00a2a4d82aee11908d6a597635822c447c",
+  "prompts": {},
+  "sessions": {
+    "s_6bcf82c9e22576": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36af02c5-13d2-4e52-8668-8bfe68ad5797",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
