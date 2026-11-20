@@ -37,7 +37,9 @@ def test_load_extra_core_schemas_adds_the_nodes(dependency_provider: Provider) -
 def test_load_extra_core_schemas_adds_nothing_by_default(dependency_provider: Provider) -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
 
-    with override_dependency(build_extra_core_schemas, build_extra_core_schemas, dependency_provider=dependency_provider):
+    with override_dependency(
+        build_extra_core_schemas, build_extra_core_schemas, dependency_provider=dependency_provider
+    ):
         load_extra_core_schemas(schema_branch=schema_branch)
 
     assert schema_branch.node_names == []
