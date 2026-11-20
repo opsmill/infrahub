@@ -10,14 +10,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
+from tests.helpers.ownership import create_groups, read_owners, set_owners
 
 from ._matrix_setup import stage_all_change_types
 from ._migrations import migrate_testcar_to_test2newcar
+from ._ownership import merge
 from ._validators import (
     validate_added_node,
     validate_added_relationship,
@@ -145,3 +149,23 @@ async def test_source_branch_migration(
     assert accord_after.color.value == car_accord_main.color.value
 
     await verify_graph(db=db)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="the merge of a kind migration loses the node owners that the default branch wrote after the branch start",
+)
+async def test_merge_of_a_kind_migration_keeps_the_node_owners_of_the_default_branch(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node
+) -> None:
+    groups = await create_groups(db=db)
+    car_id = car_accord_main.id
+    main_schema = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.update_schema_branch(db=db, branch=default_branch, schema=main_schema, update_db=True)
+    branch = await create_branch(db=db, branch_name="src-migration-owners")
+    await set_owners(db=db, branch=default_branch, node_id=car_id, owner_ids=(groups["security"],))
+    await migrate_testcar_to_test2newcar(db=db, target_branch=branch, delete_old_schema=True)
+
+    await merge(db=db, branch=branch)
+
+    assert await read_owners(db=db, branch=default_branch, node_id=car_id) == (groups["security"],)
