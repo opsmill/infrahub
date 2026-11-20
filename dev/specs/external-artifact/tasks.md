@@ -8,7 +8,7 @@ description: "Task list for artifacts rendered by an external engine"
 
 **Tests**: Included. `AGENTS.md` requires tests for new functionality, and constitution IV requires them.
 
-**Governance gates**: The plan lists four "Ask First" items that need user confirmation before implementation starts: the core schema change, the GraphQL schema change, the new REST endpoint and the authentication change.
+**Governance gates**: The user approved the four "Ask First" items on 2026-11-20: the core schema change, the GraphQL schema change, the new REST endpoint and the authentication change.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -35,7 +35,7 @@ description: "Task list for artifacts rendered by an external engine"
   - refusing duplicate names;
   - refusing an empty `version`;
   - the default `timeout` of 600.
-- [ ] T003 Open the SDK pull request against `infrahub-sdk-python` branch `infrahub-develop`. After it merges, update the `python_sdk` submodule pointer on branch `external-artifact`.
+- [ ] T003 Commit the SDK change locally inside the `python_sdk` submodule, on a new submodule branch `external-artifact`, and build the backend against it. Do not push and do not open the upstream pull request: the user opens and merges it in `infrahub-sdk-python` (branch `infrahub-develop`) before the submodule pointer lands upstream (user decision, 2026-11-20).
 
 ---
 
