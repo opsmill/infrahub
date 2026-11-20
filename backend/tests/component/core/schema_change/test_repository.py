@@ -17,11 +17,12 @@ from infrahub.core.schema_change.factory import build_schema_change_history_read
 from infrahub.core.schema_change.operations import SchemaOperation
 from infrahub.core.schema_change.repository import AppliedSchemaChangeVersion
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import QueryError
+from infrahub.exceptions import QueryError, SchemaChangeRecordNotFoundError
 from tests.helpers.schema_change import (
     BranchHistorySeed,
     MigrationSeed,
     attribute_migration,
+    build_seeded_operations,
     count_schema_change_record_edges_to_root,
     count_schema_change_records,
     read_applications_with_migrations,
@@ -467,6 +468,33 @@ async def test_mark_failed_closes_each_migration_record_by_its_status(
         (2, SchemaChangeMigrationStatus.FAILED, [FAILURE_ERROR]),
         (3, SchemaChangeMigrationStatus.CANCELLED, []),
     ]
+
+
+async def test_mark_applied_of_a_schema_change_deleted_with_its_branch_raises_and_stores_nothing(
+    db: InfrahubDatabase, empty_database: None
+) -> None:
+    repository = build_schema_change_repository(db=db)
+    at = Timestamp()
+    created = await repository.create_schema_change(
+        branch=OTHER_BRANCH_NAME, operations=build_seeded_operations(nbr_operations=1), at=at, user_id=SYSTEM_USER_ID
+    )
+    assert await count_schema_change_records(db=db, uuids=[created.schema_change_id, created.application_id]) == 2
+    await repository.delete_branch_schema_changes(branch=OTHER_BRANCH_NAME, batch_size=10)
+
+    with pytest.raises(
+        SchemaChangeRecordNotFoundError,
+        match=rf"^The schema change {created.schema_change_id}, its application or its parent was deleted before",
+    ):
+        await repository.mark_applied(
+            schema_change_id=created.schema_change_id,
+            application_id=created.application_id,
+            version=1,
+            parent_id=None,
+            applied_at=at,
+            user_id=SYSTEM_USER_ID,
+        )
+
+    assert await count_schema_change_records(db=db) == 0
 
 
 async def test_mark_failed_if_running_changes_only_a_running_schema_change_and_leaves_its_migration_records(

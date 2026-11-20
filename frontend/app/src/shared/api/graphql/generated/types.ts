@@ -26481,7 +26481,7 @@ export type Query = {
   InfrahubResourcePoolAllocated: PoolAllocated;
   /** Utilization of one resource pool and of each of its resources. For a number pool, the figures cover the whole pool and ignore its allocation scope; read InfrahubNumberPoolUtilization and InfrahubNumberPoolDivisions instead. */
   InfrahubResourcePoolUtilization: PoolUtilization;
-  /** Retrieve the schema changes of the branch of the request: the applied ones by version, then the others by the time they were created. */
+  /** Retrieve the schema changes of the branch of the request, the most recently created first. On one branch, this is also the order of their versions. */
   InfrahubSchemaChange: InfrahubSchemaChanges;
   InfrahubSearchAnywhere: NodeEdges;
   /** Retrieve the status of all infrahub workers. */

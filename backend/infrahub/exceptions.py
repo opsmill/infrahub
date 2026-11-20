@@ -507,7 +507,8 @@ class SchemaNameReusedError(Error):
 class SchemaOperationsRebuildError(Error):
     """The operations built from a schema file do not rebuild the schema of that file laid over the branch schema."""
 
-    HTTP_CODE: int = 500
+    # Not a 5XX: clients retry those, and the same input always gives the same result.
+    HTTP_CODE: int = 422
 
     def __init__(self, *, kinds: list[str]) -> None:
         self.kinds = kinds
@@ -515,6 +516,20 @@ class SchemaOperationsRebuildError(Error):
             "The schema change cannot be built accurately, so the request was not completed. This is an error in "
             "Infrahub, not in the schema file: the operations built from the file do not rebuild its schema for the "
             f"kinds {', '.join(kinds)}."
+        )
+        super().__init__(self.message)
+
+
+class SchemaChangeRecordNotFoundError(Error):
+    """The records of a schema change were deleted before the schema update that created them completed."""
+
+    HTTP_CODE: int = 422
+
+    def __init__(self, *, schema_change_id: str) -> None:
+        self.schema_change_id = schema_change_id
+        self.message = (
+            f"The schema change {schema_change_id}, its application or its parent was deleted before the schema update "
+            "completed, so the update was rolled back. Deleting the branch deletes its schema changes."
         )
         super().__init__(self.message)
 
@@ -558,7 +573,8 @@ class GatewayError(Error):
 
 
 class MigrationError(Error):
-    HTTP_CODE = 502
+    # Not a 5XX: clients retry those, and each migration task already retries its own transient failures.
+    HTTP_CODE = 422
 
     def __init__(self, message: str) -> None:
         self.message = message

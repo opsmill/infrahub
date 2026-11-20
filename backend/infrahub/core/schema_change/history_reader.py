@@ -5,12 +5,12 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core.query import Query, QueryType
 from infrahub.core.schema_change.cypher_names import CYPHER_NAMES
-from infrahub.core.schema_change.enums import SchemaChangeStatus
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Mapping, Sequence
 
     from infrahub.core.query import CypherValue, QueryResult
+    from infrahub.core.schema_change.enums import SchemaChangeStatus
     from infrahub.core.schema_change.models import SchemaChange, SchemaChangeApplication, SchemaChangeMigration
     from infrahub.core.schema_change.operations import SchemaOperation
     from infrahub.core.schema_change.record_serializer import SchemaChangeRecordSerializer
@@ -42,7 +42,7 @@ class SchemaChangeListQueryResult:
 
 
 class SchemaChangeListQuery(Query):
-    """Return one page of the schema changes of a branch: the applied ones by version, then the others by creation."""
+    """Return one page of the schema changes of a branch, the most recently created first."""
 
     name = "schema-change-list"
     type = QueryType.READ
@@ -56,7 +56,6 @@ class SchemaChangeListQuery(Query):
         self.limit = limit
         self.statuses = statuses
         self.params["branch_name"] = branch_name
-        self.params["applied_status"] = SchemaChangeStatus.APPLIED.value
         if statuses is not None:
             self.params["statuses"] = [status.value for status in statuses]
 
@@ -67,15 +66,17 @@ class SchemaChangeListQuery(Query):
         self.add_to_query("MATCH (schema_change:%(schema_change_label)s {branch: $branch_name})" % CYPHER_NAMES)
         if self.statuses is not None:
             self.add_to_query("WHERE schema_change.status IN $statuses")
+        # Loads and mutations create and apply their schema changes under the schema lock, so on one branch the order
+        # of creation is also the order of the versions.
         query = (
             """
-        WITH schema_change, CASE WHEN schema_change.status = $applied_status THEN 0 ELSE 1 END AS status_rank
-        ORDER BY status_rank, schema_change.version, schema_change.created_at, schema_change.uuid
+        WITH schema_change
+        ORDER BY schema_change.created_at DESC, schema_change.uuid DESC
         SKIP $page_offset
         LIMIT $page_limit
         OPTIONAL MATCH (schema_change)-[:%(has_parent)s]->(parent:%(schema_change_label)s)
         RETURN schema_change {.*} AS schema_change_record, parent {.*} AS parent_record
-        ORDER BY status_rank, schema_change.version, schema_change.created_at, schema_change.uuid
+        ORDER BY schema_change.created_at DESC, schema_change.uuid DESC
         """
             % CYPHER_NAMES
         )
@@ -287,7 +288,7 @@ class SchemaChangeHistoryReader:
     async def list_schema_changes(
         self, *, branch: str, limit: int, offset: int, statuses: Sequence[SchemaChangeStatus] | None = None
     ) -> SchemaChangeHistoryPage:
-        """Return one page of the schema changes of a branch: the applied ones by version, then the others by creation."""
+        """Return one page of the schema changes of a branch, the most recently created first."""
         list_query = await SchemaChangeListQuery.init(
             db=self.db, branch_name=branch, statuses=statuses, limit=limit, offset=offset
         )

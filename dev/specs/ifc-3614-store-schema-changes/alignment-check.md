@@ -52,7 +52,7 @@ Checked and found aligned:
   the schema check.
 - The equivalence test suite as the first task, with every case of the design document.
 - "Loading the same file twice stores one schema change."
-- The query order: applied schema changes by version, failed ones by the time they were created.
+- The query order: the schema changes by the time they were created, the most recent first.
 - Deleting a branch deletes its schema changes, applications and migrations.
 - Storage as internal records linked by edges, not a core kind. The spec does not name
   `StandardNode`; [plan.md](plan.md) and [data-model.md](data-model.md) do.

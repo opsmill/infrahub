@@ -316,7 +316,7 @@ calculates it in the other direction.
 `SchemaCandidateComparer` as a required constructor argument. `from_schema_root` raises
 `SchemaOperationsRebuildError` when the applier refuses an operation
 (`SchemaOperationTargetNotFoundError` or `SchemaOperationTargetExistsError`) or when the comparer
-returns kinds. The error has the HTTP code 500, and its message says that the schema change cannot
+returns kinds. The error has the HTTP code 422, and its message says that the schema change cannot
 be stored accurately, that the error is in Infrahub and not in the schema file, and names the
 kinds. The load saves nothing, and the check returns the same error.
 
@@ -396,7 +396,7 @@ build, which a later replay would expose. The review reverted it on 2026-11-18.
      `asyncio.shield`, then lets the cancellation go on. It leaves the migration records as they
      are, because the migration flow run keeps running on the task worker and writes their
      statuses (spec, decision 11). A cancellation during the write that creates the schema change
-     lets that write finish first.
+     leaves that schema change `running`; the rollback on cancellation (IFC-3637) covers it.
 
 **Which writes must succeed** (spec, decision 9): the schema change and its application are
 required records, because the ordered replay at rebase and merge reads them. A load whose schema
@@ -586,7 +586,9 @@ contract is in [contracts/schema-change-history.graphql](contracts/schema-change
   `graphql/queries/branch.py::infrahub_branch_resolver` does. The `Preference` queries that the
   task names are not paginated; `InfrahubBranch` is the paginated query over `StandardNode`
   records.
-- Order: applied schema changes by version, then the others by the time they were created.
+- Order: the schema changes by the time they were created, the most recent first. Loads and
+  mutations create and apply their schema changes under the schema lock, so on one branch this is
+  also the order of the versions.
 - The resolver reads a page only when the request selects `edges`; the page read also returns
   `count`. When the request selects `count` without `edges`, the resolver only counts. It opens
   its own read-only database session.

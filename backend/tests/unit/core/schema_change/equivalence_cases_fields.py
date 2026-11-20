@@ -2,13 +2,15 @@ from infrahub.core.constants import HashableModelState, InfrahubKind, Relationsh
 from infrahub.core.schema import (
     AttributeSchema,
     DropdownChoice,
+    GenericSchema,
     NodeExtensionSchema,
     NodeSchema,
     RelationshipSchema,
     SchemaExtension,
     SchemaRoot,
 )
-from infrahub.core.schema.attribute_schema import TextAttributeSchema
+from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, TextAttributeParameters
+from infrahub.core.schema.attribute_schema import NumberAttributeSchema, TextAttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from tests.constants import TestKind
 from tests.unit.core.schema_change.helpers import (
@@ -43,6 +45,108 @@ def _change_dropdown_choice_color(scope: CaseScope, _: SchemaBranch) -> SchemaRo
         if choice.name == "retired":
             choice.color = "#000000"
     return SchemaRoot(nodes=[tag])
+
+
+def _change_dropdown_choice_label(scope: CaseScope, _: SchemaBranch) -> SchemaRoot:
+    tag = scope.node(TestKind.TAG)
+    for choice in tag.get_attribute(name=TAG_STATUS_ATTRIBUTE).choices or []:
+        if choice.name == "retired":
+            choice.label = "Decommissioned"
+    return SchemaRoot(nodes=[tag])
+
+
+def _remove_enum_value(scope: CaseScope, _: SchemaBranch) -> SchemaRoot:
+    device = scope.node(TestKind.DEVICE)
+    airflow = device.get_attribute(name="airflow")
+    airflow.enum = [value for value in airflow.enum or [] if value != "Mixed"]
+    return SchemaRoot(nodes=[device])
+
+
+MANUFACTURER_REGEX = r"^[A-Za-z ]+$"
+INTERFACE_NAME_REGEX = r"^[a-z]+[0-9/]*$"
+
+
+def _manufacturer_with_parameters(*, max_length: int) -> TextAttributeSchema:
+    return TextAttributeSchema(
+        name="manufacturer",
+        kind="Text",
+        parameters=TextAttributeParameters(regex=MANUFACTURER_REGEX, max_length=max_length),
+    )
+
+
+def _weight_with_parameters(*, max_value: int) -> NumberAttributeSchema:
+    return NumberAttributeSchema(
+        name="weight", kind="Number", parameters=NumberAttributeParameters(min_value=0, max_value=max_value)
+    )
+
+
+def _interface_name_with_regex(*, regex: str) -> TextAttributeSchema:
+    return TextAttributeSchema(name="name", kind="Text", parameters=TextAttributeParameters(regex=regex))
+
+
+def _device_with_attribute(scope: CaseScope, attribute: AttributeSchema) -> NodeSchema:
+    device = scope.node(TestKind.DEVICE)
+    device.attributes = [attribute if existing.name == attribute.name else existing for existing in device.attributes]
+    return device
+
+
+def _interface_with_attribute(scope: CaseScope, attribute: AttributeSchema) -> GenericSchema:
+    interface = scope.generic(TestKind.INTERFACE)
+    interface.attributes = [
+        attribute if existing.name == attribute.name else existing for existing in interface.attributes
+    ]
+    return interface
+
+
+def _base_with_device_attribute(scope: CaseScope, attribute: AttributeSchema) -> SchemaRoot:
+    base_file = scope.schema_root(INTERFACE_KINDS)
+    device = _device_with_attribute(scope, attribute)
+    base_file.nodes = [device if node.kind == device.kind else node for node in base_file.nodes]
+    return base_file
+
+
+def _base_with_manufacturer_parameters(scope: CaseScope) -> SchemaRoot:
+    return _base_with_device_attribute(scope, _manufacturer_with_parameters(max_length=40))
+
+
+def _base_with_weight_parameters(scope: CaseScope) -> SchemaRoot:
+    return _base_with_device_attribute(scope, _weight_with_parameters(max_value=100))
+
+
+def _base_with_interface_name_regex(scope: CaseScope) -> SchemaRoot:
+    base_file = scope.schema_root(INTERFACE_KINDS)
+    interface = _interface_with_attribute(scope, _interface_name_with_regex(regex=INTERFACE_NAME_REGEX))
+    base_file.generics = [interface if generic.kind == interface.kind else generic for generic in base_file.generics]
+    return base_file
+
+
+def _change_text_attribute_parameter(scope: CaseScope, _: SchemaBranch) -> SchemaRoot:
+    return SchemaRoot(nodes=[_device_with_attribute(scope, _manufacturer_with_parameters(max_length=64))])
+
+
+def _change_number_attribute_parameter(scope: CaseScope, _: SchemaBranch) -> SchemaRoot:
+    return SchemaRoot(nodes=[_device_with_attribute(scope, _weight_with_parameters(max_value=500))])
+
+
+def _change_attribute_parameter_on_generic(scope: CaseScope, _: SchemaBranch) -> SchemaRoot:
+    attribute = _interface_name_with_regex(regex=r"^[a-z]+[0-9/.]*$")
+    return SchemaRoot(generics=[_interface_with_attribute(scope, attribute)])
+
+
+def _change_attribute_parameter_through_extension(scope: CaseScope, _: SchemaBranch) -> SchemaRoot:
+    extension = NodeExtensionSchema(
+        kind=scope.kind(TestKind.DEVICE),
+        attributes=[
+            TextAttributeSchema(name="manufacturer", kind="Text", parameters=TextAttributeParameters(max_length=64))
+        ],
+    )
+    return SchemaRoot(extensions=SchemaExtension(nodes=[extension]))
+
+
+def _change_number_pool_end_range(scope: CaseScope, _: SchemaBranch) -> SchemaRoot:
+    return SchemaRoot(
+        nodes=[counter_definition(namespace=scope.namespace, bounds_parameters={"start_range": 50, "end_range": 2000})]
+    )
 
 
 def _absent_node(scope: CaseScope, _: SchemaBranch) -> SchemaRoot:
@@ -212,6 +316,52 @@ FIELD_EQUIVALENCE_CASES: list[CombinedLoadCase] = [
         namespace="Choicecolor",
         base_kinds=TAG_KINDS,
         schema_file=_change_dropdown_choice_color,
+    ),
+    CombinedLoadCase(
+        name="change_dropdown_choice_label",
+        namespace="Choicelabel",
+        base_kinds=TAG_KINDS,
+        schema_file=_change_dropdown_choice_label,
+    ),
+    CombinedLoadCase(
+        name="remove_enum_value",
+        namespace="Enumremove",
+        base_kinds=INTERFACE_KINDS,
+        schema_file=_remove_enum_value,
+    ),
+    CombinedLoadCase(
+        name="change_text_attribute_parameter",
+        namespace="Textparam",
+        base_kinds=INTERFACE_KINDS,
+        schema_file=_change_text_attribute_parameter,
+        base_file=_base_with_manufacturer_parameters,
+    ),
+    CombinedLoadCase(
+        name="change_number_attribute_parameter",
+        namespace="Numberparam",
+        base_kinds=INTERFACE_KINDS,
+        schema_file=_change_number_attribute_parameter,
+        base_file=_base_with_weight_parameters,
+    ),
+    CombinedLoadCase(
+        name="change_attribute_parameter_on_generic",
+        namespace="Genericparam",
+        base_kinds=INTERFACE_KINDS,
+        schema_file=_change_attribute_parameter_on_generic,
+        base_file=_base_with_interface_name_regex,
+    ),
+    CombinedLoadCase(
+        name="change_attribute_parameter_through_extension",
+        namespace="Extensionparam",
+        base_kinds=INTERFACE_KINDS,
+        schema_file=_change_attribute_parameter_through_extension,
+        base_file=_base_with_manufacturer_parameters,
+    ),
+    CombinedLoadCase(
+        name="change_number_pool_end_range",
+        namespace="Poolend",
+        base_kinds=(COUNTER_KIND,),
+        schema_file=_change_number_pool_end_range,
     ),
     CombinedLoadCase(name="absent_node", namespace="Nodeabsent", base_kinds=TAG_KINDS, schema_file=_absent_node),
     CombinedLoadCase(

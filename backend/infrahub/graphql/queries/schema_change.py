@@ -7,6 +7,7 @@ from graphene import Field, Int, List, NonNull
 from infrahub.core.schema_change.constants import SCHEMA_CHANGE_HISTORY_DEFAULT_LIMIT, SCHEMA_CHANGE_HISTORY_MAX_LIMIT
 from infrahub.core.schema_change.enums import SchemaChangeStatus
 from infrahub.core.schema_change.factory import build_schema_change_history_reader
+from infrahub.exceptions import AuthorizationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.loaders.schema_change import SchemaChangeLoaders
 from infrahub.graphql.resolvers.schema_change import build_schema_change_node, validate_page_arguments
@@ -29,9 +30,14 @@ async def infrahub_schema_change_resolver(
     """Resolve one page of the schema changes of the branch of the request.
 
     Raises:
+        AuthorizationError: When the request has no authenticated account.
         ValidationError: When the limit or the offset is out of range.
 
     """
+    graphql_context: GraphqlContext = info.context
+    # The checker pipeline finds this field by its name only when it is not inside a fragment.
+    if graphql_context.account_session is None or not graphql_context.account_session.authenticated:
+        raise AuthorizationError("Authentication is required to perform this operation")
     page = validate_page_arguments(
         limit=limit,
         offset=offset,
@@ -39,7 +45,6 @@ async def infrahub_schema_change_resolver(
         max_limit=SCHEMA_CHANGE_HISTORY_MAX_LIMIT,
     )
     statuses = [SchemaChangeStatus(value) for value in status] if status is not None else None
-    graphql_context: GraphqlContext = info.context
     branch_name = graphql_context.branch.name
     fields = extract_graphql_fields(info)
 
@@ -71,11 +76,14 @@ InfrahubSchemaChange = Field(
     ),
     offset=Int(description="Number of schema changes to skip. Minimum 0."),
     status=List(
-        NonNull(SchemaChangeStatusType), description="Return only the schema changes with one of these statuses."
+        NonNull(SchemaChangeStatusType),
+        description=(
+            "Return only the schema changes with one of these statuses. An empty list returns no schema change."
+        ),
     ),
     description=(
-        "Retrieve the schema changes of the branch of the request: the applied ones by version, "
-        "then the others by the time they were created."
+        "Retrieve the schema changes of the branch of the request, the most recently created first. On one branch, "
+        "this is also the order of their versions."
     ),
     resolver=infrahub_schema_change_resolver,
     required=True,

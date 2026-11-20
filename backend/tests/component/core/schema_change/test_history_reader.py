@@ -125,7 +125,7 @@ async def later_applications(db: InfrahubDatabase, seeded_history: SeededSchemaC
 
 
 class TestSchemaChangeHistoryReader:
-    async def test_list_returns_applied_by_version_then_the_others_by_creation(
+    async def test_list_returns_the_most_recently_created_first(
         self, db: InfrahubDatabase, seeded_history: SeededSchemaChangeHistory
     ) -> None:
         applied_1, failed, applied_2, running, applied_3 = seeded_history.on_branch(MAIN)
@@ -133,7 +133,7 @@ class TestSchemaChangeHistoryReader:
         page = await build_schema_change_history_reader(db=db).list_schema_changes(branch=MAIN, limit=10, offset=0)
 
         assert page.count == 5
-        assert _ids(page) == [applied_1.id, applied_2.id, applied_3.id, failed.id, running.id]
+        assert _ids(page) == [applied_3.id, running.id, applied_2.id, failed.id, applied_1.id]
         assert [
             (
                 entry.schema_change.status,
@@ -143,24 +143,24 @@ class TestSchemaChangeHistoryReader:
             )
             for entry in page.entries
         ] == [
-            (SchemaChangeStatus.APPLIED, 1, None, applied_1.at.to_string()),
-            (SchemaChangeStatus.APPLIED, 2, applied_1.id, applied_2.at.to_string()),
             (SchemaChangeStatus.APPLIED, 3, applied_2.id, applied_3.at.to_string()),
-            (SchemaChangeStatus.FAILED, None, None, None),
             (SchemaChangeStatus.RUNNING, None, None, None),
+            (SchemaChangeStatus.APPLIED, 2, applied_1.id, applied_2.at.to_string()),
+            (SchemaChangeStatus.FAILED, None, None, None),
+            (SchemaChangeStatus.APPLIED, 1, None, applied_1.at.to_string()),
         ]
 
     async def test_list_pages_with_limit_and_offset_and_counts_all_pages(
         self, db: InfrahubDatabase, seeded_history: SeededSchemaChangeHistory
     ) -> None:
-        _, failed, _, running, applied_3 = seeded_history.on_branch(MAIN)
+        applied_1, failed, applied_2, _, _ = seeded_history.on_branch(MAIN)
         reader = build_schema_change_history_reader(db=db)
 
         middle_page = await reader.list_schema_changes(branch=MAIN, limit=2, offset=2)
         last_page = await reader.list_schema_changes(branch=MAIN, limit=2, offset=4)
 
-        assert (middle_page.count, _ids(middle_page)) == (5, [applied_3.id, failed.id])
-        assert (last_page.count, _ids(last_page)) == (5, [running.id])
+        assert (middle_page.count, _ids(middle_page)) == (5, [applied_2.id, failed.id])
+        assert (last_page.count, _ids(last_page)) == (5, [applied_1.id])
 
     async def test_list_filters_by_status(
         self, db: InfrahubDatabase, seeded_history: SeededSchemaChangeHistory
@@ -171,7 +171,7 @@ class TestSchemaChangeHistoryReader:
             branch=MAIN, limit=10, offset=0, statuses=[SchemaChangeStatus.FAILED, SchemaChangeStatus.RUNNING]
         )
 
-        assert (page.count, _ids(page)) == (2, [failed.id, running.id])
+        assert (page.count, _ids(page)) == (2, [running.id, failed.id])
 
     async def test_list_returns_the_schema_changes_of_the_branch_only(
         self, db: InfrahubDatabase, seeded_history: SeededSchemaChangeHistory
@@ -183,18 +183,18 @@ class TestSchemaChangeHistoryReader:
         page = await reader.list_schema_changes(branch=BRANCH_WITH_CHANGES, limit=10, offset=0)
         running_page = await reader.list_schema_changes(branch=BRANCH_WITH_RUNNING_CHANGE, limit=10, offset=0)
 
-        assert (page.count, _ids(page)) == (3, [applied_4.id, applied_5.id, failed.id])
+        assert (page.count, _ids(page)) == (3, [applied_5.id, applied_4.id, failed.id])
         assert [
             (entry.schema_change.branch, entry.schema_change.version, entry.parent.branch if entry.parent else None)
             for entry in page.entries
         ] == [
-            (BRANCH_WITH_CHANGES, 4, MAIN),
             (BRANCH_WITH_CHANGES, 5, BRANCH_WITH_CHANGES),
+            (BRANCH_WITH_CHANGES, 4, MAIN),
             (BRANCH_WITH_CHANGES, None, None),
         ]
-        assert page.entries[0].parent is not None
-        assert str(page.entries[0].parent.uuid) == last_main_change.id
-        assert page.entries[0].parent.version == 3
+        assert page.entries[1].parent is not None
+        assert str(page.entries[1].parent.uuid) == last_main_change.id
+        assert page.entries[1].parent.version == 3
         assert (running_page.count, _ids(running_page)) == (
             1,
             [seeded_history.on_branch(BRANCH_WITH_RUNNING_CHANGE)[0].id],

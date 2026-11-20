@@ -140,8 +140,9 @@ A schema load and a schema check call `from_schema_root` through
 
 When the applier refuses an operation, raises a `ValueError` (a malformed operation, or an applied
 schema that processing refuses), or a kind differs, the builder raises
-`SchemaOperationsRebuildError` (HTTP 500), whose message says that the error is in Infrahub, not in
-the file, and names the kinds. For a `ValueError` it names every kind that the operations name. The
+`SchemaOperationsRebuildError` (HTTP 422), whose message says that the error is in Infrahub, not in
+the file, and names the kinds. It is not a 5XX, because the SDK retries those and the same file always
+gives the same result. For a `ValueError` it names every kind that the operations name. The
 operation builder already processed the same file without an error, so such a `ValueError` comes
 from the operations, and it does not reach the API as `SchemaNotValidError` (HTTP 422). The load saves nothing, and the check returns the same error. A load
 therefore processes the schema twice. A file that gives a new kind, or a new attribute or
@@ -190,18 +191,18 @@ progress and are best effort.
    is saved and the migrations succeed. It asks `SchemaChangeVersionResolver` for the version and
    the parent and marks both records `applied`, with `applied_at` equal to the application's `at`.
    When it raises, the coordinator rolls the update back as it does for a failed migration, and the
-   load fails.
+   load fails. When the schema change, its application or the parent is no longer stored, for example
+   because the branch was deleted during the load, `mark_applied` raises
+   `SchemaChangeRecordNotFoundError` (HTTP 422).
 4. When the update raises an `Exception`, the coordinator has already rolled back. The runner calls
    `fail` with the text of the error and raises the same exception again.
-5. When the load is cancelled (`asyncio.CancelledError`), the runner calls `fail_if_running` with
+5. When the load is cancelled (`asyncio.CancelledError`) after `start` returned, the runner calls `fail_if_running` with
    the error `The schema load was cancelled before it completed` inside `asyncio.shield`, then lets
    the cancellation go on. `fail_if_running` changes the schema change only while it is `running`:
    a cancellation can arrive after the final step recorded the schema change as applied, and a
    cancelled load keeps its schema, so that schema change stays `applied` and the runner logs a
    warning. It leaves the migration records as they are: cancelling the request does not cancel
    the migration flow run on the task worker, which keeps writing the status of each migration.
-   When the cancellation arrives while `start` creates the schema change, the runner lets that
-   write finish inside `asyncio.shield`, then calls `fail_if_running` the same way.
 
 A failure of `fail` itself is logged when it is one of `RECORD_WRITE_ERRORS`
 (`core/schema_change/record_errors.py`: a `DatabaseError`, a `QueryError`, a `QueryTimeoutError` or
@@ -253,7 +254,9 @@ A schema change and its application stay `running` when:
 
 - `fail` raises a record write error after its retries; the runner logs it and raises the error of
   the load;
-- the process stops before the shielded write of `fail` runs.
+- the process stops before the shielded write of `fail` runs;
+- the load is cancelled while `start` creates the schema change, so the runner has no recording to
+  mark `failed`.
 
 The coordinator rolls back only on an `Exception`, and `asyncio.CancelledError` is not one. A
 cancelled load therefore records a running schema change as `failed`, but the coordinator does not roll
@@ -300,8 +303,11 @@ is the parent of the first schema change of the deleted branch stays. The number
 ## Reading the history
 
 `graphql/queries/schema_change.py::InfrahubSchemaChange` reads the branch of the request. It lists
-applied schema changes by version, then the others by `created_at`, pages them with `limit` (default
-10, maximum 50) and `offset`. A request that selects `edges` runs the list query and the count
+the schema changes by `created_at`, the most recent first, so a `running` or `failed` schema change
+sits among the applied ones at the time it was created. Loads and dropdown or enum mutations create
+and apply their schema change under the global schema lock, so on one branch this is also the order
+of the versions. It pages them with `limit` (default 10, maximum 50) and `offset`. A `status` filter
+that is an empty list returns no schema change. A request that selects `edges` runs the list query and the count
 query, and a request that selects only `count` runs the count query alone.
 Three nested fields are paged the same way, with a `count` of all their records:
 
@@ -317,5 +323,8 @@ nested fields concurrently. The GraphQL types do not expose `format_version` of 
 
 The query is in `graphql/schema.py::QUERIES_REQUIRING_AUTHENTICATION`: it needs a logged-in account
 and no other permission, and is refused to an anonymous user even when anonymous read access is on.
+The checker pipeline finds the field by the names of the root selections, which leave out a field
+inside a fragment, so the resolver also raises `AuthorizationError` for a session that is not
+authenticated.
 The error of an application and the errors of a migration are the text a load returned to its
 caller, which can hold the text of a database exception.

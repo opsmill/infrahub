@@ -132,7 +132,7 @@ class SchemaCandidateBuilder:
   schema an ID that the branch schema does not hold, before it builds any operation. It then
   builds the operations, and raises `SchemaNameReusedError` (HTTP 422) when they free an attribute
   name or a kind and give it to another owner (spec, FR-017) before it applies any. It then applies them to `branch_schema` with the applier, and compares the result
-  with `direct_load_schema` with the comparer. It raises `SchemaOperationsRebuildError` (HTTP 500)
+  with `direct_load_schema` with the comparer. It raises `SchemaOperationsRebuildError` (HTTP 422)
   when the applier raises `SchemaOperationTargetNotFoundError`,
   `SchemaOperationTargetExistsError` or a `ValueError`, or when the comparer returns kinds; the
   message says that the error is in Infrahub, not in the file, and names the kinds (for a
@@ -319,8 +319,7 @@ class SchemaChangeHistoryReader:
     ) -> dict[str, SchemaChangeMigrationPage]: ...
 ```
 
-- `list_schema_changes` orders the applied schema changes by version, then the others by
-  `created_at`. `count` is the number of schema changes that match on all pages. `statuses` set to
+- `list_schema_changes` orders the schema changes by `created_at`, the most recent first. `count` is the number of schema changes that match on all pages. `statuses` set to
   `None` filters nothing.
 - `count_schema_changes` returns the same `count` as `list_schema_changes`, without reading a page.
   The query calls it when the request selects `count` and not `edges`.
@@ -506,7 +505,7 @@ class SchemaChangeApplicationRunner:
   cancellation go on. A schema change that the final step already recorded as `applied` keeps that
   status, and the runner logs a warning. The coordinator does not roll back a cancelled update
   ([research.md](../research.md), R8). When the cancellation arrives during `recorder.start`, the
-  runner lets that write finish inside `asyncio.shield`, then calls `recorder.fail_if_running`.
+  runner records nothing, and the schema change stays `running`.
 - `run` always creates a new schema change. Applying a schema change that already exists, as the
   staging and replay tasks do, is not in this contract; those tasks extend it.
 - When `recorder.fail` raises a `DatabaseError`, a `QueryError`, a `QueryTimeoutError` or a
@@ -656,7 +655,7 @@ One place builds a component after the work started, and it is deliberate:
 | `api/schema.py::check_schema` | Calls `_validate_migrations` in place of its own copy of the constraint workflow call |
 | `graphql/mutations/schema.py::update_registry` | Replaced by `apply_attribute_property_change` |
 | `core/branch/data_deleter.py::BranchDataDeleter` | Takes a `SchemaChangeRecordDeleter`, the protocol of `SchemaChangeRepository.delete_branch_schema_changes`, as a constructor argument. `delete_branch_data` also deletes the schema change records of the branch, in batches of the deleter's batch size. The number of edges it returns does not count the edges of these records |
-| `exceptions.py` | New errors `SchemaOperationTargetNotFoundError` and `SchemaOperationTargetExistsError` (HTTP 422), raised by the applier, and `SchemaNameReusedError` (HTTP 422) and `SchemaOperationsRebuildError` (HTTP 500), raised by `from_schema_root` |
+| `exceptions.py` | New errors `SchemaOperationTargetNotFoundError` and `SchemaOperationTargetExistsError` (HTTP 422), raised by the applier, and `SchemaNameReusedError` (HTTP 422) and `SchemaOperationsRebuildError` (HTTP 422), raised by `from_schema_root` |
 | `POST /api/schema/load` | Request and response unchanged. Stores a schema change when the schema changed |
 | `POST /api/schema/check` | Request and response unchanged. Stores nothing |
 | `SchemaDropdownAdd`, `SchemaDropdownRemove`, `SchemaEnumAdd`, `SchemaEnumRemove` | Input and payload unchanged. Each stores a schema change when the schema changed |

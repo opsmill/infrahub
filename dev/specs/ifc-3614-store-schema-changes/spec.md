@@ -485,8 +485,10 @@ branch. Count the records of that branch and of main before and after.
 
   The query MUST NOT return the format version of a schema change or the internal result counter
   of a migration record, which the database keeps.
-- **FR-071**: The query MUST return applied schema changes in order of version, and failed schema
-  changes, which have no version, in order of the time they were created.
+- **FR-071**: The query MUST return the schema changes of a branch with the most recently created
+  first. On one branch this is also the order of the versions, and a failed schema change, which
+  has no version, sits at the time it was created. A status filter that is an empty list MUST
+  return no schema change.
 - **FR-072**: The query MUST return the total number of schema changes that match, and a page MUST
   hold at most the number of schema changes the client asked for. A request for more than the
   maximum page size MUST be refused with an error.

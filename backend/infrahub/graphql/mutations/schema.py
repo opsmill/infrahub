@@ -18,7 +18,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.events import EventMeta
 from infrahub.events.schema_action import SchemaUpdatedEvent, build_changed_elements_payload
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import SchemaOperationsRebuildError, ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_log_data, get_logger
@@ -418,13 +418,17 @@ async def apply_attribute_property_change(
     schema is saved with an applied schema change that holds the one operation, in the same transaction.
 
     Raises:
-        ValidationError: The change does not apply to the attribute's current list.
+        ValidationError: The attribute no longer exists, or the change does not apply to its current list.
+        SchemaOperationsRebuildError: The operation of the change cannot be applied to the branch schema.
 
     """
     candidate_builder = build_schema_candidate_builder()
     async with lock.registry.global_schema_lock():
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
-        attribute_schema = branch_schema.get(name=kind, duplicate=False).get_attribute(name=attribute)
+        attribute_schema = branch_schema.get(name=kind, duplicate=False).get_attribute_or_none(name=attribute)
+        if attribute_schema is None:
+            # Another request can remove the attribute between the checks of the mutation and the lock.
+            raise ValidationError(f"Unable to find the attribute {attribute} on {kind}")
         previous_value = _read_attribute_list(attribute=attribute_schema, property_name=change.property_name)
         value = change.build_list(kind=kind, attribute=attribute_schema)
         operation = SchemaOperation(
@@ -436,11 +440,14 @@ async def apply_attribute_property_change(
             value=to_jsonable_python(value, serialize_as_any=True),
             previous_value=previous_value,
         )
-        candidate = candidate_builder.from_operations(
-            branch_schema=branch_schema,
-            operations=[operation],
-            default_branch_schema=registry.schema.get_schema_branch(name=registry.default_branch),
-        )
+        try:
+            candidate = candidate_builder.from_operations(
+                branch_schema=branch_schema,
+                operations=[operation],
+                default_branch_schema=registry.schema.get_schema_branch(name=registry.default_branch),
+            )
+        except ValueError as exc:
+            raise SchemaOperationsRebuildError(kinds=[kind]) from exc
         diff = candidate.validation.diff
 
         if diff.all:

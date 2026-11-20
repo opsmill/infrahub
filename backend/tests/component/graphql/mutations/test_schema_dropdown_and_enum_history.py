@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.components import ComponentType
+from infrahub.context import InfrahubContext
 from infrahub.core import registry
 from infrahub.core.node import Node
 from infrahub.core.schema_change.constants import SCHEMA_CHANGE_HISTORY_MAX_LIMIT, SCHEMA_CHANGE_OPERATIONS_MAX_LIMIT
@@ -19,7 +20,9 @@ from infrahub.core.schema_change.enums import (
 from infrahub.core.schema_change.factory import build_schema_change_history_reader
 from infrahub.core.schema_change.operations import SchemaOperation
 from infrahub.core.timestamp import Timestamp
+from infrahub.exceptions import ValidationError
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.graphql.mutations.schema import EnumValueAddition, apply_attribute_property_change
 from infrahub.services import InfrahubServices
 from infrahub.services.component import InfrahubComponent
 from tests.adapters.cache import MemoryCache
@@ -120,7 +123,8 @@ class StoredSchemaChange:
 async def _read_history(db: InfrahubDatabase, branch: str) -> list[StoredSchemaChange]:
     reader = build_schema_change_history_reader(db=db)
     page = await reader.list_schema_changes(branch=branch, limit=SCHEMA_CHANGE_HISTORY_MAX_LIMIT, offset=0)
-    ids = [str(entry.schema_change.uuid) for entry in page.entries]
+    entries = sorted(page.entries, key=lambda entry: (entry.schema_change.created_at, str(entry.schema_change.uuid)))
+    ids = [str(entry.schema_change.uuid) for entry in entries]
     operations = await reader.list_operations(schema_change_ids=ids, limit=SCHEMA_CHANGE_OPERATIONS_MAX_LIMIT, offset=0)
     applications = await read_applications_with_migrations(db=db, schema_change_ids=ids)
     return [
@@ -136,7 +140,7 @@ async def _read_history(db: InfrahubDatabase, branch: str) -> list[StoredSchemaC
                 for record in applications[str(entry.schema_change.uuid)]
             ],
         )
-        for entry in page.entries
+        for entry in entries
     ]
 
 
@@ -330,6 +334,30 @@ class TestDropdownAndEnumMutationHistory:
         assert [error.message for error in result.errors or []] == [
             "There are still TestChoice objects using this enum"
         ]
+        assert await _read_history(db=db, branch=default_branch_scope_class.name) == history_before
+
+    async def test_change_to_an_attribute_removed_before_the_schema_lock_stores_nothing(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        choices_schema_scope_class: None,
+        session_admin_scope_class: AccountSession,
+        service: InfrahubServices,
+    ) -> None:
+        history_before = await _read_history(db=db, branch=default_branch_scope_class.name)
+
+        with pytest.raises(ValidationError, match=r"^Unable to find the attribute removed_status on TestChoice$"):
+            await apply_attribute_property_change(
+                kind=KIND,
+                attribute="removed_status",
+                change=EnumValueAddition(value=ENUM_ADDED),
+                db=db,
+                branch=default_branch_scope_class,
+                account_id=session_admin_scope_class.account_id,
+                service=service,
+                context=InfrahubContext.init(branch=default_branch_scope_class, account=session_admin_scope_class),
+            )
+
         assert await _read_history(db=db, branch=default_branch_scope_class.name) == history_before
 
     async def test_enum_remove_stores_the_next_version(

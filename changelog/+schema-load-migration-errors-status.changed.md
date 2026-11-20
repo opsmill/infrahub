@@ -1,0 +1,1 @@
+A schema load whose data migrations report errors now returns HTTP 422 instead of 502, so the SDK and `infrahubctl schema load` show the migration errors and a repository import no longer resends the load.

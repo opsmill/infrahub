@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import httpx
 import pytest
 from infrahub_sdk.uuidt import UUIDT
 
@@ -89,7 +88,7 @@ query {
 
 LAST_SCHEMA_CHANGE_QUERY = """
 query {
-  InfrahubSchemaChange(limit: 1, offset: 2) {
+  InfrahubSchemaChange(limit: 1, offset: 0) {
     edges {
       node {
         name
@@ -143,6 +142,19 @@ query {
 
 NAMES_QUERY = """
 query {
+  InfrahubSchemaChange {
+    count
+    edges { node { name } }
+  }
+}
+"""
+
+NAMES_QUERY_IN_FRAGMENT = """
+query {
+  InfrahubInfo { version }
+  ...SchemaChangeNames
+}
+fragment SchemaChangeNames on Query {
   InfrahubSchemaChange {
     count
     edges { node { name } }
@@ -438,9 +450,9 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
         assert [
             (edge["node"]["version"], edge["node"]["status"], edge["node"]["branch"]) for edge in branch_page["edges"]
         ] == [
-            (2, "APPLIED", schema_change_dataset.branch_name),
-            (3, "APPLIED", schema_change_dataset.branch_name),
             (4, "APPLIED", schema_change_dataset.branch_name),
+            (3, "APPLIED", schema_change_dataset.branch_name),
+            (2, "APPLIED", schema_change_dataset.branch_name),
         ]
 
     async def test_step09_each_name_starts_with_its_version_in_five_digits(
@@ -451,9 +463,9 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
         assert [
             (edge["node"]["name"], edge["node"]["summary"]) for edge in result["InfrahubSchemaChange"]["edges"]
         ] == [
-            (f"00002_{CARD_SERIAL_SUMMARY}", CARD_SERIAL_SUMMARY),
-            (f"00003_{CARD_SERIAL_LABEL_SUMMARY}", CARD_SERIAL_LABEL_SUMMARY),
             (f"00004_{SLOT_POSITION_SUMMARY}", SLOT_POSITION_SUMMARY),
+            (f"00003_{CARD_SERIAL_LABEL_SUMMARY}", CARD_SERIAL_LABEL_SUMMARY),
+            (f"00002_{CARD_SERIAL_SUMMARY}", CARD_SERIAL_SUMMARY),
         ]
 
     async def test_step10_attribute_added_to_a_generic_gives_one_operation_and_the_migrations_that_ran(
@@ -534,7 +546,7 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
         [main_edge] = main_result["InfrahubSchemaChange"]["edges"]
         main_change = main_edge["node"]
         assert (main_change["name"], main_change["parent"]) == (MAIN_SCHEMA_CHANGE_NAME, None)
-        first, second, third = (edge["node"] for edge in branch_result["InfrahubSchemaChange"]["edges"])
+        third, second, first = (edge["node"] for edge in branch_result["InfrahubSchemaChange"]["edges"])
         branch_name = schema_change_dataset.branch_name
         assert [first["parent"], second["parent"], third["parent"]] == [
             {"id": main_change["id"], "name": MAIN_SCHEMA_CHANGE_NAME, "version": 1, "branch": "main"},
@@ -552,6 +564,7 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
         url = f"/graphql/{schema_change_dataset.branch_name}"
 
         anonymous_response = await test_client.post(url, json={"query": NAMES_QUERY})
+        anonymous_fragment_response = await test_client.post(url, json={"query": NAMES_QUERY_IN_FRAGMENT})
         account_response = await test_client.post(
             url, json={"query": NAMES_QUERY}, headers={"X-INFRAHUB-KEY": token_without_permission}
         )
@@ -568,6 +581,20 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
                 ],
             },
         )
+        assert (anonymous_fragment_response.status_code, anonymous_fragment_response.json()) == (
+            200,
+            {
+                "data": None,
+                "errors": [
+                    {
+                        "message": "Authentication is required to perform this operation",
+                        "locations": [{"line": 7, "column": 3}],
+                        "path": ["InfrahubSchemaChange"],
+                        "extensions": {"code": "AUTHENTICATION_REQUIRED", "http_status": 401, "data": {}},
+                    }
+                ],
+            },
+        )
         assert (account_response.status_code, account_response.json()) == (
             200,
             {
@@ -575,9 +602,9 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
                     "InfrahubSchemaChange": {
                         "count": 3,
                         "edges": [
-                            {"node": {"name": f"00002_{CARD_SERIAL_SUMMARY}"}},
-                            {"node": {"name": f"00003_{CARD_SERIAL_LABEL_SUMMARY}"}},
                             {"node": {"name": f"00004_{SLOT_POSITION_SUMMARY}"}},
+                            {"node": {"name": f"00003_{CARD_SERIAL_LABEL_SUMMARY}"}},
+                            {"node": {"name": f"00002_{CARD_SERIAL_SUMMARY}"}},
                         ],
                     }
                 }
@@ -598,13 +625,12 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
         stored_hash_before = (await registry.schema.load_schema_from_db(db=db, branch=branch)).get_hash()
         power_slots_before = await client.execute_graphql(query=POWER_SLOTS_QUERY, branch_name=branch_name)
 
-        with pytest.raises(httpx.HTTPStatusError) as exc_info:
-            await client.schema.load(schemas=[schema_slot_height], branch=branch_name)
+        response = await client.schema.load(schemas=[schema_slot_height], branch=branch_name)
 
-        assert (exc_info.value.response.status_code, exc_info.value.response.json()) == (
-            502,
-            {"data": None, "errors": [{"message": SLOT_MIGRATION_FAILURE, "extensions": {"code": 502}}]},
-        )
+        assert response.errors == {
+            "data": None,
+            "errors": [{"message": SLOT_MIGRATION_FAILURE, "extensions": {"code": 422}}],
+        }
         assert registry.schema.get_schema_branch(name=branch_name).get_hash() == registry_hash_before
         assert (await registry.schema.load_schema_from_db(db=db, branch=branch)).get_hash() == stored_hash_before
         assert await client.execute_graphql(query=POWER_SLOTS_QUERY, branch_name=branch_name) == power_slots_before
@@ -668,7 +694,7 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
             ),
         ]
 
-    async def test_step15_query_lists_the_applied_schema_changes_by_version_then_the_failed_one(
+    async def test_step15_query_lists_the_failed_schema_change_first_because_it_was_created_last(
         self, client: InfrahubClient, schema_change_dataset: SchemaChangeDataset
     ) -> None:
         result = await client.execute_graphql(query=SCHEMA_CHANGES_QUERY, branch_name=schema_change_dataset.branch_name)
@@ -679,10 +705,10 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
             (edge["node"]["name"], edge["node"]["version"], edge["node"]["status"], edge["node"]["parent"] is None)
             for edge in page["edges"]
         ] == [
-            (f"00002_{CARD_SERIAL_SUMMARY}", 2, "APPLIED", False),
-            (f"00003_{CARD_SERIAL_LABEL_SUMMARY}", 3, "APPLIED", False),
-            (f"00004_{SLOT_POSITION_SUMMARY}", 4, "APPLIED", False),
             (SLOT_HEIGHT_SUMMARY, None, "FAILED", True),
+            (f"00004_{SLOT_POSITION_SUMMARY}", 4, "APPLIED", False),
+            (f"00003_{CARD_SERIAL_LABEL_SUMMARY}", 3, "APPLIED", False),
+            (f"00002_{CARD_SERIAL_SUMMARY}", 2, "APPLIED", False),
         ]
 
     async def test_step16_corrected_load_gets_the_next_version_with_the_last_applied_as_parent(
@@ -701,7 +727,7 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
         history = await read_schema_change_history(db=db, branch=branch_name)
         assert history.page.count == 5
         last_applied_id = history.schema_change_ids[2]
-        corrected = history.page.entries[3]
+        corrected = history.page.entries[4]
         assert (
             corrected.schema_change.status,
             corrected.schema_change.version,
@@ -710,7 +736,7 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
         ) == (SchemaChangeStatus.APPLIED, 5, SLOT_HEIGHT_SUMMARY, last_applied_id)
         assert [
             (record.application.status, [migration.status for migration in record.migrations])
-            for record in history.applications[history.schema_change_ids[3]]
+            for record in history.applications[history.schema_change_ids[4]]
         ] == [
             (
                 SchemaChangeApplicationStatus.APPLIED,
@@ -718,7 +744,7 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
             )
         ]
 
-    async def test_step17_failed_schema_change_is_still_listed_after_the_corrected_load(
+    async def test_step17_failed_schema_change_is_listed_between_the_schema_changes_created_around_it(
         self, client: InfrahubClient, schema_change_dataset: SchemaChangeDataset
     ) -> None:
         result = await client.execute_graphql(query=SCHEMA_CHANGES_QUERY, branch_name=schema_change_dataset.branch_name)
@@ -726,11 +752,11 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
         page = result["InfrahubSchemaChange"]
         assert page["count"] == 5
         assert [(edge["node"]["name"], edge["node"]["version"], edge["node"]["status"]) for edge in page["edges"]] == [
-            (f"00002_{CARD_SERIAL_SUMMARY}", 2, "APPLIED"),
-            (f"00003_{CARD_SERIAL_LABEL_SUMMARY}", 3, "APPLIED"),
-            (f"00004_{SLOT_POSITION_SUMMARY}", 4, "APPLIED"),
             (f"00005_{SLOT_HEIGHT_SUMMARY}", 5, "APPLIED"),
             (SLOT_HEIGHT_SUMMARY, None, "FAILED"),
+            (f"00004_{SLOT_POSITION_SUMMARY}", 4, "APPLIED"),
+            (f"00003_{CARD_SERIAL_LABEL_SUMMARY}", 3, "APPLIED"),
+            (f"00002_{CARD_SERIAL_SUMMARY}", 2, "APPLIED"),
         ]
 
     async def test_step18_deleting_the_branch_deletes_its_records_including_the_failed_schema_change(
@@ -745,8 +771,8 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
             SchemaChangeStatus.APPLIED,
             SchemaChangeStatus.APPLIED,
             SchemaChangeStatus.APPLIED,
-            SchemaChangeStatus.APPLIED,
             SchemaChangeStatus.FAILED,
+            SchemaChangeStatus.APPLIED,
         ]
         first_parent = branch_history.page.entries[0].parent
         assert first_parent is not None

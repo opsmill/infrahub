@@ -400,7 +400,7 @@ a GraphQL query returns the history of a branch in pages.
       - creating migration records stores one record for each migration with the status
         `waiting`, in order, including two migrations with the same name and path;
       - setting the status of migration records changes only the records named;
-      - listing returns applied schema changes by version, then the others by `created_at`, with
+      - listing returns the schema changes by `created_at`, the most recent first, with
         `limit`, `offset`, a status filter and the count of all pages;
       - operations for a set of schema changes come in pages with the count for each one;
       - applications for a set of schema changes come with their migration records.
@@ -839,7 +839,7 @@ error, and the status of each migration.
       - the history holds the schema change with the status `failed`, no version, and an
         application with the status `failed` and the error (FR-060, FR-061);
       - the migration records show which migration failed;
-      - the query lists the applied schema changes by version, then the failed one (FR-071);
+      - the query lists the failed schema change at the time it was created (FR-071);
       - a corrected load that succeeds gets the next version, with the last applied schema change
         as its parent;
       - the failed schema change is still listed after that load (FR-062).
@@ -1004,7 +1004,7 @@ tasks that name it.
 
 - [X] T066 [US1] `SchemaCandidateBuilder.from_schema_root` applies the operations with the applier
       in every load and check, compares the result with the processed schema of the laid-over
-      file with `SchemaCandidateComparer`, and raises `SchemaOperationsRebuildError` (HTTP 500)
+      file with `SchemaCandidateComparer`, and raises `SchemaOperationsRebuildError` (HTTP 422)
       on a difference or a refused operation. A file that gives an existing kind an unknown ID is
       refused with `SchemaNotFoundError` before the operations are built. The applier raises
       `SchemaOperationTargetExistsError` for an add whose target exists. `SchemaOperationsCheck`,
@@ -1048,8 +1048,8 @@ tasks that name it.
       that states a reversed decision, and delete the implementation report.
 - [X] T075 [US3] A cancelled load leaves its migration records to the migrations (spec, decision
       11): `SchemaChangeMarkFailedQuery` takes `close_migration_records`, which `mark_failed` sets
-      and `mark_failed_if_running` does not. When the cancellation arrives during the write that
-      creates the schema change, the runner lets that write finish, then records the failure.
+      and `mark_failed_if_running` does not. A cancellation during the write that creates the
+      schema change is left to IFC-3637.
 - [X] T076 [US1] A kind rename is one `node_rename` operation (spec, decision 12). The
       `node_add` operations come after the operations of changed kinds, and within a kind the
       element renames come before the element additions. `from_schema_root` raises
@@ -1057,7 +1057,7 @@ tasks that name it.
       reuse it (spec, FR-017, decision 13). The applier picks the element that no earlier operation
       renamed when two elements share a name, and refuses a rename that leaves two elements with
       the same name. Regenerate `schema/schema.graphql` and the front-end types.
-- [X] T077 [US1] `from_schema_root` raises `SchemaOperationsRebuildError` (HTTP 500) when the
+- [X] T077 [US1] `from_schema_root` raises `SchemaOperationsRebuildError` (HTTP 422) when the
       applier raises a `ValueError`, naming every kind that the operations name, so an error in
       the operations does not reach the API as `SchemaNotValidError` (HTTP 422).
 

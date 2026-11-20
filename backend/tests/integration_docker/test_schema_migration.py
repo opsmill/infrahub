@@ -117,16 +117,6 @@ class TestSchemaMigrations(TestInfrahubDockerClient, SchemaCarPerson):
         assert schema_changes["InfrahubSchemaChange"]["edges"] == [
             {
                 "node": {
-                    "summary": "networkdevice_add_and_1_more",
-                    "status": "APPLIED",
-                    "applications": {
-                        "count": 1,
-                        "edges": [{"node": {"status": "APPLIED", "migrations": {"count": 0, "edges": []}}}],
-                    },
-                }
-            },
-            {
-                "node": {
                     "summary": "networkinterface_remove",
                     "status": "APPLIED",
                     "applications": {
@@ -150,6 +140,16 @@ class TestSchemaMigrations(TestInfrahubDockerClient, SchemaCarPerson):
                                 }
                             }
                         ],
+                    },
+                }
+            },
+            {
+                "node": {
+                    "summary": "networkdevice_add_and_1_more",
+                    "status": "APPLIED",
+                    "applications": {
+                        "count": 1,
+                        "edges": [{"node": {"status": "APPLIED", "migrations": {"count": 0, "edges": []}}}],
                     },
                 }
             },

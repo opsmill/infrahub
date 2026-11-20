@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -47,7 +47,10 @@ class SchemaChangeDataset:
 
 @dataclass(frozen=True)
 class SchemaChangeHistorySnapshot:
-    """Every record of the schema changes of one branch, read in pages large enough to hold them all."""
+    """Every record of the schema changes of one branch, read in pages large enough to hold them all.
+
+    The entries of `page` are in the order the schema changes were created, the oldest first.
+    """
 
     page: SchemaChangeHistoryPage
     operations: dict[str, SchemaOperationPage]
@@ -60,7 +63,13 @@ class SchemaChangeHistorySnapshot:
 
 async def read_schema_change_history(db: InfrahubDatabase, branch: str) -> SchemaChangeHistorySnapshot:
     reader = build_schema_change_history_reader(db=db)
-    page = await reader.list_schema_changes(branch=branch, limit=SCHEMA_CHANGE_HISTORY_MAX_LIMIT, offset=0)
+    newest_first = await reader.list_schema_changes(branch=branch, limit=SCHEMA_CHANGE_HISTORY_MAX_LIMIT, offset=0)
+    page = replace(
+        newest_first,
+        entries=sorted(
+            newest_first.entries, key=lambda entry: (entry.schema_change.created_at, str(entry.schema_change.uuid))
+        ),
+    )
     schema_change_ids = [str(entry.schema_change.uuid) for entry in page.entries]
     operations = await reader.list_operations(
         schema_change_ids=schema_change_ids, limit=SCHEMA_CHANGE_OPERATIONS_MAX_LIMIT, offset=0

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, override
 
 from neo4j import Record
@@ -820,49 +820,6 @@ class FailingApplicationRecorder(RecordingApplicationRecorder):
     async def fail(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> None:
         await super().fail(recording=recording, error=error, user_id=user_id)
         raise DatabaseError(message=FAILING_STORE_ERROR)
-
-
-@dataclass
-class FailGate:
-    started: asyncio.Event = field(default_factory=asyncio.Event)
-    opened: asyncio.Event = field(default_factory=asyncio.Event)
-    finished: asyncio.Event = field(default_factory=asyncio.Event)
-
-
-class GatedFailApplicationRecorder(RecordingApplicationRecorder):
-    """An application recorder that records each call; `fail_if_running` sets `gate.started`, waits for `gate.opened`, then records.
-
-    `gate.finished` is set when `fail_if_running` returns or is cancelled.
-    """
-
-    def __init__(self, calls: list[SchemaApplicationCall], gate: FailGate) -> None:
-        super().__init__(calls=calls)
-        self.gate = gate
-
-    @override
-    async def fail_if_running(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> bool:
-        self.gate.started.set()
-        try:
-            await self.gate.opened.wait()
-            return await super().fail_if_running(recording=recording, error=error, user_id=user_id)
-        finally:
-            self.gate.finished.set()
-
-
-class GatedStartApplicationRecorder(RecordingApplicationRecorder):
-    """An application recorder that records each call; `start` sets `gate.started`, waits for `gate.opened`, then records."""
-
-    def __init__(self, calls: list[SchemaApplicationCall], gate: FailGate) -> None:
-        super().__init__(calls=calls)
-        self.gate = gate
-
-    @override
-    async def start(
-        self, *, branch: Branch, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
-    ) -> SchemaChangeRecording:
-        self.gate.started.set()
-        await self.gate.opened.wait()
-        return await super().start(branch=branch, operations=operations, at=at, user_id=user_id)
 
 
 class FailingCompleteApplicationRecorder(RecordingApplicationRecorder):

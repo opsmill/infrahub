@@ -17,6 +17,7 @@ from infrahub.core.schema_change.models import SchemaChange, SchemaChangeApplica
 from infrahub.core.schema_change.operations import build_schema_change_summary
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import retry_db_transaction
+from infrahub.exceptions import SchemaChangeRecordNotFoundError
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -142,7 +143,7 @@ class SchemaChangeMarkAppliedQuery(Query):
     name = "schema-change-mark-applied"
     type = QueryType.WRITE
     insert_return = False
-    raise_error_if_empty = True
+    raise_error_if_empty = False
 
     def __init__(
         self,
@@ -519,7 +520,7 @@ class SchemaChangeRepository:
         """Set a schema change and its application to applied, and link the schema change to its parent.
 
         Raises:
-            QueryError: When the schema change, its application or the parent is not stored.
+            SchemaChangeRecordNotFoundError: When the schema change, its application or the parent is not stored.
 
         """
         query = await SchemaChangeMarkAppliedQuery.init(
@@ -533,6 +534,8 @@ class SchemaChangeRepository:
             user_id=user_id,
         )
         await self._write(query=query)
+        if not query.results:
+            raise SchemaChangeRecordNotFoundError(schema_change_id=schema_change_id)
 
     async def mark_failed(self, *, schema_change_id: str, application_id: str, error: str, user_id: str) -> None:
         """Set a schema change and its application to failed, and close its migration records.

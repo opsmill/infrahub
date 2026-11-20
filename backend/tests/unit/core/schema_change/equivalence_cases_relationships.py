@@ -56,6 +56,12 @@ def _change_relationship_optional(scope: CaseScope, _: SchemaBranch) -> SchemaRo
     return SchemaRoot(nodes=[device])
 
 
+def _change_relationship_max_count(scope: CaseScope, _: SchemaBranch) -> SchemaRoot:
+    device = scope.node(TestKind.DEVICE)
+    device.get_relationship(name=DEVICE_SPARE_SFPS_RELATIONSHIP).max_count = 4
+    return SchemaRoot(nodes=[device])
+
+
 def _change_relationship_kind(scope: CaseScope, _: SchemaBranch) -> SchemaRoot:
     physical_interface = scope.node(TestKind.PHYSICAL_INTERFACE)
     physical_interface.get_relationship(name="sfp").kind = RelationshipKind.GENERIC
@@ -170,6 +176,12 @@ RELATIONSHIP_EQUIVALENCE_CASES: list[CombinedLoadCase] = [
         namespace="Reloptional",
         base_kinds=INTERFACE_KINDS,
         schema_file=_change_relationship_optional,
+    ),
+    CombinedLoadCase(
+        name="change_relationship_max_count",
+        namespace="Relmaxcount",
+        base_kinds=INTERFACE_KINDS,
+        schema_file=_change_relationship_max_count,
     ),
     CombinedLoadCase(
         name="change_relationship_kind",

@@ -439,13 +439,15 @@ class TestSchemaChangeHistoryQuery:
         applied_1, failed, applied_2 = history.on_branch(default_branch_scope_class.name)
         assert main_data["count"] == 3
         assert [(edge["node"]["id"], edge["node"]["branch"]) for edge in main_data["edges"]] == [
-            (applied_1.id, default_branch_scope_class.name),
             (applied_2.id, default_branch_scope_class.name),
             (failed.id, default_branch_scope_class.name),
+            (applied_1.id, default_branch_scope_class.name),
         ]
+        branch_change_3, branch_change_4 = history.on_branch(BRANCH_WITH_CHANGES)
         assert branch_data["count"] == 2
         assert [(edge["node"]["id"], edge["node"]["branch"]) for edge in branch_data["edges"]] == [
-            (change.id, BRANCH_WITH_CHANGES) for change in history.on_branch(BRANCH_WITH_CHANGES)
+            (branch_change_4.id, BRANCH_WITH_CHANGES),
+            (branch_change_3.id, BRANCH_WITH_CHANGES),
         ]
 
     async def test_count_and_edges_follow_limit_and_offset(
@@ -478,13 +480,21 @@ class TestSchemaChangeHistoryQuery:
             query=SCHEMA_CHANGES_QUERY,
             variables={"status": ["FAILED"]},
         )
+        no_status = await self._query_data(
+            db=db,
+            branch=default_branch_scope_class,
+            account_session=session_admin_scope_class,
+            query=SCHEMA_CHANGES_QUERY,
+            variables={"status": []},
+        )
 
         assert (first_page["count"], [edge["node"]["id"] for edge in first_page["edges"]]) == (
             3,
-            [applied_1.id, applied_2.id],
+            [applied_2.id, failed.id],
         )
-        assert (second_page["count"], [edge["node"]["id"] for edge in second_page["edges"]]) == (3, [failed.id])
+        assert (second_page["count"], [edge["node"]["id"] for edge in second_page["edges"]]) == (3, [applied_1.id])
         assert (failed_only["count"], [edge["node"]["id"] for edge in failed_only["edges"]]) == (1, [failed.id])
+        assert (no_status["count"], no_status["edges"]) == (0, [])
 
     async def test_schema_change_fields_have_the_values_of_the_contract(
         self,
@@ -510,7 +520,7 @@ class TestSchemaChangeHistoryQuery:
             query=SCHEMA_CHANGES_QUERY,
         )
 
-        nodes = [edge["node"] for edge in main_data["edges"] + branch_data["edges"]]
+        nodes = [edge["node"] for edge in [*reversed(main_data["edges"]), *reversed(branch_data["edges"])]]
         assert [
             {key: value for key, value in node.items() if key not in {"created_at", "updated_at", "applied_at"}}
             for node in nodes
@@ -525,15 +535,6 @@ class TestSchemaChangeHistoryQuery:
                 "parent": None,
             },
             {
-                "id": applied_2.id,
-                "name": f"00002_{MAIN_SUMMARY}",
-                "summary": MAIN_SUMMARY,
-                "version": 2,
-                "status": "APPLIED",
-                "branch": "main",
-                "parent": {"id": applied_1.id, "name": f"00001_{MAIN_SUMMARY}", "version": 1, "branch": "main"},
-            },
-            {
                 "id": failed.id,
                 "name": MAIN_SUMMARY,
                 "summary": MAIN_SUMMARY,
@@ -541,6 +542,15 @@ class TestSchemaChangeHistoryQuery:
                 "status": "FAILED",
                 "branch": "main",
                 "parent": None,
+            },
+            {
+                "id": applied_2.id,
+                "name": f"00002_{MAIN_SUMMARY}",
+                "summary": MAIN_SUMMARY,
+                "version": 2,
+                "status": "APPLIED",
+                "branch": "main",
+                "parent": {"id": applied_1.id, "name": f"00001_{MAIN_SUMMARY}", "version": 1, "branch": "main"},
             },
             {
                 "id": branch_change_3.id,
@@ -568,8 +578,8 @@ class TestSchemaChangeHistoryQuery:
         ]
         assert [Timestamp(node["applied_at"]) if node["applied_at"] else None for node in nodes] == [
             applied_1.at,
-            applied_2.at,
             None,
+            applied_2.at,
             branch_change_3.at,
             branch_change_4.at,
         ]
@@ -591,7 +601,7 @@ class TestSchemaChangeHistoryQuery:
         session_admin_scope_class: AccountSession,
         seeded_query_history: SeededQueryHistory,
     ) -> None:
-        applied_1 = seeded_query_history.history.on_branch(default_branch_scope_class.name)[0]
+        latest_change = seeded_query_history.history.on_branch(default_branch_scope_class.name)[-1]
 
         data = await self._query_data(
             db=db,
@@ -602,7 +612,7 @@ class TestSchemaChangeHistoryQuery:
         )
 
         (edge,) = data["edges"]
-        assert edge["node"]["id"] == applied_1.id
+        assert edge["node"]["id"] == latest_change.id
         operations = edge["node"]["operations"]
         assert operations["count"] == NBR_OPERATIONS
         assert [operation["node"] for operation in operations["edges"]] == [

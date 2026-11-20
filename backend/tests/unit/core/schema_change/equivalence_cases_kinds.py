@@ -22,6 +22,12 @@ def _turn_on_generate_profile(scope: CaseScope, _: SchemaBranch) -> SchemaRoot:
     return SchemaRoot(nodes=[tag])
 
 
+def _turn_off_generate_template(scope: CaseScope, _: SchemaBranch) -> SchemaRoot:
+    device = scope.node(TestKind.DEVICE)
+    device.generate_template = False
+    return SchemaRoot(nodes=[device])
+
+
 def _make_attribute_unique(scope: CaseScope, _: SchemaBranch) -> SchemaRoot:
     device = scope.node(TestKind.DEVICE)
     device.get_attribute(name="part_number").unique = True
@@ -137,6 +143,12 @@ KIND_EQUIVALENCE_CASES: list[CombinedLoadCase] = [
         namespace="Tagprofile",
         base_kinds=TAG_KINDS,
         schema_file=_turn_on_generate_profile,
+    ),
+    CombinedLoadCase(
+        name="turn_off_generate_template",
+        namespace="Templateoff",
+        base_kinds=INTERFACE_KINDS,
+        schema_file=_turn_off_generate_template,
     ),
     CombinedLoadCase(
         name="make_attribute_unique",
