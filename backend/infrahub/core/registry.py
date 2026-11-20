@@ -141,11 +141,11 @@ class Registry:
         Args:
             branch (Optional[Union[Branch, str]]): Branch object or name of a branch
 
-        Raises:
-            BranchNotFoundError:
-
         Returns:
             Branch: A Branch Object
+
+        Raises:
+            BranchNotFoundError:
 
         """
         if branch and not isinstance(branch, str):
@@ -189,11 +189,11 @@ class Registry:
             branch (Optional[Union[Branch, str]]): Branch object or name of a branch
             session (Optional[AsyncSession], optional): AsyncSession to connect to the database. Defaults to None.
 
-        Raises:
-            BranchNotFoundError:
-
         Returns:
             Branch: A Branch Object
+
+        Raises:
+            BranchNotFoundError:
 
         """
         if branch and not isinstance(branch, str):
