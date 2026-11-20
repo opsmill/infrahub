@@ -69,7 +69,7 @@ Follow BDD structure consistently:
 
 ## The test has to fail when the behavior breaks
 
-Before you call a test done, ask what would make it fail. Two shapes pass no matter what the component
+Before you call a test done, ask what would make it fail. Three shapes pass no matter what the component
 does:
 
 - **An assertion on the static part of the output.** `getByText("Now working on")` passes when the
@@ -78,9 +78,9 @@ does:
 - **A setup flag the component never reads.** Setting `isFetching: true` on a mocked query hook proves
   nothing if the component only destructures `isPending` — the test is indistinguishable from the one
   above it. Check the component actually reads what you varied.
-- **A call count alone.** `expect(fetchNextPage).toHaveBeenCalledTimes(1)` passes when the request names
-  the wrong object, and when the rows of the next page never render. Assert what the call was made with
-  and what the user then sees.
+- **A call count alone.** `expect(checkEncryption).toHaveBeenCalledTimes(1)` passes when the request
+  names the wrong artifact or branch. Assert the arguments with `toHaveBeenCalledWith`. When the call
+  loads data, make the mock return it and assert what the user then sees.
 
 A behavior change needs a test that exercises the new behavior, not the old default: replacing a
 hardcoded `"main"` with a `is_default` lookup is only covered by a case whose default branch *isn't*

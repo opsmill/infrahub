@@ -50,19 +50,19 @@ A component should generally expose a single entry point method (occasionally mo
 
 ## Return an object with a method, not a function
 
-When a component gives its caller a check to apply later, return a small frozen dataclass that holds the data and exposes the check as a method. Do not return or pass a function: the dataclass names the check and shows the data it reads. A clock injected for tests stays a `Callable` (see [testing.md](testing.md)).
+When a component gives its caller a check to apply later, return a small frozen dataclass that holds the data and exposes the check as a method over its own fields. Do not return a function for the check: the dataclass names the check and shows the data it reads. Handlers and clocks injected through `__init__` stay functions.
 
 ```python
 # ✅ Good - the caller receives a named type (placeholder names)
 @dataclass(frozen=True)
-class MemberFilter:
-    member_ids: frozenset[str]
+class ItemFilter:
+    item_ids: frozenset[str]
 
-    def selects(self, *, member_id: str) -> bool:
-        return not self.member_ids or member_id in self.member_ids
+    def selects(self, *, item_id: str) -> bool:
+        return not self.item_ids or item_id in self.item_ids
 
 # ❌ Bad - the caller receives a function it cannot inspect
-def build_member_filter(member_ids: list[str]) -> Callable[[str], bool]: ...
+def build_item_filter(item_ids: list[str]) -> Callable[[str], bool]: ...
 ```
 
 ## Constructor vs. method arguments

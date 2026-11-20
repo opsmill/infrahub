@@ -164,7 +164,7 @@ class MyQuery(Query):
 
 Pagination (`LIMIT`/`OFFSET`) is appended automatically from the constructor parameters. The bounds are the `$query_limit` and `$query_offset` parameters, not text, so every page of a query shares one cached plan (`Query.render()` returns the text with the parameters it needs and leaves `self.params` untouched); a query that keeps automatic pagination must not use those two parameter names for anything else. Pass `limit` and `offset` through to `super().__init__()`: a subclass that keeps its own copies leaves the base `self.limit`/`self.offset` at `None`, so `execute()` takes the `query_with_size_limit()` path and the subclass pages twice, against itself.
 
-Automatic pagination is only correct over a total order: end the query with an `ORDER BY` on a unique key (add `elementId(n)` as a tiebreaker when the sort property is not unique). Neo4j does not guarantee disjoint pages otherwise, so chunked reads can skip or repeat rows. An `ORDER BY` holds only for the clause right after it, so repeat the sort directly before the `RETURN` when other clauses follow the first one.
+Automatic pagination is only correct over a total order: end the query with an `ORDER BY` on a unique key (add `elementId(n)` as a tiebreaker when the sort property is not unique). Neo4j does not guarantee disjoint pages otherwise, so chunked reads can skip or repeat rows. An `ORDER BY` holds only for the clause right after it, so sort in the clause the limit applies to, not several clauses earlier.
 
 To write pagination directly in your query, set `insert_limit = False`:
 

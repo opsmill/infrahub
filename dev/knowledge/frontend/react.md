@@ -77,13 +77,14 @@ const state = isPending ? "pending" : error || (data === undefined) ? "check-fai
 An infinite query keeps its loaded pages when `fetchNextPage` fails. Read `isFetchNextPageError` for
 that case, not `error`, which a failed background refetch also sets.
 
-- Render the loaded rows, and return the empty or error state only when no row is loaded.
+- After a failed `fetchNextPage`, render the loaded rows and return the empty or error state only when
+  no row is loaded. A failed refetch follows the section above.
 - Stop the scroll trigger while `isFetchNextPageError` is set, or it requests the failed page again
   on every scroll.
 
-## Queries do not retry
+## Queries do not retry by default
 
-The query client sets `retry: false` app-wide (`shared/api/rest/client.ts`), so do not repeat it in the options of a query. A failed query stays failed until something re-triggers it. The one exception is a 429 load-shed, replayed in the transport below the cache (see `dev/knowledge/frontend/request-priority.md`).
+The query client sets `retry: false` app-wide (`shared/api/rest/client.ts`), so do not repeat it in the options of a query. A failed query stays failed until something re-triggers it, unless the query sets its own `retry`, as the repository commits query does (see [repository-commits.md](repository-commits.md)). A 429 load-shed is replayed in the transport below the cache (see `dev/knowledge/frontend/request-priority.md`).
 
 ## An effect-driven retry needs a dependency that changes on failure
 
