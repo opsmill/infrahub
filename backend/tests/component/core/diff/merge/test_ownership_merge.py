@@ -8,7 +8,7 @@ import pytest
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.changelog.builder import build_diff_changelog_collector
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, DiffAction
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, DiffAction, InfrahubKind
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.field_specifiers_map import NodeFieldSpecifierMap
 from infrahub.core.diff.model.path import ConflictSelection, DiffNode, DiffRoot
@@ -329,6 +329,91 @@ async def test_merge_closes_the_owners_that_the_default_branch_gave_to_a_node_th
 
     assert await NodeManager.get_one(db=db, branch=default_branch, id=device_id) is None
     assert await count_active_holder_edges(db=db, branch=default_branch, node_id=device_id, edge_types=edge_types) == 0
+
+
+@pytest.mark.parametrize(
+    "holder",
+    [
+        pytest.param(NODE_HOLDER, id="owners"),
+        pytest.param(NODE_SOURCES_HOLDER, id="sources"),
+        pytest.param(HolderKey(kind=HolderKind.ATTRIBUTE, attribute="name"), id="attribute"),
+    ],
+)
+@pytest.mark.parametrize(
+    ("start", "after"),
+    [
+        pytest.param(None, ("dc-emea",), id="no_owner_at_the_branch_start"),
+        pytest.param(("dc-emea",), ("network-emea", "security"), id="owners_at_the_branch_start"),
+    ],
+)
+@pytest.mark.parametrize(
+    "steps",
+    [
+        pytest.param(("owners", "delete"), id="first_diff"),
+        pytest.param(("owners", "diff", "delete"), id="diff_between_the_owners_and_the_delete"),
+        pytest.param(("delete", "diff", "owners"), id="diff_between_the_delete_and_the_owners"),
+    ],
+)
+async def test_node_deleted_on_a_branch_conflicts_with_owners_that_the_default_branch_gives_it(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    diff_repository: DiffRepository,
+    dataset: OwnerDataset,
+    holder: HolderKey,
+    start: tuple[str, ...] | None,
+    after: tuple[str, ...],
+    steps: tuple[str, ...],
+) -> None:
+    device_id = dataset.ids["device-a"]
+    if start is not None:
+        await set_owners(
+            db=db, branch=default_branch, node_id=device_id, owner_ids=dataset.owners(start), holder=holder
+        )
+    branch = await create_branch(db=db, branch_name="node-deleted")
+    for step in steps:
+        if step == "owners":
+            await set_owners(
+                db=db, branch=default_branch, node_id=device_id, owner_ids=dataset.owners(after), holder=holder
+            )
+        elif step == "delete":
+            device = await NodeManager.get_one(db=db, branch=branch, id=device_id, raise_on_error=True)
+            await device.delete(db=db)
+        else:
+            await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+
+    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+
+    conflict = get_one_diff_node(diff_root=diff, node_uuid=device_id).conflict
+    assert conflict is not None, list(diff.get_all_conflicts())
+    assert (conflict.base_branch_action, conflict.diff_branch_action, conflict.resolvable) == (
+        DiffAction.UPDATED,
+        DiffAction.REMOVED,
+        False,
+    )
+
+
+async def test_car_deleted_on_a_branch_conflicts_with_a_first_color_owner_on_the_default_branch(
+    db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, car_accord_main: Node
+) -> None:
+    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group.new(db=db, name="dc-emea")
+    await group.save(db=db)
+    branch = await create_branch(db=db, branch_name="car-deleted")
+    car = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id, raise_on_error=True)
+    car.color.set_owner(group.id)
+    await car.save(db=db)
+    branch_car = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id, raise_on_error=True)
+    await branch_car.delete(db=db)
+
+    diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+
+    conflict = get_one_diff_node(diff_root=diff, node_uuid=car_accord_main.id).conflict
+    assert conflict is not None, list(diff.get_all_conflicts())
+    assert (conflict.base_branch_action, conflict.diff_branch_action, conflict.resolvable) == (
+        DiffAction.UPDATED,
+        DiffAction.REMOVED,
+        False,
+    )
 
 
 @pytest.mark.parametrize(

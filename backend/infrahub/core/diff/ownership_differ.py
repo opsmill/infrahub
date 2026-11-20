@@ -91,13 +91,12 @@ class OwnershipDiffer:
         new_fields: dict[str, set[str]] = {}
         for change, field_name in branch_changes.items():
             new_fields.setdefault(change.node_uuid, set()).add(field_name)
-        current_fields: dict[str, set[str]] = {}
+        # A delete writes no owner edge, and any owner change of the base branch conflicts with it.
+        removed_uuids = {node.identifier.uuid for node in branch_root.nodes if node.action is DiffAction.REMOVED}
+        current_uuids: set[str] = set()
         if request.previous_node_specifiers is not None:
-            # Any attribute of the previous diff can hold owners.
-            for node_uuid, field_names in request.previous_node_specifiers.get_uuid_field_names_map().items():
-                if other_fields := set(field_names) - new_fields.get(node_uuid, set()):
-                    current_fields[node_uuid] = other_fields
-        candidate_uuids = sorted(new_fields.keys() | current_fields.keys())
+            current_uuids = set(request.previous_node_specifiers.get_uuid_field_names_map())
+        candidate_uuids = sorted(new_fields.keys() | removed_uuids | current_uuids)
         if not candidate_uuids:
             return
         # A kind migration on the base branch gives its holders a kind that only the base branch schema has.
@@ -112,12 +111,12 @@ class OwnershipDiffer:
             node_uuids=candidate_uuids,
             node_kinds=None,
         )
-        # A field that the previous diff already covers only needs the base branch changes since that diff.
+        # A node that the previous diff already covers only needs the base branch changes since that diff.
         start_times: dict[OwnerHolderChange, Timestamp] = {}
         for change, field_name in base_changes.items():
-            if field_name in new_fields.get(change.node_uuid, set()):
+            if change.node_uuid in removed_uuids or field_name in new_fields.get(change.node_uuid, set()):
                 start_times[change] = request.branch_from_time
-            elif field_name in current_fields.get(change.node_uuid, set()) and change.changed_at >= request.from_time:
+            elif change.node_uuid in current_uuids and change.changed_at >= request.from_time:
                 start_times[change] = start_time
         await self._apply_changes(
             root=base_root,
