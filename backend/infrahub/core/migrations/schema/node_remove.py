@@ -54,10 +54,12 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     """Close inbound edges that point to nodes of the removed kind.
 
     Inbound edge types from another Node/Attribute/Relationship/OwnerSet to our active_node:
-      - HAS_SOURCE        (Attribute|Relationship|Node -> Node)          : peer is the vertex with the source
-      - HAS_OWNER         (Attribute|Relationship|Node|OwnerSet -> Node) : peer is the vertex with the owner
-      - HAS_OWNER_SOURCE  (Attribute|Node|OwnerSet -> Node)              : peer is the vertex with the owners
-      - IS_RELATED        (Node <-> Relationship, either dir)            : peer is the Relationship
+      - HAS_SOURCE        (Relationship -> Node)               : peer is the link with the source
+      - HAS_OWNER         (Relationship -> Node)               : peer is the link with the owner
+      - HAS_OWNER_SOURCE  (Attribute|Node|OwnerSet -> Node)    : peer is the vertex with the owners
+      - IS_RELATED        (Node <-> Relationship, either dir)  : peer is the Relationship
+
+    The HAS_SOURCE and HAS_OWNER edges from an Attribute, a Node or an OwnerSet stay open.
 
     For each such edge we close it on the migration branch and create a matching deleted
     edge so that downstream branches see the removal.
@@ -100,6 +102,8 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     // For each inbound edge to active_node, find the latest active edge on the branch
     // ----------------------------------------------------------
     MATCH (active_node)<-[r:IS_RELATED|HAS_SOURCE|HAS_OWNER|HAS_OWNER_SOURCE]-(peer:Attribute|Relationship|Node|OwnerSet)
+    // A deleted owner or source stays in the list of its holder, as at the delete of a node.
+    WHERE NOT (type(r) IN ["HAS_OWNER", "HAS_SOURCE"] AND NOT peer:Relationship)
     WITH DISTINCT active_node, type(r) AS edge_type, peer
     CALL (active_node, edge_type, peer) {
         MATCH (active_node)<-[r:$(edge_type)]-(peer)
