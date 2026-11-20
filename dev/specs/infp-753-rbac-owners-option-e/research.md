@@ -292,6 +292,7 @@ The Technical Context of the plan has no open "NEEDS CLARIFICATION" item. The op
 - The lock was a proposal. Decision of 2026-11-16 (PD-2): the lock for the node stays, and the state of the last write stays.
 - Decision of 2026-11-16 (PD-5), for two branches that create the same `OwnerSet` vertex: the design is confirmed as built. Two branches reuse the same vertex, through the lock for the node.
 - Guillaume Mazoyer, maintainer, made both decisions ([provisional-decisions.md](provisional-decisions.md), "Decisions of 2026-11-16").
+- Decision of 2026-11-20, which replaces the proposal above and PD-2: no mutation takes `InfrahubMultiLock` for owners. A write lock in the database on the node vertex (`SET n.uuid = n.uuid`) makes two writes of one node run one after the other. `Node._update` and `Node.delete` take it at their start, and the owner queries take it before they write. The reasons are in [provisional-decisions.md](provisional-decisions.md), "Decision of 2026-11-20".
 
 ## R-22: Open points that the tasks carry
 

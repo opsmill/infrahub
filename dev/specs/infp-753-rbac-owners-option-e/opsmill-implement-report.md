@@ -210,3 +210,7 @@ Runs after the last code change of this round, each package in its own pytest se
 4. Get the decision of the engineering review on the depth limit of the parent walk (T003, PD-3). The code uses the provisional value.
 5. A person reviews the owner merge queries (work that the storage decision names).
 6. Start pull request 2 (IFC-3627) on a branch from the feature branch after this pull request merges into it.
+
+## Erratum, 2026-11-20
+
+- Section 6, "Lock of the mutation": the `node_ownership` lock (T021) does not go into pull request 2. The maintainer closed T021 on 2026-11-20: the write lock in the database on the node vertex gives FR-032, and no mutation takes `InfrahubMultiLock` for owners ([provisional-decisions.md](provisional-decisions.md), "Decision of 2026-11-20").

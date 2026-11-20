@@ -56,7 +56,8 @@ description: "Task list for owner and source metadata, Community side, storage o
 - [X] T018 Create the input parser in backend/infrahub/core/ownership/input.py. It accepts an owner as `id`, or as `hfid` with `kind`. It refuses the whole input when an owner is not found, is not an account or an account group, has an unknown kind, has neither an ID nor a kind with an HFID, or has an HFID of the wrong length (FR-003)
 - [X] T019 [P] Write unit tests for the five refusal cases of FR-003 and for the three values of D-5 (key left out, `null`, `[]`) in backend/tests/unit/core/ownership/test_input.py (moved to pull request 2 on 2026-11-19, with the code it tests)
 - [X] T020 [P] Write component tests that set each state on a node on a branch and read it back on that branch and on the default branch in backend/tests/component/core/ownership/test_storage.py (FR-001, FR-002)
-- [ ] T021 Take a lock for the node in every mutation that writes owners or sources, with `InfrahubMultiLock` of backend/infrahub/lock.py, in `InfrahubMutationMixin` of backend/infrahub/graphql/mutations/main.py (research R-21). Not needed for FR-032: see the check of 2026-11-20 under "Pull Request Split"
+- [X] T021 Take a lock for the node in every mutation that writes owners or sources, with `InfrahubMultiLock` of backend/infrahub/lock.py, in `InfrahubMutationMixin` of backend/infrahub/graphql/mutations/main.py (research R-21). Not needed for FR-032: see the check of 2026-11-20 under "Pull Request Split"
+  - Closed on 2026-11-20 without code: the database write lock on the node vertex gives FR-032 (provisional-decisions.md, "Decision of 2026-11-20"), and the tests of two open transactions in backend/tests/component/core/ownership/test_owner_sets.py cover it.
 - [X] T022 Run the spike before the first pull request. With plain Cypher queries on this storage and the reference data set, as the benchmark of 2026-11-09 did, measure SC-003 to SC-006, and measure SC-009 and SC-010 with a temporary check that reads the owners that apply. Decide how the owner filter meets SC-003 (research R-6), whether the `HAS_NO_OWNER(branch)` index brings the diff query to the cost of option B, and whether the lookup of an `OwnerSet` by its key needs an index. Record the numbers and the decisions in dev/specs/infp-753-rbac-owners-option-e/measurements.md
 - [X] T023 If the spike chose an index of the owners that apply, get approval for the new database structure, and add the tasks for its build, its update at each write and its rebuild to dev/specs/infp-753-rbac-owners-option-e/tasks.md before Phase 3 starts (research R-6)
 
@@ -435,6 +436,8 @@ Check of 2026-11-20: T021 is not needed for FR-032.
 - An owner input replaces the whole list (D-5). So a mutation does not read the owners before the save.
 - Pull request 2 needs T021 only if a mutation reads the owners before the save and writes a list that it makes from them.
 - Not decided: whether pull request 2 drops T021 and T031. The maintainer decides.
+
+Decision of 2026-11-20: T021 is closed, and no mutation takes `InfrahubMultiLock` for owners. The database lock on the node vertex stays (provisional-decisions.md, "Decision of 2026-11-20"). Not decided: whether pull request 2 drops T031.
 
 ## Implementation Strategy
 
