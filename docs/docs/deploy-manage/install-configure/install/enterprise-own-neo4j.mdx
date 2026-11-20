@@ -33,7 +33,7 @@ Before starting, make sure you have:
 
 When you install Infrahub Enterprise with the bundled Neo4j, you set one value for each of two license agreements, as described in [Before you start](./enterprise.mdx#before-you-start). With your own Neo4j, you set only the value for the Infrahub license agreement:
 
-- **Infrahub license agreement:** accept it by setting `INFRAHUB_ACCEPT_LICENSE_AGREEMENT` to `"yes"`. You set it for the API server and the task workers in Step 3.
+- **Infrahub license agreement:** accept it by setting `INFRAHUB_ACCEPT_LICENSE_AGREEMENT` to `"eval"`. You set it for the API server and the task workers in Step 3.
 - **Neo4j license agreement:** do not set `acceptLicenseAgreement` under `infrahub.neo4j.neo4j`. The chart does not install Neo4j, and your own Neo4j license covers your instance.
 
 ## Create the Infrahub database and user in Neo4j
@@ -107,7 +107,7 @@ infrahub:
       envFromExistingSecrets:
         - infrahub-neo4j
       env:
-        INFRAHUB_ACCEPT_LICENSE_AGREEMENT: "yes"
+        INFRAHUB_ACCEPT_LICENSE_AGREEMENT: "eval"
         INFRAHUB_DB_ADDRESS: neo4j.example.com
         INFRAHUB_DB_PORT: 7687
         INFRAHUB_DB_USERNAME: infrahub
@@ -118,14 +118,12 @@ infrahub:
       envFromExistingSecrets:
         - infrahub-neo4j
       env:
-        INFRAHUB_ACCEPT_LICENSE_AGREEMENT: "yes"
+        INFRAHUB_ACCEPT_LICENSE_AGREEMENT: "eval"
         INFRAHUB_DB_ADDRESS: neo4j.example.com
         INFRAHUB_DB_PORT: 7687
         INFRAHUB_DB_USERNAME: infrahub
         INFRAHUB_DB_DATABASE: infrahub
 ```
-
-Write `"yes"` as a quoted string. Helm reads an unquoted `yes` as a boolean, and the chart then passes it to Infrahub as `true`.
 
 The connection settings and their defaults:
 
