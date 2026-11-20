@@ -1,0 +1,25 @@
+{
+  "state": "pending",
+  "sha": "d40beee736f648045309f538af278dc2e34cd3ca",
+  "total_count": 2,
+  "statuses": [
+    {
+      "id": 1,
+      "state": "success",
+      "context": "ci/external-lint",
+      "description": "Lint passed",
+      "target_url": "https://ci.example.com/1",
+      "created_at": "2026-09-19T02:00:00Z",
+      "updated_at": "2026-09-19T02:05:00Z"
+    },
+    {
+      "id": 2,
+      "state": "pending",
+      "context": "ci/external-scan",
+      "description": "Scan running",
+      "target_url": "https://ci.example.com/2",
+      "created_at": "2026-09-19T02:00:00Z",
+      "updated_at": "2026-09-19T02:01:00Z"
+    }
+  ]
+}
