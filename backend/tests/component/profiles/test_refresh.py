@@ -11,7 +11,7 @@ from neo4j.exceptions import DatabaseError as Neo4jDatabaseError
 from neo4j.exceptions import SessionExpired, TransientError
 
 from infrahub import config, lock
-from infrahub.core.constants import RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import MetadataOptions, RelationshipCardinality, RelationshipKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge.recompute_coalescing import (
     CoalescedRecomputeBuilder,
@@ -19,6 +19,7 @@ from infrahub.core.merge.recompute_coalescing import (
     RecomputeChainSubmitter,
 )
 from infrahub.core.node import Node
+from infrahub.core.node.create import create_node
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.events.constants import NodeMutationOrigin
@@ -83,6 +84,21 @@ PORT = NodeSchema(
     ],
 )
 
+RACK = NodeSchema(
+    name="Rack",
+    namespace="Test",
+    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    relationships=[
+        RelationshipSchema(
+            name="room",
+            peer=ROOM_KIND,
+            kind=RelationshipKind.GENERIC,
+            optional=False,
+            cardinality=RelationshipCardinality.ONE,
+        )
+    ],
+)
+
 
 @dataclass(frozen=True)
 class ServerDataset:
@@ -104,6 +120,11 @@ async def server_schema(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     await load_schema(db=db, schema=SchemaRoot(nodes=[ROOM, SERVER, PORT]), branch_name=default_branch.name)
+
+
+@pytest.fixture
+async def rack_schema(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch) -> None:
+    await load_schema(db=db, schema=SchemaRoot(nodes=[ROOM, RACK]), branch_name=default_branch.name)
 
 
 async def _create(db: InfrahubDatabase, kind: str, **data: object) -> Node:
@@ -264,6 +285,36 @@ async def test_refresh_reports_a_relationship_that_a_profile_no_longer_sets(
         for event in doubles.events.events
         if isinstance(event, NodeUpdatedEvent)
     ] == [(["room"], {"peer_id": None, "peer_id_previous": dataset.room_id})] * 2
+
+
+async def test_refresh_skips_a_node_whose_required_relationship_its_profile_no_longer_sets(
+    db: InfrahubDatabase, default_branch: Branch, rack_schema: None
+) -> None:
+    """A Profile change that escapes the refusal of the mutations leaves the node with the old peer of the Profile."""
+    room = await _create(db=db, kind=ROOM_KIND, name="room-1")
+    profile = await _create(db=db, kind="ProfileTestRack", profile_name="profile-1", profile_priority=1000, room=room)
+    rack = await create_node(
+        data={"name": "rack-1", "profiles": [{"id": profile.id}]},
+        db=db,
+        branch=default_branch,
+        schema=registry.schema.get_node_schema(name="TestRack", branch=default_branch),
+    )
+    await profile.get_relationship(name="room").update(db=db, data=None)
+    await profile.save(db=db)
+    doubles = _refresher(db=db, branch=default_branch)
+
+    failed_node_ids = await doubles.refresher.refresh(
+        branch=default_branch, node_ids=[rack.id], context=_context(branch=default_branch)
+    )
+
+    assert failed_node_ids == [rack.id]
+    assert doubles.events.events == []
+    rack = await NodeManager.get_one(
+        db=db, id=rack.id, branch=default_branch, include_metadata=MetadataOptions.SOURCE, raise_on_error=True
+    )
+    assert [
+        (rel.peer_id, rel.is_from_profile) for rel in await rack.get_relationship(name="room").get_relationships(db=db)
+    ] == [(room.id, True)]
 
 
 @dataclass

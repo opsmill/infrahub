@@ -378,6 +378,7 @@ class RelationshipRemove(Mutation):
             source=source,
             relationship_name=relationship_name,
             removed_peer_ids=removed_peer_ids,
+            existing_peer_ids=set(existing_peers),
         )
         group_event_type = _get_group_event_type(
             node=source, relationship_schema=rel_schema, relationship_name=relationship_name
@@ -781,7 +782,11 @@ async def _detach_relationship_from_profiles(
 
 
 async def _validate_profile_removal(
-    graphql_context: GraphqlContext, source: Node, relationship_name: str, removed_peer_ids: set[str]
+    graphql_context: GraphqlContext,
+    source: Node,
+    relationship_name: str,
+    removed_peer_ids: set[str],
+    existing_peer_ids: set[str],
 ) -> None:
     source_schema = source.get_schema()
     if not removed_peer_ids:
@@ -799,6 +804,17 @@ async def _validate_profile_removal(
         )
         await constraint.validate_node_profiles_removal(
             node=source, node_schema=source_schema, profile_ids=sorted(removed_peer_ids)
+        )
+    elif (
+        isinstance(source_schema, ProfileSchema)
+        and relationship_name not in PROFILE_PEER_RELATIONSHIP_NAMES
+        and not existing_peer_ids - removed_peer_ids
+    ):
+        constraint = await get_component_registry().get_component(
+            RelationshipProfileRemovalConstraint, db=graphql_context.db, branch=graphql_context.branch
+        )
+        await constraint.validate_profile_peers_removal(
+            profile=source, profile_schema=source_schema, rel_name=relationship_name
         )
 
 

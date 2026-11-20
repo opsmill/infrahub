@@ -8,7 +8,7 @@ from infrahub.core.constants import PROFILES_RELATIONSHIP_NAME, MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.relationship.model import Relationship
-from infrahub.core.schema import NodeSchema, ProfileSchema
+from infrahub.core.schema import GenericSchema, NodeSchema, ProfileSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
 
@@ -45,7 +45,7 @@ class RelationshipProfileRemovalConstraint(RelationshipManagerConstraintInterfac
                 attr_names.add(attr_schema.name)
         return attr_names
 
-    def _get_required_relationship_names(self, schema: NodeSchema) -> set[str]:
+    def _get_required_relationship_names(self, schema: NodeSchema | GenericSchema) -> set[str]:
         rel_names: set[str] = set()
         for rel_schema in schema.relationships:
             if rel_schema.support_profiles and not rel_schema.optional:
@@ -87,7 +87,7 @@ class RelationshipProfileRemovalConstraint(RelationshipManagerConstraintInterfac
         return peer_profile_ids
 
     async def _get_peer_profile_ids_by_node(
-        self, schema: NodeSchema, node_ids: list[str], rel_names: set[str], at: Timestamp
+        self, schema: NodeSchema | GenericSchema, node_ids: list[str], rel_names: set[str], at: Timestamp
     ) -> dict[str, dict[str, set[str]]]:
         branch = await registry.get_branch(db=self.db, branch=self.branch)
         peer_profile_ids: dict[str, dict[str, set[str]]] = defaultdict(dict)
@@ -211,16 +211,25 @@ class RelationshipProfileRemovalConstraint(RelationshipManagerConstraintInterfac
     async def _check_profile_peers_removal(
         self, relm: RelationshipManager, profile_schema: ProfileSchema, profile: Node
     ) -> None:
-        target_kind = profile_schema.get_relationship(name="related_nodes").peer
-        target_schema = self.schema_branch.get(name=target_kind, duplicate=False)
-        if not isinstance(target_schema, NodeSchema) or relm.name not in self._get_required_relationship_names(
-            schema=target_schema
-        ):
-            return
         if await relm.get_relationships(db=self.db):
             return
         relm_update_details = await relm.fetch_relationship_ids(db=self.db, force_refresh=False)
         if not relm_update_details.peer_ids_present_database_only:
+            return
+        await self.validate_profile_peers_removal(profile=profile, profile_schema=profile_schema, rel_name=relm.name)
+
+    async def validate_profile_peers_removal(self, profile: Node, profile_schema: ProfileSchema, rel_name: str) -> None:
+        """Check that the relationship ``rel_name`` of ``profile`` can be left with no peer.
+
+        Raises:
+            ValidationError: If a related node requires the relationship and inherits it from ``profile``.
+
+        """
+        target_kind = profile_schema.get_relationship(name="related_nodes").peer
+        target_schema = self.schema_branch.get(name=target_kind, duplicate=False)
+        if not isinstance(target_schema, NodeSchema | GenericSchema):
+            return
+        if rel_name not in self._get_required_relationship_names(schema=target_schema):
             return
 
         related_nodes = await profile.get_relationship(name="related_nodes").get_relationships(db=self.db)
@@ -228,16 +237,16 @@ class RelationshipProfileRemovalConstraint(RelationshipManagerConstraintInterfac
         if not node_ids:
             return
         peer_profile_ids = await self._get_peer_profile_ids_by_node(
-            schema=target_schema, node_ids=node_ids, rel_names={relm.name}, at=Timestamp()
+            schema=target_schema, node_ids=node_ids, rel_names={rel_name}, at=Timestamp()
         )
         for node_id in sorted(peer_profile_ids):
-            if profile.get_id() not in peer_profile_ids[node_id].get(relm.name, set()):
+            if profile.get_id() not in peer_profile_ids[node_id].get(rel_name, set()):
                 continue
             node = await NodeManager.get_one(db=self.db, branch=self.branch, id=node_id, raise_on_error=True)
             node_display_label = await node.get_display_label(db=self.db)
             raise ValidationError(
-                f"Cannot remove the peer of relationship '{relm.name}' from profile '{profile.get_id()}' because "
-                f"node '{node_display_label}' (ID: {node_id}) inherits required relationship '{relm.name}' "
+                f"Cannot remove the peer of relationship '{rel_name}' from profile '{profile.get_id()}' because "
+                f"node '{node_display_label}' (ID: {node_id}) inherits required relationship '{rel_name}' "
                 "from this profile."
             )
 
