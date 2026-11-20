@@ -1,0 +1,20 @@
+backend/tests/component/core/migrations/schema/test_migration_node_scope_plan.py
+  s_86a183a456d0fe::t_489bcca1bf3ddf 75-76
+  s_86a183a456d0fe::t_00dbe992526bb3 305-310
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "541c4850a560f44abc28c4c2517bb39a8102c110",
+  "prompts": {},
+  "sessions": {
+    "s_86a183a456d0fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70ca524c-d3c0-480e-bdb3-83ac5c526c97",
+        "model": "unknown"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
