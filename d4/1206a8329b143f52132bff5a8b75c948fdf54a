@@ -1,0 +1,114 @@
+dev/specs/ifc-3614-store-schema-changes/alignment-check.md
+  s_8b3e04e56631b6::t_cfe30e00defffb 55
+backend/infrahub/exceptions.py
+  s_8b3e04e56631b6::t_4ea0f71494ccf2 576-577
+  s_8b3e04e56631b6::t_64f446738d0d72 510-511
+  s_8b3e04e56631b6::t_6692804dd44973 523-536
+backend/tests/unit/core/schema_change/equivalence_cases_fields.py
+  s_8b3e04e56631b6::t_c4787738c1c4b9 5,12-13
+  s_8b3e04e56631b6::t_4e1e380bd93440 148
+  s_8b3e04e56631b6::t_e6dbdbdd253863 320-365
+  s_8b3e04e56631b6::t_0604ff414e7e7f 50-147,149-151
+backend/infrahub/graphql/mutations/schema.py
+  s_8b3e04e56631b6::t_baa0a61b9aed46 21,421-422
+  s_8b3e04e56631b6::t_081777f211c8f1 443-450
+  s_8b3e04e56631b6::t_db93c76b800f6c 428-431
+backend/tests/component/graphql/mutations/test_schema_dropdown_and_enum_history.py
+  s_8b3e04e56631b6::t_7bb83fa59a6633 126-127,143
+  s_8b3e04e56631b6::t_cf30ba045243ca 343
+  s_8b3e04e56631b6::t_4ffe7021f5b493 10,23,25,339-342,344-360
+  s_8b3e04e56631b6::t_8170e7cb23840f 361-362
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_8b3e04e56631b6::t_29117704bfce68 26484
+backend/tests/unit/core/schema_change/equivalence_cases_kinds.py
+  s_8b3e04e56631b6::t_9e5dcdb9f7396d 25-30
+  s_8b3e04e56631b6::t_a6e07508bbd478 148-152
+  s_8b3e04e56631b6::t_f8244af0827994 147
+backend/tests/component/core/schema_change/test_repository.py
+  s_8b3e04e56631b6::t_cc664c710f659c 20,473-478,480-497
+  s_8b3e04e56631b6::t_16532685aa868c 25,479
+  s_8b3e04e56631b6::t_d677fc8d4b474f 498-499
+schema/schema.graphql
+  s_8b3e04e56631b6::t_29117704bfce68 27038,27045-27047
+dev/specs/ifc-3614-store-schema-changes/spec.md
+  s_8b3e04e56631b6::t_cfe30e00defffb 488-491
+dev/knowledge/backend/schema-changes.md
+  s_8b3e04e56631b6::t_90071f5a04270e 199
+  s_8b3e04e56631b6::t_81dd6979524c14 257-259
+  s_8b3e04e56631b6::t_8524fefa5e1892 306-310
+  s_8b3e04e56631b6::t_a192672231182e 326-328
+  s_8b3e04e56631b6::t_95ccb1945eb0b6 143-145,194-196
+changelog/+schema-load-migration-errors-status.changed.md
+  s_8b3e04e56631b6::t_ebc315928813f6 1
+dev/specs/ifc-3614-store-schema-changes/tasks.md
+  s_8b3e04e56631b6::t_95ccb1945eb0b6 1007,1060
+  s_8b3e04e56631b6::t_8653dbe8e6e898 1051-1052
+  s_8b3e04e56631b6::t_cfe30e00defffb 403,842
+dev/specs/ifc-3614-store-schema-changes/contracts/schema-change-history.graphql
+  s_8b3e04e56631b6::t_cfe30e00defffb 6-8,94,101-103
+backend/tests/component/graphql/queries/test_schema_change.py
+  s_8b3e04e56631b6::t_17b701c6222753 444,446,449-450,483-489,493,495,497,523,604,615
+  s_8b3e04e56631b6::t_19443c87a6cbd7 546-554,582
+backend/tests/functional/schema_change/test_schema_change_history.py
+  s_8b3e04e56631b6::t_1177fe26dafb38 91,454-455,467-468,549,606-607,628,630-633,697,709-711,730,739,747,757-759,775
+  s_8b3e04e56631b6::t_6c9a5363e86e99 584-597
+  s_8b3e04e56631b6::t_4ee0b75b30640a 154
+  s_8b3e04e56631b6::t_8cba47cc727602 152-153,155-164,567
+backend/tests/integration_docker/test_schema_migration.py
+  s_8b3e04e56631b6::t_1602b65c32b2a0 146-152
+  s_8b3e04e56631b6::t_9118771661ca72 153-155
+backend/tests/unit/test_exceptions.py
+  s_8b3e04e56631b6::t_d390836d1dd31f 281,284,489-498
+  s_8b3e04e56631b6::t_da5bf7ab9c2276 30
+backend/tests/component/core/schema_change/test_history_reader.py
+  s_8b3e04e56631b6::t_872551be3d5a3b 128,136,148-150,156,162-163,174,186,192,195-197
+backend/infrahub/core/schema_change/history_reader.py
+  s_8b3e04e56631b6::t_725957ce9c1025 13
+  s_8b3e04e56631b6::t_8524fefa5e1892 45,73-74,79,291
+  s_8b3e04e56631b6::t_8fccc804b2ec27 69-70
+backend/tests/integration/schema_lifecycle/test_schema_load_rollback.py
+  s_8b3e04e56631b6::t_74450d03f7dde1 143-152
+dev/specs/ifc-3614-store-schema-changes/contracts/internal-interfaces.md
+  s_8b3e04e56631b6::t_8653dbe8e6e898 508
+  s_8b3e04e56631b6::t_95ccb1945eb0b6 135,658
+  s_8b3e04e56631b6::t_cfe30e00defffb 322
+backend/tests/unit/core/schema_change/helpers.py
+  s_8b3e04e56631b6::t_24960f3b630bb7 4
+backend/tests/unit/core/schema_change/equivalence_cases_relationships.py
+  s_8b3e04e56631b6::t_2933323c86c5ed 59-64
+  s_8b3e04e56631b6::t_1019921943a948 181-185
+  s_8b3e04e56631b6::t_0e5d59cfc225c0 180
+backend/infrahub/core/schema_change/application_runner.py
+  s_8b3e04e56631b6::t_3f385ea22cda87 87-89
+  s_8b3e04e56631b6::t_4e1e380bd93440 118
+  s_8b3e04e56631b6::t_3b079e4ccec5a4 97
+dev/specs/ifc-3614-store-schema-changes/research.md
+  s_8b3e04e56631b6::t_cfe30e00defffb 589-591
+  s_8b3e04e56631b6::t_46b70614a9cd5d 319
+  s_8b3e04e56631b6::t_8653dbe8e6e898 399
+backend/infrahub/graphql/queries/schema_change.py
+  s_8b3e04e56631b6::t_8524fefa5e1892 79-82,85-86
+  s_8b3e04e56631b6::t_8cba47cc727602 10
+  s_8b3e04e56631b6::t_32a04c64ccee71 33,37-40
+backend/infrahub/core/schema_change/repository.py
+  s_8b3e04e56631b6::t_543be95c3f467c 20
+  s_8b3e04e56631b6::t_ce4a94cee570dd 146,523,537-538
+backend/tests/functional/schema_change/shared.py
+  s_8b3e04e56631b6::t_66e0678a9a82aa 3,50-53,66-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d41206a8329b143f52132bff5a8b75c948fdf54a",
+  "prompts": {},
+  "sessions": {
+    "s_8b3e04e56631b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c632892-bbdd-4f67-b8c5-ca3080ef9a81",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
