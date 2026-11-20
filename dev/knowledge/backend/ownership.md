@@ -315,7 +315,9 @@ the holders that are not attributes are in `core/ownership/fields.py` (see [Diff
 | `m086` | Creates the `NoOwner` vertex |
 
 `infrahub db ownership-report` (`core/ownership/report.py`) reads only vertices and edges that the release before
-holds, so it runs before the upgrade.
+holds, so it runs before the upgrade. When the graph version of the database is the number of `m085` or later, the
+command first prints a warning: `m085` closed the owner edges from attributes to repositories, so the first section is
+empty.
 
 ## Limits
 
