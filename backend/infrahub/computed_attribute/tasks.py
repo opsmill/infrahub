@@ -327,9 +327,9 @@ async def process_transform(
     """
     log = get_run_logger()
     all_ids = list({*([object_id] if object_id else []), *(object_ids or [])})
-    await add_tags(branches=[branch_name], nodes=all_ids)
     if not all_ids:
         return
+    await add_tags(branches=[branch_name], nodes=all_ids)
     client = get_client()
     client.request_context = context.to_request_context()
 
@@ -408,7 +408,7 @@ async def process_transform(
     for skipped_id, reason in skipped:
         log.warning(f"Skipping recompute of '{computed_attribute_name}' for node {skipped_id}: {reason}")
 
-    await dispatcher.dispatch(
+    written = await dispatcher.dispatch(
         writes=writes,
         branch_name=branch_name,
         context=context,
@@ -416,7 +416,7 @@ async def process_transform(
     )
     log.info(
         f"Recompute of '{computed_attribute_name}' complete: submitted={len(results)} "
-        f"written={len(writes)} skipped={len(skipped)}"
+        f"written={len(written)} unchanged={len(writes) - len(written)} skipped={len(skipped)}"
     )
 
 
