@@ -16,7 +16,6 @@ from infrahub.workers.dependencies import (
     build_event_service,
     build_message_bus,
     clear_singletons,
-    get_event_export_service,
 )
 from tests.adapters.message_bus import BusRecorder, FailingBus
 from tests.helpers.dependency_override import override_dependency
@@ -126,4 +125,4 @@ async def test_services_pass_the_export_service_to_the_event_service(
 
 
 def test_community_export_service_is_the_default(isolated_singletons: None) -> None:
-    assert isinstance(get_event_export_service(), EventExportServiceCommunity)
+    assert isinstance(build_event_export_service(), EventExportServiceCommunity)
