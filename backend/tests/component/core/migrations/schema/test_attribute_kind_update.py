@@ -5,6 +5,7 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
+from infrahub.core.graph.schema import get_attribute_value_key
 from infrahub.core.initialization import create_branch
 from infrahub.core.migrations.schema.attribute_kind_update import (
     AttributeKindUpdateMigration,
@@ -129,6 +130,53 @@ async def test_query_indexed_to_not_indexed(db: InfrahubDatabase, default_branch
     num_indexed, num_non_indexed = await check_attribute_value_vertices(db=db, value=description)
     assert num_indexed == 1
     assert num_non_indexed == 1
+
+    results = await db.execute_query(
+        query="MATCH (av:AttributeValue {value: $value}) WHERE NOT av:AttributeValueIndexed RETURN av.value_key AS key",
+        params={"value": description},
+    )
+    assert [result["key"] for result in results] == [get_attribute_value_key(description)]
+
+
+async def test_query_indexed_to_not_indexed_with_duplicated_target_value(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    """Two equal non-indexed values already exist, and the attribute still gets a single active value."""
+    await load_schema(db=db, schema=SchemaRoot(**CAR_SCHEMA_TEXT))
+    description = "A nice car"
+
+    car = await Node.init(db=db, schema="TestCar")
+    await car.new(db=db, name="Accord", description=description)
+    await car.save(db=db)
+    for _ in range(2):
+        await db.execute_query(
+            query="CREATE (:AttributeValue {value: $value, is_default: false, value_key: $value_key})",
+            params={"value": description, "value_key": get_attribute_value_key(description)},
+        )
+
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    prev_car_schema = schema.get(name="TestCar")
+    new_car_schema = schema.duplicate().get(name="TestCar")
+    new_car_schema.get_attribute(name="description").kind = "TextArea"
+    migration = AttributeKindUpdateMigration(
+        previous_node_schema=prev_car_schema,
+        new_node_schema=new_car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="description"),
+    )
+    query = await AttributeKindUpdateMigrationQuery.init(db=db, branch=default_branch, migration=migration)
+    await query.execute(db=db)
+
+    await verify_graph(db=db)
+    results = await db.execute_query(
+        query="""
+        MATCH (:TestCar {uuid: $node_uuid})-[:HAS_ATTRIBUTE]->(:Attribute {name: "description"})-[r:HAS_VALUE]->(av)
+        WHERE r.status = "active" AND r.to IS NULL
+        RETURN "AttributeValueIndexed" IN labels(av) AS is_indexed
+        """,
+        params={"node_uuid": car.id},
+    )
+    assert [result["is_indexed"] for result in results] == [False]
+    assert await check_attribute_value_vertices(db=db, value=description) == (1, 2)
 
 
 async def test_migration_no_change_when_same_index_status(db: InfrahubDatabase, default_branch: Branch) -> None:

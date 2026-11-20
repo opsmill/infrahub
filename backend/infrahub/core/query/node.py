@@ -345,22 +345,11 @@ class NodeCreateAllQuery(NodeQuery):
         attrs_nonindexed_query = """
         WITH DISTINCT n
         UNWIND $attrs AS attr
-        // Try to find a matching vertex
+        // One seek of the key index per value, as two seeks in one query can fail on Neo4j 2026.05 enterprise
         CALL (attr) {
-            OPTIONAL MATCH (existing_av:AttributeValue {value: attr.content.value, is_default: attr.content.is_default})
-            WHERE NOT existing_av:AttributeValueIndexed
-            RETURN existing_av
-            LIMIT 1
-        }
-        CALL (attr, existing_av) {
-            // If none found, create a new one
-            WITH existing_av
-            WHERE existing_av IS NULL
-            CREATE (:AttributeValue {value: attr.content.value, is_default: attr.content.is_default})
-        }
-        CALL (attr) {
-            MATCH (av:AttributeValue {value: attr.content.value, is_default: attr.content.is_default})
-            WHERE NOT av:AttributeValueIndexed
+            MERGE (av:AttributeValue {
+                value_key: attr.content.value_key, value: attr.content.value, is_default: attr.content.is_default
+            })
             RETURN av
             LIMIT 1
         }

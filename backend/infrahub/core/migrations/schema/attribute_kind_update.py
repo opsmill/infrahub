@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Sequence  # noqa: TC003  needed for pydantic
 from typing import TYPE_CHECKING, Any
 
+from infrahub.core.graph.schema import get_attribute_value_key
+from infrahub.core.query import Query, QueryType
 from infrahub.types import is_large_attribute_type
 
 from ..query import AttributeMigrationQuery, MigrationBaseQuery
@@ -11,6 +13,38 @@ from ..shared import AttributeSchemaMigration, MigrationInput, MigrationResult
 if TYPE_CHECKING:
     from infrahub.core.branch.models import Branch
     from infrahub.database import InfrahubDatabase
+
+# The string a stored value is looked up by in the map of keys, built the same way on both sides of the query.
+VALUE_LOOKUP = "CASE WHEN %(value)s IS :: STRING THEN %(value)s ELSE toString(%(value)s) END"
+
+
+class IndexedAttributeValuesQuery(Query):
+    """Read the distinct indexed values an attribute of the given kinds has on any branch or at any time."""
+
+    name = "migration_attribute_kind_indexed_values"
+    type = QueryType.READ
+
+    def __init__(self, node_kinds: list[str], attribute_name: str, **kwargs: Any) -> None:
+        self.node_kinds = node_kinds
+        self.attribute_name = attribute_name
+        # A stable order keeps the pages of the read from skipping or repeating a value.
+        super().__init__(order_by=["lookup"], **kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["attr_name"] = self.attribute_name
+        query = """
+        MATCH (:%(node_kinds)s)-[:HAS_ATTRIBUTE]->(:Attribute {name: $attr_name})-[:HAS_VALUE]->(av:AttributeValueIndexed)
+        WITH DISTINCT av.value AS value
+        WITH value, %(lookup)s AS lookup
+        """ % {"node_kinds": "|".join(self.node_kinds), "lookup": VALUE_LOOKUP % {"value": "value"}}
+        self.add_to_query(query)
+        self.return_labels = ["value", "lookup"]
+
+    def get_value_keys(self) -> dict[str, str]:
+        return {
+            result.get_as_type("lookup", return_type=str): get_attribute_value_key(result.get("value"))
+            for result in self.get_results()
+        }
 
 
 class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
@@ -31,9 +65,34 @@ class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
         # Set metadata for vertex properties on default/global branch
         self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
 
-        new_attr_value_labels = "AttributeValue"
         if needs_index:
-            new_attr_value_labels += ":AttributeValueIndexed"
+            create_value_query = """
+    OPTIONAL MATCH (existing_av:AttributeValue {is_default: av_is_default, value: av_value})
+    WHERE "AttributeValueIndexed" IN labels(existing_av) = $needs_index
+    WITH existing_av WHERE existing_av IS NULL
+    LIMIT 1
+    CREATE (:AttributeValue:AttributeValueIndexed {is_default: av_is_default, value: av_value})"""
+            get_value_query = """
+    MATCH (new_av:AttributeValue:AttributeValueIndexed {is_default: av.is_default, value: av.value})
+    WHERE "AttributeValueIndexed" IN labels(new_av) = $needs_index
+    LIMIT 1"""
+        else:
+            # Cypher cannot compute the hash, so the keys of the values to convert are computed here.
+            values_query = await IndexedAttributeValuesQuery.init(
+                db=db, branch=self.branch, node_kinds=self._node_kinds(), attribute_name=self.params["attr_name"]
+            )
+            await values_query.execute(db=db)
+            self.params["value_keys"] = values_query.get_value_keys()
+            # Indexed values never carry a key, so merging on the key cannot reuse one of them.
+            create_value_query = """
+    MERGE (:AttributeValue {
+        is_default: av_is_default, value: av_value, value_key: $value_keys[%(lookup)s]
+    })""" % {"lookup": VALUE_LOOKUP % {"value": "av_value"}}
+            get_value_query = """
+    MERGE (new_av:AttributeValue {
+        is_default: av.is_default, value: av.value, value_key: $value_keys[%(lookup)s]
+    })
+    LIMIT 1""" % {"lookup": VALUE_LOOKUP % {"value": "av.value"}}
         # ruff: noqa: S608
         query = """
 // ------------
@@ -62,12 +121,7 @@ CALL (n, attr) {
 // create it if not
 // ------------
 WITH DISTINCT av.is_default AS av_is_default, av.value AS av_value
-CALL (av_is_default, av_value) {
-    OPTIONAL MATCH (existing_av:AttributeValue {is_default: av_is_default, value: av_value})
-    WHERE "AttributeValueIndexed" IN labels(existing_av) = $needs_index
-    WITH existing_av WHERE existing_av IS NULL
-    LIMIT 1
-    CREATE (:%(new_attr_value_labels)s {is_default: av_is_default, value: av_value})
+CALL (av_is_default, av_value) {%(create_value_query)s
 }
 
 // ------------
@@ -99,10 +153,7 @@ CALL (n, attr) {
 CALL (attr, has_value_e, av) {
     // ------------
     // get the correct AttributeValue vertex b/c it definitely exists now
-    // ------------
-    MATCH (new_av:%(new_attr_value_labels)s {is_default: av.is_default, value: av.value})
-    WHERE "AttributeValueIndexed" IN labels(new_av) = $needs_index
-    LIMIT 1
+    // ------------%(get_value_query)s
 
     // ------------
     // create the new HAS_VALUE edge
@@ -156,13 +207,16 @@ CALL (attr, n) {
     SET n.updated_at = $at, n.updated_by = $user_id
 }
         """ % {
-            "schema_kinds": (
-                f"{self.migration.previous_schema.kind}|Profile{self.migration.previous_schema.kind}|Template{self.migration.previous_schema.kind}"
-            ),
+            "schema_kinds": "|".join(self._node_kinds()),
             "branch_filter": branch_filter,
-            "new_attr_value_labels": new_attr_value_labels,
+            "create_value_query": create_value_query,
+            "get_value_query": get_value_query,
         }
         self.add_to_query(query)
+
+    def _node_kinds(self) -> list[str]:
+        kind = self.migration.previous_schema.kind
+        return [kind, f"Profile{kind}", f"Template{kind}"]
 
 
 class AttributeKindUpdateMigration(AttributeSchemaMigration):
