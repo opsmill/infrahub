@@ -1,0 +1,48 @@
+dev/specs/ifc-2167-placeholder-automations-db/opsmill-implement-ledger.md
+  s_0b8e06abd4cf23::t_9da9b8b8f39876 18-48
+  s_0b8e06abd4cf23::t_3867e667f665db 49
+backend/tests/component/core/derived_definition/test_repository.py
+  s_0b8e06abd4cf23::t_732a32ca2b0a5d 1-2,4-7,9-85,89-92,94,96-112
+  s_0b8e06abd4cf23::t_31d895ef43cbc1 3,8
+  s_0b8e06abd4cf23::t_4b822a9577a3bd 86-88,93,95
+backend/infrahub/core/query/derived_definition.py
+  s_0b8e06abd4cf23::t_14d3364d79afcc 1-101
+backend/tests/unit/core/derived_definition/test_comparison.py
+  s_0b8e06abd4cf23::t_29a2617891519b 1-3,10-148
+  s_0b8e06abd4cf23::t_d5a4b1a255426e 4-9
+backend/infrahub/core/derived_definition/comparison.py
+  s_0b8e06abd4cf23::t_38e97446620c9f 1-51
+dev/specs/ifc-2167-placeholder-automations-db/tasks.md
+  s_0b8e06abd4cf23::t_f9f138def0d338 49
+  s_0b8e06abd4cf23::t_7dfb0d507e812b 72
+  s_0b8e06abd4cf23::t_d9d6450160a4a3 80
+  s_0b8e06abd4cf23::t_b5522d69a15c47 71
+  s_0b8e06abd4cf23::t_b3d92222c5ba97 48
+  s_0b8e06abd4cf23::t_212c21a1bd7395 70
+  s_0b8e06abd4cf23::t_4896ab56571689 50
+  s_0b8e06abd4cf23::t_341b97f3c78163 55
+  s_0b8e06abd4cf23::t_d97063758da2e2 65
+backend/infrahub/core/derived_definition/repository.py
+  s_0b8e06abd4cf23::t_57f71e11b18baa 1-32,35-46
+  s_0b8e06abd4cf23::t_d6f1508290ba53 33-34
+backend/tests/unit/core/derived_definition/test_models.py
+  s_0b8e06abd4cf23::t_072903006dbcfb 1-20
+backend/infrahub/core/derived_definition/models.py
+  s_0b8e06abd4cf23::t_aaf1af1387f362 1-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1ca120dff3fbf4b2e8cddb21663b5ab3797a8bbc",
+  "prompts": {},
+  "sessions": {
+    "s_0b8e06abd4cf23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ae531c0-c619-49a2-a86b-353b0ada9152",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
