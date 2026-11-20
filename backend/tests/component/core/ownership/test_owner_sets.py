@@ -4,6 +4,7 @@ from typing import Any
 import pytest
 from neo4j.exceptions import TransientError
 
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
@@ -22,7 +23,13 @@ from infrahub.database.validation import GraphCheck, collect_graph_violations, v
 from infrahub.exceptions import QueryError
 from tests.helpers.ownership import USER_ID, read_owners
 
-SECONDS_BEFORE_FIRST_COMMIT = 1.0
+SECONDS_TO_WAIT = 30.0
+SECONDS_BETWEEN_POLLS = 0.05
+BLOCKED_TRANSACTIONS = """
+SHOW TRANSACTIONS YIELD database, status
+WHERE database = $database AND status STARTS WITH "Blocked"
+RETURN count(*) AS blocked
+"""
 
 
 @pytest.fixture
@@ -69,6 +76,19 @@ async def _write(
     )
 
 
+async def _wait_for_the_other_write(db: InfrahubDatabase, other: asyncio.Future[Any]) -> None:
+    """Return once a transaction waits for a lock, or once the other write ends without a wait."""
+    params = {"database": config.SETTINGS.database.database_name}
+    try:
+        async with asyncio.timeout(SECONDS_TO_WAIT):
+            while not other.done():
+                if (await db.execute_query(query=BLOCKED_TRANSACTIONS, params=params))[0]["blocked"]:
+                    return
+                await asyncio.sleep(SECONDS_BETWEEN_POLLS)
+    except TimeoutError:
+        pytest.fail(f"The other write neither waited for a lock nor ended within {SECONDS_TO_WAIT} seconds")
+
+
 async def _count_field_sets(db: InfrahubDatabase, node_id: str) -> int:
     records = await db.execute_query(
         query="MATCH (:Node {uuid: $node_id})-[:HAS_OWNER_SET]->(s:OwnerSet) RETURN count(DISTINCT s) AS sets",
@@ -88,14 +108,15 @@ async def test_two_first_writes_in_open_transactions_create_one_set(
             await _write(db=dbt, branch=default_branch, node_id=person.id, holder=holder, owner_ids=group_ids[:1])
             first_is_written.set()
             # The second write runs while this transaction is open.
-            await asyncio.sleep(SECONDS_BEFORE_FIRST_COMMIT)
+            await _wait_for_the_other_write(db=db, other=second)
 
     async def second_write() -> None:
-        await first_is_written.wait()
+        await asyncio.wait_for(first_is_written.wait(), timeout=SECONDS_TO_WAIT)
         async with db.start_session() as session_db, session_db.start_transaction() as dbt:
             await _write(db=dbt, branch=default_branch, node_id=person.id, holder=holder, owner_ids=group_ids[1:])
 
-    await asyncio.gather(first_write(), second_write())
+    second = asyncio.ensure_future(second_write())
+    await asyncio.gather(first_write(), second)
 
     assert await _count_field_sets(db=db, node_id=person.id) == 1
     assert await read_owners(db=db, branch=default_branch, node_id=person.id, holder=holder) == tuple(group_ids[1:])
@@ -112,14 +133,15 @@ async def test_two_writes_of_one_owner_in_open_transactions_create_one_edge(
             await _write(db=dbt, branch=branch, node_id=person.id, holder=NODE_HOLDER, owner_ids=group_ids[:1])
             first_is_written.set()
             # The second write runs while this transaction is open.
-            await asyncio.sleep(SECONDS_BEFORE_FIRST_COMMIT)
+            await _wait_for_the_other_write(db=db, other=second)
 
     async def second_write() -> None:
-        await first_is_written.wait()
+        await asyncio.wait_for(first_is_written.wait(), timeout=SECONDS_TO_WAIT)
         async with db.start_session() as session_db, session_db.start_transaction() as dbt:
             await _write(db=dbt, branch=branch, node_id=person.id, holder=NODE_HOLDER, owner_ids=group_ids[:1])
 
-    await asyncio.gather(first_write(), second_write())
+    second = asyncio.ensure_future(second_write())
+    await asyncio.gather(first_write(), second)
 
     records = await db.execute_query(
         query="""
@@ -251,7 +273,7 @@ async def test_owner_write_and_node_delete_in_open_transactions_leave_no_open_ow
 
     async def write_owners() -> None:
         if delete_first:
-            await first_is_done.wait()
+            await asyncio.wait_for(first_is_done.wait(), timeout=SECONDS_TO_WAIT)
         async with db.start_session() as session_db, session_db.start_transaction() as dbt:
             if delete_first:
                 with pytest.raises(QueryError):
@@ -260,20 +282,22 @@ async def test_owner_write_and_node_delete_in_open_transactions_leave_no_open_ow
                 await _write(db=dbt, branch=branch, node_id=person.id, holder=holder, owner_ids=group_ids[:1])
                 first_is_done.set()
                 # The delete runs while this transaction is open.
-                await asyncio.sleep(SECONDS_BEFORE_FIRST_COMMIT)
+                await _wait_for_the_other_write(db=db, other=deletion)
 
     async def delete_node() -> None:
         if not delete_first:
-            await first_is_done.wait()
+            await asyncio.wait_for(first_is_done.wait(), timeout=SECONDS_TO_WAIT)
         async with db.start_session() as session_db, session_db.start_transaction() as dbt:
             node = await NodeManager.get_one(db=dbt, branch=branch, id=person.id, raise_on_error=True)
             await node.delete(db=dbt)
             if delete_first:
                 first_is_done.set()
                 # The owner write runs while this transaction is open.
-                await asyncio.sleep(SECONDS_BEFORE_FIRST_COMMIT)
+                await _wait_for_the_other_write(db=db, other=owner_write)
 
-    await asyncio.gather(write_owners(), delete_node())
+    owner_write = asyncio.ensure_future(write_owners())
+    deletion = asyncio.ensure_future(delete_node())
+    await asyncio.gather(owner_write, deletion)
 
     records = await db.execute_query(
         query="""
@@ -360,16 +384,17 @@ async def test_owner_writes_of_two_attributes_and_node_delete_in_open_transactio
                 )
                 first_is_written.set()
                 # The delete starts while this transaction holds the node and has not written the next attribute.
-                await asyncio.sleep(SECONDS_BEFORE_FIRST_COMMIT)
+                await _wait_for_the_other_write(db=db, other=deletion)
 
     async def delete_node() -> None:
-        await first_is_written.wait()
+        await asyncio.wait_for(first_is_written.wait(), timeout=SECONDS_TO_WAIT)
         async with db.start_session() as session_db, session_db.start_transaction() as dbt:
             node = await NodeManager.get_one(db=dbt, branch=branch, id=person.id, raise_on_error=True)
             await node.delete(db=dbt)
 
     # Both writes run to their end, so a failed one leaves no open transaction for the next test.
-    results = await asyncio.gather(write_owners(), delete_node(), return_exceptions=True)
+    deletion = asyncio.ensure_future(delete_node())
+    results = await asyncio.gather(write_owners(), deletion, return_exceptions=True)
 
     assert results == [None, None]
     await verify_graph(db=db, kinds=["TestPerson"])
@@ -394,7 +419,7 @@ async def test_updates_of_two_nodes_in_reverse_order_in_open_transactions_deadlo
             first.name.value = name
             await first.save(db=dbt)
             is_written.set()
-            await other_is_written.wait()
+            await asyncio.wait_for(other_is_written.wait(), timeout=SECONDS_TO_WAIT)
             second = await NodeManager.get_one(db=dbt, branch=branch, id=node_ids[1], raise_on_error=True)
             second.height.value = 180
             await second.save(db=dbt)
@@ -423,7 +448,7 @@ async def test_node_update_and_node_delete_in_open_transactions_do_not_deadlock(
     async def pause_after_the_attributes(*args: Any, **kwargs: Any) -> None:
         attribute_is_written.set()
         # The delete starts while this transaction holds the attribute and has not written the node.
-        await asyncio.sleep(SECONDS_BEFORE_FIRST_COMMIT)
+        await _wait_for_the_other_write(db=db, other=deletion)
 
     monkeypatch.setattr(Node, "_recompute_local_jinja2", pause_after_the_attributes)
 
@@ -434,13 +459,14 @@ async def test_node_update_and_node_delete_in_open_transactions_do_not_deadlock(
             await node.save(db=dbt)
 
     async def delete_node() -> None:
-        await attribute_is_written.wait()
+        await asyncio.wait_for(attribute_is_written.wait(), timeout=SECONDS_TO_WAIT)
         async with db.start_session() as session_db, session_db.start_transaction() as dbt:
             node = await NodeManager.get_one(db=dbt, branch=branch, id=person.id, raise_on_error=True)
             await node.delete(db=dbt)
 
     # Both writes run to their end, so a failed one leaves no open transaction for the next test.
-    results = await asyncio.gather(update_node(), delete_node(), return_exceptions=True)
+    deletion = asyncio.ensure_future(delete_node())
+    results = await asyncio.gather(update_node(), deletion, return_exceptions=True)
 
     assert results == [None, None]
     await verify_graph(db=db, kinds=["TestPerson"])
@@ -469,10 +495,10 @@ async def test_attribute_rename_gives_no_set_to_a_node_whose_delete_commits_whil
             await node.delete(db=dbt)
             node_is_deleted.set()
             # The rename runs while this transaction is open.
-            await asyncio.sleep(SECONDS_BEFORE_FIRST_COMMIT)
+            await _wait_for_the_other_write(db=db, other=rename)
 
     async def rename_attribute() -> None:
-        await node_is_deleted.wait()
+        await asyncio.wait_for(node_is_deleted.wait(), timeout=SECONDS_TO_WAIT)
         async with db.start_session() as session_db, session_db.start_transaction() as dbt:
             query = await OwnerSetKeyMigrationQuery.init(
                 db=dbt,
@@ -484,7 +510,8 @@ async def test_attribute_rename_gives_no_set_to_a_node_whose_delete_commits_whil
             )
             await query.execute(db=dbt)
 
-    await asyncio.gather(delete_node(), rename_attribute())
+    rename = asyncio.ensure_future(rename_attribute())
+    await asyncio.gather(delete_node(), rename)
 
     records = await db.execute_query(
         query="""
