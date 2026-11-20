@@ -216,8 +216,8 @@ CALL (n, tgt_n, src) {
         SET set_rel.to = $at, set_rel.to_user_id = src.from_user_id
     }
     // ------------------------------
-    // close HAS_OWNER_SOURCE edges pointing to this deleted node, and the HAS_SOURCE and HAS_OWNER edges of each
-    // attribute or link that points to it. the edges from a node or an owner set stay, so that a list shows it deleted
+    // close HAS_OWNER_SOURCE edges pointing to this deleted node, the HAS_SOURCE and HAS_OWNER edges of each link to
+    // it, and the HAS_SOURCE edge of each attribute to it. the other edges stay, so that a list shows it deleted
     // ------------------------------
     OPTIONAL MATCH (tgt_n)<-[inbound_rel:HAS_SOURCE|HAS_OWNER|HAS_OWNER_SOURCE]-(holder)
     WHERE (

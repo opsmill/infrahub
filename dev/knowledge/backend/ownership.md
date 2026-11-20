@@ -368,6 +368,11 @@ empty.
   template.
 - On a branch other than the default branch, an owner write does not change `updated_at` and `updated_by` on the
   node vertex. The vertex holds them for the default and the global branch only.
+- The merge of a change of the owners of a node, of a relationship field or of a profile or object template target,
+  or of the sources of a node, with no other change of the node, does not change `updated_at` and `updated_by` on
+  the node vertex. `DiffMergeMetadataQuery` reads them only from the attributes and the relationships that have an
+  edge at the time of the merge, and the owner resolution of a merge does not record them. A change of the owners of
+  an attribute changes them, because the attribute has an owner edge at the time of the merge.
 - After a rename of an attribute on a branch other than the default branch, a write of owners on that branch cannot
   replace the owners that a branch-agnostic profile or object template gives to the attribute. The write goes to
   the global branch and the copy of the rename is on the branch.

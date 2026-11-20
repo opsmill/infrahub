@@ -108,8 +108,9 @@ Stores boolean values for Boolean attributes and `IS_PROTECTED` metadata edges. 
 
 ### OwnerSet / NoOwner
 
-Hold the owners that have no `Node` or `Attribute` vertex to start from. They have no `IS_PART_OF` edge and no
-branch data: the edges to and from them carry the branch and the time. See [Owners and Sources](ownership.md).
+An `OwnerSet` holds the owners that have no `Node` or `Attribute` vertex to start from. `NoOwner` holds no owner: it
+is the end vertex of every `HAS_NO_OWNER` edge. They have no `IS_PART_OF` edge and no branch data: the edges to and
+from them carry the branch and the time. See [Owners and Sources](ownership.md).
 
 | Vertex | Property | Description |
 |--------|----------|-------------|
