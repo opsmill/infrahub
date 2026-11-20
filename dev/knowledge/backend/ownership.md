@@ -333,6 +333,13 @@ holds, so it runs before the upgrade.
 - After a rename of an attribute on a branch other than the default branch, a write of owners on that branch cannot
   replace the owners that a branch-agnostic profile or object template gives to the attribute. The write goes to
   the global branch and the copy of the rename is on the branch.
+- When a branch changes the kind of a node (a kind migration) and then merges, the default branch loses the owner
+  changes of the node and the relationship changes that it made on the old `Node` vertex after the start of the
+  branch. Three causes are older than the owner model: the kind migration copies only the open edges
+  (`NodeDuplicateQuery`), the merge does not move the edges of the default branch to the new vertex, and
+  `ConflictsEnricher` keys the nodes by UUID. The owners of an attribute are not affected, because the old and the
+  new vertex share the attribute. `test_source_branch_migration.py` marks the node owner case as an expected
+  failure.
 
 ## Key Files
 
