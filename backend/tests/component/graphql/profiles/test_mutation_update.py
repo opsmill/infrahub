@@ -26,6 +26,8 @@ from tests.helpers.schema import load_schema
 if TYPE_CHECKING:
     from collections import Counter
 
+    from graphql import ExecutionResult
+
     from infrahub.auth.session import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
@@ -66,6 +68,21 @@ RACK = NodeSchema(
     ],
 )
 
+PANEL = NodeSchema(
+    name="Panel",
+    namespace="Test",
+    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    relationships=[
+        RelationshipSchema(
+            name="rooms",
+            peer="TestRoom",
+            kind=RelationshipKind.GENERIC,
+            optional=False,
+            cardinality=RelationshipCardinality.MANY,
+        )
+    ],
+)
+
 
 @pytest.fixture
 async def device_schema(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> None:
@@ -74,7 +91,7 @@ async def device_schema(db: InfrahubDatabase, default_branch: Branch, register_c
 
 @pytest.fixture
 async def rack_schema(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> None:
-    await load_schema(db=db, schema=SchemaRoot(nodes=[ROOM, RACK]), branch_name=default_branch.name)
+    await load_schema(db=db, schema=SchemaRoot(nodes=[ROOM, RACK, PANEL]), branch_name=default_branch.name)
 
 
 async def _create_node(db: InfrahubDatabase, branch: Branch, kind: str, **data: Any) -> Node:
@@ -82,6 +99,44 @@ async def _create_node(db: InfrahubDatabase, branch: Branch, kind: str, **data: 
     await node.new(db=db, **data)
     await node.save(db=db)
     return node
+
+
+async def _create_with_profiles(
+    db: InfrahubDatabase, branch: Branch, account_session: AccountSession, kind: str, payload: str
+) -> str:
+    """Create a node through the create mutation, so that its required relationships can come from its profiles."""
+    gql_params = await prepare_graphql_params(
+        db=db,
+        branch=branch,
+        account_session=account_session,
+        service=await InfrahubServices.new(workflow=WorkflowRecorder()),
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source=f"mutation {{ {kind}Create(data: {{ {payload} }}) {{ object {{ id }} }} }}",
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is None
+    assert result.data
+    return result.data[f"{kind}Create"]["object"]["id"]
+
+
+async def _update_profile(
+    db: InfrahubDatabase, branch: Branch, account_session: AccountSession, kind: str, profile_id: str, payload: str
+) -> tuple[ExecutionResult, WorkflowRecorder]:
+    workflow = WorkflowRecorder()
+    gql_params = await prepare_graphql_params(db=db, branch=branch, account_session=account_session)
+    gql_params.context.service = await InfrahubServices.new(workflow=workflow)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=f'mutation {{ {kind}Update(data: {{ id: "{profile_id}", {payload} }}) {{ ok }} }}',
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    return result, workflow
 
 
 async def _run_mutation(
@@ -365,38 +420,21 @@ async def test_profile_update_refuses_to_clear_a_required_relationship_that_a_no
     profile = await _create_node(
         db=db, branch=default_branch, kind="ProfileTestRack", profile_name="profile-1", profile_priority=10, room=room
     )
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch, account_session=session_admin)
-    gql_params.context.service = await InfrahubServices.new(workflow=WorkflowRecorder())
-    create_result = await graphql(
-        schema=gql_params.schema,
-        source=f"""
-        mutation {{
-            TestRackCreate(data: {{ name: {{ value: "rack-1" }}, profiles: [{{ id: "{profile.id}" }}] }}) {{
-                object {{ id }}
-            }}
-        }}
-        """,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
+    rack_id = await _create_with_profiles(
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+        kind="TestRack",
+        payload=f'name: {{ value: "rack-1" }}, profiles: [{{ id: "{profile.id}" }}]',
     )
-    assert create_result.errors is None
-    assert create_result.data
-    rack_id = create_result.data["TestRackCreate"]["object"]["id"]
-    workflow = WorkflowRecorder()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch, account_session=session_admin)
-    gql_params.context.service = await InfrahubServices.new(workflow=workflow)
 
-    result = await graphql(
-        schema=gql_params.schema,
-        source=f"""
-        mutation {{
-            ProfileTestRackUpdate(data: {{ id: "{profile.id}", room: null }}) {{ ok }}
-        }}
-        """,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={},
+    result, workflow = await _update_profile(
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+        kind="ProfileTestRack",
+        profile_id=profile.id,
+        payload="room: null",
     )
 
     assert result.errors is not None
@@ -413,3 +451,132 @@ async def test_profile_update_refuses_to_clear_a_required_relationship_that_a_no
     assert [
         (rel.peer_id, rel.is_from_profile) for rel in await rack.get_relationship(name="room").get_relationships(db=db)
     ] == [(room.id, True)]
+
+
+async def test_profile_update_refuses_to_clear_a_required_cardinality_many_relationship_that_a_node_inherits(
+    db: InfrahubDatabase, default_branch: Branch, rack_schema: None, session_admin: AccountSession
+) -> None:
+    rooms = [await _create_node(db=db, branch=default_branch, kind="TestRoom", name=f"room-{idx}") for idx in (1, 2)]
+    profile = await _create_node(
+        db=db,
+        branch=default_branch,
+        kind="ProfileTestPanel",
+        profile_name="profile-1",
+        profile_priority=10,
+        rooms=rooms,
+    )
+    panel_id = await _create_with_profiles(
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+        kind="TestPanel",
+        payload=f'name: {{ value: "panel-1" }}, profiles: [{{ id: "{profile.id}" }}]',
+    )
+
+    result, workflow = await _update_profile(
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+        kind="ProfileTestPanel",
+        profile_id=profile.id,
+        payload="rooms: []",
+    )
+
+    assert result.errors is not None
+    assert [error.message for error in result.errors] == [
+        f"Cannot remove the peer of relationship 'rooms' from profile '{profile.id}' because node "
+        f"'TestPanel(ID: {panel_id})' (ID: {panel_id}) inherits required relationship 'rooms' from this profile."
+    ]
+    assert workflow.submit_calls == []
+    profile = await NodeManager.get_one(db=db, branch=default_branch, id=profile.id, raise_on_error=True)
+    assert sorted(
+        rel.peer_id for rel in await profile.get_relationship(name="rooms").get_relationships(db=db)
+    ) == sorted(room.id for room in rooms)
+
+
+async def test_profile_update_clears_a_required_relationship_that_no_node_inherits_from_the_profile(
+    db: InfrahubDatabase, default_branch: Branch, rack_schema: None, session_admin: AccountSession
+) -> None:
+    """One rack sets its room itself, and the other takes its room from a profile of higher priority."""
+    rooms = [await _create_node(db=db, branch=default_branch, kind="TestRoom", name=f"room-{idx}") for idx in (1, 2, 3)]
+    profile = await _create_node(
+        db=db,
+        branch=default_branch,
+        kind="ProfileTestRack",
+        profile_name="profile-1",
+        profile_priority=10,
+        room=rooms[0],
+    )
+    preferred_profile = await _create_node(
+        db=db,
+        branch=default_branch,
+        kind="ProfileTestRack",
+        profile_name="profile-2",
+        profile_priority=5,
+        room=rooms[1],
+    )
+    await _create_with_profiles(
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+        kind="TestRack",
+        payload=f'name: {{ value: "rack-1" }}, room: {{ id: "{rooms[2].id}" }}, profiles: [{{ id: "{profile.id}" }}]',
+    )
+    await _create_with_profiles(
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+        kind="TestRack",
+        payload=(
+            f'name: {{ value: "rack-2" }}, profiles: [{{ id: "{preferred_profile.id}" }}, {{ id: "{profile.id}" }}]'
+        ),
+    )
+
+    result, _ = await _update_profile(
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+        kind="ProfileTestRack",
+        profile_id=profile.id,
+        payload="room: null",
+    )
+
+    assert result.errors is None
+    profile = await NodeManager.get_one(db=db, branch=default_branch, id=profile.id, raise_on_error=True)
+    assert await profile.get_relationship(name="room").get_relationships(db=db) == []
+
+
+async def test_profile_update_replaces_a_required_relationship_that_a_node_inherits(
+    db: InfrahubDatabase, default_branch: Branch, rack_schema: None, session_admin: AccountSession
+) -> None:
+    rooms = [await _create_node(db=db, branch=default_branch, kind="TestRoom", name=f"room-{idx}") for idx in (1, 2)]
+    profile = await _create_node(
+        db=db,
+        branch=default_branch,
+        kind="ProfileTestRack",
+        profile_name="profile-1",
+        profile_priority=10,
+        room=rooms[0],
+    )
+    await _create_with_profiles(
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+        kind="TestRack",
+        payload=f'name: {{ value: "rack-1" }}, profiles: [{{ id: "{profile.id}" }}]',
+    )
+
+    result, _ = await _update_profile(
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+        kind="ProfileTestRack",
+        profile_id=profile.id,
+        payload=f'room: {{ id: "{rooms[1].id}" }}',
+    )
+
+    assert result.errors is None
+    profile = await NodeManager.get_one(db=db, branch=default_branch, id=profile.id, raise_on_error=True)
+    assert [rel.peer_id for rel in await profile.get_relationship(name="room").get_relationships(db=db)] == [
+        rooms[1].id
+    ]

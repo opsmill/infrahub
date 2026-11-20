@@ -159,7 +159,9 @@ On the Profile side, `RelationshipAdd` and `RelationshipRemove` on `related_node
 
 The Profile update and upsert mutations also submit the refresh for the peers that a `related_nodes` or `related_templates` payload adds or removes. The refresh automation of a Profile does not trigger on these two relationships, so without it the peers that the payload adds would not get the Profile values. As for `RelationshipAdd` and `RelationshipRemove`, a failed submission is logged and the mutation still returns `ok`.
 
-Before the commit, `RelationshipProfileRemovalConstraint` refuses a Profile update or upsert that leaves a relationship with no peer, when a related node requires that relationship and inherits it from the Profile. The refresh flow runs after the commit, so it could not refuse the change, and it could not clear the relationship.
+Before the commit, `RelationshipProfileRemovalConstraint` refuses a Profile update or upsert, or a `RelationshipRemove` on a relationship of the Profile, that leaves that relationship with no peer, when a related node requires the relationship and inherits it from the Profile. This includes the Profile of a generic. The refresh flow runs after the commit, so it could not refuse the change, and it could not clear the relationship.
+
+These refusals do not look at the other Profiles of the node. If another Profile sets the same relationship or attribute, the refresh would apply its value, but the request is refused all the same. The node update and the Profile delete have the same limit.
 
 ### UUID vs HFID References
 

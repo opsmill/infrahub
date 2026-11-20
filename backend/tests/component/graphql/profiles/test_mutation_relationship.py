@@ -19,7 +19,7 @@ from infrahub.core.constants import (
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -88,6 +88,23 @@ RACK = NodeSchema(
     ],
 )
 
+EQUIPMENT = GenericSchema(
+    name="Equipment",
+    namespace="Test",
+    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    relationships=[
+        RelationshipSchema(
+            name="room",
+            peer="TestRoom",
+            kind=RelationshipKind.GENERIC,
+            optional=False,
+            cardinality=RelationshipCardinality.ONE,
+        )
+    ],
+)
+
+SWITCH = NodeSchema(name="Switch", namespace="Test", inherit_from=["TestEquipment"])
+
 RELATIONSHIP_MUTATION = """
 mutation Relationship($id: String!, $name: String!, $nodes: [RelatedNodeInput]!) {
     %(mutation)s(data: {id: $id, name: $name, nodes: $nodes}) { ok }
@@ -108,6 +125,13 @@ async def server_schema(db: InfrahubDatabase, default_branch: Branch, register_c
 @pytest.fixture
 async def rack_schema(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> None:
     await load_schema(db=db, schema=SchemaRoot(nodes=[ROOM, RACK]), branch_name=default_branch.name)
+
+
+@pytest.fixture
+async def equipment_schema(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> None:
+    await load_schema(
+        db=db, schema=SchemaRoot(generics=[EQUIPMENT], nodes=[ROOM, SWITCH]), branch_name=default_branch.name
+    )
 
 
 @pytest.fixture
@@ -140,6 +164,30 @@ async def _apply_profile_values(db: InfrahubDatabase, branch: Branch, node_id: s
     node = await NodeManager.get_one(db=db, id=node_id, branch=branch, raise_on_error=True)
     applier = NodeProfilesApplier(db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch))
     await node.save(db=db, fields=await applier.apply_profiles(node=node))
+
+
+async def _create_rack(db: InfrahubDatabase, branch: Branch, account_session: AccountSession, profile_id: str) -> str:
+    """Create a rack through the create mutation, so that its required room comes from the profile."""
+    gql_params = await prepare_graphql_params(
+        db=db,
+        branch=branch,
+        account_session=account_session,
+        service=await InfrahubServices.new(workflow=WorkflowRecorder()),
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source="""
+        mutation Create($profile: String!) {
+            TestRackCreate(data: {name: {value: "rack-1"}, profiles: [{id: $profile}]}) { object { id } }
+        }
+        """,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"profile": profile_id},
+    )
+    assert result.errors is None
+    assert result.data
+    return result.data["TestRackCreate"]["object"]["id"]
 
 
 async def _run_relationship_mutation(
@@ -509,27 +557,7 @@ async def test_relationship_remove_refuses_the_profile_that_gives_a_node_a_requi
     profile = await _create_node(
         db=db, branch=default_branch, kind="ProfileTestRack", profile_name="profile-1", profile_priority=10, room=room
     )
-    events = MemoryInfrahubEvent()
-    gql_params = await prepare_graphql_params(
-        db=db,
-        branch=default_branch,
-        account_session=editor_session,
-        service=await InfrahubServices.new(workflow=WorkflowRecorder(), event=events),
-    )
-    create_result = await graphql(
-        schema=gql_params.schema,
-        source="""
-        mutation Create($profile: String!) {
-            TestRackCreate(data: {name: {value: "rack-1"}, profiles: [{id: $profile}]}) { object { id } }
-        }
-        """,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={"profile": profile.id},
-    )
-    assert create_result.errors is None
-    assert create_result.data
-    rack_id = create_result.data["TestRackCreate"]["object"]["id"]
+    rack_id = await _create_rack(db=db, branch=default_branch, account_session=editor_session, profile_id=profile.id)
     events = MemoryInfrahubEvent()
     gql_params = await prepare_graphql_params(
         db=db,
@@ -563,3 +591,86 @@ async def test_relationship_remove_refuses_the_profile_that_gives_a_node_a_requi
     assert [
         (rel.peer_id, rel.is_from_profile) for rel in await rack.get_relationship(name="room").get_relationships(db=db)
     ] == [(room.id, True)]
+
+
+async def test_relationship_remove_refuses_to_clear_a_profile_relationship_that_a_node_requires(
+    db: InfrahubDatabase, default_branch: Branch, rack_schema: None, editor_session: AccountSession
+) -> None:
+    """The refresh flow could not clear the relationship, so the request refuses the removal before it commits."""
+    room = await _create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
+    profile = await _create_node(
+        db=db, branch=default_branch, kind="ProfileTestRack", profile_name="profile-1", profile_priority=10, room=room
+    )
+    rack_id = await _create_rack(db=db, branch=default_branch, account_session=editor_session, profile_id=profile.id)
+
+    result, workflow = await _run_relationship_mutation(
+        db=db,
+        branch=default_branch,
+        account_session=editor_session,
+        mutation="RelationshipRemove",
+        profile_id=profile.id,
+        rel_name="room",
+        peer_ids=[room.id],
+    )
+
+    assert result.errors is not None
+    assert [error.message for error in result.errors] == [
+        f"Cannot remove the peer of relationship 'room' from profile '{profile.id}' because node "
+        f"'TestRack(ID: {rack_id})' (ID: {rack_id}) inherits required relationship 'room' from this profile."
+    ]
+    assert workflow.submit_calls == []
+    profile = await NodeManager.get_one(db=db, branch=default_branch, id=profile.id, raise_on_error=True)
+    assert [rel.peer_id for rel in await profile.get_relationship(name="room").get_relationships(db=db)] == [room.id]
+
+
+async def test_relationship_remove_refuses_to_clear_a_relationship_of_a_generic_profile_that_a_node_requires(
+    db: InfrahubDatabase, default_branch: Branch, equipment_schema: None, editor_session: AccountSession
+) -> None:
+    room = await _create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
+    profile = await _create_node(
+        db=db,
+        branch=default_branch,
+        kind="ProfileTestEquipment",
+        profile_name="profile-1",
+        profile_priority=10,
+        room=room,
+    )
+    gql_params = await prepare_graphql_params(
+        db=db,
+        branch=default_branch,
+        account_session=editor_session,
+        service=await InfrahubServices.new(workflow=WorkflowRecorder()),
+    )
+    create_result = await graphql(
+        schema=gql_params.schema,
+        source="""
+        mutation Create($profile: String!) {
+            TestSwitchCreate(data: {name: {value: "switch-1"}, profiles: [{id: $profile}]}) { object { id } }
+        }
+        """,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"profile": profile.id},
+    )
+    assert create_result.errors is None
+    assert create_result.data
+    switch_id = create_result.data["TestSwitchCreate"]["object"]["id"]
+
+    result, workflow = await _run_relationship_mutation(
+        db=db,
+        branch=default_branch,
+        account_session=editor_session,
+        mutation="RelationshipRemove",
+        profile_id=profile.id,
+        rel_name="room",
+        peer_ids=[room.id],
+    )
+
+    assert result.errors is not None
+    assert [error.message for error in result.errors] == [
+        f"Cannot remove the peer of relationship 'room' from profile '{profile.id}' because node "
+        f"'TestSwitch(ID: {switch_id})' (ID: {switch_id}) inherits required relationship 'room' from this profile."
+    ]
+    assert workflow.submit_calls == []
+    profile = await NodeManager.get_one(db=db, branch=default_branch, id=profile.id, raise_on_error=True)
+    assert [rel.peer_id for rel in await profile.get_relationship(name="room").get_relationships(db=db)] == [room.id]
