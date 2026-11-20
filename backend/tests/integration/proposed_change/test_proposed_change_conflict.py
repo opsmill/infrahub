@@ -445,10 +445,12 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         # Merge the proposed change and ensure everything looks good
         # -------------------------------------------------
         proposed_change_create.state.value = ProposedChangeState.MERGED.value
-        with patch("infrahub.core.merge.builder.GraphMerger", new=ErroringGraphMerger):
-            with pytest.raises(GraphQLError) as exc:
-                await proposed_change_create.save()
-                assert "Failed to merge branch 'failing_branch'" in exc.value.message
+        with (
+            patch("infrahub.core.merge.builder.GraphMerger", new=ErroringGraphMerger),
+            pytest.raises(GraphQLError) as exc,
+        ):
+            await proposed_change_create.save()
+            assert "Failed to merge branch 'failing_branch'" in exc.value.message
 
     async def test_connectivity(self, db: InfrahubDatabase, initial_dataset: str, client: InfrahubClient) -> None:
         """Validate that the request to check connectivity to the remote repository is successful."""

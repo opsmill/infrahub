@@ -558,7 +558,6 @@ allow-dunder-method-names = [
     "SIM108",   # Use ternary operator instead of `if`-`else`-block
     "SIM110",   # Use `return any(...)` instead of `for` loop
     "SIM114",   # Combine `if` branches using logical `or` operator
-    "SIM117",   # Use a single `with` statement with multiple contexts
     "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
     "SLF001",   # Private member accessed
     "TD",       # flake8-todos
@@ -861,7 +860,6 @@ allow-dunder-method-names = [
     "RUF015",   # Prefer `next(...)` over single element slice
     "RUF029",   # Function is declared `async`, but doesn't `await`
     "S311",     # Standard pseudo-random generators are not suitable for crypto
-    "SIM117",   # Use a single `with` statement with multiple contexts
     "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
     "SLF001",   # Private member accessed
     "TD",       # flake8-todos
@@ -942,7 +940,6 @@ allow-dunder-method-names = [
     "S108",     # Probable insecure usage of temporary file or directory
     "S311",     # Standard pseudo-random generators are not suitable for crypto
     "SIM108",   # Use ternary operator instead of `if`-`else`-block
-    "SIM117",   # Use a single `with` statement with multiple contexts
     "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
     "SLF001",   # Private member accessed
     "TD",       # flake8-todos
@@ -1211,7 +1208,6 @@ allow-dunder-method-names = [
     "RUF010",   # Use explicit conversion flag
     "S311",     # Standard pseudo-random generators are not suitable for crypto
     "SIM108",   # Use ternary operator instead of `if`-`else`-block
-    "SIM117",   # Use a single `with` statement with multiple contexts
     "UP035",    # `typing.List` is deprecated, use `list` instead
 ]
 

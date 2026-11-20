@@ -27,14 +27,13 @@ async def test_websocket(
     await q1.new(db=db, name="query01", query="query { BuiltinTag { count }}")
     await q1.save(db=db)
 
-    with client:
-        with client.websocket_connect("/graphql") as websocket:
-            websocket.send_json(
-                {
-                    "id": "1",
-                    "type": "start",
-                    "payload": {"query": 'subscription {\n  query(name: "query01")\n}', "variables": {}},
-                }
-            )
-            data = websocket.receive_json()
-            assert data == {"id": "1", "payload": {"data": {"query": {"BuiltinTag": {"count": 1}}}}, "type": "data"}
+    with client, client.websocket_connect("/graphql") as websocket:
+        websocket.send_json(
+            {
+                "id": "1",
+                "type": "start",
+                "payload": {"query": 'subscription {\n  query(name: "query01")\n}', "variables": {}},
+            }
+        )
+        data = websocket.receive_json()
+        assert data == {"id": "1", "payload": {"data": {"query": {"BuiltinTag": {"count": 1}}}}, "type": "data"}
