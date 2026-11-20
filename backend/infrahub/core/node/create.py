@@ -661,6 +661,7 @@ async def create_node(
 
     A schema protocol class may be passed instead of a schema object; the return type is then
     narrowed to that protocol. `after_save` runs after the node is saved, in the transaction of the save.
+    `at` must not be earlier than the creation of the object template and of each of its subtemplates.
 
     Raises:
         ValueError: When the schema is a `GenericSchema` and cannot be instantiated, or when a
