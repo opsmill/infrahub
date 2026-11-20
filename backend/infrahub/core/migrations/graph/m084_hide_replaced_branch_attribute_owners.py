@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Sequence  # noqa: TC003  needed for pydantic
 from typing import TYPE_CHECKING, Any
 
+from infrahub import config
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.migrations.shared import GraphMigration, MigrationResult
+from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
@@ -22,14 +22,19 @@ class HideReplacedBranchAttributeOwnersQuery(Query):
     the parent branch added after the start of the branch, which the branch does not read: the merge then closes
     that owner, so the merge keeps the single owner of the branch, as the merge of an earlier release did. A
     repository is left out, because the upgrade closes its owner edges.
+
+    The writes are batched, so this query cannot run inside an explicit transaction. A second run finds no owner to
+    hide, because each `deleted` edge is an open edge of the branch to the replaced owner.
     """
 
     name = "migration_084_hide_replaced_branch_attribute_owners"
     type = QueryType.WRITE
     insert_return = False
+    insert_limit = False
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["user_id"] = self.user_id
+        self.params["batch_size"] = config.SETTINGS.database.query_size_limit
         query = """
 MATCH (a:Attribute)-[branch_edge:HAS_OWNER]->(branch_owner:Node)
 WHERE branch_edge.branch_level > 1 AND branch_edge.status = "active" AND branch_edge.to IS NULL
@@ -49,18 +54,31 @@ MATCH (a)-[written_edge:HAS_OWNER {branch: branch_edge.branch, status: "active"}
 WHERE written_owner <> replaced_owner
 WITH a, replaced_owner, branch_edge.branch AS branch, branch_edge.branch_level AS branch_level,
     min(CASE WHEN parent_edge.from > written_edge.from THEN parent_edge.from ELSE written_edge.from END) AS hidden_at
-CREATE (a)-[:HAS_OWNER {
-    branch: branch, branch_level: branch_level, status: "deleted", from: hidden_at, from_user_id: $user_id
-}]->(replaced_owner)
+CALL (a, replaced_owner, branch, branch_level, hidden_at) {
+    CREATE (a)-[:HAS_OWNER {
+        branch: branch, branch_level: branch_level, status: "deleted", from: hidden_at, from_user_id: $user_id
+    }]->(replaced_owner)
+} IN TRANSACTIONS OF $batch_size ROWS
         """ % {"repository_label": InfrahubKind.GENERICREPOSITORY}
         self.add_to_query(query)
 
 
-class Migration084(GraphMigration):
+class Migration084(ArbitraryMigration):
     name: str = "084_hide_replaced_branch_attribute_owners"
     description: str = "Hide the attribute owners that a branch replaced before attributes had several owners"
     minimum_version: int = 83
-    queries: Sequence[type[Query]] = [HideReplacedBranchAttributeOwnersQuery]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
+        return MigrationResult()
+
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        db = migration_input.db
+        try:
+            query = await HideReplacedBranchAttributeOwnersQuery.init(
+                db=db, at=migration_input.at, user_id=migration_input.user_id
+            )
+            await query.execute(db=db)
+        # reported through the result so the runner prints it against this migration
+        except Exception as exc:  # noqa: BLE001
+            return MigrationResult(errors=[str(exc)])
         return MigrationResult()
