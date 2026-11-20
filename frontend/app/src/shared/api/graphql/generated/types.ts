@@ -2192,6 +2192,10 @@ export type CoreArtifact = CoreNode & CoreTaskTarget & {
   object: NestedEdgedCoreArtifactTarget;
   /** Input parameters used to generate this artifact */
   parameters: Maybe<JsonAttribute>;
+  /** Time after which a pending external render is set to Error */
+  render_deadline: Maybe<TextAttribute>;
+  /** ID of the only external render request whose result is accepted */
+  render_request_id: Maybe<TextAttribute>;
   /** None (required) */
   status: Maybe<TextAttribute>;
   /** ID of the file in the object store */
@@ -2509,6 +2513,10 @@ export type CoreArtifactCreateInput = {
   object?: InputMaybe<RelatedNodeInput>;
   /** Input parameters used to generate this artifact */
   parameters?: InputMaybe<JsonAttributeCreate>;
+  /** Time after which a pending external render is set to Error */
+  render_deadline?: InputMaybe<TextAttributeCreate>;
+  /** ID of the only external render request whose result is accepted */
+  render_request_id?: InputMaybe<TextAttributeCreate>;
   status?: InputMaybe<TextAttributeCreate>;
   /** ID of the file in the object store */
   storage_id?: InputMaybe<TextAttributeCreate>;
@@ -2574,6 +2582,16 @@ export type CoreArtifactDefinitionArtifactsArgs = {
   parameters__source__id?: InputMaybe<Scalars['ID']['input']>;
   parameters__value?: InputMaybe<Scalars['GenericScalar']['input']>;
   parameters__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  render_deadline__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  render_deadline__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  render_deadline__source__id?: InputMaybe<Scalars['ID']['input']>;
+  render_deadline__value?: InputMaybe<Scalars['DateTime']['input']>;
+  render_deadline__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  render_request_id__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  render_request_id__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  render_request_id__source__id?: InputMaybe<Scalars['ID']['input']>;
+  render_request_id__value?: InputMaybe<Scalars['String']['input']>;
+  render_request_id__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   status__owner__id?: InputMaybe<Scalars['ID']['input']>;
   status__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -2828,6 +2846,16 @@ export type CoreArtifactTargetArtifactsArgs = {
   parameters__source__id?: InputMaybe<Scalars['ID']['input']>;
   parameters__value?: InputMaybe<Scalars['GenericScalar']['input']>;
   parameters__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  render_deadline__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  render_deadline__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  render_deadline__source__id?: InputMaybe<Scalars['ID']['input']>;
+  render_deadline__value?: InputMaybe<Scalars['DateTime']['input']>;
+  render_deadline__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  render_request_id__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  render_request_id__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  render_request_id__source__id?: InputMaybe<Scalars['ID']['input']>;
+  render_request_id__value?: InputMaybe<Scalars['String']['input']>;
+  render_request_id__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   status__owner__id?: InputMaybe<Scalars['ID']['input']>;
   status__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -3128,6 +3156,10 @@ export type CoreArtifactUpdateInput = {
   object?: InputMaybe<RelatedNodeInput>;
   /** Input parameters used to generate this artifact */
   parameters?: InputMaybe<JsonAttributeUpdate>;
+  /** Time after which a pending external render is set to Error */
+  render_deadline?: InputMaybe<TextAttributeUpdate>;
+  /** ID of the only external render request whose result is accepted */
+  render_request_id?: InputMaybe<TextAttributeUpdate>;
   status?: InputMaybe<TextAttributeUpdate>;
   /** ID of the file in the object store */
   storage_id?: InputMaybe<TextAttributeUpdate>;
@@ -3154,6 +3186,10 @@ export type CoreArtifactUpsertInput = {
   object?: InputMaybe<RelatedNodeInput>;
   /** Input parameters used to generate this artifact */
   parameters?: InputMaybe<JsonAttributeUpdate>;
+  /** Time after which a pending external render is set to Error */
+  render_deadline?: InputMaybe<TextAttributeUpdate>;
+  /** ID of the only external render request whose result is accepted */
+  render_request_id?: InputMaybe<TextAttributeUpdate>;
   status?: InputMaybe<TextAttributeUpdate>;
   /** ID of the file in the object store */
   storage_id?: InputMaybe<TextAttributeUpdate>;
@@ -15659,6 +15695,265 @@ export type CoreThreadUpdateInput = {
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
+/** A transformation rendered by an engine outside Infrahub */
+export type CoreTransformExternal = CoreNode & CoreTransformation & {
+  __typename: 'CoreTransformExternal';
+  artifact_definitions: NestedPaginatedCoreArtifactDefinition;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies: Maybe<ListAttribute>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete: Maybe<CheckboxAttribute>;
+  description: Maybe<TextAttribute>;
+  display_label: Maybe<Scalars['String']['output']>;
+  /** Content hash of the definition's inputs, recomputed on each import */
+  fingerprint: Maybe<TextAttribute>;
+  /** Human friendly identifier */
+  hfid: Maybe<Array<Scalars['String']['output']>>;
+  /** Unique identifier */
+  id: Scalars['String']['output'];
+  label: Maybe<TextAttribute>;
+  member_of_groups: NestedPaginatedCoreGroup;
+  name: Maybe<TextAttribute>;
+  query: NestedEdgedCoreGraphQlQuery;
+  repository: NestedEdgedCoreGenericRepository;
+  subscriber_of_groups: NestedPaginatedCoreGroup;
+  tags: NestedPaginatedBuiltinTag;
+  /** Maximum execution time in seconds */
+  timeout: Maybe<NumberAttribute>;
+  /** Version of the external template, part of the fingerprint (required) */
+  version: Maybe<TextAttribute>;
+};
+
+
+/** A transformation rendered by an engine outside Infrahub */
+export type CoreTransformExternalArtifact_DefinitionsArgs = {
+  artifact_name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_name__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  content_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  content_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  content_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  content_type__value?: InputMaybe<Scalars['String']['input']>;
+  content_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  description__value?: InputMaybe<Scalars['String']['input']>;
+  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  fingerprint__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  fingerprint__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  fingerprint__source__id?: InputMaybe<Scalars['ID']['input']>;
+  fingerprint__value?: InputMaybe<Scalars['String']['input']>;
+  fingerprint__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+  parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  parameters__source__id?: InputMaybe<Scalars['ID']['input']>;
+  parameters__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  parameters__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+};
+
+
+/** A transformation rendered by an engine outside Infrahub */
+export type CoreTransformExternalMember_Of_GroupsArgs = {
+  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  description__value?: InputMaybe<Scalars['String']['input']>;
+  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  group_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  group_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__value?: InputMaybe<Scalars['String']['input']>;
+  group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  label__value?: InputMaybe<Scalars['String']['input']>;
+  label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+};
+
+
+/** A transformation rendered by an engine outside Infrahub */
+export type CoreTransformExternalSubscriber_Of_GroupsArgs = {
+  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  description__value?: InputMaybe<Scalars['String']['input']>;
+  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  group_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  group_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__value?: InputMaybe<Scalars['String']['input']>;
+  group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  label__value?: InputMaybe<Scalars['String']['input']>;
+  label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+};
+
+
+/** A transformation rendered by an engine outside Infrahub */
+export type CoreTransformExternalTagsArgs = {
+  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  description__value?: InputMaybe<Scalars['String']['input']>;
+  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+};
+
+/** A transformation rendered by an engine outside Infrahub */
+export type CoreTransformExternalCreate = {
+  __typename: 'CoreTransformExternalCreate';
+  object: Maybe<CoreTransformExternal>;
+  ok: Maybe<Scalars['Boolean']['output']>;
+};
+
+export type CoreTransformExternalCreateInput = {
+  artifact_definitions?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeCreate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeCreate>;
+  description?: InputMaybe<TextAttributeCreate>;
+  /** Content hash of the definition's inputs, recomputed on each import */
+  fingerprint?: InputMaybe<TextAttributeCreate>;
+  id?: InputMaybe<Scalars['String']['input']>;
+  label?: InputMaybe<TextAttributeCreate>;
+  member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  name?: InputMaybe<TextAttributeCreate>;
+  query?: InputMaybe<RelatedNodeInput>;
+  repository?: InputMaybe<RelatedNodeInput>;
+  subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  tags?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  /** Maximum execution time in seconds */
+  timeout?: InputMaybe<NumberAttributeCreate>;
+  /** Version of the external template, part of the fingerprint */
+  version?: InputMaybe<TextAttributeCreate>;
+};
+
+/** A transformation rendered by an engine outside Infrahub */
+export type CoreTransformExternalDelete = {
+  __typename: 'CoreTransformExternalDelete';
+  ok: Maybe<Scalars['Boolean']['output']>;
+};
+
+/** A transformation rendered by an engine outside Infrahub */
+export type CoreTransformExternalUpdate = {
+  __typename: 'CoreTransformExternalUpdate';
+  object: Maybe<CoreTransformExternal>;
+  ok: Maybe<Scalars['Boolean']['output']>;
+};
+
+export type CoreTransformExternalUpdateInput = {
+  artifact_definitions?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeUpdate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeUpdate>;
+  description?: InputMaybe<TextAttributeUpdate>;
+  /** Content hash of the definition's inputs, recomputed on each import */
+  fingerprint?: InputMaybe<TextAttributeUpdate>;
+  hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  id?: InputMaybe<Scalars['String']['input']>;
+  label?: InputMaybe<TextAttributeUpdate>;
+  member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  name?: InputMaybe<TextAttributeUpdate>;
+  query?: InputMaybe<RelatedNodeInput>;
+  repository?: InputMaybe<RelatedNodeInput>;
+  subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  tags?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  /** Maximum execution time in seconds */
+  timeout?: InputMaybe<NumberAttributeUpdate>;
+  /** Version of the external template, part of the fingerprint */
+  version?: InputMaybe<TextAttributeUpdate>;
+};
+
+/** A transformation rendered by an engine outside Infrahub */
+export type CoreTransformExternalUpsert = {
+  __typename: 'CoreTransformExternalUpsert';
+  object: Maybe<CoreTransformExternal>;
+  ok: Maybe<Scalars['Boolean']['output']>;
+};
+
+export type CoreTransformExternalUpsertInput = {
+  artifact_definitions?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeUpdate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeUpdate>;
+  description?: InputMaybe<TextAttributeUpdate>;
+  /** Content hash of the definition's inputs, recomputed on each import */
+  fingerprint?: InputMaybe<TextAttributeUpdate>;
+  hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  id?: InputMaybe<Scalars['String']['input']>;
+  label?: InputMaybe<TextAttributeUpdate>;
+  member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  name?: InputMaybe<TextAttributeUpdate>;
+  query?: InputMaybe<RelatedNodeInput>;
+  repository?: InputMaybe<RelatedNodeInput>;
+  subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  tags?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  /** Maximum execution time in seconds */
+  timeout?: InputMaybe<NumberAttributeUpdate>;
+  /** Version of the external template, part of the fingerprint */
+  version?: InputMaybe<TextAttributeUpdate>;
+};
+
 /** A file rendered from a Jinja2 template */
 export type CoreTransformJinja2 = CoreNode & CoreTransformation & {
   __typename: 'CoreTransformJinja2';
@@ -17862,6 +18157,13 @@ export type EdgedCoreThread = {
 export type EdgedCoreThreadComment = {
   __typename: 'EdgedCoreThreadComment';
   node: Maybe<CoreThreadComment>;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
+};
+
+/** A transformation rendered by an engine outside Infrahub */
+export type EdgedCoreTransformExternal = {
+  __typename: 'EdgedCoreTransformExternal';
+  node: Maybe<CoreTransformExternal>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
 };
 
@@ -20262,6 +20564,14 @@ export type Mutation = {
   CoreThreadCommentUpsert: Maybe<CoreThreadCommentUpsert>;
   /** A thread on a Proposed Change */
   CoreThreadUpdate: Maybe<CoreThreadUpdate>;
+  /** A transformation rendered by an engine outside Infrahub */
+  CoreTransformExternalCreate: Maybe<CoreTransformExternalCreate>;
+  /** A transformation rendered by an engine outside Infrahub */
+  CoreTransformExternalDelete: Maybe<CoreTransformExternalDelete>;
+  /** A transformation rendered by an engine outside Infrahub */
+  CoreTransformExternalUpdate: Maybe<CoreTransformExternalUpdate>;
+  /** A transformation rendered by an engine outside Infrahub */
+  CoreTransformExternalUpsert: Maybe<CoreTransformExternalUpsert>;
   /** A file rendered from a Jinja2 template */
   CoreTransformJinja2Create: Maybe<CoreTransformJinja2Create>;
   /** A file rendered from a Jinja2 template */
@@ -21873,6 +22183,30 @@ export type MutationCoreThreadUpdateArgs = {
 };
 
 
+export type MutationCoreTransformExternalCreateArgs = {
+  context?: InputMaybe<ContextInput>;
+  data: CoreTransformExternalCreateInput;
+};
+
+
+export type MutationCoreTransformExternalDeleteArgs = {
+  context?: InputMaybe<ContextInput>;
+  data: DeleteInput;
+};
+
+
+export type MutationCoreTransformExternalUpdateArgs = {
+  context?: InputMaybe<ContextInput>;
+  data: CoreTransformExternalUpdateInput;
+};
+
+
+export type MutationCoreTransformExternalUpsertArgs = {
+  context?: InputMaybe<ContextInput>;
+  data: CoreTransformExternalUpsertInput;
+};
+
+
 export type MutationCoreTransformJinja2CreateArgs = {
   context?: InputMaybe<ContextInput>;
   data: CoreTransformJinja2CreateInput;
@@ -22938,6 +23272,15 @@ export type NestedEdgedCoreThreadComment = {
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
 
+/** A transformation rendered by an engine outside Infrahub */
+export type NestedEdgedCoreTransformExternal = {
+  __typename: 'NestedEdgedCoreTransformExternal';
+  node: Maybe<CoreTransformExternal>;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
+  properties: Maybe<RelationshipProperty>;
+  relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
+};
+
 /** A file rendered from a Jinja2 template */
 export type NestedEdgedCoreTransformJinja2 = {
   __typename: 'NestedEdgedCoreTransformJinja2';
@@ -23707,6 +24050,14 @@ export type NestedPaginatedCoreThreadComment = {
   __typename: 'NestedPaginatedCoreThreadComment';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreThreadComment>;
+  permissions: PaginatedObjectPermission;
+};
+
+/** A transformation rendered by an engine outside Infrahub */
+export type NestedPaginatedCoreTransformExternal = {
+  __typename: 'NestedPaginatedCoreTransformExternal';
+  count: Scalars['Int']['output'];
+  edges: Array<NestedEdgedCoreTransformExternal>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -24771,6 +25122,14 @@ export type PaginatedCoreThreadComment = {
   __typename: 'PaginatedCoreThreadComment';
   count: Scalars['Int']['output'];
   edges: Array<EdgedCoreThreadComment>;
+  permissions: PaginatedObjectPermission;
+};
+
+/** A transformation rendered by an engine outside Infrahub */
+export type PaginatedCoreTransformExternal = {
+  __typename: 'PaginatedCoreTransformExternal';
+  count: Scalars['Int']['output'];
+  edges: Array<EdgedCoreTransformExternal>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -26276,6 +26635,7 @@ export type Query = {
   CoreTaskTarget: PaginatedCoreTaskTarget;
   CoreThread: PaginatedCoreThread;
   CoreThreadComment: PaginatedCoreThreadComment;
+  CoreTransformExternal: PaginatedCoreTransformExternal;
   CoreTransformJinja2: PaginatedCoreTransformJinja2;
   CoreTransformPython: PaginatedCoreTransformPython;
   CoreTransformation: PaginatedCoreTransformation;
@@ -27503,6 +27863,18 @@ export type QueryCoreArtifactArgs = {
   parameters__value?: InputMaybe<Scalars['GenericScalar']['input']>;
   parameters__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
+  render_deadline__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  render_deadline__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  render_deadline__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  render_deadline__source__id?: InputMaybe<Scalars['ID']['input']>;
+  render_deadline__value?: InputMaybe<Scalars['DateTime']['input']>;
+  render_deadline__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  render_request_id__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  render_request_id__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  render_request_id__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  render_request_id__source__id?: InputMaybe<Scalars['ID']['input']>;
+  render_request_id__value?: InputMaybe<Scalars['String']['input']>;
+  render_request_id__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   status__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   status__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -27729,6 +28101,16 @@ export type QueryCoreArtifactDefinitionArgs = {
   artifacts__parameters__source__id?: InputMaybe<Scalars['ID']['input']>;
   artifacts__parameters__value?: InputMaybe<Scalars['GenericScalar']['input']>;
   artifacts__parameters__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  artifacts__render_deadline__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifacts__render_deadline__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifacts__render_deadline__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifacts__render_deadline__value?: InputMaybe<Scalars['DateTime']['input']>;
+  artifacts__render_deadline__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  artifacts__render_request_id__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifacts__render_request_id__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifacts__render_request_id__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifacts__render_request_id__value?: InputMaybe<Scalars['String']['input']>;
+  artifacts__render_request_id__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   artifacts__status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   artifacts__status__owner__id?: InputMaybe<Scalars['ID']['input']>;
   artifacts__status__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -27943,6 +28325,16 @@ export type QueryCoreArtifactTargetArgs = {
   artifacts__parameters__source__id?: InputMaybe<Scalars['ID']['input']>;
   artifacts__parameters__value?: InputMaybe<Scalars['GenericScalar']['input']>;
   artifacts__parameters__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  artifacts__render_deadline__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifacts__render_deadline__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifacts__render_deadline__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifacts__render_deadline__value?: InputMaybe<Scalars['DateTime']['input']>;
+  artifacts__render_deadline__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  artifacts__render_request_id__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifacts__render_request_id__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifacts__render_request_id__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifacts__render_request_id__value?: InputMaybe<Scalars['String']['input']>;
+  artifacts__render_request_id__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   artifacts__status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   artifacts__status__owner__id?: InputMaybe<Scalars['ID']['input']>;
   artifacts__status__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -37236,6 +37628,268 @@ export type QueryCoreThreadCommentArgs = {
   thread__resolved__source__id?: InputMaybe<Scalars['ID']['input']>;
   thread__resolved__value?: InputMaybe<Scalars['Boolean']['input']>;
   thread__resolved__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
+};
+
+
+export type QueryCoreTransformExternalArgs = {
+  any__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  any__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  any__source__id?: InputMaybe<Scalars['ID']['input']>;
+  any__value?: InputMaybe<Scalars['String']['input']>;
+  any__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__artifact_name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__artifact_name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__artifact_name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__artifact_name__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__artifact_name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__content_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__content_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__content_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__content_type__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__content_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__description__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__fingerprint__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__fingerprint__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__fingerprint__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__fingerprint__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__fingerprint__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  artifact_definitions__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__name__value?: InputMaybe<Scalars['String']['input']>;
+  artifact_definitions__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  artifact_definitions__parameters__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  artifact_definitions__parameters__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__parameters__source__id?: InputMaybe<Scalars['ID']['input']>;
+  artifact_definitions__parameters__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  artifact_definitions__parameters__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
+  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  description__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  description__value?: InputMaybe<Scalars['String']['input']>;
+  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  fingerprint__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  fingerprint__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  fingerprint__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  fingerprint__source__id?: InputMaybe<Scalars['ID']['input']>;
+  fingerprint__value?: InputMaybe<Scalars['String']['input']>;
+  fingerprint__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  label__value?: InputMaybe<Scalars['String']['input']>;
+  label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  member_of_groups__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  member_of_groups__group_type__value?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups__group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  member_of_groups__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  member_of_groups__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  member_of_groups__label__value?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  member_of_groups__name__value?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  node_metadata__created_at?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
+  node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
+  node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+  partial_match?: InputMaybe<Scalars['Boolean']['input']>;
+  query__depth__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  query__depth__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  query__depth__source__id?: InputMaybe<Scalars['ID']['input']>;
+  query__depth__value?: InputMaybe<Scalars['BigInt']['input']>;
+  query__depth__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  query__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  query__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  query__description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  query__description__value?: InputMaybe<Scalars['String']['input']>;
+  query__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  query__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  query__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  query__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  query__fingerprint__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  query__fingerprint__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  query__fingerprint__source__id?: InputMaybe<Scalars['ID']['input']>;
+  query__fingerprint__value?: InputMaybe<Scalars['String']['input']>;
+  query__fingerprint__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  query__height__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  query__height__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  query__height__source__id?: InputMaybe<Scalars['ID']['input']>;
+  query__height__value?: InputMaybe<Scalars['BigInt']['input']>;
+  query__height__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  query__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  query__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  query__models__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  query__models__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  query__models__source__id?: InputMaybe<Scalars['ID']['input']>;
+  query__models__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  query__models__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  query__name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  query__name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  query__name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  query__name__value?: InputMaybe<Scalars['String']['input']>;
+  query__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  query__operations__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  query__operations__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  query__operations__source__id?: InputMaybe<Scalars['ID']['input']>;
+  query__operations__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  query__operations__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  query__query__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  query__query__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  query__query__source__id?: InputMaybe<Scalars['ID']['input']>;
+  query__query__value?: InputMaybe<Scalars['String']['input']>;
+  query__query__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  query__variables__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  query__variables__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  query__variables__source__id?: InputMaybe<Scalars['ID']['input']>;
+  query__variables__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  query__variables__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  repository__commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__description__value?: InputMaybe<Scalars['String']['input']>;
+  repository__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  repository__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  repository__internal_status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__internal_status__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__internal_status__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__internal_status__value?: InputMaybe<Scalars['String']['input']>;
+  repository__internal_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  repository__last_rewrite_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  repository__last_rewrite_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__last_rewrite_previous_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_previous_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_previous_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__location__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__location__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__location__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__location__value?: InputMaybe<Scalars['String']['input']>;
+  repository__location__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__name__value?: InputMaybe<Scalars['String']['input']>;
+  repository__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__operational_status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__operational_status__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__operational_status__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__operational_status__value?: InputMaybe<Scalars['String']['input']>;
+  repository__operational_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__rewrite_count__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__rewrite_count__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__value?: InputMaybe<Scalars['BigInt']['input']>;
+  repository__rewrite_count__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  repository__sync_status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__sync_status__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__sync_status__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__sync_status__value?: InputMaybe<Scalars['String']['input']>;
+  repository__sync_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
+  subscriber_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  subscriber_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  subscriber_of_groups__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  subscriber_of_groups__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  subscriber_of_groups__group_type__value?: InputMaybe<Scalars['String']['input']>;
+  subscriber_of_groups__group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  subscriber_of_groups__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  subscriber_of_groups__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  subscriber_of_groups__label__value?: InputMaybe<Scalars['String']['input']>;
+  subscriber_of_groups__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  subscriber_of_groups__name__value?: InputMaybe<Scalars['String']['input']>;
+  subscriber_of_groups__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  tags__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  tags__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  tags__description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  tags__description__value?: InputMaybe<Scalars['String']['input']>;
+  tags__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  tags__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  tags__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  tags__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  tags__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  tags__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  tags__name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  tags__name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  tags__name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  tags__name__value?: InputMaybe<Scalars['String']['input']>;
+  tags__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  timeout__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  timeout__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  timeout__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  timeout__source__id?: InputMaybe<Scalars['ID']['input']>;
+  timeout__value?: InputMaybe<Scalars['BigInt']['input']>;
+  timeout__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  version__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  version__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  version__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  version__source__id?: InputMaybe<Scalars['ID']['input']>;
+  version__value?: InputMaybe<Scalars['String']['input']>;
+  version__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
 };
 
 

@@ -296,6 +296,8 @@ class CoreArtifact(CoreTaskTarget):
     checksum: StringOptional
     storage_id: StringOptional
     parameters: JSONAttributeOptional
+    render_request_id: StringOptional
+    render_deadline: DateTimeOptional
     object: RelationshipManager[CoreArtifactTarget]
     definition: RelationshipManager[CoreArtifactDefinition]
 
@@ -606,6 +608,10 @@ class CoreStaticKeyValue(CoreKeyValue):
 
 class CoreThreadComment(CoreComment):
     thread: RelationshipManager[CoreThread]
+
+
+class CoreTransformExternal(CoreTransformation):
+    version: String
 
 
 class CoreTransformJinja2(CoreTransformation):

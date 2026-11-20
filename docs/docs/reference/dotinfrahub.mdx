@@ -101,6 +101,23 @@ To help with the development process of a repository configuration file, you can
 | watch | InfrahubWatchConfig | Extra files and directories this transform depends on, in addition to the ones Infrahub detects automatically. | False |
 
 <!-- vale off -->
+## External Transforms
+<!-- vale on -->
+
+**Description**: Data transformations rendered by an external engine<br/>
+**Key**: external_transforms<br/>
+**Type**: array<br/>
+**Item type**: InfrahubExternalTransformConfig<br/>
+
+| Property | Type | Description | Mandatory |
+| -------- | ---- | ----------- | --------- |
+| name | string | The name of the transform | True |
+| query | string | The name of the GraphQL Query | True |
+| version | string | Version of the external template, part of the fingerprint | True |
+| description | string | Description for this transform | False |
+| timeout | integer | Seconds the external engine has to return the rendered artifact | False |
+
+<!-- vale off -->
 ## Generator Definitions
 <!-- vale on -->
 

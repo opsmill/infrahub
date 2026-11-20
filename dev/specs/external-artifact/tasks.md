@@ -45,24 +45,24 @@ description: "Task list for artifacts rendered by an external engine"
 
 **⚠️ No user story work starts until this phase is complete.**
 
-- [ ] T004 Add `TRANSFORMEXTERNAL = "CoreTransformExternal"` in `backend/infrahub/core/constants/infrahubkind.py`, and `ARTIFACT_RENDER_REQUESTED = "infrahub.artifact.render_requested"` to `EventType` in `backend/infrahub/core/constants/__init__.py`.
-- [ ] T005 In `backend/infrahub/core/schema/definitions/core/transform.py`, add `core_transform_external`:
+- [X] T004 Add `TRANSFORMEXTERNAL = "CoreTransformExternal"` in `backend/infrahub/core/constants/infrahubkind.py`, and `ARTIFACT_RENDER_REQUESTED = "infrahub.artifact.render_requested"` to `EventType` in `backend/infrahub/core/constants/__init__.py`.
+- [X] T005 In `backend/infrahub/core/schema/definitions/core/transform.py`, add `core_transform_external`:
   - `NodeSchema` named `TransformExternal`, namespace `Core`, `inherit_from=[InfrahubKind.TRANSFORM]`;
   - the same `branch` support as `core_transform_python`;
   - one attribute: `Attr(name="version", kind="Text", description="Version of the external template, part of the fingerprint")`.
 
   Register it in `backend/infrahub/core/schema/definitions/core/__init__.py`.
-- [ ] T006 In `backend/infrahub/core/schema/definitions/core/artifact.py`, add two optional attributes to `core_artifact`:
+- [X] T006 In `backend/infrahub/core/schema/definitions/core/artifact.py`, add two optional attributes to `core_artifact`:
   - `Attr(name="render_request_id", kind="Text", optional=True, description="ID of the only external render request whose result is accepted")`;
   - `Attr(name="render_deadline", kind="DateTime", optional=True, description="Time after which a pending external render is set to Error")`.
 
   Check `dev/guides/backend/creating-migrations.md` and add a migration if existing databases need one.
-- [ ] T007 Regenerate the generated files and commit them:
+- [X] T007 Regenerate the generated files and commit them:
   - `uv run invoke backend.generate`, then commit the SDK protocol and generated files inside the submodule as part of T003's pull request, or a follow-up one;
   - `uv run invoke schema.generate-graphqlschema`;
   - `cd frontend/app && pnpm codegen:graphql && pnpm codegen`;
   - `uv run invoke docs.generate`.
-- [ ] T008 [P] Add `ArtifactRenderRequestedEvent(ArtifactEvent)` in `backend/infrahub/events/artifact_action.py`:
+- [X] T008 [P] Add `ArtifactRenderRequestedEvent(ArtifactEvent)` in `backend/infrahub/events/artifact_action.py`:
   - `event_name = f"{EVENT_NAMESPACE}.artifact.render_requested"`, and `infrahub_node_kind_event = True`;
   - the fields listed in [data-model.md](data-model.md#artifactrenderrequestedevent-new-event): `render_id`, `callback_url`, `deadline`, `artifact_id`, `artifact_name`, `artifact_definition_id`, `artifact_definition_name`, `transformation_name`, `transformation_version`, `content_type`, `target_id`, `target_kind`, `target_name`, `branch` and `query_result`.
 

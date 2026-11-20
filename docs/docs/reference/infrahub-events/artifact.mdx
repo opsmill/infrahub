@@ -31,6 +31,41 @@ title: Artifact events
 | **storage_id** | The current storage id of the artifact |
 | **storage_id_previous** | The previous storage id of the artifact |
 
+## Artifact Render Requested Event
+
+**Type**: infrahub.artifact.render_requested
+**Description**: Event generated when an artifact must be rendered by an external engine.
+**Uses node_kind filter for webhooks**: `true`
+
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **meta.origin** | How this event was produced: a live edit (the default), a replay by a merge or rebase, or a derived-value recompute write. |
+| **render_id** | The ID of the render request, to quote when returning the result |
+| **callback_url** | The URL to which the engine returns the rendered content |
+| **deadline** | The time after which the render request is no longer accepted |
+| **artifact_id** | The ID of the artifact |
+| **artifact_name** | The name of the artifact |
+| **artifact_definition_id** | The ID of the artifact definition |
+| **artifact_definition_name** | The name of the artifact definition |
+| **transformation_name** | The name of the external transformation |
+| **transformation_version** | The version of the external transformation |
+| **content_type** | The content type the rendered artifact must have |
+| **target_id** | The ID of the target of the artifact |
+| **target_kind** | The kind of the target of the artifact |
+| **target_name** | The name of the target of the artifact |
+| **branch** | The name of the branch of the artifact |
+| **query_result** | The result of the GraphQL query for the target |
+
 ## Artifact Updated Event
 
 **Type**: infrahub.artifact.updated

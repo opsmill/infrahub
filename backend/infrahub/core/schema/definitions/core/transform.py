@@ -130,3 +130,21 @@ core_transform_python = NodeSchema(
         ),
     ],
 )
+
+core_transform_external = NodeSchema(
+    name="TransformExternal",
+    namespace="Core",
+    description="A transformation rendered by an engine outside Infrahub",
+    include_in_menu=False,
+    label="Transform External",
+    default_filter="name__value",
+    order_by=["name__value"],
+    display_label="name__value",
+    inherit_from=[InfrahubKind.TRANSFORM],
+    generate_profile=False,
+    branch=BranchSupportType.AWARE,
+    documentation="/transformations/overview/",
+    attributes=[
+        Attr(name="version", kind="Text", description="Version of the external template, part of the fingerprint"),
+    ],
+)

@@ -1,5 +1,5 @@
 from .account_action import AccountLoggedInEvent, AccountLoggedOutEvent
-from .artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
+from .artifact_action import ArtifactCreatedEvent, ArtifactRenderRequestedEvent, ArtifactUpdatedEvent
 from .branch_action import BranchCreatedEvent, BranchDeletedEvent, BranchMergedEvent, BranchRebasedEvent
 from .group_action import (
     GroupAutoCreateCappedEvent,
@@ -29,6 +29,7 @@ __all__ = [
     "AccountLoggedInEvent",
     "AccountLoggedOutEvent",
     "ArtifactCreatedEvent",
+    "ArtifactRenderRequestedEvent",
     "ArtifactUpdatedEvent",
     "BranchCreatedEvent",
     "BranchDeletedEvent",

@@ -18,6 +18,10 @@ export const EVENT_TYPE_CHOICES = [
     name: "infrahub.artifact.updated",
   },
   {
+    label: "Artifact render requested",
+    name: "infrahub.artifact.render_requested",
+  },
+  {
     label: "Node created",
     name: "infrahub.node.created",
   },

@@ -82,6 +82,7 @@ def test_repository_cascade_reaches_exactly_expected_kinds(case: RepositoryCase)
         InfrahubKind.SCHEMACHECK,
         InfrahubKind.STANDARDCHECK,
         InfrahubKind.TRANSFORM,
+        InfrahubKind.TRANSFORMEXTERNAL,
         InfrahubKind.TRANSFORMJINJA2,
         InfrahubKind.TRANSFORMPYTHON,
         InfrahubKind.USERVALIDATOR,

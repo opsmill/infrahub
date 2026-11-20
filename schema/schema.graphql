@@ -1040,6 +1040,10 @@ type CoreArtifact implements CoreNode & CoreTaskTarget {
   object: NestedEdgedCoreArtifactTarget!
   """Input parameters used to generate this artifact"""
   parameters: JSONAttribute
+  """Time after which a pending external render is set to Error"""
+  render_deadline: TextAttribute
+  """ID of the only external render request whose result is accepted"""
+  render_request_id: TextAttribute
   """None (required)"""
   status: TextAttribute
   """ID of the file in the object store"""
@@ -1221,6 +1225,10 @@ input CoreArtifactCreateInput {
   object: RelatedNodeInput
   """Input parameters used to generate this artifact"""
   parameters: JSONAttributeCreate
+  """Time after which a pending external render is set to Error"""
+  render_deadline: TextAttributeCreate
+  """ID of the only external render request whose result is accepted"""
+  render_request_id: TextAttributeCreate
   status: TextAttributeCreate
   """ID of the file in the object store"""
   storage_id: TextAttributeCreate
@@ -1233,7 +1241,7 @@ Defines how artifacts are generated from a transformation for a group of targets
 type CoreArtifactDefinition implements CoreNode & CoreTaskTarget {
   """Name template for generated artifacts (required)"""
   artifact_name: TextAttribute
-  artifacts(checksum__is_protected: Boolean, checksum__owner__id: ID, checksum__source__id: ID, checksum__value: String, checksum__values: [String], content_type__is_protected: Boolean, content_type__owner__id: ID, content_type__source__id: ID, content_type__value: String, content_type__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar], status__is_protected: Boolean, status__owner__id: ID, status__source__id: ID, status__value: String, status__values: [String], storage_id__is_protected: Boolean, storage_id__owner__id: ID, storage_id__source__id: ID, storage_id__value: String, storage_id__values: [String]): NestedPaginatedCoreArtifact!
+  artifacts(checksum__is_protected: Boolean, checksum__owner__id: ID, checksum__source__id: ID, checksum__value: String, checksum__values: [String], content_type__is_protected: Boolean, content_type__owner__id: ID, content_type__source__id: ID, content_type__value: String, content_type__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar], render_deadline__is_protected: Boolean, render_deadline__owner__id: ID, render_deadline__source__id: ID, render_deadline__value: DateTime, render_deadline__values: [DateTime], render_request_id__is_protected: Boolean, render_request_id__owner__id: ID, render_request_id__source__id: ID, render_request_id__value: String, render_request_id__values: [String], status__is_protected: Boolean, status__owner__id: ID, status__source__id: ID, status__value: String, status__values: [String], storage_id__is_protected: Boolean, storage_id__owner__id: ID, storage_id__source__id: ID, storage_id__value: String, storage_id__values: [String]): NestedPaginatedCoreArtifact!
   """MIME type of the generated artifacts (required)"""
   content_type: TextAttribute
   """None"""
@@ -1358,7 +1366,7 @@ type CoreArtifactDelete {
 
 """Extend a node to be associated with artifacts"""
 interface CoreArtifactTarget {
-  artifacts(checksum__is_protected: Boolean, checksum__owner__id: ID, checksum__source__id: ID, checksum__value: String, checksum__values: [String], content_type__is_protected: Boolean, content_type__owner__id: ID, content_type__source__id: ID, content_type__value: String, content_type__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar], status__is_protected: Boolean, status__owner__id: ID, status__source__id: ID, status__value: String, status__values: [String], storage_id__is_protected: Boolean, storage_id__owner__id: ID, storage_id__source__id: ID, storage_id__value: String, storage_id__values: [String]): NestedPaginatedCoreArtifact!
+  artifacts(checksum__is_protected: Boolean, checksum__owner__id: ID, checksum__source__id: ID, checksum__value: String, checksum__values: [String], content_type__is_protected: Boolean, content_type__owner__id: ID, content_type__source__id: ID, content_type__value: String, content_type__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar], render_deadline__is_protected: Boolean, render_deadline__owner__id: ID, render_deadline__source__id: ID, render_deadline__value: DateTime, render_deadline__values: [DateTime], render_request_id__is_protected: Boolean, render_request_id__owner__id: ID, render_request_id__source__id: ID, render_request_id__value: String, render_request_id__values: [String], status__is_protected: Boolean, status__owner__id: ID, status__source__id: ID, status__value: String, status__values: [String], storage_id__is_protected: Boolean, storage_id__owner__id: ID, storage_id__source__id: ID, storage_id__value: String, storage_id__values: [String]): NestedPaginatedCoreArtifact!
   display_label: String
   """Human friendly identifier"""
   hfid: [String!]
@@ -1501,6 +1509,10 @@ input CoreArtifactUpdateInput {
   object: RelatedNodeInput
   """Input parameters used to generate this artifact"""
   parameters: JSONAttributeUpdate
+  """Time after which a pending external render is set to Error"""
+  render_deadline: TextAttributeUpdate
+  """ID of the only external render request whose result is accepted"""
+  render_request_id: TextAttributeUpdate
   status: TextAttributeUpdate
   """ID of the file in the object store"""
   storage_id: TextAttributeUpdate
@@ -1528,6 +1540,10 @@ input CoreArtifactUpsertInput {
   object: RelatedNodeInput
   """Input parameters used to generate this artifact"""
   parameters: JSONAttributeUpdate
+  """Time after which a pending external render is set to Error"""
+  render_deadline: TextAttributeUpdate
+  """ID of the only external render request whose result is accepted"""
+  render_request_id: TextAttributeUpdate
   status: TextAttributeUpdate
   """ID of the file in the object store"""
   storage_id: TextAttributeUpdate
@@ -7184,6 +7200,144 @@ input CoreThreadUpdateInput {
   subscriber_of_groups: [RelatedNodeInput]
 }
 
+"""A transformation rendered by an engine outside Infrahub"""
+type CoreTransformExternal implements CoreNode & CoreTransformation {
+  artifact_definitions(artifact_name__is_protected: Boolean, artifact_name__owner__id: ID, artifact_name__source__id: ID, artifact_name__value: String, artifact_name__values: [String], content_type__is_protected: Boolean, content_type__owner__id: ID, content_type__source__id: ID, content_type__value: String, content_type__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar]): NestedPaginatedCoreArtifactDefinition!
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttribute
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttribute
+  description: TextAttribute
+  display_label: String
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttribute
+  """Human friendly identifier"""
+  hfid: [String!]
+  """Unique identifier"""
+  id: String!
+  label: TextAttribute
+  member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  name: TextAttribute
+  query: NestedEdgedCoreGraphQLQuery!
+  repository: NestedEdgedCoreGenericRepository!
+  subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  tags(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedBuiltinTag!
+  """Maximum execution time in seconds"""
+  timeout: NumberAttribute
+  """Version of the external template, part of the fingerprint (required)"""
+  version: TextAttribute
+}
+
+"""A transformation rendered by an engine outside Infrahub"""
+type CoreTransformExternalCreate {
+  object: CoreTransformExternal
+  ok: Boolean
+}
+
+input CoreTransformExternalCreateInput {
+  artifact_definitions: [RelatedNodeInput]
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttributeCreate
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttributeCreate
+  description: TextAttributeCreate
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttributeCreate
+  id: String
+  label: TextAttributeCreate
+  member_of_groups: [RelatedNodeInput]
+  name: TextAttributeCreate
+  query: RelatedNodeInput
+  repository: RelatedNodeInput
+  subscriber_of_groups: [RelatedNodeInput]
+  tags: [RelatedNodeInput]
+  """Maximum execution time in seconds"""
+  timeout: NumberAttributeCreate
+  """Version of the external template, part of the fingerprint"""
+  version: TextAttributeCreate
+}
+
+"""A transformation rendered by an engine outside Infrahub"""
+type CoreTransformExternalDelete {
+  ok: Boolean
+}
+
+"""A transformation rendered by an engine outside Infrahub"""
+type CoreTransformExternalUpdate {
+  object: CoreTransformExternal
+  ok: Boolean
+}
+
+input CoreTransformExternalUpdateInput {
+  artifact_definitions: [RelatedNodeInput]
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttributeUpdate
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttributeUpdate
+  description: TextAttributeUpdate
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttributeUpdate
+  hfid: [String]
+  id: String
+  label: TextAttributeUpdate
+  member_of_groups: [RelatedNodeInput]
+  name: TextAttributeUpdate
+  query: RelatedNodeInput
+  repository: RelatedNodeInput
+  subscriber_of_groups: [RelatedNodeInput]
+  tags: [RelatedNodeInput]
+  """Maximum execution time in seconds"""
+  timeout: NumberAttributeUpdate
+  """Version of the external template, part of the fingerprint"""
+  version: TextAttributeUpdate
+}
+
+"""A transformation rendered by an engine outside Infrahub"""
+type CoreTransformExternalUpsert {
+  object: CoreTransformExternal
+  ok: Boolean
+}
+
+input CoreTransformExternalUpsertInput {
+  artifact_definitions: [RelatedNodeInput]
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttributeUpdate
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttributeUpdate
+  description: TextAttributeUpdate
+  """Content hash of the definition's inputs, recomputed on each import"""
+  fingerprint: TextAttributeUpdate
+  hfid: [String]
+  id: String
+  label: TextAttributeUpdate
+  member_of_groups: [RelatedNodeInput]
+  name: TextAttributeUpdate
+  query: RelatedNodeInput
+  repository: RelatedNodeInput
+  subscriber_of_groups: [RelatedNodeInput]
+  tags: [RelatedNodeInput]
+  """Maximum execution time in seconds"""
+  timeout: NumberAttributeUpdate
+  """Version of the external template, part of the fingerprint"""
+  version: TextAttributeUpdate
+}
+
 """A file rendered from a Jinja2 template"""
 type CoreTransformJinja2 implements CoreNode & CoreTransformation {
   artifact_definitions(artifact_name__is_protected: Boolean, artifact_name__owner__id: ID, artifact_name__source__id: ID, artifact_name__value: String, artifact_name__values: [String], content_type__is_protected: Boolean, content_type__owner__id: ID, content_type__source__id: ID, content_type__value: String, content_type__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, parameters__is_protected: Boolean, parameters__owner__id: ID, parameters__source__id: ID, parameters__value: GenericScalar, parameters__values: [GenericScalar]): NestedPaginatedCoreArtifactDefinition!
@@ -8508,6 +8662,12 @@ type EdgedCoreThread {
 """A comment on thread within a Proposed Change"""
 type EdgedCoreThreadComment {
   node: CoreThreadComment
+  node_metadata: InfrahubNodeMetadata
+}
+
+"""A transformation rendered by an engine outside Infrahub"""
+type EdgedCoreTransformExternal {
+  node: CoreTransformExternal
   node_metadata: InfrahubNodeMetadata
 }
 
@@ -10199,6 +10359,14 @@ type Mutation {
   CoreThreadCommentUpsert(context: ContextInput, data: CoreThreadCommentUpsertInput!): CoreThreadCommentUpsert
   """A thread on a Proposed Change"""
   CoreThreadUpdate(context: ContextInput, data: CoreThreadUpdateInput!): CoreThreadUpdate
+  """A transformation rendered by an engine outside Infrahub"""
+  CoreTransformExternalCreate(context: ContextInput, data: CoreTransformExternalCreateInput!): CoreTransformExternalCreate
+  """A transformation rendered by an engine outside Infrahub"""
+  CoreTransformExternalDelete(context: ContextInput, data: DeleteInput!): CoreTransformExternalDelete
+  """A transformation rendered by an engine outside Infrahub"""
+  CoreTransformExternalUpdate(context: ContextInput, data: CoreTransformExternalUpdateInput!): CoreTransformExternalUpdate
+  """A transformation rendered by an engine outside Infrahub"""
+  CoreTransformExternalUpsert(context: ContextInput, data: CoreTransformExternalUpsertInput!): CoreTransformExternalUpsert
   """A file rendered from a Jinja2 template"""
   CoreTransformJinja2Create(context: ContextInput, data: CoreTransformJinja2CreateInput!): CoreTransformJinja2Create
   """A file rendered from a Jinja2 template"""
@@ -10972,6 +11140,14 @@ type NestedEdgedCoreThreadComment {
   relationship_metadata: InfrahubRelationshipMetadata
 }
 
+"""A transformation rendered by an engine outside Infrahub"""
+type NestedEdgedCoreTransformExternal {
+  node: CoreTransformExternal
+  node_metadata: InfrahubNodeMetadata
+  properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata
+}
+
 """A file rendered from a Jinja2 template"""
 type NestedEdgedCoreTransformJinja2 {
   node: CoreTransformJinja2
@@ -11676,6 +11852,13 @@ type NestedPaginatedCoreThread {
 type NestedPaginatedCoreThreadComment {
   count: Int!
   edges: [NestedEdgedCoreThreadComment!]!
+  permissions: PaginatedObjectPermission!
+}
+
+"""A transformation rendered by an engine outside Infrahub"""
+type NestedPaginatedCoreTransformExternal {
+  count: Int!
+  edges: [NestedEdgedCoreTransformExternal!]!
   permissions: PaginatedObjectPermission!
 }
 
@@ -12712,6 +12895,13 @@ type PaginatedCoreThread {
 type PaginatedCoreThreadComment {
   count: Int!
   edges: [EdgedCoreThreadComment!]!
+  permissions: PaginatedObjectPermission!
+}
+
+"""A transformation rendered by an engine outside Infrahub"""
+type PaginatedCoreTransformExternal {
+  count: Int!
+  edges: [EdgedCoreTransformExternal!]!
   permissions: PaginatedObjectPermission!
 }
 
@@ -14892,6 +15082,18 @@ type Query {
     parameters__value: GenericScalar
     parameters__values: [GenericScalar]
     partial_match: Boolean
+    render_deadline__is_protected: Boolean
+    render_deadline__isnull: Boolean
+    render_deadline__owner__id: ID
+    render_deadline__source__id: ID
+    render_deadline__value: DateTime
+    render_deadline__values: [DateTime]
+    render_request_id__is_protected: Boolean
+    render_request_id__isnull: Boolean
+    render_request_id__owner__id: ID
+    render_request_id__source__id: ID
+    render_request_id__value: String
+    render_request_id__values: [String]
     status__is_protected: Boolean
     status__isnull: Boolean
     status__owner__id: ID
@@ -15124,6 +15326,16 @@ type Query {
     artifacts__parameters__source__id: ID
     artifacts__parameters__value: GenericScalar
     artifacts__parameters__values: [GenericScalar]
+    artifacts__render_deadline__is_protected: Boolean
+    artifacts__render_deadline__owner__id: ID
+    artifacts__render_deadline__source__id: ID
+    artifacts__render_deadline__value: DateTime
+    artifacts__render_deadline__values: [DateTime]
+    artifacts__render_request_id__is_protected: Boolean
+    artifacts__render_request_id__owner__id: ID
+    artifacts__render_request_id__source__id: ID
+    artifacts__render_request_id__value: String
+    artifacts__render_request_id__values: [String]
     artifacts__status__is_protected: Boolean
     artifacts__status__owner__id: ID
     artifacts__status__source__id: ID
@@ -15346,6 +15558,16 @@ type Query {
     artifacts__parameters__source__id: ID
     artifacts__parameters__value: GenericScalar
     artifacts__parameters__values: [GenericScalar]
+    artifacts__render_deadline__is_protected: Boolean
+    artifacts__render_deadline__owner__id: ID
+    artifacts__render_deadline__source__id: ID
+    artifacts__render_deadline__value: DateTime
+    artifacts__render_deadline__values: [DateTime]
+    artifacts__render_request_id__is_protected: Boolean
+    artifacts__render_request_id__owner__id: ID
+    artifacts__render_request_id__source__id: ID
+    artifacts__render_request_id__value: String
+    artifacts__render_request_id__values: [String]
     artifacts__status__is_protected: Boolean
     artifacts__status__owner__id: ID
     artifacts__status__source__id: ID
@@ -25166,6 +25388,276 @@ type Query {
     thread__resolved__value: Boolean
     thread__resolved__values: [Boolean]
   ): PaginatedCoreThreadComment!
+  CoreTransformExternal(
+    any__is_protected: Boolean
+    any__owner__id: ID
+    any__source__id: ID
+    any__value: String
+    any__values: [String]
+    artifact_definitions__artifact_name__is_protected: Boolean
+    artifact_definitions__artifact_name__owner__id: ID
+    artifact_definitions__artifact_name__source__id: ID
+    artifact_definitions__artifact_name__value: String
+    artifact_definitions__artifact_name__values: [String]
+    artifact_definitions__content_type__is_protected: Boolean
+    artifact_definitions__content_type__owner__id: ID
+    artifact_definitions__content_type__source__id: ID
+    artifact_definitions__content_type__value: String
+    artifact_definitions__content_type__values: [String]
+    artifact_definitions__description__is_protected: Boolean
+    artifact_definitions__description__owner__id: ID
+    artifact_definitions__description__source__id: ID
+    artifact_definitions__description__value: String
+    artifact_definitions__description__values: [String]
+    artifact_definitions__display_label__isnull: Boolean
+    artifact_definitions__display_label__value: String
+    artifact_definitions__display_label__values: [String]
+    artifact_definitions__fingerprint__is_protected: Boolean
+    artifact_definitions__fingerprint__owner__id: ID
+    artifact_definitions__fingerprint__source__id: ID
+    artifact_definitions__fingerprint__value: String
+    artifact_definitions__fingerprint__values: [String]
+    artifact_definitions__ids: [ID]
+    artifact_definitions__isnull: Boolean
+    artifact_definitions__name__is_protected: Boolean
+    artifact_definitions__name__owner__id: ID
+    artifact_definitions__name__source__id: ID
+    artifact_definitions__name__value: String
+    artifact_definitions__name__values: [String]
+    artifact_definitions__parameters__is_protected: Boolean
+    artifact_definitions__parameters__owner__id: ID
+    artifact_definitions__parameters__source__id: ID
+    artifact_definitions__parameters__value: GenericScalar
+    artifact_definitions__parameters__values: [GenericScalar]
+    dependencies__is_protected: Boolean
+    dependencies__isnull: Boolean
+    dependencies__owner__id: ID
+    dependencies__source__id: ID
+    dependencies__value: GenericScalar
+    dependencies__values: [GenericScalar]
+    dependencies_complete__is_protected: Boolean
+    dependencies_complete__isnull: Boolean
+    dependencies_complete__owner__id: ID
+    dependencies_complete__source__id: ID
+    dependencies_complete__value: Boolean
+    dependencies_complete__values: [Boolean]
+    description__is_protected: Boolean
+    description__isnull: Boolean
+    description__owner__id: ID
+    description__source__id: ID
+    description__value: String
+    description__values: [String]
+    display_label__isnull: Boolean
+    display_label__value: String
+    display_label__values: [String]
+    fingerprint__is_protected: Boolean
+    fingerprint__isnull: Boolean
+    fingerprint__owner__id: ID
+    fingerprint__source__id: ID
+    fingerprint__value: String
+    fingerprint__values: [String]
+    hfid: [String]
+    ids: [ID]
+    label__is_protected: Boolean
+    label__isnull: Boolean
+    label__owner__id: ID
+    label__source__id: ID
+    label__value: String
+    label__values: [String]
+    limit: Int
+    member_of_groups__description__value: String
+    member_of_groups__description__values: [String]
+    member_of_groups__display_label__isnull: Boolean
+    member_of_groups__display_label__value: String
+    member_of_groups__display_label__values: [String]
+    member_of_groups__group_type__value: String
+    member_of_groups__group_type__values: [String]
+    member_of_groups__ids: [ID]
+    member_of_groups__isnull: Boolean
+    member_of_groups__label__value: String
+    member_of_groups__label__values: [String]
+    member_of_groups__name__value: String
+    member_of_groups__name__values: [String]
+    name__is_protected: Boolean
+    name__isnull: Boolean
+    name__owner__id: ID
+    name__source__id: ID
+    name__value: String
+    name__values: [String]
+    """Filter by exact creation timestamp"""
+    node_metadata__created_at: DateTime
+    """Filter for objects created after this timestamp"""
+    node_metadata__created_at__after: DateTime
+    """Filter for objects created before this timestamp"""
+    node_metadata__created_at__before: DateTime
+    """Filter by exact creator account UUID"""
+    node_metadata__created_by__id: ID
+    """Filter by list of creator account UUIDs"""
+    node_metadata__created_by__ids: [ID]
+    """Filter by exact update timestamp"""
+    node_metadata__updated_at: DateTime
+    """Filter for objects updated after this timestamp"""
+    node_metadata__updated_at__after: DateTime
+    """Filter for objects updated before this timestamp"""
+    node_metadata__updated_at__before: DateTime
+    """Filter by exact updater account UUID"""
+    node_metadata__updated_by__id: ID
+    """Filter by list of updater account UUIDs"""
+    node_metadata__updated_by__ids: [ID]
+    offset: Int
+    order: OrderInput
+    partial_match: Boolean
+    query__depth__is_protected: Boolean
+    query__depth__owner__id: ID
+    query__depth__source__id: ID
+    query__depth__value: BigInt
+    query__depth__values: [BigInt]
+    query__description__is_protected: Boolean
+    query__description__owner__id: ID
+    query__description__source__id: ID
+    query__description__value: String
+    query__description__values: [String]
+    query__display_label__isnull: Boolean
+    query__display_label__value: String
+    query__display_label__values: [String]
+    query__fingerprint__is_protected: Boolean
+    query__fingerprint__owner__id: ID
+    query__fingerprint__source__id: ID
+    query__fingerprint__value: String
+    query__fingerprint__values: [String]
+    query__height__is_protected: Boolean
+    query__height__owner__id: ID
+    query__height__source__id: ID
+    query__height__value: BigInt
+    query__height__values: [BigInt]
+    query__ids: [ID]
+    query__isnull: Boolean
+    query__models__is_protected: Boolean
+    query__models__owner__id: ID
+    query__models__source__id: ID
+    query__models__value: GenericScalar
+    query__models__values: [GenericScalar]
+    query__name__is_protected: Boolean
+    query__name__owner__id: ID
+    query__name__source__id: ID
+    query__name__value: String
+    query__name__values: [String]
+    query__operations__is_protected: Boolean
+    query__operations__owner__id: ID
+    query__operations__source__id: ID
+    query__operations__value: GenericScalar
+    query__operations__values: [GenericScalar]
+    query__query__is_protected: Boolean
+    query__query__owner__id: ID
+    query__query__source__id: ID
+    query__query__value: String
+    query__query__values: [String]
+    query__variables__is_protected: Boolean
+    query__variables__owner__id: ID
+    query__variables__source__id: ID
+    query__variables__value: GenericScalar
+    query__variables__values: [GenericScalar]
+    repository__commit__is_protected: Boolean
+    repository__commit__owner__id: ID
+    repository__commit__source__id: ID
+    repository__commit__value: String
+    repository__commit__values: [String]
+    repository__description__is_protected: Boolean
+    repository__description__owner__id: ID
+    repository__description__source__id: ID
+    repository__description__value: String
+    repository__description__values: [String]
+    repository__display_label__isnull: Boolean
+    repository__display_label__value: String
+    repository__display_label__values: [String]
+    repository__ids: [ID]
+    repository__internal_status__is_protected: Boolean
+    repository__internal_status__owner__id: ID
+    repository__internal_status__source__id: ID
+    repository__internal_status__value: String
+    repository__internal_status__values: [String]
+    repository__isnull: Boolean
+    repository__last_rewrite_at__is_protected: Boolean
+    repository__last_rewrite_at__owner__id: ID
+    repository__last_rewrite_at__source__id: ID
+    repository__last_rewrite_at__value: DateTime
+    repository__last_rewrite_at__values: [DateTime]
+    repository__last_rewrite_commit__is_protected: Boolean
+    repository__last_rewrite_commit__owner__id: ID
+    repository__last_rewrite_commit__source__id: ID
+    repository__last_rewrite_commit__value: String
+    repository__last_rewrite_commit__values: [String]
+    repository__last_rewrite_previous_commit__is_protected: Boolean
+    repository__last_rewrite_previous_commit__owner__id: ID
+    repository__last_rewrite_previous_commit__source__id: ID
+    repository__last_rewrite_previous_commit__value: String
+    repository__last_rewrite_previous_commit__values: [String]
+    repository__location__is_protected: Boolean
+    repository__location__owner__id: ID
+    repository__location__source__id: ID
+    repository__location__value: String
+    repository__location__values: [String]
+    repository__name__is_protected: Boolean
+    repository__name__owner__id: ID
+    repository__name__source__id: ID
+    repository__name__value: String
+    repository__name__values: [String]
+    repository__operational_status__is_protected: Boolean
+    repository__operational_status__owner__id: ID
+    repository__operational_status__source__id: ID
+    repository__operational_status__value: String
+    repository__operational_status__values: [String]
+    repository__rewrite_count__is_protected: Boolean
+    repository__rewrite_count__owner__id: ID
+    repository__rewrite_count__source__id: ID
+    repository__rewrite_count__value: BigInt
+    repository__rewrite_count__values: [BigInt]
+    repository__sync_status__is_protected: Boolean
+    repository__sync_status__owner__id: ID
+    repository__sync_status__source__id: ID
+    repository__sync_status__value: String
+    repository__sync_status__values: [String]
+    subscriber_of_groups__description__value: String
+    subscriber_of_groups__description__values: [String]
+    subscriber_of_groups__display_label__isnull: Boolean
+    subscriber_of_groups__display_label__value: String
+    subscriber_of_groups__display_label__values: [String]
+    subscriber_of_groups__group_type__value: String
+    subscriber_of_groups__group_type__values: [String]
+    subscriber_of_groups__ids: [ID]
+    subscriber_of_groups__isnull: Boolean
+    subscriber_of_groups__label__value: String
+    subscriber_of_groups__label__values: [String]
+    subscriber_of_groups__name__value: String
+    subscriber_of_groups__name__values: [String]
+    tags__description__is_protected: Boolean
+    tags__description__owner__id: ID
+    tags__description__source__id: ID
+    tags__description__value: String
+    tags__description__values: [String]
+    tags__display_label__isnull: Boolean
+    tags__display_label__value: String
+    tags__display_label__values: [String]
+    tags__ids: [ID]
+    tags__isnull: Boolean
+    tags__name__is_protected: Boolean
+    tags__name__owner__id: ID
+    tags__name__source__id: ID
+    tags__name__value: String
+    tags__name__values: [String]
+    timeout__is_protected: Boolean
+    timeout__isnull: Boolean
+    timeout__owner__id: ID
+    timeout__source__id: ID
+    timeout__value: BigInt
+    timeout__values: [BigInt]
+    version__is_protected: Boolean
+    version__isnull: Boolean
+    version__owner__id: ID
+    version__source__id: ID
+    version__value: String
+    version__values: [String]
+  ): PaginatedCoreTransformExternal!
   CoreTransformJinja2(
     any__is_protected: Boolean
     any__owner__id: ID

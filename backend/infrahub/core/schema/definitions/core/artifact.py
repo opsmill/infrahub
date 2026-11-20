@@ -76,6 +76,18 @@ core_artifact = NodeSchema(
             description="Input parameters used to generate this artifact",
             optional=True,
         ),
+        Attr(
+            name="render_request_id",
+            kind="Text",
+            optional=True,
+            description="ID of the only external render request whose result is accepted",
+        ),
+        Attr(
+            name="render_deadline",
+            kind="DateTime",
+            optional=True,
+            description="Time after which a pending external render is set to Error",
+        ),
     ],
     relationships=[
         Rel(
