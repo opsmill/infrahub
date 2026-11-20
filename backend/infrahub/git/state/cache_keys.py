@@ -31,6 +31,10 @@ ACTIVITY_RUN_RENEW_SECONDS = 60
 ACTIVITY_LAST_RUN_TTL_SECONDS = 30 * 24 * 60 * 60
 """Bounded so the last run of a deleted repository does not linger."""
 
+STOPPED_IMPORT_REPAIRS_TTL_SECONDS = 24 * 60 * 60
+"""Long enough to span every repair of one stopped import, which come minutes apart; bounded so the count
+of a commit whose import stops again much later starts over."""
+
 
 def warm_up_key(repository_id: str) -> str:
     return f"{CACHE_KEY_PREFIX}:warmup:{repository_id}"
@@ -54,6 +58,10 @@ def refs_check_listed_key(repository_id: str, ref: str) -> str:
 
 def activity_run_key(repository_id: str, run_id: str) -> str:
     return f"{CACHE_KEY_PREFIX}:activity:run:{repository_id}:{run_id}"
+
+
+def stopped_import_repairs_key(repository_id: str, commit: str) -> str:
+    return f"{CACHE_KEY_PREFIX}:activity:repairs:{repository_id}:{commit}"
 
 
 def activity_run_pattern(repository_id: str) -> str:
