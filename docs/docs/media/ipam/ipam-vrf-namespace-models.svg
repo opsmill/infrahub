@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="520" viewBox="0 0 960 520" role="img" aria-labelledby="title desc">
+<title id="title">Three ways to combine VRFs and namespaces</title><desc id="desc">Three models for two VRFs, red and blue. One namespace for each VRF: two namespaces, red and blue, each hold 10.0.0.0/16, and each corresponds to a VRF object. Several VRFs in one namespace: a single namespace, default, holds 10.0.0.0/16, related to VRF red, and 10.1.0.0/16, related to VRF blue, in one tree, so the same prefix cannot exist twice. A VRF node that is also the namespace: red and blue are objects of a VRF node that inherits from BuiltinIPNamespace. Each has a route distinguisher and holds 10.0.0.0/16 in its own tree.</desc>
+<rect width="960" height="520" rx="16" fill="white"/>
+<g font-family="Inter, Arial, sans-serif">
+<rect x="15" y="15" width="300" height="440" rx="16" fill="white" stroke="#d7e6eb" stroke-width="1.5"/>
+<text x="35" y="50" text-anchor="start" font-size="17" font-weight="600" fill="#0B1828">One namespace</text>
+<text x="35" y="72" text-anchor="start" font-size="17" font-weight="600" fill="#0B1828">for each VRF</text>
+<rect x="30" y="100" width="190" height="100" rx="14" fill="#d4eff6" stroke="#08738f" stroke-width="2"/>
+<text x="46" y="128" text-anchor="start" font-size="15" font-weight="600" fill="#0B1828">Namespace red</text>
+<rect x="50" y="146" width="150" height="36" rx="18" fill="white" stroke="#08738f" stroke-width="2.5"/>
+<text x="125" y="170" text-anchor="middle" font-size="16" font-weight="500" fill="#0B1828">10.0.0.0/16</text>
+<path d="M220 149 H232" fill="none" stroke="#231556" stroke-width="2" stroke-dasharray="4 3"/>
+<rect x="232" y="132" width="78" height="34" rx="8" fill="#e9e5f5" stroke="#231556" stroke-width="2"/>
+<text x="271" y="154" text-anchor="middle" font-size="14" font-weight="600" fill="#0B1828">VRF red</text>
+<rect x="30" y="225" width="190" height="100" rx="14" fill="#d4eff6" stroke="#08738f" stroke-width="2"/>
+<text x="46" y="253" text-anchor="start" font-size="15" font-weight="600" fill="#0B1828">Namespace blue</text>
+<rect x="50" y="271" width="150" height="36" rx="18" fill="white" stroke="#08738f" stroke-width="2.5"/>
+<text x="125" y="295" text-anchor="middle" font-size="16" font-weight="500" fill="#0B1828">10.0.0.0/16</text>
+<path d="M220 274 H232" fill="none" stroke="#231556" stroke-width="2" stroke-dasharray="4 3"/>
+<rect x="232" y="257" width="78" height="34" rx="8" fill="#e9e5f5" stroke="#231556" stroke-width="2"/>
+<text x="271" y="279" text-anchor="middle" font-size="14" font-weight="600" fill="#0B1828">VRF blue</text>
+<text x="35" y="372" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">Two namespaces. Each VRF has its</text>
+<text x="35" y="394" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">own tree and utilization, and the</text>
+<text x="35" y="416" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">same prefix can exist in both.</text>
+<rect x="330" y="15" width="300" height="440" rx="16" fill="white" stroke="#d7e6eb" stroke-width="1.5"/>
+<text x="350" y="50" text-anchor="start" font-size="17" font-weight="600" fill="#0B1828">Several VRFs</text>
+<text x="350" y="72" text-anchor="start" font-size="17" font-weight="600" fill="#0B1828">in one namespace</text>
+<rect x="345" y="100" width="178" height="225" rx="14" fill="#d4eff6" stroke="#08738f" stroke-width="2"/>
+<text x="361" y="128" text-anchor="start" font-size="15" font-weight="600" fill="#0B1828">Namespace default</text>
+<rect x="365" y="150" width="140" height="36" rx="18" fill="white" stroke="#08738f" stroke-width="2.5"/>
+<text x="435" y="174" text-anchor="middle" font-size="16" font-weight="500" fill="#0B1828">10.0.0.0/16</text>
+<rect x="365" y="250" width="140" height="36" rx="18" fill="white" stroke="#08738f" stroke-width="2.5"/>
+<text x="435" y="274" text-anchor="middle" font-size="16" font-weight="500" fill="#0B1828">10.1.0.0/16</text>
+<path d="M505 168 H547" fill="none" stroke="#231556" stroke-width="2"/>
+<text x="536" y="160" text-anchor="middle" font-size="12" font-weight="600" fill="#231556">vrf</text>
+<rect x="547" y="151" width="78" height="34" rx="8" fill="#e9e5f5" stroke="#231556" stroke-width="2"/>
+<text x="586" y="173" text-anchor="middle" font-size="14" font-weight="600" fill="#0B1828">VRF red</text>
+<path d="M505 268 H547" fill="none" stroke="#231556" stroke-width="2"/>
+<text x="536" y="260" text-anchor="middle" font-size="12" font-weight="600" fill="#231556">vrf</text>
+<rect x="547" y="251" width="78" height="34" rx="8" fill="#e9e5f5" stroke="#231556" stroke-width="2"/>
+<text x="586" y="273" text-anchor="middle" font-size="14" font-weight="600" fill="#0B1828">VRF blue</text>
+<text x="350" y="372" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">One namespace. The VRFs share</text>
+<text x="350" y="394" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">one tree and its utilization, and</text>
+<text x="350" y="416" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">the same prefix cannot exist twice.</text>
+<rect x="645" y="15" width="300" height="440" rx="16" fill="white" stroke="#d7e6eb" stroke-width="1.5"/>
+<text x="665" y="50" text-anchor="start" font-size="17" font-weight="600" fill="#0B1828">A VRF node that is</text>
+<text x="665" y="72" text-anchor="start" font-size="17" font-weight="600" fill="#0B1828">also the namespace</text>
+<rect x="660" y="100" width="270" height="100" rx="14" fill="#d4eff6" stroke="#231556" stroke-width="3"/>
+<text x="676" y="128" text-anchor="start" font-size="15" font-weight="600" fill="#0B1828">VRF red</text>
+<text x="914" y="128" text-anchor="end" font-size="13" font-weight="500" fill="#264D59">RD 65000:1</text>
+<rect x="680" y="146" width="150" height="36" rx="18" fill="white" stroke="#08738f" stroke-width="2.5"/>
+<text x="755" y="170" text-anchor="middle" font-size="16" font-weight="500" fill="#0B1828">10.0.0.0/16</text>
+<rect x="660" y="225" width="270" height="100" rx="14" fill="#d4eff6" stroke="#231556" stroke-width="3"/>
+<text x="676" y="253" text-anchor="start" font-size="15" font-weight="600" fill="#0B1828">VRF blue</text>
+<text x="914" y="253" text-anchor="end" font-size="13" font-weight="500" fill="#264D59">RD 65000:2</text>
+<rect x="680" y="271" width="150" height="36" rx="18" fill="white" stroke="#08738f" stroke-width="2.5"/>
+<text x="755" y="295" text-anchor="middle" font-size="16" font-weight="500" fill="#0B1828">10.0.0.0/16</text>
+<text x="665" y="372" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">Two objects of a VRF node that</text>
+<text x="665" y="394" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">inherits from BuiltinIPNamespace.</text>
+<text x="665" y="416" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">Each has its own tree, and the</text>
+<text x="665" y="438" text-anchor="start" font-size="14" font-weight="500" fill="#264D59">same prefix can exist in both.</text>
+<rect x="35" y="478" width="34" height="22" rx="6" fill="#d4eff6" stroke="#08738f" stroke-width="2"/>
+<text x="79" y="494" text-anchor="start" font-size="14" font-weight="500" fill="#0B1828">Namespace</text>
+<rect x="190" y="478" width="34" height="22" rx="6" fill="#e9e5f5" stroke="#231556" stroke-width="2"/>
+<text x="234" y="494" text-anchor="start" font-size="14" font-weight="500" fill="#0B1828">VRF object</text>
+<rect x="335" y="478" width="34" height="22" rx="6" fill="#d4eff6" stroke="#231556" stroke-width="3"/>
+<text x="379" y="494" text-anchor="start" font-size="14" font-weight="500" fill="#0B1828">VRF object that is also a namespace</text>
+<rect x="672" y="478" width="44" height="22" rx="11" fill="white" stroke="#08738f" stroke-width="2.5"/>
+<text x="726" y="494" text-anchor="start" font-size="14" font-weight="500" fill="#0B1828">Prefix</text>
+</g>
+</svg>
