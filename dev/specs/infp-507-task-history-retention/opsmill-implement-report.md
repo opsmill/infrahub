@@ -329,3 +329,33 @@ events of the requested event types, then the next 48,000, then the rest of the 
   the windows.
 
 The body above is kept as written.
+
+## Update: delivery in two pull requests, and fixes after review (20 November 2026)
+
+The six pull requests of stack #10873 listed in §1 were closed on 29 October 2026, the day
+[opsmill/infrahub#11289](https://github.com/opsmill/infrahub/pull/11289) was opened. On 18 November 2026 the work
+was split into two draft pull requests, based on `develop`:
+
+- [opsmill/infrahub#11649](https://github.com/opsmill/infrahub/pull/11649) delivers User Story 2, the Activities
+  page, and merges first. It carries the two commits of opsmill/infrahub#10379.
+- opsmill/infrahub#11289 delivers User Stories 1, 3 and 4, the documentation and this spec directory. It is based
+  on the branch of #11649, so its diff shows only its own parts.
+
+A review of #11649 on 18 November 2026 led to these changes on its branch, merged into #11289:
+
+- 19 November: a query by `ids` or `parent__ids` without `since` reads every stored event; the name of a deleted
+  branch resolves through its deletion event however old it is (FR-021 changed); a negative `offset` returns an
+  error.
+- 20 November: a query without `since` reads back the event retention, and at least 180 days, whether or not the
+  serving process deletes old events; the request field `retention_seconds`, which only tests sent, is removed; the
+  component test server's vacuum is off, as `backend/tests/helpers/constants.py` intends; a `*` or `?` in
+  `account__ids`, `parent__ids` or `branches`, or an account or parent ID that starts with `!`, returns an error.
+
+This entry supersedes:
+
+- "Delivery" in §1;
+- item 8 of §7: when opsmill/infrahub#10379 merges, the branch of #11649 drops its two carried commits;
+- the `since` description quoted in §6 item 10 and §7: it now reads "defaults to the activity log retention before
+  until, and at least 180 days before until; a query by ids or parent__ids has no default start".
+
+The body above is kept as written.

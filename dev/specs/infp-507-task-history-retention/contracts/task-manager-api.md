@@ -55,7 +55,6 @@ Request gains:
 | Field | Type | Default | Meaning |
 |---|---|---|---|
 | `include_total` | bool | `true` | Compute `total`; otherwise `total` is `null` (field first proposed in PR #10379, which is still an open draft; [opsmill/infrahub#11649](https://github.com/opsmill/infrahub/pull/11649) adds it under the same name and default) |
-| `retention_seconds` | int | Prefect's event retention, which the task manager sets from the activity log retention, or at least 180 days when it does not delete old events | How far back the range goes when the filter sets no `occurred.since`; an explicit value must be positive and at most 31,536,000 seconds (365 days) |
 
 Behaviour changes:
 
@@ -73,8 +72,8 @@ Behaviour changes:
 ## GraphQL `InfrahubEvent` (no new or changed arguments)
 
 - `count` is computed only when selected.
-- A query without `since` reads back the activity log retention from `until`, or at least 180 days when the task manager does not delete old events, instead of Prefect's 180-day default; the `since` description says so. A query by `ids` or `parent__ids` without `since` has no default start: the Infrahub server sends the earliest time as the start, so that an event a list reaches by paging is also found by its ID or its parent's ID.
-- `branches`, `account__ids`, `primary_node__ids`, `parent__ids` and the branch-name `event_type_filter` keep their arguments and results, except for the combination in the next item; their matching changes as described in data-model.md.
+- A query without `since` reads back the activity log retention from `until`, and at least 180 days, Prefect's own default, whether or not the task manager deletes old events; the `since` description says so. A query by `ids` or `parent__ids` without `since` has no default start: the Infrahub server sends the earliest time as the start, so that an event a list reaches by paging is also found by its ID or its parent's ID.
+- `branches`, `account__ids`, `primary_node__ids`, `parent__ids` and the branch-name `event_type_filter` keep their arguments and results, except for the combination in the next item; their matching changes as described in data-model.md. `account__ids`, `parent__ids` and `branches` match exact values, so a `*` or `?` in them, or an account or parent ID that starts with `!`, returns an error; a label match read these characters as a pattern. A negative `offset` returns an error.
 - `primary_node__ids` combined with branch names, identity providers or protocols in `event_type_filter` returns only the events that match both; before, the primary node conditions replaced the others (data-model.md, Activities filters).
 - `primary_node__ids` is read as up to two requests to the task manager (data-model.md, Activities filters): each returns its events up to the end of the page, the Infrahub server merges them by time and then ID and applies `offset`, and `count` is the sum of both counts. A page whose `offset` plus `limit` is above 1,000 is read as one request that matches the `infrahub.node.id` label, which the task manager pages with the offset (added on 16 Nov). Arguments and results are unchanged.
 - The Activities page passes `until` instead of `offset` for "load more"; it already does not select `count`.
