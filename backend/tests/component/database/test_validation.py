@@ -111,6 +111,22 @@ CREATE (n)-[:HAS_ATTRIBUTE {branch: hae.branch, branch_level: hae.branch_level, 
     await db.execute_query(query=query, params={"node_id": car.id, "at": Timestamp().to_string()})
 
 
+async def _add_link_owner_edge_after_node_delete(db: InfrahubDatabase, car: Node, person: Node) -> None:
+    """Delete the car, then make it the owner of its link to the person afterwards."""
+    query = """
+MATCH (n:Node {uuid: $car_id})-[is_part_of:IS_PART_OF]->(:Root)
+WITH n, is_part_of LIMIT 1
+SET is_part_of.status = "deleted"
+WITH n
+MATCH (n)-[e1:IS_RELATED]-(rel:Relationship)-[:IS_RELATED]-(:Node {uuid: $person_id})
+WITH n, e1, rel LIMIT 1
+CREATE (rel)-[:HAS_OWNER {branch: e1.branch, branch_level: e1.branch_level, status: "active", from: $at}]->(n)
+    """
+    await db.execute_query(
+        query=query, params={"car_id": car.id, "person_id": person.id, "at": Timestamp().to_string()}
+    )
+
+
 async def _delete_attribute_cleanly(db: InfrahubDatabase, node_uuid: str, attr_name: str, at: str) -> None:
     """Delete an attribute the way the product does: close every open edge and record a deleted one."""
     query = """
@@ -356,6 +372,15 @@ GRAPH_DAMAGE_CASES = [
         name="edges_after_node_delete",
         check=GraphCheck.EDGES_AFTER_NODE_DELETE,
         damage=_add_edge_after_node_delete,
+        expected_violations=1,
+        scoped_violations=1,
+        included_kinds=["TestCar"],
+        excluded_kinds=["TestPerson"],
+    ),
+    GraphDamageCase(
+        name="link_owner_edge_after_node_delete",
+        check=GraphCheck.EDGES_AFTER_NODE_DELETE,
+        damage=_add_link_owner_edge_after_node_delete,
         expected_violations=1,
         scoped_violations=1,
         included_kinds=["TestCar"],
