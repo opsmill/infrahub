@@ -142,7 +142,8 @@ class IpamReconciler:
             updated_uuids |= await self.update_current_children(reconcile_nodes)
             updated_uuids |= await self.update_calculated_children(reconcile_nodes)
 
-        for updated_uuid in updated_uuids:
+        # Each writer of several nodes locks them in the order of their IDs, so two writers cannot deadlock.
+        for updated_uuid in sorted(updated_uuids):
             node = reconcile_nodes.get_node_by_uuid(updated_uuid)
             await node.save(db=self.db, at=self.at)
 

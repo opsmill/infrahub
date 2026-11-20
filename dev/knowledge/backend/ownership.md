@@ -127,6 +127,17 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
   - On the default branch, `RelationshipDeleteQuery` sets `updated_at` on the `Relationship` vertex before the
     source and the peer node vertices, in one statement. `Relationship.delete` in the GraphQL `RelationshipRemove`
     mutation and `RelationshipManager.save` in the profile applier run it before any node lock.
+- Order of the nodes: a transaction that writes several nodes locks each node vertex in turn. Two transactions
+  that lock the same two nodes in the reverse order deadlock, on every branch, and Neo4j stops one of them with
+  `DeadlockDetected`. The update, upsert and delete mutations retry this error (`retry_db_transaction`), so a user
+  sees a delay.
+  - The cascade of `NodeManager.delete`, the profile refresh and the IPAM reconciler lock their nodes in the order
+    of the node IDs, so two of these writers do not deadlock. The cascade locks all its nodes first and then
+    deletes them in its own order, because a delete leaves out of its changelog the links that an earlier delete
+    closed.
+  - A caller that saves several nodes in one transaction in another order can still deadlock against one of
+    these writers or against another caller, for example two scripts that each call `node.save()` on the same two
+    nodes in the reverse order.
 - When the caller gives no time, `Node.delete` reads its time after the lock, so it also closes the owner edges
   that a write commits while the delete waits for the lock.
 - The check that the node is active comes after the lock, so it reads a delete of the node that another
@@ -303,8 +314,9 @@ holds, so it runs before the upgrade.
 - The upgrade ends only the attribute owners that are repositories (`m085`). An attribute owner of another kind that
   is not an account or an account group stays readable. `infrahub db ownership-report` lists them, by kind, before
   the upgrade.
-- Two transactions that write owners on the same nodes in a different order can deadlock, because each one locks
-  the nodes in its own order. No test covers this case.
+- Two transactions that write the same nodes in a different order deadlock, on every branch, because each one
+  locks the nodes in its own order (see "Order of the nodes"). Only the cascade of `NodeManager.delete`, the profile
+  refresh and the IPAM reconciler sort their nodes.
 - The graph migration `m084` skips an attribute whose owner a branch wrote and then cleared before the upgrade.
   The release before closed the edge of the branch at the clear, and added its own `deleted` edge for the owner of
   the default branch at that time. So a read on the branch at a time between the write and the clear gives two

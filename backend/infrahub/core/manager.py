@@ -28,6 +28,7 @@ from infrahub.core.query.node import (
     NodeListGetInfoQuery,
     NodeListGetRelationshipsQuery,
     NodeListGetStoredLabelsQuery,
+    NodeLockQuery,
     NodeStoredLabels,
     NodeToProcess,
 )
@@ -1467,6 +1468,12 @@ class NodeManager:
                 node_map = await cls.get_many(db=db, ids=list(missing_ids_to_delete), branch=branch, at=at)
                 nodes_to_delete += list(node_map.values())
 
+        if len(nodes_to_delete) > 1:
+            # Each writer of several nodes locks them in the order of their IDs, so two writers cannot deadlock.
+            for node in sorted(nodes_to_delete, key=lambda node: node.get_id()):
+                lock_query = await NodeLockQuery.init(db=db, node=node)
+                await lock_query.execute(db=db)
+        # The delete order stays, because a delete leaves out of its changelog the links that an earlier delete closed.
         for node in nodes_to_delete:
             await node.delete(db=db, at=at, user_id=user_id)
 
