@@ -37,7 +37,9 @@ The diff reads the owners of an attribute as one list, like the owners of a node
 relationship link keeps one owner ID. `DiffCalculator` reads the owner changes of the branch before
 the queries of the default branch, and adds each changed node to their scope. So a node that the
 default branch deletes gives a node conflict, also when the branch changed only its owners or
-sources.
+sources. `OwnershipDiffer` also reads the owner changes of the default branch for each node that
+the branch deletes. So a node that the branch deletes gives a node conflict when the default
+branch changed its owners or sources, also when the node had no owner at the start of the branch.
 
 A holder can lose the `HAS_OWNER_SOURCE` mark of a copy from an object template and keep its
 owners. The diff shows this holder as an update with the same list at both ends, because the merge
