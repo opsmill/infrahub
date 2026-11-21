@@ -89,6 +89,27 @@ query PersonCars($id: ID!) {
 """
 
 
+# Filters TestPerson on its height at the root and its cars on their color, and selects neither.
+QUERY_WITH_FILTERS = """
+query PersonCars($id: ID!) {
+    TestPerson(ids: [$id], height__value: 180) {
+        edges {
+            node {
+                name { value }
+                cars(color__value: "red") {
+                    edges {
+                        node {
+                            id
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+"""
+
+
 async def _setup_person_transform(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -674,6 +695,16 @@ QUERY_TRIGGER_CASES = [
             "TestGazCar": ["human_friendly_id"],
         },
     ),
+    QueryTriggerCase(
+        name="filtered_fields_are_matched_like_selected_ones",
+        query=QUERY_WITH_FILTERS,
+        expected_fields_by_kind={
+            "TestPerson": ["cars", "height", "name"],
+            "TestCar": ["color"],
+            "TestElectricCar": ["color"],
+            "TestGazCar": ["color"],
+        },
+    ),
 ]
 
 
@@ -701,3 +732,19 @@ async def test_gather_trigger_computed_attribute_python_query(
     assert {kind: _field_filter(trigger) for kind, trigger in _triggers_by_kind(trigger_queries).items()} == {
         kind: sorted(fields) for kind, fields in case.expected_fields_by_kind.items()
     }
+
+
+async def test_the_owner_trigger_matches_a_root_filter_field(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics_unregistered: dict[str, Any]
+) -> None:
+    """A change to a field the query filters its own node on recomputes that node, like a field it selects."""
+    await _setup_person_transform(
+        db=db,
+        default_branch=default_branch,
+        schema_dict=car_person_schema_generics_unregistered,
+        query=QUERY_WITH_FILTERS,
+    )
+
+    triggers, _ = await gather_trigger_computed_attribute_python(db=db)
+
+    assert [_field_filter(trigger) for trigger in triggers] == [["cars", "height", "name"]]
