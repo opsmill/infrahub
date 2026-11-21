@@ -13,6 +13,7 @@ PORT_PREFECT = 4200
 NEO4J_COMMUNITY_IMAGE = "neo4j:2026.10.1-community"
 NEO4J_ENTERPRISE_IMAGE = "neo4j:2026.10.1-enterprise"
 NEO4J_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", NEO4J_ENTERPRISE_IMAGE)
+REDIS_IMAGE = "redis:8.4.0"
 
 # Upper bound in seconds for a test waiting on a task that a lock holds, and for an exclusive lock request waiting
 # for the shared holders a test controls.

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 from testcontainers.core.config import testcontainers_config
 
+from infrahub_testcontainers import container
 from infrahub_testcontainers.container import InfrahubDockerCompose
 from infrahub_testcontainers.reaper import ComposeProjectReaper
 
@@ -78,3 +79,33 @@ def test_start_skips_the_ryuk_registration(
         compose.start()
 
     assert connector.attempts == 0
+
+
+@pytest.mark.parametrize(
+    ("driver", "expected"),
+    [
+        pytest.param(None, {"COMPOSE_PROFILES": None, "INFRAHUB_TESTING_BROKER_ADDRESS": "cache"}, id="default"),
+        pytest.param(
+            "redis", {"COMPOSE_PROFILES": None, "INFRAHUB_TESTING_BROKER_ADDRESS": "cache"}, id="redis_driver"
+        ),
+        pytest.param(
+            "rabbitmq",
+            {"COMPOSE_PROFILES": "rabbitmq", "INFRAHUB_TESTING_BROKER_ADDRESS": "message-queue"},
+            id="rabbitmq_driver",
+        ),
+    ],
+)
+def test_env_file_starts_rabbitmq_only_for_the_rabbitmq_driver(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, driver: str | None, expected: dict[str, str | None]
+) -> None:
+    # create_env_file records the image version in the module-level variables, so each case gets its own copy.
+    monkeypatch.setattr(container, "PROJECT_ENV_VARIABLES", dict(container.PROJECT_ENV_VARIABLES))
+    for name in ("INFRAHUB_BROKER_DRIVER", "COMPOSE_PROFILES", "INFRAHUB_TESTING_BROKER_ADDRESS"):
+        monkeypatch.delenv(name, raising=False)
+    if driver is not None:
+        monkeypatch.setenv("INFRAHUB_BROKER_DRIVER", driver)
+
+    env_file = InfrahubDockerCompose(context=tmp_path).create_env_file(directory=tmp_path, version="1.0.0")
+
+    variables = dict(line.split("=", 1) for line in env_file.read_text(encoding="utf-8").splitlines())
+    assert {name: variables.get(name) for name in expected} == expected

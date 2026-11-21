@@ -13,7 +13,7 @@ from redis.exceptions import RedisError
 if TYPE_CHECKING:
     import redis.asyncio as redis
 
-    from infrahub.config import CacheSettings
+    from infrahub.config import BrokerSettings, CacheSettings
 
 # redis-py's own client retry policy, which it applies only to a pool it builds itself and never to one built from a URL.
 REDIS_COMMAND_RETRIES: int = 10
@@ -60,6 +60,40 @@ def add_default_ca_bundle(url: str, ca_file: str | None) -> str:
     return f"{base}?{query}&{option}" if query else f"{base}?{option}"
 
 
+def _build_single_node_url(
+    *,
+    address: str,
+    port: int,
+    database: int,
+    username: str,
+    password: str,
+    tls_enabled: bool,
+    tls_insecure: bool,
+    tls_ca_file: str | None,
+) -> str:
+    """Assemble scalar connection settings into a single-node Redis URL."""
+    scheme = "rediss" if tls_enabled else "redis"
+
+    userinfo = ""
+    if username and password:
+        userinfo = f"{quote(username, safe='')}:{quote(password, safe='')}@"
+    elif password:
+        userinfo = f":{quote(password, safe='')}@"
+
+    query: dict[str, str] = {}
+    if tls_enabled:
+        if tls_insecure:
+            query["ssl_cert_reqs"] = "none"
+            query["ssl_check_hostname"] = "False"
+        if tls_ca_file:
+            query["ssl_ca_certs"] = tls_ca_file
+
+    qs = f"?{urlencode(query)}" if query else ""
+    # A bare IPv6 address is a valid host setting but has to be bracketed to be read back from a URL.
+    host = f"[{address}]" if ":" in address and not address.startswith("[") else address
+    return f"{scheme}://{userinfo}{host}:{port}/{database}{qs}"
+
+
 def build_cache_connection_string(cache: CacheSettings) -> str:
     """Return the Redis connection URL that the cache settings describe.
 
@@ -70,26 +104,39 @@ def build_cache_connection_string(cache: CacheSettings) -> str:
     if url is not None:
         return add_default_ca_bundle(url.get_secret_value(), cache.tls_ca_file)
 
-    scheme = "rediss" if cache.tls_enabled else "redis"
+    return _build_single_node_url(
+        address=cache.address,
+        port=cache.service_port,
+        database=cache.database,
+        username=cache.username,
+        password=cache.password,
+        tls_enabled=cache.tls_enabled,
+        tls_insecure=cache.tls_insecure,
+        tls_ca_file=cache.tls_ca_file,
+    )
 
-    userinfo = ""
-    if cache.username and cache.password:
-        userinfo = f"{quote(cache.username, safe='')}:{quote(cache.password, safe='')}@"
-    elif cache.password:
-        userinfo = f":{quote(cache.password, safe='')}@"
 
-    query: dict[str, str] = {}
-    if cache.tls_enabled:
-        if cache.tls_insecure:
-            query["ssl_cert_reqs"] = "none"
-            query["ssl_check_hostname"] = "False"
-        if cache.tls_ca_file:
-            query["ssl_ca_certs"] = cache.tls_ca_file
+def build_broker_connection_string(broker: BrokerSettings) -> str:
+    """Return the Redis connection URL that the broker settings describe for the redis message bus driver.
 
-    qs = f"?{urlencode(query)}" if query else ""
-    # A bare IPv6 address is a valid host setting but has to be bracketed to be read back from a URL.
-    host = f"[{cache.address}]" if ":" in cache.address and not cache.address.startswith("[") else cache.address
-    return f"{scheme}://{userinfo}{host}:{cache.service_port}/{cache.database}{qs}"
+    A configured ``broker.url`` is returned as written, verifying against ``broker.tls_ca_file`` unless it
+    names CA certificates itself; otherwise the scalar settings are assembled into a single-node URL on
+    database 0, leaving out a username or password still at its RabbitMQ default.
+    """
+    url = broker.url
+    if url is not None:
+        return add_default_ca_bundle(url.get_secret_value(), broker.tls_ca_file)
+
+    return _build_single_node_url(
+        address=broker.address,
+        port=broker.service_port,
+        database=0,
+        username=broker.redis_username,
+        password=broker.redis_password,
+        tls_enabled=broker.tls_enabled,
+        tls_insecure=broker.tls_insecure,
+        tls_ca_file=broker.tls_ca_file,
+    )
 
 
 def _connection_defaults() -> dict[str, Any]:
@@ -154,3 +201,12 @@ def build_redis_connection(settings: CacheSettings) -> redis.Redis:
     client's daemon connections.
     """
     return _redis_from_url(build_cache_connection_string(settings), max_connections=settings.max_connections)
+
+
+def build_broker_redis_connection(settings: BrokerSettings) -> redis.Redis:
+    """Build the redis message bus client, selecting single-node or Sentinel mode from the broker URL.
+
+    Close it with ``prefect_redis.connection.aclose_redis_client``, which also releases a Sentinel
+    client's daemon connections.
+    """
+    return _redis_from_url(build_broker_connection_string(settings))
