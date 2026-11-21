@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -52,6 +53,8 @@ from infrahub.core.schema import (
     TemplateSchema,
 )
 from infrahub.core.schema.constants import SchemaNamespace  # noqa: TC001
+from infrahub.core.schema.submitted_ids.repository import SchemaElementRepository
+from infrahub.core.schema.submitted_ids.resolver import SubmittedSchemaIdResolver
 from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.models.validate_migration import (
@@ -239,6 +242,34 @@ def evaluate_candidate_schemas(
     return candidate_schema, result
 
 
+@dataclass(frozen=True)
+class SubmittedSchemaEvaluation:
+    candidate_schema: SchemaBranch
+    result: SchemaUpdateValidationResult
+    id_warnings: list[SchemaWarning]
+
+
+async def evaluate_submitted_schemas(
+    db: InfrahubDatabase, branch_schema: SchemaBranch, schemas: Sequence[SchemaRoot]
+) -> SubmittedSchemaEvaluation:
+    """Resolve the IDs of the submitted schemas, then evaluate them against the branch schema.
+
+    Raises:
+        SchemaNotValidError: When a submitted ID refuses the load, or the candidate schema is not valid.
+
+    """
+    resolution = await SubmittedSchemaIdResolver(lookup=SchemaElementRepository(db=db)).resolve(
+        branch_schema=branch_schema, schemas=schemas
+    )
+    if resolution.errors:
+        raise SchemaNotValidError(message=", ".join(resolution.errors))
+
+    candidate_schema, result = evaluate_candidate_schemas(
+        branch_schema=branch_schema, schemas_to_evaluate=resolution.schemas
+    )
+    return SubmittedSchemaEvaluation(candidate_schema=candidate_schema, result=result, id_warnings=resolution.warnings)
+
+
 @router.get("")
 async def get_schema(
     branch: Branch = Depends(get_branch_dep),
@@ -420,9 +451,9 @@ async def load_schema(
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
         original_hash = branch_schema.get_hash()
 
-        candidate_schema, result = evaluate_candidate_schemas(
-            branch_schema=branch_schema, schemas_to_evaluate=candidate_schemas
-        )
+        evaluation = await evaluate_submitted_schemas(db=db, branch_schema=branch_schema, schemas=candidate_schemas)
+        candidate_schema, result = evaluation.candidate_schema, evaluation.result
+        warnings += evaluation.id_warnings
 
         if not result.diff.all:
             return SchemaUpdate(hash=original_hash, previous_hash=original_hash, diff=result.diff, warnings=warnings)
@@ -491,6 +522,7 @@ async def load_schema(
 async def check_schema(
     request: Request,
     schemas: SchemasLoadAPI,
+    db: InfrahubDatabase = Depends(get_db),
     branch: Branch = Depends(get_branch_dep),
     context: InfrahubContext = Depends(get_context),
     _: AccountSession = Depends(get_current_user),
@@ -513,9 +545,9 @@ async def check_schema(
 
     branch_schema = registry.schema.get_schema_branch(name=branch.name)
 
-    candidate_schema, result = evaluate_candidate_schemas(
-        branch_schema=branch_schema, schemas_to_evaluate=candidate_schemas
-    )
+    evaluation = await evaluate_submitted_schemas(db=db, branch_schema=branch_schema, schemas=candidate_schemas)
+    candidate_schema, result = evaluation.candidate_schema, evaluation.result
+    warnings += evaluation.id_warnings
 
     # ----------------------------------------------------------
     # Validate if the new schema is valid with the content of the database
