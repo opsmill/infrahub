@@ -1,8 +1,8 @@
 """A schema migration given a set of node IDs changes only the nodes of its kinds whose IDs are in the set.
 
-Each case loads the data set, runs the migration on part of the nodes of a kind, checks the nodes it changed
-against a literal set and the other branch against a read taken before the run, then runs the migration on
-the remaining nodes and expects nothing left to change.
+Each case loads the data set, runs the migration on an empty set and expects no change, runs it on part of the
+nodes of a kind, checks the nodes it changed against a literal set and the other branch against a read taken
+before the run, then runs the migration on the remaining nodes and expects nothing left to change.
 """
 
 from __future__ import annotations
@@ -79,6 +79,7 @@ from tests.component.core.migrations.schema.selection_dataset import (
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.migrations.query.selection import MigrationSelectionQuery
+    from infrahub.core.migrations.schema.models import SchemaMigrationPathResponseData
     from infrahub.core.migrations.shared import SchemaMigration
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
@@ -335,8 +336,9 @@ async def _run_on_nodes(
     branch: Branch,
     node_ids: set[str],
     expected_ids: dict[str, set[str]],
+    kinds: list[str],
 ) -> None:
-    """Count and run the migration on `node_ids`, then check the nodes it changed against `expected_ids`."""
+    """Count and run the migration on `node_ids`, then check the nodes of `kinds` it changed against `expected_ids`."""
     expected_counts = {kind: len(ids) for kind, ids in expected_ids.items()}
     if not prepared.run_through_execute:
         await assert_count_matches_write(
@@ -345,7 +347,7 @@ async def _run_on_nodes(
             init_kwargs={**prepared.init_kwargs, "node_ids": sorted(node_ids)},
             branch=branch,
             expected=expected_counts,
-            population=CHECKED_KINDS,
+            population=kinds,
             expected_ids=expected_ids,
         )
         return
@@ -360,7 +362,7 @@ async def _run_on_nodes(
     )
     assert result.errors == []
     assert counted == expected_counts
-    assert await changed_node_ids(db=db, kinds=CHECKED_KINDS, at=at) == expected_ids
+    assert await changed_node_ids(db=db, kinds=kinds, at=at) == expected_ids
 
 
 @pytest.mark.parametrize("case", SCOPE_CASES, ids=lambda case: case.name)
@@ -376,12 +378,19 @@ async def test_migration_changes_only_the_nodes_in_the_set(
     scope_ids = _ids(nodes, case.scope) | {UNKNOWN_NODE_ID}
     expected_in_scope = _ids_per_kind(nodes, case.expected_in_scope)
 
+    # The gadgets are read too because a relationship removal can close edges on the peer.
+    await _run_on_nodes(
+        db=db, prepared=prepared, branch=branch, node_ids=set(), expected_ids={}, kinds=[*CHECKED_KINDS, GADGET_KIND]
+    )
+
     if case.present_before is not None:
         present = await NodeManager.get_many(db=db, ids=sorted(scope_ids), branch=branch)
         assert set(present) == _ids(nodes, case.present_before)
     other_branch_before = await _read_branch_aware_fields(db=db, branch=other_branch, node_ids=scope_ids)
 
-    await _run_on_nodes(db=db, prepared=prepared, branch=branch, node_ids=scope_ids, expected_ids=expected_in_scope)
+    await _run_on_nodes(
+        db=db, prepared=prepared, branch=branch, node_ids=scope_ids, expected_ids=expected_in_scope, kinds=CHECKED_KINDS
+    )
 
     if case.present_after is not None:
         present = await NodeManager.get_many(db=db, ids=sorted(scope_ids), branch=branch)
@@ -394,6 +403,7 @@ async def test_migration_changes_only_the_nodes_in_the_set(
         branch=branch,
         node_ids=_ids(nodes, case.remaining),
         expected_ids=_ids_per_kind(nodes, case.expected_remaining),
+        kinds=CHECKED_KINDS,
     )
 
     unscoped = await prepared.queries[-1].init(db=db, branch=branch, **prepared.init_kwargs)
@@ -409,64 +419,30 @@ async def test_migration_task_changes_only_the_nodes_in_the_set(
     size = AttributeSchema(name="size", kind="Text", optional=True, branch=BranchSupportType.AWARE)
     migration = build_attribute_add_migration(NodeAttributeAddMigration, default_branch, WIDGET_KIND, size)
 
-    at = Timestamp()
-    result = await schema_path_migrate(
-        branch=default_branch,
-        migration_name="node.attribute.add",
-        schema_path=migration.schema_path,
-        database=db,
-        at=at,
-        new_node_schema=migration.new_node_schema,
-        previous_node_schema=migration.previous_node_schema,
-        node_ids=quote(sorted(_ids(nodes, {"w1", "w3"}))),
-    )
-    assert result.errors == []
+    async def run_task(node_ids: list[str], at: Timestamp) -> SchemaMigrationPathResponseData:
+        return await schema_path_migrate(
+            branch=default_branch,
+            migration_name="node.attribute.add",
+            schema_path=migration.schema_path,
+            database=db,
+            at=at,
+            new_node_schema=migration.new_node_schema,
+            previous_node_schema=migration.previous_node_schema,
+            node_ids=quote(node_ids),
+        )
 
+    at = Timestamp()
+    result = await run_task(node_ids=[], at=at)
+    assert result.errors == []
+    assert result.nbr_migrations_executed == 0
+    assert await changed_node_ids(db=db, kinds=CHECKED_KINDS, at=at) == {}
+
+    at = Timestamp()
+    result = await run_task(node_ids=sorted(_ids(nodes, {"w1", "w3"})), at=at)
+    assert result.errors == []
     assert await changed_node_ids(db=db, kinds=CHECKED_KINDS, at=at) == {WIDGET_KIND: _ids(nodes, {"w1", "w3"})}
 
     await verify_graph(db=db, kinds=WIDGET_POPULATION)
-
-
-async def test_migration_task_on_an_empty_set_changes_no_node(
-    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset
-) -> None:
-    size = AttributeSchema(name="size", kind="Text", optional=True, branch=BranchSupportType.AWARE)
-    migration = build_attribute_add_migration(NodeAttributeAddMigration, default_branch, WIDGET_KIND, size)
-
-    at = Timestamp()
-    result = await schema_path_migrate(
-        branch=default_branch,
-        migration_name="node.attribute.add",
-        schema_path=migration.schema_path,
-        database=db,
-        at=at,
-        new_node_schema=migration.new_node_schema,
-        previous_node_schema=migration.previous_node_schema,
-        node_ids=quote([]),
-    )
-    assert result.errors == []
-    assert result.nbr_migrations_executed == 0
-
-    assert await changed_node_ids(db=db, kinds=CHECKED_KINDS, at=at) == {}
-
-    await verify_graph(db=db, kinds=WIDGET_POPULATION)
-
-
-async def test_relationship_remove_on_an_empty_set_changes_no_node(
-    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset
-) -> None:
-    migration, _ = build_relationship_remove_params(db, default_branch, WIDGET_KIND, "gadget")
-
-    at = Timestamp()
-    result = await migration.execute(
-        migration_input=MigrationInput(db=db, at=at, node_ids=frozenset()), branch=default_branch
-    )
-    assert result.errors == []
-    assert result.nbr_migrations_executed == 0
-
-    assert await changed_node_ids(db=db, kinds=[*CHECKED_KINDS, GADGET_KIND], at=at) == {}
-
-    await verify_graph(db=db, kinds=[*WIDGET_POPULATION, GADGET_KIND])
 
 
 def test_every_migration_has_a_scope_case() -> None:
@@ -655,6 +631,19 @@ async def test_node_kind_update_adds_a_newly_inherited_attribute_to_the_nodes_in
 ) -> None:
     nodes = selection_dataset.nodes
     migration = _inherit_generic(branch=default_branch, generic=_tagged_generic(), kind=WIDGET_KIND)
+    status_readers = _ids(nodes, {"w1", "w2", "w3", "pw1", "tw1"})
+
+    at = Timestamp()
+    result = await migration.execute(
+        migration_input=MigrationInput(db=db, at=at, node_ids=frozenset()), branch=default_branch
+    )
+    assert result.errors == []
+    assert result.nbr_migrations_executed == 0
+    assert await changed_node_ids(db=db, kinds=CHECKED_KINDS, at=at) == {}
+    holders = await _active_attribute_values_on_default_branch(
+        db=db, default_branch=default_branch, node_ids=status_readers, attribute_names=["status"]
+    )
+    assert holders == {}
 
     at = Timestamp()
     scope_ids = _ids(nodes, {"w1", "pw1", "tw1", "b1"}) | {UNKNOWN_NODE_ID}
@@ -667,37 +656,9 @@ async def test_node_kind_update_adds_a_newly_inherited_attribute_to_the_nodes_in
         nodes, {WIDGET_KIND: {"w1"}, PROFILE_WIDGET_KIND: {"pw1"}, TEMPLATE_WIDGET_KIND: {"tw1"}}
     )
     holders = await _active_attribute_values_on_default_branch(
-        db=db,
-        default_branch=default_branch,
-        node_ids=_ids(nodes, {"w1", "w2", "w3", "pw1", "tw1"}),
-        attribute_names=["status"],
+        db=db, default_branch=default_branch, node_ids=status_readers, attribute_names=["status"]
     )
     assert set(holders) == _ids(nodes, {"w1", "pw1", "tw1"})
-
-    await verify_graph(db=db, kinds=WIDGET_POPULATION)
-
-
-async def test_node_kind_update_on_an_empty_set_changes_no_node(
-    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset
-) -> None:
-    nodes = selection_dataset.nodes
-    migration = _inherit_generic(branch=default_branch, generic=_tagged_generic(), kind=WIDGET_KIND)
-
-    at = Timestamp()
-    result = await migration.execute(
-        migration_input=MigrationInput(db=db, at=at, node_ids=frozenset()), branch=default_branch
-    )
-    assert result.errors == []
-    assert result.nbr_migrations_executed == 0
-
-    assert await changed_node_ids(db=db, kinds=CHECKED_KINDS, at=at) == {}
-    holders = await _active_attribute_values_on_default_branch(
-        db=db,
-        default_branch=default_branch,
-        node_ids=_ids(nodes, {"w1", "w2", "w3", "pw1", "tw1"}),
-        attribute_names=["status"],
-    )
-    assert holders == {}
 
     await verify_graph(db=db, kinds=WIDGET_POPULATION)
 
