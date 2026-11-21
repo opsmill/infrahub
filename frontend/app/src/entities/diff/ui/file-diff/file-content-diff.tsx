@@ -1,30 +1,16 @@
-import { PencilLineIcon } from "lucide-react";
-import { useState } from "react";
-import { Button } from "react-aria-components";
-import { getChangeKey } from "react-diff-view";
 import { useParams } from "react-router";
-import { toast } from "react-toastify";
 
 import { Row } from "@/shared/components/container";
 import Accordion from "@/shared/components/display/accordion";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
-import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import type { FileDiffFile } from "@/entities/diff/domain/use-cases/get-files-diff";
-import { ContentDiff } from "@/entities/diff/ui/content-diff/content-diff";
+import { CommentableContentDiff } from "@/entities/diff/ui/content-diff/commentable-content-diff";
 import { DiffBadge } from "@/entities/diff/ui/node-diff/utils";
 import { useGetFile } from "@/entities/diff/ui/queries/get-file.query";
 import { useGetFileContentDiff } from "@/entities/diff/ui/queries/get-file-content-diff.query";
-import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
-import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
-import {
-  PROPOSED_CHANGES_FILE_THREAD_OBJECT,
-  PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
-} from "@/entities/proposed-changes/domain/model/proposed-change-thread";
-import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
-import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
+import { PROPOSED_CHANGES_FILE_THREAD_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change-thread";
 
 interface FileContentDiffProps {
   repositoryId: string;
@@ -34,54 +20,6 @@ interface FileContentDiffProps {
   commitTo: string;
 }
 
-const shouldDisplayAddComment = (state: any, change: any) => {
-  const { side, newLineNumber, oldLineNumber, lineNumber, isInsert, isDelete } = state;
-
-  if (side === "new") {
-    return (
-      (newLineNumber && newLineNumber === change.newLineNumber) ||
-      (lineNumber && lineNumber === change.lineNumber && isInsert === change.isInsert)
-    );
-  }
-
-  return (
-    (oldLineNumber && oldLineNumber === change.oldLineNumber) ||
-    (lineNumber && lineNumber === change.lineNumber && isDelete === change.isDelete)
-  );
-};
-
-const findThreadByChange = (
-  threads: any[],
-  change: any,
-  commitFrom?: string,
-  commitTo?: string
-) => {
-  const isChangeOnLeftSide = change?.isDelete;
-  const isChangeOnRightSide = change?.isInsert;
-  const isChangeOnBothSide = change?.isNormal;
-
-  return threads.find((thread) => {
-    const threadLineNumber = thread?.line_number?.value;
-    const threadCommit = thread?.commit?.value;
-
-    const isThreadOnLeftSide = threadCommit === commitFrom || !threadCommit === !commitFrom;
-    if (isChangeOnLeftSide && isThreadOnLeftSide && threadLineNumber === change.lineNumber) {
-      return true;
-    }
-
-    const isThreadOnRightSide = threadCommit === commitTo;
-    if (isChangeOnRightSide && isThreadOnRightSide && threadLineNumber === change.lineNumber) {
-      return true;
-    }
-
-    return !!(
-      isChangeOnBothSide &&
-      ((isThreadOnLeftSide && threadLineNumber === change.oldLineNumber) ||
-        (isThreadOnRightSide && threadLineNumber === change.newLineNumber))
-    );
-  });
-};
-
 export function FileContentDiff({
   repositoryId,
   repositoryDisplayName,
@@ -90,10 +28,6 @@ export function FileContentDiff({
   commitTo,
 }: FileContentDiffProps) {
   const { proposedChangeId } = useParams();
-  const { isAuthenticated } = useAuth();
-  const [displayAddComment, setDisplayAddComment] = useState<any>({});
-  const createObject = useCreateObjectMutation();
-  const deleteObject = useDeleteObjectMutation();
 
   const {
     data: previousFile,
@@ -125,167 +59,6 @@ export function FileContentDiff({
     { enabled: !!proposedChangeId }
   );
 
-  const threads = data?.threads ?? [];
-
-  const handleCloseComment = () => {
-    setDisplayAddComment({});
-  };
-
-  const handleSubmitComment = async ({ comment }: { comment: string }) => {
-    if (!comment) {
-      return;
-    }
-
-    const lineNumber = displayAddComment.isNormal
-      ? displayAddComment.side === "new"
-        ? displayAddComment.newLineNumber
-        : displayAddComment.oldLineNumber
-      : displayAddComment.lineNumber;
-
-    const label = `${repositoryDisplayName} - ${file.location}:${lineNumber}`;
-
-    const newThread = {
-      change: {
-        id: proposedChangeId,
-      },
-      label: {
-        value: label,
-      },
-      resolved: {
-        value: false,
-      },
-      commit: {
-        value: displayAddComment.side === "new" ? commitTo : commitFrom,
-      },
-      line_number: {
-        value: lineNumber,
-      },
-      file: {
-        value: file.location,
-      },
-      repository: {
-        id: repositoryId,
-      },
-    };
-
-    await createObject.mutateAsync(
-      {
-        objectKind: PROPOSED_CHANGES_FILE_THREAD_OBJECT,
-        data: newThread,
-      },
-      {
-        onSuccess: async (newThread) => {
-          const threadId = newThread.id;
-
-          const newComment = {
-            text: {
-              value: comment,
-            },
-            thread: {
-              id: threadId,
-            },
-          };
-
-          await createObject.mutateAsync(
-            {
-              objectKind: PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
-              data: newComment,
-            },
-            {
-              onSuccess: async () => {
-                if (refetch) refetch();
-                handleCloseComment();
-              },
-              onError: async (error) => {
-                await deleteObject.mutateAsync({
-                  objectKind: PROPOSED_CHANGES_FILE_THREAD_OBJECT,
-                  objectId: threadId,
-                });
-
-                console.error("An error occurred while creating the comment: ", error);
-
-                toast(
-                  <Alert
-                    type={ALERT_TYPES.ERROR}
-                    message={"An error occurred while creating the comment"}
-                    details={error.message}
-                  />
-                );
-              },
-            }
-          );
-        },
-      }
-    );
-  };
-
-  const getWidgets = (hunks: any) => {
-    const changes = hunks.reduce((result: any, { changes }: any) => [...result, ...changes], []);
-
-    return changes.reduce((widgets: any, change: any) => {
-      const changeKey = getChangeKey(change);
-
-      if (shouldDisplayAddComment(displayAddComment, change)) {
-        return {
-          ...widgets,
-          [changeKey]: <AddComment onSubmit={handleSubmitComment} onCancel={handleCloseComment} />,
-        };
-      }
-
-      const thread = findThreadByChange(threads, change, commitFrom, commitTo);
-
-      if (thread) {
-        return {
-          ...widgets,
-          [changeKey]: <Thread thread={thread} refetch={refetch} />,
-        };
-      }
-
-      if (!change.comments) {
-        return widgets;
-      }
-
-      return {
-        ...widgets,
-        [changeKey]: change?.comments?.map((comment: any, index: number) => (
-          <div key={index} className="m-2 rounded-md border border-custom-blue-500 bg-content p-4">
-            {comment.message}
-          </div>
-        )),
-      };
-    }, {});
-  };
-
-  const renderGutter = (options: any) => {
-    const { renderDefault, wrapInAnchor, inHoverState, side, change } = options;
-
-    const handleClick = () => {
-      setDisplayAddComment({ side, ...change });
-    };
-
-    const thread = findThreadByChange(threads, change, commitFrom, commitTo);
-
-    if (thread || !isAuthenticated || !proposedChangeId) {
-      // Do not display the add button if there is already a thread
-      return wrapInAnchor(renderDefault());
-    }
-
-    return (
-      <>
-        {wrapInAnchor(renderDefault())}
-
-        {inHoverState && (
-          <Button
-            className="absolute top-1/2 left-1/2 z-10 inline-flex w-full -translate-x-1/2 -translate-y-1/2 items-center justify-center bg-surface p-1"
-            onClick={handleClick}
-          >
-            <PencilLineIcon className="size-3.5" />
-          </Button>
-        )}
-      </>
-    );
-  };
-
   if (isThreadsLoading || isPendingPreviousFile || isPendingNewFile) {
     return <LoadingIndicator className="p-4" />;
   }
@@ -308,24 +81,39 @@ export function FileContentDiff({
           </Row>
         }
       >
-        <div className="flex">
-          <div className="flex-1">
-            {commitFrom && <span className="font-normal italic">Commit: {commitFrom}</span>}
-          </div>
+        <CommentableContentDiff
+          previousContent={previousFile ?? ""}
+          newContent={newFile ?? ""}
+          previousLabel={commitFrom && `Commit: ${commitFrom}`}
+          newLabel={commitTo && `Commit: ${commitTo}`}
+          proposedChangeId={proposedChangeId}
+          threads={data?.threads ?? []}
+          onThreadsChange={refetch}
+          isThreadOnSide={(thread, side) => {
+            const threadCommit = thread.commit?.value;
 
-          <div className="flex-1">
-            {commitTo && <span className="font-normal italic">Commit: {commitTo}</span>}
-          </div>
-        </div>
+            if (side === "new") {
+              return threadCommit === commitTo;
+            }
 
-        <div className="ml-2 bg-content-muted">
-          <ContentDiff
-            previousContent={previousFile ?? ""}
-            newContent={newFile ?? ""}
-            renderGutter={renderGutter}
-            getWidgets={getWidgets}
-          />
-        </div>
+            return threadCommit === commitFrom || !threadCommit === !commitFrom;
+          }}
+          threadKind={PROPOSED_CHANGES_FILE_THREAD_OBJECT}
+          buildThreadData={({ side, lineNumber }) => ({
+            label: {
+              value: `${repositoryDisplayName} - ${file.location}:${lineNumber}`,
+            },
+            commit: {
+              value: side === "new" ? commitTo : commitFrom,
+            },
+            file: {
+              value: file.location,
+            },
+            repository: {
+              id: repositoryId,
+            },
+          })}
+        />
       </Accordion>
     </div>
   );
