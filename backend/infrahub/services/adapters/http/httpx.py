@@ -8,6 +8,7 @@ import httpx
 from infrahub import config
 from infrahub.exceptions import HTTPServerError, HTTPServerSSLError, HTTPServerTimeoutError
 from infrahub.log import get_logger
+from infrahub.masking import replace_url_queries_in_text, url_without_secrets
 from infrahub.services.adapters.http import InfrahubHTTP
 
 if TYPE_CHECKING:
@@ -86,8 +87,12 @@ class HttpxAdapter(InfrahubHTTP):
         json: Any | None = None,
         headers: dict[str, Any] | None = None,
         verify: bool | None = None,
+        params: dict[str, Any] | None = None,
     ) -> httpx.Response:
         """Returns an httpx.Response object or raises HTTPServerError or child classes.
+
+        Log lines and error messages name the URL without its query string, user and password,
+        and never the request parameters, because these can hold a secret or personal data.
 
         Raises:
             HTTPServerSSLError: When TLS certificate verification fails.
@@ -95,11 +100,14 @@ class HttpxAdapter(InfrahubHTTP):
             HTTPServerError: When any other httpx request error occurs.
 
         """
-        params: dict[str, Any] = {}
+        request_arguments: dict[str, Any] = {}
         if data:
-            params["data"] = data
+            request_arguments["data"] = data
         if json:
-            params["json"] = json
+            request_arguments["json"] = json
+        if params:
+            request_arguments["params"] = params
+        safe_url = url_without_secrets(url)
         async with httpx.AsyncClient(verify=self.verify_tls(verify=verify)) as client:
             try:
                 response = await client.request(
@@ -107,25 +115,30 @@ class HttpxAdapter(InfrahubHTTP):
                     url=url,
                     headers=headers,
                     timeout=self.settings.timeout,
-                    **params,
+                    **request_arguments,
                 )
             except httpx.ReadTimeout as exc:
-                log.info(f"Connection timed out when trying to reach {url}")
+                log.info(f"Connection timed out when trying to reach {safe_url}")
                 raise HTTPServerTimeoutError(
-                    message=f"Connection to {url} timed out after {self.settings.timeout}"
+                    message=f"Connection to {safe_url} timed out after {self.settings.timeout}"
                 ) from exc
             except httpx.RequestError as exc:
                 ssl_error = self._extract_ssl_error(exc)
                 if ssl_error is not None:
-                    log.info(f"TLS error for connection to {url}")
+                    log.info(f"TLS error for connection to {safe_url}")
                     if isinstance(ssl_error, ssl.SSLCertVerificationError):
-                        message = f"Unable to validate TLS certificate for connection to {url}"
+                        message = f"Unable to validate TLS certificate for connection to {safe_url}"
                     else:
-                        message = f"TLS error when connecting to {url}"
+                        message = f"TLS error when connecting to {safe_url}"
                     raise HTTPServerSSLError(message=message) from exc
                 # Catch all error from httpx
-                log.warning(f"Unhandled HTTP error for {url} ({exc})")
-                raise HTTPServerError(message=f"Unknown http error when connecting to {url}") from exc
+                # The message of a protocol error repeats the request header that it refuses, which can be a secret.
+                if isinstance(exc, httpx.LocalProtocolError):
+                    detail = type(exc).__name__
+                else:
+                    detail = replace_url_queries_in_text(str(exc))
+                log.warning(f"Unhandled HTTP error for {safe_url} ({detail})")
+                raise HTTPServerError(message=f"Unknown http error when connecting to {safe_url}") from exc
 
         return response
 
@@ -133,12 +146,9 @@ class HttpxAdapter(InfrahubHTTP):
         self,
         url: str,
         headers: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
     ) -> httpx.Response:
-        return await self._request(
-            method="get",
-            url=url,
-            headers=headers,
-        )
+        return await self._request(method="get", url=url, headers=headers, params=params)
 
     async def post(
         self,

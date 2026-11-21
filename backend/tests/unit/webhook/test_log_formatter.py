@@ -235,3 +235,46 @@ def test_delivery_failed_reports_class_reason_remediation_and_retry_note(
         "The target responded with HTTP 503. "
         f"The target returned a server error; retry, or check the target.{case.expected_tail}"
     )
+
+
+@dataclass
+class UrlCase:
+    name: str
+    url: str
+    expected: str
+
+
+URL_CASES = [
+    UrlCase(
+        name="query_string", url="https://example.test/hook?token=secret-value", expected="https://example.test/hook"
+    ),
+    UrlCase(
+        name="query_string_and_fragment",
+        url="https://example.test:8443/hook/path?token=secret-value&a=b#secret-fragment",
+        expected="https://example.test:8443/hook/path",
+    ),
+    UrlCase(
+        name="user_and_password",
+        url="https://hook-user:secret-value@example.test/hook",
+        expected="https://example.test/hook",
+    ),
+    UrlCase(name="nothing_to_remove", url="https://example.test/hook", expected="https://example.test/hook"),
+]
+
+
+@pytest.mark.parametrize("case", URL_CASES, ids=lambda case: case.name)
+def test_outgoing_request_writes_the_url_without_the_parts_that_can_hold_a_secret(
+    formatter: WebhookLogFormatter, case: UrlCase
+) -> None:
+    message = formatter.outgoing_request(webhook_name="notify", url=case.url, headers={}, payload={}, attempt=1)
+
+    assert message == f"Webhook 'notify' attempt 1/4\nPOST {case.expected}\nHeaders:\n  (none)\nPayload:\n  {{}}"
+
+
+@pytest.mark.parametrize("case", URL_CASES, ids=lambda case: case.name)
+def test_delivery_succeeded_writes_the_url_without_the_parts_that_can_hold_a_secret(
+    formatter: WebhookLogFormatter, case: UrlCase
+) -> None:
+    message = formatter.delivery_succeeded(url=case.url, status_code=200, attempt=1, elapsed_ms=12.4)
+
+    assert message == f"Webhook delivered to {case.expected} attempt 1/4, HTTP 200 in 12 ms"

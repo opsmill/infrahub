@@ -16,6 +16,7 @@ class InfrahubHTTP:
         self,
         url: str,
         headers: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
     ) -> httpx.Response:
         raise NotImplementedError()
 

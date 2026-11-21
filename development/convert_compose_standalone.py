@@ -3,7 +3,8 @@
 
 Replaces all bind-mounted config files and directories with Docker Compose
 top-level `configs` entries that embed file content inline. Also strips
-profile assignments so all services start unconditionally, and adds the
+profile assignments so all services start unconditionally, except the
+profiles that an operator turns on (the Grafana MCP server), and adds the
 services of the tracing file that sits next to INPUT, when it exists. The
 resulting compose file has zero external file dependencies and can be
 distributed as a single file (e.g. via curl).
@@ -62,6 +63,8 @@ def _collect_bind_mounts(service: CommentedMap) -> list[dict]:
 
 
 TRACING_FILE_NAME = "docker-compose-observability-tracing.yml"
+# Services in these profiles stay off in the standalone file until the operator turns the profile on.
+OPERATOR_PROFILES = frozenset({"grafana-mcp"})
 
 
 def _add_tracing_services(compose: CommentedMap, tracing_path: Path, yaml: YAML) -> None:
@@ -91,8 +94,8 @@ def convert(input_path: Path, output_path: Path) -> None:  # noqa: PLR0912, PLR0
 
     services = compose.get("services", {})
     for svc in services.values():
-        # Remove profiles so all services start unconditionally
-        if "profiles" in svc:
+        # Remove profiles so all services start unconditionally, apart from the ones an operator turns on
+        if "profiles" in svc and not OPERATOR_PROFILES.intersection(svc["profiles"]):
             del svc["profiles"]
 
         mounts = _collect_bind_mounts(svc)
@@ -176,7 +179,7 @@ def convert(input_path: Path, output_path: Path) -> None:  # noqa: PLR0912, PLR0
         yaml.dump(compose, fh)
     print(f"Wrote standalone compose file to {output_path}")
     print(f"  - Embedded {len(top_configs)} config files")
-    print("  - Removed all profile assignments")
+    print(f"  - Removed all profile assignments, except {', '.join(sorted(OPERATOR_PROFILES))}")
     print("  - No external file dependencies remain")
 
 

@@ -1,0 +1,1 @@
+Fixed log lines of webhook deliveries, of failed outgoing HTTP requests and of identity provider errors that wrote the full request URL, so a token in the URL query string, a user and password in the URL, or the email address of a user in a failed Google group lookup no longer reach the logs. A secret in the path of a URL is still written.

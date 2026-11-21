@@ -16,3 +16,9 @@ Rules for editing the bundled dashboards under `provisioning/dashboards/`.
   `docker-compose-observability-standalone.yml` by running `python convert_compose_standalone.py`
   from `development/` (the script resolves its default input/output paths against the working
   directory).
+- A change that renames or removes a metric, a span or a dashboard UID also updates the skill
+  `infrahub-diagnosing-performance` in [`opsmill/infrahub-skills`](https://github.com/opsmill/infrahub-skills),
+  in a pull request that is merged with this change. The skill reads these names through the Grafana
+  MCP server to find the slow component of an instance, and a query for a name that no longer exists
+  returns nothing without an error. The names it reads are listed in
+  [Renaming a metric, a span or a dashboard UID](../../dev/knowledge/backend/observability.md#renaming-a-metric-a-span-or-a-dashboard-uid).

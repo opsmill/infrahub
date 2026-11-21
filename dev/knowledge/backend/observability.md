@@ -261,6 +261,35 @@ dashboards, including how to regenerate the standalone observability Compose fil
 [development/grafana/AGENTS.md](../../../development/grafana/AGENTS.md). Also update the operator page
 [Metrics](../../../docs/docs/deploy-manage/run-observe/metrics.mdx) when a metric or a bucket changes.
 
+### Names that the diagnostic skill reads
+
+The skill `infrahub-diagnosing-performance`, in
+[`opsmill/infrahub-skills`](https://github.com/opsmill/infrahub-skills), finds the slow component of
+an instance. An AI assistant follows it and reads the metrics, traces and logs of the observability
+stack through the Grafana MCP server (the `grafana-mcp` profile of
+`development/docker-compose-observability.yml`). The skill is a text file in another repository, so
+no test in this repository fails when a name changes: the query of the skill returns nothing, and the
+report says that it found no data. When you rename or remove one of the names below, update the skill
+in a pull request that is merged with your change.
+
+| The skill reads | To answer |
+|---|---|
+| `infrahub_info`, label `version` | Which Infrahub version runs. The skill stops on a version before 1.13 |
+| `infrahub_request_duration_seconds`, `infrahub_graphql_duration_seconds` | Whether API requests are slow |
+| `infrahub_db_query_execution_seconds`, `infrahub_db_connection_wait_seconds`, `infrahub_db_last_connection_pool_usage`, `infrahub_db_connection_pool_size` | Whether the database is slow |
+| `infrahub_lock_acquire_seconds`, `infrahub_lock_reserved_duration_seconds` | Whether locks are slow |
+| `infrahub_task_flow_run_start_delay_seconds`, `infrahub_task_flow_runs_in_progress`, `prefect_work_queues_late_runs_count` | Whether the task workers are saturated |
+| The `infrahub_admission_*` metrics | Whether the API server rejects requests |
+| The spans `execute_graphql`, `Query.execute`, `execute_db_query_with_metadata`, and the flow run spans | Which code is slow |
+| The `trace_id` field of log lines in Loki | What happened during one trace |
+| The UIDs of the bundled dashboards | Which dashboard to name in the report |
+
+The skill finds the Prometheus, Tempo and Loki data sources by their type, not by their UID, so a
+change of a data source UID does not affect it.
+
+The skill is not published yet. Until it is, this table is the list planned for its first version,
+and the skill's own `reference.md` is the source of truth once it exists.
+
 ## Where to change what
 
 | To change | Edit |

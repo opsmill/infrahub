@@ -1,4 +1,4 @@
-"""Rules that mask personal data and secrets in span attributes."""
+"""Rules that mask personal data and secrets in span attributes, and helpers that keep them out of a log line."""
 
 from __future__ import annotations
 
@@ -24,6 +24,20 @@ def replace_url_query(value: Any) -> Any:
     if not separator:
         return value
     return f"{base}?{MASKED_VALUE}"
+
+
+def url_without_secrets(url: str) -> str:
+    """Return `url` without its user, password, query string and fragment, the parts that can hold a secret.
+
+    The scheme, the host, the port and the path stay readable, so a secret in the path is not removed.
+    """
+    base = url.partition("#")[0].partition("?")[0]
+    scheme, separator, rest = base.partition("//")
+    # A "//" after anything other than a scheme is part of the path, which has no user or password.
+    if not separator or (scheme and not scheme.endswith(":")):
+        return base
+    authority, slash, path = rest.partition("/")
+    return f"{scheme}//{authority.rpartition('@')[2]}{slash}{path}"
 
 
 def replace_url_queries_in_text(text: str) -> str:

@@ -5,6 +5,8 @@ from typing import Any
 
 import ujson
 
+from infrahub.masking import url_without_secrets
+
 logger = logging.getLogger(__name__)
 
 PAYLOAD_LOG_LIMIT: int = 2048  # characters shown inline; the full payload is logged at debug level
@@ -33,10 +35,13 @@ class WebhookLogFormatter:
     def outgoing_request(
         self, *, webhook_name: str, url: str, headers: dict[str, Any], payload: Any, attempt: int | None
     ) -> str:
-        """Summarize the outgoing request: target, headers one per line, and the truncated payload."""
+        """Summarize the outgoing request: target, headers one per line, and the truncated payload.
+
+        The target is written without its query string, user and password, which can hold a secret.
+        """
         return (
             f"Webhook '{webhook_name}' {self._attempt_phrase(attempt)}\n"
-            f"POST {url}\n"
+            f"POST {url_without_secrets(url)}\n"
             f"Headers:\n{self._headers_block(headers)}\n"
             f"Payload:\n{self._truncate(self._indent(self._to_json(payload)))}"
         )
@@ -49,7 +54,10 @@ class WebhookLogFormatter:
         )
 
     def delivery_succeeded(self, *, url: str, status_code: int, attempt: int | None, elapsed_ms: float) -> str:
-        return f"Webhook delivered to {url} {self._attempt_phrase(attempt)}, HTTP {status_code} in {elapsed_ms:.0f} ms"
+        return (
+            f"Webhook delivered to {url_without_secrets(url)} {self._attempt_phrase(attempt)}, "
+            f"HTTP {status_code} in {elapsed_ms:.0f} ms"
+        )
 
     def delivery_failed(
         self, *, status_class: str, message: str, remediation: str, attempt: int | None, elapsed_ms: float
