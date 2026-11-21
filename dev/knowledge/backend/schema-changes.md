@@ -122,8 +122,12 @@ A schema load and a schema check call `from_schema_root` through
    in the same load, the builder raises `SchemaNameReusedError` (HTTP 422) before any operation is
    applied. A name is freed by a rename or a removal, and taken by a rename or an add; a new kind
    (`node_add`) may take a freed kind. The data migrations of attribute renames, adds and removals
-   find attributes by name and run at the same time, and those of kind renames find nodes by the
-   label of the kind, so a name freed and reused in one load can reach the wrong attribute or node.
+   find attributes by name, and those of kind renames find nodes by the label of the kind. The
+   phases run removals, then renames, then additions (see
+   [The order of the migrations](#the-order-of-the-migrations)), but all the renames of a load run
+   in one phase, so a chain or a swap of names in one load can reach the wrong attribute or node.
+   The refusal also covers a name that a removal or a rename frees and an addition takes, which the
+   phase order applies correctly.
    The message tells the user to load the changes in separate steps. Relationship names are not
    refused: the data of a relationship is keyed by its identifier, which a load cannot change
    (`UpdateSupport.NOT_SUPPORTED`), and a relationship rename has no data migration. Chained and
@@ -181,12 +185,12 @@ progress and are best effort.
    load fails before it changes anything.
 2. The coordinator receives the application ID and puts it in `SchemaApplyMigrationData`. The flow
    `core/migrations/schema/tasks.py::schema_apply_migrations` builds a `MigrationRecorder` with
-   `build_migration_recorder`, writing through a database session of its own. It sorts the
-   migrations by schema path, then by migration name (`position_migrations`), because the diff gives
-   them in the order of a set; the positions are then the same each time a load runs. It creates one
-   `waiting` record for each migration, sets a record to `running` when the task of its migration
-   starts, and sets it to `applied` or `failed` when its result arrives. A record write that fails
-   after its retries is logged, and the migrations go on.
+   `build_migration_recorder`, writing through a database session of its own. The positions sort the
+   migrations by phase, then by schema path, then by migration name, because the diff gives them in
+   the order of a set; the positions are then the same each time a load runs, and the records list
+   in the order the phases run. It creates one `waiting` record for each migration, sets a record to
+   `running` when its migration starts, and sets it to `applied` or `failed` when that migration
+   ends. A record write that fails after its retries is logged, and the migrations go on.
 3. `complete` runs as the final step of the coordinator (`SchemaUpdateFinalStep`), after the schema
    is saved and the migrations succeed. It asks `SchemaChangeVersionResolver` for the version and
    the parent and marks both records `applied`, with `applied_at` equal to the application's `at`.
@@ -221,6 +225,28 @@ transaction, before `update_schema_branch`, because `update_schema_branch` repla
 the registry of the process before the transaction commits. A failed record write fails the
 mutation. Its schema change is created `applied`, and its application has no migration record. A
 mutation whose diff is empty stores nothing.
+
+## The order of the migrations
+
+`core/migrations/schema/scheduler.py::MigrationScheduler` orders the migrations of one application,
+and `core/migrations/schema/runner.py::SchemaMigrationRunner` runs them:
+
+- Each migration class declares its `phase`. The phases run one after another, in the order
+  `core/migrations/schema/phases.py::MigrationPhase` defines them: kind updates, node removals,
+  attribute and relationship removals, attribute renames, attribute kind changes, attribute
+  additions, property updates. Removals run before additions, so a removal and an addition of the
+  same attribute name cannot race.
+- Kind updates run one at a time, because two duplications of overlapping vertices can each create
+  a replacement vertex.
+- In the other phases, migrations whose changed kinds overlap, directly or through another
+  migration, form a group that runs one migration after another; the groups run at the same time.
+  `get_changed_kinds` on the migration class gives the kinds: by default, the kind of the path in
+  both schemas (the previous kind found by ID, so a kind renamed in the same load counts), the kinds
+  that inherit from it, and their profile and template kinds. A relationship removal adds its peer,
+  and a node removal adds the peers of its relationships, because both sides share the Relationship
+  vertices.
+- When a migration reports an error or raises, the other groups of the phase start no new
+  migration, the runner waits for the migrations already running, and no later phase runs.
 
 ## When each status is set
 
