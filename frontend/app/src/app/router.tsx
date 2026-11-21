@@ -89,6 +89,11 @@ export const router = createBrowserRouter([
                   },
                 ],
               },
+              // PROTOTYPE design-jam schema-migrations
+              {
+                path: "/_proto/schema-migrations",
+                lazy: () => import("@/pages/_proto/schema-migrations"),
+              },
               {
                 path: "/activities",
                 children: [
