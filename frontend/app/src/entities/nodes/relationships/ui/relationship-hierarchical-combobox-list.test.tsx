@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { store } from "@/shared/stores";
@@ -71,6 +71,13 @@ describe("RelationshipHierarchicalComboboxList", () => {
       __typename: childSchema.kind,
     },
   ];
+
+  // A page as long as the default page size, so the list offers a next page.
+  const fullPage: RelationshipNode[] = Array.from({ length: 40 }, (_, i) => ({
+    id: `test-id-${i}`,
+    display_label: `Test Relationship ${i}`,
+    __typename: rootSchema.kind,
+  }));
 
   beforeEach(() => {
     queryClient.clear();
@@ -208,6 +215,40 @@ describe("RelationshipHierarchicalComboboxList", () => {
       .element(component.getByRole("option", { name: manyRelationships[0]!.display_label }))
       .toBeVisible();
     await expect.element(component.getByRole("option", { name: "Load more" })).toBeVisible();
+  });
+
+  it("requests the page after the loaded results when Load more is selected", async () => {
+    // GIVEN
+    vi.mocked(getRelationships).mockResolvedValueOnce(fullPage).mockResolvedValueOnce([]);
+    const component = await render(
+      <RelationshipHierarchicalComboboxList peer={rootSchema.kind} onSelect={vi.fn()} />
+    );
+
+    // WHEN
+    await component.getByRole("option", { name: "Load more" }).click();
+
+    // THEN
+    await expect
+      .poll(() => vi.mocked(getRelationships).mock.lastCall?.[0])
+      .toMatchObject({ peer: rootSchema.kind, offset: fullPage.length });
+  });
+
+  it("renders Load more in the accent color of the dark theme", async () => {
+    // GIVEN
+    document.documentElement.classList.add("dark");
+    onTestFinished(() => document.documentElement.classList.remove("dark"));
+    const darkAccent = getComputedStyle(document.documentElement).getPropertyValue("--accent");
+    vi.mocked(getRelationships).mockResolvedValue(fullPage);
+
+    // WHEN
+    const component = await render(
+      <RelationshipHierarchicalComboboxList peer={rootSchema.kind} onSelect={vi.fn()} />
+    );
+
+    // THEN
+    await expect
+      .element(component.getByRole("option", { name: "Load more" }))
+      .toHaveStyle({ color: darkAccent });
   });
 
   it("shows scrollbar when there are many options", async () => {
