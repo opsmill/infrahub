@@ -11,6 +11,7 @@ from prefect.logging import get_run_logger
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.migrations import MIGRATION_MAP
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
+from infrahub.core.migrations.schema.scheduler import PositionedMigration
 from infrahub.core.migrations.shared import DerivedSchemaPair, MigrationInput
 from infrahub.core.schema.derived_kinds import get_object_template_kind, get_profile_kind
 from infrahub.core.schema_change.factory import build_migration_recorder
@@ -26,20 +27,12 @@ if TYPE_CHECKING:
     from prefect.logging.loggers import LoggingAdapter
 
     from infrahub.core.branch import Branch
-    from infrahub.core.models import SchemaUpdateMigrationInfo
     from infrahub.core.path import SchemaPath
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.schema_change.migration_recorder import MigrationRecorder
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
-
-
-@dataclass(frozen=True)
-class PositionedMigration:
-    position: int
-    """The index of the migration in the migrations of the flow message sorted by schema path."""
-    migration: SchemaUpdateMigrationInfo
 
 
 @dataclass(frozen=True)
@@ -77,28 +70,6 @@ def get_derived_schema_pairs(
         ),
     ]
     return [pair for pair in pairs if pair is not None]
-
-
-def _migration_sort_key(migration: SchemaUpdateMigrationInfo) -> tuple[str, str, str, str, str]:
-    path = migration.path
-    return (
-        path.schema_kind,
-        path.field_name or "",
-        path.property_name or "",
-        path.path_type.value,
-        migration.migration_name,
-    )
-
-
-def position_migrations(migrations: Sequence[SchemaUpdateMigrationInfo]) -> list[PositionedMigration]:
-    """Give each migration its position in the migrations sorted by schema path, then by migration name.
-
-    The migrations come in the order of a set, so the sort keeps the positions the same between two runs of a load.
-    """
-    return [
-        PositionedMigration(position=position, migration=migration)
-        for position, migration in enumerate(sorted(migrations, key=_migration_sort_key))
-    ]
 
 
 def split_migrations_by_phase(
