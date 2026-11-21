@@ -20,6 +20,15 @@ class MigrationSelectionQuery(Query):
     selected_node: ClassVar[str] = "active_node"
 
     def __init__(self, node_ids: frozenset[str] | list[str] | None = None, **kwargs: Any) -> None:
+        """Build the query, limited to the nodes in `node_ids` when it is not `None`.
+
+        Raises:
+            TypeError: If `node_ids` is a single string.
+
+        """
+        # A string is an iterable of characters, so it would match no node without an error.
+        if isinstance(node_ids, str):
+            raise TypeError("node_ids must be a collection of node IDs, not a single string")
         self.node_ids: tuple[str, ...] | None = None if node_ids is None else tuple(node_ids)
         super().__init__(**kwargs)
         if self.node_ids is not None:
