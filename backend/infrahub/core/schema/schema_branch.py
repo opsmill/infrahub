@@ -572,6 +572,24 @@ class SchemaBranch:
         except SchemaNotFoundError:
             return False
 
+    def get_dependent_kinds(self, name: str) -> frozenset[str]:
+        """Return the kinds whose vertices hold the data of a kind: the kind, the kinds that inherit from it, and their profile and template kinds."""
+        if not self.has(name=name):
+            return frozenset()
+        schema = self.get(name=name, duplicate=False)
+        node_kinds = [name]
+        if isinstance(schema, GenericSchema):
+            node_kinds.extend(schema.used_by)
+        return frozenset(
+            kind
+            for node_kind in node_kinds
+            for kind in (
+                node_kind,
+                get_profile_kind(node_kind=node_kind),
+                get_object_template_kind(node_kind=node_kind),
+            )
+        )
+
     def get_all(self, include_internal: bool = False, duplicate: bool = True) -> dict[str, MainSchemaTypes]:
         """Retrieve everything in a single dictionary."""
         return {
