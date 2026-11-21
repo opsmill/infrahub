@@ -1011,7 +1011,7 @@ async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: Infra
     except Exception as exc:
         conclusion = ValidatorConclusion.FAILURE
         generator_instance.status.value = GeneratorInstanceStatus.ERROR.value
-        check_message = f"Failed to execute generator: {str(exc)}"
+        check_message = f"Failed to execute generator: {exc!s}"
         log.exception(check_message, exc_info=exc)
 
     log.info("Generator run completed, starting update")

@@ -110,7 +110,7 @@ async def _delete_users(client: InfrahubClient, usernames: Iterable[str], log: l
                         break
                     # Load test: absorb any request failure and continue with remaining users
                     except Exception as e:  # noqa: BLE001
-                        log.error(f"Error while deleting: {str(e)}")
+                        log.error(f"Error while deleting: {e!s}")
             else:
                 log.warning(f"User {uname} not found in the list")
 

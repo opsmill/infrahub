@@ -24,7 +24,7 @@ class BaseOptions:
             raise Exception(f"Can't modify frozen Options {self}")
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} name={repr(self.name)}>"
+        return f"<{self.__class__.__name__} name={self.name!r}>"
 
 
 BaseNodeMeta = SubclassWithMeta_Meta
