@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.schema import AttributeSchema, RelationshipSchema
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 MIGRATION_LOG_TIME_FORMAT = "[%Y-%m-%d %H:%M:%S]"
@@ -146,6 +147,15 @@ class SchemaMigration(BaseModel):
         description="Profile/Template schemas generated from the node",
     )
     schema_path: SchemaPath
+
+    @classmethod
+    def get_changed_kinds(
+        cls, schema_path: SchemaPath, previous_schema: SchemaBranch, new_schema: SchemaBranch
+    ) -> frozenset[str]:
+        """Return the kinds whose vertices the migration of this schema path can change."""
+        return previous_schema.get_dependent_kinds(name=schema_path.schema_kind) | new_schema.get_dependent_kinds(
+            name=schema_path.schema_kind
+        )
 
     async def execute_pre_queries(
         self,

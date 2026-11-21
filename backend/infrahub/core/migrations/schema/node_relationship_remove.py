@@ -18,6 +18,8 @@ from ..shared import MigrationResult, RelationshipSchemaMigration
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.path import SchemaPath
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
     from ..shared import MigrationInput
@@ -233,6 +235,27 @@ class NodeRelationshipRemoveMigration(RelationshipSchemaMigration):
     phase: ClassVar[MigrationPhase] = MigrationPhase.FIELD_REMOVE
     name: str = "node.relationship.remove"
     queries: Sequence[type[RelationshipMigrationQuery]] = [NodeRelationshipRemoveMigrationQuery]
+
+    @classmethod
+    def get_changed_kinds(
+        cls, schema_path: SchemaPath, previous_schema: SchemaBranch, new_schema: SchemaBranch
+    ) -> frozenset[str]:
+        """Add the kinds of the peer, because both sides of a relationship share its Relationship vertices."""
+        changed_kinds = super().get_changed_kinds(
+            schema_path=schema_path, previous_schema=previous_schema, new_schema=new_schema
+        )
+        if not schema_path.field_name or not previous_schema.has(name=schema_path.schema_kind):
+            return changed_kinds
+        relationship = previous_schema.get(name=schema_path.schema_kind, duplicate=False).get_relationship_or_none(
+            name=schema_path.field_name
+        )
+        if relationship is None:
+            return changed_kinds
+        return (
+            changed_kinds
+            | previous_schema.get_dependent_kinds(name=relationship.peer)
+            | new_schema.get_dependent_kinds(name=relationship.peer)
+        )
 
     def _build_query_params(self, db: InfrahubDatabase, branch: Branch) -> RelationshipRemoveQueryParams | None:
         """Analyse the schema and return the query parameters, or None if there is nothing to close.
