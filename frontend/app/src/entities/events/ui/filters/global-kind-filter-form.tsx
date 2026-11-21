@@ -7,6 +7,7 @@ import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { DynamicFilterInput } from "@/entities/nodes/object/ui/filters/dynamic-filter-input";
 
 import { FilterKindSelect } from "./filter-kind-select";
+import { useApplyEventFilter } from "./use-apply-event-filter";
 
 export type GlobalKindFilterFormProps = {
   name: string;
@@ -14,26 +15,14 @@ export type GlobalKindFilterFormProps = {
 };
 
 export function GlobalKindFilterForm({ name, onSuccess }: GlobalKindFilterFormProps) {
-  const [filters, setFilters] = useFilters();
+  const [filters] = useFilters();
+  const applyFilter = useApplyEventFilter(name);
   const [kind, setKind] = useState<string | null>(null);
 
   const currentFilter = filters.find((filter) => filter.name.startsWith(name));
 
   const handleSubmit = ({ filter }: Record<string, FormFieldValue>) => {
-    const otherFilters = filters.filter((f) => f.name !== `${name}__value`);
-
-    if (filter === undefined || filter === null) {
-      setFilters(otherFilters);
-    } else {
-      setFilters([
-        ...otherFilters,
-        {
-          name: `${name}__value`,
-          value: filter,
-        },
-      ]);
-    }
-
+    applyFilter(filter);
     onSuccess?.();
   };
 

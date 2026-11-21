@@ -1,14 +1,11 @@
 import { useAtomValue } from "jotai";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import type { TagProps } from "react-aria-components";
-
-import { Icon } from "@/shared/components/display/icon";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 
 import { branchesState } from "@/entities/branches/stores";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { EventFilterTag } from "@/entities/events/ui/filters/event-filter-tag";
 import { GlobalFilterForm } from "@/entities/events/ui/filters/global-filter-form";
-import { FilterTag } from "@/entities/events/ui/filters/global-filter-tag";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 
 interface FilterTagProps extends TagProps {}
@@ -20,7 +17,6 @@ export function GlobalBranchFilter({ ...props }: FilterTagProps) {
 
   const [filters, setFilters] = useFilters();
   const { currentBranch } = useCurrentBranch();
-  const [showFilters, setShowFilters] = useState(false);
 
   const currentFilter = filters.find((filter) => filter.name === branchFilterName);
 
@@ -39,60 +35,29 @@ export function GlobalBranchFilter({ ...props }: FilterTagProps) {
   }, []);
 
   return (
-    <FilterTag label="branches" currentFilter={currentFilter} {...props}>
-      <Popover open={showFilters} onOpenChange={setShowFilters}>
-        <PopoverTrigger className="flex h-6 items-center pl-1">
-          <span>Branch</span>
-
-          <div className="ml-1 w-px self-stretch bg-border-strong" />
-
-          {currentFilter?.value ? (
-            <div
-              className="flex h-6 items-center gap-1 rounded-r-full px-1 transition-all hover:bg-highlight"
-              onClick={(event) => {
-                event.stopPropagation();
-                handleRemoveFilter();
-              }}
-            >
-              <div className="inline-flex items-center font-medium text-accent">
-                {currentFilter.value}
-              </div>
-
-              <Icon
-                icon="mdi:close-circle-outline"
-                className="text-base text-subtle-muted transition-all group-hover:text-accent"
-              />
-            </div>
-          ) : (
-            <Icon
-              icon="mdi:plus-circle-outline"
-              className="mx-1 text-base text-subtle-muted transition-all group-hover:text-accent"
-            />
-          )}
-        </PopoverTrigger>
-
-        <PopoverContent className="relative rounded-tl-none" align="start">
-          <div className="absolute -top-filter-tab -left-px rounded-t-md border border-b-0 bg-input px-2 py-1">
-            Filter by <span className="ml-1 font-semibold">branch</span>
-          </div>
-
-          <GlobalFilterForm
-            name="branches"
-            fieldSchema={{
-              kind: "Dropdown",
-              choices: branches.map((branch) => {
-                return {
-                  label: branch.name,
-                  name: branch.name,
-                };
-              }),
-            }}
-            onSuccess={() => {
-              setShowFilters(false);
-            }}
-          />
-        </PopoverContent>
-      </Popover>
-    </FilterTag>
+    <EventFilterTag
+      label="Branch"
+      tagLabel="branches"
+      tabLabel="branch"
+      currentFilter={currentFilter}
+      renderValue={() => currentFilter?.value}
+      onRemove={handleRemoveFilter}
+      renderForm={(close) => (
+        <GlobalFilterForm
+          name="branches"
+          fieldSchema={{
+            kind: "Dropdown",
+            choices: branches.map((branch) => {
+              return {
+                label: branch.name,
+                name: branch.name,
+              };
+            }),
+          }}
+          onSuccess={close}
+        />
+      )}
+      {...props}
+    />
   );
 }
