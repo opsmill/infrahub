@@ -1,0 +1,33 @@
+backend/infrahub/core/migrations/schema/attribute_supports_generated_schema.py
+  s_d23144c6029d36::t_0f6b11826b7a70 4
+backend/infrahub/core/migrations/schema/node_uniqueness_constraints_update.py
+  s_d23144c6029d36::t_0f6b11826b7a70 4
+backend/infrahub/core/migrations/shared.py
+  s_d23144c6029d36::t_275d72bf49e54a 8
+dev/guides/backend/creating-migrations.md
+  s_d23144c6029d36::t_4a8c34787d97b9 37
+backend/tests/unit/core/migrations/test_shared.py
+  s_d23144c6029d36::t_3bd022454de17f 20,24
+backend/infrahub/core/migrations/schema/tasks.py
+  s_d23144c6029d36::t_275d72bf49e54a 216-218
+  s_d23144c6029d36::t_0f6b11826b7a70 195,212
+backend/tests/component/core/migrations/schema/test_migration_node_scope.py
+  s_d23144c6029d36::t_9eefb2a61c3073 472-475,479,813,841,843,845-847,849-850,853-854,856,858-861,863-864,866,868-871,876-879,881-882,884-886,890,894-908,910-914,916-922,924-925
+  s_d23144c6029d36::t_b4c14f22011e33 848,880,909,915,923
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "941ec21f5e8712fdd9160f7b309fc31a1c5fea6b",
+  "prompts": {},
+  "sessions": {
+    "s_d23144c6029d36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa1153a6-3ebe-4516-9501-96edca85d9e2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
