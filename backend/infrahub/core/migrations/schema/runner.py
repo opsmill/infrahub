@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Protocol
 
 from infrahub_sdk.batch import InfrahubBatch
@@ -50,14 +51,22 @@ class SchemaMigrationRunner:
         await self.recorder.register(migrations=[positioned.migration for positioned in schedule.migrations])
 
         for scheduled_phase in schedule.phases:
-            batch = InfrahubBatch(max_concurrent_execution=self.max_concurrent_groups)
+            # the groups of a failed phase stop starting migrations, and the run waits for them, so nothing writes after it returns
+            stop = asyncio.Event()
+            batch = InfrahubBatch(max_concurrent_execution=self.max_concurrent_groups, return_exceptions=True)
             for group in scheduled_phase.groups:
-                batch.add(task=self._run_group, group=group, data=data)
+                batch.add(task=self._run_group, group=group, data=data, stop=stop)
 
             error_messages: list[str] = []
-            async for _, group_errors in batch.execute():
-                error_messages.extend(group_errors)
+            exceptions: list[Exception] = []
+            async for _, outcome in batch.execute():
+                if isinstance(outcome, Exception):
+                    exceptions.append(outcome)
+                else:
+                    error_messages.extend(outcome)
 
+            if exceptions:
+                raise exceptions[0]
             if error_messages:
                 self.log.warning(
                     f"Migrations of phase {scheduled_phase.phase.value} reported errors, skipping the remaining phases"
@@ -66,14 +75,23 @@ class SchemaMigrationRunner:
 
         return []
 
-    async def _run_group(self, group: Sequence[PositionedMigration], data: SchemaApplyMigrationData) -> list[str]:
+    async def _run_group(
+        self, group: Sequence[PositionedMigration], data: SchemaApplyMigrationData, stop: asyncio.Event
+    ) -> list[str]:
         for positioned in group:
+            if stop.is_set():
+                return []
             self.log.info(
                 f"Preparing migration for {positioned.migration.migration_name!r} ({positioned.migration.routing_key})"
             )
             await self.recorder.migration_started(position=positioned.position)
-            result = await self.migrator.migrate(migration=positioned.migration, data=data)
+            try:
+                result = await self.migrator.migrate(migration=positioned.migration, data=data)
+            except Exception:
+                stop.set()
+                raise
             await self.recorder.migration_ended(position=positioned.position, result=result)
             if result.errors:
+                stop.set()
                 return result.errors
         return []

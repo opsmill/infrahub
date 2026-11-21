@@ -97,7 +97,7 @@ class RecordingMigrator:
 
 
 class FailingMigrator(RecordingMigrator):
-    """Raise after a migration of one of the given fields starts."""
+    """Raise while a migration of one of the given fields runs, after yielding to other tasks once."""
 
     def __init__(self, failing_fields: set[str]) -> None:
         super().__init__(errors_by_field={})
@@ -109,6 +109,7 @@ class FailingMigrator(RecordingMigrator):
         path = migration.path
         if path.field_name in self.failing_fields:
             self.events.append((START, path.schema_kind, path.field_name))
+            await asyncio.sleep(0)
             raise RuntimeError(f"migration failed: {path.field_name}")
         return await super().migrate(migration=migration, data=data)
 

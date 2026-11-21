@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from uuid import uuid4
 
@@ -63,6 +64,15 @@ PHYSICAL_RENAME = path_migration(
     field_name="name",
     property_name="name",
 )
+
+
+PHYSICAL_DUPLEX_REMOVE = path_migration(
+    migration_name="node.attribute.remove", schema_kind="TestingPhysicalInterface", field_name="duplex"
+)
+PHYSICAL_SPEED_REMOVE = path_migration(
+    migration_name="node.attribute.remove", schema_kind="TestingPhysicalInterface", field_name="speed"
+)
+LEFTOVER_TASK_TURNS = 5
 
 
 def _data(migrations: list[SchemaUpdateMigrationInfo]) -> SchemaApplyMigrationData:
@@ -242,3 +252,42 @@ async def test_no_migrations_registers_nothing() -> None:
 
     assert errors == []
     assert recorder.calls == []
+
+
+async def test_an_exception_waits_for_running_migrations_and_starts_no_new_one() -> None:
+    recorder = RecordingMigrationRecorder()
+    migrator = FailingMigrator(failing_fields={"owner"})
+
+    with pytest.raises(RuntimeError, match=r"^migration failed: owner$"):
+        await _runner(migrator=migrator, recorder=recorder).run(
+            data=_data(migrations=[CAR_OWNER_REMOVE, PHYSICAL_DUPLEX_REMOVE, PHYSICAL_SPEED_REMOVE])
+        )
+    for _ in range(LEFTOVER_TASK_TURNS):
+        await asyncio.sleep(0)
+
+    assert migrator.events == [
+        (START, "TestingCar", "owner"),
+        (START, "TestingPhysicalInterface", "duplex"),
+        (END, "TestingPhysicalInterface", "duplex"),
+    ]
+    assert [(call.method, call.arguments["position"]) for call in recorder.calls if call.method != REGISTER] == [
+        (MIGRATION_STARTED, 0),
+        (MIGRATION_STARTED, 1),
+        (MIGRATION_ENDED, 1),
+    ]
+
+
+async def test_an_error_starts_no_new_migration_in_other_groups() -> None:
+    migrator = RecordingMigrator(errors_by_field={"owner": ["boom"]})
+
+    errors = await _runner(migrator=migrator).run(
+        data=_data(migrations=[CAR_OWNER_REMOVE, PHYSICAL_DUPLEX_REMOVE, PHYSICAL_SPEED_REMOVE])
+    )
+
+    assert errors == ["boom"]
+    assert migrator.events == [
+        (START, "TestingCar", "owner"),
+        (START, "TestingPhysicalInterface", "duplex"),
+        (END, "TestingCar", "owner"),
+        (END, "TestingPhysicalInterface", "duplex"),
+    ]
