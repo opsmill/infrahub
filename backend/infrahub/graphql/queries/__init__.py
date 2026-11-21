@@ -18,6 +18,7 @@ from .repository_git_state import (
     InfrahubRepositoryCommits,
 )
 from .resource_manager import InfrahubResourcePoolAllocated, InfrahubResourcePoolUtilization
+from .schema_change import InfrahubSchemaChange
 from .search import InfrahubSearchAnywhere
 from .status import InfrahubStatus
 from .task import Task
@@ -42,6 +43,7 @@ __all__ = [
     "InfrahubRepositoryCommits",
     "InfrahubResourcePoolAllocated",
     "InfrahubResourcePoolUtilization",
+    "InfrahubSchemaChange",
     "InfrahubSearchAnywhere",
     "InfrahubStatus",
     "InfrahubUserPreferences",

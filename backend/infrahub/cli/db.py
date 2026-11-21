@@ -1104,7 +1104,7 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
             migrations=result.migrations,
             limit=result.diff.all,
             update_db=True,
-            update_registry=True,
+            application_id=None,
         )
     except Exception as exc:
         get_migration_console().log(f"{ERROR_BADGE} | Schema update failed: {exc}")

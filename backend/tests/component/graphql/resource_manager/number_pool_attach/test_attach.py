@@ -8,6 +8,7 @@ from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.schema_change.factory import build_schema_change_repository
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.agnostic_edges import TEST_ACTOR_ID, attribute_edges, node_metadata
@@ -598,7 +599,9 @@ class TestNumberPoolAttach:
         detaching_branch = await create_branch(branch_name="detach-branch-detaching", db=db)
 
         await update_ticket(db=db, branch=detaching_branch, node_id=ticket["id"], ticket_id={"from_pool": None})
-        await BranchDataDeleter(db=db, batch_size=5).delete(branch=detaching_branch)
+        await BranchDataDeleter(
+            db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)
+        ).delete(branch=detaching_branch)
 
         for branch in (main_branch, other_branch):
             reads = await pooled_numbers(db=db, branch=branch, node_id=ticket["id"])

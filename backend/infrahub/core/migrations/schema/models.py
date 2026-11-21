@@ -1,12 +1,12 @@
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_serializer
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.path import SchemaPath
-from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.schema.schema_branch import SchemaBranch, SchemaBranchDict
 from infrahub.core.timestamp import Timestamp
 
 
@@ -19,17 +19,19 @@ class SchemaApplyMigrationData(BaseModel):
     migrations: list[SchemaUpdateMigrationInfo]
     at: Timestamp
     user_id: str = SYSTEM_USER_ID
+    application_id: str | None = None
 
-    @model_serializer()
-    def serialize_model(self) -> dict[str, Any]:
-        return {
-            "branch": self.branch.model_dump(),
-            "previous_schema": self.previous_schema.to_dict_schema_object(),
-            "new_schema": self.new_schema.to_dict_schema_object(),
-            "migrations": [migration.model_dump() for migration in self.migrations],
-            "user_id": self.user_id,
-            "at": self.at.to_string(),
-        }
+    @field_serializer("branch")
+    def serialize_branch(self, branch: Branch) -> dict[str, Any]:
+        return branch.model_dump()
+
+    @field_serializer("previous_schema", "new_schema")
+    def serialize_schema_branch(self, schema: SchemaBranch) -> SchemaBranchDict:
+        return schema.to_dict_schema_object()
+
+    @field_serializer("at")
+    def serialize_at(self, at: Timestamp) -> str:
+        return at.to_string()
 
     @field_validator("new_schema", "previous_schema", mode="before")
     @classmethod
@@ -44,6 +46,6 @@ class SchemaApplyMigrationData(BaseModel):
 
 class SchemaMigrationPathResponseData(BaseModel):
     errors: list[str] = Field(default_factory=list)
-    migration_name: str | None = None
+    migration_name: str
     nbr_migrations_executed: int | None = None
-    schema_path: SchemaPath | None = None
+    schema_path: SchemaPath

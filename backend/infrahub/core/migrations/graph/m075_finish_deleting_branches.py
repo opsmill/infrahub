@@ -8,6 +8,7 @@ from infrahub.core.branch.data_deleter import BranchDataDeleter, BranchDataDelet
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult, get_migration_console
 from infrahub.core.query import Query, QueryType
+from infrahub.core.schema_change.factory import build_schema_change_repository
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -55,7 +56,11 @@ class Migration075(ArbitraryMigration):
         return MigrationResult()
 
     def build_deleter(self, db: InfrahubDatabase) -> BranchDataDeleterInterface:
-        return BranchDataDeleter(db=db, batch_size=config.SETTINGS.database.query_size_limit)
+        return BranchDataDeleter(
+            db=db,
+            batch_size=config.SETTINGS.database.query_size_limit,
+            schema_change_records=build_schema_change_repository(db=db),
+        )
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         db = migration_input.db
