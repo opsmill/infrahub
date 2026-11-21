@@ -45,7 +45,15 @@ A merge or rebase runs a single coalesced recompute for the whole change set, wr
 
 `ComputedAttrJinja2TriggerDefinition` has a `targets_self` property that returns `True` when `trigger_kind == computed_attribute.kind` — meaning the trigger node kind is the same as the node kind owning the computed attribute.
 
-The async Prefect path **neutralizes** self-targeting triggers by replacing their field matchers with placeholder fields that never match real `NodeUpdatedEvent`s, because those are already handled synchronously by `_recompute_local_jinja2()` during the update mutation. The trigger definitions are kept (rather than removed entirely) so they remain available for schema-change detection in the setup flow. This prevents duplicate computation while preserving bulk-recomputation capability.
+The async Prefect path creates **no automation** for a self-targeting trigger node: `_recompute_local_jinja2()` already applies those changes during the update mutation. `gather_trigger_computed_attribute_jinja2` skips them, so only the automations of trigger nodes that read a peer exist. A computed attribute that reads its own node and a peer keeps the peer automation.
+
+The setup flow `computed_attribute_setup_jinja2` reads the recompute candidates from the schema instead of from the automations:
+
+- The candidates are the computed attributes with a self-targeting trigger node in `get_jinja2_trigger_nodes()` of the event branch schema, and only when the event branch is the default branch or owns its schema (`registry.get_altered_schema_branches()`); a `BranchDeletedEvent` gives no candidate.
+- With a change set, `RecomputeScoper` selects among the candidates; without one, every candidate is submitted.
+- On a branch other than the default branch, a candidate whose template `get_hash()` equals the hash of the same kind and attribute in the default branch schema is not submitted.
+
+The setup flow deletes the placeholder automations of earlier releases (trigger on the `_trigger_placeholder` field) when it reconciles the family. Nothing is carried over for this family, because its decision does not read stored fingerprints.
 
 ## Extra Filters for Relationship Peers
 

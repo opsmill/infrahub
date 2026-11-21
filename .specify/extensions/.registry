@@ -1,67 +1,6 @@
 {
   "schema_version": "1.0",
   "extensions": {
-    "git": {
-      "version": "1.0.0",
-      "source": "local",
-      "manifest_hash": "sha256:9731aa8143a72fbebfdb440f155038ab42642517c2b2bdbbf67c8fdbe076ed79",
-      "enabled": true,
-      "priority": 10,
-      "registered_commands": {
-        "claude": [
-          "speckit.git.feature",
-          "speckit.git.validate",
-          "speckit.git.remote",
-          "speckit.git.initialize",
-          "speckit.git.commit"
-        ]
-      },
-      "registered_skills": [],
-      "installed_at": "2026-04-10T12:40:51.752899+00:00"
-    },
-    "critique": {
-      "version": "1.0.0",
-      "source": "local",
-      "manifest_hash": "sha256:0b63a1835415df730cbd487c90c1252b294980176c10c14a3fa9c31a7cb882e0",
-      "enabled": true,
-      "priority": 10,
-      "registered_commands": {
-        "agy": [
-          "speckit.critique.run"
-        ],
-        "amp": [
-          "speckit.critique.run"
-        ],
-        "claude": [
-          "speckit.critique.run"
-        ],
-        "codex": [
-          "speckit.critique.run"
-        ],
-        "copilot": [
-          "speckit.critique.run"
-        ],
-        "zed": [
-          "speckit.critique.run"
-        ]
-      },
-      "registered_skills": [],
-      "installed_at": "2026-06-28T07:51:21.995091+00:00"
-    },
-    "checkpoint": {
-      "version": "1.0.0",
-      "source": "local",
-      "manifest_hash": "sha256:f1f8587fcfee109d13e5fd2837df498439695218b32d00083f6e98095fca64c0",
-      "enabled": true,
-      "priority": 10,
-      "registered_commands": {
-        "claude": [
-          "speckit.checkpoint.commit"
-        ]
-      },
-      "registered_skills": [],
-      "installed_at": "2026-11-03T13:40:36.106736+00:00"
-    },
     "agent-context": {
       "version": "1.0.2",
       "source": {
@@ -80,9 +19,12 @@
       "installed_at": "2026-06-27T16:51:30.302727+00:00"
     },
     "opsmill": {
-      "version": "1.4.1",
-      "source": "local",
-      "manifest_hash": "sha256:8d2d95bcc835b1febff8aef37dc6065e0dc4ad7bbea132adfbdbf4dce17ceabf",
+      "version": "1.5.0",
+      "source": {
+        "kind": "catalog",
+        "catalog": "opsmill"
+      },
+      "manifest_hash": "sha256:cbc2e6a817d118486a6289781ae75d86baab66cf8b529ff1ac12ad79559de6d2",
       "enabled": true,
       "priority": 10,
       "registered_commands": {
@@ -93,11 +35,86 @@
           "speckit.opsmill.qa",
           "speckit.opsmill.auto",
           "speckit.opsmill.prep",
+          "speckit.opsmill.prep-critique",
+          "speckit.opsmill.prep-align",
+          "speckit.opsmill.prep-realign",
+          "speckit.opsmill.implement-chunk",
+          "speckit.opsmill.implement-review",
+          "speckit.opsmill.implement-report",
           "speckit.opsmill.implement"
         ]
       },
       "registered_skills": [],
-      "installed_at": "2026-11-08T18:33:11.911253+00:00"
+      "installed_at": "2026-11-19T10:54:06.668738+00:00"
+    },
+    "checkpoint": {
+      "version": "1.0.0",
+      "source": {
+        "kind": "catalog",
+        "catalog": "opsmill"
+      },
+      "manifest_hash": "sha256:f1f8587fcfee109d13e5fd2837df498439695218b32d00083f6e98095fca64c0",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.checkpoint.commit"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-11-19T10:54:06.698332+00:00"
+    },
+    "critique": {
+      "version": "1.0.0",
+      "source": {
+        "kind": "catalog",
+        "catalog": "opsmill"
+      },
+      "manifest_hash": "sha256:0b63a1835415df730cbd487c90c1252b294980176c10c14a3fa9c31a7cb882e0",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.critique.run"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-11-19T10:54:06.726244+00:00"
+    },
+    "reconcile": {
+      "version": "1.3.1",
+      "source": {
+        "kind": "catalog",
+        "catalog": "opsmill"
+      },
+      "manifest_hash": "sha256:3f1fcbbfde76c3021fd4e30ab8f54e78d908c74e6154e7f40d44e6c801bbf910",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.reconcile.run"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-11-19T10:54:06.788656+00:00"
+    },
+    "git": {
+      "version": "1.0.1",
+      "source": "local",
+      "manifest_hash": "sha256:698cc7089602db44622de39730555db4999cda94ab47195bcfe18f41d08b430a",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.git.feature",
+          "speckit.git.validate",
+          "speckit.git.remote",
+          "speckit.git.initialize",
+          "speckit.git.commit"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-11-19T10:54:06.839426+00:00"
     }
   }
 }

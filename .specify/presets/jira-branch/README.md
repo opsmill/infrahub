@@ -6,12 +6,4 @@ It replaces the [`infrahub` preset](https://github.com/opsmill/infrahub/tree/4d9
 
 ## Install
 
-In a repo that has the `infrahub` preset, remove it first with `specify preset remove infrahub`. If `.specify/extensions/git/` does not exist, install the git extension before the preset, otherwise the override is skipped:
-
-```bash
-specify extension add git
-git clone -b <tag> https://github.com/opsmill/opsmill-speckit
-specify preset add --dev opsmill-speckit/presets/jira-branch
-```
-
-`<tag>` is a release that includes this preset (see [`presets/CHANGELOG.md`](../CHANGELOG.md)).
+Installed by the `opsmill-jira` bundle, which also installs the git extension: see [Install](../../README.md#install) in the repo README. In a repo that has the `infrahub` preset, remove it first with `specify preset remove infrahub`.

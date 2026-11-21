@@ -4,8 +4,12 @@ description: Validate Jira/JPD ticket reference and create a feature branch
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: jira-branch:commands/speckit.git.feature.md
+  source: preset:jira-branch
+user-invocable: true
+disable-model-invocation: false
 ---
+
+# Speckit Git Feature Skill
 
 # Create Feature Branch
 

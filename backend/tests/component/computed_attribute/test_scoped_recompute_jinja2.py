@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import pytest
 
 from infrahub.computed_attribute.tasks import computed_attribute_setup_jinja2
 from infrahub.core.constants import RelationshipCardinality
+from infrahub.core.initialization import create_branch
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
+from infrahub.events import BranchDeletedEvent
 from infrahub.events.schema_action import ChangedElementsPayload
 from infrahub.workflows.catalogue import TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES
 from tests.component.computed_attribute._base import ScopedRecomputeCase, ScopedRecomputeTestBase
@@ -80,6 +83,15 @@ JINJA2_SCHEMA = SchemaRoot(
 )
 
 
+# The same schema with another local_tag template: a branch loading it owns its schema, keeps the
+# default branch template for local_label and remote_label, and diverges on local_tag.
+JINJA2_SCHEMA_DIVERGING_TAG = deepcopy(JINJA2_SCHEMA)
+JINJA2_SCHEMA_DIVERGING_TAG.nodes[1].get_attribute(name="local_tag").computed_attribute = ComputedAttribute(
+    kind=ComputedAttributeKind.JINJA2,
+    jinja2_template="{{ name__value }}/{{ role__value }}",
+)
+
+
 JINJA2_CASES = [
     ScopedRecomputeCase(
         name="unrelated_field_change_submits_nothing",
@@ -137,3 +149,58 @@ class TestScopedRecomputeJinja2(ScopedRecomputeTestBase):
             changed_elements=case.changed_elements,
         )
         assert self._submitted_attribute_names(workflow_recorder) == case.expected_submitted
+
+    async def test_deleted_branch_event_submits_nothing(
+        self,
+        jinja2_dataset: None,
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+    ) -> None:
+        await computed_attribute_setup_jinja2(
+            context=self._context(admin_account, default_branch),
+            branch_name=default_branch.name,
+            event_name=BranchDeletedEvent.event_name,
+            changed_elements=None,
+        )
+        assert self._submitted(workflow_recorder) == set()
+
+    async def test_branch_not_owning_its_schema_submits_nothing(
+        self,
+        db: InfrahubDatabase,
+        jinja2_dataset: None,
+        workflow_recorder: WorkflowRecorder,
+        admin_account: CoreAccount,
+    ) -> None:
+        branch = await create_branch(branch_name="same-schema", db=db)
+
+        await computed_attribute_setup_jinja2(
+            context=self._context(admin_account, branch),
+            branch_name=branch.name,
+            changed_elements=None,
+        )
+        assert self._submitted(workflow_recorder) == set()
+
+    async def test_diverging_branch_submits_only_attributes_whose_template_differs(
+        self,
+        db: InfrahubDatabase,
+        jinja2_dataset: None,
+        workflow_recorder: WorkflowRecorder,
+        admin_account: CoreAccount,
+    ) -> None:
+        branch = await create_branch(branch_name="diverging-tag", db=db)
+        await load_schema(db=db, schema=JINJA2_SCHEMA_DIVERGING_TAG, branch_name=branch.name, update_db=True)
+
+        await computed_attribute_setup_jinja2(
+            context=self._context(admin_account, branch),
+            branch_name=branch.name,
+            changed_elements=None,
+        )
+        assert self._submitted(workflow_recorder) == {("diverging-tag", "local_tag")}
+
+    @staticmethod
+    def _submitted(recorder: WorkflowRecorder) -> set[tuple[str, str]]:
+        return {
+            (call["parameters"]["branch_name"], call["parameters"]["computed_attribute_name"])
+            for call in recorder.get_submit_calls_for(TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES)
+        }

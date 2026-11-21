@@ -1,0 +1,8 @@
+# Copy to .specify/bundle-catalogs.yml and commit it. Spec Kit keeps its
+# built-in bundle catalogs next to this one.
+schema_version: "1.0"
+catalogs:
+  - id: "opsmill"
+    url: "https://raw.githubusercontent.com/opsmill/opsmill-speckit/main/catalog/bundle-catalog.json"
+    priority: 1
+    install_policy: "install-allowed"

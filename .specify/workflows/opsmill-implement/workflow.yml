@@ -1,0 +1,105 @@
+schema_version: "1.0"
+workflow:
+  id: "opsmill-implement"
+  name: "OpsMill implementation"
+  version: "1.0.0"
+  author: "opsmill"
+  description: "Implements the tasks of a spec directory chunk by chunk, reviews the result, then writes a report. Each phase is one step, and the workflow sets when the chunk step is repeated and how often."
+
+requires:
+  speckit_version: ">=1.2.4"
+  integrations:
+    any:
+      - "claude"
+
+inputs:
+  spec_dir:
+    type: string
+    required: true
+    prompt: "Spec directory to implement, for example specs/001-feature"
+  integration:
+    type: string
+    default: "auto"
+    prompt: "Integration to use ('auto' uses the project's integration)"
+
+steps:
+  # The commit that the review and the report compare the result with.
+  - id: base
+    type: shell
+    run: "git rev-parse HEAD | tr -d '\\n'"
+
+  # The run stops here, with an error, when the spec directory is not ready or
+  # when the working tree holds changes that would end up in the review.
+  - id: preflight
+    type: shell
+    run: >-
+      d='{{ inputs.spec_dir }}';
+      for f in spec.md plan.md tasks.md; do
+      test -f "$d/$f" || { echo "BLOCKED: $d/$f is missing" >&2; exit 1; };
+      done;
+      test -z "$(git status --porcelain -- . ':!.specify/workflows/runs')"
+      || { echo 'BLOCKED: the working tree has uncommitted changes' >&2; exit 1; }
+
+  # One chunk of tasks.md per pass, each in its own agent process. The pass is
+  # repeated while tasks.md has unticked tasks and the last chunk ticked at
+  # least one, twenty chunks at most.
+  - id: chunks
+    type: do-while
+    max_iterations: 20
+    condition: "{{ steps.left.output.stdout != '0' and steps.left.output.stdout != steps.before.output.stdout }}"
+    steps:
+      - id: before
+        type: shell
+        run: "{ grep -c '^[[:space:]]*- \\[ \\]' '{{ inputs.spec_dir }}/tasks.md' || true; } | tr -d '\\n'"
+      - id: chunk
+        command: speckit.opsmill.implement-chunk
+        integration: "{{ inputs.integration }}"
+        input:
+          args: "{{ inputs.spec_dir }}"
+      - id: commit-chunk
+        type: shell
+        run: "git add -A && (git diff --cached --quiet || git commit -q -m 'implement: changes that the chunk left uncommitted')"
+      - id: left
+        type: shell
+        run: "{ grep -c '^[[:space:]]*- \\[ \\]' '{{ inputs.spec_dir }}/tasks.md' || true; } | tr -d '\\n'"
+
+  # One review of everything since the base commit. The review fixes its
+  # high-severity findings.
+  - id: review
+    command: speckit.opsmill.implement-review
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "{{ inputs.spec_dir }} {{ steps.base.output.stdout }}"
+  - id: commit-review
+    type: shell
+    run: "git add -A && (git diff --cached --quiet || git commit -q -m 'review: fixes of the high-severity findings')"
+
+  - id: report
+    command: speckit.opsmill.implement-report
+    integration: "{{ inputs.integration }}"
+    capture: true
+    timeout: 1800
+    input:
+      args: "{{ inputs.spec_dir }} {{ steps.base.output.stdout }}"
+  - id: commit-report
+    type: shell
+    run: "git add -A && (git diff --cached --quiet || git commit -q -m 'report: implementation and review report')"
+
+  # The run stops here, with an error, when tasks are left, when a test has no
+  # proof of a passing run, or when no review took place.
+  - id: not-done
+    type: if
+    condition: "{{ not (steps.report.output.stdout | contains('STATUS: DONE | SPEC_DIR:')) }}"
+    then:
+      - id: stop-on-incomplete
+        type: shell
+        run: "echo 'INCOMPLETE: the implementation did not end with STATUS: DONE; see opsmill-implement-report.md in the spec directory' >&2; exit 1"
+
+outputs:
+  # Reached only when every task is done, every new test passed, and a review
+  # took place.
+  done:
+    value: "{{ true }}"
+  # What the report phase printed, for a workflow that runs this one as a step.
+  report:
+    value: "{{ steps.report.output.stdout }}"

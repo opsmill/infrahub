@@ -14,6 +14,7 @@ from infrahub.core.query.branch import (
 )
 from infrahub.core.query.branch_agnostic_retirement import RetireBranchAgnosticFieldsQuery
 from infrahub.core.query.standard_node import StandardNodeDeleteQuery
+from infrahub.core.query.template_fingerprint import TemplateFingerprintDeleteBranchQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
@@ -98,10 +99,16 @@ class BranchDataDeleter:
         Returns the number of edges removed, so a caller whose own logging is the only thing the
         operator can see is able to report progress.
         """
+        await self._delete_template_fingerprints(branch_name=branch_name)
         agnostic_edges_count = await self._delete_agnostic_peers(branch_name=branch_name)
         await self._retire_agnostic_fields(branch_name=branch_name, user_id=user_id)
         branch_edges_count = await self._delete_edges(branch_name=branch_name)
         return agnostic_edges_count + branch_edges_count
+
+    async def _delete_template_fingerprints(self, branch_name: str) -> None:
+        """Drop the template fingerprints recorded for the branch, so a new branch with the same name starts without them."""
+        query = TemplateFingerprintDeleteBranchQuery(branch_name=branch_name)
+        await query.execute(db=self.db)
 
     async def _delete_agnostic_peers(self, branch_name: str) -> int:
         """Drop the agnostic attributes and relationships of Nodes that exist on no other branch.

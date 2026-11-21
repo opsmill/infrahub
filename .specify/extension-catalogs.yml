@@ -1,0 +1,18 @@
+# Copy to .specify/extension-catalogs.yml and commit it. A project file replaces
+# Spec Kit's built-in catalogs, so it lists them again after ours.
+catalogs:
+  - name: "opsmill"
+    url: "https://raw.githubusercontent.com/opsmill/opsmill-speckit/main/catalog/extension-catalog.json"
+    priority: 1
+    install_allowed: true
+    description: "OpsMill extensions and the third-party extensions that the OpsMill bundles pin"
+  - name: "default"
+    url: "https://raw.githubusercontent.com/github/spec-kit/main/extensions/catalog.json"
+    priority: 2
+    install_allowed: true
+    description: "Built-in catalog of installable extensions"
+  - name: "community"
+    url: "https://raw.githubusercontent.com/github/spec-kit/main/extensions/catalog.community.json"
+    priority: 3
+    install_allowed: false
+    description: "Community-contributed extensions (discovery only)"

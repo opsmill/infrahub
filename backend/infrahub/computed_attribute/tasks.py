@@ -42,7 +42,6 @@ from .jinja2 import InfrahubJinja2Template
 from .models import (
     ComputedAttrJinja2GraphQL,
     ComputedAttrJinja2GraphQLResponse,
-    ComputedAttrJinja2TriggerDefinition,
 )
 from .read_sets import transform_read_set_from_query_report
 from .recompute_resolution import RecomputeResolver
@@ -62,6 +61,10 @@ if TYPE_CHECKING:
 
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.schema.schema_branch_computed import TransformReadSet
+    from infrahub.core.schema.schema_branch_computed.jinja2 import (
+        ComputedAttributeTarget,
+        ComputedAttributeTriggerNode,
+    )
     from infrahub.database import InfrahubDatabase
     from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
 
@@ -631,41 +634,45 @@ async def computed_attribute_setup_jinja2(
         report: TriggerSetupReport = await setup_triggers_specific(
             gatherer=gather_trigger_computed_attribute_jinja2, trigger_type=TriggerType.COMPUTED_ATTR_JINJA2
         )
-        # Configure all ComputedAttrJinja2Trigger in Prefect
 
-        all_triggers = report.triggers_with_type(trigger_type=ComputedAttrJinja2TriggerDefinition)
+        # A branch that shares the default branch schema has no computed attribute of its own to recompute.
+        owns_schema = branch_name == registry.default_branch or branch_name in registry.get_altered_schema_branches()
+        jinja2_trigger_nodes: dict[ComputedAttributeTarget, list[ComputedAttributeTriggerNode]] = {}
+        if owns_schema:
+            schema_branch = registry.schema.get_schema_branch(name=branch_name)
+            jinja2_trigger_nodes = schema_branch.computed_attributes.get_jinja2_trigger_nodes()
 
-        # The self-targeting triggers are the per (kind, attribute) recompute units.
-        self_triggers_on_branch = [
-            trigger for trigger in all_triggers if trigger.targets_self and trigger.branch == branch_name
-        ]
+        # The self-targeting trigger nodes are the per (kind, attribute) recompute units.
+        targets_by_ref = {
+            ComputedAttributeRef(
+                branch=branch_name,
+                kind=target.kind,
+                attribute_name=target.attribute.name,
+                computed_kind=ComputedAttributeKind.JINJA2,
+            ): target
+            for target, trigger_nodes in jinja2_trigger_nodes.items()
+            if any(trigger_node.targets_self for trigger_node in trigger_nodes)
+        }
 
         if changed_element_set is None:
             # No change set is available, so fall back to recomputing every computed attribute on
             # the branch rather than risk leaving a value stale.
-            candidate_triggers = self_triggers_on_branch
+            candidates = list(targets_by_ref.values())
         else:
             # The change set is available, so scope across every self-targeting attribute:
             # a template edit, a read-field change, or a relationship-reached change all select it.
-            schema_branch = registry.schema.get_schema_branch(name=branch_name)
-            jinja2_trigger_nodes = {
-                (target.kind, target.attribute.name): trigger_nodes
-                for target, trigger_nodes in schema_branch.computed_attributes.get_jinja2_trigger_nodes().items()
-            }
             scoper = RecomputeScoper(
-                derivers={ComputedAttributeKind.JINJA2: Jinja2DependencyDeriver(trigger_nodes=jinja2_trigger_nodes)}
+                derivers={
+                    ComputedAttributeKind.JINJA2: Jinja2DependencyDeriver(
+                        trigger_nodes={
+                            (target.kind, target.attribute.name): trigger_nodes
+                            for target, trigger_nodes in jinja2_trigger_nodes.items()
+                        }
+                    )
+                }
             )
-            triggers_by_ref = {
-                ComputedAttributeRef(
-                    branch=trigger.branch,
-                    kind=trigger.computed_attribute.kind,
-                    attribute_name=trigger.computed_attribute.attribute.name,
-                    computed_kind=ComputedAttributeKind.JINJA2,
-                ): trigger
-                for trigger in self_triggers_on_branch
-            }
             scoping_report = scoper.scope(
-                candidate_attributes=list(triggers_by_ref.keys()),
+                candidate_attributes=list(targets_by_ref.keys()),
                 changed_elements=changed_element_set,
             )
             selected_identities = [f"{ref.kind}.{ref.attribute_name}" for ref in scoping_report.selected]
@@ -677,42 +684,45 @@ async def computed_attribute_setup_jinja2(
                 log.debug(
                     f"Skipping {skipped.ref.kind}.{skipped.ref.attribute_name} on {branch_name}: {skipped.reason}"
                 )
-            candidate_triggers = [triggers_by_ref[ref] for ref in scoping_report.selected]
+            candidates = [targets_by_ref[ref] for ref in scoping_report.selected]
 
-        for candidate_trigger in candidate_triggers:
-            if event_name != BranchDeletedEvent.event_name and candidate_trigger.branch == branch_name:
-                if branch_name != registry.default_branch:
-                    default_branch_triggers = [
-                        trigger
-                        for trigger in all_triggers
-                        if trigger.branch == registry.default_branch
-                        and trigger.targets_self
-                        and trigger.computed_attribute.kind == candidate_trigger.computed_attribute.kind
-                        and trigger.computed_attribute.attribute.name
-                        == candidate_trigger.computed_attribute.attribute.name
-                    ]
-                    if (
-                        default_branch_triggers
-                        and len(default_branch_triggers) == 1
-                        and default_branch_triggers[0].template_hash == candidate_trigger.template_hash
-                    ):
-                        log.debug(
-                            f"Skipping computed attribute updates for {candidate_trigger.computed_attribute.kind}."
-                            f"{candidate_trigger.computed_attribute.attribute.name} [{branch_name}], schema is identical to default branch"
-                        )
-                        continue
+        if event_name == BranchDeletedEvent.event_name:
+            candidates = []
 
-                await get_workflow().submit_workflow(
-                    workflow=TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
-                    context=context,
-                    parameters={
-                        "branch_name": candidate_trigger.branch,
-                        "computed_attribute_name": candidate_trigger.computed_attribute.attribute.name,
-                        "computed_attribute_kind": candidate_trigger.computed_attribute.kind,
-                    },
+        default_schema_branch = registry.schema.get_schema_branch(name=registry.default_branch)
+        for candidate in candidates:
+            if branch_name != registry.default_branch and _has_default_branch_template(
+                default_schema_branch=default_schema_branch, target=candidate
+            ):
+                log.debug(
+                    f"Skipping computed attribute updates for {candidate.kind}.{candidate.attribute.name} "
+                    f"[{branch_name}], schema is identical to default branch"
                 )
+                continue
+
+            await get_workflow().submit_workflow(
+                workflow=TRIGGER_UPDATE_JINJA_COMPUTED_ATTRIBUTES,
+                context=context,
+                parameters={
+                    "branch_name": branch_name,
+                    "computed_attribute_name": candidate.attribute.name,
+                    "computed_attribute_kind": candidate.kind,
+                },
+            )
 
         log.info(f"{report.in_use_count} Computed Attribute for Jinja2 automation configuration completed")
+
+
+def _has_default_branch_template(default_schema_branch: SchemaBranch, target: ComputedAttributeTarget) -> bool:
+    """Whether the default branch defines the same computed attribute with the same template."""
+    if target.attribute.computed_attribute is None or not default_schema_branch.has(name=target.kind):
+        return False
+    default_attribute = default_schema_branch.get(name=target.kind, duplicate=False).get_attribute_or_none(
+        name=target.attribute.name
+    )
+    if default_attribute is None or default_attribute.computed_attribute is None:
+        return False
+    return default_attribute.computed_attribute.get_hash() == target.attribute.computed_attribute.get_hash()
 
 
 @flow(

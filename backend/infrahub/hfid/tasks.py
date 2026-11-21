@@ -1,17 +1,23 @@
 from __future__ import annotations
 
 from prefect import flow
+from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 
 from infrahub.core.constants.schema import HFID_ATTRIBUTE_NAME
 from infrahub.core.recompute.bulk_write import AttributeValueWrite
 from infrahub.core.recompute.dispatch import build_bulk_recompute_dispatcher
 from infrahub.core.registry import registry
+from infrahub.core.template_fingerprint.collector import collect_schema_fingerprints
+from infrahub.core.template_fingerprint.models import TemplateFamily
+from infrahub.core.template_fingerprint.refresher import TemplateFingerprintRefresher
+from infrahub.core.template_fingerprint.repository import TemplateFingerprintRepository
 from infrahub.events import BranchDeletedEvent
 from infrahub.events.limits import get_submission_chunk_size
 from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
-from infrahub.trigger.setup import setup_triggers_specific
+from infrahub.trigger.placeholder_carry_over import carry_over_placeholder_fingerprints
+from infrahub.trigger.setup import setup_triggers, trigger_configuration_lock
 from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
 from infrahub.workflows.catalogue import HFID_PROCESS, TRIGGER_UPDATE_HFID
 from infrahub.workflows.constants import WorkflowTag
@@ -19,7 +25,7 @@ from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_hfid
 from .graphql_queries import HFIDNodeIDQuery
-from .models import HFIDGraphQL, HFIDTriggerDefinition
+from .models import HFIDGraphQL
 
 
 @flow(
@@ -93,45 +99,34 @@ async def hfid_setup(context: EventContext, branch_name: str | None = None, even
             component = await get_component()
             await wait_for_schema_to_converge(branch_name=branch_name, component=component, db=db, log=log)
 
-        report: TriggerSetupReport = await setup_triggers_specific(
-            gatherer=gather_trigger_hfid, trigger_type=TriggerType.HUMAN_FRIENDLY_ID
+        repository = TemplateFingerprintRepository(db=db)
+        refresher = TemplateFingerprintRefresher(
+            family=TemplateFamily.HUMAN_FRIENDLY_ID,
+            default_branch=registry.default_branch,
+            repository=repository,
+            workflow=get_workflow(),
+            recompute_workflow=TRIGGER_UPDATE_HFID,
         )
-
-        # Configure all DisplayLabelTriggerDefinitions in Prefect
-        all_triggers = report.triggers_with_type(trigger_type=HFIDTriggerDefinition)
-        direct_target_triggers = [
-            hfid_report
-            for hfid_report in report.modified_triggers_with_type(trigger_type=HFIDTriggerDefinition)
-            if hfid_report.target_kind
-        ]
-
-        for display_report in direct_target_triggers:
-            if event_name != BranchDeletedEvent.event_name and display_report.branch == branch_name:
-                if branch_name != registry.default_branch:
-                    default_branch_triggers = [
-                        trigger
-                        for trigger in all_triggers
-                        if trigger.branch == registry.default_branch
-                        and trigger.target_kind == display_report.target_kind
-                    ]
-                    if (
-                        default_branch_triggers
-                        and len(default_branch_triggers) == 1
-                        and default_branch_triggers[0].hfid_hash == display_report.hfid_hash
-                    ):
-                        log.debug(
-                            f"Skipping HFID updates for {display_report.target_kind} [{branch_name}], schema is identical to default branch"
-                        )
-                        continue
-
-                await get_workflow().submit_workflow(
-                    workflow=TRIGGER_UPDATE_HFID,
-                    context=context,
-                    parameters={
-                        "branch_name": display_report.branch,
-                        "kind": display_report.target_kind,
-                    },
+        async with trigger_configuration_lock(trigger_type=TriggerType.HUMAN_FRIENDLY_ID):
+            triggers = await gather_trigger_hfid()
+            async with get_prefect_client(sync_client=False) as prefect_client:
+                report: TriggerSetupReport = await setup_triggers(
+                    client=prefect_client, triggers=triggers, trigger_type=TriggerType.HUMAN_FRIENDLY_ID
                 )
+            schema = collect_schema_fingerprints(family=TemplateFamily.HUMAN_FRIENDLY_ID)
+            await carry_over_placeholder_fingerprints(deleted=report.deleted, schemas=[schema], repository=repository)
+            decision = await refresher.refresh(
+                schema=schema,
+                event_branch=branch_name,
+                branch_deleted=event_name == BranchDeletedEvent.event_name,
+                context=context,
+            )
+
+        if decision.skipped_identical:
+            log.debug(
+                f"Skipping HFID updates for {decision.skipped_identical} [{branch_name}], "
+                "template identical to default branch"
+            )
 
         log.info(f"{report.in_use_count} HFID automation configurations completed")
 
