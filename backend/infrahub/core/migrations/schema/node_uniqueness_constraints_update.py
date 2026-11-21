@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence  # noqa: TC003  needed for pydantic
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.path import SchemaPath
@@ -23,7 +23,6 @@ if TYPE_CHECKING:
 class NodeUniquenessConstraintsUpdateMigration(SchemaMigration):
     name: str = ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value
     queries: Sequence[type[MigrationBaseQuery]] = []
-    applies_node_scope: ClassVar[bool] = False
 
     async def execute(
         self,
@@ -31,7 +30,6 @@ class NodeUniquenessConstraintsUpdateMigration(SchemaMigration):
         branch: Branch,
         queries: Sequence[type[MigrationBaseQuery]] | None = None,  # noqa: ARG002
     ) -> MigrationResult:
-        migration_input = self.scoped_input(migration_input=migration_input)
         result = MigrationResult()
 
         if not isinstance(self.new_schema, (NodeSchema, GenericSchema)):

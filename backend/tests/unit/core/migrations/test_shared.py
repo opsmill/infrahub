@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, ClassVar
 
 import pytest
-from neo4j import AsyncGraphDatabase
 from neo4j.exceptions import ClientError, TransientError
 from typing_extensions import Self
 
@@ -17,13 +15,13 @@ from infrahub.core.migrations.schema.node_relationship_remove import Relationshi
 from infrahub.core.migrations.shared import GraphMigration, MigrationInput, SchemaMigration
 from infrahub.core.path import SchemaPath
 from infrahub.core.query import Query, QueryType
-from infrahub.database import InfrahubDatabase
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator, Sequence
+    from collections.abc import Generator, Sequence
 
     from infrahub.core.branch import Branch
     from infrahub.core.migrations.query import MigrationBaseQuery
+    from infrahub.database import InfrahubDatabase
 
 
 @pytest.fixture
@@ -214,77 +212,6 @@ class TestMigrationTransientErrorRetry:
         assert not result.success
         assert result.errors == ["deadlock detected"]
         assert AlwaysDeadlockGraphQuery.calls == 1
-
-
-class _MigrationWithoutNodeScope(SchemaMigration):
-    applies_node_scope = False
-
-
-@dataclass
-class ScopedInputTestCase:
-    name: str
-    migration_class: type[SchemaMigration]
-    node_ids: frozenset[str] | None
-    expected_node_ids: frozenset[str] | None
-
-
-SCOPED_INPUT_TEST_CASES: list[ScopedInputTestCase] = [
-    ScopedInputTestCase(
-        name="applies_scope_keeps_node_ids",
-        migration_class=SchemaMigration,
-        node_ids=frozenset({"node-a", "node-b"}),
-        expected_node_ids=frozenset({"node-a", "node-b"}),
-    ),
-    ScopedInputTestCase(
-        name="applies_scope_keeps_empty_set",
-        migration_class=SchemaMigration,
-        node_ids=frozenset(),
-        expected_node_ids=frozenset(),
-    ),
-    ScopedInputTestCase(
-        name="applies_scope_keeps_no_scope",
-        migration_class=SchemaMigration,
-        node_ids=None,
-        expected_node_ids=None,
-    ),
-    ScopedInputTestCase(
-        name="ignores_scope_drops_node_ids",
-        migration_class=_MigrationWithoutNodeScope,
-        node_ids=frozenset({"node-a", "node-b"}),
-        expected_node_ids=None,
-    ),
-    ScopedInputTestCase(
-        name="ignores_scope_drops_empty_set",
-        migration_class=_MigrationWithoutNodeScope,
-        node_ids=frozenset(),
-        expected_node_ids=None,
-    ),
-]
-
-
-@pytest.fixture
-async def unconnected_db() -> AsyncGenerator[InfrahubDatabase, None]:
-    # Building a driver opens no connection, and the migration only carries the database in its input.
-    driver = AsyncGraphDatabase.driver("bolt://127.0.0.1:9", auth=("neo4j", "unused"))
-    yield InfrahubDatabase(driver=driver)
-    await driver.close()
-
-
-@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in SCOPED_INPUT_TEST_CASES])
-def test_scoped_input(unconnected_db: InfrahubDatabase, test_case: ScopedInputTestCase) -> None:
-    migration = test_case.migration_class(
-        name="test.migration",
-        queries=[],
-        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestKind", field_name="name"),
-    )
-    migration_input = MigrationInput(db=unconnected_db, user_id="test-user", node_ids=test_case.node_ids)
-
-    scoped = migration.scoped_input(migration_input=migration_input)
-
-    assert scoped.node_ids == test_case.expected_node_ids
-    assert scoped.db is unconnected_db
-    assert scoped.at == migration_input.at
-    assert scoped.user_id == "test-user"
 
 
 def _all_subclasses(cls: type) -> set[type]:

@@ -5,7 +5,7 @@ import logging
 from collections.abc import Sequence  # noqa: TC003  needed for pydantic
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, ClassVar, Self
+from typing import TYPE_CHECKING, Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field
 from rich.console import Console
@@ -147,15 +147,6 @@ class SchemaMigration(BaseModel):
     )
     schema_path: SchemaPath
 
-    applies_node_scope: ClassVar[bool] = True
-    """False for a migration that runs on every node of its kinds whatever node scope its input carries."""
-
-    def scoped_input(self, migration_input: MigrationInput) -> MigrationInput:
-        """Return the input without its node scope when this migration does not apply one."""
-        if self.applies_node_scope:
-            return migration_input
-        return dataclasses.replace(migration_input, node_ids=None)
-
     async def execute_pre_queries(
         self,
         migration_input: MigrationInput,  # noqa: ARG002
@@ -207,7 +198,6 @@ class SchemaMigration(BaseModel):
         branch: Branch,
         queries: Sequence[type[MigrationBaseQuery]] | None = None,
     ) -> MigrationResult:
-        migration_input = self.scoped_input(migration_input=migration_input)
         async with migration_input.db.start_transaction() as ts:
             result = MigrationResult()
             txn_migration_input = dataclasses.replace(migration_input, db=ts)

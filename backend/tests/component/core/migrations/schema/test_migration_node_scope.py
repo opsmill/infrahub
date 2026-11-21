@@ -469,12 +469,14 @@ async def test_relationship_remove_on_an_empty_set_changes_no_node(
     await verify_graph(db=db, kinds=[*WIDGET_POPULATION, GADGET_KIND])
 
 
-def test_every_data_migration_has_a_scope_case_or_ignores_the_scope() -> None:
-    covered = {case.migration_class for case in SCOPE_CASES}
+def test_every_migration_has_a_scope_case() -> None:
+    covered = {case.migration_class for case in SCOPE_CASES} | {
+        case.migration_class for case in PROFILE_AND_TEMPLATE_SCOPE_CASES
+    }
     uncovered = sorted(
         migration_class.__name__
         for migration_class in {migration_class for migration_class in MIGRATION_MAP.values() if migration_class}
-        if migration_class not in covered and migration_class.applies_node_scope
+        if migration_class not in covered
     )
     assert uncovered == []
 
@@ -808,7 +810,7 @@ async def test_number_pool_attribute_add_on_an_empty_set_allocates_no_number(
 
 
 # ---------------------------------------------------------------------------
-# Migrations that change every profile and template node whatever the set
+# Migrations that change only profile and template nodes
 # ---------------------------------------------------------------------------
 
 
@@ -836,47 +838,91 @@ def _color_in_uniqueness_constraints(branch: Branch) -> SchemaMigration:
 
 
 @dataclass
-class IgnoredScopeCase:
+class ProfileAndTemplateScopeCase:
     name: str
+    migration_class: type[SchemaMigration]
     build: Callable[[Branch], SchemaMigration]
-    expected_changed: dict[str, set[str]]
-    """Names of the nodes the run changes, per kind: each of them no longer holds the color attribute."""
+    scope: set[str]
+    """Names of data set nodes in the first set, which also holds an ID of no node."""
+    expected_in_scope: dict[str, set[str]]
+    """Names of the nodes the run on the first set changes, per kind: each of them loses the color attribute."""
+    remaining: set[str]
+    expected_remaining: dict[str, set[str]]
 
 
-IGNORED_SCOPE_CASES = [
-    IgnoredScopeCase(
+PROFILE_AND_TEMPLATE_SCOPE_CASES = [
+    ProfileAndTemplateScopeCase(
         name="attribute-unique-update",
+        migration_class=AttributeSupportsGeneratedSchemaMigration,
         build=_color_unique,
-        expected_changed={PROFILE_WIDGET_KIND: {"pw1"}, TEMPLATE_WIDGET_KIND: {"tw1"}},
+        scope={"w1", "pw1", "b1"},
+        expected_in_scope={PROFILE_WIDGET_KIND: {"pw1"}},
+        remaining={"tw1"},
+        expected_remaining={TEMPLATE_WIDGET_KIND: {"tw1"}},
     ),
-    IgnoredScopeCase(
+    # The uniqueness constraints update changes profile nodes only.
+    ProfileAndTemplateScopeCase(
         name="uniqueness-constraints-update",
+        migration_class=NodeUniquenessConstraintsUpdateMigration,
         build=_color_in_uniqueness_constraints,
-        expected_changed={PROFILE_WIDGET_KIND: {"pw1"}},
+        scope={"w1", "tw1", "b1"},
+        expected_in_scope={},
+        remaining={"pw1"},
+        expected_remaining={PROFILE_WIDGET_KIND: {"pw1"}},
     ),
 ]
 
 
-@pytest.mark.parametrize("case", IGNORED_SCOPE_CASES, ids=lambda case: case.name)
-async def test_profile_and_template_migration_changes_every_profile_and_template_node(
-    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: IgnoredScopeCase
+async def _run_on_profile_and_template_nodes(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    migration: SchemaMigration,
+    profile_and_template_ids: set[str],
+    node_ids: set[str],
+    expected_ids: dict[str, set[str]],
 ) -> None:
-    nodes = selection_dataset.nodes
-    migration = case.build(default_branch)
-    expected_changed = _ids_per_kind(nodes, case.expected_changed)
-    changed_names = set().union(*case.expected_changed.values())
+    holders_before = await _active_attribute_values_on_default_branch(
+        db=db, default_branch=default_branch, node_ids=profile_and_template_ids, attribute_names=["color"]
+    )
 
     at = Timestamp()
-    scope_ids = _ids(nodes, {"w1", "w4", "b1"}) | {UNKNOWN_NODE_ID}
     result = await migration.execute(
-        migration_input=MigrationInput(db=db, at=at, node_ids=frozenset(scope_ids)), branch=default_branch
+        migration_input=MigrationInput(db=db, at=at, node_ids=frozenset(node_ids)), branch=default_branch
     )
     assert result.errors == []
 
-    assert await changed_node_ids(db=db, kinds=CHECKED_KINDS, at=at) == expected_changed
-    holders = await _active_attribute_values_on_default_branch(
-        db=db, default_branch=default_branch, node_ids=_ids(nodes, changed_names), attribute_names=["color"]
+    assert await changed_node_ids(db=db, kinds=CHECKED_KINDS, at=at) == expected_ids
+    changed = set().union(*expected_ids.values())
+    holders_after = await _active_attribute_values_on_default_branch(
+        db=db, default_branch=default_branch, node_ids=profile_and_template_ids, attribute_names=["color"]
     )
-    assert holders == {}
+    assert holders_after == {node_id: values for node_id, values in holders_before.items() if node_id not in changed}
+
+
+@pytest.mark.parametrize("case", PROFILE_AND_TEMPLATE_SCOPE_CASES, ids=lambda case: case.name)
+async def test_profile_and_template_migration_changes_only_the_nodes_in_the_set(
+    db: InfrahubDatabase, default_branch: Branch, selection_dataset: SelectionDataset, case: ProfileAndTemplateScopeCase
+) -> None:
+    nodes = selection_dataset.nodes
+    migration = case.build(default_branch)
+    assert type(migration) is case.migration_class
+    profile_and_template_ids = _ids(nodes, {"pw1", "tw1"})
+
+    await _run_on_profile_and_template_nodes(
+        db=db,
+        default_branch=default_branch,
+        migration=migration,
+        profile_and_template_ids=profile_and_template_ids,
+        node_ids=_ids(nodes, case.scope) | {UNKNOWN_NODE_ID},
+        expected_ids=_ids_per_kind(nodes, case.expected_in_scope),
+    )
+    await _run_on_profile_and_template_nodes(
+        db=db,
+        default_branch=default_branch,
+        migration=migration,
+        profile_and_template_ids=profile_and_template_ids,
+        node_ids=_ids(nodes, case.remaining),
+        expected_ids=_ids_per_kind(nodes, case.expected_remaining),
+    )
 
     await verify_graph(db=db, kinds=WIDGET_POPULATION)
