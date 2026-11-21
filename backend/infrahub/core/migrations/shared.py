@@ -4,13 +4,14 @@ import logging
 from collections.abc import Sequence  # noqa: TC003  needed for pydantic
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, ClassVar, Self
 
 from pydantic import BaseModel, ConfigDict, Field
 from rich.console import Console
 
 from infrahub.core import registry
 from infrahub.core.constants import SYSTEM_USER_ID
+from infrahub.core.migrations.schema.phases import MigrationPhase  # noqa: TC001
 from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.query import Query  # noqa: TC001
 from infrahub.core.schema import MainSchemaTypes  # noqa: TC001
@@ -132,6 +133,7 @@ class DerivedSchemaPair(BaseModel):
 
 class SchemaMigration(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
+    phase: ClassVar[MigrationPhase]
     name: str = Field(..., description="Name of the migration")
     queries: Sequence[type[MigrationBaseQuery]] = Field(
         ..., description="List of queries to execute for this migration"

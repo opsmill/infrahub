@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence  # noqa: TC003  needed for pydantic
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipStatus
+from infrahub.core.migrations.schema.phases import MigrationPhase
 from infrahub.core.query import QueryType
 from infrahub.core.query.agnostic_field_closure import CLOSE_UNRETAINED_AGNOSTIC_FIELDS
 from infrahub.core.schema.generic_schema import GenericSchema
@@ -229,6 +230,7 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery, Migration
 
 
 class NodeRelationshipRemoveMigration(RelationshipSchemaMigration):
+    phase: ClassVar[MigrationPhase] = MigrationPhase.FIELD_REMOVE
     name: str = "node.relationship.remove"
     queries: Sequence[type[RelationshipMigrationQuery]] = [NodeRelationshipRemoveMigrationQuery]
 

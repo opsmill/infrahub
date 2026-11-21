@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Sequence  # noqa: TC003  needed for pydantic
-from typing import Any
+from typing import Any, ClassVar
+
+from infrahub.core.migrations.schema.phases import MigrationPhase
 
 from ..query import AttributeMigrationQuery
 from ..query.attribute_remove import AttributeRemoveQuery
@@ -26,5 +28,6 @@ class NodeAttributeRemoveMigrationQuery01(AttributeMigrationQuery, AttributeRemo
 
 
 class NodeAttributeRemoveMigration(AttributeSchemaMigration):
+    phase: ClassVar[MigrationPhase] = MigrationPhase.FIELD_REMOVE
     name: str = "node.attribute.remove"
     queries: Sequence[type[AttributeMigrationQuery]] = [NodeAttributeRemoveMigrationQuery01]

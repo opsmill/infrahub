@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Sequence  # noqa: TC003  needed for pydantic
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipStatus
+from infrahub.core.migrations.schema.phases import MigrationPhase
 
 from ..query import MigrationQuery
 from ..query.selection import MigrationSelectionQuery
@@ -358,5 +359,6 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
 
 
 class NodeRemoveMigration(SchemaMigration):
+    phase: ClassVar[MigrationPhase] = MigrationPhase.NODE_REMOVE
     name: str = "node.remove"
     queries: Sequence[type[MigrationQuery]] = [NodeRemoveMigrationQueryIn, NodeRemoveMigrationQueryOut]
