@@ -147,8 +147,12 @@ class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery, MigrationSelect
     def render_selection(self) -> str:
         branch_filter, _ = self.branch.get_query_filter_path(at=self.at)
         kind = self.migration.previous_schema.kind
+        schema_kinds = [kind, f"Profile{kind}", f"Template{kind}"]
+        # The index hint of the node scope applies only to a MATCH that holds the node alone.
+        node_match = self.render_node_match("n", schema_kinds)
+        node_attribute_match = f"{node_match}\nMATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute)"
         return """
-MATCH (n:%(schema_kinds)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)
+%(node_attribute_match)s
 WHERE attr.name = $attr_name
 WITH DISTINCT n, attr
 
@@ -178,7 +182,7 @@ CALL (n, attr) {
     WHERE is_active AND is_indexed <> $needs_index
     RETURN has_value_e, av
 }
-""" % {"schema_kinds": f"{kind}|Profile{kind}|Template{kind}", "branch_filter": branch_filter}
+""" % {"node_attribute_match": node_attribute_match, "branch_filter": branch_filter}
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         _, branch_params = self.branch.get_query_filter_path(at=self.at)

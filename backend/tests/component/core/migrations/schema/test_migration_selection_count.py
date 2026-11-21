@@ -339,7 +339,7 @@ async def test_attribute_add_given_nodes(
             "attribute_name": "size",
             "attribute_kind": "Text",
             "branch_support": BranchSupportType.AWARE.value,
-            "uuids": [selection_dataset.nodes["w1"].id],
+            "node_ids": [selection_dataset.nodes["w1"].id],
         },
         branch=branch,
         expected=case.expected,

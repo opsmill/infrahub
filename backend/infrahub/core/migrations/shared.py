@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import logging
 from collections.abc import Sequence  # noqa: TC003  needed for pydantic
 from contextlib import contextmanager
@@ -110,6 +111,7 @@ class MigrationInput:
     at: Timestamp = field(default_factory=Timestamp)
     user_id: str = SYSTEM_USER_ID
     console: Console = field(default_factory=get_migration_console)
+    node_ids: frozenset[str] | None = None
 
 
 def _should_propagate(db: InfrahubDatabase, exc: BaseException) -> bool:
@@ -176,6 +178,7 @@ class SchemaMigration(BaseModel):
                     at=migration_input.at,
                     migration=self,
                     user_id=migration_input.user_id,
+                    node_ids=migration_input.node_ids,
                 )
                 await query.execute(db=migration_input.db)
                 result.nbr_migrations_executed += query.get_nbr_migrations_executed()
@@ -197,12 +200,7 @@ class SchemaMigration(BaseModel):
     ) -> MigrationResult:
         async with migration_input.db.start_transaction() as ts:
             result = MigrationResult()
-            txn_migration_input = MigrationInput(
-                db=ts,
-                at=migration_input.at,
-                user_id=migration_input.user_id,
-                console=migration_input.console,
-            )
+            txn_migration_input = dataclasses.replace(migration_input, db=ts)
 
             await self.execute_pre_queries(migration_input=txn_migration_input, result=result, branch=branch)
             queries_to_execute = queries or self.queries
@@ -227,8 +225,6 @@ class SchemaMigration(BaseModel):
 
 
 class AttributeSchemaMigration(SchemaMigration):
-    uuids: list[str] | None = None
-
     @property
     def new_attribute_schema(self) -> AttributeSchema:
         if not self.schema_path.field_name:

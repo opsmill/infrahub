@@ -34,13 +34,19 @@ class AttributeRenameQuery(MigrationSelectionQuery):
 
     def render_match(self) -> str:
         """Select the nodes to rename the attribute on. Subclasses narrow this to add their own guards."""
+        kind = self.previous_attr.node_kind
         return """
         // --------------
         // Find all possible nodes
         // --------------
-        MATCH (node:%(node_kind)s|Profile%(node_kind)s|Template%(node_kind)s)
-        WHERE exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $prev_attr.name }))
-        """ % {"node_kind": self.previous_attr.node_kind}
+        %(node_match)s
+        """ % {
+            "node_match": self.render_node_match(
+                "node",
+                [kind, f"Profile{kind}", f"Template{kind}"],
+                conditions=["exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $prev_attr.name }))"],
+            )
+        }
 
     def render_selection(self) -> str:
         branch_filter, _ = self.branch.get_query_filter_path(at=self.at.to_string())

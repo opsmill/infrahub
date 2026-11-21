@@ -55,7 +55,7 @@ class NodeDuplicateQuery(MigrationSelectionQuery):
     def render_match(self) -> str:
         return """
         // Find all the active nodes
-        MATCH (node:%(previous_kinds)s)
+        %(node_match)s
         WITH DISTINCT node, $kind_map[node.kind] AS target
         // ----------------
         // Filter out nodes that have already been migrated
@@ -66,7 +66,7 @@ class NodeDuplicateQuery(MigrationSelectionQuery):
             AND size(labels(node)) = size(target.new_all_labels)
             AND all(node_label IN labels(node) WHERE node_label IN target.new_all_labels)
         )
-        """ % {"previous_kinds": self.previous_kinds}
+        """ % {"node_match": self.render_node_match("node", list(self.kind_updates_map))}
 
     def render_selection(self) -> str:
         branch_filter, _ = self.branch.get_query_filter_path(at=self.at.to_string())
