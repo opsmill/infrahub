@@ -87,6 +87,7 @@ class MigrationScheduler:
             ]
             if not members:
                 continue
+            groups: tuple[tuple[PositionedMigration, ...], ...]
             if phase == MigrationPhase.KIND_UPDATE:
                 # concurrent duplications of overlapping vertices can each create a replacement vertex
                 groups = (tuple(positioned_migration for _, positioned_migration in members),)

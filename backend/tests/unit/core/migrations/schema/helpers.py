@@ -1,6 +1,8 @@
+import asyncio
 from copy import deepcopy
 
 from infrahub.core.constants import SchemaPathType
+from infrahub.core.migrations.schema.models import SchemaApplyMigrationData, SchemaMigrationPathResponseData
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import GenericSchema, MainSchemaTypes
@@ -66,3 +68,46 @@ def full_schema_branch() -> SchemaBranch:
         PHYSICAL_INTERFACE,
         VIRTUAL_INTERFACE,
     )
+
+
+START = "start"
+END = "end"
+
+
+class RecordingMigrator:
+    """Record when each migration starts and ends, yielding to other tasks in between."""
+
+    def __init__(self, errors_by_field: dict[str, list[str]]) -> None:
+        self.errors_by_field = errors_by_field
+        self.events: list[tuple[str, str, str | None]] = []
+
+    async def migrate(
+        self, migration: SchemaUpdateMigrationInfo, data: SchemaApplyMigrationData
+    ) -> SchemaMigrationPathResponseData:
+        path = migration.path
+        self.events.append((START, path.schema_kind, path.field_name))
+        await asyncio.sleep(0)
+        self.events.append((END, path.schema_kind, path.field_name))
+        return SchemaMigrationPathResponseData(
+            migration_name=migration.migration_name,
+            schema_path=path,
+            errors=self.errors_by_field.get(path.field_name or "", []),
+            nbr_migrations_executed=1,
+        )
+
+
+class FailingMigrator(RecordingMigrator):
+    """Raise after a migration of one of the given fields starts."""
+
+    def __init__(self, failing_fields: set[str]) -> None:
+        super().__init__(errors_by_field={})
+        self.failing_fields = failing_fields
+
+    async def migrate(
+        self, migration: SchemaUpdateMigrationInfo, data: SchemaApplyMigrationData
+    ) -> SchemaMigrationPathResponseData:
+        path = migration.path
+        if path.field_name in self.failing_fields:
+            self.events.append((START, path.schema_kind, path.field_name))
+            raise RuntimeError(f"migration failed: {path.field_name}")
+        return await super().migrate(migration=migration, data=data)
