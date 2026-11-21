@@ -20,7 +20,8 @@ import { Col, Row } from "@/shared/components/container";
 
 import { BreadcrumbObjectDetails } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/domain/model/pool";
-import { useGetPoolUtilization } from "@/entities/resource-manager/ui/queries/get-pool-utilization.query";
+import { useGetIpPoolUtilization } from "@/entities/resource-manager/ui/queries/get-ip-pool-utilization.query";
+import { getIpPoolResourceUrl } from "@/entities/resource-manager/ui/routing/ip-pool-urls";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export function BreadcrumbResourceManager() {
@@ -51,21 +52,17 @@ function ResourceSelector({
   resourceId: string;
   resourcePoolId: string;
 }) {
-  const { data, isPending, error } = useGetPoolUtilization(
-    { poolId: resourcePoolId },
-    { enabled: false } // to get cached data from details page
-  );
+  const { data, isPending, error } = useGetIpPoolUtilization(resourcePoolId);
 
   if (isPending) {
     return <BreadcrumbItemLoading />;
   }
 
-  if (error) {
+  if (error && !data) {
     return <BreadcrumbItemError error={error} />;
   }
 
-  const resources = data.edges.map(({ node }) => node);
-  const currentResource = resources.find((resource) => resource.id === resourceId);
+  const currentResource = data.resources.find((resource) => resource.id === resourceId);
 
   if (!currentResource) return null;
 
@@ -76,7 +73,7 @@ function ResourceSelector({
           <div className="truncate text-foreground-muted text-xs leading-3.5">Resources</div>
 
           <Link
-            to={constructPath(`/resource-manager/${resourcePoolId}/resources/${resourceId}`)}
+            to={getIpPoolResourceUrl(resourcePoolId, resourceId)}
             className="truncate font-medium text-sm leading-4 hover:underline"
           >
             {currentResource.display_label}
@@ -92,13 +89,9 @@ function ResourceSelector({
             <PopoverDialog>
               {({ close }) => (
                 <Autocomplete>
-                  <ListBox virtualized items={resources} onAction={close}>
+                  <ListBox virtualized items={data.resources} onAction={close}>
                     {(resource) => (
-                      <ListBoxItem
-                        href={constructPath(
-                          `/resource-manager/${resourcePoolId}/resources/${resource.id}`
-                        )}
-                      >
+                      <ListBoxItem href={getIpPoolResourceUrl(resourcePoolId, resource.id)}>
                         {resource.display_label}
                       </ListBoxItem>
                     )}

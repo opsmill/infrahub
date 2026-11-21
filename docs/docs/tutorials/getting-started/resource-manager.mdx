@@ -34,15 +34,15 @@ You'll see an overview of available resource pools. Each pool has a specific pur
 
 ![Loopbacks Pool](../../media/tutorial_resource_manager_loopbacks_pool.png)
 
-This view shows you the pool's configuration:
+The pool page shows you:
 
-- **Name**: A descriptive identifier for the pool
-- **Resources**: The IP prefixes or number ranges this pool can allocate from
-- **Default settings**: Configuration that determines how resources are allocated
+- **Header**: The pool's name and description, and one line that names the pool type, its IP namespace, and its defaults, such as the address kind and the prefix length a new allocation gets when the request sets none.
+- **Resource prefixes**: How full the whole pool is, then the IP prefixes this pool allocates from, each with its usage on the default branch and on the branch you are viewing. When every resource prefix is of a kind that supports an allocation weight, the list shows each weight that is set and starts with the resource prefix that has the highest allocation weight, which the pool fills first.
+- **Allocated addresses**: The addresses the selected resource prefix already holds, with the identifier of the pool reservation when there is one, the kind, and the ID. More rows load as you scroll. The resource prefix's name above the table opens its IPAM page.
 
-Click the **View** button next to any resource to see which IP addresses have already been allocated. This gives you visibility into resource utilization across your entire infrastructure.
+Select a resource prefix in the list to see what it holds. This gives you visibility into resource utilization across your entire infrastructure.
 
-**Key insight**: Notice how you can see all allocations in one place, regardless of which branch they were created in.
+**Key insight**: Each usage bar separates the share used on the default branch from the share added on the branch you are viewing.
 
 ## Step 2: Experience automatic resource allocation
 
@@ -91,23 +91,23 @@ In the device view, notice the **Primary IP Address** field now contains an IP a
 
 ## Step 4: Verify branch-agnostic allocation
 
-This step demonstrates the most powerful feature of Infrahub's Resource Manager: allocations are visible and reserved across all branches, even before merging.
+This step demonstrates the most powerful feature of Infrahub's Resource Manager: an allocation made in one branch is reserved across all branches, even before merging.
 
-Switch back to the **main** branch using the branch selector in the UI.
+Stay on the `add-device` branch, navigate to **Object Management** → **Resource Managers**, and click on the `Loopbacks pool`.
 
-Navigate to **Object Management** → **Resource Managers** and click on the `Loopbacks pool`.
+Select the resource prefix `10.0.0.0/16` in the list to see all allocated addresses.
 
-Click **View** next to the resource `10.0.0.0/16` to see all allocated addresses.
+Scroll through the Allocated addresses table until you reach the address allocated to your device: its identifier names the device.
 
-Navigate to the last page of the Allocated resources table (or search for your device name).
+Now switch back to the **main** branch using the branch selector and open the `Loopbacks pool` again.
 
-**Important observation**: You'll find the IP address allocated to `atl1-leaf99` in this list, even though:
+**Important observation**: The address allocated to `atl1-leaf99` is not in this list, because the table lists the allocations of the branch you are viewing. The address is still reserved, even though:
 
 - You're viewing from the main branch
 - The device was created in the `add-device` branch
 - The branches haven't been merged yet
 
-This proves that resource allocation is branch-agnostic. The IP address is reserved across all branches, preventing conflicts when teams work in parallel.
+The pool will not allocate this address to a request made on main or on any other branch. This prevents conflicts when teams work in parallel.
 
 ## What you've learned
 
@@ -116,7 +116,7 @@ Through this hands-on exploration, you've discovered:
 - **Automated allocation**: Resource Manager eliminates manual IP address tracking by automatically assigning the next available resource
 - **Branch-agnostic reservations**: Resources allocated in any branch are immediately reserved across all branches, preventing conflicts
 - **Atomic operations**: Resources are allocated during object creation, ensuring consistency
-- **Centralized visibility**: All allocations are visible in one place, regardless of which branch created them
+- **Per-branch visibility**: The pool page lists the allocations of the branch you are viewing, and its usage bars separate that branch's share from the default branch's
 - **Conflict prevention**: Multiple teams can work in parallel without worrying about duplicate resource assignments
 
 ## Real-world impact
