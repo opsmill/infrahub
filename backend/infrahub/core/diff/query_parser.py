@@ -169,7 +169,7 @@ class DiffPropertyIntermediate:
             action = DiffAction.REMOVED
             if new_value != NULL_VALUE:
                 new_value = None
-        elif earliest_value.value == new_value or {earliest_value.value, new_value} <= {None, NULL_VALUE}:
+        elif earliest_value.value == new_value or (_is_null(earliest_value.value) and _is_null(new_value)):
             action = DiffAction.UNCHANGED
         return (action, new_diff_value.changed_at, previous_value, new_value)
 

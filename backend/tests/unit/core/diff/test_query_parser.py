@@ -13,12 +13,10 @@ from infrahub.core.timestamp import Timestamp
 def _property_with_values(earlier: Any, later: Any, from_time: Timestamp) -> DiffPropertyIntermediate:
     diff_property = DiffPropertyIntermediate(property_type=DatabaseEdgeType.HAS_VALUE)
     diff_property.add_value(
-        DiffValueIntermediate(
-            changed_at=from_time.add_delta(seconds=-10), status=RelationshipStatus.ACTIVE, value=earlier
-        )
+        DiffValueIntermediate(changed_at=from_time.add(seconds=-10), status=RelationshipStatus.ACTIVE, value=earlier)
     )
     diff_property.add_value(
-        DiffValueIntermediate(changed_at=from_time.add_delta(seconds=10), status=RelationshipStatus.ACTIVE, value=later)
+        DiffValueIntermediate(changed_at=from_time.add(seconds=10), status=RelationshipStatus.ACTIVE, value=later)
     )
     return diff_property
 
@@ -30,6 +28,8 @@ def _property_with_values(earlier: Any, later: Any, from_time: Timestamp) -> Dif
         pytest.param(["a", "b"], NULL_VALUE, DiffAction.REMOVED, NULL_VALUE, id="list-removed"),
         pytest.param(NULL_VALUE, {"key": "value"}, DiffAction.ADDED, {"key": "value"}, id="dict-added"),
         pytest.param({"key": "value"}, NULL_VALUE, DiffAction.REMOVED, NULL_VALUE, id="dict-removed"),
+        pytest.param(["a"], ["b"], DiffAction.UPDATED, ["b"], id="list-updated"),
+        pytest.param({"k": 1}, {"k": 2}, DiffAction.UPDATED, {"k": 2}, id="dict-updated"),
         pytest.param(None, "text", DiffAction.ADDED, "text", id="str-added"),
         pytest.param("text", NULL_VALUE, DiffAction.REMOVED, NULL_VALUE, id="str-removed"),
     ],
