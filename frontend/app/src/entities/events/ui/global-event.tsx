@@ -3,65 +3,10 @@ import { Tooltip } from "@infrahub/ui";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { Icon } from "@/shared/components/display/icon";
 import { Link } from "@/shared/components/ui/link";
-import { classNames, warnUnexpectedType } from "@/shared/utils/common";
+import { classNames } from "@/shared/utils/common";
 
 import type { EventType } from "@/entities/events/domain/model/event";
-import { AccountLoggedInEventTitle } from "@/entities/events/ui/account-events/account-logged-in-event-title";
-import { AccountLoggedOutEventTitle } from "@/entities/events/ui/account-events/account-logged-out-event-title";
-import { ArtifactEventTitle } from "@/entities/events/ui/artifact-events/artifact-event-title";
-import { BranchEventTitle } from "@/entities/events/ui/branch-events/branch-event-title";
-import { GroupAutoCreateEventTitle } from "@/entities/events/ui/group-auto-create-events/group-auto-create-event-title";
-import { GroupEventTitle } from "@/entities/events/ui/group-events/group-event-title";
-import { NodeEventTitle } from "@/entities/events/ui/node-events/node-event-title";
-import { ProposedChangeEventTitle } from "@/entities/events/ui/proposed-change-events/proposed-change-event-title";
-import { StandardEventTitle } from "@/entities/events/ui/standard-events/standard-event-title";
-import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/domain/model/proposed-change-events";
-
-const GlobalEventDisplay = (props: EventType) => {
-  if ("attributes" in props) {
-    return <NodeEventTitle {...props} />;
-  }
-
-  switch (props.__typename) {
-    case "BranchCreatedEvent":
-    case "BranchDeletedEvent":
-    case "BranchMergedEvent":
-    case "BranchRebasedEvent": {
-      return <BranchEventTitle {...props} />;
-    }
-    case "StandardEvent": {
-      if (PROPOSED_CHANGE_EVENTS.includes(props.event)) {
-        return <ProposedChangeEventTitle {...props} />;
-      }
-      return <StandardEventTitle {...props} />;
-    }
-    case "GroupEvent": {
-      return <GroupEventTitle {...props} />;
-    }
-    case "GroupAutoCreatedEventType":
-    case "GroupAutoCreateRejectedEventType":
-    case "GroupAutoCreateCappedEventType": {
-      return <GroupAutoCreateEventTitle {...props} />;
-    }
-    case "ArtifactEvent": {
-      return <ArtifactEventTitle {...props} />;
-    }
-    case "AccountLoggedInEventType": {
-      return <AccountLoggedInEventTitle {...props} />;
-    }
-    case "AccountLoggedOutEventType": {
-      return <AccountLoggedOutEventTitle {...props} />;
-    }
-    default: {
-      warnUnexpectedType(props);
-      return (
-        <span className="flex items-center text-foreground-muted text-sm">
-          {(props as EventType).event}
-        </span>
-      );
-    }
-  }
-};
+import { EventTitle } from "@/entities/events/ui/event-title";
 
 export const Event = (props: EventType) => {
   return (
@@ -76,7 +21,7 @@ export const Event = (props: EventType) => {
       </div>
 
       <div className="item-center col-span-5 flex gap-4 overflow-hidden">
-        <GlobalEventDisplay {...props} />
+        <EventTitle event={props} />
       </div>
 
       <div className="flex items-center gap-1 overflow-hidden text-ellipsis whitespace-nowrap font-medium text-foreground-muted text-xs">

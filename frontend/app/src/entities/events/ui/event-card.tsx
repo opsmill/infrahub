@@ -6,78 +6,10 @@ import { Icon } from "@/shared/components/display/icon";
 import { TimelineBorder } from "@/shared/components/ui/timeline-border";
 
 import type { EventType } from "@/entities/events/domain/model/event";
-import { AccountLoggedInEventTitle } from "@/entities/events/ui/account-events/account-logged-in-event-title";
-import { AccountLoggedOutEventTitle } from "@/entities/events/ui/account-events/account-logged-out-event-title";
-import { ArtifactEventTitle } from "@/entities/events/ui/artifact-events/artifact-event-title";
-import { BranchEventTitle } from "@/entities/events/ui/branch-events/branch-event-title";
 import { EventDetailsPopover } from "@/entities/events/ui/event-details-popover";
-import { GroupAutoCreateEventTitle } from "@/entities/events/ui/group-auto-create-events/group-auto-create-event-title";
-import { GroupEventTitle } from "@/entities/events/ui/group-events/group-event-title";
+import { EventTitle } from "@/entities/events/ui/event-title";
 import { EventAttributes } from "@/entities/events/ui/node-events/event-attributes";
-import { NodeEventTitle } from "@/entities/events/ui/node-events/node-event-title";
-import { ProposedChangeEventTitle } from "@/entities/events/ui/proposed-change-events/proposed-change-event-title";
-import { StandardEventTitle } from "@/entities/events/ui/standard-events/standard-event-title";
 import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/domain/model/proposed-change-events";
-
-const EventContent = (props: EventType) => {
-  const { pathname } = useLocation();
-
-  if ("attributes" in props) {
-    if (pathname === "/") {
-      return <NodeEventTitle {...props} />;
-    }
-
-    return (
-      <>
-        <NodeEventTitle {...props} />
-        <EventAttributes attributes={props.attributes} />
-      </>
-    );
-  }
-
-  if (
-    props.__typename === "BranchCreatedEvent" ||
-    props.__typename === "BranchDeletedEvent" ||
-    props.__typename === "BranchMergedEvent" ||
-    props.__typename === "BranchRebasedEvent"
-  ) {
-    return <BranchEventTitle {...props} />;
-  }
-
-  if (PROPOSED_CHANGE_EVENTS.includes(props.event)) {
-    return <ProposedChangeEventTitle {...props} />;
-  }
-
-  if (props.__typename === "StandardEvent" && !props.event.includes(".proposed_change.")) {
-    return <StandardEventTitle {...props} />;
-  }
-
-  if (props.__typename === "GroupEvent") {
-    return <GroupEventTitle {...props} />;
-  }
-
-  if (
-    props.__typename === "GroupAutoCreatedEventType" ||
-    props.__typename === "GroupAutoCreateRejectedEventType" ||
-    props.__typename === "GroupAutoCreateCappedEventType"
-  ) {
-    return <GroupAutoCreateEventTitle {...props} />;
-  }
-
-  if (props.__typename === "ArtifactEvent") {
-    return <ArtifactEventTitle {...props} />;
-  }
-
-  if (props.__typename === "AccountLoggedInEventType") {
-    return <AccountLoggedInEventTitle {...props} />;
-  }
-
-  if (props.__typename === "AccountLoggedOutEventType") {
-    return <AccountLoggedOutEventTitle {...props} />;
-  }
-
-  return <span className="text-foreground-muted text-sm">{props.event}</span>;
-};
 
 export const EventCard = (props: EventType) => {
   const { pathname } = useLocation();
@@ -87,7 +19,11 @@ export const EventCard = (props: EventType) => {
       <TimelineBorder />
 
       <Card className="min-w-0 grow gap-3 rounded-md p-2 text-sm">
-        <EventContent {...props} />
+        <EventTitle event={props} />
+
+        {"attributes" in props && pathname !== "/" && (
+          <EventAttributes attributes={props.attributes} />
+        )}
 
         <div className="flex justify-between text-foreground-muted">
           <DateDisplay date={props.occurred_at} />

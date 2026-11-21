@@ -1,0 +1,1 @@
+Fixed the object in a proposed change thread linking to an address that does not exist when the thread is shown in an activity list outside its proposed change, such as on the homepage; the object now shows without a link there.

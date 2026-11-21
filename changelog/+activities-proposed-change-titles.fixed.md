@@ -1,0 +1,1 @@
+Fixed proposed change events, such as approvals, review requests, merges and new threads, showing as raw event names on the Activities page; they now show the same title as on the proposed change overview, and a new thread shows its comments with Reply and Resolve thread controls.
