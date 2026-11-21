@@ -598,7 +598,7 @@ class InfrahubMutation(InfrahubMutationMixin, Mutation):
 
 
 def _get_data_fields(data: InputObjectType) -> list[str]:
-    return [field for field in data.keys() if field not in ["id", "hfid"]]
+    return [field for field in data.keys() if field not in {"id", "hfid"}]
 
 
 async def build_graphql_response(info: GraphQLResolveInfo, db: InfrahubDatabase, obj: Node) -> dict:

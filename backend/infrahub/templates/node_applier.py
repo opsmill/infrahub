@@ -143,7 +143,7 @@ class NodeTemplateApplier:
             if rel_name in fields:
                 continue
 
-            if rel_schema.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC, RelationshipKind.PROFILE]:
+            if rel_schema.kind not in {RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC, RelationshipKind.PROFILE}:
                 continue
 
             if rel_name == OBJECT_TEMPLATE_RELATIONSHIP_NAME:

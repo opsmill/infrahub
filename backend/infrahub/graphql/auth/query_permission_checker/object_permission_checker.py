@@ -32,7 +32,7 @@ class ObjectPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         required_decision = (
             PermissionDecisionFlag.ALLOW_DEFAULT
             if analyzed_query.branch is None
-            or analyzed_query.branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
+            or analyzed_query.branch.name in {GLOBAL_BRANCH_NAME, registry.default_branch}
             else PermissionDecisionFlag.ALLOW_OTHER
         )
 
@@ -93,11 +93,11 @@ class AccountManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface):
 
         for kind in kinds:
             schema = get_schema(db=db, branch=branch, node_schema=kind)
-            if is_account_operation := kind in (
+            if is_account_operation := kind in {
                 InfrahubKind.GENERICACCOUNT,
                 InfrahubKind.ACCOUNTGROUP,
                 InfrahubKind.ACCOUNTROLE,
-            ) or (isinstance(schema, NodeSchema) and InfrahubKind.GENERICACCOUNT in schema.inherit_from):
+            } or (isinstance(schema, NodeSchema) and InfrahubKind.GENERICACCOUNT in schema.inherit_from):
                 break
 
         # Ignore non-account related operation or viewing account own profile
@@ -189,11 +189,11 @@ class RepositoryManagerPermissionChecker(GraphQLQueryPermissionCheckerInterface)
 
         for kind in kinds:
             schema = get_schema(db=db, branch=branch, node_schema=kind)
-            if is_repository_operation := kind in (
+            if is_repository_operation := kind in {
                 InfrahubKind.GENERICREPOSITORY,
                 InfrahubKind.REPOSITORY,
                 InfrahubKind.READONLYREPOSITORY,
-            ) or (isinstance(schema, NodeSchema) and InfrahubKind.GENERICREPOSITORY in schema.inherit_from):
+            } or (isinstance(schema, NodeSchema) and InfrahubKind.GENERICREPOSITORY in schema.inherit_from):
                 break
 
         if is_repository_operation and analyzed_query.contains_mutation:

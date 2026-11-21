@@ -641,7 +641,7 @@ async def _get_proposed_change_schema_integrity_constraints(
             # The SDK diff summary reports element_type using the DiffElementType member name
             # (e.g. "RELATIONSHIP_ONE"), not its value ("RelationshipOne").
             element_type = element["element_type"]
-            if element_type in (DiffElementType.RELATIONSHIP_MANY.name, DiffElementType.RELATIONSHIP_ONE.name):
+            if element_type in {DiffElementType.RELATIONSHIP_MANY.name, DiffElementType.RELATIONSHIP_ONE.name}:
                 field_summary.add_relationship_node_uuid(name=element_name, node_uuid=node_id)
             elif element_type == DiffElementType.ATTRIBUTE.name:
                 field_summary.add_attribute_node_uuid(name=element_name, node_uuid=node_id)
@@ -1290,7 +1290,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
             context=context,
         )
 
-    if model.check_type in [CheckType.ALL, CheckType.GENERATOR]:
+    if model.check_type in {CheckType.ALL, CheckType.GENERATOR}:
         model_proposed_change_run_generator = RequestProposedChangeRunGenerators(
             proposed_change=model.proposed_change,
             source_branch=model.source_branch,
@@ -1306,7 +1306,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
             parameters={"model": model_proposed_change_run_generator},
         )
 
-    if model.check_type in [CheckType.ALL, CheckType.DATA] and has_node_changes(
+    if model.check_type in {CheckType.ALL, CheckType.DATA} and has_node_changes(
         diff_summary=diff_summary, branch=model.source_branch
     ):
         model_proposed_change_data_integrity = RequestProposedChangeDataIntegrity(
@@ -1322,7 +1322,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
             parameters={"model": model_proposed_change_data_integrity},
         )
 
-    if model.check_type in [CheckType.REPOSITORY, CheckType.USER]:
+    if model.check_type in {CheckType.REPOSITORY, CheckType.USER}:
         model_proposed_change_repo_checks = RequestProposedChangeRepositoryChecks(
             proposed_change=model.proposed_change,
             source_branch=model.source_branch,
@@ -1336,14 +1336,14 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
             parameters={"model": model_proposed_change_repo_checks},
         )
 
-    if model.check_type in [CheckType.ALL, CheckType.SCHEMA] and not has_data_changes(
+    if model.check_type in {CheckType.ALL, CheckType.SCHEMA} and not has_data_changes(
         diff_summary=diff_summary, branch=model.source_branch
     ):
         # A merge refused for this proposed change records a failure that no later check would replace.
         await _clear_schema_integrity_failure(
             database=database, proposed_change_id=model.proposed_change, recorded_before=pipeline_started_at
         )
-    elif model.check_type in [CheckType.ALL, CheckType.SCHEMA]:
+    elif model.check_type in {CheckType.ALL, CheckType.SCHEMA}:
         await get_workflow().submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
             context=context,
@@ -1358,7 +1358,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
             },
         )
 
-    if model.check_type in [CheckType.ALL, CheckType.TEST]:
+    if model.check_type in {CheckType.ALL, CheckType.TEST}:
         await get_workflow().submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_USER_TESTS,
             context=context,

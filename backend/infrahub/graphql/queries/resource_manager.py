@@ -84,11 +84,11 @@ class PoolAllocatedEdge(ObjectType):
 
 
 def _validate_pool_type(pool_id: str, pool: Node | None = None) -> Node:
-    if not pool or pool.get_kind() not in [
+    if not pool or pool.get_kind() not in {
         InfrahubKind.IPADDRESSPOOL,
         InfrahubKind.IPPREFIXPOOL,
         InfrahubKind.NUMBERPOOL,
-    ]:
+    }:
         raise NodeNotFoundError(node_type="ResourcePool", identifier=pool_id)
     return pool
 

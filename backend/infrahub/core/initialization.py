@@ -185,7 +185,7 @@ async def initialization(db: InfrahubDatabase, add_database_indexes: bool = Fals
             await default_branch.save(db=db)
 
         for branch in list(registry.branch.values()):
-            if branch.name in [default_branch.name, GLOBAL_BRANCH_NAME]:
+            if branch.name in {default_branch.name, GLOBAL_BRANCH_NAME}:
                 continue
 
             hash_in_db = branch.active_schema_hash.main

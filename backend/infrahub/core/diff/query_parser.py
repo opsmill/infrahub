@@ -88,6 +88,11 @@ class TrackedStatusUpdates:
         return (action, latest_timestamp)
 
 
+def _is_null(value: Any) -> bool:
+    # Attribute values of kind Any can be lists or dicts, which a set membership test cannot hash.
+    return value is None or value == NULL_VALUE
+
+
 @dataclass
 class DiffValueIntermediate:
     changed_at: Timestamp
@@ -155,9 +160,9 @@ class DiffPropertyIntermediate:
         if earliest_value.changed_at > from_time:
             action = DiffAction.ADDED
             previous_value = None
-        elif earliest_value.value in (None, NULL_VALUE) and new_value not in (None, NULL_VALUE):
+        elif _is_null(earliest_value.value) and not _is_null(new_value):
             action = DiffAction.ADDED
-        elif (earliest_value.value not in (None, NULL_VALUE) and new_value in (None, NULL_VALUE)) or (
+        elif (not _is_null(earliest_value.value) and _is_null(new_value)) or (
             earliest_value.status,
             new_status,
         ) == (RelationshipStatus.ACTIVE, RelationshipStatus.DELETED):
@@ -287,9 +292,9 @@ class DiffSingleRelationshipIntermediate:
         action = DiffAction.UPDATED
         if last_diff_prop.changed_at < from_time:
             action = DiffAction.UNCHANGED
-        elif previous_value in (None, NULL_VALUE) and new_value not in (None, NULL_VALUE):
+        elif previous_value in {None, NULL_VALUE} and new_value not in {None, NULL_VALUE}:
             action = DiffAction.ADDED
-        elif previous_value not in (None, NULL_VALUE) and new_value in (None, NULL_VALUE):
+        elif previous_value not in {None, NULL_VALUE} and new_value in {None, NULL_VALUE}:
             action = DiffAction.REMOVED
         elif previous_value == new_value or {previous_value, new_value} <= {None, NULL_VALUE}:
             action = DiffAction.UNCHANGED
@@ -330,7 +335,7 @@ class DiffSingleRelationshipIntermediate:
             peer_final_property.new_value = peer_id
         if last_changed_at < from_time or all(fp.action is DiffAction.UNCHANGED for fp in final_properties):
             action = DiffAction.UNCHANGED
-        elif peer_final_property.action in (DiffAction.ADDED, DiffAction.REMOVED):
+        elif peer_final_property.action in {DiffAction.ADDED, DiffAction.REMOVED}:
             action = peer_final_property.action
         else:
             action = DiffAction.UPDATED
@@ -349,11 +354,11 @@ class DiffRelationshipIntermediate:
     _single_relationship_list: list[DiffSingleRelationshipIntermediate] = field(default_factory=list)
 
     def add_path(self, database_path: DatabasePath, diff_to_time: Timestamp) -> None:
-        if database_path.property_type in [
+        if database_path.property_type in {
             DatabaseEdgeType.IS_RELATED,
             DatabaseEdgeType.HAS_OWNER,
             DatabaseEdgeType.HAS_SOURCE,
-        ]:
+        }:
             value = database_path.peer_id
         else:
             value = database_path.property_value
@@ -518,7 +523,7 @@ class DiffQueryParser:
         return set(self._final_diff_root_by_branch.keys())
 
     def get_diff_root_for_branch(self, branch: str) -> DiffRoot:
-        if branch not in (self.base_branch_name, self.diff_branch_name):
+        if branch not in {self.base_branch_name, self.diff_branch_name}:
             raise DiffNotFoundError(f"No diff found for branch {branch}")
         if branch in self._final_diff_root_by_branch:
             return self._final_diff_root_by_branch[branch]

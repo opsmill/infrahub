@@ -503,7 +503,7 @@ class NumberPoolGetReserved(Query):
         result = self.get_result()
         if result is None:
             return None
-        if result.get("value") in (None, NULL_VALUE):
+        if result.get("value") in {None, NULL_VALUE}:
             return None
         return result.get_as_type("value", return_type=int)
 

@@ -82,7 +82,7 @@ def git_upstream_repo_03(git_upstream_repo_01: dict[str, str | Path]) -> dict[st
     repo = Repo(git_upstream_repo_01["path"])
 
     for local_branch in repo.refs:
-        if local_branch.is_remote() or str(local_branch) in ["main", "branch01"]:
+        if local_branch.is_remote() or str(local_branch) in {"main", "branch01"}:
             continue
 
         repo.git.branch("-D", str(local_branch))

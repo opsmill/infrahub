@@ -144,7 +144,7 @@ async def stage_base_conflicts(
     # and "the opposite" being the pre-branch default, the diff coordinator
     # sees no base-side change so no genuine conflict exists.
     for ap in contexts.updated_attribute_properties:
-        if ap.property_name not in ("source", "owner"):
+        if ap.property_name not in {"source", "owner"}:
             continue
         if conflict_peer_node.id == ap.expected_peer_id:
             continue
@@ -177,7 +177,7 @@ async def stage_base_conflicts(
     # updated_relationship_property <-> base sets a different property value.
     # Booleans are skipped for the same reason as attribute property booleans.
     for rp in contexts.updated_relationship_properties:
-        if rp.property_name not in ("source", "owner"):
+        if rp.property_name not in {"source", "owner"}:
             continue
         if conflict_peer_node.id == rp.expected_peer_id:
             continue

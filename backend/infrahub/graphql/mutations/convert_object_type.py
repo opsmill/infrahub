@@ -83,7 +83,7 @@ class ConvertObjectType(Mutation):
             if mapping_value.source_field_name is not None and field_name not in fields_mapping:
                 fields_mapping[field_name] = ConversionFieldInput(source_field=mapping_value.source_field_name)
 
-        if target_schema.kind in [REPOSITORY, READONLYREPOSITORY]:
+        if target_schema.kind in {REPOSITORY, READONLYREPOSITORY}:
             new_node = await convert_repository_type(
                 repository=node_to_convert,  # type: ignore[arg-type]
                 target_schema=target_schema,

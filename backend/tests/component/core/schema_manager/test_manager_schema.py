@@ -4662,7 +4662,7 @@ async def test_manage_object_templates(relationship_kind: RelationshipKind) -> N
         [
             r.name
             for r in test_object_template_thing.relationships
-            if r.name not in (OBJECT_TEMPLATE_RELATIONSHIP_NAME, "related_nodes")
+            if r.name not in {OBJECT_TEMPLATE_RELATIONSHIP_NAME, "related_nodes"}
         ]
     ) == sorted([r.name for r in THING_WITH_TEMPLATE.relationships])
 

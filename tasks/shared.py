@@ -31,7 +31,7 @@ class Namespace(StrEnum):
 
 INVOKE_SUDO = os.getenv("INVOKE_SUDO", None)
 INVOKE_PTY = os.getenv("INVOKE_PTY", None)
-DEBUG = os.environ.get("DEBUG", "").lower() in ("true", "1", "yes")
+DEBUG = os.environ.get("DEBUG", "").lower() in {"true", "1", "yes"}
 INFRAHUB_DATABASE = os.getenv("INFRAHUB_DB_TYPE", DatabaseType.NEO4J.value)
 INFRAHUB_ADDRESS = os.getenv("INFRAHUB_ADDRESS", "http://localhost:8000")
 
