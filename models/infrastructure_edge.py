@@ -1445,17 +1445,16 @@ async def generate_site(
     # Here we dispatch to every p2p a /31 prefixe
     # Between two edges we have 2 p2p connections so 2 prefixes
     # So far we connect edge1<->edge2 then edge3<->edge4 ...
-    peer_networks: list[IpamIPPrefix] = []
     peer_network_hosts = {
         # 0: {0: peer_networks[0].prefix.value.hosts(), 1: peer_networks[1].prefix.value.hosts()},
         # ^ Device id                                   ^ interface id
     }
 
     # Here we need as much prefix as we have edge device
-    for _ in range(site_design.num_edge_device):
-        peer_networks.append(
-            await client.allocate_next_ip_prefix(resource_pool=interconnection_pool, kind=IpamIPPrefix, branch=branch)
-        )
+    peer_networks: list[IpamIPPrefix] = [
+        await client.allocate_next_ip_prefix(resource_pool=interconnection_pool, kind=IpamIPPrefix, branch=branch)
+        for _ in range(site_design.num_edge_device)
+    ]
 
     # Then we prepare all ips for all interfaces
     # TODO: Refactor that part for the sake of readability

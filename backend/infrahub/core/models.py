@@ -445,8 +445,7 @@ class HashableModel(BaseModel):
     def _get_signature_field(cls, value: Any) -> list[bytes]:
         hashes: list[bytes] = []
         if isinstance(value, list):
-            for item in sorted(value):
-                hashes.append(cls._get_hash_value(item))
+            hashes.extend(cls._get_hash_value(item) for item in sorted(value))
         elif isinstance(value, dict):
             for key, content in frozenset(sorted(value.items())):
                 hashes.append(cls._get_hash_value(key))

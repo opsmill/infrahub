@@ -174,11 +174,9 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
     def __hash__(self) -> int:
         """Generate a hash based on the Peer and the properties."""
         values = [self.id, self.db_id, self.peer_id]
-        for prop_name in self._flag_properties:
-            values.append(getattr(self, prop_name))
+        values.extend(getattr(self, prop_name) for prop_name in self._flag_properties)
 
-        for prop_name in self._node_properties:
-            values.append(getattr(self, f"{prop_name}_id"))
+        values.extend(getattr(self, f"{prop_name}_id") for prop_name in self._node_properties)
 
         return hash(tuple(values))
 

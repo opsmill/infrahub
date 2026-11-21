@@ -531,7 +531,6 @@ allow-dunder-method-names = [
     "INP001",   # File is part of an implicit namespace package
     "N801",     # Class name should use CapWords convention
     "N806",     # Variable in function should be lowercase
-    "PERF401",  # Use a list comprehension to create a transformed list
     "PGH003",   # Use specific rule codes when ignoring type issues
     "PGH004",   # Use specific rule codes when using `noqa`
     "PLR0904",  # Too many public methods
@@ -835,7 +834,6 @@ allow-dunder-method-names = [
     "ERA001",   # Found commented-out code
     "FIX",      # flake8-fixme
     "INP001",   # File is part of an implicit namespace package
-    "PERF401",  # Use a list comprehension to create a transformed list
     "PGH003",   # Use specific rule codes when ignoring type issues
     "PLR0904",  # Too many public methods
     "PLR0913",  # Too many arguments in function definition
@@ -907,7 +905,6 @@ allow-dunder-method-names = [
     "INP001",   # File is part of an implicit namespace package
     "N802",     # Function name should be lowercase
     "N806",     # Variable in function should be lowercase
-    "PERF401",  # Use a list comprehension to create a transformed list
     "PGH003",   # Use specific rule codes when ignoring type issues
     "PGH004",   # Use specific rule codes when using `noqa`
     "PLC2701",  # Private name import from external module
@@ -1121,7 +1118,6 @@ allow-dunder-method-names = [
     "FURB113",  # Use `extend(...)` instead of repeatedly calling `append()`
     "INP001",   # File is part of an implicit namespace package
     "N806",     # Variable in function should be lowercase
-    "PERF401",  # Use a list comprehension to create a transformed list
     "PLR0912",  # Too many branches
     "PLR0913",  # Too many arguments in function definition
     "PLR0914",  # Too many local variables

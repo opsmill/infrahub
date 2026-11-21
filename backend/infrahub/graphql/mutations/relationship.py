@@ -156,16 +156,16 @@ async def _emit_relationship_add_events(
     node_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=node_changelog)
 
     events: list[NodeUpdatedEvent] = [main_event]
-    for downstream_changelog in node_changelogs:
-        events.append(
-            NodeUpdatedEvent(
-                kind=downstream_changelog.node_kind,
-                node_id=downstream_changelog.node_id,
-                changelog=downstream_changelog,
-                fields=downstream_changelog.updated_fields,
-                meta=EventMeta.from_parent(parent=main_event),
-            )
+    events.extend(
+        NodeUpdatedEvent(
+            kind=downstream_changelog.node_kind,
+            node_id=downstream_changelog.node_id,
+            changelog=downstream_changelog,
+            fields=downstream_changelog.updated_fields,
+            meta=EventMeta.from_parent(parent=main_event),
         )
+        for downstream_changelog in node_changelogs
+    )
 
     for event in events:
         graphql_context.background.add_task(graphql_context.active_service.event.send, event)
