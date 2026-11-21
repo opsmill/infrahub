@@ -269,8 +269,8 @@ async def test_payload_keeps_every_prior_key(resource_environment: MemoryCache) 
     data = await gatherer.gather()
     dumped = data.model_dump(mode="json")
 
-    # Nothing existing is renamed or removed; the only top-level additions are the two new blocks.
-    assert set(dumped) == _PRE_FEATURE_DATA_FIELDS | {"server", "task_workers"}
+    # Nothing existing is renamed or removed; the only top-level additions are the new blocks.
+    assert set(dumped) == _PRE_FEATURE_DATA_FIELDS | {"server", "task_workers", "license"}
 
     # `workers` is exactly as before.
     assert set(dumped["workers"]) == _PRE_FEATURE_WORKER_FIELDS
