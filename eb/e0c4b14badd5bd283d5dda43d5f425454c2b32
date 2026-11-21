@@ -1,0 +1,30 @@
+backend/tests/unit/core/migrations/schema/helpers.py
+  s_29ee9c595a6e47::t_5223df8b890cee 114-132
+backend/tests/unit/core/migrations/schema/test_node_relationship_remove.py
+  s_29ee9c595a6e47::t_5223df8b890cee 8-14,45-56
+backend/tests/unit/core/migrations/schema/test_scheduler.py
+  s_29ee9c595a6e47::t_5223df8b890cee 10,216-250
+backend/infrahub/core/migrations/schema/node_relationship_remove.py
+  s_29ee9c595a6e47::t_7cf6834dea395a 247-248,250-252
+backend/tests/unit/core/migrations/test_shared.py
+  s_29ee9c595a6e47::t_5223df8b890cee 17,22,256-261
+  s_29ee9c595a6e47::t_90b38f1bebfff0 262
+backend/infrahub/core/migrations/shared.py
+  s_29ee9c595a6e47::t_7cf6834dea395a 20,157,159-161,163-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ebe0c4b14badd5bd283d5dda43d5f425454c2b32",
+  "prompts": {},
+  "sessions": {
+    "s_29ee9c595a6e47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6739bd57-3231-493b-9d6f-e3d752abed62",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
