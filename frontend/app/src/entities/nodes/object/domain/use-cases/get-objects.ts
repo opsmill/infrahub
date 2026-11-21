@@ -20,9 +20,8 @@ export type GetObjectsParams = ContextParams &
     filters?: Array<Filter>;
     sort?: Array<Sort> | null;
     /**
-     * Names of fields the user revealed in the list view. They are `display: "extra"` fields that
-     * the default list-view rules exclude, so they must be opted back into the GraphQL selection
-     * set or their columns would render empty cells.
+     * Names of fields the user turned on that the default list-view rules exclude, so they must be
+     * opted back into the GraphQL selection set or their columns would render empty cells.
      */
     revealedFields?: readonly string[];
     getAttributesVisible?: (
