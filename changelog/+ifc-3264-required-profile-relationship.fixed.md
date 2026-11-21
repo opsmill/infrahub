@@ -1,0 +1,1 @@
+Fixed a required relationship of an object that was left empty when the object lost the Profile that set it: `RelationshipRemove` on the `profiles` of the object, a Profile update or upsert, or `RelationshipRemove` on a relationship of the Profile now fails with an error that names the object, and a Profile refresh that would empty the relationship now skips the object.
