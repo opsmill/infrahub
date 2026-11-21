@@ -40,7 +40,7 @@ from infrahub.git.repository import FailedImport, ImportStep, InfrahubReadOnlyRe
 from infrahub.git.worktree import Worktree
 from tests.adapters.delivery_state import build_idle_delivery_state
 from tests.helpers.file_repo import MultipleStagesFileRepo
-from tests.helpers.git import LocalRemote, clone_repository, open_repository
+from tests.helpers.git import LocalRemote, clone_repository, open_repository, silent_remote
 from tests.helpers.test_client import dummy_async_request
 
 PREFECT_LOGGER_NAME = "infrahub.git.repository"
@@ -273,6 +273,49 @@ async def test_pull_infrahub_default_branch_pulls_repository_default_branch(
 
     commit_after = await repository.pull(branch_name="main", update_commit_value=False)
     assert commit_after == new_commit
+
+
+@dataclass
+class StalledFetchCase:
+    name: str
+    fetch: Callable[[InfrahubRepository], Awaitable[object]]
+
+
+STALLED_FETCH_CASES = [
+    StalledFetchCase(
+        name="pull", fetch=lambda repository: repository.pull(branch_name="main", update_commit_value=False)
+    ),
+    StalledFetchCase(name="fetch_with_no_limit_given", fetch=lambda repository: repository.fetch()),
+]
+
+
+@pytest.mark.timeout(60, method="thread")
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in STALLED_FETCH_CASES])
+async def test_a_fetch_from_a_remote_that_never_answers_ends_at_the_time_limit(
+    case: StalledFetchCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The caller holds the repository lock during the fetch, so a hung remote must not keep it forever."""
+    source_dir = _init_source_repository(tmp_path, monkeypatch)
+    repository = await clone_repository(
+        id=UUIDT.new(),
+        name="stalled-repo",
+        location=str(source_dir),
+        default_branch="main",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+    monkeypatch.setattr("infrahub.git.base.FETCH_TIMEOUT_SECONDS", 1)
+
+    with silent_remote() as port:
+        repository.get_git_repo_main().remotes.origin.set_url(f"git://127.0.0.1:{port}/stalled.git")
+
+        with pytest.raises(
+            RepositoryConnectionError,
+            match=(
+                r"^The Git command for repository stalled-repo did not complete within its time limit, "
+                r"please check that the remote is reachable\.$"
+            ),
+        ):
+            await case.fetch(repository)
 
 
 def _init_source_repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
