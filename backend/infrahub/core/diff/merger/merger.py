@@ -245,6 +245,6 @@ class DiffMerger:
             return
         await self.rollbacker.rollback(
             target_branch=self.destination_branch,
-            at=merge_started_at,
+            ats=[merge_started_at],
             scope=RollbackScope.SINCE_TIMESTAMP,
         )

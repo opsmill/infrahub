@@ -517,7 +517,7 @@ class TestAttributeKindUpdateMetadata:
         async def _run_rollback() -> None:
             await GraphRollbacker(db=db).rollback(
                 target_branch=update.branch,
-                at=update.migration_time,
+                ats=[update.migration_time],
                 scope=RollbackScope.SINCE_TIMESTAMP,
             )
 

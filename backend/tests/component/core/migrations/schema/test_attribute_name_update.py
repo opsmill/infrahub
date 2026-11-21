@@ -410,7 +410,7 @@ class TestAttributeNameUpdateMetadata:
         async def _run_rollback() -> None:
             await GraphRollbacker(db=db).rollback(
                 target_branch=rename.branch,
-                at=rename.migration_time,
+                ats=[rename.migration_time],
                 scope=RollbackScope.SINCE_TIMESTAMP,
             )
 
