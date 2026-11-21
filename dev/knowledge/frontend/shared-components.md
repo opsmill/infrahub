@@ -136,6 +136,10 @@ Two limits worth knowing before you pick a paging primitive: `Pagination` always
 
 More primitives (`Sheet`, `Tree`, `Menu`, `Select`, `ListBox`, `Autocomplete`, `SortableList`, `Checkbox`, `Popover`, `useDismissGuard`, …) live in `@infrahub/ui` — check `frontend/packages/ui/src/index.ts` first; `design-system.md` owns that inventory.
 
+### Proposed change action buttons
+
+The proposed change details card and the create form build their action control from `entities/proposed-changes/ui/action-button/`. `PcSplitActionButton` draws the main button and the chevron that opens the action picker: pass the action's `availability` entry to block the main button when the backend reports the action unavailable (the button stays hoverable and focusable, so its tooltip shows the backend reason), and `onOpenMenu` to enable the chevron and give it the `proposed-change-action-button-select` test id. `PcActionPicker` keeps the selected action and shows the "Please login" placeholder until the available actions load and a user is signed in, with a loading indicator beside it while the actions load. `PcActionComboboxList` lists the picker options and shows an unavailable option as dimmed text with its reason in a tooltip. Each action button keeps its own mutation and success message.
+
 ### Hooks
 
 | Need | Use | Location |

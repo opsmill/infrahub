@@ -1,12 +1,11 @@
-import { Button, Tooltip } from "@infrahub/ui";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Icon } from "@/shared/components/display/icon";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import { PROPOSED_CHANGE_OBJECT } from "@/entities/proposed-changes/domain/model/proposed-change";
+import { PcSplitActionButton } from "@/entities/proposed-changes/ui/action-button/pc-split-action-button";
 import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";
 import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 
@@ -48,39 +47,16 @@ export const DraftButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
     });
   };
 
-  const tooltipMessage = isDraft
-    ? unsetDraft.unavailability_reason
-    : setDraft.unavailability_reason;
-  const isUnavailable = isDraft ? !unsetDraft.available : !setDraft.available;
-
   return (
-    <>
-      <Tooltip message={isUnavailable ? tooltipMessage : undefined} className="whitespace-pre">
-        <Button
-          className="flex h-full grow flex-wrap gap-2 rounded-r-none"
-          onPress={handleAction}
-          variant={"outline"}
-          isPending={isPending}
-          isDisabled={isUnavailable || isPending}
-          isDisabledAndFocusable={isUnavailable && !isPending}
-        >
-          {isDraft ? "Open" : "Move to draft"}
-        </Button>
-      </Tooltip>
-
-      <Button
-        className="h-full rounded-l-none border-l-0"
-        variant={"outline"}
-        size={"sm"}
-        onPress={() => {
-          setOpen(true);
-        }}
-        isDisabled={isPending}
-        data-testid="proposed-change-action-button-select"
-        aria-label="More actions"
-      >
-        <Icon icon="mdi:unfold-more-horizontal" />
-      </Button>
-    </>
+    <PcSplitActionButton
+      label={isDraft ? "Open" : "Move to draft"}
+      variant={"outline"}
+      onPress={handleAction}
+      isPending={isPending}
+      availability={isDraft ? unsetDraft : setDraft}
+      onOpenMenu={() => {
+        setOpen(true);
+      }}
+    />
   );
 };

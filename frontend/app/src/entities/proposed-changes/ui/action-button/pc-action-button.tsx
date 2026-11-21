@@ -1,66 +1,64 @@
-import { type ReactElement, useState } from "react";
+import type { ComponentType } from "react";
 
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
-import { PopoverTrigger } from "@/shared/components/ui/popover";
-import { inputStyle } from "@/shared/components/ui/style";
-import { classNames } from "@/shared/utils/common";
-
-import { useAuth } from "@/entities/authentication/ui/auth-provider";
-import { ActionComboboxList } from "@/entities/proposed-changes/ui/action-button/pc-action-combobox-list";
+import {
+  type PcActionComboboxItem,
+  PcActionComboboxList,
+} from "@/entities/proposed-changes/ui/action-button/pc-action-combobox-list";
+import {
+  PcActionPicker,
+  type PcActionPickerListProps,
+} from "@/entities/proposed-changes/ui/action-button/pc-action-picker";
 import { CloseButton } from "@/entities/proposed-changes/ui/action-button/pc-close-button";
 import { DraftButton } from "@/entities/proposed-changes/ui/action-button/pc-draft-button";
 import { MergeButton } from "@/entities/proposed-changes/ui/action-button/pc-merge-button";
-import { PcPlaceholderButton } from "@/entities/proposed-changes/ui/action-button/pc-placeholder-button";
 import type { ProposedChangeActionButtonProps } from "@/entities/proposed-changes/ui/action-button/types";
 import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";
-import { PcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
+import {
+  PcActionsContext,
+  usePcActionsContext,
+} from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 import { useGetProposedChangeAvailableActions } from "@/entities/proposed-changes/ui/queries/get-proposed-change-available-actions.query";
-
-type ActionButtonComponent = (props: ProposedChangeActionButtonProps) => ReactElement;
 
 type Action = "merge" | "close" | "draft";
 
-const actionsListMapping: Record<Action, ActionButtonComponent> = {
-  merge: ({ setOpen }) => <MergeButton setOpen={setOpen} />,
-  close: ({ setOpen }) => <CloseButton setOpen={setOpen} />,
-  draft: ({ setOpen }) => <DraftButton setOpen={setOpen} />,
+const actionButtons: Record<Action, ComponentType<ProposedChangeActionButtonProps>> = {
+  merge: MergeButton,
+  close: CloseButton,
+  draft: DraftButton,
+};
+
+const ActionComboboxList = ({ value, onSelect }: PcActionPickerListProps<Action>) => {
+  const { setDraft, unsetDraft, close, merge } = usePcActionsContext();
+  const proposedChangesDetails = useProposedChange();
+
+  const items: PcActionComboboxItem<Action>[] = [
+    { value: "merge", name: "Merge", availability: merge },
+    { value: "close", name: "Close", availability: close },
+    {
+      value: "draft",
+      name: proposedChangesDetails.is_draft?.value ? "Open" : "Move to draft",
+      availability: proposedChangesDetails.is_draft?.value ? unsetDraft : setDraft,
+    },
+  ];
+
+  return <PcActionComboboxList items={items} value={value} onSelect={onSelect} />;
 };
 
 export const PcActionButton = () => {
-  const auth = useAuth();
   const proposedChange = useProposedChange();
 
   const { data, isPending } = useGetProposedChangeAvailableActions({
     proposedChangeId: proposedChange.id,
   });
 
-  const [open, setOpen] = useState(false);
-  const [action, setAction] = useState<Action>("merge");
-
   return (
     <PcActionsContext value={data}>
-      <Combobox open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <div className={classNames(inputStyle, "flex border-0 p-0")}>
-            {isPending && <LoadingIndicator />}
-            {!isPending && auth?.user?.id ? (
-              actionsListMapping?.[action]?.({ setOpen })
-            ) : (
-              <PcPlaceholderButton />
-            )}
-          </div>
-        </PopoverTrigger>
-        <ComboboxContent fitTriggerWidth={false}>
-          <ActionComboboxList
-            value={action}
-            onSelect={(action) => {
-              setOpen(false);
-              setAction(action as Action);
-            }}
-          />
-        </ComboboxContent>
-      </Combobox>
+      <PcActionPicker
+        isLoading={isPending}
+        defaultAction="merge"
+        buttons={actionButtons}
+        list={ActionComboboxList}
+      />
     </PcActionsContext>
   );
 };
