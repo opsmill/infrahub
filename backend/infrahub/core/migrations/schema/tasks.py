@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from infrahub_sdk.batch import InfrahubBatch
 from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.migrations import MIGRATION_MAP
-from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
-from infrahub.core.migrations.schema.scheduler import PositionedMigration
+from infrahub.core.migrations.schema.runner import SchemaMigrationRunner
+from infrahub.core.migrations.schema.scheduler import MigrationScheduler
 from infrahub.core.migrations.shared import DerivedSchemaPair, MigrationInput
 from infrahub.core.schema.derived_kinds import get_object_template_kind, get_profile_kind
 from infrahub.core.schema_change.factory import build_migration_recorder
@@ -21,24 +19,13 @@ from infrahub.workflows.utils import add_branch_tag
 from .models import SchemaApplyMigrationData, SchemaMigrationPathResponseData
 
 if TYPE_CHECKING:
-    import logging
-    from collections.abc import Sequence
-
-    from prefect.logging.loggers import LoggingAdapter
-
     from infrahub.core.branch import Branch
+    from infrahub.core.models import SchemaUpdateMigrationInfo
     from infrahub.core.path import SchemaPath
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.core.schema_change.migration_recorder import MigrationRecorder
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
-
-
-@dataclass(frozen=True)
-class PositionedMigrationResult:
-    position: int
-    result: SchemaMigrationPathResponseData
 
 
 def get_derived_schema_pairs(
@@ -72,119 +59,49 @@ def get_derived_schema_pairs(
     return [pair for pair in pairs if pair is not None]
 
 
-def split_migrations_by_phase(
-    migrations: Sequence[PositionedMigration],
-) -> tuple[list[PositionedMigration], list[PositionedMigration]]:
-    """Split migrations into (kind-update migrations, everything else), preserving relative order.
-
-    Kind-update migrations duplicate node vertices with a new label set. Every other migration
-    must only see the duplicated vertices, so the first group has to complete before the second
-    group starts.
-    """
-    kind_update_names = {
-        migration_name
-        for migration_name, migration_class in MIGRATION_MAP.items()
-        if migration_class is NodeKindUpdateMigration
-    }
-    kind_update_migrations: list[PositionedMigration] = []
-    other_migrations: list[PositionedMigration] = []
-    for positioned in migrations:
-        if positioned.migration.migration_name in kind_update_names:
-            kind_update_migrations.append(positioned)
-        else:
-            other_migrations.append(positioned)
-    return kind_update_migrations, other_migrations
+MAX_CONCURRENT_MIGRATION_GROUPS = 5
 
 
-async def _migrate_schema_path_at_position(
-    position: int,
-    recorder: MigrationRecorder,
-    branch: Branch,
-    migration_name: str,
-    schema_path: SchemaPath,
-    database: InfrahubDatabase,
-    at: Timestamp,
-    new_node_schema: MainSchemaTypes | None,
-    previous_node_schema: MainSchemaTypes,
-    derived_schemas: list[DerivedSchemaPair],
-    user_id: str,
-) -> PositionedMigrationResult:
-    await recorder.migration_started(position=position)
-    result = await schema_path_migrate(
-        branch=branch,
-        migration_name=migration_name,
-        schema_path=schema_path,
-        database=database,
-        at=at,
-        new_node_schema=new_node_schema,
-        previous_node_schema=previous_node_schema,
-        derived_schemas=derived_schemas,
-        user_id=user_id,
-    )
-    return PositionedMigrationResult(position=position, result=result)
+class TaskSchemaPathMigrator:
+    """Apply one migration through the `schema-path-migrate` task."""
 
+    def __init__(self, database: InfrahubDatabase) -> None:
+        self.database = database
 
-async def _apply_migration_batch(
-    message: SchemaApplyMigrationData,
-    migrations: Sequence[PositionedMigration],
-    recorder: MigrationRecorder,
-    database: InfrahubDatabase,
-    log: logging.Logger | LoggingAdapter,
-    max_concurrent_execution: int | None = None,
-) -> list[str]:
-    if max_concurrent_execution:
-        batch = InfrahubBatch(max_concurrent_execution=max_concurrent_execution)
-    else:
-        batch = InfrahubBatch()
-    error_messages: list[str] = []
-
-    if not migrations:
-        return error_messages
-
-    for positioned in migrations:
-        migration = positioned.migration
-        log.info(f"Preparing migration for {migration.migration_name!r} ({migration.routing_key})")
-
+    async def migrate(
+        self, migration: SchemaUpdateMigrationInfo, data: SchemaApplyMigrationData
+    ) -> SchemaMigrationPathResponseData:
         new_node_schema: MainSchemaTypes | None = None
 
-        if message.new_schema.has(name=migration.path.schema_kind):
-            new_node_schema = message.new_schema.get(name=migration.path.schema_kind)
+        if data.new_schema.has(name=migration.path.schema_kind):
+            new_node_schema = data.new_schema.get(name=migration.path.schema_kind)
 
         if new_node_schema and new_node_schema.id:
-            previous_node_schema = message.previous_schema.get_by_id(id=new_node_schema.id)
+            previous_node_schema = data.previous_schema.get_by_id(id=new_node_schema.id)
         else:
-            previous_node_schema = message.previous_schema.get(name=migration.path.schema_kind)
+            previous_node_schema = data.previous_schema.get(name=migration.path.schema_kind)
 
         if not previous_node_schema:
             raise ValueError(
                 f"Unable to find the previous version of the schema for {migration.path.schema_kind}, in order to run the migration."
             )
 
-        batch.add(
-            task=_migrate_schema_path_at_position,
-            position=positioned.position,
-            recorder=recorder,
-            branch=message.branch,
+        return await schema_path_migrate(
+            branch=data.branch,
             migration_name=migration.migration_name,
             new_node_schema=new_node_schema,
             previous_node_schema=previous_node_schema,
             derived_schemas=get_derived_schema_pairs(
-                previous_schema_branch=message.previous_schema,
-                new_schema_branch=message.new_schema,
+                previous_schema_branch=data.previous_schema,
+                new_schema_branch=data.new_schema,
                 previous_node_schema=previous_node_schema,
                 new_node_schema=new_node_schema,
             ),
             schema_path=migration.path,
-            database=database,
-            user_id=message.user_id,
-            at=message.at,
+            database=self.database,
+            user_id=data.user_id,
+            at=data.at,
         )
-
-    async for _, positioned_result in batch.execute():
-        await recorder.migration_ended(position=positioned_result.position, result=positioned_result.result)
-        error_messages.extend(positioned_result.result.errors)
-
-    return error_messages
 
 
 @flow(name="schema_apply_migrations", flow_run_name="Apply schema migrations", persist_result=True)
@@ -195,50 +112,14 @@ async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str
     database = await get_database()
 
     async with database.start_session() as db:
-        recorder = build_migration_recorder(db=db, application_id=message.application_id)
-        return await _apply_migrations(message=message, recorder=recorder, database=database, log=log)
-
-
-async def _apply_migrations(
-    message: SchemaApplyMigrationData,
-    recorder: MigrationRecorder,
-    database: InfrahubDatabase,
-    log: logging.Logger | LoggingAdapter,
-) -> list[str]:
-    error_messages: list[str] = []
-
-    if not message.migrations:
-        return error_messages
-
-    positioned_migrations = position_migrations(migrations=message.migrations)
-    await recorder.register(migrations=[positioned.migration for positioned in positioned_migrations])
-
-    kind_update_migrations, other_migrations = split_migrations_by_phase(migrations=positioned_migrations)
-
-    # kind-update migrations duplicate node vertices and re-point their edges; two concurrent
-    # duplications over overlapping vertices can each create a replacement vertex, so they must
-    # run one at a time
-    error_messages.extend(
-        await _apply_migration_batch(
-            message=message,
-            migrations=kind_update_migrations,
-            recorder=recorder,
-            database=database,
+        runner = SchemaMigrationRunner(
+            scheduler=MigrationScheduler(migration_classes=MIGRATION_MAP),
+            migrator=TaskSchemaPathMigrator(database=database),
+            recorder=build_migration_recorder(db=db, application_id=message.application_id),
+            max_concurrent_groups=MAX_CONCURRENT_MIGRATION_GROUPS,
             log=log,
-            max_concurrent_execution=1,
         )
-    )
-    if error_messages:
-        log.warning("Kind-update migrations reported errors, skipping the remaining migrations")
-        return error_messages
-
-    error_messages.extend(
-        await _apply_migration_batch(
-            message=message, migrations=other_migrations, recorder=recorder, database=database, log=log
-        )
-    )
-
-    return error_messages
+        return await runner.run(data=message)
 
 
 @task(

@@ -5,8 +5,11 @@ from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, SchemaPathType
+from infrahub.core.migrations import MIGRATION_MAP
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData, SchemaMigrationPathResponseData
-from infrahub.core.migrations.schema.tasks import _apply_migrations
+from infrahub.core.migrations.schema.runner import SchemaMigrationRunner
+from infrahub.core.migrations.schema.scheduler import MigrationScheduler
+from infrahub.core.migrations.schema.tasks import MAX_CONCURRENT_MIGRATION_GROUPS, TaskSchemaPathMigrator
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema.attribute_schema import AttributeSchema
@@ -40,17 +43,22 @@ async def test_a_migration_reports_that_it_started_before_it_reports_its_result(
     )
     recorder = RecordingMigrationRecorder()
 
-    errors = await _apply_migrations(
-        message=SchemaApplyMigrationData(
+    runner = SchemaMigrationRunner(
+        scheduler=MigrationScheduler(migration_classes=MIGRATION_MAP),
+        migrator=TaskSchemaPathMigrator(database=db),
+        recorder=recorder,
+        max_concurrent_groups=MAX_CONCURRENT_MIGRATION_GROUPS,
+        log=logging.getLogger(__name__),
+    )
+
+    errors = await runner.run(
+        data=SchemaApplyMigrationData(
             branch=default_branch,
             previous_schema=previous_schema,
             new_schema=new_schema,
             migrations=[migration],
             at=Timestamp(),
-        ),
-        recorder=recorder,
-        database=db,
-        log=logging.getLogger(__name__),
+        )
     )
 
     assert errors == []
