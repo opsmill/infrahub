@@ -525,7 +525,7 @@ def _offered_total() -> float:
     return sum(_offered(priority) for priority in _PRIORITY_LABELS)
 
 
-@pytest.mark.parametrize("path", ["/health", "/metrics"])
+@pytest.mark.parametrize("path", ["/health", "/api/health", "/metrics"])
 async def test_excluded_path_bypasses_admission(path: str) -> None:
     """An excluded path passes through even behind a shed-everything controller and moves no metric.
 
@@ -536,6 +536,10 @@ async def test_excluded_path_bypasses_admission(path: str) -> None:
 
     @app.get("/health")
     async def health() -> dict[str, bool]:
+        return {"ok": True}
+
+    @app.get("/api/health")
+    async def api_health() -> dict[str, bool]:
         return {"ok": True}
 
     @app.get("/metrics")

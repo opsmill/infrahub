@@ -41,6 +41,13 @@ def find_available_prefect_port() -> int:
     raise RuntimeError("Unable to find an available port for the Prefect test server")
 
 
+def closed_local_port() -> int:
+    """Return a port on 127.0.0.1 that nothing listened on when this returned, so a connection to it is refused."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return sock.getsockname()[1]
+
+
 def get_exposed_port(container: DockerContainer, port: int) -> int:
     """Use this method instead of DockerContainer.get_exposed_port as it is decorated with wait_container_is_ready.
 

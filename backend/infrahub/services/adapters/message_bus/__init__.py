@@ -35,6 +35,11 @@ class InfrahubMessageBus(ABC):
     async def shutdown(self) -> None:  # noqa: B027 We want a default empty behavior, so it's ok to have an empty non-abstract method.
         """Shutdown the Message bus."""
 
+    @abstractmethod
+    async def check_health(self) -> None:
+        """Make the broker accept a write, raising when it cannot."""
+        raise NotImplementedError()
+
     @classmethod
     async def new(cls, component_type: ComponentType, settings: BrokerSettings | None = None) -> InfrahubMessageBus:
         raise NotImplementedError()
