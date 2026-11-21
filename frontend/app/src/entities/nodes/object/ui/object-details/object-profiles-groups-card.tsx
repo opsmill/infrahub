@@ -3,7 +3,6 @@ import { ChevronDownIcon, ChevronUpIcon, PenLineIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link } from "react-router";
 
-import { queryClient } from "@/shared/api/rest/client";
 import { Col, Row } from "@/shared/components/container";
 import { Icon } from "@/shared/components/display/icon";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -21,8 +20,7 @@ import type {
 } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { FieldMetadataPopover } from "@/entities/nodes/object/ui/metadata/field-metadata-popover";
-import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-paginated";
-import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
+import { ObjectEditSheet } from "@/entities/nodes/object/ui/object-edit/object-edit-sheet";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { useGetProfiles } from "@/entities/nodes/profiles/ui/queries/get-profiles.query";
 import type { Permission } from "@/entities/permission/domain/model/permission";
@@ -153,23 +151,14 @@ function ProfilesList({ objectData, objectSchema, permission }: ProfilesListProp
         content
       )}
 
-      <Sheet isOpen={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <SlideOverTitle
-          schema={objectSchema}
-          currentObjectLabel={nodeLabel}
-          title={`Edit ${nodeLabel}`}
-          subtitle={objectSchema.description}
-        />
-        <ObjectEdit
-          closeDrawer={() => setIsEditModalOpen(false)}
-          onUpdateComplete={async () => {
-            await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
-            setIsEditModalOpen(false);
-          }}
-          objectId={objectData.id}
-          objectKind={objectSchema.kind!}
-        />
-      </Sheet>
+      <ObjectEditSheet
+        isOpen={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        schema={objectSchema}
+        objectId={objectData.id}
+        objectLabel={nodeLabel}
+        subtitle={objectSchema.description}
+      />
     </>
   );
 }
