@@ -25,8 +25,7 @@ import {
   NUMBER_POOL_KIND,
 } from "@/entities/resource-manager/domain/model/pool";
 import { getPoolKindFromSchema } from "@/entities/resource-manager/domain/rules/get-pool-kind-from-schema";
-import { IpAddressPoolForm } from "@/entities/resource-manager/ui/ip-address-pool-form";
-import { IpPrefixPoolForm } from "@/entities/resource-manager/ui/ip-prefix-pool-form";
+import { IpPoolForm } from "@/entities/resource-manager/ui/ip-pool/form/ip-pool-form";
 import { NumberPoolCreateForm } from "@/entities/resource-manager/ui/number-pool/form/number-pool-create-form";
 import { NumberPoolEditForm } from "@/entities/resource-manager/ui/number-pool/form/number-pool-edit-form";
 import {
@@ -131,12 +130,8 @@ const ObjectForm = ({ kind, currentProfiles, ...props }: ObjectFormProps) => {
     return <ObjectPermissionForm {...props} />;
   }
 
-  if (kind === IP_ADDRESS_POOL) {
-    return <IpAddressPoolForm schema={schema} {...props} />;
-  }
-
-  if (kind === IP_PREFIX_POOL) {
-    return <IpPrefixPoolForm schema={schema} {...props} />;
+  if (kind === IP_ADDRESS_POOL || kind === IP_PREFIX_POOL) {
+    return <IpPoolForm poolKind={kind} schema={schema} {...props} />;
   }
 
   if (kind === NODE_TRIGGER_ATTRIBUTE_MATCH) {
