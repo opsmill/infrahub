@@ -244,11 +244,12 @@ class NodeRelationshipRemoveMigration(RelationshipSchemaMigration):
         changed_kinds = super().get_changed_kinds(
             schema_path=schema_path, previous_schema=previous_schema, new_schema=new_schema
         )
-        if not schema_path.field_name or not previous_schema.has(name=schema_path.schema_kind):
-            return changed_kinds
-        relationship = previous_schema.get(name=schema_path.schema_kind, duplicate=False).get_relationship_or_none(
-            name=schema_path.field_name
+        previous_node_schema = cls.get_previous_node_schema(
+            schema_path=schema_path, previous_schema=previous_schema, new_schema=new_schema
         )
+        if not schema_path.field_name or previous_node_schema is None:
+            return changed_kinds
+        relationship = previous_node_schema.get_relationship_or_none(name=schema_path.field_name)
         if relationship is None:
             return changed_kinds
         return (

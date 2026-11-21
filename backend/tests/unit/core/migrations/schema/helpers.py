@@ -111,3 +111,22 @@ class FailingMigrator(RecordingMigrator):
             self.events.append((START, path.schema_kind, path.field_name))
             raise RuntimeError(f"migration failed: {path.field_name}")
         return await super().migrate(migration=migration, data=data)
+
+
+AUTO_KINDS = frozenset({"TestingAuto", "ProfileTestingAuto", "TemplateTestingAuto"})
+
+
+def renamed_car_schema_branches() -> tuple[SchemaBranch, SchemaBranch]:
+    """Return a previous and a new schema in which `TestingCar` is renamed `TestingAuto`, and both sides of its owner relationship are removed."""
+    car = deepcopy(CAR)
+    car.id = "car-id"
+    person = deepcopy(PERSON)
+    person.id = "person-id"
+    auto = deepcopy(car)
+    auto.name = "Auto"
+    auto.relationships = [relationship for relationship in auto.relationships if relationship.name != "owner"]
+    person_without_cars = deepcopy(person)
+    person_without_cars.relationships = [
+        relationship for relationship in person_without_cars.relationships if relationship.name != "cars"
+    ]
+    return schema_branch(car, person, MANUFACTURER), schema_branch(auto, person_without_cars, MANUFACTURER)

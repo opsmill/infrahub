@@ -14,10 +14,12 @@ from infrahub.core.migrations.shared import GraphMigration, MigrationInput, Sche
 from infrahub.core.path import SchemaPath
 from infrahub.core.query import Query, QueryType
 from tests.unit.core.migrations.schema.helpers import (
+    AUTO_KINDS,
     CAR_KINDS,
     INTERFACE_KINDS,
     full_schema_branch,
     interface_used_by,
+    renamed_car_schema_branches,
     schema_branch,
 )
 
@@ -250,6 +252,13 @@ CHANGED_KINDS_CASES: list[ChangedKindsCase] = [
         previous_schema=schema_branch(interface_used_by(used_by=["TestingPhysicalInterface"])),
         new_schema=schema_branch(interface_used_by(used_by=["TestingVirtualInterface"])),
         expected=INTERFACE_KINDS,
+    ),
+    ChangedKindsCase(
+        name="renamed_kind_includes_its_previous_name",
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestingAuto", field_name="color"),
+        previous_schema=renamed_car_schema_branches()[0],
+        new_schema=renamed_car_schema_branches()[1],
+        expected=AUTO_KINDS | CAR_KINDS,
     ),
 ]
 

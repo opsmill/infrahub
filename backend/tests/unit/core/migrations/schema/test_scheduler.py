@@ -7,7 +7,7 @@ from infrahub.core.migrations import MIGRATION_MAP
 from infrahub.core.migrations.schema.phases import MigrationPhase
 from infrahub.core.migrations.schema.scheduler import MigrationSchedule, MigrationScheduler, PositionedMigration
 from infrahub.core.models import SchemaUpdateMigrationInfo
-from tests.unit.core.migrations.schema.helpers import full_schema_branch, path_migration
+from tests.unit.core.migrations.schema.helpers import full_schema_branch, path_migration, renamed_car_schema_branches
 
 SCHEDULER = MigrationScheduler(migration_classes=MIGRATION_MAP)
 
@@ -213,3 +213,38 @@ def test_groups_of_a_phase(case: GroupingCase) -> None:
         (scheduled.phase, [[member.migration.path.field_name for member in group] for group in scheduled.groups])
         for scheduled in schedule.phases
     ] == [(case.expected_phase, case.expected_groups)]
+
+
+def test_both_sides_of_a_removed_relationship_stay_together_when_the_kind_is_renamed() -> None:
+    previous_schema, new_schema = renamed_car_schema_branches()
+    migrations = [
+        path_migration(
+            migration_name="node.name.update",
+            schema_kind="TestingAuto",
+            path_type=SchemaPathType.NODE,
+            field_name="name",
+            property_name="name",
+        ),
+        path_migration(
+            migration_name="node.relationship.remove",
+            schema_kind="TestingAuto",
+            path_type=SchemaPathType.RELATIONSHIP,
+            field_name="owner",
+        ),
+        path_migration(
+            migration_name="node.relationship.remove",
+            schema_kind="TestingPerson",
+            path_type=SchemaPathType.RELATIONSHIP,
+            field_name="cars",
+        ),
+    ]
+
+    schedule = SCHEDULER.schedule(migrations=migrations, previous_schema=previous_schema, new_schema=new_schema)
+
+    assert [
+        (scheduled.phase, [[member.migration.path.field_name for member in group] for group in scheduled.groups])
+        for scheduled in schedule.phases
+    ] == [
+        (MigrationPhase.KIND_UPDATE, [["name"]]),
+        (MigrationPhase.FIELD_REMOVE, [["owner", "cars"]]),
+    ]

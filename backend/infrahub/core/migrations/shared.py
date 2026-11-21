@@ -17,6 +17,7 @@ from infrahub.core.query import Query  # noqa: TC001
 from infrahub.core.schema import MainSchemaTypes  # noqa: TC001
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import is_retriable_db_error, retry_db_transaction
+from infrahub.exceptions import SchemaNotFoundError
 
 from .query import MigrationBaseQuery  # noqa: TC001
 
@@ -153,9 +154,31 @@ class SchemaMigration(BaseModel):
         cls, schema_path: SchemaPath, previous_schema: SchemaBranch, new_schema: SchemaBranch
     ) -> frozenset[str]:
         """Return the kinds whose vertices the migration of this schema path can change."""
-        return previous_schema.get_dependent_kinds(name=schema_path.schema_kind) | new_schema.get_dependent_kinds(
+        changed_kinds = previous_schema.get_dependent_kinds(
             name=schema_path.schema_kind
+        ) | new_schema.get_dependent_kinds(name=schema_path.schema_kind)
+        previous_node_schema = cls.get_previous_node_schema(
+            schema_path=schema_path, previous_schema=previous_schema, new_schema=new_schema
         )
+        if previous_node_schema is None:
+            return changed_kinds
+        return changed_kinds | previous_schema.get_dependent_kinds(name=previous_node_schema.kind)
+
+    @staticmethod
+    def get_previous_node_schema(
+        schema_path: SchemaPath, previous_schema: SchemaBranch, new_schema: SchemaBranch
+    ) -> MainSchemaTypes | None:
+        """Return the previous schema of the path kind, found by ID so that a kind renamed in the same load is found."""
+        if new_schema.has(name=schema_path.schema_kind):
+            new_node_schema = new_schema.get(name=schema_path.schema_kind, duplicate=False)
+            if new_node_schema.id:
+                try:
+                    return previous_schema.get_by_id(id=new_node_schema.id, duplicate=False)
+                except SchemaNotFoundError:
+                    pass
+        if previous_schema.has(name=schema_path.schema_kind):
+            return previous_schema.get(name=schema_path.schema_kind, duplicate=False)
+        return None
 
     async def execute_pre_queries(
         self,

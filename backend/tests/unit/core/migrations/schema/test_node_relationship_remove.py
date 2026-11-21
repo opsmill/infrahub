@@ -5,7 +5,13 @@ import pytest
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.migrations.schema.node_relationship_remove import NodeRelationshipRemoveMigration
 from infrahub.core.path import SchemaPath
-from tests.unit.core.migrations.schema.helpers import CAR_KINDS, PERSON_KINDS, full_schema_branch
+from tests.unit.core.migrations.schema.helpers import (
+    AUTO_KINDS,
+    CAR_KINDS,
+    PERSON_KINDS,
+    full_schema_branch,
+    renamed_car_schema_branches,
+)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -36,3 +42,15 @@ def test_changed_kinds_of_a_relationship_removal(case: RelationshipChangedKindsC
     )
 
     assert changed_kinds == case.expected
+
+
+def test_changed_kinds_of_a_relationship_removal_on_a_renamed_kind_include_the_peer() -> None:
+    previous_schema, new_schema = renamed_car_schema_branches()
+
+    changed_kinds = NodeRelationshipRemoveMigration.get_changed_kinds(
+        schema_path=SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestingAuto", field_name="owner"),
+        previous_schema=previous_schema,
+        new_schema=new_schema,
+    )
+
+    assert changed_kinds == AUTO_KINDS | CAR_KINDS | PERSON_KINDS
