@@ -203,6 +203,8 @@ def prefect_test_fixture(tmp_path_factory: pytest.TempPathFactory) -> Generator[
                 **os.environ,
                 **server_env,
                 **get_current_settings().to_environment_variables(exclude_unset=True),
+                # The export writes an empty vacuum list as an empty string, which Prefect reads as deleting old events.
+                **PREFECT_SERVER_NONESSENTIAL_SERVICE_ENV_VARS,
             },
             stdout=log_file,
             stderr=subprocess.STDOUT,

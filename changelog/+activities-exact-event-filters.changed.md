@@ -1,0 +1,1 @@
+Changed the `InfrahubEvent` query to match `account__ids`, `parent__ids` and `branches` exactly, and to return an error for a negative `offset`, for a `*` or `?` wildcard in these filters, or for an account or parent ID that starts with `!`.
