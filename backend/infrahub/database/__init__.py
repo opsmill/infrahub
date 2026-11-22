@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Self, TypeVar
 
 from neo4j import (
+    READ_ACCESS,
+    WRITE_ACCESS,
     Address,
     AsyncDriver,
     AsyncGraphDatabase,
@@ -35,6 +37,7 @@ from infrahub.core.constants import (
 from infrahub.core.query import QueryType
 from infrahub.core.schema import GenericSchema, NodeSchema
 from infrahub.exceptions import DatabaseError, QueryTimeoutError
+from infrahub.execution_priority import get_execution_priority
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
@@ -47,7 +50,6 @@ from .metrics import (
     REFERENCE_QUERY_NAME,
     TRANSACTION_RETRIES,
 )
-from .routing import get_execution_priority, session_access_mode
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Callable, Coroutine
@@ -268,11 +270,13 @@ class InfrahubDatabase:
         )
 
     def _open_session(self) -> AsyncSession:
-        access_mode = session_access_mode(
-            read_only=self._session_mode == InfrahubDatabaseSessionMode.READ,
-            priority=get_execution_priority(),
-            writer_read_priorities=self._writer_read_priorities,
-        )
+        access_mode = WRITE_ACCESS
+        # A cluster runs a write-mode session on its leader, which is where writer-read priorities must read.
+        if (
+            self._session_mode == InfrahubDatabaseSessionMode.READ
+            and get_execution_priority() not in self._writer_read_priorities
+        ):
+            access_mode = READ_ACCESS
         return self._driver.session(database=config.SETTINGS.database.database_name, default_access_mode=access_mode)
 
     async def session(self) -> AsyncSession:

@@ -8,7 +8,7 @@ from starlette.status import HTTP_429_TOO_MANY_REQUESTS
 from ..exception_handlers import GRAPHQL_PATH_PREFIX
 from . import metrics
 from .controller import Admitted, Rejected
-from .priority import parse_priority, read_priority_header
+from .priority import parse_request_priority
 
 if TYPE_CHECKING:
     from starlette.types import ASGIApp, Receive, Scope, Send
@@ -104,7 +104,7 @@ class AdmissionMiddleware:
             return
 
         controller = cast("AdmissionController", state.admission_controller)
-        parsed = parse_priority(read_priority_header(scope))
+        parsed = parse_request_priority(scope)
         if not parsed.was_explicit:
             metrics.MISSING_PRIORITY_TOTAL.inc()
 

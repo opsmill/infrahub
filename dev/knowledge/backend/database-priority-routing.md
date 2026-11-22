@@ -26,7 +26,9 @@ session (the default) runs on the writer whatever its priority, because only the
 writes.
 
 - GraphQL query resolvers each open a read session, so the reads of the GraphQL API follow the
-  priority, including the queries that workflows send through the SDK with their `X-Priority`.
+  priority of the request. A workflow's SDK client sends `X-Priority` only when the flow sets its
+  request context from an `InfrahubContext`; otherwise its GraphQL reads serve `medium`, while the
+  sessions the flow opens in the worker serve the priority of its work queue.
 - The session the GraphQL app opens for the request, and the one REST endpoints get from `get_db`,
   are write sessions: authentication, branch lookup and mutations run on the writer.
 - Infrahub passes no bookmarks between sessions. A read session on a follower can miss a write that
@@ -35,7 +37,7 @@ writes.
 
 ## Where the priority comes from
 
-`infrahub/database/routing.py` holds the execution priority in a context variable that a session
+`infrahub/execution_priority.py` holds the execution priority in a context variable that a session
 reads when it opens. Tasks started inside a binding inherit it.
 
 - API: `RequestPriorityMiddleware` binds the class of the `X-Priority` header for each HTTP request.

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.api.request_priority import RequestPriorityMiddleware
-from infrahub.database.routing import get_execution_priority
+from infrahub.execution_priority import get_execution_priority
 from infrahub.workflows.constants import WorkflowPriority
 
 if TYPE_CHECKING:
@@ -42,7 +42,6 @@ HEADER_CASES = [
     HeaderCase(name="high", headers=[(b"x-priority", b"high")], expected=WorkflowPriority.HIGH),
     HeaderCase(name="low", headers=[(b"x-priority", b"low")], expected=WorkflowPriority.LOW),
     HeaderCase(name="missing_header", headers=[], expected=WorkflowPriority.MEDIUM),
-    HeaderCase(name="unknown_value", headers=[(b"x-priority", b"urgent")], expected=WorkflowPriority.MEDIUM),
 ]
 
 

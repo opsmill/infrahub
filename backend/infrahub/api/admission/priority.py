@@ -58,8 +58,12 @@ def parse_priority(header_value: str | None) -> PriorityHeaderParseResult:
     return PriorityHeaderParseResult(priority=priority, was_explicit=True)
 
 
-def read_priority_header(scope: Scope) -> str | None:
-    """Value of the first priority header of an HTTP request, or None when the request has none."""
+def parse_request_priority(scope: Scope) -> PriorityHeaderParseResult:
+    """Classify an HTTP request by the value of its first priority header, which resolves to ``MEDIUM`` when absent."""
+    return parse_priority(_read_priority_header(scope))
+
+
+def _read_priority_header(scope: Scope) -> str | None:
     for name, value in scope["headers"]:
         if name == _PRIORITY_HEADER:
             return value.decode("latin-1")

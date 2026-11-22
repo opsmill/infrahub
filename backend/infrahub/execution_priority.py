@@ -4,8 +4,6 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import TYPE_CHECKING
 
-from neo4j import READ_ACCESS, WRITE_ACCESS
-
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
@@ -27,15 +25,3 @@ def bind_execution_priority(priority: WorkflowPriority | None) -> Iterator[None]
         yield
     finally:
         _execution_priority.reset(token)
-
-
-def session_access_mode(
-    *, read_only: bool, priority: WorkflowPriority | None, writer_read_priorities: frozenset[WorkflowPriority]
-) -> str:
-    """Access mode of a new session, which a cluster uses to run it on the writer or on a reader.
-
-    A read session that serves one of `writer_read_priorities` opens in write mode so that it runs on the writer.
-    """
-    if not read_only or priority in writer_read_priorities:
-        return WRITE_ACCESS
-    return READ_ACCESS

@@ -25,9 +25,9 @@ from infrahub.components import ComponentType
 from infrahub.core import registry
 from infrahub.core.initialization import initialization
 from infrahub.database.graph import validate_graph_version
-from infrahub.database.routing import bind_execution_priority
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import InitializationError
+from infrahub.execution_priority import bind_execution_priority
 from infrahub.git import initialize_repositories_directory
 from infrahub.git.global_config import apply_git_tls_config, set_git_global_setting
 from infrahub.lock import initialize_lock

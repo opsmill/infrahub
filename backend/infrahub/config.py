@@ -90,6 +90,13 @@ def _blank_setting_as_unset(value: Any) -> Any:
 CaBundleSetting = Annotated[str | None, BeforeValidator(_blank_setting_as_unset)]
 
 
+def _split_comma_separated(value: Any) -> Any:
+    """Read a comma-separated string, such as an environment variable, as the list of its non-blank items."""
+    if isinstance(value, str):
+        return [item.strip() for item in value.split(",") if item.strip()]
+    return value
+
+
 class EnterpriseFeatures(StrEnum):
     PROPOSED_CHANGE_REQUIRE_APPROVAL = "proposed_change_require_approval"
     REVOKE_PROPOSED_CHANGE_APPROVALS = "revoke_proposed_change_approvals"
@@ -497,9 +504,7 @@ class DatabaseSettings(BaseSettings):
     @field_validator("writer_read_priorities", mode="before")
     @classmethod
     def _split_writer_read_priorities(cls, value: Any) -> Any:
-        if isinstance(value, str):
-            return [item.strip().lower() for item in value.split(",") if item.strip()]
-        return value
+        return _split_comma_separated(value.lower() if isinstance(value, str) else value)
 
     @model_validator(mode="after")
     def validate_tls_configuration(self) -> Self:
@@ -1765,9 +1770,7 @@ class LogForwardingSettings(BaseSettings):
     @field_validator("destination_names", mode="before")
     @classmethod
     def _split_destination_names(cls, v: Any) -> Any:
-        if isinstance(v, str):
-            return [n.strip() for n in v.split(",") if n.strip()]
-        return v
+        return _split_comma_separated(v)
 
     @model_validator(mode="after")
     def _materialize_destinations_from_env(self) -> Self:
@@ -2066,9 +2069,7 @@ class LDAPSettings(BaseSettings):
     @field_validator("servers", mode="before")
     @classmethod
     def _split_servers(cls, v: Any) -> Any:
-        if isinstance(v, str):
-            return [s.strip() for s in v.split(",") if s.strip()]
-        return v
+        return _split_comma_separated(v)
 
     @field_validator("servers")
     @classmethod

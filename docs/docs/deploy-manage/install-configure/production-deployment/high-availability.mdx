@@ -165,7 +165,7 @@ Infrahub classifies each API request and each workflow run as high, medium, or l
 
 On a Neo4j cluster, Infrahub can run the reads of chosen priorities on the writer of the database, which is the cluster leader, and the reads of the other priorities on followers. For example, high-priority reads can run on the leader, which has every committed write, while background reads stay on the followers.
 
-This applies only to the database sessions that Infrahub opens as read-only, which include the queries of the GraphQL API. GraphQL queries that workflows send through the Python SDK keep the priority of their workflow. Writes, authentication, and the other steps that Infrahub runs in a write session always run on the leader, whatever their priority. The leader therefore also runs every write, so a large import slows down the reads that run on it.
+This applies only to the database sessions that Infrahub opens as read-only, which include the queries of the GraphQL API. Workflows send many of their GraphQL queries through the Python SDK with their own priority, and a query sent without a priority counts as medium. Writes, authentication, and the other steps that Infrahub runs in a write session always run on the leader, whatever their priority. The leader therefore also runs every write, so a large import slows down the reads that run on it.
 
 1. List the priorities whose reads run on the leader, and restart the API servers and task workers:
 

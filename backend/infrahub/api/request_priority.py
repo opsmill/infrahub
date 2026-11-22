@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, assert_never
 
-from infrahub.database.routing import bind_execution_priority
+from infrahub.execution_priority import bind_execution_priority
 from infrahub.workflows.constants import WorkflowPriority
 
-from .admission.priority import parse_priority, read_priority_header
+from .admission.priority import Priority, parse_request_priority
 
 if TYPE_CHECKING:
     from starlette.types import ASGIApp, Receive, Scope, Send
@@ -26,6 +26,17 @@ class RequestPriorityMiddleware:
             await self.app(scope, receive, send)
             return
 
-        parsed = parse_priority(read_priority_header(scope))
-        with bind_execution_priority(WorkflowPriority(parsed.priority.label)):
+        with bind_execution_priority(_workflow_priority(parse_request_priority(scope).priority)):
             await self.app(scope, receive, send)
+
+
+def _workflow_priority(priority: Priority) -> WorkflowPriority:
+    match priority:
+        case Priority.HIGH:
+            return WorkflowPriority.HIGH
+        case Priority.MEDIUM:
+            return WorkflowPriority.MEDIUM
+        case Priority.LOW:
+            return WorkflowPriority.LOW
+        case _:
+            assert_never(priority)
