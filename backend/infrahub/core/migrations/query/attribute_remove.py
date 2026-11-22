@@ -67,7 +67,7 @@ class AttributeRemoveQuery(MigrationSelectionQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        kinds_to_ignore = []
+        kinds_to_ignore: list[str] = []
         profile_kinds_to_update = []
         template_kinds_to_update = []
 
@@ -85,8 +85,7 @@ class AttributeRemoveQuery(MigrationSelectionQuery):
                     )
                     attr_schema = node_schema.get_attribute_or_none(name=self.attribute_name)
                     if attr_schema and not attr_schema.inherited:
-                        kinds_to_ignore.append(inheriting_schema_kind)
-                        kinds_to_ignore.append(f"Template{inheriting_schema_kind}")
+                        kinds_to_ignore.extend((inheriting_schema_kind, f"Template{inheriting_schema_kind}"))
                     else:
                         profile_kinds_to_update.append(f"Profile{inheriting_schema_kind}")
                         template_kinds_to_update.append(f"Template{inheriting_schema_kind}")

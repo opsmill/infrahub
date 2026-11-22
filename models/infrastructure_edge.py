@@ -1136,13 +1136,21 @@ async def create_backbone_connectivity(
     p2p_networks: list[P2pNetwork] = []
 
     if num_sites > 1:
-        p2p_networks.append(P2pNetwork(site1="atl1", site2="ord1", edge=1, circuit="DUFF-1543451"))
-        p2p_networks.append(P2pNetwork(site1="atl1", site2="ord1", edge=2, circuit="DUFF-8263953"))
+        p2p_networks.extend(
+            (
+                P2pNetwork(site1="atl1", site2="ord1", edge=1, circuit="DUFF-1543451"),
+                P2pNetwork(site1="atl1", site2="ord1", edge=2, circuit="DUFF-8263953"),
+            )
+        )
     if num_sites > 2:
-        p2p_networks.append(P2pNetwork(site1="atl1", site2="jfk1", edge=1, circuit="DUFF-6535773"))
-        p2p_networks.append(P2pNetwork(site1="atl1", site2="jfk1", edge=2, circuit="DUFF-7324064"))
-        p2p_networks.append(P2pNetwork(site1="jfk1", site2="ord1", edge=1, circuit="DUFF-5826854"))
-        p2p_networks.append(P2pNetwork(site1="jfk1", site2="ord1", edge=2, circuit="DUFF-4867430"))
+        p2p_networks.extend(
+            (
+                P2pNetwork(site1="atl1", site2="jfk1", edge=1, circuit="DUFF-6535773"),
+                P2pNetwork(site1="atl1", site2="jfk1", edge=2, circuit="DUFF-7324064"),
+                P2pNetwork(site1="jfk1", site2="ord1", edge=1, circuit="DUFF-5826854"),
+                P2pNetwork(site1="jfk1", site2="ord1", edge=2, circuit="DUFF-4867430"),
+            )
+        )
 
     for network in p2p_networks:
         network.pool = await client.allocate_next_ip_prefix(

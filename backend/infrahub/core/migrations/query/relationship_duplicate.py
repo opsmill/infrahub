@@ -49,11 +49,19 @@ class RelationshipDuplicateQuery(Query):
             f'WHERE type({rel_name}) = "{rel_type}"',
         ]
         if direction == GraphRelDirection.OUTBOUND:
-            subquery.append(f"CREATE (new_rel)-[:{rel_type} $rel_props_new ]->(peer_node)")
-            subquery.append(f"CREATE (active_rel)-[:{rel_type} $rel_props_prev ]->(peer_node)")
+            subquery.extend(
+                (
+                    f"CREATE (new_rel)-[:{rel_type} $rel_props_new ]->(peer_node)",
+                    f"CREATE (active_rel)-[:{rel_type} $rel_props_prev ]->(peer_node)",
+                )
+            )
         elif direction == GraphRelDirection.INBOUND:
-            subquery.append(f"CREATE (new_rel)<-[:{rel_type} $rel_props_new ]-(peer_node)")
-            subquery.append(f"CREATE (active_rel)<-[:{rel_type} $rel_props_prev ]-(peer_node)")
+            subquery.extend(
+                (
+                    f"CREATE (new_rel)<-[:{rel_type} $rel_props_new ]-(peer_node)",
+                    f"CREATE (active_rel)<-[:{rel_type} $rel_props_prev ]-(peer_node)",
+                )
+            )
         subquery.append("RETURN peer_node as p2")
         return "\n".join(subquery)
 
