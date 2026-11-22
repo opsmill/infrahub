@@ -9,8 +9,6 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Self, TypeVar
 
 from neo4j import (
-    READ_ACCESS,
-    WRITE_ACCESS,
     Address,
     AsyncDriver,
     AsyncGraphDatabase,
@@ -49,7 +47,7 @@ from .metrics import (
     REFERENCE_QUERY_NAME,
     TRANSACTION_RETRIES,
 )
-from .routing import PriorityReadRouting, SessionRoute, get_execution_priority, select_session_route
+from .routing import get_execution_priority, session_access_mode
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Callable, Coroutine
@@ -58,7 +56,6 @@ if TYPE_CHECKING:
     # neo4j only exports the concrete trust stores, not the base class the driver accepts.
     from neo4j._conf import TrustStore
 
-    from infrahub.config import DatabaseSettings
     from infrahub.core.branch import Branch
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
@@ -176,11 +173,11 @@ class InfrahubDatabase:
         session_mode: InfrahubDatabaseSessionMode = InfrahubDatabaseSessionMode.WRITE,
         transaction: AsyncTransaction | None = None,
         queries_names_to_config: dict[str, QueryConfig] | None = None,
-        read_routing: PriorityReadRouting | None = None,
+        writer_read_priorities: frozenset[WorkflowPriority] = frozenset(),
     ) -> None:
         self._mode: InfrahubDatabaseMode = mode
         self._driver: AsyncDriver = driver
-        self._read_routing = read_routing
+        self._writer_read_priorities = writer_read_priorities
         self._session: AsyncSession | None = session
         self._session_mode: InfrahubDatabaseSessionMode = session_mode
         self._is_session_local: bool = False
@@ -250,7 +247,7 @@ class InfrahubDatabase:
             driver=self._driver,
             session_mode=session_mode,
             queries_names_to_config=self.queries_names_to_config,
-            read_routing=self._read_routing,
+            writer_read_priorities=self._writer_read_priorities,
             **context,
         )
 
@@ -266,20 +263,17 @@ class InfrahubDatabase:
             session=self._session,
             session_mode=self._session_mode,
             queries_names_to_config=self.queries_names_to_config,
-            read_routing=self._read_routing,
+            writer_read_priorities=self._writer_read_priorities,
             **context,
         )
 
     def _open_session(self) -> AsyncSession:
-        route = select_session_route(
-            default_driver=self._driver,
+        access_mode = session_access_mode(
             read_only=self._session_mode == InfrahubDatabaseSessionMode.READ,
-            read_routing=self._read_routing,
             priority=get_execution_priority(),
+            writer_read_priorities=self._writer_read_priorities,
         )
-        return route.driver.session(
-            database=config.SETTINGS.database.database_name, default_access_mode=route.access_mode
-        )
+        return self._driver.session(database=config.SETTINGS.database.database_name, default_access_mode=access_mode)
 
     async def session(self) -> AsyncSession:
         if self._session:
@@ -383,8 +377,6 @@ class InfrahubDatabase:
             log.exception("Failed to release a context held until the end of the transaction")
 
     async def close(self) -> None:
-        if self._read_routing is not None:
-            await self._read_routing.close()
         await self._driver.close()
 
     async def execute_query(
@@ -610,36 +602,35 @@ def build_address_resolver(members: list[str], default_port: int) -> Callable[[A
     return resolver
 
 
-def build_driver(settings: DatabaseSettings, uri: str) -> AsyncDriver:
-    """Create a driver for `uri` with the credentials, TLS and pool configuration of `settings`, without connecting."""
+async def get_db(retry: int = 0) -> AsyncDriver:
     trusted_certificates: TrustStore = TrustSystemCAs()
-    if settings.tls_insecure:
+    if config.SETTINGS.database.tls_insecure:
         trusted_certificates = TrustAll()
-    elif settings.tls_ca_file:
-        trusted_certificates = TrustCustomCAs(settings.tls_ca_file)
+    elif config.SETTINGS.database.tls_ca_file:
+        trusted_certificates = TrustCustomCAs(config.SETTINGS.database.tls_ca_file)
 
     address_resolver = None
-    members = settings.address_members
+    members = config.SETTINGS.database.address_members
     if len(members) > 1:
-        if settings.protocol == "bolt":
+        if config.SETTINGS.database.protocol == "bolt":
             log.warning(
                 "Multiple database members are configured with the 'bolt' protocol: "
                 "the driver will pin all traffic to the first reachable member, without "
                 "routing awareness. The 'neo4j' protocol is recommended for clusters.",
                 members=members,
             )
-        address_resolver = build_address_resolver(members=members, default_port=settings.port)
+        address_resolver = build_address_resolver(members=members, default_port=config.SETTINGS.database.port)
 
     pool_connection_kwargs: dict[str, int] = {}
-    if settings.max_connection_lifetime is not None:
-        pool_connection_kwargs["max_connection_lifetime"] = settings.max_connection_lifetime
-    if settings.liveness_check_timeout is not None:
-        pool_connection_kwargs["liveness_check_timeout"] = settings.liveness_check_timeout
+    if config.SETTINGS.database.max_connection_lifetime is not None:
+        pool_connection_kwargs["max_connection_lifetime"] = config.SETTINGS.database.max_connection_lifetime
+    if config.SETTINGS.database.liveness_check_timeout is not None:
+        pool_connection_kwargs["liveness_check_timeout"] = config.SETTINGS.database.liveness_check_timeout
 
     driver = AsyncGraphDatabase.driver(
-        uri,
-        auth=(settings.username, settings.password),
-        encrypted=settings.tls_enabled,
+        config.SETTINGS.database.database_uri,
+        auth=(config.SETTINGS.database.username, config.SETTINGS.database.password),
+        encrypted=config.SETTINGS.database.tls_enabled,
         trusted_certificates=trusted_certificates,
         resolver=address_resolver,
         notifications_disabled_classifications=[
@@ -648,47 +639,14 @@ def build_driver(settings: DatabaseSettings, uri: str) -> AsyncDriver:
             NotificationDisabledClassification.SCHEMA,
         ],
         notifications_min_severity=NotificationMinimumSeverity.WARNING,
-        max_connection_pool_size=settings.max_connection_pool_size,
+        max_connection_pool_size=config.SETTINGS.database.max_connection_pool_size,
         **pool_connection_kwargs,
     )
     instrument_connection_pool(
         driver=driver,
-        pool_size=settings.max_connection_pool_size,
+        pool_size=config.SETTINGS.database.max_connection_pool_size,
         record_wait=CONNECTION_WAIT_METRICS.observe,
     )
-    return driver
-
-
-def build_priority_read_routing(settings: DatabaseSettings, default_driver: AsyncDriver) -> PriorityReadRouting | None:
-    """Routes of the read sessions of each priority with a policy or a writer read, or None when no priority has one.
-
-    A priority whose policy is the policy of `default_driver` reuses that driver, and priorities that share a policy
-    share one driver, so each distinct policy opens one connection pool.
-    """
-    priority_policies = settings.priority_policies
-    if not priority_policies and not settings.writer_read_priorities:
-        return None
-
-    policy_drivers: dict[str, AsyncDriver] = {}
-    routes: dict[WorkflowPriority, SessionRoute] = {}
-    for priority, policy in priority_policies.items():
-        if policy == settings.policy:
-            driver = default_driver
-        elif policy in policy_drivers:
-            driver = policy_drivers[policy]
-        else:
-            driver = policy_drivers[policy] = build_driver(
-                settings=settings, uri=settings.uri_for_policy(policy=policy)
-            )
-        routes[priority] = SessionRoute(driver=driver, access_mode=READ_ACCESS)
-    for priority in settings.writer_read_priorities:
-        routes[priority] = SessionRoute(driver=default_driver, access_mode=WRITE_ACCESS)
-
-    return PriorityReadRouting(routes=routes, owned_drivers=list(policy_drivers.values()))
-
-
-async def get_db(retry: int = 0) -> AsyncDriver:
-    driver = build_driver(settings=config.SETTINGS.database, uri=config.SETTINGS.database.database_uri)
 
     if config.SETTINGS.database.database_name not in validated_database:
         await validate_database(

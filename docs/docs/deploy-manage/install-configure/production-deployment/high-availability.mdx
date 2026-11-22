@@ -159,58 +159,50 @@ INFRAHUB_DB_ADDRESS=neo4j-core-1,neo4j-core-2,neo4j-core-3
 
 In both cases the driver tries the members in turn until one answers, so the initial connection succeeds even when some members are down.
 
-### Route read queries by request priority
+### Run the reads of a priority on the cluster leader
 
-Infrahub classifies each API request and each workflow run as high, medium, or low priority. The web interface sends most of its requests at high priority, and workflows such as Generators and artifact generation run at medium priority by default. On a Neo4j cluster, you can run the read queries of each priority on a separate set of cluster servers, for example to keep background reads off the servers that answer the web interface.
+Infrahub classifies each API request and each workflow run as high, medium, or low priority. The web interface sends most of its requests at high priority, and workflows such as Generators and artifact generation run at medium priority by default. API requests that send no priority are medium.
 
-Infrahub routes only the database sessions that it opens as read-only, which include the queries of the GraphQL API. GraphQL queries that workflows send through the Python SDK keep the priority of their workflow. Writes, authentication, and the other steps that Infrahub runs in a write session always run on the writer of the database, which is the cluster leader, whatever their priority.
+On a Neo4j cluster, Infrahub can run the reads of chosen priorities on the writer of the database, which is the cluster leader, and the reads of the other priorities on followers. For example, high-priority reads can run on the leader, which has every committed write, while background reads stay on the followers.
 
-1. Assign tags to the cluster servers in the `neo4j.conf` file of each server. For example, tag the servers that answer interactive traffic `interactive` and the others `batch`. To change the tags of a running server, use the `ALTER SERVER` command.
+This applies only to the database sessions that Infrahub opens as read-only, which include the queries of the GraphQL API. GraphQL queries that workflows send through the Python SDK keep the priority of their workflow. Writes, authentication, and the other steps that Infrahub runs in a write session always run on the leader, whatever their priority. The leader therefore also runs every write, so a large import slows down the reads that run on it.
+
+1. List the priorities whose reads run on the leader, and restart the API servers and task workers:
+
+   ```bash
+   INFRAHUB_DB_PROTOCOL=neo4j
+   INFRAHUB_DB_WRITER_READ_PRIORITIES=high
+   ```
+
+   The reads of the other priorities run on the servers that Neo4j lists as readers. By default, Neo4j lists the leader as a reader only when no other server is available (`dbms.routing.reads_on_writers_enabled=false`).
+
+2. Optional: to run the reads of the other priorities only on some of the followers, tag those servers in their `neo4j.conf` file. To change the tags of a running server, use the `ALTER SERVER` command.
 
    ```ini
    initial.server.tags=batch
    ```
 
-2. Define one load balancing policy for each set of servers in the `neo4j.conf` file of every primary server. Use the same definitions on all servers. The following example sends reads of the `infrahub_batch` policy only to followers tagged `batch`, and reads of the `infrahub_interactive` policy to followers tagged `interactive`, or to any follower when none of those is available:
+   Then define a load balancing policy in the `neo4j.conf` file of every primary server, with the same definition on all servers:
 
    ```ini
-   dbms.routing.load_balancing.config.server_policies.infrahub_interactive=tags(interactive)->roles(follower);roles(follower);
    dbms.routing.load_balancing.config.server_policies.infrahub_batch=tags(batch)->roles(follower);halt();
    ```
 
-   Neo4j applies the rules of a policy in order and uses the first rule that returns at least one server. `halt()` stops the evaluation, so reads of that policy fail instead of using other servers when no `batch` follower is available. The `roles()` filter requires Neo4j 2025.12 or later. See [Load balancing policies](https://neo4j.com/docs/operations-manual/current/clustering/clustering-advanced/multi-data-center-routing/) in the Neo4j documentation for the full syntax.
+   Neo4j applies the rules of a policy in order and uses the first rule that returns at least one server. `halt()` stops the evaluation, so reads fail instead of using other servers when no `batch` follower is available. The `roles()` filter requires Neo4j 2025.12 or later. See [Load balancing policies](https://neo4j.com/docs/operations-manual/current/clustering/clustering-advanced/multi-data-center-routing/) in the Neo4j documentation for the full syntax.
 
-3. Set the policy of each priority in the Infrahub configuration, and restart the API servers and task workers:
+   Select the policy in the Infrahub configuration, and restart the API servers and task workers:
 
    ```bash
-   INFRAHUB_DB_PROTOCOL=neo4j
-   INFRAHUB_DB_POLICY_HIGH=infrahub_interactive
-   INFRAHUB_DB_POLICY_MEDIUM=infrahub_batch
-   INFRAHUB_DB_POLICY_LOW=infrahub_batch
+   INFRAHUB_DB_POLICY=infrahub_batch
    ```
 
-   A priority without a policy uses the policy of `INFRAHUB_DB_POLICY`, or the default policy of the cluster when that is unset. API requests that send no priority use the medium-priority policy. Infrahub stops at startup with the error from Neo4j when the cluster does not define a configured policy.
-
-4. To check which servers a policy selects, run the following procedure on a cluster server. The second argument is the name of the Infrahub database, set by `INFRAHUB_DB_DATABASE` and `neo4j` by default. The `READ` entry of the result lists the servers that the policy allows for reads:
+   To check which servers the policy selects, run the following procedure on a cluster server. The second argument is the name of the Infrahub database, set by `INFRAHUB_DB_DATABASE` and `neo4j` by default. The `READ` entry of the result lists the servers that the policy allows for reads:
 
    ```cypher
    CALL dbms.routing.getRoutingTable({policy: 'infrahub_batch'}, 'neo4j')
    ```
 
-Each policy that is different from `INFRAHUB_DB_POLICY` opens its own pool of connections, of up to `INFRAHUB_DB_MAX_CONNECTION_POOL_SIZE` connections to each server, in each Infrahub process.
-
-#### Run the reads of a priority on the leader
-
-To run the read sessions of a priority on the writer (the cluster leader) instead of on a follower, list the priority in `INFRAHUB_DB_WRITER_READ_PRIORITIES`. A priority in this list cannot also have a policy:
-
-```bash
-INFRAHUB_DB_PROTOCOL=neo4j
-INFRAHUB_DB_WRITER_READ_PRIORITIES=high
-INFRAHUB_DB_POLICY_MEDIUM=infrahub_batch
-INFRAHUB_DB_POLICY_LOW=infrahub_batch
-```
-
-With this configuration, high-priority reads run on the leader, which has every committed write. Medium- and low-priority reads run on the followers that the `infrahub_batch` policy selects. By default, Neo4j does not use the writer for reads while another server is available (`dbms.routing.reads_on_writers_enabled=false`). The `roles(follower)` filter in a policy also excludes the writer. To keep the leader on the servers tagged `interactive`, set `db.cluster.raft.leader_transfer.priority_tag=interactive` on the cluster servers. This setting turns off the automatic leadership balancing of Neo4j.
+3. Optional: to keep the leader on chosen servers, tag them, for example `interactive`, and set `db.cluster.raft.leader_transfer.priority_tag=interactive` on the cluster servers. This setting turns off the automatic leadership balancing of Neo4j.
 
 A follower can return a read before it applies a write that the leader committed a moment earlier, so a read that runs on a follower can miss a change made just before.
 

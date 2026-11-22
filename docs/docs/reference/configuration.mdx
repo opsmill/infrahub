@@ -127,10 +127,7 @@ The HTTP settings control how Infrahub interacts with external HTTP servers. Thi
 | `INFRAHUB_DB_PORT` | None | integer | 7687 |
 | `INFRAHUB_DB_DATABASE` | Name of the database | string | None |
 | `INFRAHUB_DB_POLICY` | Routing policy for database connections | string | None |
-| `INFRAHUB_DB_POLICY_HIGH` | Neo4j routing policy for the read sessions of high-priority API requests and workflows, which selects the cluster servers that run them. Define the policy on the Neo4j servers. When unset, these sessions use the policy setting. Requires the 'neo4j' protocol. | string | None |
-| `INFRAHUB_DB_POLICY_MEDIUM` | Neo4j routing policy for the read sessions of medium-priority API requests and workflows, and of API requests that send no priority. Define the policy on the Neo4j servers. When unset, these sessions use the policy setting. Requires the 'neo4j' protocol. | string | None |
-| `INFRAHUB_DB_POLICY_LOW` | Neo4j routing policy for the read sessions of low-priority API requests and workflows. Define the policy on the Neo4j servers. When unset, these sessions use the policy setting. Requires the 'neo4j' protocol. | string | None |
-| `INFRAHUB_DB_WRITER_READ_PRIORITIES` | Comma-separated list of priorities (high, medium, low) whose read sessions run on the writer of the database, the cluster leader, instead of on a reader. A priority in this list cannot also have a routing policy. Requires the 'neo4j' protocol. | array[string] | [] |
+| `INFRAHUB_DB_WRITER_READ_PRIORITIES` | Comma-separated list of priorities (high, medium, low) whose read sessions run on the writer of the database, the cluster leader, instead of on a reader that the routing policy allows. API requests that send no priority are medium. Requires the 'neo4j' protocol. | array[string] | [] |
 | `INFRAHUB_DB_TLS_ENABLED` | Indicates if TLS is enabled for the connection | boolean | False |
 | `INFRAHUB_DB_TLS_INSECURE` | Indicates if TLS certificates are verified | boolean | False |
 | `INFRAHUB_DB_TLS_CA_FILE` | File path to a CA cert or bundle in PEM format, or the PEM text itself. | string | None |

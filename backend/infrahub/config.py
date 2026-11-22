@@ -32,7 +32,9 @@ from infrahub.instance_identity import InstanceColor, validate_instance_label
 from infrahub.log import get_logger
 from infrahub.redis_connection import pool_size_from_url, validate_redis_url
 from infrahub.tls.bundle import resolve_ca_bundle
-from infrahub.workflows.constants import WorkflowPriority
+from infrahub.workflows.constants import (
+    WorkflowPriority,  # noqa: TC001  (pydantic needs it at runtime for the writer_read_priorities field)
+)
 
 if TYPE_CHECKING:
     from infrahub.git.state.reader import RepositoryGitStateReader
@@ -45,8 +47,6 @@ log = get_logger()
 
 # Neo4j naming rules: 3-63 chars, alphanumeric start/end, dots and dashes allowed within.
 VALID_DATABASE_NAME_REGEX = r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
-# Neo4j accepts only alphanumeric characters and underscores in a load balancing policy name.
-VALID_ROUTING_POLICY_NAME_REGEX = r"^[A-Za-z0-9_]+$"
 THIRTY_DAYS_IN_SECONDS = 3600 * 24 * 30
 
 
@@ -397,39 +397,12 @@ class DatabaseSettings(BaseSettings):
     port: int = 7687
     database: str | None = Field(default=None, pattern=VALID_DATABASE_NAME_REGEX, description="Name of the database")
     policy: str | None = Field(default=None, description="Routing policy for database connections")
-    policy_high: str | None = Field(
-        default=None,
-        pattern=VALID_ROUTING_POLICY_NAME_REGEX,
-        description=(
-            "Neo4j routing policy for the read sessions of high-priority API requests and workflows, which "
-            "selects the cluster servers that run them. Define the policy on the Neo4j servers. When unset, "
-            "these sessions use the policy setting. Requires the 'neo4j' protocol."
-        ),
-    )
-    policy_medium: str | None = Field(
-        default=None,
-        pattern=VALID_ROUTING_POLICY_NAME_REGEX,
-        description=(
-            "Neo4j routing policy for the read sessions of medium-priority API requests and workflows, and of "
-            "API requests that send no priority. Define the policy on the Neo4j servers. When unset, these "
-            "sessions use the policy setting. Requires the 'neo4j' protocol."
-        ),
-    )
-    policy_low: str | None = Field(
-        default=None,
-        pattern=VALID_ROUTING_POLICY_NAME_REGEX,
-        description=(
-            "Neo4j routing policy for the read sessions of low-priority API requests and workflows. Define "
-            "the policy on the Neo4j servers. When unset, these sessions use the policy setting. Requires "
-            "the 'neo4j' protocol."
-        ),
-    )
     writer_read_priorities: Annotated[list[WorkflowPriority], NoDecode] = Field(
         default_factory=list,
         description=(
             "Comma-separated list of priorities (high, medium, low) whose read sessions run on the writer of "
-            "the database, the cluster leader, instead of on a reader. A priority in this list cannot also "
-            "have a routing policy. Requires the 'neo4j' protocol."
+            "the database, the cluster leader, instead of on a reader that the routing policy allows. API "
+            "requests that send no priority are medium. Requires the 'neo4j' protocol."
         ),
     )
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
@@ -535,31 +508,13 @@ class DatabaseSettings(BaseSettings):
         return self
 
     @model_validator(mode="after")
-    def validate_priority_routing(self) -> Self:
-        if not self.priority_policies and not self.writer_read_priorities:
-            return self
-        # A priority policy or a writer read needs the routing table of a cluster, which only the 'neo4j' scheme fetches.
-        if self.db_type != DatabaseType.NEO4J or self.protocol != "neo4j":
+    def validate_writer_read_priorities(self) -> Self:
+        # Only the 'neo4j' scheme fetches the routing table that sends a read session elsewhere than the writer.
+        if self.writer_read_priorities and (self.db_type != DatabaseType.NEO4J or self.protocol != "neo4j"):
             raise ValueError(
-                "The policy_high, policy_medium, policy_low and writer_read_priorities settings "
-                "require the 'neo4j' database type and the 'neo4j' protocol"
-            )
-        conflicting = [priority.value for priority in self.writer_read_priorities if priority in self.priority_policies]
-        if conflicting:
-            raise ValueError(
-                f"Priorities with a routing policy cannot also read from the writer: {', '.join(conflicting)}"
+                "The writer_read_priorities setting requires the 'neo4j' database type and the 'neo4j' protocol"
             )
         return self
-
-    @property
-    def priority_policies(self) -> dict[WorkflowPriority, str]:
-        """Routing policy of each priority that has one of its own."""
-        policies = {
-            WorkflowPriority.HIGH: self.policy_high,
-            WorkflowPriority.MEDIUM: self.policy_medium,
-            WorkflowPriority.LOW: self.policy_low,
-        }
-        return {priority: policy for priority, policy in policies.items() if policy is not None}
 
     @property
     def address_members(self) -> list[str]:
@@ -573,15 +528,11 @@ class DatabaseSettings(BaseSettings):
         When multiple members are configured, only the first one is part of the URI;
         the others are made available to the driver through a custom address resolver.
         """
-        return self.uri_for_policy(policy=self.policy)
-
-    def uri_for_policy(self, policy: str | None) -> str:
-        """Database URI whose routing context selects the given routing policy, or none when it is None."""
         member = self.address_members[0] if self.address_members else self.address
         host, member_port = self._split_member(member)
         base_uri = f"{self.protocol}://{host}:{member_port or self.port}"
-        if policy is not None:
-            return f"{base_uri}?policy={policy}"
+        if self.policy is not None:
+            return f"{base_uri}?policy={self.policy}"
         return base_uri
 
     @staticmethod

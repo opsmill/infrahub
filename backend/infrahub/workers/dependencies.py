@@ -8,7 +8,7 @@ from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.core.registry import registry
-from infrahub.database import InfrahubDatabase, build_priority_read_routing, get_db
+from infrahub.database import InfrahubDatabase, get_db
 from infrahub.ldap_auth.service import LDAPAuthService, LDAPAuthServiceCommunity
 from infrahub.log_forwarding.service import LogForwardingService, LogForwardingServiceCommunity
 from infrahub.serve.processes import processes_per_container
@@ -78,11 +78,10 @@ def get_installation_type(installation_type: str = Depends(build_installation_ty
 
 async def build_database(singleton: bool = True) -> InfrahubDatabase:
     if not singleton or "database" not in _singletons:
-        driver = await get_db(retry=5)
-        read_routing = build_priority_read_routing(settings=config.SETTINGS.database, default_driver=driver)
-        if read_routing is not None:
-            await read_routing.verify_connectivity()
-        db = InfrahubDatabase(driver=driver, read_routing=read_routing)
+        db = InfrahubDatabase(
+            driver=await get_db(retry=5),
+            writer_read_priorities=frozenset(config.SETTINGS.database.writer_read_priorities),
+        )
 
         if singleton:
             _singletons["database"] = db
