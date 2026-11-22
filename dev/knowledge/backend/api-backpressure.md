@@ -27,7 +27,9 @@ iterating it yields HIGH, MEDIUM, LOW, which the slot pool relies on for wake or
 
 The frontend is the first-class emitter of this header — see
 [Frontend request priority](../frontend/request-priority.md). Background flows propagate their
-task priority as the header on their own SDK calls.
+task priority as the header on their own SDK calls. On a Neo4j cluster the same class can also
+choose the servers that run the request's read sessions — see
+[Database Routing by Request Priority](database-priority-routing.md).
 
 ## Components
 

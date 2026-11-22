@@ -1,0 +1,1 @@
+Added settings that run the read-only database sessions of high-, medium- and low-priority API requests and workflows, such as GraphQL queries, on a chosen set of Neo4j cluster servers or on the cluster leader.

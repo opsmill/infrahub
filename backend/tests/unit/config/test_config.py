@@ -27,6 +27,8 @@ from infrahub.config import (
     default_cors_allow_headers,
     load,
 )
+from infrahub.constants.database import DatabaseType
+from infrahub.workflows.constants import WorkflowPriority
 from tests.conftest import TestHelper
 
 
@@ -186,6 +188,57 @@ def test_database_address_ipv6_member() -> None:
 def test_database_uri_with_policy() -> None:
     settings = DatabaseSettings(address="member1,member2", policy="europe")
     assert settings.database_uri == "bolt://member1:7687?policy=europe"
+
+
+def test_database_uri_for_priority_policy() -> None:
+    settings = DatabaseSettings(protocol="neo4j", address="member1:7777,member2", policy="europe")
+    assert settings.uri_for_policy(policy="batch") == "neo4j://member1:7777?policy=batch"
+
+
+def test_database_priority_routing_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("INFRAHUB_DB_PROTOCOL", "neo4j")
+    monkeypatch.setenv("INFRAHUB_DB_POLICY_LOW", "batch")
+    monkeypatch.setenv("INFRAHUB_DB_WRITER_READ_PRIORITIES", " High , medium")
+
+    settings = DatabaseSettings()
+
+    assert settings.priority_policies == {WorkflowPriority.LOW: "batch"}
+    assert settings.writer_read_priorities == [WorkflowPriority.HIGH, WorkflowPriority.MEDIUM]
+
+
+@dataclass
+class PriorityRoutingTransportCase:
+    name: str
+    db_type: DatabaseType
+    protocol: str
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        pytest.param(case, id=case.name)
+        for case in [
+            PriorityRoutingTransportCase(name="bolt_protocol", db_type=DatabaseType.NEO4J, protocol="bolt"),
+            PriorityRoutingTransportCase(name="memgraph", db_type=DatabaseType.MEMGRAPH, protocol="neo4j"),
+        ]
+    ],
+)
+def test_database_priority_routing_requires_neo4j_routing(case: PriorityRoutingTransportCase) -> None:
+    with pytest.raises(
+        ValidationError,
+        match=re.escape(
+            "The policy_high, policy_medium, policy_low and writer_read_priorities settings "
+            "require the 'neo4j' database type and the 'neo4j' protocol"
+        ),
+    ):
+        DatabaseSettings(db_type=case.db_type, protocol=case.protocol, writer_read_priorities="high")
+
+
+def test_database_priority_cannot_have_a_policy_and_read_from_the_writer() -> None:
+    with pytest.raises(
+        ValidationError, match=r"Priorities with a routing policy cannot also read from the writer: low\b"
+    ):
+        DatabaseSettings(protocol="neo4j", policy_low="batch", writer_read_priorities="high,low")
 
 
 def test_database_pool_timeout_defaults() -> None:

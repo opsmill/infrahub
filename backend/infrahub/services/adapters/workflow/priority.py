@@ -2,11 +2,20 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub.workflows.constants import WorkflowPriority
+
 if TYPE_CHECKING:
     from infrahub.context import InfrahubContext
     from infrahub.events.models import EventContext
-    from infrahub.workflows.constants import WorkflowPriority
     from infrahub.workflows.models import WorkflowDefinition
+
+
+def priority_of_work_queue(work_queue_name: str | None) -> WorkflowPriority | None:
+    """Priority whose lane is the work queue `work_queue_name`, or None when it is not a priority lane."""
+    for priority in WorkflowPriority:
+        if priority.queue_name == work_queue_name:
+            return priority
+    return None
 
 
 def resolve_priority(

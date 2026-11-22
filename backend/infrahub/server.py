@@ -28,6 +28,7 @@ from infrahub.api.admission.observers import (
     SustainedLoadMetricsObserver,
 )
 from infrahub.api.exception_handlers import generic_api_exception_handler, log_forwarding_exception_handler
+from infrahub.api.request_priority import RequestPriorityMiddleware
 from infrahub.components import ComponentType
 from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.core.initialization import initialization
@@ -238,6 +239,9 @@ app.add_middleware(
         "/api/schema",
     ),
 )
+
+# Registered before (so inside) the gate, so a shed request does not parse its priority a second time.
+app.add_middleware(RequestPriorityMiddleware)
 
 # The gate: load is shed before any downstream work runs, and only CORS is registered after (so
 # outside) it. Its controller and kill-switch are built during startup and read from app.state per

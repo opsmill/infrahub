@@ -129,6 +129,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/mutations.md` - GraphQL mutation flow, upsert and HFID derivation; read before adding or overriding a mutation
 - `dev/knowledge/backend/permissions.md` - Global/object permission model and checker pipeline; read before touching authorization
 - `dev/knowledge/backend/api-backpressure.md` - Priority-aware load shedding (admission middleware, CoDel, slot pool) and the database-stress signal; read before touching the admission layer or request prioritization
+- `dev/knowledge/backend/database-priority-routing.md` - Which Neo4j cluster servers run the read sessions of each request priority (per-priority policies, writer reads, one driver per policy); read before changing how sessions open, the session mode of a code path, or how a request or flow run gets its priority
 - `dev/knowledge/backend/authentication.md` - Authentication flow, SSO group resolution, auto-create groups; read when touching login, SSO, or LDAP
 - `dev/knowledge/backend/branch-status.md` - Branch status enforcement (`BranchStatusChecker`, middleware allowlists, permission integration); read when touching branch lifecycle or write-protection
 - `dev/knowledge/backend/merge-failure-recovery.md` - Failed-merge detection and range rollback, and the invariants that make a blind range revert correct; read before changing merge locking, write scoping, timestamping, or vertex metadata handling

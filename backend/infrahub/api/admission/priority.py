@@ -2,6 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntEnum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from starlette.types import Scope
+
+_PRIORITY_HEADER = b"x-priority"
 
 
 class Priority(IntEnum):
@@ -50,3 +56,11 @@ def parse_priority(header_value: str | None) -> PriorityHeaderParseResult:
         return PriorityHeaderParseResult(priority=Priority.MEDIUM, was_explicit=False)
 
     return PriorityHeaderParseResult(priority=priority, was_explicit=True)
+
+
+def read_priority_header(scope: Scope) -> str | None:
+    """Value of the first priority header of an HTTP request, or None when the request has none."""
+    for name, value in scope["headers"]:
+        if name == _PRIORITY_HEADER:
+            return value.decode("latin-1")
+    return None
