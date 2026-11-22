@@ -3,12 +3,10 @@ import random
 from ipaddress import IPv4Interface, IPv4Network
 
 from infrahub_sdk import InfrahubClient
+from infrahub_sdk.batch import InfrahubBatch
 from infrahub_sdk.node import InfrahubNode
-from infrahub_sdk.store import NodeStore
-
 from infrahub_sdk.protocols import CoreAccount
-
-# flake8: noqa
+from infrahub_sdk.store import NodeStore
 
 ROLES = ["role11", "role21", "role31"]
 STATUSES = ["reserved", "provisioning", "active", "maintenance", "obsolete"]
@@ -21,13 +19,13 @@ ORGANIZATIONS = (
 )
 
 ACCOUNTS = (
-    # (name, type, password)
+    # Each entry holds the name, type and password
     ("security-builder", "Script", "Password123"),
     ("John Doe", "User", "Password123"),
 )
 
 APPLICATIONS = (
-    # (name, description)
+    # Each entry holds the name and description
     ("Infrahub-client", "Infrahub Client"),
     ("Infrahub-api", "Infrahub Api"),
     ("Infrahub-redis", "Infrahub Redis"),
@@ -38,7 +36,7 @@ APPLICATIONS = (
 )
 
 PROTOCOLS = (
-    # (name, description)
+    # Each entry holds the name and description
     ("TCP", "TCP"),
     ("UDP", "UDP"),
     ("ICMP", "ICMP"),
@@ -81,7 +79,8 @@ FQDNS = (
 )
 
 RULES = (
-    # Index, Name, Action, Description, Source Addresses, Destination Addresses, Source Services, Destination Services, Source Applications, Destination Applications, Status
+    # Index, Name, Action, Description, Source Addresses, Destination Addresses, Source Services,
+    # Destination Services, Source Applications, Destination Applications, Status
     (
         1,
         "dns-office-to-dc",
@@ -133,19 +132,27 @@ store = NodeStore()
 
 
 def prepare_log(node: InfrahubNode, log: logging.Logger) -> None:
-    if node._schema.kind == "InfraIPAddress":
-        log.info(f"{node._schema.kind} Created {node.address.value}")
-    elif node._schema.kind == "InfraPrefix":
-        log.info(f"{node._schema.kind} Created {node.prefix.value}")
+    if node.get_kind() == "InfraIPAddress":
+        log.info(f"{node.get_kind()} Created {node.address.value}")
+    elif node.get_kind() == "InfraPrefix":
+        log.info(f"{node.get_kind()} Created {node.prefix.value}")
     else:
-        log.info(f"{node._schema.kind} Created {node.name.value}")
+        log.info(f"{node.get_kind()} Created {node.name.value}")
 
 
-async def create_infra_ip(client, branch, name, address, statuses, source, batch):
+async def create_infra_ip(
+    client: InfrahubClient,
+    branch: str,
+    name: str,
+    address: str,
+    statuses: list[str],
+    source: str,
+    batch: InfrahubBatch,
+) -> None:
     obj = await client.create(
         branch=branch,
         kind="InfraIPAddress",
-        data={"name": name, "address": IPv4Interface(address), "status": random.choice(statuses), "source": source},
+        data={"name": name, "address": IPv4Interface(address), "status": random.choice(statuses), "source": source},  # noqa: S311
     )
     batch.add(task=obj.save, node=obj)
     store.set(key=name, node=obj)
@@ -157,7 +164,7 @@ async def create_infra_ip(client, branch, name, address, statuses, source, batch
 #   infrahubctl run models/infrastructure_edge.py
 #
 # ---------------------------------------------------------------
-async def run(client: InfrahubClient, log: logging.Logger, branch: str):
+async def run(client: InfrahubClient, log: logging.Logger, branch: str) -> None:  # noqa: C901, PLR0915
     # ------------------------------------------
     # Create User Accounts, Groups & Organizations & Platforms
     # ------------------------------------------
@@ -225,7 +232,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
             data={
                 "name": application[0],
                 "application": application[1],
-                "status": random.choice(STATUSES),
+                "status": random.choice(STATUSES),  # noqa: S311
                 "source": account_security.id,
             },
         )
@@ -299,7 +306,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     for fqdn in FQDNS:
         obj = await client.create(
             kind="SecurityFQDN",
-            data={"name": fqdn[0], "status": random.choice(STATUSES), "source": account_security.id},
+            data={"name": fqdn[0], "status": random.choice(STATUSES), "source": account_security.id},  # noqa: S311
         )
         batch.add(task=obj.save, node=obj)
         store.set(key=fqdn[0], node=obj)
