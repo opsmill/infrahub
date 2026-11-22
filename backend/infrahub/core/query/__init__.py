@@ -699,7 +699,7 @@ class Query:
 
         for key, value in params.items():
             if isinstance(value, int | list):
-                rendered.append(f"{key}: {str(value)}")
+                rendered.append(f"{key}: {value!s}")
             else:
                 rendered.append(f'{key}: "{value}"')
 

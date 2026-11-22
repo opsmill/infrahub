@@ -408,7 +408,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         return self._branch
 
     def __repr__(self) -> str:
-        v = f"{self.get_kind()}(ID: {str(self.id)})"
+        v = f"{self.get_kind()}(ID: {self.id!s})"
         return v if self._existing else f"{v}[NEW]"
 
     @property

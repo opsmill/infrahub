@@ -1200,8 +1200,8 @@ async def create_backbone_connectivity(
         endpoint_batch.add(task=endpoint2.save, node=endpoint2)
 
         # Create IP Address
-        intf_site1_address = f"{str(next(backbone_link_ips))}/31"
-        intf_site2_address = f"{str(next(backbone_link_ips))}/31"
+        intf_site1_address = f"{next(backbone_link_ips)!s}/31"
+        intf_site2_address = f"{next(backbone_link_ips)!s}/31"
         intf_site1_identifier = f"{intf_site1.name.value.lower()}.{intf_site1_obj.device.peer.name.value}"
         intf_site2_identifier = f"{intf_site2.name.value.lower()}.{intf_site2_obj.device.peer.name.value}"
         intf_site1_ip = await client.create(
@@ -1595,7 +1595,7 @@ async def generate_site(
 
                 if intf_role == "peer":
                     # TODO: Refactor that part for the sake of readability
-                    address = f"{str(next(peer_network_hosts[device._idx][intf_idx]))}/31"
+                    address = f"{next(peer_network_hosts[device._idx][intf_idx])!s}/31"
 
                 if intf_role in ["upstream", "peering"]:
                     prefix_identifier = f"{intf_role}: {intf.name.value}.{device_name}"
@@ -1612,8 +1612,8 @@ async def generate_site(
                         branch=branch,
                     )
                     subnet_hosts = subnet.prefix.value.hosts()
-                    address = f"{str(next(subnet_hosts))}/29"
-                    peer_address = f"{str(next(subnet_hosts))}/29"
+                    address = f"{next(subnet_hosts)!s}/29"
+                    peer_address = f"{next(subnet_hosts)!s}/29"
 
             if address:
                 ip = await client.create(
@@ -1934,8 +1934,8 @@ async def branch_scenario_add_upstream(
     )
     subnet = cast("IpamIPPrefix", subnet)
     subnet_hosts = subnet.prefix.value.hosts()
-    address = f"{str(next(subnet_hosts))}/29"
-    peer_address = f"{str(next(subnet_hosts))}/29"
+    address = f"{next(subnet_hosts)!s}/29"
+    peer_address = f"{next(subnet_hosts)!s}/29"
 
     peer_ip = await client.create(
         branch=new_branch_name,
@@ -2055,7 +2055,7 @@ async def branch_scenario_replace_ip_addresses(
         branch=new_branch_name,
         kind=IpamIPAddress,
         interface={"id": peer_intfs_dev1[0].id},
-        address=f"{str(next(new_peer_network_hosts))}/31",
+        address=f"{next(new_peer_network_hosts)!s}/31",
     )
     await peer_ip.save()
     log.info(f" - Replaced {device1_name}-{peer_intfs_dev1[0].name.value} IP to {peer_ip.address.value}")
@@ -2064,7 +2064,7 @@ async def branch_scenario_replace_ip_addresses(
         branch=new_branch_name,
         kind=IpamIPAddress,
         interface={"id": peer_intfs_dev2[0].id},  # , "source": account_pop.id},
-        address={"value": f"{str(next(new_peer_network_hosts))}/31"},  # , "source": account_pop.id},
+        address={"value": f"{next(new_peer_network_hosts)!s}/31"},  # , "source": account_pop.id},
     )
     await ip.save()
     log.info(f" - Replaced {device2_name}-{peer_intfs_dev2[0].name.value} IP to {ip.address.value}")
