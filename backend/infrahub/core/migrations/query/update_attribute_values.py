@@ -44,7 +44,7 @@ class UpdateAttributeValuesQuery(Query):
         branch_filter, branch_filter_params = self.branch.get_query_filter_path(at=self.at)
         self.params.update(branch_filter_params)
 
-        if self.branch.name in [registry.default_branch, GLOBAL_BRANCH_NAME]:
+        if self.branch.name in {registry.default_branch, GLOBAL_BRANCH_NAME}:
             update_value_query = """
 // ------------
 // Find the Nodes and Attributes we need to update

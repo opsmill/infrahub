@@ -31,7 +31,7 @@ class HierarchicalNodesRestrictedWords(SchemaBranchValidator):
         if (
             not is_hierarchical_node
             or node.kind in INTERNAL_SCHEMA_NODE_KINDS
-            or node.namespace in ("Core", "Builtin", "Lineage", "Internal")
+            or node.namespace in {"Core", "Builtin", "Lineage", "Internal"}
         ):
             return
 

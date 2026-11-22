@@ -66,7 +66,7 @@ class RelationshipDuplicateQuery(Query):
                 rel_name=rel_name, rel_type=rel_type, direction=GraphRelDirection.OUTBOUND
             )
             for rel_type, rel_def in GraphRelationshipRelationships.model_fields.items()
-            if rel_def.default.direction in [GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER]
+            if rel_def.default.direction in {GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER}
         ]
         sub_query_out = "\nUNION\n".join(sub_queries_out)
         return sub_query_out, sub_query_out_args
@@ -80,7 +80,7 @@ class RelationshipDuplicateQuery(Query):
                 rel_name=rel_name, rel_type=rel_type, direction=GraphRelDirection.INBOUND
             )
             for rel_type, rel_def in GraphRelationshipRelationships.model_fields.items()
-            if rel_def.default.direction in [GraphRelDirection.INBOUND, GraphRelDirection.EITHER]
+            if rel_def.default.direction in {GraphRelDirection.INBOUND, GraphRelDirection.EITHER}
         ]
         sub_query_in = "\nUNION\n".join(sub_queries_in)
         return sub_query_in, sub_query_in_args

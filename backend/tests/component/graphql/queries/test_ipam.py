@@ -701,7 +701,7 @@ class TestIpamAvailableNodes(TestInfrahubApp):
 
         # Given the used fixture, only 0, 1 or 2 available ranges can be in the result
         if limit:
-            assert len(response.data["BuiltinIPAddress"]["edges"]) - limit in [0, 1, 2]
+            assert len(response.data["BuiltinIPAddress"]["edges"]) - limit in {0, 1, 2}
         else:
             # If we query for all addresses, we'll have 2 available ranges too
             assert len(response.data["BuiltinIPAddress"]["edges"]) == expected_ipaddress_count + 2

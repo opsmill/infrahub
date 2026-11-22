@@ -74,7 +74,7 @@ class NodeInheritanceHandler:
         for relationship in interface.relationships:
             if relationship.name in node.valid_local_names:
                 continue
-            if relationship.name in (PROFILES_RELATIONSHIP_NAME, OBJECT_TEMPLATE_RELATIONSHIP_NAME):
+            if relationship.name in {PROFILES_RELATIONSHIP_NAME, OBJECT_TEMPLATE_RELATIONSHIP_NAME}:
                 continue
 
             new_relationship = relationship.duplicate()

@@ -66,7 +66,7 @@ async def build_subquery_filter(
     query_filter_function: QueryFilterFunction
     if field:
         query_filter_function = field.get_query_filter
-    elif name in ["any", "attribute"]:
+    elif name in {"any", "attribute"}:
         query_filter_function = default_attribute_query_filter
     else:
         raise ValueError("Either a field must be provided or name must be any or attribute")
@@ -317,7 +317,7 @@ def build_subquery_order_metadata(
     node_alias: str = "n",
     subquery_idx: int = 1,
 ) -> tuple[str, dict[str, Any], str]:
-    if metadata_field not in (METADATA_CREATED_AT, METADATA_UPDATED_AT):
+    if metadata_field not in {METADATA_CREATED_AT, METADATA_UPDATED_AT}:
         raise ValueError(f"Unsupported metadata field for ordering: {metadata_field!r}")
 
     prefix = f"order_metadata_{metadata_field}_{subquery_idx}"

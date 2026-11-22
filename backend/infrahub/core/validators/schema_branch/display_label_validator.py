@@ -146,7 +146,7 @@ class DisplayLabelValidator(SchemaBranchValidator):
                 allowed_path_types=SchemaElementPathType.ATTR_WITH_PROP,
                 element_name="display_label - non Jinja2",
             )
-            if schema_path.attribute_schema and node.is_node_schema and node.namespace not in ["Internal", "Schema"]:
+            if schema_path.attribute_schema and node.is_node_schema and node.namespace not in {"Internal", "Schema"}:
                 schema_branch.display_labels.register_attribute_based_display_label(
                     kind=node.kind, attribute_name=schema_path.attribute_schema.name
                 )
@@ -177,7 +177,7 @@ class DisplayLabelValidator(SchemaBranchValidator):
             if schema_path.is_type_attribute and schema_path.active_attribute_schema.name == "display_label":
                 raise ValueError(f"{node.kind}: display_label the '{variable}' variable is a reference to itself")
 
-            if node.is_node_schema and node.namespace not in ["Internal", "Schema"]:
+            if node.is_node_schema and node.namespace not in {"Internal", "Schema"}:
                 schema_branch.display_labels.register_template_schema_path(
                     kind=node.kind, schema_path=schema_path, template=node.display_label
                 )

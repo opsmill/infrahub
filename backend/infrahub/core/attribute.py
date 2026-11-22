@@ -690,7 +690,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         return None
 
     def _filter_sensitive(self, value: str, filter_sensitive: bool) -> str:
-        if filter_sensitive and self.schema.kind in ["HashedPassword", "Password"]:
+        if filter_sensitive and self.schema.kind in {"HashedPassword", "Password"}:
             return "***"
 
         return value

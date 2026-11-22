@@ -146,7 +146,7 @@ async def add_extra_relationship(
             "branch": branch.name,
             "new_rel_uuid": str(uuid.uuid4()),
             "rel_name": rel_name,
-            "branch_level": 1 if branch.name in [registry.default_branch, GLOBAL_BRANCH_NAME] else 2,
+            "branch_level": 1 if branch.name in {registry.default_branch, GLOBAL_BRANCH_NAME} else 2,
         },
     )
 

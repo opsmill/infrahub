@@ -389,7 +389,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             return
 
         for failed in failed_imports:
-            if failed.step in (ImportStep.IMPORT, ImportStep.RECORD):
+            if failed.step in {ImportStep.IMPORT, ImportStep.RECORD}:
                 continue
             # extra= preserves step and reason as discrete LogRecord fields so log shippers
             # and alert rules can filter on them, even though the message already contains them.
