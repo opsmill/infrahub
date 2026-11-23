@@ -36,7 +36,7 @@
   },
   "devDependencies": {
     "@rolldown/plugin-babel": "^0.3.1",
-    "@storybook/react-vite": "^10.6.6",
+    "@storybook/react-vite": "^10.6.7",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
@@ -46,7 +46,7 @@
     "@xyflow/react": "^12.12.1",
     "babel-plugin-react-compiler": "catalog:",
     "globals": "^17.14.0",
-    "storybook": "^10.6.6",
+    "storybook": "^10.6.7",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "^5.1.0",

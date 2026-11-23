@@ -10,7 +10,7 @@
     "biome:fix": "biome check --write ."
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.14",
+    "@biomejs/biome": "2.6.6",
     "ultracite": "7.12.4"
   }
 }
