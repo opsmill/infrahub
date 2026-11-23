@@ -26,9 +26,7 @@ session (the default) runs on the writer whatever its priority, because only the
 writes.
 
 - GraphQL query resolvers each open a read session, so the reads of the GraphQL API follow the
-  priority of the request. A workflow's SDK client sends `X-Priority` only when the flow sets its
-  request context from an `InfrahubContext`; otherwise its GraphQL reads serve `medium`, while the
-  sessions the flow opens in the worker serve the priority of its work queue.
+  priority of the request, including the queries a workflow sends through the SDK (see below).
 - The session the GraphQL app opens for the request, and the one REST endpoints get from `get_db`,
   are write sessions: authentication, branch lookup and mutations run on the writer.
 - Infrahub passes no bookmarks between sessions. A read session on a follower can miss a write that
@@ -45,3 +43,9 @@ reads when it opens. Tasks started inside a binding inherit it.
 - Task workers: the worker binds the priority of the work queue the flow run came from, which is
   the lane it runs in also when only the catalogue default chose it.
 - Startup, the scheduler and the CLI bind none, and their read sessions open with `READ_ACCESS`.
+
+Build an SDK client with `get_client()` inside the request or flow run that uses it.
+`build_client()` sets the client's default priority from the bound priority, so every query the
+client sends carries it as `X-Priority`. A client built outside of a binding sends no priority, and
+the API serves its queries as `medium`. A flow that sets the client's request context from an
+`InfrahubContext` sends the priority of that context instead, which is the same lane.

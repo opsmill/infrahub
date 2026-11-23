@@ -9,6 +9,8 @@ from infrahub.components import ComponentType
 from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase, get_db
+from infrahub.events.models import workflow_priority_to_request_priority
+from infrahub.execution_priority import get_execution_priority
 from infrahub.ldap_auth.service import LDAPAuthService, LDAPAuthServiceCommunity
 from infrahub.log_forwarding.service import LogForwardingService, LogForwardingServiceCommunity
 from infrahub.serve.processes import processes_per_container
@@ -45,7 +47,11 @@ def get_component_type() -> ComponentType:
 
 
 def build_client() -> InfrahubClient:
-    client_config = Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True)
+    client_config = Config(
+        address=config.SETTINGS.main.internal_address,
+        retry_on_failure=True,
+        priority=workflow_priority_to_request_priority(get_execution_priority()),
+    )
     tls_regsistry = get_tls_registry()
     # No force_verify: `http.tls_insecure` outranks the CA bundle for every component, so a bundle that
     # stays configured next to it does not put verification back on.
