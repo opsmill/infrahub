@@ -199,6 +199,12 @@ def test_database_writer_read_priorities_from_environment(monkeypatch: pytest.Mo
     assert settings.writer_read_priorities == [WorkflowPriority.HIGH, WorkflowPriority.MEDIUM]
 
 
+def test_database_writer_read_priorities_from_a_configuration_file() -> None:
+    settings = DatabaseSettings.model_validate({"protocol": "neo4j", "writer_read_priorities": ["High", "low"]})
+
+    assert settings.writer_read_priorities == [WorkflowPriority.HIGH, WorkflowPriority.LOW]
+
+
 @dataclass
 class WriterReadTransportCase:
     name: str

@@ -240,7 +240,7 @@ app.add_middleware(
     ),
 )
 
-# Registered before (so inside) the gate, so a shed request does not parse its priority a second time.
+# Registered before (so inside) the gate, so a request the gate sheds never reaches it.
 app.add_middleware(RequestPriorityMiddleware)
 
 # The gate: load is shed before any downstream work runs, and only CORS is registered after (so

@@ -16,6 +16,10 @@ that serves a priority in `writer_read_priorities` opens with `WRITE_ACCESS`; ev
 session opens with `READ_ACCESS`. Sending different priorities to different readers would need a
 driver, and a connection pool, per policy.
 
+A read session that opens with `WRITE_ACCESS` needs the writer: while the cluster has no leader,
+for example during a leader election, it cannot run, where a `READ_ACCESS` session keeps running on
+a follower.
+
 The setting requires the `neo4j` protocol and database type, because only a routing driver sends a
 read session elsewhere than the writer.
 
@@ -46,6 +50,11 @@ reads when it opens. Tasks started inside a binding inherit it.
 
 Build an SDK client with `get_client()` inside the request or flow run that uses it.
 `build_client()` sets the client's default priority from the bound priority, so every query the
-client sends carries it as `X-Priority`. A client built outside of a binding sends no priority, and
-the API serves its queries as `medium`. A flow that sets the client's request context from an
-`InfrahubContext` sends the priority of that context instead, which is the same lane.
+client sends carries it as `X-Priority`. Outside of a binding, the client keeps the default that
+`INFRAHUB_PRIORITY` sets, or sends no priority and the API serves its queries as `medium`.
+
+A flow that sets the client's request context from its `InfrahubContext` sends the priority of that
+context instead. That is usually the lane of the run, but not for a run that an automation started:
+the automation dispatches it to its deployment's default queue, while its context carries the
+priority of the work that emitted the event. Such a run sends its SDK queries at one priority and
+opens its own database sessions at another.

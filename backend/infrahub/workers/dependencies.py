@@ -47,11 +47,11 @@ def get_component_type() -> ComponentType:
 
 
 def build_client() -> InfrahubClient:
-    client_config = Config(
-        address=config.SETTINGS.main.internal_address,
-        retry_on_failure=True,
-        priority=workflow_priority_to_request_priority(get_execution_priority()),
-    )
+    client_config = Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True)
+    # Only a bound priority replaces the default priority that the environment can set for every client.
+    priority = workflow_priority_to_request_priority(get_execution_priority())
+    if priority is not None:
+        client_config.priority = priority
     tls_regsistry = get_tls_registry()
     # No force_verify: `http.tls_insecure` outranks the CA bundle for every component, so a bundle that
     # stays configured next to it does not put verification back on.

@@ -409,7 +409,8 @@ class DatabaseSettings(BaseSettings):
         description=(
             "Comma-separated list of priorities (high, medium, low) whose read sessions run on the writer of "
             "the database, the cluster leader, instead of on a reader that the routing policy allows. API "
-            "requests that send no priority are medium. Requires the 'neo4j' protocol."
+            "requests that send no priority are medium. While the cluster has no leader, these reads cannot "
+            "run. Requires the 'neo4j' database type and the 'neo4j' protocol."
         ),
     )
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
@@ -504,7 +505,10 @@ class DatabaseSettings(BaseSettings):
     @field_validator("writer_read_priorities", mode="before")
     @classmethod
     def _split_writer_read_priorities(cls, value: Any) -> Any:
-        return _split_comma_separated(value.lower() if isinstance(value, str) else value)
+        items = _split_comma_separated(value)
+        if isinstance(items, list):
+            return [item.lower() if isinstance(item, str) else item for item in items]
+        return items
 
     @model_validator(mode="after")
     def validate_tls_configuration(self) -> Self:
