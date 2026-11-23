@@ -1,0 +1,19 @@
+backend/infrahub/core/query/vertex_metadata.py
+  s_e2cde554cc4958::t_3b1aaebde28afd 20-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d0e57fdfc0179b5cd4e1c00f79b4bf653bd5d80b",
+  "prompts": {},
+  "sessions": {
+    "s_e2cde554cc4958": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10d20eae-af80-40e5-828e-25ac8ce1187e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

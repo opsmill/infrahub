@@ -1,0 +1,41 @@
+dev/specs/ifc-3618-schema-migration-by-node/research.md
+  s_b636cf4e853527::t_e89024257e3f85 120-124
+  s_b636cf4e853527::t_886d612400ba34 56-58
+  s_b636cf4e853527::t_1c6e25283e2f17 30-32
+  s_b636cf4e853527::t_9527220f22b250 88-89
+  s_b636cf4e853527::t_d864d778655265 92
+  s_b636cf4e853527::t_c61bfd26b28452 110-113
+dev/specs/ifc-3618-schema-migration-by-node/spec.md
+  s_b636cf4e853527::t_a26d86269ad355 113
+  s_b636cf4e853527::t_5d738185cf480f 146
+  s_b636cf4e853527::t_6374ccc7d0adcd 155
+dev/specs/ifc-3618-schema-migration-by-node/quickstart.md
+  s_b636cf4e853527::t_275a88b20f9301 32-34
+  s_b636cf4e853527::t_43849b299129e2 19
+dev/specs/ifc-3618-schema-migration-by-node/contracts/migration-node-scope.md
+  s_b636cf4e853527::t_3c204aafa36dd0 61-62,66-67
+  s_b636cf4e853527::t_b2799406b55d61 20,22-23
+dev/specs/ifc-3618-schema-migration-by-node/critiques/critique-20261120-002404.md
+  s_b636cf4e853527::t_87a16fe4ead8e0 1-156
+dev/specs/ifc-3618-schema-migration-by-node/plan.md
+  s_b636cf4e853527::t_05a6384faf6b8d 147
+  s_b636cf4e853527::t_ec60c393de4394 138
+  s_b636cf4e853527::t_5a1bb95f6b1ec2 97
+  s_b636cf4e853527::t_bb6fe24359ae29 142-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c4cfb77585116e1be286cf35d9c6046f51f6e41b",
+  "prompts": {},
+  "sessions": {
+    "s_b636cf4e853527": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e2c2131-1be4-43e0-83d8-56224be168d9",
+        "model": "unknown"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

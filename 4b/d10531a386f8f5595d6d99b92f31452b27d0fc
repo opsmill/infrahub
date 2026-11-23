@@ -1,0 +1,37 @@
+backend/infrahub/core/node/lock_utils.py
+  s_92ce1f25dbe045::t_26f64ff9213e3f 32-36,40,46,49-57
+  s_92ce1f25dbe045::t_31c5976166d7fd 7
+backend/infrahub/core/node/pool_scope_refusal.py
+  s_92ce1f25dbe045::t_7f575d2235add7 1-134
+backend/infrahub/pools/division_reader.py
+  s_92ce1f25dbe045::t_8d150cae3ede0d 100-101,107-108
+dev/knowledge/backend/mutations.md
+  s_92ce1f25dbe045::t_778a0ee1dd45b5 353-365
+  s_92ce1f25dbe045::t_6e59e04eee4877 366-368
+backend/tests/component/core/node/test_create_node_ip_pool_scope.py
+  s_92ce1f25dbe045::t_b08c0e78a14401 209,211
+  s_92ce1f25dbe045::t_2bbb18695df7c1 1-208,210,212-321
+backend/infrahub/pools/scope.py
+  s_92ce1f25dbe045::t_01023dda3d0fba 264
+  s_92ce1f25dbe045::t_ee99ad49bbd657 167
+backend/infrahub/core/node/create.py
+  s_92ce1f25dbe045::t_c5131337560dfb 24,33,582-589,603-604,610,823-824,830
+changelog/+number-pool-scope-filled-by-pool.changed.md
+  s_92ce1f25dbe045::t_63a2b603e406c4 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4bd10531a386f8f5595d6d99b92f31452b27d0fc",
+  "prompts": {},
+  "sessions": {
+    "s_92ce1f25dbe045": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4d35956-d350-4d16-acf4-30ed14df1414",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

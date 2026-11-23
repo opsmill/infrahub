@@ -1,0 +1,19 @@
+dev/knowledge/backend/merge-failure-recovery.md
+  s_e2cde554cc4958::t_3ab03f2f2d05b9 36-44,67-69,91-92,103-105,123-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b549eefe82fefb3deaa232418d747cfb31584fa",
+  "prompts": {},
+  "sessions": {
+    "s_e2cde554cc4958": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10d20eae-af80-40e5-828e-25ac8ce1187e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

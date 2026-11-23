@@ -1,0 +1,27 @@
+backend/infrahub/core/migrations/query/selection.py
+  s_86a183a456d0fe::t_9776f290962f85 3,8-9,17,22-46
+  s_86a183a456d0fe::t_83c6b663431b22 47
+backend/tests/unit/core/migrations/test_shared.py
+  s_86a183a456d0fe::t_5a43f7179688ad 3,10,13-15,46,66,87,216-297
+backend/infrahub/core/migrations/graph/m043_create_hfid_display_label_in_db.py
+  s_86a183a456d0fe::t_6f1eb0a6358221 134
+backend/infrahub/core/migrations/shared.py
+  s_86a183a456d0fe::t_d10002711330bf 3,8,114,150,152-153,155-158,190,210,213
+  s_86a183a456d0fe::t_6f1eb0a6358221 151,154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "92980c827276b7ce0f7871165e755f68acfc3525",
+  "prompts": {},
+  "sessions": {
+    "s_86a183a456d0fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70ca524c-d3c0-480e-bdb3-83ac5c526c97",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

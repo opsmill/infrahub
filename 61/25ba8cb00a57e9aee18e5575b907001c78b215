@@ -1,0 +1,19 @@
+backend/infrahub/core/migrations/query/selection.py
+  s_d23144c6029d36::t_c2452661fd7427 8,22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6125ba8cb00a57e9aee18e5575b907001c78b215",
+  "prompts": {},
+  "sessions": {
+    "s_d23144c6029d36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa1153a6-3ebe-4516-9501-96edca85d9e2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

@@ -1,0 +1,51 @@
+backend/infrahub/core/migrations/schema/node_relationship_remove.py
+  s_e2cde554cc4958::t_705fe27b139a25 10,125,147-148,190,205-207
+  s_e2cde554cc4958::t_f6b1a7aa8e77b1 286
+backend/infrahub/core/query/vertex_metadata.py
+  s_e2cde554cc4958::t_1d9a8d1bf309b3 4-5,7-8,12,16,19
+backend/infrahub/core/migrations/schema/node_remove.py
+  s_e2cde554cc4958::t_92cdf31755e7eb 7,49,127,198,238,263,331-332
+backend/infrahub/core/migrations/query/attribute_remove.py
+  s_e2cde554cc4958::t_4a2a3365245452 10,98,162-163,176-177
+backend/infrahub/core/query/resource_manager.py
+  s_e2cde554cc4958::t_b4597239ce3030 667,1605,1736,1778
+backend/infrahub/core/migrations/query/selection.py
+  s_e2cde554cc4958::t_a009fd9bf9dfd7 3,8-10,23-34
+  s_e2cde554cc4958::t_1481a2c81c822a 35
+backend/infrahub/core/migrations/schema/attribute_kind_update.py
+  s_e2cde554cc4958::t_174ccfa3f7dd8f 6,133-134,188
+  s_e2cde554cc4958::t_ad7194b2dab904 196-200
+backend/infrahub/core/migrations/query/attribute_rename.py
+  s_e2cde554cc4958::t_25a7b95602fa88 10,87,216,225-228
+backend/infrahub/core/migrations/query/attribute_add.py
+  s_e2cde554cc4958::t_8d7cef9a1cb796 9,86,170,176
+backend/tests/unit/core/migrations/query/test_selection.py
+  s_e2cde554cc4958::t_48c6889c97db94 1-59
+backend/infrahub/core/query/node.py
+  s_e2cde554cc4958::t_3d9f1c4209a993 618
+backend/tests/component/core/test_rollback.py
+  s_e2cde554cc4958::t_b11f8b2a0d1ef0 695-698,715,724,726-727,738-742,754-755,760-761,770-772,781,783,798-799,804-805,809,811-812,823-827,847-870,876-878
+  s_e2cde554cc4958::t_15116ff5c13716 32-33,699
+  s_e2cde554cc4958::t_de7f4b1fd392af 714
+  s_e2cde554cc4958::t_c8624d9e92f83a 879
+backend/infrahub/core/migrations/shared.py
+  s_e2cde554cc4958::t_293000b86911e2 113,180,207
+backend/infrahub/core/migrations/query/node_duplicate.py
+  s_e2cde554cc4958::t_8144bc741c519a 11,165,203,258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b6645e5183f5a36c98461f1589c5a85fd5882efa",
+  "prompts": {},
+  "sessions": {
+    "s_e2cde554cc4958": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10d20eae-af80-40e5-828e-25ac8ce1187e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

@@ -1,0 +1,49 @@
+dev/specs/ifc-3614-store-schema-changes/research.md
+  s_82cad8e1a2b45b::t_0a21b0f5f3e7f2 373-376
+backend/infrahub/core/branch/tasks.py
+  s_82cad8e1a2b45b::t_0a21b0f5f3e7f2 413
+backend/infrahub/api/schema.py
+  s_82cad8e1a2b45b::t_0a21b0f5f3e7f2 480
+dev/specs/ifc-3614-store-schema-changes/contracts/internal-interfaces.md
+  s_82cad8e1a2b45b::t_0a21b0f5f3e7f2 477-478,502-503,563
+backend/infrahub/core/migrations/schema/tasks.py
+  s_82cad8e1a2b45b::t_0a21b0f5f3e7f2 3,16,33,38-50,83-84,96-100,102,106-131,134-136,149-150,169-170,182,187-191,201-213,219-225,232-237,244-248
+backend/infrahub/core/schema_change/application_migration_recorder.py
+  s_82cad8e1a2b45b::t_0a21b0f5f3e7f2 1-98
+backend/infrahub/core/merge/orchestrator.py
+  s_82cad8e1a2b45b::t_0a21b0f5f3e7f2 187
+backend/infrahub/core/migrations/schema/models.py
+  s_82cad8e1a2b45b::t_0a21b0f5f3e7f2 3,9,22,24-34,49,51
+backend/tests/component/core/schema_manager/test_schema_rollback.py
+  s_82cad8e1a2b45b::t_0a21b0f5f3e7f2 141,281
+backend/infrahub/core/schema/update_coordinator.py
+  s_82cad8e1a2b45b::t_0a21b0f5f3e7f2 4,99-100,117,122,125,145-158,160-162,164-166,168,183,214,239,257,267
+dev/specs/ifc-3614-store-schema-changes/tasks.md
+  s_82cad8e1a2b45b::t_0a21b0f5f3e7f2 577,586,612
+backend/infrahub/core/schema_change/migration_recorder.py
+  s_82cad8e1a2b45b::t_0a21b0f5f3e7f2 1-43
+backend/tests/component/core/migrations/schema/test_models.py
+  s_82cad8e1a2b45b::t_0a21b0f5f3e7f2 1-2,12-15,41-43,51-55
+backend/tests/unit/core/migrations/schema/test_tasks.py
+  s_82cad8e1a2b45b::t_0a21b0f5f3e7f2 8,24-30,75,79-80,84,88-89,92-115
+backend/infrahub/core/schema_change/factory.py
+  s_82cad8e1a2b45b::t_0a21b0f5f3e7f2 3-5,9,11-14,23-28
+backend/infrahub/cli/db.py
+  s_82cad8e1a2b45b::t_0a21b0f5f3e7f2 1107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "39d7040e99302119cac1db01dfb9b2bdacd9426b",
+  "prompts": {},
+  "sessions": {
+    "s_82cad8e1a2b45b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84871941-8054-4076-b8eb-47a62b4a732b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
