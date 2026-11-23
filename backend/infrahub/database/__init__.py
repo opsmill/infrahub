@@ -269,13 +269,17 @@ class InfrahubDatabase:
             **context,
         )
 
+    def _reads_on_writer(self) -> bool:
+        """Whether this is a read-only session that serves a priority whose reads run on the writer."""
+        return (
+            self._session_mode == InfrahubDatabaseSessionMode.READ
+            and get_execution_priority() in self._writer_read_priorities
+        )
+
     def _open_session(self) -> AsyncSession:
         access_mode = WRITE_ACCESS
         # A cluster runs a write-mode session on its leader, which is where writer-read priorities must read.
-        if (
-            self._session_mode == InfrahubDatabaseSessionMode.READ
-            and get_execution_priority() not in self._writer_read_priorities
-        ):
+        if self._session_mode == InfrahubDatabaseSessionMode.READ and not self._reads_on_writer():
             access_mode = READ_ACCESS
         return self._driver.session(database=config.SETTINGS.database.database_name, default_access_mode=access_mode)
 
@@ -476,8 +480,9 @@ class InfrahubDatabase:
                     raise
                 # Time the query ourselves (submission through row drain). Only READ executions of
                 # the reference query feed the database-stress signal, so a write sharing the name
-                # cannot pollute the floor or the window.
-                if name == REFERENCE_QUERY_NAME and type == QueryType.READ:
+                # cannot pollute the floor or the window, and neither can a read that its priority
+                # moved from a cluster's readers to its leader.
+                if name == REFERENCE_QUERY_NAME and type == QueryType.READ and not self._reads_on_writer():
                     get_reference_query_load_tracker().record(time.monotonic() - execution_start)
                 metadata = response._metadata or {}
                 span.set_attribute("rows", len(results))

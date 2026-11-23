@@ -37,6 +37,19 @@ writes.
   another session committed just before, so keep a read that must see that write in the write
   session, or in a transaction of it.
 
+## Keep reads moved to the writer out of the stress signal
+
+A reference query that runs in a read session moved to the writer does not feed the admission
+layer's [database-stress signal](api-backpressure.md#the-database-stress-signal). Each worker keeps
+one floor and one window, and the writer and the readers carry different loads, so mixing their
+timings would compare a reader's timing with the writer's best one.
+
+- GraphQL loads permissions, and with them the reference query, in a read-only session, so the
+  query follows the request priority: requests of a priority in `writer_read_priorities` add no
+  sample.
+- REST endpoints load permissions in their write session, which runs on the writer for every
+  priority; those samples still feed the signal.
+
 ## Where the priority comes from
 
 `infrahub/execution_priority.py` holds the execution priority in a context variable that a session

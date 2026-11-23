@@ -167,7 +167,9 @@ singleton, fed from the query-execution path in `database/__init__.py`.
 - **Reference query** — the global permission query (`account_global_permissions`), which runs
   once on essentially every authenticated request with no caching, so its timing is an
   always-present proxy for overall database load. Only **read** executions feed the signal, so a
-  write sharing the name cannot pollute it.
+  write sharing the name cannot pollute it, and on a Neo4j cluster a read that its priority moved
+  to the leader does not feed it either (see
+  [Database Routing by Request Priority](database-priority-routing.md#keep-reads-moved-to-the-writer-out-of-the-stress-signal)).
 - **Measurement** — the query's own execution time (submission through draining the result),
   timed in-process. Sub-resolution timings are clamped up to a small floor so a near-zero
   measurement cannot pin the baseline at zero.
