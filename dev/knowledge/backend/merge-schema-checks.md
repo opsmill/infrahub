@@ -27,6 +27,21 @@ does not pass the flag reads the branch view without an error.
 
 The uniqueness and number checks read the default branch's current data in either view.
 
+## Which nodes a check reads
+
+Pass the request's node list to the query of an attribute check, as with the view. A constraint that the data diff
+raises on an attribute lists the nodes where that attribute changed, and the query reads only those nodes; without
+the list it reads every node of the kind, whatever the size of the change.
+
+✅ `query = await query_class.init(..., is_isolated=request.is_isolated, node_uuids=request.node_uuids)`
+
+❌ `query = await query_class.init(..., is_isolated=request.is_isolated)`
+
+`SchemaValidatorQuery.match_nodes` writes the `MATCH` of these nodes. A constraint from a schema change, or on a
+relationship, has no list and checks every node, and when the same constraint comes from both, the merged constraint
+has no list. The unique check of an attribute compares every node, because a changed value can match a node that is
+not in the list.
+
 ## Which constraints run in which view
 
 Merge (`core/merge/constraints.py::MergeConstraintValidator`) and rebase (`core/branch/tasks.py`) split the
