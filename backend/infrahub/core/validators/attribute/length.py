@@ -69,6 +69,7 @@ class AttributeLengthUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 
 
 class AttributeLengthChecker(ConstraintCheckerInterface):
+    reads_listed_nodes = True
     query_classes = [AttributeLengthUpdateValidatorQuery]
 
     def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:

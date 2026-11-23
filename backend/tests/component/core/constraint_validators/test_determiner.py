@@ -87,11 +87,11 @@ def person_name_node_diff(
     person_john_main: Node, default_branch: Branch
 ) -> tuple[NodeDiffFieldSummary, set[SchemaUpdateConstraintInfo]]:
     node_diff = NodeDiffFieldSummary(kind="TestPerson", attribute_node_uuids={"name": {CHANGED_PERSON_UUID}})
-    # the attribute checks are scoped to the node whose name changed
+    # the checks that read a node list get the node whose name changed; the unique check compares every node
     schema_updated_constraint_infos = {
         attribute_constraint("TestPerson", "name", "kind", node_uuids=[CHANGED_PERSON_UUID]),
         attribute_constraint("TestPerson", "name", "optional", node_uuids=[CHANGED_PERSON_UUID]),
-        attribute_constraint("TestPerson", "name", "unique", node_uuids=[CHANGED_PERSON_UUID]),
+        attribute_constraint("TestPerson", "name", "unique"),
     }
     return node_diff, schema_updated_constraint_infos
 
@@ -171,6 +171,31 @@ class TestConstraintDeterminer:
         ]
         assert len(relevant_constraints) == len(constraint_info_set)
         assert set(relevant_constraints) == constraint_info_set
+
+    async def test_attribute_checks_list_the_changed_profiles_and_templates_of_the_kind(
+        self, car_person_schema: SchemaBranch, default_branch: Branch
+    ) -> None:
+        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        determiner = _build_determiner()
+        node_diffs = [
+            NodeDiffFieldSummary(kind="TestPerson", attribute_node_uuids={"name": {CHANGED_PERSON_UUID}}),
+            NodeDiffFieldSummary(kind="ProfileTestPerson", attribute_node_uuids={"name": {"person-profile-1"}}),
+            NodeDiffFieldSummary(kind="TemplateTestPerson", attribute_node_uuids={"name": {"person-template-1"}}),
+        ]
+
+        constraints = await determiner.get_constraints(schema_branch=schema_branch, node_diffs=node_diffs)
+
+        # the kind check of TestPerson also reads its profiles and templates
+        changed_uuids = [CHANGED_PERSON_UUID, "person-profile-1", "person-template-1"]
+        assert {
+            constraint
+            for constraint in constraints
+            if constraint.path.schema_kind == "TestPerson" and constraint.path.path_type == SchemaPathType.ATTRIBUTE
+        } == {
+            attribute_constraint("TestPerson", "name", "kind", node_uuids=changed_uuids),
+            attribute_constraint("TestPerson", "name", "optional", node_uuids=changed_uuids),
+            attribute_constraint("TestPerson", "name", "unique"),
+        }
 
     async def test_many_relationship_update(
         self,
@@ -285,7 +310,7 @@ class TestConstraintDeterminer:
             node_uniqueness_constraint("TestElectricCar", node_uuids=[CHANGED_ELECTRIC_CAR_UUID]),
             attribute_constraint("TestElectricCar", "name", "kind", node_uuids=[CHANGED_ELECTRIC_CAR_UUID]),
             attribute_constraint("TestElectricCar", "name", "optional", node_uuids=[CHANGED_ELECTRIC_CAR_UUID]),
-            attribute_constraint("TestElectricCar", "name", "unique", node_uuids=[CHANGED_ELECTRIC_CAR_UUID]),
+            attribute_constraint("TestElectricCar", "name", "unique"),
         }
         assert set(constraints) == expected
 

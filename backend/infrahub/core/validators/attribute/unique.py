@@ -113,7 +113,7 @@ class AttributeUniquenessChecker(ConstraintCheckerInterface):
             return []
 
         for query_class in self.query_classes:
-            # A changed node can share its value with a node outside request.node_uuids, so every node is compared.
+            # TODO add exception handling
             query = await query_class.init(
                 db=self.db, branch=self.branch, node_schema=request.node_schema, schema_path=request.schema_path
             )

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants import RelationshipKind, SchemaPathType
+from infrahub.core.constants import PROFILE_NAMESPACE, TEMPLATE_NAMESPACE, RelationshipKind, SchemaPathType
 from infrahub.core.constants.schema import UpdateSupport
 from infrahub.core.models import SchemaUpdateConstraintInfo
 from infrahub.core.path import SchemaPath
@@ -203,15 +203,25 @@ class ConstraintValidatorDeterminer:
         for field_name in schema.attribute_names:
             if self.node_diff_index.has_attribute_diff(kind=schema.kind, name=field_name):
                 field = schema.get_attribute(field_name)
-                # a data change can only break an attribute constraint on the nodes whose value changed; when they
-                # are not identified, every node is checked
-                node_uuids = (
-                    sorted(self.node_diff_index.get_uuids_for_attribute(kind=schema.kind, name=field_name)) or None
-                )
                 constraints.extend(
-                    await self._get_constraints_for_one_field(schema=schema, field=field, node_uuids=node_uuids)
+                    await self._get_constraints_for_one_field(
+                        schema=schema,
+                        field=field,
+                        node_uuids=self._get_changed_attribute_node_uuids(schema=schema, attribute_name=field_name),
+                    )
                 )
         return constraints
+
+    def _get_changed_attribute_node_uuids(self, schema: MainSchemaTypes, attribute_name: str) -> list[str] | None:
+        """Return the nodes, profiles and templates of the kind where the attribute changed, or None when none is known.
+
+        A data change can only break an attribute constraint on the nodes where the attribute changed, and the kind check
+        of an attribute also reads the profiles and templates of the kind.
+        """
+        node_uuids: set[str] = set()
+        for kind in (schema.kind, f"{PROFILE_NAMESPACE}{schema.kind}", f"{TEMPLATE_NAMESPACE}{schema.kind}"):
+            node_uuids |= self.node_diff_index.get_uuids_for_attribute(kind=kind, name=attribute_name)
+        return sorted(node_uuids) or None
 
     async def _get_relationship_constraints_for_one_schema(
         self, schema: MainSchemaTypes
@@ -282,7 +292,11 @@ class ConstraintValidatorDeterminer:
             )
 
             constraints.append(
-                SchemaUpdateConstraintInfo(constraint_name=constraint_name, path=schema_path, node_uuids=node_uuids)
+                SchemaUpdateConstraintInfo(
+                    constraint_name=constraint_name,
+                    path=schema_path,
+                    node_uuids=node_uuids if checker is not None and checker.reads_listed_nodes else None,
+                )
             )
         return constraints
 

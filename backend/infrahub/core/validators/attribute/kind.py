@@ -112,6 +112,7 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 
 
 class AttributeKindChecker(ConstraintCheckerInterface):
+    reads_listed_nodes = True
     query_classes = [AttributeKindUpdateValidatorQuery]
 
     def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
