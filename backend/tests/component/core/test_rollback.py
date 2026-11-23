@@ -17,7 +17,7 @@ from infrahub.core.query.rollback import RollbackScope
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.timestamp import Timestamp
-from tests.component.core.migrations.schema.metadata_helpers import branch_edge_fingerprint
+from tests.component.core.migrations.schema.metadata_helpers import EdgeFingerprint, branch_edge_fingerprint
 from tests.helpers.agnostic_edges import (
     EdgeState,
     VertexMetadata,
@@ -719,9 +719,6 @@ async def _add_widget_attribute(
     registry.schema.set_schema_branch(name=branch.name, schema=candidate_schema)
 
 
-BranchEdgeFingerprint = tuple[str, str, str, str, str, str]
-
-
 @dataclass(frozen=True)
 class SeveralTimestampsScenario:
     step1_at: Timestamp
@@ -729,18 +726,18 @@ class SeveralTimestampsScenario:
     step2_at: Timestamp
     widget_a_before: dict[str, str | None]
     widget_b_before: dict[str, str | None]
-    main_before: list[BranchEdgeFingerprint]
+    main_before: list[EdgeFingerprint]
     other_serial_after_write: list[EdgeState]
     main_edges_at_step1: int
     global_edges_at_step1: int
     global_edges_at_step2: int
-    main_after: list[BranchEdgeFingerprint]
-    global_after: list[BranchEdgeFingerprint]
+    main_after: list[EdgeFingerprint]
+    global_after: list[EdgeFingerprint]
     global_edges_at_step1_after: int
     global_edges_at_step2_after: int
     other_serial_after_rollback: list[EdgeState]
-    main_after_second: list[BranchEdgeFingerprint]
-    global_after_second: list[BranchEdgeFingerprint]
+    main_after_second: list[EdgeFingerprint]
+    global_after_second: list[EdgeFingerprint]
     widget_a_after_steps: dict[str, str | None]
     widget_a_after_rollback: dict[str, str | None]
     widget_b_after_rollback: dict[str, str | None]
@@ -749,6 +746,9 @@ class SeveralTimestampsScenario:
     widget_d_serial_before: list[EdgeState]
     widget_d_closed_at_step1: list[EdgeState]
     widget_d_serial_after_rollback: list[EdgeState]
+    widget_e_serial_before: list[EdgeState]
+    widget_e_closed_at_step2: list[EdgeState]
+    widget_e_serial_after_rollback: list[EdgeState]
 
 
 class TestRollbackOfStepsAtSeveralTimestamps:
@@ -764,12 +764,14 @@ class TestRollbackOfStepsAtSeveralTimestamps:
         widget_b = await create_widget(db=db, branch=main, name="widget-b", serial=2)
         other = await create_widget(db=db, branch=main, name="other", serial=3)
         widget_d = await create_widget(db=db, branch=main, name="widget-d", serial=5)
+        widget_e = await create_widget(db=db, branch=main, name="widget-e", serial=7)
         user_branch = await create_branch(branch_name="several-timestamps", db=db)
 
         main_before = await branch_edge_fingerprint(db=db, branch_name=main.name)
         widget_a_before = await _get_node_vertex_metadata(db=db, node_uuid=widget_a.id)
         widget_b_before = await _get_node_vertex_metadata(db=db, node_uuid=widget_b.id)
         widget_d_serial_before = await attribute_global_edges(db=db, node_id=widget_d.id, attribute_name="serial")
+        widget_e_serial_before = await attribute_global_edges(db=db, node_id=widget_e.id, attribute_name="serial")
 
         step1_at = Timestamp()
         await _add_widget_attribute(
@@ -797,6 +799,13 @@ class TestRollbackOfStepsAtSeveralTimestamps:
         other_serial_after_write = await attribute_global_edges(db=db, node_id=other.id, attribute_name="serial")
 
         step2_at = Timestamp()
+        widget_e.serial.value = 8
+        await widget_e.save(db=db, at=step2_at)
+        widget_e_closed_at_step2 = [
+            edge
+            for edge in await attribute_global_edges(db=db, node_id=widget_e.id, attribute_name="serial")
+            if edge.to_time == step2_at.to_string()
+        ]
         await _add_widget_attribute(
             db=db,
             branch=main,
@@ -825,6 +834,9 @@ class TestRollbackOfStepsAtSeveralTimestamps:
         widget_b_after_rollback = await _get_node_vertex_metadata(db=db, node_uuid=widget_b.id)
         widget_d_serial_after_rollback = await attribute_global_edges(
             db=db, node_id=widget_d.id, attribute_name="serial"
+        )
+        widget_e_serial_after_rollback = await attribute_global_edges(
+            db=db, node_id=widget_e.id, attribute_name="serial"
         )
 
         await _roll_back()
@@ -859,6 +871,9 @@ class TestRollbackOfStepsAtSeveralTimestamps:
             widget_d_serial_before=widget_d_serial_before,
             widget_d_closed_at_step1=widget_d_closed_at_step1,
             widget_d_serial_after_rollback=widget_d_serial_after_rollback,
+            widget_e_serial_before=widget_e_serial_before,
+            widget_e_closed_at_step2=widget_e_closed_at_step2,
+            widget_e_serial_after_rollback=widget_e_serial_after_rollback,
         )
 
     def test_the_steps_wrote_to_main_and_the_global_branch(self, scenario: SeveralTimestampsScenario) -> None:
@@ -880,7 +895,7 @@ class TestRollbackOfStepsAtSeveralTimestamps:
     ) -> None:
         assert scenario.other_serial_after_rollback == scenario.other_serial_after_write
 
-    def test_the_second_step_keeps_the_metadata_from_before_the_first(
+    def test_the_second_step_stamps_the_node_and_keeps_the_value_from_before_the_first_step(
         self, scenario: SeveralTimestampsScenario
     ) -> None:
         assert scenario.widget_a_after_steps == {
@@ -907,6 +922,12 @@ class TestRollbackOfStepsAtSeveralTimestamps:
     def test_rollback_reopens_a_global_edge_closed_at_the_first_step(self, scenario: SeveralTimestampsScenario) -> None:
         assert scenario.widget_d_closed_at_step1, "the save closed a global edge at the first step's timestamp"
         assert edge_summary(scenario.widget_d_serial_after_rollback) == edge_summary(scenario.widget_d_serial_before)
+
+    def test_rollback_reopens_a_global_edge_closed_at_the_second_step(
+        self, scenario: SeveralTimestampsScenario
+    ) -> None:
+        assert scenario.widget_e_closed_at_step2, "the save closed a global edge at the second step's timestamp"
+        assert edge_summary(scenario.widget_e_serial_after_rollback) == edge_summary(scenario.widget_e_serial_before)
 
     def test_a_second_rollback_changes_nothing(self, scenario: SeveralTimestampsScenario) -> None:
         assert (scenario.main_after_second, scenario.global_after_second) == (

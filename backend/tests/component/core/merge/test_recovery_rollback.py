@@ -26,6 +26,7 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.services.component import InfrahubComponent
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder
+from tests.component.core.migrations.schema.metadata_helpers import branch_edge_fingerprint
 from tests.helpers.db_validation import count_branch_edges_at, get_node_metadata
 
 from .conftest import FailAtBranchResetRecoverer, build_recovery
@@ -33,39 +34,6 @@ from .conftest import FailAtBranchResetRecoverer, build_recovery
 if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
-
-
-async def _branch_edge_fingerprint(db: InfrahubDatabase, branch_name: str) -> list[tuple]:
-    """Snapshot every edge on a branch, keyed on endpoints and timestamps.
-
-    Two snapshots compare equal only when the graph is byte-for-byte identical for that branch, so
-    an empty diff between a pre-merge and a post-recovery snapshot proves the rollback restored the
-    branch exactly (new edges deleted, closed edges reopened to their original open state).
-
-    This branch-scoped edge fingerprint is used instead of a whole-DB snapshot: a whole-DB snapshot
-    hashes every node property, so the ``Branch`` vertex's ``merge_started_at`` (set at merge start
-    and deliberately left in place after recovery) would make a pre-merge vs post-recovery snapshot
-    differ even when the graph rollback was exact.
-    """
-    result = await db.execute_query(
-        query=(
-            "MATCH (src)-[r {branch: $branch}]->(dst) "
-            "RETURN type(r) AS edge_type, elementId(src) AS src, elementId(dst) AS dst, "
-            "r.from AS edge_from, r.to AS edge_to, r.status AS status"
-        ),
-        params={"branch": branch_name},
-    )
-    return sorted(
-        (
-            row.get("edge_type"),
-            row.get("src"),
-            row.get("dst"),
-            row.get("edge_from"),
-            row.get("edge_to"),
-            row.get("status"),
-        )
-        for row in result
-    )
 
 
 class _MidMergeFailingDiffMerger(DiffMerger):
@@ -181,7 +149,7 @@ class TestRecoveryRollback:
         diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=branch)
         await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
 
-        pre_merge_fingerprint = await _branch_edge_fingerprint(db=db, branch_name=default_branch.name)
+        pre_merge_fingerprint = await branch_edge_fingerprint(db=db, branch_name=default_branch.name)
         alice_metadata_before = await get_node_metadata(db=db, node_uuid=merge_dataset.alice_id)
 
         merge_at = Timestamp()
@@ -217,7 +185,7 @@ class TestRecoveryRollback:
         assert report.merge_started_at == merge_at.to_string()
 
         # Graph diff versus the pre-merge snapshot is empty.
-        assert await _branch_edge_fingerprint(db=db, branch_name=default_branch.name) == pre_merge_fingerprint
+        assert await branch_edge_fingerprint(db=db, branch_name=default_branch.name) == pre_merge_fingerprint
         assert await count_branch_edges_at(db=db, branch_name=default_branch.name, at=merge_at.to_string()) == 0
 
         # Touched-node updated_at/by is restored to its pre-merge value.
@@ -246,7 +214,7 @@ class TestRecoveryRollback:
         # A second run after a completed recovery finds nothing to do and leaves the graph unchanged.
         second = await recovery.recover()
         assert second.outcome == RecoveryOutcome.NOTHING_TO_RECOVER
-        assert await _branch_edge_fingerprint(db=db, branch_name=default_branch.name) == pre_merge_fingerprint
+        assert await branch_edge_fingerprint(db=db, branch_name=default_branch.name) == pre_merge_fingerprint
 
     async def test_interrupted_recovery_is_idempotent(
         self,
@@ -267,7 +235,7 @@ class TestRecoveryRollback:
         # before this cycle's merge.
         await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
 
-        pre_merge_fingerprint = await _branch_edge_fingerprint(db=db, branch_name=default_branch.name)
+        pre_merge_fingerprint = await branch_edge_fingerprint(db=db, branch_name=default_branch.name)
 
         merge_at = Timestamp()
         await diff_merger.merge_graph(at=merge_at)
@@ -293,7 +261,7 @@ class TestRecoveryRollback:
 
         assert first.outcome == RecoveryOutcome.FAILED
         # The rollback already restored the graph, but the branch stays flagged and protected.
-        assert await _branch_edge_fingerprint(db=db, branch_name=default_branch.name) == pre_merge_fingerprint
+        assert await branch_edge_fingerprint(db=db, branch_name=default_branch.name) == pre_merge_fingerprint
         reloaded = await Branch.get_by_name(db=db, name=branch.name)
         assert reloaded.status == BranchStatus.MERGE_FAILED
         assert await blocker.get() is not None
@@ -303,7 +271,7 @@ class TestRecoveryRollback:
         second = await recovery.recover()
 
         assert second.outcome == RecoveryOutcome.RECOVERED
-        assert await _branch_edge_fingerprint(db=db, branch_name=default_branch.name) == pre_merge_fingerprint
+        assert await branch_edge_fingerprint(db=db, branch_name=default_branch.name) == pre_merge_fingerprint
         assert await count_branch_edges_at(db=db, branch_name=default_branch.name, at=merge_at.to_string()) == 0
         assert await NodeManager.get_one(db=db, id=merge_dataset.bob_id) is None
         # Alice's default-branch value is reverted to its pre-merge height, undoing the merged change.
@@ -340,7 +308,7 @@ class TestRecoveryRollback:
         )
         await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
 
-        pre_merge_fingerprint = await _branch_edge_fingerprint(db=db, branch_name=default_branch.name)
+        pre_merge_fingerprint = await branch_edge_fingerprint(db=db, branch_name=default_branch.name)
 
         merge_at = Timestamp()
         with pytest.raises(ValueError, match=r"^mid-merge failure injected$"):
@@ -363,7 +331,7 @@ class TestRecoveryRollback:
         assert report.outcome == RecoveryOutcome.RECOVERED
 
         # The partially merged graph is fully reverted to its pre-merge state.
-        assert await _branch_edge_fingerprint(db=db, branch_name=default_branch.name) == pre_merge_fingerprint
+        assert await branch_edge_fingerprint(db=db, branch_name=default_branch.name) == pre_merge_fingerprint
         assert await count_branch_edges_at(db=db, branch_name=default_branch.name, at=merge_at.to_string()) == 0
         # Bob (added on the branch) never lands on the default branch, and Alice's height is reverted.
         assert await NodeManager.get_one(db=db, id=merge_dataset.bob_id) is None
