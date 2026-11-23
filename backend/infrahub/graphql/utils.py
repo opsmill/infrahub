@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from graphene.types.definitions import GrapheneInterfaceType, GrapheneObjectType
 from graphql import (
@@ -13,23 +13,26 @@ from graphql import (
 from infrahub.exceptions import GraphQLQueryError
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from graphql import GraphQLError
     from graphql.execution import ExecutionResult
+
+
+def format_query_errors(query_name: str, errors: Sequence[GraphQLError]) -> list[dict[str, Any]]:
+    return [
+        {
+            "message": f"GraphQLQuery {query_name}: {error.message}",
+            "path": error.path,
+            "locations": [{"line": location.line, "column": location.column} for location in error.locations or []],
+        }
+        for error in errors
+    ]
 
 
 def extract_data(query_name: str, result: ExecutionResult) -> dict:
     if result.errors:
-        errors = []
-        for error in result.errors:
-            error_locations = error.locations or []
-            errors.append(
-                {
-                    "message": f"GraphQLQuery {query_name}: {error.message}",
-                    "path": error.path,
-                    "locations": [{"line": location.line, "column": location.column} for location in error_locations],
-                }
-            )
-
-        raise GraphQLQueryError(errors=errors)
+        raise GraphQLQueryError(errors=format_query_errors(query_name=query_name, errors=result.errors))
 
     return result.data or {}
 

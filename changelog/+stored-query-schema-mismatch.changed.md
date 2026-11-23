@@ -1,0 +1,1 @@
+When a stored GraphQL query no longer matches the schema of the branch, `/api/query` now answers 422 instead of 502. Clients and artifact renders stop retrying a query that cannot succeed, so a render that depends on it fails within seconds instead of after several minutes of retries.

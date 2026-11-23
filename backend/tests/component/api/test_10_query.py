@@ -9,7 +9,9 @@ from infrahub import config
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
+from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.groups.models import RequestGraphQLQueryGroupUpdate
 from infrahub.workflows.catalogue import GRAPHQL_QUERY_GROUP_UPDATE
@@ -18,7 +20,6 @@ if TYPE_CHECKING:
     from fastapi.testclient import TestClient
 
     from infrahub.core.branch import Branch
-    from infrahub.core.node import Node
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
@@ -249,6 +250,37 @@ async def test_query_endpoint_wrong_query(
         )
 
     assert response.status_code == 404
+
+
+async def test_query_endpoint_query_not_valid_for_schema(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    create_test_admin: Node,
+    default_branch: Branch,
+    car_person_data: dict[str, Node],
+) -> None:
+    query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
+    await query.new(
+        db=db, name="query-unknown-field", query="query { TestPerson { edges { node { nickname { value } } } } }"
+    )
+    await query.save(db=db)
+
+    with client:
+        response = client.get("/api/query/query-unknown-field", headers=admin_headers)
+
+    assert response.status_code == 422
+    assert response.json()["errors"] == [
+        {
+            "message": {
+                "message": "GraphQLQuery query-unknown-field: Cannot query field 'nickname' on type 'TestPerson'. "
+                "Did you mean 'name'?",
+                "path": None,
+                "locations": [{"line": 1, "column": 37}],
+            },
+            "extensions": {"code": 422},
+        }
+    ]
 
 
 async def test_query_endpoint_wrong_branch(

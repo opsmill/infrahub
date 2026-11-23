@@ -131,6 +131,12 @@ class GraphQLQueryError(Error):
         self.errors = errors
 
 
+class GraphQLQueryValidationError(GraphQLQueryError):
+    """Raised when a stored query does not match the GraphQL schema of the branch, so running it again cannot succeed."""
+
+    HTTP_CODE = 422
+
+
 class RepositoryError(Error):
     def __init__(self, identifier: str, message: str | None = None) -> None:
         self.identifier = identifier

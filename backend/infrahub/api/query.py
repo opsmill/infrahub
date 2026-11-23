@@ -11,9 +11,10 @@ from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.protocols import CoreGraphQLQuery
 from infrahub.database import InfrahubDatabase  # noqa: TC001
+from infrahub.exceptions import GraphQLQueryValidationError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.api.dependencies import build_graphql_query_permission_checker
-from infrahub.graphql.execution import cached_parse, execute_graphql_query
+from infrahub.graphql.execution import cached_parse, cached_validate, execute_graphql_query
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.metrics import (
     GRAPHQL_DURATION_METRICS,
@@ -25,7 +26,7 @@ from infrahub.graphql.metrics import (
     GRAPHQL_TOP_LEVEL_QUERIES_METRICS,
 )
 from infrahub.graphql.middleware import raise_on_mutation_for_branch_status
-from infrahub.graphql.utils import extract_data
+from infrahub.graphql.utils import extract_data, format_query_errors
 from infrahub.groups.models import RequestGraphQLQueryGroupUpdate
 from infrahub.log import get_logger
 from infrahub.workflows.catalogue import GRAPHQL_QUERY_GROUP_UPDATE
@@ -70,12 +71,19 @@ async def execute_query(
     )
     schema_branch = db.schema.get_schema_branch(name=branch_params.branch.name)
 
+    document = cached_parse(gql_query.query.value)
+    # A query that no longer matches the branch schema gets a 4xx answer, which clients do not retry.
+    if validation_errors := cached_validate(gql_params.schema, document):
+        raise GraphQLQueryValidationError(
+            errors=format_query_errors(query_name=gql_query.name.value, errors=validation_errors)
+        )
+
     analyzed_query = InfrahubGraphQLQueryAnalyzer(
         query=gql_query.query.value,
         schema=gql_params.schema,
         schema_branch=schema_branch,
         branch=branch_params.branch,
-        document=cached_parse(gql_query.query.value),
+        document=document,
     )
     await permission_checker.check(
         db=db,
