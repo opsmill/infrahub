@@ -360,6 +360,10 @@ the owner edges of the default branch under the new kind.
   owners. It also skips an attribute whose branch wrote another owner and then the owner of the default branch
   again, because the branch has an open edge to that owner. A read on the branch at a time between the two writes
   gives both owners. A read at the current time gives one owner.
+- `m084` skips a repository that a branch replaced, because `m085` hides the repository on that branch. `m085`
+  adds its `deleted` edge at the time of the upgrade, so a read on the branch at a time between the branch write and
+  the upgrade gives both the new owner and the repository. The release before gave the new owner only. A read at
+  the current time, the diff and the merge are not affected.
 - The object conversion writes the owners of the new node at a later time than the node, in the same transaction.
   A read at a time between the two gives the new node without owners.
 - A branch made before the upgrade can read two owners on a branch-agnostic attribute when the release before
