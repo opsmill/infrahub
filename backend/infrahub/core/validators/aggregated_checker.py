@@ -29,7 +29,11 @@ class AggregatedConstraintChecker:
         grouped_data_paths_by_constraint_name: dict[str, list[GroupedDataPaths]] = {}
         for constraint in self.constraints:
             if constraint.supports(request):
-                grouped_data_paths_by_constraint_name[constraint.name] = await constraint.check(request)
+                # a checker that does not read a node list must check every node
+                constraint_request = (
+                    request if constraint.reads_listed_nodes else request.model_copy(update={"node_uuids": None})
+                )
+                grouped_data_paths_by_constraint_name[constraint.name] = await constraint.check(constraint_request)
 
         ids: list[str] = []
         for grouped_path in chain(*grouped_data_paths_by_constraint_name.values()):

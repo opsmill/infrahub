@@ -136,8 +136,8 @@ async def test_get_proposed_change_schema_integrity_constraints(
     # uniqueness, so the uniqueness check is scoped to just the node that changed name. The kind and
     # optional checks of an attribute read the nodes that changed it, while the unique and relationship
     # checks span the population (node_uuids=None)
-    name_changed_person_uuids = ("11111111-1111-1111-1111-111111111111",)
-    height_changed_person_uuids = ("22222222-2222-2222-2222-222222222222",)
+    name_changed = ("11111111-1111-1111-1111-111111111111",)
+    height_changed = ("22222222-2222-2222-2222-222222222222",)
     actual = {
         (
             c.constraint_name,
@@ -150,31 +150,10 @@ async def test_get_proposed_change_schema_integrity_constraints(
         for c in constraints
     }
     assert actual == {
-        ("attribute.kind.update", "TestPerson", "name", "kind", SchemaPathType.ATTRIBUTE, name_changed_person_uuids),
-        (
-            "attribute.kind.update",
-            "TestPerson",
-            "height",
-            "kind",
-            SchemaPathType.ATTRIBUTE,
-            height_changed_person_uuids,
-        ),
-        (
-            "attribute.optional.update",
-            "TestPerson",
-            "name",
-            "optional",
-            SchemaPathType.ATTRIBUTE,
-            name_changed_person_uuids,
-        ),
-        (
-            "attribute.optional.update",
-            "TestPerson",
-            "height",
-            "optional",
-            SchemaPathType.ATTRIBUTE,
-            height_changed_person_uuids,
-        ),
+        ("attribute.kind.update", "TestPerson", "name", "kind", SchemaPathType.ATTRIBUTE, name_changed),
+        ("attribute.kind.update", "TestPerson", "height", "kind", SchemaPathType.ATTRIBUTE, height_changed),
+        ("attribute.optional.update", "TestPerson", "name", "optional", SchemaPathType.ATTRIBUTE, name_changed),
+        ("attribute.optional.update", "TestPerson", "height", "optional", SchemaPathType.ATTRIBUTE, height_changed),
         ("attribute.unique.update", "TestPerson", "name", "unique", SchemaPathType.ATTRIBUTE, None),
         ("attribute.unique.update", "TestPerson", "height", "unique", SchemaPathType.ATTRIBUTE, None),
         ("relationship.optional.update", "TestPerson", "cars", "optional", SchemaPathType.RELATIONSHIP, None),
@@ -187,7 +166,7 @@ async def test_get_proposed_change_schema_integrity_constraints(
             "uniqueness_constraints",
             "uniqueness_constraints",
             SchemaPathType.NODE,
-            name_changed_person_uuids,
+            name_changed,
         ),
     }
 

@@ -536,7 +536,6 @@ async def test_validator_checks_only_the_listed_nodes(
 ) -> None:
     car_schema = registry.schema.get(name="TestCar")
     car_schema.get_attribute(name="name").kind = "IPNetwork"
-    registry.schema.set(name="TestCar", schema=car_schema, branch=default_branch.name)
 
     request = SchemaConstraintValidatorRequest(
         branch=default_branch,

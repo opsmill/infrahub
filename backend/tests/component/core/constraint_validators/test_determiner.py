@@ -12,7 +12,6 @@ from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot, internal_schema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
-from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.core.validators.node_diff_index import NodeDiffIndex
 from infrahub.core.validators.uniqueness.scope import UniquenessConstraintScoper
 
@@ -227,15 +226,8 @@ class TestConstraintDeterminer:
         car_schema.uniqueness_constraints = [["owner", "color__value"]]
         determiner = _build_determiner()
         node_diff, constraint_info_set = person_name_node_diff
-        max_length_param_constraint_info = SchemaUpdateConstraintInfo(
-            constraint_name=ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MAX_LENGTH_UPDATE.value,
-            path=SchemaPath(
-                path_type=SchemaPathType.ATTRIBUTE,
-                schema_kind="TestPerson",
-                field_name="name",
-                property_name="parameters.max_length",
-            ),
-            node_uuids=[CHANGED_PERSON_UUID],
+        max_length_param_constraint_info = attribute_constraint(
+            "TestPerson", "name", "parameters.max_length", node_uuids=[CHANGED_PERSON_UUID]
         )
         constraint_info_set.add(node_uniqueness_constraint("TestPerson", node_uuids=[CHANGED_PERSON_UUID]))
         constraint_info_set.add(max_length_param_constraint_info)

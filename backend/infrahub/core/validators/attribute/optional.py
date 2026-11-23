@@ -42,7 +42,7 @@ class AttributeOptionalUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         WITH full_path, node, attribute_value, value_relationship
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         AND (attribute_value IS NULL OR attribute_value = $null_value)
-        """ % {"branch_filter": branch_filter, "match_nodes": self.match_nodes(labels=self.node_schema.kind)}
+        """ % {"branch_filter": branch_filter, "match_nodes": self.match_nodes()}
 
         self.add_to_query(query)
         self.return_labels = ["node.uuid", "value_relationship"]

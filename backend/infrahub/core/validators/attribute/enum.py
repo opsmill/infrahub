@@ -47,7 +47,7 @@ class AttributeEnumUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         AND attribute_value IS NOT NULL
         AND attribute_value <> $null_value
         AND NOT (attribute_value IN $allowed_values)
-        """ % {"branch_filter": branch_filter, "match_nodes": self.match_nodes(labels=self.node_schema.kind)}
+        """ % {"branch_filter": branch_filter, "match_nodes": self.match_nodes()}
 
         self.add_to_query(query)
         self.return_labels = ["node.uuid", "attribute_value", "value_relationship"]

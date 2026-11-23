@@ -33,13 +33,15 @@ class SchemaValidatorQuery(Query):
         self.node_uuids = node_uuids
         super().__init__(**kwargs)
 
-    def match_nodes(self, labels: str) -> str:
+    def match_nodes(self, labels: str | None = None) -> str:
         """Return the MATCH clause that binds `n` to the nodes to check, and add the parameter it reads.
 
         Args:
-            labels: The label expression the nodes must match, for example `InfraDevice|ProfileInfraDevice`.
+            labels: The label expression the nodes must match, for example `InfraDevice|ProfileInfraDevice`; the kind of
+                the schema when None.
 
         """
+        labels = labels or self.node_schema.kind
         if self.node_uuids is None:
             return f"MATCH (n:{labels})"
         self.params["node_uuids"] = self.node_uuids

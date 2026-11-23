@@ -6,17 +6,12 @@ from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES, BranchStatus
 from infrahub.core.branch.filters import BranchListFilters
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.constants.database import DatabaseEdgeType
-from infrahub.core.graph.index import rel_indexes
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.standard_node import StandardNodeGetListQuery
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
-
-BRANCH_INDEXED_EDGE_TYPES = frozenset(
-    DatabaseEdgeType(index.label) for index in rel_indexes if index.properties == ["branch"]
-)
 
 
 class DeleteBranchAgnosticRelationshipsQuery(Query):
@@ -214,16 +209,11 @@ class RebaseBranchQuery(Query):
         edge_reads = [
             """
     MATCH (s)-[r:%(edge_type)s]->(d)
-    %(index_hint)s
+    USING INDEX SEEK r:%(edge_type)s(branch)
     WHERE r.branch = $branch_name
     RETURN r, s, d
 """
-            % {
-                "edge_type": edge_type.value,
-                "index_hint": f"USING INDEX SEEK r:{edge_type.value}(branch)"
-                if edge_type in BRANCH_INDEXED_EDGE_TYPES
-                else "",
-            }
+            % {"edge_type": edge_type.value}
             for edge_type in DatabaseEdgeType
         ]
 

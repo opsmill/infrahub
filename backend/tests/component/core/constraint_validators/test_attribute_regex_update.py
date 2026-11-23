@@ -191,16 +191,15 @@ async def test_validator(
 async def test_validator_checks_only_the_listed_nodes(
     db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
 ) -> None:
-    people = {}
-    for name in ("ALFRED", "bruce"):
-        person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
-        await person.new(db=db, name=name)
-        await person.save(db=db)
-        people[name] = person
+    alfred = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await alfred.new(db=db, name="ALFRED")
+    await alfred.save(db=db)
+    bruce = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await bruce.new(db=db, name="bruce")
+    await bruce.save(db=db)
 
     person_schema = registry.schema.get(name="TestPerson", branch=default_branch)
     person_schema.get_attribute(name="name").parameters.regex = r"^[A-Z]+$"
-    registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
 
     request = SchemaConstraintValidatorRequest(
         branch=default_branch,
@@ -208,13 +207,13 @@ async def test_validator_checks_only_the_listed_nodes(
         node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
         schema_branch=SchemaBranch(cache={}, name="test"),
-        node_uuids=[people["ALFRED"].id, people["bruce"].id],
+        node_uuids=[alfred.id, bruce.id],
     )
 
     grouped_data_paths = await AttributeRegexChecker(db=db, branch=default_branch).check(request)
 
     # John breaks the pattern too, but he is not listed
-    assert [path.node_id for paths in grouped_data_paths for path in paths.get_all_data_paths()] == [people["bruce"].id]
+    assert [path.node_id for paths in grouped_data_paths for path in paths.get_all_data_paths()] == [bruce.id]
 
 
 @dataclass(frozen=True)

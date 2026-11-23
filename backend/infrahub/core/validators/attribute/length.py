@@ -47,7 +47,7 @@ class AttributeLengthUpdateValidatorQuery(AttributeSchemaValidatorQuery):
             (toInteger($min_length) IS NOT NULL AND size(attribute_value) < toInteger($min_length))
             OR (toInteger($max_length) IS NOT NULL AND size(attribute_value) > toInteger($max_length))
         )
-        """ % {"branch_filter": branch_filter, "match_nodes": self.match_nodes(labels=self.node_schema.kind)}
+        """ % {"branch_filter": branch_filter, "match_nodes": self.match_nodes()}
 
         self.add_to_query(query)
         self.return_labels = ["node.uuid", "value_relationship", "attribute_value"]

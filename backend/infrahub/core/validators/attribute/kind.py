@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import NULL_VALUE, PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
+from infrahub.core.schema.derived_kinds import get_kind_with_derived_kinds
 from infrahub.exceptions import ValidationError
 from infrahub.types import get_attribute_type
 
@@ -57,7 +58,7 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         """ % {
             "branch_filter": branch_filter,
             "match_nodes": self.match_nodes(
-                labels=f"{self.node_schema.kind}|Profile{self.node_schema.kind}|Template{self.node_schema.kind}"
+                labels="|".join(get_kind_with_derived_kinds(node_kind=self.node_schema.kind))
             ),
         }
 

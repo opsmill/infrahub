@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants import PROFILE_NAMESPACE, TEMPLATE_NAMESPACE, RelationshipKind, SchemaPathType
+from infrahub.core.constants import RelationshipKind, SchemaPathType
 from infrahub.core.constants.schema import UpdateSupport
 from infrahub.core.models import SchemaUpdateConstraintInfo
 from infrahub.core.path import SchemaPath
 from infrahub.core.relationship.dependent_resolver import QueryDependentNodeResolver
 from infrahub.core.schema.attribute_parameters import AttributeParameters
+from infrahub.core.schema.derived_kinds import get_kind_with_derived_kinds
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.core.validators.node_diff_index import NodeDiffIndex
@@ -219,7 +220,7 @@ class ConstraintValidatorDeterminer:
         of an attribute also reads the profiles and templates of the kind.
         """
         node_uuids: set[str] = set()
-        for kind in (schema.kind, f"{PROFILE_NAMESPACE}{schema.kind}", f"{TEMPLATE_NAMESPACE}{schema.kind}"):
+        for kind in get_kind_with_derived_kinds(node_kind=schema.kind):
             node_uuids |= self.node_diff_index.get_uuids_for_attribute(kind=kind, name=attribute_name)
         return sorted(node_uuids) or None
 

@@ -260,7 +260,6 @@ async def test_validator_checks_only_the_listed_nodes(
 
     person_schema = registry.schema.get(name="TestPerson", branch=default_branch)
     person_schema.get_attribute(name="name").parameters.max_length = 5
-    registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
 
     request = SchemaConstraintValidatorRequest(
         branch=default_branch,
