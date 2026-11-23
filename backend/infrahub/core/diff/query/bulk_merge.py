@@ -1186,11 +1186,16 @@ CALL (n, holder, child, src, edge_type, prop_from_user_id) {
     SET tgt.to = $at, tgt.to_user_id = prop_from_user_id
 }
 // -------------------------
-// A set of owners that the node no longer holds on target keeps no open edge there, as the properties of a closed link
+// A set of owners that the node no longer holds on target keeps no open edge there, as the properties of a closed link.
+// A set that another Node vertex holds on the source branch, after a kind migration, keeps its owners
 // -------------------------
 CALL (child, src, prop_from_user_id) {
     WITH child, src, prop_from_user_id
     WHERE src.status = "deleted" AND child:OwnerSet
+    AND NOT EXISTS {
+        MATCH ()-[kept:HAS_OWNER_SET|HAS_TARGET_OWNER_SET {branch: $source_branch, status: "active"}]->(child)
+        WHERE kept.to IS NULL
+    }
     MATCH (child)-[set_edge:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE]->()
     WHERE set_edge.branch = $target_branch
     AND set_edge.status = "active"

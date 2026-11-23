@@ -6,6 +6,7 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.migrations.schema.attribute_name_update import AttributeNameUpdateMigration
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
@@ -30,7 +31,9 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
-from tests.helpers.ownership import create_groups, set_owners
+from infrahub.dependencies.registry import get_component_registry
+from tests.component.core.diff.merge._ownership import merge, update_diff
+from tests.helpers.ownership import create_groups, read_owners, set_owners
 
 PREVIOUS_KIND = "TestPerson"
 NEW_KIND = "Test2NewPerson"
@@ -447,3 +450,70 @@ RETURN count(DISTINCT s) AS sets
     )
     assert rows[0]["sets"] == 1
     await verify_graph(db=db, kinds=["ProfileTestingGadget", "ProfileTest2Gadget"])
+
+
+async def _update_diff_and_merge(db: InfrahubDatabase, default_branch: Branch, branch: Branch) -> None:
+    diff_repository = await get_component_registry().get_component(DiffRepository, db=db, branch=default_branch)
+    await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
+    await merge(db=db, branch=branch)
+
+
+async def test_merge_of_a_kind_change_on_a_branch_keeps_the_owners_of_a_relationship_field(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+) -> None:
+    group_ids = await create_groups(db=db)
+    person = await _create_person(db=db)
+    cars_holder = field_holder(
+        schema=registry.schema.get(name=PREVIOUS_KIND, branch=default_branch, duplicate=False), field_name="cars"
+    )
+    assert cars_holder is not None
+    owners = (group_ids["network-emea"],)
+    await set_owners(db=db, branch=default_branch, node_id=person.id, owner_ids=owners, holder=cars_holder)
+    branch = await create_branch(branch_name="branch2", db=db)
+    await _change_kind(db=db, branch=branch)
+
+    await _update_diff_and_merge(db=db, default_branch=default_branch, branch=branch)
+
+    assert await read_owners(db=db, branch=default_branch, node_id=person.id, holder=cars_holder) == owners
+    await verify_graph(db=db)
+
+
+async def test_merge_of_a_kind_change_on_a_branch_keeps_the_owners_that_a_profile_and_a_template_give(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    registry.schema.register_schema(schema=SchemaRoot(nodes=[GADGET.duplicate()]), branch=default_branch.name)
+    group_ids = await create_groups(db=db)
+    profile = await Node.init(db=db, schema="ProfileTestingGadget")
+    await profile.new(db=db, profile_name="gadget-profile")
+    await profile.save(db=db)
+    template = await Node.init(db=db, schema="TemplateTestingGadget")
+    await template.new(db=db, template_name="gadget-template")
+    await template.save(db=db)
+    profile_owners = (group_ids["dc-emea"],)
+    template_owners = tuple(sorted([group_ids["network-emea"], group_ids["security"]]))
+    for giver, owner_ids in ((profile, profile_owners), (template, template_owners)):
+        await set_owners(db=db, branch=default_branch, node_id=giver.id, owner_ids=owner_ids, holder=NODE_TARGET_HOLDER)
+    gadget = await create_node(
+        data={"name": "gadget-1", "object_template": {"id": template.id}},
+        db=db,
+        branch=default_branch,
+        schema=registry.schema.get_node_schema(name="TestingGadget", branch=default_branch),
+    )
+    node_ids = {"profile": profile.id, "template": template.id, "gadget": gadget.id}
+    holders = {
+        "profile": {NODE_TARGET_HOLDER: StoredOwnerState(owner_ids=profile_owners)},
+        "template": {NODE_TARGET_HOLDER: StoredOwnerState(owner_ids=template_owners)},
+        "gadget": {NODE_HOLDER: StoredOwnerState(owner_ids=template_owners, template_id=template.id)},
+    }
+    new_kinds = {"profile": "ProfileTest2Gadget", "template": "TemplateTest2Gadget", "gadget": "Test2Gadget"}
+    branch = await create_branch(branch_name="branch2", db=db)
+    await _change_gadget_namespace(db=db, branch=branch)
+
+    await _update_diff_and_merge(db=db, default_branch=default_branch, branch=branch)
+
+    after = await _read_holders(db=db, branch=default_branch, node_ids=node_ids)
+    assert after == {name: (new_kinds[name], holders[name]) for name in node_ids}
+    await verify_graph(db=db)
