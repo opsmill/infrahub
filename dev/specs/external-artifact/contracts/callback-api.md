@@ -31,7 +31,7 @@ Failure body:
 
 | Field | Required | Rules |
 |-------|----------|-------|
-| `status` | yes | `success` or `failure`. |
+| `status` | yes | `success`, `failure`, or `running` for a progress report. |
 | `content` | when `status = success` | UTF-8 text. The JSON and YAML content types also accept an object or a list, which is serialized as internal artifacts are today; any other content type refuses an object or a list with 400. Size at most `StorageSettings.max_file_size`. |
 | `content_type` | no | When present, it must equal the artifact definition's `content_type`. |
 | `message` | when `status = failure` | At most 4096 characters, stored on the artifact check. |
@@ -46,6 +46,7 @@ Failure body:
 
 | Status | When |
 |--------|------|
+| `200 OK` | Progress report accepted (`status = running`). The body is `{render_id, deadline, token}`: the deadline moved to now plus the transformation timeout, and the token is valid until it. The artifact stays `Pending`. |
 | `204 No Content` | Result accepted. The artifact is `Ready` (success) or `Error` (failure). |
 | `400 Bad Request` | Body invalid: missing `content` or `message`, or a mismatched `content_type`. |
 | `401 Unauthorized` | Token missing, badly signed, wrong `type` or expired. A callback after the render deadline gets this response, because the token expires at the deadline. |
@@ -64,3 +65,12 @@ Error bodies follow the existing REST error format and do not expose internal de
    - `ArtifactCreatedEvent` or `ArtifactUpdatedEvent` is emitted when the content changed.
 2. **Failure**: the artifact gets `status = Error`, and `render_deadline` is cleared.
 3. **Proposed change**: if the request came from a proposed change, the artifact check is updated and the validator is recomputed.
+
+## Progress report
+
+Body: `{"status": "running", "message": "pipeline 4812 started"}`, where `message` is optional.
+
+- The render request must still be active, as for a result; otherwise the response is 409.
+- `render_deadline` becomes now plus the transformation's `timeout`, and the waiting proposed-change checks show `waiting for external engine: <message>`. The checks stay `unknown`.
+- The previous token keeps its own expiry, so it stops working at the previous deadline. The engine uses the returned token for every later callback.
+- There is no limit on the number of progress reports. A new render request for the artifact replaces the request and ends its reports with 409.

@@ -10,6 +10,8 @@ selection (generate / proposed-change check / post-merge)
   -> webhook_process / webhook_send: mint render token per attempt, POST to engine
   -> engine POST /api/artifact/render/{render_id} with X-Infrahub-Render-Token
   -> RenderResultAcceptor: store content, artifact Ready or Error, conclude waiting checks
+     (status running: move the deadline, return a new token, checks stay waiting)
+  (delivery fails after the last attempt) -> webhook_process: artifact Error, "render request could not be delivered"
   (no answer) -> expire-artifact-renders cron: artifact Error, check fails "no response from engine"
 ```
 
@@ -22,6 +24,7 @@ selection (generate / proposed-change check / post-merge)
 - The check path writes the check with conclusion `unknown` and message `waiting for external engine` *before* emitting, so the callback always finds it. The check returns `CheckPending.PENDING`, and `core/validators/checks_runner.py::run_checks_and_update_validator` leaves the validator in progress; the callback or the sweep completes it through `recompute_validator`. `recompute_validator` counts only checks created since the validator's `started_at` (plus every check still `unknown`) and never replaces a `failure` the validator already recorded.
 - The artifact is set to `Error` without emitting when no active `CoreWebhook` on the default branch has event type exactly `infrahub.artifact.render_requested`, a `branch_scope` covering the artifact's branch and a `node_kind` that is empty or equal to the target kind, when `main.public_url` is not set, or when the serialized event exceeds Prefect's `server.events.maximum_size_bytes`. Prefect refuses a larger event, so the check is done before sending.
 - When `request_external_render` raises, for example because a schema change removed a field the query reads, both callers set the artifact to `Error`: the check path also writes the check as `failure`, and `git/tasks.py::generate_artifact` re-raises so the flow run fails, as it does for internal transformations.
+- A stored query that does not validate against the branch schema makes `/api/query` answer 422 (`GraphQLQueryValidationError`), which the SDK does not retry; execution errors still answer 502 and are retried.
 - The deadline is `now + transformation timeout`. The SDK default for `external_transforms[].timeout` is 600 s; internal transformations default to 60 s.
 - `render_request_id` and `render_deadline` on `CoreArtifact` identify the one request the artifact accepts a result for. A newer request overwrites both, which invalidates the previous one.
 
@@ -34,6 +37,7 @@ selection (generate / proposed-change check / post-merge)
 - The token goes in the `X-Infrahub-Render-Token` header, and replaces every `${INFRAHUB_RENDER_TOKEN}` in the serialized body (`RENDER_TOKEN_PLACEHOLDER`), which is how a `CoreCustomWebhook` transformation places it in an engine-specific body.
 - `query_result` can hold data a reader has no permission to view, so `task_manager/event/query.py::PrefectEventData._readable_payload` drops it from the `Events` query, and `graphql/queries/task.py::_readable_parameters` drops it, at any depth, from the `Task` query parameters of render-request webhook runs.
 - Delivery uses the normal webhook retries (`WEBHOOK_SEND_RETRIES = 3`, 120 s apart). A timeout shorter than about 7 minutes can expire before the last attempt.
+- When `webhook_send` ends failed, crashed or cancelled, `webhook_process` calls `artifacts/render_result.py::fail_undelivered_render`, which sets the artifact to `Error` and fails the waiting checks with `render request could not be delivered: <reason>`, but only while the artifact's `render_request_id` is still the delivered one. When two webhooks deliver the same request, one failed delivery ends the render even if the other succeeded.
 
 ## Callback
 
@@ -48,11 +52,13 @@ selection (generate / proposed-change check / post-merge)
 | 409 | Token valid, but the artifact's `render_request_id` differs or `render_deadline` is cleared — replaced, or already concluded by an earlier callback or by the sweep (`RenderRequestNotActiveError`) |
 | 429 | Admission control sheds the request like any other API call |
 
+A body with `status: running` goes to `RenderResultAcceptor.report_progress` instead: under the render lock it moves `render_deadline` to `now + transformation timeout`, writes `waiting for external engine: <message>` on the waiting checks, and the endpoint answers 200 with the new deadline and a token minted for it. The old token keeps its own `exp`, so it stops working at the old deadline.
+
 `artifacts/render_result.py::RenderResultAcceptor.accept_render_result` checks and writes under `artifact_render_lock(branch, artifact_id)` in one transaction, so a reader never sees `Ready` with the previous checksum. Writes are attributed to `SYSTEM_USER_ID` because the engine has no account. It then concludes the checks waiting on that artifact (`conclude_waiting_checks`) and recomputes their validators under `validator_lock`.
 
 ## Timeout
 
-`EXPIRE_ARTIFACT_RENDERS` (`artifacts/timeouts.py::expire_artifact_renders`) runs every minute with `CANCEL_NEW` concurrency. It lists `Pending` artifacts per branch, default branch first, and skips a `(artifact_id, render_request_id)` already seen: a branch reads the artifacts of the default branch that it did not change, so a request seen first on the default branch belongs to it and is not written again on other branches. Under the render lock it re-reads the deadline, because a callback or a new request may have replaced it, then sets `Error` and fails the waiting checks with `no response from engine`. An artifact whose definition or transformation cannot be read is still expired, with no transformation name in the log; a peer lookup error on one artifact is logged and the sweep continues. An artifact therefore reaches `Error` up to about a minute after its deadline.
+`EXPIRE_ARTIFACT_RENDERS` (`artifacts/timeouts.py::expire_artifact_renders`) runs every minute with `CANCEL_NEW` concurrency. It lists `Pending` artifacts per branch, default branch first, and skips a `(artifact_id, render_request_id)` already seen: a branch reads the artifacts of the default branch that it did not change, so a request seen first on the default branch belongs to it and is not written again on other branches. Under the render lock (`render_result.py::fail_render`, shared with the delivery failure) it re-reads the deadline, because a callback, a progress report or a new request may have replaced it, then sets `Error` and fails the waiting checks with `no response from engine`. An artifact whose definition or transformation cannot be read is still expired, with no transformation name in the log; a peer lookup error on one artifact is logged and the sweep continues. An artifact therefore reaches `Error` up to about a minute after its deadline.
 
 ## Fingerprint and regeneration
 

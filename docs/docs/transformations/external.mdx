@@ -17,8 +17,11 @@ For conceptual background on Transformations and artifacts, see [Transformations
 1. Infrahub selects an artifact for rendering, with the same rules it uses for Jinja2 and Python Transformations.
 2. Infrahub runs the artifact definition's GraphQL query for the target, sets the artifact to `Pending`, and emits an `infrahub.artifact.render_requested` event.
 3. A webhook subscribed to that event sends the render request to your engine, with a render token in the `X-Infrahub-Render-Token` header.
-4. Your engine renders the content and sends it to the callback URL in the request, with the render token.
-5. Infrahub stores the content and sets the artifact to `Ready`. If the engine reports a failure, or does not answer before the timeout, Infrahub sets the artifact to `Error`.
+4. Your engine renders the content and sends it to the callback URL in the request, with the render token. An engine that needs more time can report progress first, which moves the deadline.
+5. Infrahub stores the content and sets the artifact to `Ready`. Infrahub sets the artifact to `Error` when:
+   - the engine reports a failure;
+   - the webhook cannot deliver the render request after its last attempt;
+   - the engine does not answer before the deadline.
 
 Infrahub requests a render when:
 
@@ -28,6 +31,8 @@ Infrahub requests a render when:
 - you trigger generation of the artifact definition manually.
 
 Infrahub cannot detect changes to templates stored in your engine. Change the `version` value, or trigger generation manually, after you change a template.
+
+In a proposed change, Infrahub first checks the artifact definition's GraphQL query against the schema of the source branch. When a schema change on the branch makes the query invalid, for example because it removes an attribute that the query reads, every artifact check of the definition fails with the GraphQL error, and Infrahub sends no render request.
 
 ## Set the public URL of Infrahub
 
@@ -67,17 +72,19 @@ artifact_definitions:
 | `query` | Yes | Name of a query declared in the same repository. |
 | `version` | Yes | Version of the templates in your engine, for example a release tag or a commit SHA. Changing it renders every artifact of the definitions that use the Transformation again. |
 | `description` | No | Description of the Transformation. |
-| `timeout` | No | Seconds the engine has to return the content, counted from the render request. Default `600`, minimum `1`. |
+| `timeout` | No | Seconds the engine has to return the content, counted from the render request or from the engine's last progress report. Default `600`, minimum `1`. |
 
 An external Transformation has no file path and no `watch` block, because its templates are not in the repository. A commit that changes other files does not render its artifacts again.
 
 Commit the file. Infrahub imports the external Transformation when the repository syncs.
 
-### Choose a timeout that covers webhook retries
+### Choose a timeout
 
-When the engine does not answer before the timeout, Infrahub sets the artifact to `Error` with the message `no response from engine`. Infrahub checks for these artifacts every minute.
+When the engine does not answer before the deadline, Infrahub sets the artifact to `Error` with the message `no response from engine`. Infrahub checks for these artifacts every minute, so the artifact changes to `Error` up to one minute after the deadline.
 
-A webhook delivery that fails is retried 3 times, 120 seconds apart, so the last attempt starts about 6 minutes after the first. Set `timeout` to at least 420 seconds (7 minutes) plus the time your engine needs to render, so that a request delivered by a retry can still be answered.
+A webhook delivery that fails is retried 3 times, 120 seconds apart, so the last attempt starts about 6 minutes after the first. When the last attempt also fails, Infrahub sets the artifact to `Error` at once, with the message `render request could not be delivered` and the reason. Set `timeout` to at least 420 seconds (7 minutes) plus the time your engine needs to render, so that a request delivered by a retry can still be answered.
+
+When your engine runs for longer than you want to wait for a missing answer, for example a CI pipeline that waits in a queue, keep the timeout short and have the engine report progress. See [Report progress from a long-running engine](#report-progress-from-a-long-running-engine).
 
 ## Subscribe a webhook to render requests
 
@@ -182,15 +189,16 @@ To report a failure:
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `status` | Yes | `success` or `failure`. |
+| `status` | Yes | `success`, `failure`, or `running` to report progress. See [Report progress from a long-running engine](#report-progress-from-a-long-running-engine). |
 | `content` | When `status` is `success` | The rendered content as text. For the `application/json` and `application/yaml` content types, you can send an object or a list instead, which Infrahub serializes. For other content types, Infrahub refuses an object or a list with `400`. The size limit is the `storage.max_file_size` setting, 50 MB by default. |
 | `content_type` | No | When present, it must equal the `content_type` of the artifact definition. |
-| `message` | When `status` is `failure` | Why the render failed, at most 4096 characters. Infrahub shows it on the artifact check of the proposed change. |
+| `message` | When `status` is `failure` | Why the render failed, at most 4096 characters. Infrahub shows it on the artifact check of the proposed change. With `running`, the progress to show on the check. |
 
 The callback accepts only the render token. User sessions and API keys are refused.
 
 | Response | Meaning |
 |----------|---------|
+| `200` | Infrahub accepted a progress report. The body has the new `deadline` and a new `token`. |
 | `204` | Infrahub accepted the result. The artifact is `Ready`, or `Error` for a failure. |
 | `400` | The body is not valid, for example `content` is missing, `content_type` does not match, or `content` is an object for a content type other than JSON or YAML. |
 | `401` | The token is missing, not valid or expired. A callback after the `deadline` gets this response. |
@@ -200,6 +208,107 @@ The callback accepts only the render token. User sessions and API keys are refus
 | `429` | Infrahub is under load. Retry after the number of seconds in the `Retry-After` header. |
 
 Retry on `429`. Do not retry on the other error responses, because the same request gets the same response.
+
+## Make templates fail on missing data
+
+Infrahub stores what the engine returns. When a template replaces a missing value with a default, a change that removes data, or a query change that no longer returns a field, produces a configuration without that data instead of a failure.
+
+Configure the templates in your engine to fail when they read a value that does not exist, and report that failure to Infrahub. In Ansible, do not use the `default` filter on values the configuration needs.
+
+## Report progress from a long-running engine
+
+An engine that takes a long time, such as a CI pipeline, can tell Infrahub that it is still working. Send a progress report to the `callback_url` with the current token:
+
+```json
+{
+  "status": "running",
+  "message": "pipeline 4812 started"
+}
+```
+
+Infrahub moves the deadline to the current time plus the `timeout` of the external Transformation, and shows the message on the artifact check of the proposed change. The response is `200` with the new deadline and a new token:
+
+```json
+{
+  "render_id": "1a2b...",
+  "deadline": "2026-11-20T10:20:00Z",
+  "token": "<new render token>"
+}
+```
+
+Use the new token for every later callback of this render request. The previous token stops working at the previous deadline.
+
+Report progress at each step that can take longer than the timeout, for example when a pipeline starts after waiting in a queue.
+
+## Run a CI pipeline as the engine
+
+A CI pipeline can render the artifact. A Custom Webhook with a Python Transformation starts the pipeline through the API of your CI system, and the last job of the pipeline sends the result to the callback URL.
+
+- The pipeline receives the render token as a pipeline input or variable. CI systems can show these values in the run details, so mask the token in the job logs. The token is valid for one artifact until its deadline.
+- Inputs and variables are text, so pass the query result as a JSON string.
+- Add the credentials of your CI system to the webhook as a header. See [Create a webhook](../webhooks/create).
+
+This Transformation starts a GitHub Actions workflow with a `workflow_dispatch` trigger. Send it to `https://api.github.com/repos/<owner>/<repository>/actions/workflows/<workflow file>/dispatches`, with an `Authorization: Bearer <token>` header:
+
+```python title="transforms/github_render_request.py"
+import json
+from typing import Any
+
+from infrahub_sdk.transforms import InfrahubTransform
+
+
+class GithubRenderRequest(InfrahubTransform):
+    query = "placeholder_query"  # Required but not used for webhooks
+
+    async def transform(self, data: dict[str, Any]) -> dict[str, Any]:
+        request = data["data"]
+        return {
+            "ref": "main",
+            "inputs": {
+                "callback_url": request["callback_url"],
+                "render_token": "${INFRAHUB_RENDER_TOKEN}",
+                "target_name": request["target_name"],
+                "query_result": json.dumps(request["query_result"]),
+            },
+        }
+```
+
+For GitLab CI, send the body to the pipeline trigger API, `https://<gitlab host>/api/v4/projects/<project id>/trigger/pipeline`, with the same values under `variables`, and the trigger token and branch in `token` and `ref`.
+
+In the workflow, mask the token before any step can print it, report progress when the job starts, and send the result at the end:
+
+```yaml title=".github/workflows/render.yml"
+on:
+  workflow_dispatch:
+    inputs:
+      callback_url: { required: true }
+      render_token: { required: true }
+      target_name: { required: true }
+      query_result: { required: true }
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mask the render token and report progress
+        run: |
+          echo "::add-mask::${{ inputs.render_token }}"
+          token=$(curl --fail --silent -X POST "${{ inputs.callback_url }}" \
+            -H "X-Infrahub-Render-Token: ${{ inputs.render_token }}" \
+            -H "Content-Type: application/json" \
+            -d '{"status": "running", "message": "GitHub Actions run ${{ github.run_id }} started"}' | jq -r .token)
+          echo "::add-mask::$token"
+          echo "RENDER_TOKEN=$token" >> "$GITHUB_ENV"
+      # Render the configuration from inputs.query_result into config.txt here.
+      - name: Send the result to Infrahub
+        run: |
+          jq -n --rawfile content config.txt '{status: "success", content: $content}' |
+            curl --fail -X POST "${{ inputs.callback_url }}" \
+              -H "X-Infrahub-Render-Token: $RENDER_TOKEN" \
+              -H "Content-Type: application/json" -d @-
+```
+
+Infrahub starts one pipeline for each artifact to render. A change that affects many targets starts many pipelines, so check the concurrency limits of your CI system.
 
 ## Test with a reference engine
 
@@ -253,12 +362,14 @@ HTTPServer(("0.0.0.0", 8081), Engine).serve_forever()
 
 ## Verify
 
-1. Open the proposed change and go to the **Checks** tab. While Infrahub waits for the engine, the artifact check shows the message `waiting for external engine`.
+1. Open the proposed change and go to the **Checks** tab. While Infrahub waits for the engine, the artifact check shows the message `waiting for external engine`, followed by the message of the engine's last progress report.
 <!-- vale off -->
 2. After the engine answers, the check passes and the **Artifacts** tab shows the diff of the content.
 <!-- vale on -->
 3. If the check fails, read its message:
-   - `Failed to render artifact: no response from engine`: the engine did not answer before the timeout. Check the delivery of the webhook in the task list.
+   - `Failed to render artifact: no response from engine`: the engine did not answer before the deadline.
+   - `Failed to render artifact: render request could not be delivered: <reason>`: the webhook could not reach the engine after its last attempt. Check the delivery of the webhook in the task list.
+   - `Failed to render artifact: query <name> is not valid on branch <branch>: <error>`: a schema change on the branch makes the GraphQL query of the artifact definition invalid. Update the query in the same branch.
    - `Failed to render artifact: <message>`: the engine reported a failure with that message.
 
 ## Related

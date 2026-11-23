@@ -65,4 +65,4 @@ Example: an AWX job launch body produced by a transformation:
 
 - Delivery uses the existing webhook retries: 3 retries, 120 seconds apart.
 - With the default timeout of 600 seconds, the deadline outlasts the delivery attempts.
-- A request that is never delivered reaches its deadline, and the timeout sweep sets the artifact to `Error`.
+- When the delivery fails after its last attempt, crashes or is cancelled, the artifact is set to `Error` and the waiting checks fail with `render request could not be delivered: <reason>`, without waiting for the deadline.
