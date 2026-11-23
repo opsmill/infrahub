@@ -412,6 +412,9 @@ class OwnerStateWriteQuery(Query):
     close_branch = "{name: $branch, level: $branch_level, is_global: $write_is_global}"
     """The Cypher map of the branch that closes an edge of the holder `h`: its `name`, `level` and `is_global`."""
 
+    closes_later_edges = False
+    """True to close the open edges of the holder that a write with a later time stored, False to refuse the write."""
+
     def __init__(
         self,
         node_id: str,
@@ -508,10 +511,46 @@ CALL (n, h) {
             "same_key": owner_set_key_filter(vertex="s", key="set_key"),
         }
 
+    def _later_edges_query(self) -> str:
+        """Return the Cypher condition that refuses the write when the holder has an edge with a later time.
+
+        It reads only, so that a refused write changes nothing, and comes before the holder query that writes.
+        """
+        if self.closes_later_edges:
+            return ""
+        if self.holder.kind == HolderKind.ATTRIBUTE:
+            holder = "(n)-[:HAS_ATTRIBUTE]->(:Attribute {name: $attribute})"
+            condition = ""
+        elif self.holder.kind in {HolderKind.FIELD_SET, HolderKind.TARGET_SET}:
+            set_edge = "HAS_OWNER_SET" if self.holder.kind == HolderKind.FIELD_SET else "HAS_TARGET_OWNER_SET"
+            holder = f"(:Node {{uuid: n.uuid}})-[:{set_edge}]->(s:OwnerSet)"
+            condition = f"AND {owner_set_key_filter(vertex='s', key='set_key')}"
+        else:
+            holder = "(n)"
+            condition = ""
+        return """AND NOT EXISTS {
+    // A write that commits while this write waits for the lock can have a later time than this write
+    MATCH %(holder)s-[later_edge:%(edge_types)s]->()
+    WHERE later_edge.branch IN $later_branches AND later_edge.from > $at %(condition)s
+}""" % {"holder": holder, "edge_types": self.closed_edge_types, "condition": condition}
+
+    def _close_later_edges_query(self) -> str:
+        """Return the Cypher that closes the open edges of the write branch that a write with a later time stored."""
+        if not self.closes_later_edges:
+            return ""
+        return """CALL (n, h) {
+    WITH n, h, %(close_branch)s AS w
+    MATCH (h)-[r:%(edge_types)s]->(peer)
+    WHERE r.branch = w.name AND r.status = "active" AND r.to IS NULL AND r.from > $at %(edge_condition)s
+    SET r.to = $at, r.to_user_id = $user_id
+}""" % {"close_branch": self.close_branch, "edge_types": self.closed_edge_types, "edge_condition": self.edge_condition}
+
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
         self.params.update(branch_params)
         inherited_filter, _ = self.branch.get_query_filter_path(at=self.at, variable_name="inherited")
+        # The holder query sets the parameters of the holder that the check of later edges reads.
+        holders = self._holders_query(branch_filter=branch_filter)
         self.params.update(
             {
                 "node_id": self.node_id,
@@ -557,6 +596,7 @@ AND NOT EXISTS {
     MATCH (n)-[later:IS_PART_OF {status: "deleted"}]->(:Root)
     WHERE later.branch IN $later_branches AND later.from > $at
 }
+%(later_edges)s
 WITH n
 %(holders)s
 CALL (n, h) {
@@ -594,6 +634,7 @@ CALL (h, current) {
         }]->(peer)
     }
 }
+%(close_later_edges)s
 CALL (h, current) {
     UNWIND $owner_ids AS owner_id
     WITH owner_id
@@ -631,7 +672,9 @@ CALL (h) {
         """ % {
             "branch_filter": branch_filter,
             "inherited_filter": inherited_filter,
-            "holders": self._holders_query(branch_filter=branch_filter),
+            "holders": holders,
+            "later_edges": self._later_edges_query(),
+            "close_later_edges": self._close_later_edges_query(),
             "edge_types": self.closed_edge_types,
             "listed_edge": self.listed_edge_type,
             "edge_condition": self.edge_condition,
@@ -667,6 +710,8 @@ class NodeOwnerEdgesCloseQuery(OwnerStateWriteQuery):
     """
 
     name = "ownership_node_owner_edges_close"
+    # A delete can take its time from its caller, before an owner write that committed while the delete waited.
+    closes_later_edges = True
     raise_error_if_empty = False
     closed_edge_types = f"{OwnerStateWriteQuery.closed_edge_types}|HAS_OWNER_SET|HAS_TARGET_OWNER_SET|HAS_SOURCE"
     # The delete of an attribute closes the edge to the source of the attribute.

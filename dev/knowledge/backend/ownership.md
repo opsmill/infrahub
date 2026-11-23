@@ -120,10 +120,10 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
   writers do not run through a mutation and cannot lock each node before their first write: the IPAM reconciler
   writes inside the transaction of a create, after the create, and the migrations and the merge write with Cypher
   over many nodes.
-- `Node._update` reads the update time after it takes the lock. A write of owners reads the current edges at that
-  time and closes only those. With a time from before the lock, an update that waits behind another write of
-  owners does not see the owners of that write, and both lists stay active. A value update that waits behind a
-  delete of the node fails, because the attribute is not active at that time.
+- `Node._update` reads the update time after it takes the lock only when the caller gives no time. A write of
+  owners reads the current edges at its time and closes only those. A write with a time from before the lock does
+  not see the edges of a write that committed while it waited, so it fails instead (see the check below). A value
+  update that waits behind a delete of the node fails, because the attribute is not active at that time.
 - All branches share the node vertex, and `NodeLockQuery` matches it by UUID only. So two writes of one node on
   two different branches also run one after the other, for example a profile refresh on one branch and an update
   on another.
@@ -163,9 +163,15 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
 - The caller gives the write time before the query waits for the lock, so that delete can have a later time than
   the write. The check also refuses the write when the node has a `deleted` `IS_PART_OF` edge after `$at`, on a
   branch that the branch of the query reads at `$at`. An isolated branch reads its origin branch at the start of the
-  branch, so a later delete on the origin branch does not stop a write on the branch. The query does not read the
-  time after the lock, because each caller gives the time that its other writes use: the merge writes at the merge
-  time, and a save writes the owners at the time of its other fields.
+  branch, so a later delete on the origin branch does not stop a write on the branch. In the same way, the check
+  refuses the write when the holder has an owner edge with a `from` time after `$at` on such a branch: the write
+  would not see that edge and would leave both lists active. The query does not read the time after the lock,
+  because each caller gives the time that its other writes use: the merge writes at the merge time, and a save
+  writes the owners at the time of its other fields.
+- `NodeOwnerEdgesCloseQuery` (the delete of a node) does not refuse a later edge. It also closes each open edge of
+  the write branch with a `from` time after `$at`, so a delete with a time from its caller leaves no open owner
+  edge. Such an edge gets a `to` time before its `from` time, and `verify_graph` reports it as written after the
+  delete.
 - `verify_graph` reports an open owner edge on a deleted attribute or on a set that its node no longer holds
   (`GraphCheck.ORPHANED_ACTIVE_EDGES`). It does not
   report a `HAS_OWNER` edge from a `Node`, `Attribute` or `OwnerSet` vertex, or a `HAS_SOURCE` edge from a `Node`

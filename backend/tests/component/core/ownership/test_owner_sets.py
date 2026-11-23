@@ -353,6 +353,69 @@ RETURN count(r) AS open_edges
     await verify_graph(db=db, kinds=["TestPerson"])
 
 
+LATER_WRITE_CASES = [
+    pytest.param(field_name, on_branch, id=f"{branch_id}-{field_name or 'node'}")
+    for branch_id, on_branch in (("default-branch", False), ("branch", True))
+    for field_name in (None, "name", "cars")
+]
+
+
+async def _open_owner_edges(db: InfrahubDatabase, node_id: str) -> int:
+    records = await db.execute_query(
+        query="""
+MATCH (n:Node {uuid: $node_id})
+MATCH (h)-[r:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SET]->()
+WHERE (h = n OR EXISTS { (n)-[:HAS_ATTRIBUTE|HAS_OWNER_SET]->(h) })
+AND r.status = "active" AND r.to IS NULL
+RETURN count(r) AS open_edges
+""",
+        params={"node_id": node_id},
+    )
+    return records[0]["open_edges"]
+
+
+@pytest.mark.parametrize(("field_name", "on_branch"), LATER_WRITE_CASES)
+async def test_owner_write_at_a_time_before_a_committed_owner_write_fails(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person: Node,
+    group_ids: list[str],
+    field_name: str | None,
+    on_branch: bool,
+) -> None:
+    branch = await create_branch(db=db, branch_name="write-before-write") if on_branch else default_branch
+    holder = _holder(default_branch=default_branch, field_name=field_name) if field_name else NODE_HOLDER
+    # A write can take its time before it waits for the lock that another write holds.
+    write_at = Timestamp()
+    await _write(db=db, branch=branch, node_id=person.id, holder=holder, owner_ids=group_ids[1:])
+
+    with pytest.raises(QueryError):
+        await _write(db=db, branch=branch, node_id=person.id, holder=holder, owner_ids=group_ids[:1], at=write_at)
+
+    assert await read_owners(db=db, branch=branch, node_id=person.id, holder=holder) == tuple(group_ids[1:])
+
+
+@pytest.mark.parametrize(("field_name", "on_branch"), LATER_WRITE_CASES)
+async def test_node_delete_at_a_time_before_a_committed_owner_write_leaves_no_open_owner_edge(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person: Node,
+    group_ids: list[str],
+    field_name: str | None,
+    on_branch: bool,
+) -> None:
+    branch = await create_branch(db=db, branch_name="delete-before-write") if on_branch else default_branch
+    holder = _holder(default_branch=default_branch, field_name=field_name) if field_name else NODE_HOLDER
+    # A delete can take its time from its caller, before it waits for the lock that an owner write holds.
+    delete_at = Timestamp()
+    await _write(db=db, branch=branch, node_id=person.id, holder=holder, owner_ids=group_ids[:1])
+    node = await NodeManager.get_one(db=db, branch=branch, id=person.id, raise_on_error=True)
+
+    await node.delete(db=db, at=delete_at)
+
+    assert await _open_owner_edges(db=db, node_id=person.id) == 0
+
+
 async def test_owner_write_on_a_branch_ignores_a_later_node_delete_on_the_default_branch(
     db: InfrahubDatabase, default_branch: Branch, person: Node, group_ids: list[str]
 ) -> None:
