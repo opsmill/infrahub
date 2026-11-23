@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+import pytest
 import ujson
 
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
@@ -36,6 +39,13 @@ OWNERS_FIELD = "node_metadata__owners"
 TARGET_OWNERS_FIELD = "node_metadata__target_owners"
 SOURCES_FIELD = "node_metadata__sources"
 GROUP_NAMES = ("dc-emea", "network-emea", "security")
+SECONDS_TO_WAIT = 30.0
+SECONDS_BETWEEN_POLLS = 0.05
+BLOCKED_TRANSACTIONS = """
+SHOW TRANSACTIONS YIELD database, status
+WHERE database = $database AND status STARTS WITH "Blocked"
+RETURN count(*) AS blocked
+"""
 
 # The owner edges of a repository are written as an earlier release stored them, because a repository is refused
 # as owner from the upgrade.
@@ -188,3 +198,16 @@ async def create_car(db: InfrahubDatabase, name: str, person: Node, owner_id: st
     await car.new(db=db, name=name, owner=person, color={"value": "#000000", "owner": owner_id})
     await car.save(db=db)
     return car
+
+
+async def wait_for_the_other_write(db: InfrahubDatabase, other: asyncio.Future[Any]) -> None:
+    """Return once a transaction waits for a lock, or once the other write ends without a wait."""
+    params = {"database": config.SETTINGS.database.database_name}
+    try:
+        async with asyncio.timeout(SECONDS_TO_WAIT):
+            while not other.done():
+                if (await db.execute_query(query=BLOCKED_TRANSACTIONS, params=params))[0]["blocked"]:
+                    return
+                await asyncio.sleep(SECONDS_BETWEEN_POLLS)
+    except TimeoutError:
+        pytest.fail(f"The other write neither waited for a lock nor ended within {SECONDS_TO_WAIT} seconds")

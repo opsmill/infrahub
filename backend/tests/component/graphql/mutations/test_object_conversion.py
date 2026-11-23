@@ -31,6 +31,7 @@ from infrahub.database.validation import verify_graph
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.mutations import convert_object_type as convert_object_type_mutation
 from tests.helpers.graphql import graphql
+from tests.helpers.ownership import wait_for_the_other_write
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -389,7 +390,7 @@ async def test_convert_object_type_gives_the_owners_of_a_write_that_commits_whil
             )
             owners_are_written.set()
             # The conversion starts while this transaction holds the node.
-            await asyncio.sleep(1.0)
+            await wait_for_the_other_write(db=db, other=conversion)
 
     async def convert() -> str:
         await owners_are_written.wait()
@@ -405,7 +406,8 @@ async def test_convert_object_type_gives_the_owners_of_a_write_that_commits_whil
         )
         return new_node.id
 
-    _, new_id = await asyncio.gather(write_owners(), convert())
+    conversion = asyncio.ensure_future(convert())
+    _, new_id = await asyncio.gather(write_owners(), conversion)
 
     stored = await OwnershipRepository(db=db, branch=default_branch, at=None).read(node_ids=[new_id])
     assert stored[new_id].get(NODE_HOLDER).owner_ids == (group_ids[1],)
