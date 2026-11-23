@@ -3,8 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub import config
+from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult
+from infrahub.core.ownership.report import RepositoryOwnersReportQuery
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
@@ -70,9 +72,11 @@ class HideRepositoryOwnersOnBranchesQuery(Query):
         self.params["at"] = self.at.to_string()
         self.params["user_id"] = self.user_id
         self.params["batch_size"] = config.SETTINGS.database.query_size_limit
+        # A merged branch or a branch that is being deleted is not read again.
+        self.params["terminal_statuses"] = [status.value for status in TERMINAL_BRANCH_STATUSES]
         query = """
 MATCH (b:Branch)
-WHERE b.hierarchy_level > 1
+WHERE b.hierarchy_level > 1 AND NOT b.status IN $terminal_statuses
 MATCH (a:Attribute)-[r:HAS_OWNER]->(repository:%(repository_label)s)
 WHERE r.branch = b.origin_branch AND r.status = "active"
 AND r.from <= b.branched_from AND r.to > b.branched_from
@@ -142,6 +146,18 @@ class Migration085(ArbitraryMigration):
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         db = migration_input.db
         try:
+            # The close ends these owners, so the operator keeps their list from the log.
+            report_query = await RepositoryOwnersReportQuery.init(db=db)
+            await report_query.execute(db=db)
+            rows = report_query.get_rows()
+            migration_input.console.log(
+                f"Attributes that a repository owns, before the close: {sum(row.nb_attributes for row in rows)}"
+            )
+            for row in rows:
+                migration_input.console.log(
+                    f"  {row.node_kind}.{row.attribute_name}, repository {row.repository_id} ({row.repository_kind}),"
+                    f" branch {row.branch}: {row.nb_attributes}"
+                )
             close_query = await CloseRepositoryOwnerEdgesQuery.init(
                 db=db, at=migration_input.at, user_id=migration_input.user_id
             )

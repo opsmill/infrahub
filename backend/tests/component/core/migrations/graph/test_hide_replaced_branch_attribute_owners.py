@@ -1,4 +1,5 @@
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -254,3 +255,24 @@ async def test_default_branch_owner_added_after_the_branch_start_is_hidden_and_t
     await merger.merge_graph(at=Timestamp())
 
     assert await _active_owner_ids(db=db, branch=default_branch, node_id=car.id) == {branch_owner.id}
+
+
+async def test_merged_branch_gets_no_deleted_edge(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+) -> None:
+    main_owner = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="main-owner")
+    branch_owner = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="branch-owner")
+    person = await add_node(db=db, kind="TestPerson", name="John")
+    car = await create_car(db=db, name="volt", person=person, owner_id=main_owner.id)
+    branch = await create_branch(db=db, branch_name="branch1")
+    await _add_owner_edge(db=db, branch=branch, node_id=car.id, owner_id=branch_owner.id)
+    branch.status = BranchStatus.MERGED
+    await branch.save(db=db)
+
+    result = await Migration084().execute(migration_input=MigrationInput(db=db))
+
+    assert result.errors == []
+    assert await _deleted_edges(db=db) == []

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub import config
+from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult
 from infrahub.core.query import Query, QueryType
@@ -35,10 +36,13 @@ class HideReplacedBranchAttributeOwnersQuery(Query):
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["user_id"] = self.user_id
         self.params["batch_size"] = config.SETTINGS.database.query_size_limit
+        # A merged branch or a branch that is being deleted is not read again.
+        self.params["terminal_statuses"] = [status.value for status in TERMINAL_BRANCH_STATUSES]
         query = """
 MATCH (a:Attribute)-[branch_edge:HAS_OWNER]->(branch_owner:Node)
 WHERE branch_edge.branch_level > 1 AND branch_edge.status = "active" AND branch_edge.to IS NULL
 MATCH (b:Branch {name: branch_edge.branch})
+WHERE NOT b.status IN $terminal_statuses
 MATCH (a)-[parent_edge:HAS_OWNER]->(replaced_owner:Node)
 WHERE parent_edge.branch_level < branch_edge.branch_level
 AND parent_edge.status = "active"

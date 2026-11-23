@@ -3,6 +3,7 @@ from rich.console import Console
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -104,11 +105,15 @@ async def test_repository_owners_are_closed_and_readable_before_the_upgrade(
     assert second_result.errors == []
     assert await _owner_edges(db=db) == edges_after
     assert [line.rstrip() for line in capture.get().splitlines()] == [
+        "Attributes that a repository owns, before the close: 2",
+        f"  TestCar.color, repository {repository.id} (CoreRepository), branch branch1: 1",
+        f"  TestCar.color, repository {repository.id} (CoreRepository), branch main: 1",
         "Closed 2 owner edge(s) from attributes to repositories.",
         f"  repository {repository.id} (CoreRepository): 2",
     ]
     assert [line.rstrip() for line in second_capture.get().splitlines()] == [
-        "Closed 0 owner edge(s) from attributes to repositories."
+        "Attributes that a repository owns, before the close: 0",
+        "Closed 0 owner edge(s) from attributes to repositories.",
     ]
 
     assert await _color_owner_id(db=db, branch=default_branch, node_id=repository_car.id) is None
@@ -359,7 +364,7 @@ async def test_branch_made_before_the_upgrade_reads_no_global_repository_owner_a
     assert hidden == [(repository.id, global_branch.name)] * 2
 
 
-async def test_closed_edges_are_printed_when_a_later_query_fails(
+async def test_repository_owners_and_closed_edges_are_printed_when_a_later_query_fails(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
@@ -386,8 +391,36 @@ async def test_closed_edges_are_printed_when_a_later_query_fails(
         result = await Migration085().execute(migration_input=MigrationInput(db=db, console=console))
 
     assert result.errors == ["hide query failed"]
-    # The close commits before the failure, so the counts of the closed edges must be printed.
+    # The close commits before the failure, so the list of owners and the counts of the closed edges must be printed.
     assert [line.rstrip() for line in capture.get().splitlines()] == [
+        "Attributes that a repository owns, before the close: 1",
+        f"  TestCar.color, repository {repository.id} (CoreRepository), branch main: 1",
         "Closed 1 owner edge(s) from attributes to repositories.",
         f"  repository {repository.id} (CoreRepository): 1",
     ]
+
+
+async def test_merged_branch_gets_no_deleted_edge(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+) -> None:
+    repository = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
+    await repository.new(db=db, name="repo01", location="git@github.com:user/repo01.git")
+    await repository.save(db=db)
+    person = await Node.init(db=db, schema="TestPerson")
+    await person.new(db=db, name="John")
+    await person.save(db=db)
+    car = await create_car(db=db, name="repository-car", person=person)
+    await add_owner_edge(
+        db=db, query=ADD_ATTRIBUTE_OWNER, branch=default_branch, node_id=car.id, owner_id=repository.id
+    )
+    branch = await create_branch(db=db, branch_name="branch1")
+    branch.status = BranchStatus.MERGED
+    await branch.save(db=db)
+
+    result = await Migration085().execute(migration_input=MigrationInput(db=db))
+
+    assert result.errors == []
+    assert [edge for edge in await _owner_edges(db=db) if edge["status"] == "deleted"] == []
