@@ -1,0 +1,58 @@
+backend/infrahub/core/schema/basenode_schema.py
+  s_e3124b241e516d::t_f7802e938534ed 28
+  s_e3124b241e516d::t_ab1d599f83fb77 41-49,711-716,719-720,727,742,748,754,760
+dev/specs/ifc-3614-store-schema-changes/spec.md
+  s_e3124b241e516d::t_48019558ec577b 351-352,354-356,400-402
+  s_e3124b241e516d::t_b446b4d1590dc2 252-255,685-695
+dev/specs/ifc-3614-store-schema-changes/contracts/internal-interfaces.md
+  s_e3124b241e516d::t_48019558ec577b 132-136
+backend/tests/unit/core/schema_change/test_field_name_changes.py
+  s_e3124b241e516d::t_933526b6bfd3ab 1-51
+backend/tests/unit/core/schema_change/test_candidate.py
+  s_e3124b241e516d::t_aa915a976b8b09 41-42
+  s_e3124b241e516d::t_c99fbb5856c323 494-517
+  s_e3124b241e516d::t_a190dcbec01f11 399-401,403-447
+  s_e3124b241e516d::t_aff56735443b62 8
+  s_e3124b241e516d::t_55c7bf8a5b325a 33
+  s_e3124b241e516d::t_c2c6c3b110ba99 463-469
+  s_e3124b241e516d::t_8cf46042b2feb6 26,402
+backend/infrahub/core/schema_change/applier.py
+  s_e3124b241e516d::t_aea099f451a5a2 12,50,61,72,88-90,110,121,133,193,222
+backend/tests/unit/core/schema_change/equivalence_cases_relationships.py
+  s_e3124b241e516d::t_ddbcbe57716ca8 253,260
+  s_e3124b241e516d::t_18f0e3b3d7abf5 160
+  s_e3124b241e516d::t_d98d3c78b089cb 126-159,161-235,237-252,254-259,261-278
+backend/infrahub/core/schema_change/operation_builder.py
+  s_e3124b241e516d::t_13cd5a2be3e183 465-479
+  s_e3124b241e516d::t_7d1802a59f718e 425-427
+  s_e3124b241e516d::t_2cd865ca3f3bc9 11,270-274,295-304,324-355,513-514,518-521
+  s_e3124b241e516d::t_009d7339ea5603 356
+dev/knowledge/backend/schema-changes.md
+  s_e3124b241e516d::t_55ce7a3fdd11ec 153
+  s_e3124b241e516d::t_5c478fcc306220 113-119,124-129,131-141,146-152
+backend/infrahub/core/schema_change/candidate.py
+  s_e3124b241e516d::t_66015be7b0d298 142-156,158-159
+  s_e3124b241e516d::t_c37a65c9c7bcd5 176-177,181-182,189-191
+  s_e3124b241e516d::t_3b258c72a75660 201-206
+  s_e3124b241e516d::t_a12782f7a16d61 70-72,79,83
+backend/infrahub/core/schema_change/field_name_changes.py
+  s_e3124b241e516d::t_19cce3040df973 1-63
+changelog/+schema-load-reused-names.changed.md
+  s_e3124b241e516d::t_7e4a40e1ea9745 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4d6fc249f3a36e739a4167a08e6443854e35b319",
+  "prompts": {},
+  "sessions": {
+    "s_e3124b241e516d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8dc6f626-32ca-4abd-abf6-b94c48167543",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
