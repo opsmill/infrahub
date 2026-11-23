@@ -5,7 +5,6 @@ import { useState } from "react";
 import { queryClient } from "@/shared/api/rest/client";
 import { Icon } from "@/shared/components/display/icon";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
-import { FormContext } from "@/shared/components/form/utils/form-context";
 
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { AddRelationshipForm } from "@/entities/nodes/object/ui/object-details/action-buttons/add-relationship-form";
@@ -74,15 +73,13 @@ export function RelationshipsButtons({
           title={`Associate a new ${relationshipLabel}`}
           subtitle={`Add a new ${relationshipLabel} to the current object`}
         />
-        <FormContext value={{ parentSchema: objectSchema, parentData: objectDetailsData }}>
-          <AddRelationshipForm
-            objectId={objectDetailsData.id}
-            objectSchema={objectSchema}
-            relationshipSchema={relationshipSchema}
-            onSuccess={closeAfterSuccess}
-            onCancel={closeDrawer}
-          />
-        </FormContext>
+        <AddRelationshipForm
+          objectData={objectDetailsData}
+          objectSchema={objectSchema}
+          relationshipSchema={relationshipSchema}
+          onSuccess={closeAfterSuccess}
+          onCancel={closeDrawer}
+        />
       </Sheet>
     </>
   );

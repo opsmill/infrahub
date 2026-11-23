@@ -1,22 +1,32 @@
 import ObjectForm from "@/shared/components/form/object-form";
+import { FormContext } from "@/shared/components/form/utils/form-context";
 
 import { GROUP_GENERIC, GROUP_MEMBERS_RELATIONSHIP } from "@/entities/groups/domain/model/group";
 import { AddGroupMembersForm } from "@/entities/groups/ui/add-group-members-form";
+import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { SelectPeerForm } from "@/entities/nodes/object/ui/object-details/action-buttons/select-peer-form";
 import type { ModelSchema, RelationshipSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface AddRelationshipFormProps {
-  objectId: string;
+  objectData: NodeObject;
   objectSchema: ModelSchema;
   relationshipSchema: RelationshipSchema;
   onSuccess: () => Promise<void>;
   onCancel: () => void;
 }
 
-export function AddRelationshipForm({
-  objectId,
+export function AddRelationshipForm(props: AddRelationshipFormProps) {
+  return (
+    <FormContext value={{ parentSchema: props.objectSchema, parentData: props.objectData }}>
+      <AddRelationshipFormContent {...props} />
+    </FormContext>
+  );
+}
+
+function AddRelationshipFormContent({
+  objectData,
   objectSchema,
   relationshipSchema,
   onSuccess,
@@ -41,7 +51,7 @@ export function AddRelationshipForm({
   ) {
     return (
       <AddGroupMembersForm
-        groupId={objectId}
+        groupId={objectData.id}
         membersRelationshipSchema={relationshipSchema}
         onSuccess={onSuccess}
         onCancel={onCancel}
@@ -51,7 +61,7 @@ export function AddRelationshipForm({
 
   return (
     <SelectPeerForm
-      objectId={objectId}
+      objectId={objectData.id}
       relationshipSchema={relationshipSchema}
       onSuccess={onSuccess}
       onCancel={onCancel}
