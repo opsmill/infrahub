@@ -112,6 +112,13 @@ OWNER_MERGE_TEST_CASES: list[OwnerMergeTestCase] = [
 OWNER_SET_MERGE_TEST_CASES = [tc for tc in OWNER_MERGE_TEST_CASES if tc.name not in {"owner_added", "owner_removed"}]
 
 
+def _open_edges(owner_ids: tuple[str, ...] | None) -> int:
+    """Return the open edges of a holder: one for each owner, one for "no owner", and none to inherit."""
+    if owner_ids is None:
+        return 0
+    return len(owner_ids) or 1
+
+
 @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in OWNER_MERGE_TEST_CASES])
 async def test_owner_state_of_a_branch_is_merged(
     db: InfrahubDatabase,
@@ -140,6 +147,10 @@ async def test_owner_state_of_a_branch_is_merged(
     await merge(db=db, branch=branch)
 
     assert await read_owners(db=db, branch=default_branch, node_id=tenant_id) == branch_owners
+    # A read builds a set of owners, so it does not show a second open edge to the same owner.
+    assert await count_active_holder_edges(db=db, branch=default_branch, node_id=tenant_id) == _open_edges(
+        branch_owners
+    )
     device = await resolve_owners(db=db, branch=default_branch, node_id=dataset.ids["device-a"])
     assert (device.owner_ids, device.origin, device.origin_node_id) == (
         (branch_owners or (), OwnerOrigin.PARENT, tenant_id) if branch_owners is not None else ((), None, None)
@@ -559,6 +570,9 @@ async def test_owners_that_a_profile_gives_on_a_branch_are_merged(
     assert (
         await read_owners(db=db, branch=default_branch, node_id=profile_id, holder=NODE_TARGET_HOLDER) == branch_owners
     )
+    assert await count_active_holder_edges(db=db, branch=default_branch, node_id=profile_id) == _open_edges(
+        branch_owners
+    )
     merged = await resolve_owners(db=db, branch=default_branch, node_id=device_id)
     assert (merged.owner_ids, merged.origin, merged.origin_node_id) == (
         (branch_owners, OwnerOrigin.PROFILE, profile_id) if branch_owners is not None else ((), None, None)
@@ -816,6 +830,9 @@ async def test_owner_state_of_an_attribute_on_a_branch_is_merged(
     await merge(db=db, branch=branch)
 
     assert await read_owners(db=db, branch=default_branch, node_id=tenant_id, holder=NAME_HOLDER) == branch_owners
+    assert await count_active_holder_edges(db=db, branch=default_branch, node_id=tenant_id) == _open_edges(
+        branch_owners
+    )
     await verify_graph(db=db)
 
 

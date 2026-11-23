@@ -61,14 +61,23 @@ async def _owner_edges(db: InfrahubDatabase) -> list[dict]:
     return [dict(record) for record in await db.execute_query(query=OWNER_EDGES)]
 
 
+@pytest.mark.parametrize(
+    ("kind", "extra"),
+    [
+        pytest.param(InfrahubKind.REPOSITORY, {}, id="repository"),
+        pytest.param(InfrahubKind.READONLYREPOSITORY, {"ref": "main"}, id="read-only-repository"),
+    ],
+)
 async def test_repository_owners_are_closed_and_readable_before_the_upgrade(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
+    kind: str,
+    extra: dict[str, str],
 ) -> None:
-    repository = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
-    await repository.new(db=db, name="repo01", location="git@github.com:user/repo01.git")
+    repository = await Node.init(db=db, schema=kind)
+    await repository.new(db=db, name="repo01", location="git@github.com:user/repo01.git", **extra)
     await repository.save(db=db)
     group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
     await group.new(db=db, name="network-team")
@@ -106,10 +115,10 @@ async def test_repository_owners_are_closed_and_readable_before_the_upgrade(
     assert await _owner_edges(db=db) == edges_after
     assert [line.rstrip() for line in capture.get().splitlines()] == [
         "Attributes that a repository owns, before the close: 2",
-        f"  TestCar.color, repository {repository.id} (CoreRepository), branch branch1: 1",
-        f"  TestCar.color, repository {repository.id} (CoreRepository), branch main: 1",
+        f"  TestCar.color, repository {repository.id} ({kind}), branch branch1: 1",
+        f"  TestCar.color, repository {repository.id} ({kind}), branch main: 1",
         "Closed 2 owner edge(s) from attributes to repositories.",
-        f"  repository {repository.id} (CoreRepository): 2",
+        f"  repository {repository.id} ({kind}): 2",
     ]
     assert [line.rstrip() for line in second_capture.get().splitlines()] == [
         "Attributes that a repository owns, before the close: 0",

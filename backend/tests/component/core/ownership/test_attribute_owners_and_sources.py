@@ -10,7 +10,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
-from tests.helpers.ownership import USER_ID, add_node
+from tests.helpers.ownership import USER_ID, add_node, create_groups, set_owners
 
 NAME_HOLDER = HolderKey(kind=HolderKind.ATTRIBUTE, attribute="name")
 
@@ -127,3 +127,30 @@ async def test_sources_of_a_node_are_stored_on_each_branch(
     assert await _stored(db, branch, persons[3].id, NODE_SOURCES_HOLDER) == StoredOwnerState(owner_ids=(groups[0],))
     assert await _stored(db, default_branch, persons[3].id, NODE_SOURCES_HOLDER) == INHERIT
     await verify_graph(db=db)
+
+
+async def test_filter_by_each_owner_of_an_attribute_with_two_owners_on_a_branch_finds_the_node(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+) -> None:
+    group_ids = await create_groups(db=db)
+    person = await add_node(db=db, kind="TestPerson", name="John")
+    holder = HolderKey(kind=HolderKind.ATTRIBUTE, attribute="name")
+    await set_owners(db=db, branch=default_branch, node_id=person.id, owner_ids=(group_ids["dc-emea"],), holder=holder)
+    branch = await create_branch(db=db, branch_name="two-owners")
+    owner_ids = (group_ids["dc-emea"], group_ids["security"])
+    await set_owners(db=db, branch=branch, node_id=person.id, owner_ids=owner_ids, holder=holder)
+
+    found = {
+        owner_id: [
+            node.id
+            for node in await NodeManager.query(
+                db=db, schema="TestPerson", branch=branch, filters={"name__owner__id": owner_id}
+            )
+        ]
+        for owner_id in owner_ids
+    }
+
+    assert found == {owner_id: [person.id] for owner_id in owner_ids}

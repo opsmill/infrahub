@@ -86,5 +86,6 @@ async def test_source_deleted_on_a_branch_stays_a_source_after_the_merge(
     await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
     await merge(db=db, branch=branch)
 
+    assert await NodeManager.get_one(db=db, branch=default_branch, id=template.id) is None
     assert await _read_sources(db=db, branch=default_branch, node_id=tenant_id) == (template.id,)
     await verify_graph(db=db)

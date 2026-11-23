@@ -269,6 +269,18 @@ async def test_owner_changes_on_both_branches_conflict_when_the_lists_differ(
     ]
 
 
+async def _repository_owner_edges(db: InfrahubDatabase, node_id: str, owner_id: str) -> list[tuple[str, str, bool]]:
+    records = await db.execute_query(
+        query="""
+MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(:Attribute {name: "color"})-[r:HAS_OWNER]->(:Node {uuid: $owner_id})
+RETURN r.branch AS branch, r.status AS status, r.to IS NULL AS is_open
+ORDER BY branch, status
+""",
+        params={"node_id": node_id, "owner_id": owner_id},
+    )
+    return [(record["branch"], record["status"], record["is_open"]) for record in records]
+
+
 async def test_repository_owner_that_the_upgrade_closes_gives_no_change_in_the_diff_of_an_older_branch(
     db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, car_accord_main: Node
 ) -> None:
@@ -281,6 +293,10 @@ async def test_repository_owner_that_the_upgrade_closes_gives_no_change_in_the_d
     branch = await create_branch(db=db, branch_name="before-upgrade")
     result = await Migration085().execute(migration_input=MigrationInput(db=db))
     assert result.errors == []
+    assert await _repository_owner_edges(db=db, node_id=car_accord_main.id, owner_id=repository.id) == [
+        (branch.name, "deleted", True),
+        (default_branch.name, "active", False),
+    ]
 
     diff = await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
 
@@ -299,6 +315,10 @@ async def test_repository_owner_that_the_upgrade_closes_gives_no_conflict_with_a
     branch = await create_branch(db=db, branch_name="before-upgrade")
     result = await Migration085().execute(migration_input=MigrationInput(db=db))
     assert result.errors == []
+    assert await _repository_owner_edges(db=db, node_id=car_accord_main.id, owner_id=repository.id) == [
+        (branch.name, "deleted", True),
+        (default_branch.name, "active", False),
+    ]
     car = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id, raise_on_error=True)
     await car.delete(db=db)
 

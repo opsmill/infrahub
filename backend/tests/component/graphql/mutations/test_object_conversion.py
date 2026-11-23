@@ -31,7 +31,7 @@ from infrahub.database.validation import verify_graph
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.mutations import convert_object_type as convert_object_type_mutation
 from tests.helpers.graphql import graphql
-from tests.helpers.ownership import wait_for_the_other_write
+from tests.helpers.ownership import SECONDS_TO_WAIT, wait_for_the_other_write
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -393,17 +393,19 @@ async def test_convert_object_type_gives_the_owners_of_a_write_that_commits_whil
             await wait_for_the_other_write(db=db, other=conversion)
 
     async def convert() -> str:
-        await owners_are_written.wait()
-        new_node = await convert_and_validate_object_type(
-            node=node,
-            target_schema=registry.schema.get_node_schema(name="TestconvPerson2", branch=default_branch),
-            mapping={
-                "name": ConversionFieldInput(source_field="name"),
-                "age": ConversionFieldInput(data=ConversionFieldValue(attribute_value=30)),
-            },
-            branch=default_branch,
-            db=db,
-        )
+        await asyncio.wait_for(owners_are_written.wait(), timeout=SECONDS_TO_WAIT)
+        # The poll of the other write reads with the shared session, so the conversion needs its own.
+        async with db.start_session() as session_db:
+            new_node = await convert_and_validate_object_type(
+                node=node,
+                target_schema=registry.schema.get_node_schema(name="TestconvPerson2", branch=default_branch),
+                mapping={
+                    "name": ConversionFieldInput(source_field="name"),
+                    "age": ConversionFieldInput(data=ConversionFieldValue(attribute_value=30)),
+                },
+                branch=default_branch,
+                db=session_db,
+            )
         return new_node.id
 
     conversion = asyncio.ensure_future(convert())

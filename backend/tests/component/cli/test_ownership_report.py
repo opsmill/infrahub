@@ -220,3 +220,33 @@ async def test_report_skips_the_vertex_that_a_kind_migration_replaced(
             ProtectedValueRow(node_kind="TestVehicle", attribute_name="color", branch=default_branch.name, nb_values=1)
         ],
     )
+
+
+async def test_report_lists_a_read_only_repository_as_owner(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, car_person_schema: None
+) -> None:
+    repository = await add_node(
+        db=db,
+        kind=InfrahubKind.READONLYREPOSITORY,
+        name="repo02",
+        location="git@github.com:user/repo02.git",
+        ref="main",
+    )
+    person = await add_node(db=db, kind="TestPerson", name="John")
+    car = await _create_car(db=db, name="read-only-car", person=person)
+    await add_owner_edge(
+        db=db, query=ADD_ATTRIBUTE_OWNER, branch=default_branch, node_id=car.id, owner_id=repository.id
+    )
+
+    report = await build_ownership_report(db=db)
+
+    assert report.repository_owners == [
+        RepositoryOwnerRow(
+            repository_id=repository.id,
+            repository_kind=InfrahubKind.READONLYREPOSITORY,
+            node_kind="TestCar",
+            attribute_name="color",
+            branch=default_branch.name,
+            nb_attributes=1,
+        )
+    ]

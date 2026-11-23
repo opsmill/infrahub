@@ -1,3 +1,5 @@
+import pytest
+
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import InfrahubKind, MetadataOptions
@@ -147,15 +149,22 @@ async def test_owner_that_the_branch_wrote_first_and_then_replaced_is_hidden(
     assert await _active_owner_ids(db=db, branch=branch, node_id=car.id) == {branch_owner.id}
 
 
+@pytest.mark.parametrize(
+    ("kind", "extra"),
+    [
+        pytest.param(InfrahubKind.REPOSITORY, {}, id="repository"),
+        pytest.param(InfrahubKind.READONLYREPOSITORY, {"ref": "main"}, id="read-only-repository"),
+    ],
+)
 async def test_repository_that_the_branch_replaced_gets_no_deleted_edge(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     car_person_schema: SchemaBranch,
+    kind: str,
+    extra: dict[str, str],
 ) -> None:
-    repository = await add_node(
-        db=db, kind=InfrahubKind.REPOSITORY, name="repo01", location="git@github.com:user/repo01.git"
-    )
+    repository = await add_node(db=db, kind=kind, name="repo01", location="git@github.com:user/repo01.git", **extra)
     branch_owner = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="branch-owner")
     person = await add_node(db=db, kind="TestPerson", name="John")
     car = await create_car(db=db, name="volt", person=person)

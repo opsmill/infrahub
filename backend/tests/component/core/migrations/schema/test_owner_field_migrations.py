@@ -28,9 +28,10 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import GraphCheck, collect_graph_violations, verify_graph
 from infrahub.dependencies.registry import get_component_registry
-from tests.component.core.diff.merge.conftest import get_diff_coordinator, get_diff_merger
+from tests.component.core.diff.merge._ownership import merge
+from tests.component.core.diff.merge.conftest import get_diff_coordinator
 from tests.conftest import do_car_person_schema_unregistered
-from tests.helpers.ownership import USER_ID, set_owners
+from tests.helpers.ownership import USER_ID, read_owners, set_owners
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -263,8 +264,7 @@ def _rename_relationship(branch: Branch) -> None:
 async def _merge(db: InfrahubDatabase, default_branch: Branch, branch: Branch) -> None:
     coordinator = await get_diff_coordinator(db=db, branch=branch)
     await coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
-    merger = await get_diff_merger(db=db, branch=branch)
-    await merger.merge_graph(at=Timestamp())
+    await merge(db=db, branch=branch)
 
 
 @dataclass
@@ -443,8 +443,15 @@ async def test_removal_of_one_side_of_a_relationship_ends_the_owners_of_that_sid
     await verify_graph(db=db)
 
 
+@pytest.mark.parametrize(
+    "selection",
+    [
+        pytest.param(ConflictSelection.DIFF_BRANCH, id="branch_selected"),
+        pytest.param(ConflictSelection.BASE_BRANCH, id="default_branch_selected"),
+    ],
+)
 async def test_merge_closes_the_owner_that_the_default_branch_gave_to_an_attribute_that_the_branch_removed(
-    db: InfrahubDatabase, default_branch: Branch, field_owners: FieldOwners
+    db: InfrahubDatabase, default_branch: Branch, field_owners: FieldOwners, selection: ConflictSelection
 ) -> None:
     car_id = field_owners.node_ids["car"]
     branch = await create_branch(db=db, branch_name="attribute-removed")
@@ -457,6 +464,13 @@ async def test_merge_closes_the_owner_that_the_default_branch_gave_to_an_attribu
     )
     result = await _remove_attribute(branch).execute(migration_input=MigrationInput(db=db), branch=branch)
     assert not result.errors
+    coordinator = await get_diff_coordinator(db=db, branch=branch)
+    metadata = await coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+    diff_repository = await get_component_registry().get_component(DiffRepository, db=db, branch=default_branch)
+    diff = await diff_repository.get_one(diff_branch_name=branch.name, diff_id=metadata.uuid)
+    conflicts = diff.get_all_conflicts()
+    assert list(conflicts) == [f"data/{car_id}/{ATTRIBUTE}/property/HAS_OWNER"]
+    await diff_repository.update_conflict_by_id(conflict_id=conflicts[next(iter(conflicts))].uuid, selection=selection)
 
     await _merge(db=db, default_branch=default_branch, branch=branch)
 
@@ -571,6 +585,61 @@ async def test_owners_that_a_profile_or_a_template_of_an_inheriting_kind_gives_f
         # The kind declares its own attribute, so the change of the attribute of the generic does not apply to it.
         "TemplateTestGazCar": {"color": (group.id,)},
     }
+
+
+async def test_relationship_removal_of_a_generic_keeps_the_owners_of_a_kind_that_declares_the_relationship(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics_unregistered: dict[str, Any]
+) -> None:
+    raw_schema = deepcopy(car_person_schema_generics_unregistered)
+    generic_relationship = next(
+        rel for rel in raw_schema["generics"][0]["relationships"] if rel["name"] == "previous_owner"
+    )
+    for node in raw_schema["nodes"]:
+        if node["name"] == "GazCar":
+            node.setdefault("relationships", []).append(deepcopy(generic_relationship))
+    registry.schema.register_schema(schema=SchemaRoot(**raw_schema), branch=default_branch.name)
+    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group.new(db=db, name="dc-emea")
+    await group.save(db=db)
+    person = await Node.init(db=db, schema="TestPerson")
+    await person.new(db=db, name="John")
+    await person.save(db=db)
+    car_ids: dict[str, str] = {}
+    for kind, extra in (("TestElectricCar", {"nbr_engine": 2}), ("TestGazCar", {"mpg": 40})):
+        car = await Node.init(db=db, schema=kind)
+        await car.new(db=db, name=kind, nbr_seats=4, owner=person, **extra)
+        await car.save(db=db)
+        car_ids[kind] = car.id
+    holder = field_holder(
+        schema=registry.schema.get(name="TestGazCar", branch=default_branch, duplicate=False),
+        field_name="previous_owner",
+    )
+    assert holder is not None
+    for car_id in car_ids.values():
+        await _write(db=db, branch=default_branch, node_id=car_id, holder=holder, owner_id=group.id)
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    previous_generic = schema.get(name=CAR_KIND)
+    candidate = schema.duplicate()
+    for kind in (CAR_KIND, "TestElectricCar"):
+        node = candidate.get(name=kind)
+        node.relationships = [rel for rel in node.relationships if rel.name != "previous_owner"]
+        candidate.set(name=kind, schema=node)
+    registry.schema.set_schema_branch(name=default_branch.name, schema=candidate)
+    migration = NodeRelationshipRemoveMigration(
+        previous_node_schema=previous_generic,
+        new_node_schema=candidate.get(name=CAR_KIND),
+        schema_path=SchemaPath(
+            path_type=SchemaPathType.RELATIONSHIP, schema_kind=CAR_KIND, field_name="previous_owner"
+        ),
+    )
+
+    result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+
+    assert not result.errors
+    assert {
+        kind: await read_owners(db=db, branch=default_branch, node_id=car_id, holder=holder)
+        for kind, car_id in car_ids.items()
+    } == {"TestElectricCar": None, "TestGazCar": (group.id,)}
 
 
 async def test_attribute_removal_closes_the_source_and_the_owner_that_are_the_same_node(

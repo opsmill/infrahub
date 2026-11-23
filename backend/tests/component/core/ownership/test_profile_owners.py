@@ -10,6 +10,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
+from infrahub.core.ownership.constants import MAX_NODES_FOR_LINEAGE_WALK
 from infrahub.core.ownership.models import (
     NODE_HOLDER,
     NODE_TARGET_HOLDER,
@@ -514,6 +515,19 @@ class TestProfileOwnersRead:
                 origin_node_id=dataset.ids[test_case.origin_node] if test_case.origin_node else None,
             )
         }
+
+    async def test_resolve_of_more_nodes_than_the_lineage_walk_gives_the_result_of_each_node(
+        self, db: InfrahubDatabase, dataset: ProfileDataset
+    ) -> None:
+        branch = dataset.branches[DEFAULT_BRANCH]
+        device_ids = [dataset.ids[name] for name in DEVICES_IN_RACK_A]
+        assert len(device_ids) > MAX_NODES_FOR_LINEAGE_WALK
+        one_by_one = {
+            node_id: (await _resolve(db=db, branch=branch, node_ids=[node_id]))[node_id] for node_id in device_ids
+        }
+        assert any(resolved.origin is OwnerOrigin.PROFILE for resolved in one_by_one.values())
+
+        assert await _resolve(db=db, branch=branch, node_ids=device_ids) == one_by_one
 
     async def test_read_returns_the_profiles_of_each_node_with_the_priority_of_the_branch(
         self, db: InfrahubDatabase, dataset: ProfileDataset

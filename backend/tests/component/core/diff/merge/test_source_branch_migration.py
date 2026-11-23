@@ -161,7 +161,7 @@ async def test_source_branch_migration(
     reason="the merge of a kind migration loses the node owners that the default branch wrote after the branch start",
 )
 async def test_merge_of_a_kind_migration_keeps_the_node_owners_of_the_default_branch(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node
+    db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, car_accord_main: Node
 ) -> None:
     groups = await create_groups(db=db)
     car_id = car_accord_main.id
@@ -170,6 +170,7 @@ async def test_merge_of_a_kind_migration_keeps_the_node_owners_of_the_default_br
     branch = await create_branch(db=db, branch_name="src-migration-owners")
     await set_owners(db=db, branch=default_branch, node_id=car_id, owner_ids=(groups["security"],))
     await migrate_testcar_to_test2newcar(db=db, target_branch=branch, delete_old_schema=True)
+    await update_diff(db=db, default_branch=default_branch, branch=branch, diff_repository=diff_repository)
 
     await merge(db=db, branch=branch)
 
