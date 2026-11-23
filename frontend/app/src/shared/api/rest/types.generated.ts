@@ -49,7 +49,7 @@ export interface paths {
         put?: never;
         /**
          * Submit Render Result
-         * @description Accept the content, or the failure, an external engine returns for a render request.
+         * @description Accept the content, the failure or a progress report an external engine returns for a render request.
          *
          *     Only the render token authenticates this request, so account sessions and API keys are refused.
          *
@@ -3236,6 +3236,22 @@ export interface components {
          * @enum {string}
          */
         RemoteSendStatus: "pending" | "sent" | "skipped" | "failed";
+        /** RenderProgressResponse */
+        RenderProgressResponse: {
+            /** Render Id */
+            render_id: string;
+            /**
+             * Deadline
+             * Format: date-time
+             * @description The new deadline of the render request
+             */
+            deadline: string;
+            /**
+             * Token
+             * @description Render token valid until the new deadline, to use for every later callback
+             */
+            token: string;
+        };
         /** SSOInfo */
         SSOInfo: {
             /** Providers */
@@ -4015,9 +4031,10 @@ export interface operations {
                 "application/json": {
                     /**
                      * Status
+                     * @description running reports progress: it moves the deadline and returns a new token
                      * @enum {string}
                      */
-                    status: "success" | "failure";
+                    status: "success" | "failure" | "running";
                     /**
                      * Content
                      * @description Rendered content, required when the status is success; an object or a list only for JSON or YAML
@@ -4032,13 +4049,22 @@ export interface operations {
                     content_type?: string | null;
                     /**
                      * Message
-                     * @description Why the render failed, required when the status is failure
+                     * @description Why the render failed, required when the status is failure; the progress shown on the check when running
                      */
                     message?: string | null;
                 };
             };
         };
         responses: {
+            /** @description Progress accepted: the deadline moved and a new token is returned */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RenderProgressResponse"];
+                };
+            };
             /** @description Successful Response */
             204: {
                 headers: {

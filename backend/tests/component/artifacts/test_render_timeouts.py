@@ -268,6 +268,78 @@ class TestRenderTimeouts(TestInfrahubAppWithoutLocalWorkflow):
         )
         assert stored_validator.conclusion.get_value() == ValidatorConclusion.FAILURE.value
 
+    async def test_progress_report_moves_the_deadline_and_returns_a_new_token(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        test_client: InfrahubTestClient,
+        dataset: dict[str, Any],
+    ) -> None:
+        branch = await create_branch(branch_name=f"pc-{uuid4().hex[:8]}", db=db)
+        proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+        await proposed_change.new(
+            db=db, name=f"render {branch.name}", source_branch=branch.name, destination_branch=default_branch.name
+        )
+        await proposed_change.save(db=db)
+        validator = await Node.init(db=db, schema=InfrahubKind.ARTIFACTVALIDATOR)
+        await validator.new(
+            db=db,
+            label="Artifact Validator: device-config",
+            state=ValidatorState.IN_PROGRESS.value,
+            conclusion=ValidatorConclusion.UNKNOWN.value,
+            proposed_change=proposed_change,
+            definition=dataset["definition"],
+        )
+        await validator.save(db=db)
+        artifact = dataset["artifacts"][1]
+        check = await Node.init(db=db, schema=InfrahubKind.ARTIFACTCHECK)
+        await check.new(
+            db=db,
+            name=f"device-config: {artifact.id}",
+            origin="render-repo",
+            kind="ArtifactDefinition",
+            validator=validator,
+            message="waiting for external engine",
+            conclusion=ValidatorConclusion.UNKNOWN.value,
+            severity="info",
+            artifact_id=artifact.id,
+        )
+        await check.save(db=db)
+        pending = await _mark_pending(
+            db=db, branch=branch, artifact_id=artifact.id, deadline=datetime.now(UTC) + timedelta(seconds=10)
+        )
+
+        progress = await test_client.post(
+            f"/api/artifact/render/{pending.render_id}",
+            headers={"X-Infrahub-Render-Token": pending.token},
+            json={"status": "running", "message": "pipeline 4812 queued"},
+        )
+
+        assert progress.status_code == 200
+        body = progress.json()
+        assert body["render_id"] == pending.render_id
+        new_deadline = datetime.fromisoformat(body["deadline"])
+        # The transformation has the schema's default timeout of 60 seconds.
+        assert new_deadline > pending.deadline + timedelta(seconds=40)
+        moved = await _get_artifact(db=db, branch=branch, artifact_id=artifact.id)
+        assert moved.status.get_value() == ArtifactStatus.PENDING.value
+        assert datetime.fromisoformat(str(moved.render_deadline.value)) == new_deadline
+        waiting_check = await registry.manager.get_one_by_id_or_default_filter(
+            db=db, id=check.id, kind=CoreArtifactCheck, branch=default_branch
+        )
+        assert waiting_check.conclusion.get_value() == ValidatorConclusion.UNKNOWN.value
+        assert waiting_check.message.value == "waiting for external engine: pipeline 4812 queued"
+
+        result = await test_client.post(
+            f"/api/artifact/render/{pending.render_id}",
+            headers={"X-Infrahub-Render-Token": body["token"]},
+            json={"status": "success", "content": "hostname edge-02\n"},
+        )
+
+        assert result.status_code == 204
+        rendered = await _get_artifact(db=db, branch=branch, artifact_id=artifact.id)
+        assert rendered.status.get_value() == ArtifactStatus.READY.value
+
     async def test_sweep_expires_an_artifact_whose_transformation_is_gone(
         self, db: InfrahubDatabase, default_branch: Branch, dataset: dict[str, Any]
     ) -> None:

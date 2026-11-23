@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Body, Depends, Request, Response, status
+from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
@@ -17,8 +18,14 @@ from infrahub.api.dependencies import (
     get_permission_manager,
 )
 from infrahub.artifacts.content import ArtifactContentReader
-from infrahub.artifacts.render_result import RenderResultAcceptor, RenderResultPayload, check_render_id
-from infrahub.artifacts.render_token import validate_render_token
+from infrahub.artifacts.render_result import (
+    RENDER_RESULT_RUNNING,
+    RenderProgressResponse,
+    RenderResultAcceptor,
+    RenderResultPayload,
+    check_render_id,
+)
+from infrahub.artifacts.render_token import mint_render_token, validate_render_token
 from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
@@ -145,6 +152,12 @@ async def generate_artifact(
 @router.post(
     "/render/{render_id:str}",
     status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_200_OK: {
+            "model": RenderProgressResponse,
+            "description": "Progress accepted: the deadline moved and a new token is returned",
+        }
+    },
     openapi_extra={
         "requestBody": {
             "required": True,
@@ -158,7 +171,7 @@ async def submit_render_result(
     render_token: str | None = Depends(render_token_scheme),
     db: InfrahubDatabase = Depends(get_db),
 ) -> Response:
-    """Accept the content, or the failure, an external engine returns for a render request.
+    """Accept the content, the failure or a progress report an external engine returns for a render request.
 
     Only the render token authenticates this request, so account sessions and API keys are refused.
 
@@ -189,5 +202,16 @@ async def submit_render_result(
         event_service=service.event,
         max_content_bytes=config.SETTINGS.storage.max_file_size * BYTES_PER_MEGABYTE,
     )
+    if body.status == RENDER_RESULT_RUNNING:
+        deadline = await acceptor.report_progress(render_id=render_id, claims=claims, message=body.message)
+        progress = RenderProgressResponse(
+            render_id=render_id,
+            deadline=deadline,
+            token=mint_render_token(
+                render_id=render_id, artifact_id=claims.artifact_id, branch=claims.branch, deadline=deadline
+            ),
+        )
+        return JSONResponse(status_code=status.HTTP_200_OK, content=progress.model_dump(mode="json"))
+
     await acceptor.accept_render_result(render_id=render_id, claims=claims, body=body)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

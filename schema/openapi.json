@@ -183,7 +183,7 @@
         "/api/artifact/render/{render_id}": {
             "post": {
                 "summary": "Submit Render Result",
-                "description": "Accept the content, or the failure, an external engine returns for a render request.\n\nOnly the render token authenticates this request, so account sessions and API keys are refused.\n\nRaises:\n    AuthorizationError: When the render token is missing or not valid.\n    RenderResultInvalidError: When the body is not a valid render result.",
+                "description": "Accept the content, the failure or a progress report an external engine returns for a render request.\n\nOnly the render token authenticates this request, so account sessions and API keys are refused.\n\nRaises:\n    AuthorizationError: When the render token is missing or not valid.\n    RenderResultInvalidError: When the body is not a valid render result.",
                 "operationId": "submit_render_result_api_artifact_render__render_id__post",
                 "security": [
                     {
@@ -205,6 +205,16 @@
                     "204": {
                         "description": "Successful Response"
                     },
+                    "200": {
+                        "description": "Progress accepted: the deadline moved and a new token is returned",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RenderProgressResponse"
+                                }
+                            }
+                        }
+                    },
                     "422": {
                         "description": "Validation Error",
                         "content": {
@@ -223,9 +233,11 @@
                             "schema": {
                                 "properties": {
                                     "status": {
+                                        "description": "running reports progress: it moves the deadline and returns a new token",
                                         "enum": [
                                             "success",
-                                            "failure"
+                                            "failure",
+                                            "running"
                                         ],
                                         "title": "Status",
                                         "type": "string"
@@ -272,7 +284,7 @@
                                                 "type": "null"
                                             }
                                         ],
-                                        "description": "Why the render failed, required when the status is failure",
+                                        "description": "Why the render failed, required when the status is failure; the progress shown on the check when running",
                                         "title": "Message"
                                     }
                                 },
@@ -8535,6 +8547,32 @@
                     "failed"
                 ],
                 "title": "RemoteSendStatus"
+            },
+            "RenderProgressResponse": {
+                "properties": {
+                    "render_id": {
+                        "type": "string",
+                        "title": "Render Id"
+                    },
+                    "deadline": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Deadline",
+                        "description": "The new deadline of the render request"
+                    },
+                    "token": {
+                        "type": "string",
+                        "title": "Token",
+                        "description": "Render token valid until the new deadline, to use for every later callback"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "render_id",
+                    "deadline",
+                    "token"
+                ],
+                "title": "RenderProgressResponse"
             },
             "SSOInfo": {
                 "properties": {

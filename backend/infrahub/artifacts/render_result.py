@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import io
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any, Literal, Self
 
 from infrahub_sdk.uuidt import UUIDT
@@ -20,6 +21,7 @@ from infrahub.core.protocols import (
     CoreArtifactDefinition,
     CoreArtifactTarget,
     CoreProposedChange,
+    CoreTransformation,
     CoreValidator,
 )
 from infrahub.core.validators.checks_runner import recompute_validator
@@ -48,13 +50,17 @@ STRUCTURED_CONTENT_TYPES = frozenset({ContentType.APPLICATION_JSON.value, Conten
 RENDER_SUCCEEDED_MESSAGE = "Artifact rendered successfully"
 RENDER_FAILED_MESSAGE = "Failed to render artifact"
 RENDER_UNDELIVERED_MESSAGE = "render request could not be delivered"
+WAITING_FOR_EXTERNAL_ENGINE_MESSAGE = "waiting for external engine"
 
 RENDER_RESULT_SUCCESS = "success"
 RENDER_RESULT_FAILURE = "failure"
+RENDER_RESULT_RUNNING = "running"
 
 
 class RenderResultPayload(BaseModel):
-    status: Literal["success", "failure"]
+    status: Literal["success", "failure", "running"] = Field(
+        description="running reports progress: it moves the deadline and returns a new token"
+    )
     content: str | dict[str, Any] | list[Any] | None = Field(
         default=None,
         description="Rendered content, required when the status is success; an object or a list only for JSON or YAML",
@@ -65,7 +71,7 @@ class RenderResultPayload(BaseModel):
     message: str | None = Field(
         default=None,
         max_length=RENDER_FAILURE_MESSAGE_MAX_LENGTH,
-        description="Why the render failed, required when the status is failure",
+        description="Why the render failed, required when the status is failure; the progress shown on the check when running",
     )
 
     @model_validator(mode="after")
@@ -88,6 +94,12 @@ class RenderResultOutcome:
     storage_id: str | None = None
     changed: bool = False
     """Whether the stored content differs from the content before this render."""
+
+
+class RenderProgressResponse(BaseModel):
+    render_id: str
+    deadline: datetime = Field(description="The new deadline of the render request")
+    token: str = Field(description="Render token valid until the new deadline, to use for every later callback")
 
 
 def check_render_id(render_id: str, claims: RenderTokenClaims) -> None:
@@ -191,6 +203,44 @@ class RenderResultAcceptor:
                 context=system_event_context(branch=branch),
             )
         return outcome
+
+    async def report_progress(self, render_id: str, claims: RenderTokenClaims, message: str | None) -> datetime:
+        """Move the deadline of the artifact's current render request to now plus the transformation's timeout.
+
+        The waiting proposed-change checks show `message`. Returns the new deadline.
+
+        Raises:
+            PermissionDeniedError: When the token was issued for another render request.
+            RenderRequestNotActiveError: When the artifact is gone, or its render request was replaced or has ended.
+
+        """
+        check_render_id(render_id=render_id, claims=claims)
+        branch = await registry.get_branch(db=self.db, branch=claims.branch)
+        async with (
+            artifact_render_lock(branch=claims.branch, artifact_id=claims.artifact_id),
+            self.db.start_transaction() as db,
+        ):
+            artifact = await registry.manager.get_one(db=db, id=claims.artifact_id, branch=branch, kind=CoreArtifact)
+            if (
+                artifact is None
+                or artifact.render_request_id.value != render_id
+                or artifact.render_deadline.value is None
+            ):
+                raise RenderRequestNotActiveError()
+            definition = await artifact.definition.get_peer(
+                db=db, peer_type=CoreArtifactDefinition, raise_on_error=True
+            )
+            transformation = await definition.transformation.get_peer(
+                db=db, peer_type=CoreTransformation, raise_on_error=True
+            )
+            deadline = datetime.now(UTC) + timedelta(seconds=int(transformation.timeout.value))
+            artifact.render_deadline.value = deadline.isoformat()
+            await artifact.save(db=db, user_id=SYSTEM_USER_ID)
+            if message:
+                for check, _ in await _waiting_checks(db=db, branch=branch, artifact_id=artifact.id):
+                    check.message.value = f"{WAITING_FOR_EXTERNAL_ENGINE_MESSAGE}: {message}"
+                    await check.save(db=db, user_id=SYSTEM_USER_ID)
+        return deadline
 
     async def _store_content(
         self, db: InfrahubDatabase, branch: Branch, artifact: CoreArtifact, content: str, content_type: str
@@ -304,20 +354,8 @@ async def conclude_waiting_checks(db: InfrahubDatabase, branch: Branch, outcome:
     A check waits when its conclusion is still unknown and its proposed change's source branch is the branch the
     artifact was rendered on.
     """
-    checks = await registry.manager.query(
-        db=db,
-        schema=CoreArtifactCheck,
-        filters={"artifact_id__value": outcome.artifact_id, "conclusion__value": ValidatorConclusion.UNKNOWN.value},
-    )
     validator_ids: set[str] = set()
-    for check in checks:
-        validator = await check.validator.get_peer(db=db, peer_type=CoreValidator, raise_on_error=True)
-        proposed_change = await validator.proposed_change.get_peer(
-            db=db, peer_type=CoreProposedChange, raise_on_error=True
-        )
-        if proposed_change.source_branch.value != branch.name:
-            continue
-
+    for check, validator in await _waiting_checks(db=db, branch=branch, artifact_id=outcome.artifact_id):
         if outcome.status == ArtifactStatus.READY:
             check.get_attribute("conclusion").value = ValidatorConclusion.SUCCESS.value
             check.get_attribute("severity").value = Severity.INFO.value
@@ -333,6 +371,29 @@ async def conclude_waiting_checks(db: InfrahubDatabase, branch: Branch, outcome:
         await check.save(db=db, user_id=SYSTEM_USER_ID)
         validator_ids.add(validator.id)
     return validator_ids
+
+
+async def _waiting_checks(
+    db: InfrahubDatabase, branch: Branch, artifact_id: str
+) -> list[tuple[CoreArtifactCheck, CoreValidator]]:
+    """Return the proposed-change checks of the artifact still waiting for its render on `branch`, with their validators.
+
+    A check waits when its conclusion is still unknown and its proposed change's source branch is `branch`.
+    """
+    checks = await registry.manager.query(
+        db=db,
+        schema=CoreArtifactCheck,
+        filters={"artifact_id__value": artifact_id, "conclusion__value": ValidatorConclusion.UNKNOWN.value},
+    )
+    waiting: list[tuple[CoreArtifactCheck, CoreValidator]] = []
+    for check in checks:
+        validator = await check.validator.get_peer(db=db, peer_type=CoreValidator, raise_on_error=True)
+        proposed_change = await validator.proposed_change.get_peer(
+            db=db, peer_type=CoreProposedChange, raise_on_error=True
+        )
+        if proposed_change.source_branch.value == branch.name:
+            waiting.append((check, validator))
+    return waiting
 
 
 def system_event_context(branch: Branch) -> EventContext:

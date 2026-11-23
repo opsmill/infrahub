@@ -8,7 +8,11 @@ from prefect.settings import get_current_settings
 from infrahub import config
 from infrahub.artifacts.models import CheckArtifactCreate
 from infrahub.artifacts.render_request import request_external_render
-from infrahub.artifacts.render_result import RENDER_FAILED_MESSAGE, RENDER_SUCCEEDED_MESSAGE
+from infrahub.artifacts.render_result import (
+    RENDER_FAILED_MESSAGE,
+    RENDER_SUCCEEDED_MESSAGE,
+    WAITING_FOR_EXTERNAL_ENGINE_MESSAGE,
+)
 from infrahub.core.constants import ArtifactStatus, InfrahubKind, ValidatorConclusion
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.checks_runner import CheckPending, CheckResult
@@ -16,8 +20,6 @@ from infrahub.git.repository import get_initialized_repo
 from infrahub.tasks.artifact import define_artifact
 from infrahub.workers.dependencies import get_client, get_event_service
 from infrahub.workflows.utils import add_tags
-
-WAITING_FOR_EXTERNAL_ENGINE_MESSAGE = "waiting for external engine"
 
 
 @dataclass(frozen=True)
