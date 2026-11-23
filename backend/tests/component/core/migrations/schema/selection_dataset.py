@@ -277,9 +277,7 @@ def build_node_kind_update_migration(branch: Branch, kind: str, **changes: Any) 
             previous_node_schema=previous_node,
             new_node_schema=new_node,
         ),
-        schema_path=SchemaPath(
-            path_type=SchemaPathType.ATTRIBUTE, schema_kind=new_node.kind, field_name=sorted(changes)[0]
-        ),
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=new_node.kind, field_name=min(changes)),
     )
 
 

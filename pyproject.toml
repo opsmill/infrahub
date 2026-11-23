@@ -880,7 +880,6 @@ allow-dunder-method-names = [
     "ASYNC240", # Async functions should not use pathlib.Path methods
     "ERA001",   # Found commented-out code
     "FIX",      # flake8-fixme
-    "FURB192",  # Prefer `min` over `sorted()` to compute the minimum value
     "INP001",   # File is part of an implicit namespace package
     "N802",     # Function name should be lowercase
     "N806",     # Variable in function should be lowercase
