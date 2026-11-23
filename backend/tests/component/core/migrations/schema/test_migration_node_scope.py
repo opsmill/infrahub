@@ -180,15 +180,26 @@ class ScopeCase:
     present_after: set[str] | None = None
 
 
-# w1, w2 and w3 are active on main and w4 is deleted; on the branch w1, w3, w5 and w6 are active and w2 is deleted
-MAIN_SCOPE = {"w1", "w4", "pw1", "tw1", "b1"}
-MAIN_REMAINING = {"w2", "w3"}
-BRANCH_SCOPE = {"w1", "w2", "w5", "pw1", "tw1", "b1"}
-BRANCH_REMAINING = {"w3", "w6"}
+# Nodes of the widget kind, its profile and its template that are active on each branch
+MAIN_ACTIVE = {"w1", "w2", "w3", "pw1", "tw1"}
+BRANCH_ACTIVE = {"w1", "w3", "w5", "w6", "pw1", "tw1"}
 
+# Nodes that the run on the set changes, per kind
 MAIN_IN_SCOPE = {WIDGET_KIND: {"w1"}, PROFILE_WIDGET_KIND: {"pw1"}, TEMPLATE_WIDGET_KIND: {"tw1"}}
-MAIN_REMAINING_CHANGED = {WIDGET_KIND: {"w2", "w3"}}
 BRANCH_IN_SCOPE = {WIDGET_KIND: {"w1", "w5"}, PROFILE_WIDGET_KIND: {"pw1"}, TEMPLATE_WIDGET_KIND: {"tw1"}}
+
+# The set also holds a node deleted on the branch of the run and a node of another kind, which the run must not change
+MAIN_UNCHANGED_IN_SCOPE = {"w4", "b1"}
+BRANCH_UNCHANGED_IN_SCOPE = {"w2", "b1"}
+
+# The set given to the first run, then the active nodes left for the second run
+MAIN_SCOPE = {name for names in MAIN_IN_SCOPE.values() for name in names} | MAIN_UNCHANGED_IN_SCOPE
+MAIN_REMAINING = MAIN_ACTIVE - MAIN_SCOPE
+BRANCH_SCOPE = {name for names in BRANCH_IN_SCOPE.values() for name in names} | BRANCH_UNCHANGED_IN_SCOPE
+BRANCH_REMAINING = BRANCH_ACTIVE - BRANCH_SCOPE
+
+# Nodes that the run on the remaining nodes changes, per kind
+MAIN_REMAINING_CHANGED = {WIDGET_KIND: {"w2", "w3"}}
 BRANCH_REMAINING_CHANGED = {WIDGET_KIND: {"w3", "w6"}}
 
 
