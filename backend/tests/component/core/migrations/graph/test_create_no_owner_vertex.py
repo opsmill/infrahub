@@ -28,6 +28,8 @@ async def test_upgrade_creates_one_no_owner_vertex(db: InfrahubDatabase, default
 
 
 async def test_first_start_creates_one_no_owner_vertex(db: InfrahubDatabase, default_branch: Branch) -> None:
+    await db.execute_query(query="MATCH (n:NoOwner) DELETE n")
+
     await first_time_initialization(db=db)
 
     assert await _no_owner_uuids(db=db) == [NO_OWNER_VERTEX_UUID]
