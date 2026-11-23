@@ -63,12 +63,12 @@ class TestPreviousVersions(TestInfrahubApp):
 
         assert response["TestingPerson"]["count"] == 2
 
-        john = [
+        john = next(
             person["node"] for person in response["TestingPerson"]["edges"] if person["node"]["name"]["value"] == "John"
-        ][0]
-        jane = [
+        )
+        jane = next(
             person["node"] for person in response["TestingPerson"]["edges"] if person["node"]["name"]["value"] == "Jane"
-        ][0]
+        )
         assert john["display_label"] == "John"
         assert jane["display_label"] == "Jane"
 
@@ -110,12 +110,12 @@ class TestPreviousVersions(TestInfrahubApp):
 
         assert response["TestingPerson"]["count"] == 2
 
-        john = [
+        john = next(
             person["node"] for person in response["TestingPerson"]["edges"] if person["node"]["name"]["value"] == "John"
-        ][0]
-        jane = [
+        )
+        jane = next(
             person["node"] for person in response["TestingPerson"]["edges"] if person["node"]["name"]["value"] == "Jane"
-        ][0]
+        )
         assert john["display_label"] == "John 180"
         assert jane["display_label"] == "Jane 170"
 
@@ -124,11 +124,11 @@ class TestPreviousVersions(TestInfrahubApp):
 
         assert response["TestingPerson"]["count"] == 2
 
-        john = [
+        john = next(
             person["node"] for person in response["TestingPerson"]["edges"] if person["node"]["name"]["value"] == "John"
-        ][0]
-        jane = [
+        )
+        jane = next(
             person["node"] for person in response["TestingPerson"]["edges"] if person["node"]["name"]["value"] == "Jane"
-        ][0]
+        )
         assert john["display_label"] == "John"
         assert jane["display_label"] == "Jane"

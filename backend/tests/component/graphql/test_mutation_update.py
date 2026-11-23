@@ -502,8 +502,8 @@ async def test_update_single_relationship(
     assert main_event.changelog.relationships["owner"].peer_id == person_jim_main.id
     assert main_event.changelog.relationships["owner"].peer_kind == "TestPerson"
     assert main_event.changelog.relationships["owner"].peer_status == DiffAction.UPDATED
-    johns_event = [event for event in [related_event_01, related_event_02] if event.node_id == person_john_main.id][0]
-    jims_event = [event for event in [related_event_01, related_event_02] if event.node_id == person_jim_main.id][0]
+    johns_event = next(event for event in [related_event_01, related_event_02] if event.node_id == person_john_main.id)
+    jims_event = next(event for event in [related_event_01, related_event_02] if event.node_id == person_jim_main.id)
     assert isinstance(johns_event.changelog.relationships["cars"], RelationshipCardinalityManyChangelog)
     assert len(johns_event.changelog.relationships["cars"].peers) == 1
     assert johns_event.changelog.relationships["cars"].peers[0].peer_id == car_accord_main.id

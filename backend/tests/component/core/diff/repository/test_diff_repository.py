@@ -966,9 +966,9 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         attr_prop_with_added_conflict = next(iter(attr_with_added_prop.properties))
         attr_prop_with_added_conflict.conflict = EnrichedConflictFactory.build()
         # add attribute property
-        added_prop_type = [
+        added_prop_type = next(
             d for d in DatabaseEdgeType if d not in [p.property_type for p in attr_with_added_prop.properties]
-        ][0]
+        )
         added_prop_to_attr = EnrichedPropertyFactory.build(property_type=added_prop_type)
         attr_with_added_prop.properties.add(added_prop_to_attr)
         # update attribute and property
@@ -1006,9 +1006,9 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         element_with_adds.conflict = added_element_conflict
         # add relationship element property
         element_property_with_adds = next(iter(element_with_adds.properties))
-        added_prop_type = [
+        added_prop_type = next(
             d for d in DatabaseEdgeType if d not in [p.property_type for p in element_with_adds.properties]
-        ][0]
+        )
         added_element_property = EnrichedPropertyFactory.build(property_type=added_prop_type)
         element_with_adds.properties.add(added_element_property)
         # add relationship element property conflict

@@ -139,7 +139,7 @@ class TestDiffMerge(TestInfrahubApp):
         )
         conflicts_map = enriched_diff.get_all_conflicts()
         assert len(conflicts_map) == 1
-        owner_conflict = list(conflicts_map.values())[0]
+        owner_conflict = next(iter(conflicts_map.values()))
         await diff_repository.update_conflict_by_id(
             conflict_id=owner_conflict.uuid, selection=ConflictSelection.BASE_BRANCH
         )

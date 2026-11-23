@@ -94,7 +94,7 @@ class TestSchemaLifecyclePeerParentUpdate(TestSchemaLifecycleBase):
         interfaces = await NodeManager.query(db=db, branch=self.branch_name, schema=TestKind.PHYSICAL_INTERFACE)
         interface_to_invalidate = interfaces[0]
         original_device = await interface_to_invalidate.device.get_peer(db=db)
-        other_device = [d for d in devices if d.id != original_device.id][0]
+        other_device = next(d for d in devices if d.id != original_device.id)
         await interface_to_invalidate.device.update(db=db, data=other_device)
         await interface_to_invalidate.save(db=db)
 
