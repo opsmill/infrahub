@@ -230,7 +230,7 @@ rules are in `core/ownership/resolution.py`.
   result: when a parent or a profile that the rules need is not in the result, the resolver reads it with one more
   query for each level (`_needed`). The results are then the same if the walk misses a node.
 - A change of the rules must reach three places: `core/ownership/resolution.py`, `_needed`, and the walk. The
-  first two give the result. A filter on the owner list must give the same result. The walk only
+  first two give the result. The walk only
   reads ahead: it copies the rules so that one query reads all the nodes. When the walk misses a node that the
   rules need, `_needed` reads that node with one more query, so a walk that does not follow a change of the rules
   costs queries but does not change the result.

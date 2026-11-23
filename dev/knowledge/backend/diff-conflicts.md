@@ -24,7 +24,8 @@ the sources that the default branch added next to its own. The gate is the expli
 check in `rebase_branch` (`backend/infrahub/core/branch/tasks.py`) — do not reuse `resolvable` as
 "rebasable".
 
-A merge can apply either side of a conflict on the owners of a node or of an attribute. In favor of
+A merge can apply either side of a conflict on a list of owners or of sources, for each holder: a
+node, an attribute, or the set of a relationship or of a profile or object template target. In favor of
 the default branch, it skips the owner edges of the holder. In favor of the branch, it merges each
 owner edge and then gives the holder the list of owners of the branch (`OwnerDiffResolution` in
 `backend/infrahub/core/diff/merger/exclusion_plan.py`), because the owners that only the default
