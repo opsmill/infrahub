@@ -119,7 +119,7 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     // For each inbound edge to active_node, find the latest active edge on the branch
     // ----------------------------------------------------------
     MATCH (active_node)<-[r:IS_RELATED|HAS_SOURCE|HAS_OWNER|HAS_OWNER_SOURCE]-(peer:Attribute|Relationship|Node|OwnerSet)
-    // A deleted owner or source stays in the list of its holder, as at the delete of a node.
+    // The owner and source edges to a removed node stay open, as after the delete of the node.
     WHERE NOT (type(r) IN ["HAS_OWNER", "HAS_SOURCE"] AND NOT peer:Relationship)
     WITH DISTINCT active_node, type(r) AS edge_type, peer
     CALL (active_node, edge_type, peer) {
