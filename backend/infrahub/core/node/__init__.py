@@ -1368,10 +1368,17 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
     async def _update(
         self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None, fields: list[str] | None = None
     ) -> NodeChangelog:
-        """Update the node in the database if needed."""
+        """Update the node in the database if needed.
+
+        Raises:
+            NodeNotFoundError: When the node is not active after the lock, for example after a delete that committed.
+
+        """
         # A delete locks the node before its attributes, so a write that locks an attribute first can deadlock.
-        lock_query = await NodeLockQuery.init(db=db, node=self)
+        lock_query = await NodeLockQuery.init(db=db, node=self, at=at)
         await lock_query.execute(db=db)
+        if not lock_query.is_active():
+            raise NodeNotFoundError(node_type=self.get_kind(), identifier=self.get_id(), branch_name=self._branch.name)
         update_at = Timestamp(at)
         node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
         await self._check_changed_owner_kinds(db=db, at=update_at, fields=fields, user_id=user_id)
@@ -1470,10 +1477,17 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             await update_metadata_query.execute(db=db)
 
     async def delete(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID, at: Timestamp | None = None) -> None:
-        """Delete the Node in the database."""
+        """Delete the Node in the database.
+
+        Raises:
+            NodeNotFoundError: When the node is not active after the lock, for example after a delete that committed.
+
+        """
         # A write of owners locks the node before its attributes, so the other order can deadlock.
-        lock_query = await NodeLockQuery.init(db=db, node=self)
+        lock_query = await NodeLockQuery.init(db=db, node=self, at=at)
         await lock_query.execute(db=db)
+        if not lock_query.is_active():
+            raise NodeNotFoundError(node_type=self.get_kind(), identifier=self.get_id(), branch_name=self._branch.name)
         delete_at = Timestamp(at)
 
         node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")

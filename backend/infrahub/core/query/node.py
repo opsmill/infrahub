@@ -715,16 +715,52 @@ SET n.updated_at = $at, n.updated_by = $user_id
 
 
 class NodeLockQuery(NodeQuery):
-    """Take the write lock of the node vertex, which lasts until the transaction commits."""
+    """Take the write lock of the node vertex, which lasts until the transaction commits, and read if the node is active.
+
+    The read comes after the lock, so it sees a delete that committed while the query waited.
+    """
 
     name = "node_lock"
     type: QueryType = QueryType.WRITE
-    insert_return = False
     raise_error_if_empty = False
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
+        self.params.update(branch_params)
         self.params["uuid"] = self.node_id
-        self.add_to_query("MATCH (n:Node { uuid: $uuid }) SET n.uuid = n.uuid")
+        self.params["at"] = self.at.to_string()
+        # An isolated branch reads its origin branch at the branch start, so a later delete there is hidden.
+        self.params["later_branches"] = sorted(
+            {
+                name
+                for names, time in self.branch.get_branches_and_times_to_query_global(at=self.at).items()
+                if time == self.at.to_string()
+                for name in names
+            }
+        )
+        query = """
+MATCH (n:Node { uuid: $uuid })
+SET n.uuid = n.uuid
+WITH n
+MATCH (n)-[r:IS_PART_OF]->(:Root)
+WHERE %(branch_filter)s
+WITH r
+ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+LIMIT 1
+        """ % {"branch_filter": branch_filter}
+        self.add_to_query(query)
+        # A delete that commits while the query waits for the lock can have a later time than the query
+        self.return_labels = [
+            """r.status = "active" AND NOT EXISTS {
+    MATCH (:Node {uuid: $uuid})-[later:IS_PART_OF {status: "deleted"}]->(:Root)
+    WHERE later.branch IN $later_branches AND later.from > $at
+} AS is_active"""
+        ]
+
+    def is_active(self) -> bool:
+        """Tell if the node is active on the branch of the query, after the lock."""
+        result = self.get_result()
+        return bool(result and result.get("is_active"))
 
 
 class NodeCheckIDQuery(Query):

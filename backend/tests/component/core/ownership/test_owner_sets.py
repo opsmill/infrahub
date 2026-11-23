@@ -20,7 +20,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import GraphCheck, collect_graph_violations, verify_graph
-from infrahub.exceptions import QueryError
+from infrahub.exceptions import NodeNotFoundError, QueryError
 from tests.helpers.ownership import SECONDS_TO_WAIT, USER_ID, read_owners, wait_for_the_other_write
 
 
@@ -562,9 +562,16 @@ async def test_owner_update_that_waits_for_the_node_lock_replaces_the_owner_writ
     assert await read_owners(db=db, branch=default_branch, node_id=person.id, holder=holder) == tuple(group_ids[1:])
 
 
-async def test_value_update_that_waits_behind_a_node_delete_fails_and_leaves_a_valid_graph(
-    db: InfrahubDatabase, default_branch: Branch, person: Node
+@pytest.mark.parametrize("change", ["value", "relationship"])
+async def test_update_that_waits_behind_a_node_delete_fails_and_leaves_a_valid_graph(
+    db: InfrahubDatabase, default_branch: Branch, person: Node, change: str
 ) -> None:
+    other_person = await Node.init(db=db, schema="TestPerson")
+    await other_person.new(db=db, name="Jane")
+    await other_person.save(db=db)
+    car = await Node.init(db=db, schema="TestCar")
+    await car.new(db=db, name="volt", owner=other_person)
+    await car.save(db=db)
     node_is_locked = asyncio.Event()
 
     async def delete_while_the_update_waits() -> None:
@@ -576,19 +583,22 @@ async def test_value_update_that_waits_behind_a_node_delete_fails_and_leaves_a_v
             await wait_for_the_other_write(db=db, other=update)
             await node.delete(db=dbt)
 
-    async def update_value() -> None:
+    async def update_node() -> None:
         await asyncio.wait_for(node_is_locked.wait(), timeout=SECONDS_TO_WAIT)
         async with db.start_session() as session_db, session_db.start_transaction() as dbt:
             node = await NodeManager.get_one(db=dbt, branch=default_branch, id=person.id, raise_on_error=True)
-            node.name.value = "Jane"
+            if change == "value":
+                node.name.value = "John Doe"
+            else:
+                await node.cars_driven.update(db=dbt, data=[car])
             await node.save(db=dbt)
 
-    update = asyncio.ensure_future(update_value())
+    update = asyncio.ensure_future(update_node())
     results = await asyncio.gather(delete_while_the_update_waits(), update, return_exceptions=True)
 
     assert results[0] is None
-    assert isinstance(results[1], Exception)
-    await verify_graph(db=db, kinds=["TestPerson"])
+    assert isinstance(results[1], NodeNotFoundError)
+    await verify_graph(db=db, kinds=["TestPerson", "TestCar"])
 
 
 async def test_attribute_rename_gives_no_set_to_a_node_whose_delete_commits_while_the_rename_waits(
