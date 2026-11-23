@@ -14,6 +14,7 @@ from infrahub.core.ownership.report import (
     build_ownership_report,
 )
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from tests.helpers.ownership import ADD_ATTRIBUTE_OWNER, ADD_LINK_OWNER, add_node, add_owner_edge
 
@@ -51,7 +52,7 @@ async def repository(
 
     The repository owns the color of two cars on the default branch and of one car on a branch, and one link.
     An account group owns one color and one link. A person owns one color. One color is protected. One car has no
-    owner and no protection.
+    owner and no protection. The report leaves out a closed repository owner edge and a deleted one.
     """
     repository = await add_node(
         db=db, kind=InfrahubKind.REPOSITORY, name="repo01", location="git@github.com:user/repo01.git"
@@ -74,6 +75,27 @@ async def repository(
     branch_car = await _create_car(db=db, name="plain-car", person=person)
     branch = await create_branch(db=db, branch_name="branch1")
     await add_owner_edge(db=db, query=ADD_ATTRIBUTE_OWNER, branch=branch, node_id=branch_car.id, owner_id=repository.id)
+    closed_car = await _create_car(db=db, name="closed-car", person=person)
+    await add_owner_edge(
+        db=db, query=ADD_ATTRIBUTE_OWNER, branch=default_branch, node_id=closed_car.id, owner_id=repository.id
+    )
+    await db.execute_query(
+        query="""
+MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(:Attribute {name: "color"})-[r:HAS_OWNER]->()
+SET r.to = $at
+        """,
+        params={"node_id": closed_car.id, "at": Timestamp().to_string()},
+    )
+    await db.execute_query(
+        query=ADD_ATTRIBUTE_OWNER.replace('status: "active"', 'status: "deleted"'),
+        params={
+            "node_id": closed_car.id,
+            "owner_id": repository.id,
+            "branch": branch.name,
+            "branch_level": branch.hierarchy_level,
+            "at": Timestamp().to_string(),
+        },
+    )
     return repository
 
 
