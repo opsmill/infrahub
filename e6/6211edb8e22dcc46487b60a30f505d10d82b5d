@@ -1,0 +1,35 @@
+dev/specs/ifc-2167-placeholder-automations-db/tasks.md
+  s_d63c81261b3528::t_45ef01949a009a 126
+  s_d63c81261b3528::t_861c6fb9c1110c 118
+dev/specs/ifc-2167-placeholder-automations-db/opsmill-implement-ledger.md
+  s_d63c81261b3528::t_b12d1cd0b12da3 110-133
+backend/infrahub/computed_attribute/gather.py
+  s_d63c81261b3528::t_949882d68516e4 167-170
+  s_d63c81261b3528::t_5022230ceb705e 173
+  s_d63c81261b3528::t_2e6755a11dcf42 30
+  s_d63c81261b3528::t_8f8f814a211e3a 164-166,171-172,174-176
+backend/infrahub/computed_attribute/tasks.py
+  s_d63c81261b3528::t_7bc3049817e85c 638-654,659,661,672,684-688,690-697,703-705,709-711
+  s_d63c81261b3528::t_84ba06adb88836 39-43
+  s_d63c81261b3528::t_988b1f64d48c2a 689
+backend/tests/component/computed_attribute/test_scoped_recompute_jinja2.py
+  s_d63c81261b3528::t_5b777d2c567373 16
+  s_d63c81261b3528::t_bc1ac4ad4509b7 142-247
+  s_d63c81261b3528::t_4c1f1e2f5bfe47 8,10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e66211edb8e22dcc46487b60a30f505d10d82b5d",
+  "prompts": {},
+  "sessions": {
+    "s_d63c81261b3528": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dcf2b638-609f-4bca-9db3-fb340397cfb4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

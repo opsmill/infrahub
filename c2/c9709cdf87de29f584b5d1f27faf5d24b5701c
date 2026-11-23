@@ -1,0 +1,39 @@
+dev/specs/ifc-2167-placeholder-automations/opsmill-implement-ledger.md
+  s_f439d6e3e80dab::t_af08fc39ea0a34 327-344
+.specify/workflows/runs/0603d153/log.jsonl
+  s_c084e8bac6e69f::t_201a8573bc77e2 30-36
+.specify/workflows/runs/0603d153/state.json
+  s_c084e8bac6e69f::t_827afa06f3f4e6 6-8,265-304,309-310,672-689,692-734
+.specify/workflows/runs/74fcacb6/inputs.json
+  s_c084e8bac6e69f::t_88a1f2dd5a55a2 1-6
+.specify/workflows/runs/74fcacb6/log.jsonl
+  s_c084e8bac6e69f::t_50f01b69694def 1-9
+.specify/workflows/runs/74fcacb6/state.json
+  s_c084e8bac6e69f::t_c5717f970be226 1-195
+.specify/workflows/runs/74fcacb6/workflow.yml
+  s_c084e8bac6e69f::t_be0ac5fae9c957 1-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c2c9709cdf87de29f584b5d1f27faf5d24b5701c",
+  "prompts": {},
+  "sessions": {
+    "s_c084e8bac6e69f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a62b57c8-0237-436f-98fd-7089eb103a35",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_f439d6e3e80dab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5362fa2d-3fcf-482a-9d8c-f885b0c471f2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

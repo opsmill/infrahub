@@ -1,0 +1,19 @@
+changelog/10577.fixed.md
+  s_d39781b4d6a4c3::t_8aea37a1d5ed32 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "43311e1f06d06bed1b2e5b9b65338561f11cb89c",
+  "prompts": {},
+  "sessions": {
+    "s_d39781b4d6a4c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87386907-69dd-4d37-9a17-8c0b6c8a25aa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

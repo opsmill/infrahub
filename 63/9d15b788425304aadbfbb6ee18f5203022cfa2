@@ -1,0 +1,21 @@
+frontend/app/src/entities/branches/ui/hooks/use-navigate-after-branch-removal.test.ts
+  s_d39781b4d6a4c3::t_e39ca2937fbd07 37,52,67,82,96-99
+frontend/app/src/entities/branches/ui/hooks/use-navigate-after-branch-removal.ts
+  s_d39781b4d6a4c3::t_ce9beb2b5e647d 15-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "639d15b788425304aadbfbb6ee18f5203022cfa2",
+  "prompts": {},
+  "sessions": {
+    "s_d39781b4d6a4c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87386907-69dd-4d37-9a17-8c0b6c8a25aa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

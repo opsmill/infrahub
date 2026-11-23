@@ -1,0 +1,35 @@
+frontend/app/src/entities/events/ui/proposed-change-events/proposed-change-event-title.tsx
+  s_d39781b4d6a4c3::t_15b5c39c479eab 41,55,66
+frontend/app/src/entities/events/ui/standard-events/standard-event-title.tsx
+  s_d39781b4d6a4c3::t_15b5c39c479eab 34,38
+frontend/app/src/entities/events/ui/account-events/account-logged-in-event-title.tsx
+  s_d39781b4d6a4c3::t_15b5c39c479eab 13
+frontend/app/src/entities/events/ui/account-events/account-logged-out-event-title.tsx
+  s_d39781b4d6a4c3::t_15b5c39c479eab 7
+frontend/app/src/entities/events/ui/account-events/account-event-layout.tsx
+  s_d39781b4d6a4c3::t_15b5c39c479eab 10,15
+frontend/app/src/entities/events/ui/artifact-events/artifact-event-title.tsx
+  s_d39781b4d6a4c3::t_15b5c39c479eab 58,64
+frontend/app/src/entities/events/ui/branch-events/branch-event-title.tsx
+  s_d39781b4d6a4c3::t_15b5c39c479eab 52,58
+frontend/app/src/entities/events/ui/node-events/node-event-title.tsx
+  s_d39781b4d6a4c3::t_15b5c39c479eab 38,44
+frontend/app/src/entities/events/ui/group-events/group-event-title.tsx
+  s_d39781b4d6a4c3::t_15b5c39c479eab 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c04ec8c8af690fc5c792540ffa8802b54b152051",
+  "prompts": {},
+  "sessions": {
+    "s_d39781b4d6a4c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87386907-69dd-4d37-9a17-8c0b6c8a25aa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
