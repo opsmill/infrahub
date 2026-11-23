@@ -1064,21 +1064,50 @@ class DiffPropertyNodesQuery(DiffChangedNodesQuery):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params.update(self.get_params())
+        changed_node = """
+    AND p.branch_support = $branch_aware
+    MATCH (n:Node)-[:HAS_ATTRIBUTE|IS_RELATED]-(p)
+    WHERE $node_kinds IS NULL OR n.kind IN $node_kinds
+    RETURN DISTINCT n.uuid AS node_uuid
+        """
+        # without the hints the planner reads every attribute and relationship of the graph instead of the edges in
+        # the window
+        edge_reads = []
+        for edge_type in (
+            DatabaseEdgeType.IS_PROTECTED,
+            DatabaseEdgeType.HAS_SOURCE,
+            DatabaseEdgeType.HAS_OWNER,
+            DatabaseEdgeType.HAS_VALUE,
+        ):
+            edge_reads.append(
+                """
+    MATCH (p:Attribute|Relationship)-[diff_rel:%(edge_type)s {branch: $branch_name}]->()
+    USING INDEX SEEK diff_rel:%(edge_type)s(from)
+    WHERE diff_rel.from >= $from_time AND diff_rel.from < $to_time
+    AND (diff_rel.to IS NULL OR diff_rel.to > $to_time)
+    %(changed_node)s
+                """
+                % {"edge_type": edge_type.value, "changed_node": changed_node}
+            )
+            edge_reads.append(
+                """
+    MATCH (p:Attribute|Relationship)-[diff_rel:%(edge_type)s {branch: $branch_name}]->()
+    USING INDEX SEEK diff_rel:%(edge_type)s(to)
+    WHERE diff_rel.to >= $from_time AND diff_rel.to < $to_time
+    %(changed_node)s
+                """
+                % {"edge_type": edge_type.value, "changed_node": changed_node}
+            )
         query = """
 // -------------------------------------
 // Identify nodes with a property added/removed on branch
 // -------------------------------------
-MATCH (n:Node)-[:HAS_ATTRIBUTE|IS_RELATED]-(p:Attribute|Relationship)
-    -[diff_rel:IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE {branch: $branch_name}]->()
-WHERE p.branch_support = $branch_aware
-AND ($node_kinds IS NULL OR n.kind IN $node_kinds)
-AND (
-    ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
-    OR ($from_time <= diff_rel.to < $to_time)
-)
-        """
+CALL () {
+    %(edge_reads)s
+}
+        """ % {"edge_reads": "UNION ALL".join(edge_reads)}
         self.add_to_query(query)
-        self.return_labels = ["collect(DISTINCT n.uuid) AS node_uuids"]
+        self.return_labels = ["collect(DISTINCT node_uuid) AS node_uuids"]
 
 
 @dataclass
