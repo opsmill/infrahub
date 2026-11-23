@@ -277,7 +277,7 @@ async def test_search_ipv4(
 
 
 @pytest.mark.parametrize(
-    "query,expected",
+    ("query", "expected"),
     [
         ("2001:0db8:0000:0000:0000:0000:0000:0000/48", "2001:db8::/48"),
         ("2001:0db8:0000:0000:0000:0000:0000:0000", "2001:db8::"),

@@ -69,7 +69,7 @@ _SCHEMA: dict[str, Any] = {
 
 
 @pytest.mark.parametrize(
-    "human_friendly_id, uniqueness_constraints, should_raise",
+    ("human_friendly_id", "uniqueness_constraints", "should_raise"),
     [
         # Valid hfid
         (["name__value", "owner__name__value"], [["name__value"]], False),

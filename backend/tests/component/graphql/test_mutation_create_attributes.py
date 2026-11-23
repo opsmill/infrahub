@@ -418,7 +418,7 @@ async def test_create_valid_datetime_failure(
 
 
 @pytest.mark.parametrize(
-    "graphql_enums_on,enum_value,response_value", [(True, "MANUAL", "MANUAL"), (False, '"manual"', "manual")]
+    ("graphql_enums_on", "enum_value", "response_value"), [(True, "MANUAL", "MANUAL"), (False, '"manual"', "manual")]
 )
 async def test_create_simple_object_with_enum(
     db: InfrahubDatabase,

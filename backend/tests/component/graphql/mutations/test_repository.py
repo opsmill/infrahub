@@ -149,7 +149,7 @@ async def test_repository_update(
 
 
 @pytest.mark.parametrize(
-    "test_input,expected",
+    ("test_input", "expected"),
     [
         ({"location": {"value": "/tmp/repo_dir"}}, {"location": {"value": "/tmp/repo_dir"}}),
         (

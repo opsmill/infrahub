@@ -81,7 +81,7 @@ class TestNumberPoolConstraintQueries:
     ) -> Node:
         return await build_snow_incident(db=db, branch=default_branch_scope_class)
 
-    @pytest.mark.parametrize("start_range,end_range", [(1, 500), (-20, 50)])
+    @pytest.mark.parametrize(("start_range", "end_range"), [(1, 500), (-20, 50)])
     async def test_query_numberpool_constraints_success(
         self,
         db: InfrahubDatabase,

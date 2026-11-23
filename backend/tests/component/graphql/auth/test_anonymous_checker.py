@@ -25,7 +25,7 @@ class TestAnonymousAuthChecker:
             operations_requiring_authentication=QUERIES_REQUIRING_AUTHENTICATION,
         )
 
-    @pytest.mark.parametrize("is_authenticated,is_supported", [(True, False), (False, True)])
+    @pytest.mark.parametrize(("is_authenticated", "is_supported"), [(True, False), (False, True)])
     async def test_supports_unauthenticated_accounts(
         self, db: InfrahubDatabase, branch: Branch, is_authenticated: bool, is_supported: bool
     ) -> None:
@@ -35,7 +35,9 @@ class TestAnonymousAuthChecker:
 
         assert is_supported is has_support
 
-    @pytest.mark.parametrize("anonymous_setting,query_has_mutations", [(False, False), (False, True), (True, True)])
+    @pytest.mark.parametrize(
+        ("anonymous_setting", "query_has_mutations"), [(False, False), (False, True), (True, True)]
+    )
     async def test_failures_raise_error(
         self, db: InfrahubDatabase, branch: Branch, anonymous_setting: bool, query_has_mutations: bool
     ) -> None:

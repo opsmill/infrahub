@@ -214,7 +214,7 @@ async def test_schema_branch_process_inheritance_update_inherited_elements(
 
 
 @pytest.mark.parametrize(
-    ["uniqueness_constraints", "unique_attributes", "human_friendly_id"],
+    ("uniqueness_constraints", "unique_attributes", "human_friendly_id"),
     [
         (None, [], ["name__value"]),
         ([["breed__value"]], [], ["name__value"]),
@@ -263,7 +263,7 @@ async def test_validate_human_friendly_id_assign_uniquess_constraints(
 
 
 @pytest.mark.parametrize(
-    ["uniqueness_constraints", "unique_attributes", "human_friendly_id"],
+    ("uniqueness_constraints", "unique_attributes", "human_friendly_id"),
     [
         (None, ["name"], ["name__value"]),
         (None, ["name"], ["name__value", "breed__value"]),
@@ -554,7 +554,7 @@ async def test_schema_branch_cleanup_inherited_elements(schema_all_in_one: dict[
 
 
 @pytest.mark.parametrize(
-    "schema_dict,expected_error",
+    ("schema_dict", "expected_error"),
     [
         (
             {
@@ -1189,7 +1189,7 @@ async def test_schema_branch_validate_names(test_case: SchemaBranchValidateNames
 
 
 @pytest.mark.parametrize(
-    "index,reserved_name",
+    ("index", "reserved_name"),
     [
         pytest.param(index, reserved_name, id=reserved_name)
         for index, reserved_name in enumerate(RESERVED_ATTR_REL_HIERARCHICAL_NAMES)
@@ -1315,7 +1315,7 @@ async def test_schema_validate_hierarchical_nodes_restricted_words(index: int, r
 
 
 @pytest.mark.parametrize(
-    "index,reserved_name",
+    ("index", "reserved_name"),
     [
         pytest.param(index, reserved_name, id=reserved_name)
         for index, reserved_name in enumerate(RESERVED_ATTR_REL_HIERARCHICAL_NAMES)
@@ -1792,7 +1792,7 @@ async def test_validate_uniqueness_constraints_success(
 
 
 @pytest.mark.parametrize(
-    ["uniqueness_constraints", "unique_attributes", "expected_constraints", "expected_unique_attributes"],
+    ("uniqueness_constraints", "unique_attributes", "expected_constraints", "expected_unique_attributes"),
     [
         (None, [], None, []),
         # name is on the generic and we don't add inherited unique attribute to the uniqueness constraints
@@ -1873,7 +1873,7 @@ async def test_validate_exception_ipam_ip_namespace(
 
 
 @pytest.mark.parametrize(
-    "uniqueness_constraints,expected_error",
+    ("uniqueness_constraints", "expected_error"),
     [
         (
             [["mybool__value", "notanattribute__value"]],
@@ -1967,7 +1967,7 @@ async def test_validate_display_label_inherited_from_generic(schema_all_in_one: 
 
 
 @pytest.mark.parametrize(
-    "display_labels,expected_error",
+    ("display_labels", "expected_error"),
     [
         (
             ["mybool__value", "notanattribute__value"],
@@ -2004,7 +2004,7 @@ async def test_validate_display_labels_error(
 
 
 @pytest.mark.parametrize(
-    "display_label,expected_error",
+    ("display_label", "expected_error"),
     [
         (
             "{{ mybool }}",
@@ -2078,7 +2078,7 @@ async def test_validate_order_by_success(schema_all_in_one: dict[str, Any], orde
 
 
 @pytest.mark.parametrize(
-    "order_by,expected_error",
+    ("order_by", "expected_error"),
     [
         (
             ["mybool__value", "notanattribute__value"],
@@ -2151,7 +2151,7 @@ async def test_validate_order_by_error(
 
 
 @pytest.mark.parametrize(
-    "order_by,expected_error",
+    ("order_by", "expected_error"),
     [
         (
             ["my_generic_name__value", "my_generic_name__value__asc"],
@@ -2201,7 +2201,7 @@ async def test_validate_default_filter_success(schema_all_in_one: dict[str, Any]
 
 
 @pytest.mark.parametrize(
-    "default_filter,expected_error",
+    ("default_filter", "expected_error"),
     [
         (
             "notanattribute__value",
@@ -2260,7 +2260,7 @@ async def test_validate_default_value_success(
 
 
 @pytest.mark.parametrize(
-    "default_value_attr,expected_error",
+    ("default_value_attr", "expected_error"),
     [
         (
             {"name": "something", "kind": "DateTime", "optional": True, "default_value": 0},
@@ -2362,10 +2362,10 @@ async def test_schema_branch_validate_count_against_cardinality_valid(organizati
 
 @pytest.mark.parametrize(
     "relationship",
-    (
+    [
         {"name": "second", "peer": "CoreOrganization", "cardinality": "many", "min_count": 10, "max_count": 2},
         {"name": "third", "peer": "CoreOrganization", "cardinality": "many", "min_count": 0, "max_count": 1},
-    ),
+    ],
 )
 async def test_schema_branch_validate_count_against_cardinality_invalid(
     relationship: dict[str, Any], organization_schema: SchemaRoot
@@ -4633,7 +4633,7 @@ async def test_schema_branch_diff_core_object_template() -> None:
     ]
 
 
-@pytest.mark.parametrize("relationship_kind", (RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC))
+@pytest.mark.parametrize("relationship_kind", [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC])
 async def test_manage_object_templates(relationship_kind: RelationshipKind) -> None:
     schema_branch = SchemaBranch(cache={}, name="test")
     THING_WITH_TEMPLATE = copy.deepcopy(THING)

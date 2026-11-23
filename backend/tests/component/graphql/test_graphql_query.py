@@ -638,7 +638,7 @@ async def test_query_filter_local_attrs(
     assert len(result.data["TestCriticality"]["edges"]) == 1
 
 
-@pytest.mark.parametrize("graphql_enums_on,enum_value", [(True, "MANUAL"), (False, '"manual"')])
+@pytest.mark.parametrize(("graphql_enums_on", "enum_value"), [(True, "MANUAL"), (False, '"manual"')])
 async def test_query_filter_on_enum(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -1152,7 +1152,7 @@ async def test_query_filter_relationship_id(
 
 
 @pytest.mark.parametrize(
-    "graphql_filter,expected_results",
+    ("graphql_filter", "expected_results"),
     [
         ('mylist__value: "tree"', ["obj1", "obj2"]),
         ("mylist__value: 2", ["obj2", "obj3", "obj5"]),
