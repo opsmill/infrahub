@@ -2277,10 +2277,7 @@ WITH %(tracked_vars)s,
             )
 
             filter_params.update(subquery_params)
-            filter_query.append("CALL (n) {")
-            filter_query.append(subquery)
-            filter_query.append("}")
-            filter_query.append(f"WITH {with_str}")
+            filter_query.extend(("CALL (n) {", subquery, "}", f"WITH {with_str}"))
 
             # Add WHERE clause immediately after the filter subquery for better performance
             where_clause = self._build_filter_where_clause(far)

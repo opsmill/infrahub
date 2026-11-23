@@ -287,9 +287,13 @@ async def build_subquery_order(
         alias = v or k
         with_str_alias_parts.append(alias)
         with_str_from_list_parts.append(f"latest_node_details[{index}] AS {alias}")
-    with_str_to_alias_parts.append(f"{branch_level_str} AS branch_level")
-    with_str_to_alias_parts.append(f"{froms_str} AS froms")
-    with_str_to_alias_parts.append("""all(r IN relationships(path) WHERE r.status = "active") AS is_active""")
+    with_str_to_alias_parts.extend(
+        (
+            f"{branch_level_str} AS branch_level",
+            f"{froms_str} AS froms",
+            """all(r IN relationships(path) WHERE r.status = "active") AS is_active""",
+        )
+    )
     with_str_to_alias = ", ".join(with_str_to_alias_parts)
     with_str_alias = ", ".join(with_str_alias_parts)
     with_str_from_list = ", ".join(with_str_from_list_parts)

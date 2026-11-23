@@ -527,7 +527,6 @@ allow-dunder-method-names = [
     "ERA001",   # Found commented-out code
     "FAST002",  # FastAPI dependency without `Annotated`
     "FIX",      # flake8-fixme
-    "FURB113",  # Use `extend(...)` instead of repeatedly calling `append()`
     "INP001",   # File is part of an implicit namespace package
     "N801",     # Class name should use CapWords convention
     "N806",     # Variable in function should be lowercase
@@ -967,7 +966,6 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Rules that have violations in models/ directory                                                #
     ##################################################################################################
-    "FURB113",  # Use `extend(...)` instead of repeatedly calling `append()`
     "INP001",   # File is part of an implicit namespace package
     "N806",     # Variable in function should be lowercase
     "PLR0912",  # Too many branches

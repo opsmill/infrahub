@@ -448,8 +448,7 @@ class HashableModel(BaseModel):
             hashes.extend(cls._get_hash_value(item) for item in sorted(value))
         elif isinstance(value, dict):
             for key, content in frozenset(sorted(value.items())):
-                hashes.append(cls._get_hash_value(key))
-                hashes.append(cls._get_hash_value(content))
+                hashes.extend((cls._get_hash_value(key), cls._get_hash_value(content)))
         else:
             hashes.append(cls._get_hash_value(value))
 
