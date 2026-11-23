@@ -29,7 +29,7 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         self.params["attr_value_regex"] = self.attribute_schema.get_regex()
         self.params["null_value"] = NULL_VALUE
         query = """
-        MATCH p = (n:%(node_kind)s)
+        %(match_nodes)s
         CALL (n) {
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
             WHERE all(
@@ -44,7 +44,7 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         AND attribute_value <> $null_value
         AND NOT attribute_value =~ $attr_value_regex
-        """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
+        """ % {"branch_filter": branch_filter, "match_nodes": self.match_nodes(labels=self.node_schema.kind)}
 
         self.add_to_query(query)
         self.return_labels = ["node.uuid", "attribute_value", "value_relationship"]
@@ -98,6 +98,7 @@ class AttributeRegexChecker(ConstraintCheckerInterface):
                 node_schema=request.node_schema,
                 schema_path=request.schema_path,
                 is_isolated=request.is_isolated,
+                node_uuids=request.node_uuids,
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())

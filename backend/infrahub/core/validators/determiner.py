@@ -203,7 +203,14 @@ class ConstraintValidatorDeterminer:
         for field_name in schema.attribute_names:
             if self.node_diff_index.has_attribute_diff(kind=schema.kind, name=field_name):
                 field = schema.get_attribute(field_name)
-                constraints.extend(await self._get_constraints_for_one_field(schema=schema, field=field))
+                # a data change can only break an attribute constraint on the nodes whose value changed; when they
+                # are not identified, every node is checked
+                node_uuids = (
+                    sorted(self.node_diff_index.get_uuids_for_attribute(kind=schema.kind, name=field_name)) or None
+                )
+                constraints.extend(
+                    await self._get_constraints_for_one_field(schema=schema, field=field, node_uuids=node_uuids)
+                )
         return constraints
 
     async def _get_relationship_constraints_for_one_schema(
@@ -217,7 +224,10 @@ class ConstraintValidatorDeterminer:
         return constraints
 
     async def _get_constraints_for_one_field(
-        self, schema: MainSchemaTypes, field: AttributeSchema | RelationshipSchema
+        self,
+        schema: MainSchemaTypes,
+        field: AttributeSchema | RelationshipSchema,
+        node_uuids: list[str] | None = None,
     ) -> list[SchemaUpdateConstraintInfo]:
         constraints: list[SchemaUpdateConstraintInfo] = []
         prop_details_list: list[tuple[str, FieldInfo, Any]] = []
@@ -271,7 +281,9 @@ class ConstraintValidatorDeterminer:
                 property_name=prop_name,
             )
 
-            constraints.append(SchemaUpdateConstraintInfo(constraint_name=constraint_name, path=schema_path))
+            constraints.append(
+                SchemaUpdateConstraintInfo(constraint_name=constraint_name, path=schema_path, node_uuids=node_uuids)
+            )
         return constraints
 
 

@@ -188,6 +188,35 @@ async def test_validator(
     assert data_paths[0].node_id == person_john_main.id
 
 
+async def test_validator_checks_only_the_listed_nodes(
+    db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
+) -> None:
+    people = {}
+    for name in ("ALFRED", "bruce"):
+        person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+        await person.new(db=db, name=name)
+        await person.save(db=db)
+        people[name] = person
+
+    person_schema = registry.schema.get(name="TestPerson", branch=default_branch)
+    person_schema.get_attribute(name="name").parameters.regex = r"^[A-Z]+$"
+    registry.schema.set(name="TestPerson", schema=person_schema, branch=default_branch.name)
+
+    request = SchemaConstraintValidatorRequest(
+        branch=default_branch,
+        constraint_name=ConstraintIdentifier.ATTRIBUTE_PARAMETERS_REGEX_UPDATE.value,
+        node_schema=person_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
+        schema_branch=SchemaBranch(cache={}, name="test"),
+        node_uuids=[people["ALFRED"].id, people["bruce"].id],
+    )
+
+    grouped_data_paths = await AttributeRegexChecker(db=db, branch=default_branch).check(request)
+
+    # John breaks the pattern too, but he is not listed
+    assert [path.node_id for paths in grouped_data_paths for path in paths.get_all_data_paths()] == [people["bruce"].id]
+
+
 @dataclass(frozen=True)
 class ViewCase:
     name: str

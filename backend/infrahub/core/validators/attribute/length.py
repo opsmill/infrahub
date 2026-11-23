@@ -30,7 +30,7 @@ class AttributeLengthUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         self.params["max_length"] = self.attribute_schema.get_max_length()
 
         query = """
-        MATCH (n:%(node_kind)s)
+        %(match_nodes)s
         CALL (n) {
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
             WHERE all(
@@ -47,7 +47,7 @@ class AttributeLengthUpdateValidatorQuery(AttributeSchemaValidatorQuery):
             (toInteger($min_length) IS NOT NULL AND size(attribute_value) < toInteger($min_length))
             OR (toInteger($max_length) IS NOT NULL AND size(attribute_value) > toInteger($max_length))
         )
-        """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
+        """ % {"branch_filter": branch_filter, "match_nodes": self.match_nodes(labels=self.node_schema.kind)}
 
         self.add_to_query(query)
         self.return_labels = ["node.uuid", "value_relationship", "attribute_value"]
@@ -105,6 +105,7 @@ class AttributeLengthChecker(ConstraintCheckerInterface):
                 node_schema=request.node_schema,
                 schema_path=request.schema_path,
                 is_isolated=request.is_isolated,
+                node_uuids=request.node_uuids,
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())

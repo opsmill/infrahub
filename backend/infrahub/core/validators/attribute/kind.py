@@ -39,7 +39,7 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         self.params["null_value"] = NULL_VALUE
 
         query = """
-        MATCH (n:%(node_kinds)s)
+        %(match_nodes)s
         CALL (n) {
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
             WHERE all(
@@ -56,7 +56,9 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         AND attribute_value <> $null_value
         """ % {
             "branch_filter": branch_filter,
-            "node_kinds": f"{self.node_schema.kind}|Profile{self.node_schema.kind}|Template{self.node_schema.kind}",
+            "match_nodes": self.match_nodes(
+                labels=f"{self.node_schema.kind}|Profile{self.node_schema.kind}|Template{self.node_schema.kind}"
+            ),
         }
 
         self.add_to_query(query)
@@ -133,6 +135,7 @@ class AttributeKindChecker(ConstraintCheckerInterface):
                 node_schema=request.node_schema,
                 schema_path=request.schema_path,
                 is_isolated=request.is_isolated,
+                node_uuids=request.node_uuids,
             )
 
             await query.execute(db=self.db)

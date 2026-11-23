@@ -55,7 +55,9 @@ def node_uniqueness_constraint(kind: str, node_uuids: list[str] | None = None) -
     )
 
 
-def attribute_constraint(kind: str, field_name: str, property_name: str) -> SchemaUpdateConstraintInfo:
+def attribute_constraint(
+    kind: str, field_name: str, property_name: str, node_uuids: list[str] | None = None
+) -> SchemaUpdateConstraintInfo:
     return SchemaUpdateConstraintInfo(
         constraint_name=f"attribute.{property_name}.update",
         path=SchemaPath(
@@ -64,6 +66,7 @@ def attribute_constraint(kind: str, field_name: str, property_name: str) -> Sche
             field_name=field_name,
             property_name=property_name,
         ),
+        node_uuids=node_uuids,
     )
 
 
@@ -84,35 +87,11 @@ def person_name_node_diff(
     person_john_main: Node, default_branch: Branch
 ) -> tuple[NodeDiffFieldSummary, set[SchemaUpdateConstraintInfo]]:
     node_diff = NodeDiffFieldSummary(kind="TestPerson", attribute_node_uuids={"name": {CHANGED_PERSON_UUID}})
+    # the attribute checks are scoped to the node whose name changed
     schema_updated_constraint_infos = {
-        SchemaUpdateConstraintInfo(
-            path=SchemaPath(
-                path_type=SchemaPathType.ATTRIBUTE,
-                schema_kind="TestPerson",
-                schema_id=None,
-                field_name="name",
-                property_name="kind",
-            ),
-            constraint_name="attribute.kind.update",
-        ),
-        SchemaUpdateConstraintInfo(
-            constraint_name="attribute.optional.update",
-            path=SchemaPath(
-                path_type=SchemaPathType.ATTRIBUTE,
-                schema_kind="TestPerson",
-                field_name="name",
-                property_name="optional",
-            ),
-        ),
-        SchemaUpdateConstraintInfo(
-            constraint_name="attribute.unique.update",
-            path=SchemaPath(
-                path_type=SchemaPathType.ATTRIBUTE,
-                schema_kind="TestPerson",
-                field_name="name",
-                property_name="unique",
-            ),
-        ),
+        attribute_constraint("TestPerson", "name", "kind", node_uuids=[CHANGED_PERSON_UUID]),
+        attribute_constraint("TestPerson", "name", "optional", node_uuids=[CHANGED_PERSON_UUID]),
+        attribute_constraint("TestPerson", "name", "unique", node_uuids=[CHANGED_PERSON_UUID]),
     }
     return node_diff, schema_updated_constraint_infos
 
@@ -231,6 +210,7 @@ class TestConstraintDeterminer:
                 field_name="name",
                 property_name="parameters.max_length",
             ),
+            node_uuids=[CHANGED_PERSON_UUID],
         )
         constraint_info_set.add(node_uniqueness_constraint("TestPerson", node_uuids=[CHANGED_PERSON_UUID]))
         constraint_info_set.add(max_length_param_constraint_info)
@@ -303,9 +283,9 @@ class TestConstraintDeterminer:
         expected = {
             node_uniqueness_constraint("TestCar", node_uuids=[CHANGED_ELECTRIC_CAR_UUID]),
             node_uniqueness_constraint("TestElectricCar", node_uuids=[CHANGED_ELECTRIC_CAR_UUID]),
-            attribute_constraint("TestElectricCar", "name", "kind"),
-            attribute_constraint("TestElectricCar", "name", "optional"),
-            attribute_constraint("TestElectricCar", "name", "unique"),
+            attribute_constraint("TestElectricCar", "name", "kind", node_uuids=[CHANGED_ELECTRIC_CAR_UUID]),
+            attribute_constraint("TestElectricCar", "name", "optional", node_uuids=[CHANGED_ELECTRIC_CAR_UUID]),
+            attribute_constraint("TestElectricCar", "name", "unique", node_uuids=[CHANGED_ELECTRIC_CAR_UUID]),
         }
         assert set(constraints) == expected
 
