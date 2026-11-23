@@ -166,8 +166,10 @@ async def _apply_profile_values(db: InfrahubDatabase, branch: Branch, node_id: s
     await node.save(db=db, fields=await applier.apply_profiles(node=node))
 
 
-async def _create_rack(db: InfrahubDatabase, branch: Branch, account_session: AccountSession, profile_id: str) -> str:
-    """Create a rack through the create mutation, so that its required room comes from the profile."""
+async def _create_with_profile(
+    db: InfrahubDatabase, branch: Branch, account_session: AccountSession, kind: str, profile_id: str
+) -> str:
+    """Create a node through the create mutation, so that its required room comes from the profile."""
     gql_params = await prepare_graphql_params(
         db=db,
         branch=branch,
@@ -176,10 +178,10 @@ async def _create_rack(db: InfrahubDatabase, branch: Branch, account_session: Ac
     )
     result = await graphql(
         schema=gql_params.schema,
-        source="""
-        mutation Create($profile: String!) {
-            TestRackCreate(data: {name: {value: "rack-1"}, profiles: [{id: $profile}]}) { object { id } }
-        }
+        source=f"""
+        mutation Create($profile: String!) {{
+            {kind}Create(data: {{name: {{value: "node-1"}}, profiles: [{{id: $profile}}]}}) {{ object {{ id }} }}
+        }}
         """,
         context_value=gql_params.context,
         root_value=None,
@@ -187,7 +189,7 @@ async def _create_rack(db: InfrahubDatabase, branch: Branch, account_session: Ac
     )
     assert result.errors is None
     assert result.data
-    return result.data["TestRackCreate"]["object"]["id"]
+    return result.data[f"{kind}Create"]["object"]["id"]
 
 
 async def _run_relationship_mutation(
@@ -557,7 +559,9 @@ async def test_relationship_remove_refuses_the_profile_that_gives_a_node_a_requi
     profile = await _create_node(
         db=db, branch=default_branch, kind="ProfileTestRack", profile_name="profile-1", profile_priority=10, room=room
     )
-    rack_id = await _create_rack(db=db, branch=default_branch, account_session=editor_session, profile_id=profile.id)
+    rack_id = await _create_with_profile(
+        db=db, branch=default_branch, account_session=editor_session, kind="TestRack", profile_id=profile.id
+    )
     events = MemoryInfrahubEvent()
     gql_params = await prepare_graphql_params(
         db=db,
@@ -641,7 +645,9 @@ async def test_relationship_remove_refuses_to_clear_a_profile_relationship_that_
     profile = await _create_node(
         db=db, branch=default_branch, kind="ProfileTestRack", profile_name="profile-1", profile_priority=10, room=room
     )
-    rack_id = await _create_rack(db=db, branch=default_branch, account_session=editor_session, profile_id=profile.id)
+    rack_id = await _create_with_profile(
+        db=db, branch=default_branch, account_session=editor_session, kind="TestRack", profile_id=profile.id
+    )
 
     result, workflow = await _run_relationship_mutation(
         db=db,
@@ -663,6 +669,44 @@ async def test_relationship_remove_refuses_to_clear_a_profile_relationship_that_
     assert [rel.peer_id for rel in await profile.get_relationship(name="room").get_relationships(db=db)] == [room.id]
 
 
+async def test_relationship_remove_refuses_a_node_that_inherits_a_required_relationship_from_a_generic_profile(
+    db: InfrahubDatabase, default_branch: Branch, equipment_schema: None, editor_session: AccountSession
+) -> None:
+    room = await _create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
+    profile = await _create_node(
+        db=db,
+        branch=default_branch,
+        kind="ProfileTestEquipment",
+        profile_name="profile-1",
+        profile_priority=10,
+        room=room,
+    )
+    switch_id = await _create_with_profile(
+        db=db, branch=default_branch, account_session=editor_session, kind="TestSwitch", profile_id=profile.id
+    )
+
+    result, workflow = await _run_relationship_mutation(
+        db=db,
+        branch=default_branch,
+        account_session=editor_session,
+        mutation="RelationshipRemove",
+        profile_id=profile.id,
+        rel_name="related_nodes",
+        peer_ids=[switch_id],
+    )
+
+    assert result.errors is not None
+    assert [error.message for error in result.errors] == [
+        f"Cannot remove profile '{profile.id}' because node 'TestSwitch(ID: {switch_id})' (ID: {switch_id}) "
+        "inherits required relationship 'room' from this profile."
+    ]
+    assert workflow.submit_calls == []
+    profile = await NodeManager.get_one(db=db, branch=default_branch, id=profile.id, raise_on_error=True)
+    assert [rel.peer_id for rel in await profile.get_relationship(name="related_nodes").get_relationships(db=db)] == [
+        switch_id
+    ]
+
+
 async def test_relationship_remove_refuses_to_clear_a_relationship_of_a_generic_profile_that_a_node_requires(
     db: InfrahubDatabase, default_branch: Branch, equipment_schema: None, editor_session: AccountSession
 ) -> None:
@@ -675,26 +719,9 @@ async def test_relationship_remove_refuses_to_clear_a_relationship_of_a_generic_
         profile_priority=10,
         room=room,
     )
-    gql_params = await prepare_graphql_params(
-        db=db,
-        branch=default_branch,
-        account_session=editor_session,
-        service=await InfrahubServices.new(workflow=WorkflowRecorder()),
+    switch_id = await _create_with_profile(
+        db=db, branch=default_branch, account_session=editor_session, kind="TestSwitch", profile_id=profile.id
     )
-    create_result = await graphql(
-        schema=gql_params.schema,
-        source="""
-        mutation Create($profile: String!) {
-            TestSwitchCreate(data: {name: {value: "switch-1"}, profiles: [{id: $profile}]}) { object { id } }
-        }
-        """,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={"profile": profile.id},
-    )
-    assert create_result.errors is None
-    assert create_result.data
-    switch_id = create_result.data["TestSwitchCreate"]["object"]["id"]
 
     result, workflow = await _run_relationship_mutation(
         db=db,

@@ -38,7 +38,7 @@ class RelationshipProfileRemovalConstraint(RelationshipManagerConstraintInterfac
         self.branch = branch
         self.schema_branch = registry.schema.get_schema_branch(branch.name if branch else registry.default_branch)
 
-    def _get_required_attributes_names(self, schema: NodeSchema) -> set[str]:
+    def _get_required_attributes_names(self, schema: NodeSchema | GenericSchema) -> set[str]:
         attr_names: set[str] = set()
         for attr_schema in schema.attributes:
             if not attr_schema.optional and schema.check_if_attr_supports_profiles(attribute_schema=attr_schema):
@@ -108,7 +108,9 @@ class RelationshipProfileRemovalConstraint(RelationshipManagerConstraintInterfac
                     peer_profile_ids[str(peer.source_id)].setdefault(rel_name, set()).add(str(peer.profile_id))
         return peer_profile_ids
 
-    async def _validate_nodes_profile_removal(self, node_ids: list[str], profile_id: str, schema: NodeSchema) -> None:
+    async def _validate_nodes_profile_removal(
+        self, node_ids: list[str], profile_id: str, schema: NodeSchema | GenericSchema
+    ) -> None:
         required_attr_names = self._get_required_attributes_names(schema=schema)
         required_rel_names = self._get_required_relationship_names(schema=schema)
         if not required_attr_names and not required_rel_names:
@@ -205,7 +207,9 @@ class RelationshipProfileRemovalConstraint(RelationshipManagerConstraintInterfac
 
         """
         target_kind = profile_schema.get_relationship(name="related_nodes").peer
-        target_schema = self.schema_branch.get_node(name=target_kind, duplicate=False)
+        target_schema = self.schema_branch.get(name=target_kind, duplicate=False)
+        if not isinstance(target_schema, NodeSchema | GenericSchema):
+            return
         await self._validate_nodes_profile_removal(node_ids=node_ids, profile_id=profile.get_id(), schema=target_schema)
 
     async def _check_profile_peers_removal(
