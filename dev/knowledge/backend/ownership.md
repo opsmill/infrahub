@@ -402,6 +402,14 @@ empty.
   `ConflictsEnricher` keys the nodes by UUID. The owners of an attribute are not affected, because the old and the
   new vertex share the attribute. `test_source_branch_migration.py` marks the node owner case as an expected
   failure.
+- A rebase keeps every open edge of the branch and sets its `from` to the time of the rebase
+  (`RebaseBranchQuery`). A `deleted` edge of the branch then closes, at the merge, an owner that the default
+  branch added again after the rebase, with no change in the diff. The release before has the same problem: after
+  a rebase, the merge also reverts a later value change of the default branch.
+- A branch that changed the owner of an attribute and then renamed the attribute before the upgrade has two open
+  owner edges of the branch on the new attribute vertex, because the rename of the release before copies the latest
+  edge to each owner. `m084` hides only an owner of a parent branch, so after the upgrade the branch reads both
+  owners, and a merge copies both. The release before reads one of the two.
 
 ## Key Files
 
