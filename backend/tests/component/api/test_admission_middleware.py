@@ -512,8 +512,8 @@ async def test_metrics() -> None:
     for priority in _PRIORITY_LABELS:
         in_flight = metrics.IN_FLIGHT.labels(priority=priority)._value.get()
         waiters = metrics.WAITERS.labels(priority=priority)._value.get()
-        assert in_flight == 0.0
-        assert waiters == 0.0
+        assert in_flight == pytest.approx(0.0)
+        assert waiters == pytest.approx(0.0)
 
     # max_concurrency gauge is exported and equals the derived cap with no magic number.
     assert metrics.MAX_CONCURRENCY._value.get() == derive_max_concurrency(pool_size=40, factor=0.25)
@@ -700,7 +700,7 @@ async def test_handler_exception_releases_slot() -> None:
 
     assert response.status_code == 200
     assert response.json() == {"ok": True}
-    assert metrics.IN_FLIGHT.labels(priority="medium")._value.get() == 0.0
+    assert metrics.IN_FLIGHT.labels(priority="medium")._value.get() == pytest.approx(0.0)
     assert slot_pool.available == 1
 
 

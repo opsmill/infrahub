@@ -89,8 +89,8 @@ def test_backstop_multipliers_keep_the_caps_ordered_by_priority() -> None:
 
     # A cap equal to the base is the boundary and stays legal for both classes.
     settings = ApiSettings(backpressure_backstop_high_multiplier=1.0, backpressure_backstop_low_multiplier=1.0)
-    assert settings.backpressure_backstop_high_multiplier == 1.0
-    assert settings.backpressure_backstop_low_multiplier == 1.0
+    assert settings.backpressure_backstop_high_multiplier == pytest.approx(1.0)
+    assert settings.backpressure_backstop_low_multiplier == pytest.approx(1.0)
 
 
 def test_shed_stress_ratios_must_be_ordered_by_priority() -> None:
@@ -110,7 +110,7 @@ def test_shed_stress_ratios_may_be_equal() -> None:
         backpressure_shed_medium_stress_ratio=20.0,
         backpressure_shed_high_stress_ratio=20.0,
     )
-    assert settings.backpressure_shed_medium_stress_ratio == 20.0
+    assert settings.backpressure_shed_medium_stress_ratio == pytest.approx(20.0)
 
 
 def test_shipped_backpressure_defaults_satisfy_the_priority_ordering() -> None:

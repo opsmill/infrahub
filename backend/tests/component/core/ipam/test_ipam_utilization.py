@@ -20,20 +20,20 @@ async def test_use_percentage(db: InfrahubDatabase, default_branch: Branch, ip_d
     utilization = PrefixUtilizationGetter(db=db, ip_prefixes=[net240], branch=default_branch)
     percentage = await utilization.get_use_percentage()
 
-    assert percentage == 0.0
+    assert percentage == pytest.approx(0.0)
 
     net240.member_type.value = PrefixMemberType.PREFIX.value
     utilization = PrefixUtilizationGetter(db=db, ip_prefixes=[net240], branch=default_branch)
     percentage = await utilization.get_use_percentage()
 
-    assert percentage == 0.2197265625
+    assert percentage == pytest.approx(0.2197265625)
 
 
 async def test_use_percentage_no_prefixes(db: InfrahubDatabase, default_branch: Branch) -> None:
     utilization = PrefixUtilizationGetter(db=db, ip_prefixes=[], branch=default_branch)
     percentage = await utilization.get_use_percentage()
 
-    assert percentage == 0.0
+    assert percentage == pytest.approx(0.0)
 
 
 async def test_graphql_utilization_inherited_on_new_branch(
