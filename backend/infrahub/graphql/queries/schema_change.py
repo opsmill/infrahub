@@ -81,10 +81,7 @@ InfrahubSchemaChange = Field(
             "Return only the schema changes with one of these statuses. An empty list returns no schema change."
         ),
     ),
-    description=(
-        "Retrieve the schema changes of the branch of the request, the most recently created first. On one branch, "
-        "this is also the order of their versions."
-    ),
+    description="Retrieve the schema changes of the branch of the request, the most recently created first.",
     resolver=infrahub_schema_change_resolver,
     required=True,
 )

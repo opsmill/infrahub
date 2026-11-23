@@ -66,8 +66,6 @@ class SchemaChangeListQuery(Query):
         self.add_to_query("MATCH (schema_change:%(schema_change_label)s {branch: $branch_name})" % CYPHER_NAMES)
         if self.statuses is not None:
             self.add_to_query("WHERE schema_change.status IN $statuses")
-        # Loads and mutations create and apply their schema changes under the schema lock, so on one branch the order
-        # of creation is also the order of the versions.
         query = (
             """
         WITH schema_change
