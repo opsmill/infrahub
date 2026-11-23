@@ -13,6 +13,7 @@ from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.exceptions import StorageEncryptionError
 from infrahub.storage import InfrahubObjectStorage
+from infrahub.storage_encryption.codec import AesGcmCodec
 from infrahub.storage_encryption.crypto import StorageKey, seal
 from tests.helpers.artifact import create_stored_artifact
 from tests.helpers.schema.file_contract import FILE_CONTRACT
@@ -108,7 +109,7 @@ async def test_artifact_is_served_only_while_it_is_unchanged(
         checksum=hashlib.md5(ARTIFACT, usedforsecurity=False).hexdigest(),
     )
     urls = [f"/api/artifact/{artifact.id}", f"/api/storage/object/{ARTIFACT_ID}"]
-    encrypted = InfrahubObjectStorage(settings=config.SETTINGS.storage, key=encryption_enabled)
+    encrypted = InfrahubObjectStorage(settings=config.SETTINGS.storage, codec=AesGcmCodec(encryption_enabled))
 
     with client:
         (local_storage_dir / ARTIFACT_ID).write_bytes(ARTIFACT)
@@ -184,7 +185,7 @@ async def test_encrypted_file_object_is_served_by_every_download_endpoint_only_w
         f"/api/storage/files/by-storage-id/{FILE_ID}",
         "/api/storage/files/by-hfid/TestingFileContract?hfid=contract.pdf",
     ]
-    InfrahubObjectStorage(settings=config.SETTINGS.storage, key=encryption_enabled).store(
+    InfrahubObjectStorage(settings=config.SETTINGS.storage, codec=AesGcmCodec(encryption_enabled)).store(
         identifier=FILE_ID, content=io.BytesIO(FILE)
     )
     stored = (local_storage_dir / FILE_ID).read_bytes()
@@ -248,8 +249,7 @@ async def test_files_encrypted_earlier_are_still_served_after_encryption_is_turn
         checksum=hashlib.md5(ARTIFACT, usedforsecurity=False).hexdigest(),
     )
     InfrahubObjectStorage(
-        settings=config.SETTINGS.storage.model_copy(update={"encryption_enabled": True}),
-        key=StorageKey.derive(config.SETTINGS.security.secret_key),
+        settings=config.SETTINGS.storage, codec=AesGcmCodec(StorageKey.derive(config.SETTINGS.security.secret_key))
     ).store(identifier=ARTIFACT_ID, content=io.BytesIO(ARTIFACT))
     encrypted = (local_storage_dir / ARTIFACT_ID).read_bytes()
     urls = [f"/api/artifact/{artifact.id}", f"/api/storage/object/{ARTIFACT_ID}"]
@@ -305,9 +305,9 @@ async def test_decrypted_artifact_is_still_checked_against_its_checksum_while_en
         checksum=hashlib.md5(ARTIFACT, usedforsecurity=False).hexdigest(),
     )
     key = StorageKey.derive(config.SETTINGS.security.secret_key)
-    InfrahubObjectStorage(
-        settings=config.SETTINGS.storage.model_copy(update={"encryption_enabled": True}), key=key
-    ).store(identifier=ARTIFACT_ID, content=io.BytesIO(ARTIFACT))
+    InfrahubObjectStorage(settings=config.SETTINGS.storage, codec=AesGcmCodec(key)).store(
+        identifier=ARTIFACT_ID, content=io.BytesIO(ARTIFACT)
+    )
     urls = [f"/api/artifact/{artifact.id}", f"/api/storage/object/{ARTIFACT_ID}"]
 
     with client:
@@ -376,7 +376,7 @@ async def test_binary_content_is_served_byte_for_byte_whether_it_is_encrypted_or
     encryption_enabled: StorageKey,
 ) -> None:
     content = b"\xff\xfe\x00\x80 not valid UTF-8 \xc3\x28"
-    InfrahubObjectStorage(settings=config.SETTINGS.storage, key=encryption_enabled).store(
+    InfrahubObjectStorage(settings=config.SETTINGS.storage, codec=AesGcmCodec(encryption_enabled)).store(
         identifier=LOOSE_ID, content=io.BytesIO(content)
     )
     (local_storage_dir / FILE_ID).write_bytes(content)

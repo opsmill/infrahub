@@ -8,7 +8,8 @@ import pytest
 
 from infrahub.config import FileSystemStorageSettings, StorageSettings
 from infrahub.exceptions import NodeNotFoundError, StorageEncryptionError, StorageIntegrityError
-from infrahub.storage import InfrahubObjectStorage, StoredContent
+from infrahub.storage import InfrahubObjectStorage
+from infrahub.storage_encryption.codec import StoredContent, select_codec
 from infrahub.storage_encryption.crypto import StorageKey, seal
 
 if TYPE_CHECKING:
@@ -26,7 +27,7 @@ def build_storage(path: Path, *, encryption_enabled: bool, key: StorageKey | Non
         settings=StorageSettings(
             local=FileSystemStorageSettings.model_validate({"path": path}), encryption_enabled=encryption_enabled
         ),
-        key=key,
+        codec=select_codec(encryption_enabled=encryption_enabled, key=key),
     )
 
 

@@ -8,6 +8,7 @@ import pytest
 
 from infrahub.config import S3StorageSettings, StorageDriver, StorageSettings
 from infrahub.storage import InfrahubObjectStorage, InfrahubS3ObjectStorage
+from infrahub.storage_encryption.codec import PlainCodec
 
 # Settings validate CA paths at load, so the settings-level test needs a real bundle.
 CA_BUNDLE = str(Path(__file__).parent / "test_data" / "ca-bundle.pem")
@@ -126,7 +127,7 @@ def test_storage_settings_ca_file_reaches_the_driver(captured_resource_kwargs: d
         ),
     )
 
-    InfrahubObjectStorage(settings=settings)
+    InfrahubObjectStorage(settings=settings, codec=PlainCodec())
 
     assert captured_resource_kwargs["verify"] == CA_BUNDLE
     assert captured_resource_kwargs["endpoint_url"] == "https://s3.internal.example.com"
@@ -147,7 +148,7 @@ def test_storage_settings_insecure_reaches_the_driver(captured_resource_kwargs: 
         ),
     )
 
-    InfrahubObjectStorage(settings=settings)
+    InfrahubObjectStorage(settings=settings, codec=PlainCodec())
 
     assert captured_resource_kwargs["verify"] is False
     assert captured_resource_kwargs["endpoint_url"] == "https://s3.internal.example.com"

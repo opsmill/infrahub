@@ -8,6 +8,7 @@ import pytest
 from infrahub import config
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.storage import InfrahubObjectStorage
+from infrahub.storage_encryption.codec import PlainCodec
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 
 async def test_retrieve_returns_decoded_string(local_storage_dir: Path) -> None:
     """Test that retrieve() returns decoded string."""
-    storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
+    storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage, codec=PlainCodec())
 
     content = b"Hello, world!"
     identifier = "test-text-file"
@@ -29,7 +30,7 @@ async def test_retrieve_returns_decoded_string(local_storage_dir: Path) -> None:
 
 async def test_retrieve_with_utf8_content(local_storage_dir: Path) -> None:
     """Test that retrieve() correctly handles UTF-8 encoded content."""
-    storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
+    storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage, codec=PlainCodec())
 
     text = "Hello, 世界! 🌍"
     content = text.encode("utf-8")
@@ -44,7 +45,7 @@ async def test_retrieve_with_utf8_content(local_storage_dir: Path) -> None:
 
 async def test_retrieve_nonexistent_raises_error(local_storage_dir: Path) -> None:
     """Test that retrieve() raises NodeNotFoundError for missing files."""
-    storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
+    storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage, codec=PlainCodec())
 
     with pytest.raises(NodeNotFoundError):
         storage.retrieve(identifier="nonexistent-file")
@@ -52,7 +53,7 @@ async def test_retrieve_nonexistent_raises_error(local_storage_dir: Path) -> Non
 
 async def test_retrieve_binary_returns_raw_bytes(local_storage_dir: Path) -> None:
     """Test that retrieve_binary() returns raw bytes without decoding."""
-    storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
+    storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage, codec=PlainCodec())
 
     content = b"Hello, world!"
     identifier = "test-text-file"
@@ -66,7 +67,7 @@ async def test_retrieve_binary_returns_raw_bytes(local_storage_dir: Path) -> Non
 
 async def test_retrieve_binary_with_binary_content(local_storage_dir: Path) -> None:
     """Test that retrieve_binary() correctly handles binary content (e.g., PNG image)."""
-    storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
+    storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage, codec=PlainCodec())
 
     # PNG header
     content = b"\x89PNG\r\n\x1a\n" + b"\x00\xff\xfe\xfd" * 100
@@ -82,7 +83,7 @@ async def test_retrieve_binary_with_binary_content(local_storage_dir: Path) -> N
 
 async def test_retrieve_binary_nonexistent_raises_error(local_storage_dir: Path) -> None:
     """Test that retrieve_binary() raises NodeNotFoundError for missing files."""
-    storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
+    storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage, codec=PlainCodec())
 
     with pytest.raises(NodeNotFoundError):
         storage.retrieve_binary(identifier="nonexistent-file")
@@ -90,7 +91,7 @@ async def test_retrieve_binary_nonexistent_raises_error(local_storage_dir: Path)
 
 async def test_retrieve_vs_retrieve_binary(local_storage_dir: Path) -> None:
     """Test the difference between retrieve() and retrieve_binary()."""
-    storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
+    storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage, codec=PlainCodec())
 
     content = b"Hello, world!"
     identifier = "test-comparison"

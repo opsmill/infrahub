@@ -43,6 +43,7 @@ from infrahub.log import get_logger
 from infrahub.menu.utils import create_default_menu
 from infrahub.permissions import PermissionBackend, get_or_create_global_permission
 from infrahub.storage import InfrahubObjectStorage
+from infrahub.storage_encryption.codec import select_codec
 
 if TYPE_CHECKING:
     from infrahub.database.index import IndexManagerBase
@@ -104,7 +105,10 @@ async def initialize_registry(db: InfrahubDatabase, initialize: bool = False) ->
     # ---------------------------------------------------
     # Initialize the Storage Driver
     # ---------------------------------------------------
-    registry.storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
+    registry.storage = await InfrahubObjectStorage.init(
+        settings=config.SETTINGS.storage,
+        codec=select_codec(encryption_enabled=config.SETTINGS.storage.encryption_enabled, key=None),
+    )
 
     # ---------------------------------------------------
     # Load existing branches into the registry

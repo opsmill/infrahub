@@ -1,7 +1,8 @@
 from typing import BinaryIO
 
 from infrahub.exceptions import NodeNotFoundError
-from infrahub.storage import InfrahubObjectStorage, StoredContent
+from infrahub.storage import InfrahubObjectStorage
+from infrahub.storage_encryption.codec import StoredContent
 
 
 class DummyObjectStorage(InfrahubObjectStorage):

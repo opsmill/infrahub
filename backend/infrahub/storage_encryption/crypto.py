@@ -126,30 +126,25 @@ def _key_material(storage: StorageSettings, security: SecuritySettings) -> str:
     return security.secret_key
 
 
-def storage_key_from_settings(*, storage: StorageSettings, security: SecuritySettings) -> StorageKey:
+def storage_key_from_settings(*, storage: StorageSettings, security: SecuritySettings) -> StorageKey | None:
     """Derive the storage key from INFRAHUB_STORAGE_ENCRYPTION_KEY, or from INFRAHUB_SECURITY_SECRET_KEY without it.
 
+    A key that cannot be used is an error while encryption is enabled. While it is disabled, such a key only means
+    there is no key to read earlier encrypted files with: encryption refuses a key that is generated, published or
+    too short, so no file can have been encrypted with one, and a key derived from it would only let anyone who
+    knows it forge an encrypted file. Returns None in that case.
+
     Raises:
-        StorageEncryptionError: If the key that applies is not set explicitly, is a published example value, or is
-            too short.
+        StorageEncryptionError: If encryption is enabled and the key that applies is not set explicitly, is a
+            published example value, or is too short.
 
     """
     reason = _unfit_key_reason(storage=storage, security=security)
-    if reason is not None:
+    if reason is None:
+        return StorageKey.derive(_key_material(storage=storage, security=security))
+    if storage.encryption_enabled:
         raise StorageEncryptionError(reason)
-    return StorageKey.derive(_key_material(storage=storage, security=security))
-
-
-def storage_key_if_set(*, storage: StorageSettings, security: SecuritySettings) -> StorageKey | None:
-    """Derive the storage key when Infrahub would accept the key that applies for encryption.
-
-    Used to read files that were encrypted earlier after encryption was turned off. Encryption refuses a key that
-    is generated, published or too short, so no file can have been encrypted with one, and a key derived from such
-    a secret would only let anyone who knows it forge an encrypted file. Returns None for those.
-    """
-    if _unfit_key_reason(storage=storage, security=security) is not None:
-        return None
-    return StorageKey.derive(_key_material(storage=storage, security=security))
+    return None
 
 
 def has_envelope_magic(content: bytes) -> bool:
