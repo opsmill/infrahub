@@ -350,11 +350,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         return True
 
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
-        branches = {}
-        if remote:
-            branches = self.get_branches_from_remote()
-        else:
-            branches = self.get_branches_from_local(include_worktree=False)
+        branches = self.get_branches_from_remote() if remote else self.get_branches_from_local(include_worktree=False)
 
         if branch_name not in branches:
             raise ValueError(f"Branch {branch_name} not found.")

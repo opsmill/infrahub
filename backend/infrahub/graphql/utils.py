@@ -66,10 +66,7 @@ async def extract_schema_models(
         if isinstance(gql_type, GrapheneObjectType):
             object_type = gql_type
         elif isinstance(gql_type, GraphQLList):
-            if isinstance(gql_type.of_type, GraphQLNonNull):
-                object_type = gql_type.of_type.of_type
-            else:
-                object_type = gql_type.of_type
+            object_type = gql_type.of_type.of_type if isinstance(gql_type.of_type, GraphQLNonNull) else gql_type.of_type
         elif isinstance(gql_type, GrapheneInterfaceType):
             object_type = gql_type
             sub_types = find_types_implementing_interface(interface=object_type, root_schema=root_schema)

@@ -163,10 +163,7 @@ def _build_shed_response(*, path: str, retry_after: int) -> JSONResponse:
     no exception to map through the error catalogue, so the GraphQL catalogue envelope
     (string code, ``http_status``, typed ``data``) does not apply.
     """
-    if path.startswith(GRAPHQL_PATH_PREFIX):
-        content = _graphql_shed_envelope()
-    else:
-        content = _rest_shed_envelope()
+    content = _graphql_shed_envelope() if path.startswith(GRAPHQL_PATH_PREFIX) else _rest_shed_envelope()
     return JSONResponse(
         status_code=HTTP_429_TOO_MANY_REQUESTS,
         content=content,

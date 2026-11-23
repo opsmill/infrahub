@@ -202,10 +202,7 @@ class InfrahubMutationMixin:
                 obj = upsert_result.node
                 mutation = upsert_result.mutation
                 file_stored = upsert_result.file_stored
-                if upsert_result.created:
-                    action = MutationAction.CREATED
-                else:
-                    action = MutationAction.UPDATED
+                action = MutationAction.CREATED if upsert_result.created else MutationAction.UPDATED
             elif "Delete" in cls.__name__:
                 delete_result = await cls.mutate_delete(info=info, branch=graphql_context.branch, data=data, **kwargs)
                 obj = delete_result.node

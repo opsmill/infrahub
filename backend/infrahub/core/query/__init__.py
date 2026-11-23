@@ -72,10 +72,11 @@ def sort_results_by_time(results: list[QueryResult], rel_label: str) -> list[Que
         from_time = rel.get("from")
         to_time = rel.get("to")
 
-        if not to_time:
-            record_id = Timestamp(from_time).to_timestamp() * 1000 + 500
-        else:
-            record_id = Timestamp(to_time).to_timestamp() * 1000
+        record_id = (
+            Timestamp(from_time).to_timestamp() * 1000 + 500
+            if not to_time
+            else Timestamp(to_time).to_timestamp() * 1000
+        )
 
         results_dict[record_id] = result
 

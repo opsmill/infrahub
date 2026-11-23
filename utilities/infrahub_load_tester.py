@@ -97,10 +97,7 @@ async def _delete_users(client: InfrahubClient, usernames: Iterable[str], log: l
             for user in all_users:
                 user_name = None
                 if hasattr(user, "name"):
-                    if hasattr(user.name, "value"):
-                        user_name = user.name.value
-                    else:
-                        user_name = str(user.name)
+                    user_name = user.name.value if hasattr(user.name, "value") else str(user.name)
 
                 if user_name == uname:
                     log.info(f"Found! Removing {uname}")

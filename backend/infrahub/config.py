@@ -1357,10 +1357,11 @@ class SecuritySettings(BaseSettings):
             return
 
         raw_patterns: list[str]
-        if isinstance(self.auto_create_groups_filter, str):
-            raw_patterns = [self.auto_create_groups_filter]
-        else:
-            raw_patterns = list(self.auto_create_groups_filter)
+        raw_patterns = (
+            [self.auto_create_groups_filter]
+            if isinstance(self.auto_create_groups_filter, str)
+            else list(self.auto_create_groups_filter)
+        )
         raw_patterns = [stripped for p in raw_patterns if (stripped := p.strip())]
         self._auto_create_groups_filter_patterns = tuple(re.compile(p) for p in raw_patterns)
 

@@ -36,10 +36,7 @@ class RelationshipPeerKindConstraint(RelationshipManagerConstraintInterface):
     async def check(self, relm: RelationshipManager, node_schema: MainSchemaTypes, node: Node) -> None:  # noqa: ARG002
         branch = await registry.get_branch(db=self.db) if not self.branch else self.branch
         peer_schema = registry.schema.get(name=relm.schema.peer, branch=branch, duplicate=False)
-        if isinstance(peer_schema, GenericSchema):
-            allowed_kinds = peer_schema.used_by
-        else:
-            allowed_kinds = [peer_schema.kind]
+        allowed_kinds = peer_schema.used_by if isinstance(peer_schema, GenericSchema) else [peer_schema.kind]
         relationships = await relm.get_relationships(db=self.db, force_refresh=False)
         if not relationships:
             return

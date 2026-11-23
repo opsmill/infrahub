@@ -208,16 +208,10 @@ def parse_docker_stats_line(line: str) -> tuple[str, str, str, str, str, str, st
             mem_percent = "0%"
 
         net_index = next((i for i, part in enumerate(parts) if "B" in part and i > mem_index), -1)
-        if net_index != -1:
-            net_io = f"{parts[net_index]} / {parts[net_index + 2]}"
-        else:
-            net_io = "0B / 0B"
+        net_io = f"{parts[net_index]} / {parts[net_index + 2]}" if net_index != -1 else "0B / 0B"
 
         block_index = next((i for i, part in enumerate(parts) if "B" in part and i > net_index), -1)
-        if block_index != -1:
-            block_io = f"{parts[block_index]} / {parts[block_index + 2]}"
-        else:
-            block_io = "0B / 0B"
+        block_io = f"{parts[block_index]} / {parts[block_index + 2]}" if block_index != -1 else "0B / 0B"
 
         pids = next((part for part in reversed(parts) if part.isdigit()), "0")
 

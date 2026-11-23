@@ -192,10 +192,7 @@ class GraphQLSchemaRegistry:
         self.evict_schema_hash(schema_hash=previous_hash)
 
     def get_manager_for_branch(self, branch: Branch, schema_branch: SchemaBranch) -> GraphQLSchemaManager:
-        if branch.schema_hash:
-            schema_hash = branch.schema_hash.main
-        else:
-            schema_hash = schema_branch.get_hash()
+        schema_hash = branch.schema_hash.main if branch.schema_hash else schema_branch.get_hash()
 
         if schema_hash in self._branch_details_by_hash:
             branch_details = self._branch_details_by_hash[schema_hash]

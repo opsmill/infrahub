@@ -138,10 +138,11 @@ def configure_logging(production: bool, log_level: str) -> None:
     )
 
     log_renderer: structlog.types.Processor
-    if production:
-        log_renderer = structlog.processors.JSONRenderer()
-    else:
-        log_renderer = structlog.dev.ConsoleRenderer(exception_formatter=plain_traceback)
+    log_renderer = (
+        structlog.processors.JSONRenderer()
+        if production
+        else structlog.dev.ConsoleRenderer(exception_formatter=plain_traceback)
+    )
 
     formatter = structlog.stdlib.ProcessorFormatter(
         foreign_pre_chain=shared_processors,

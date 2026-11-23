@@ -297,10 +297,7 @@ class IPParentPrefixLookupQuery(Query):
 
         prefix_bin = convert_ip_to_binary_str(ip_as_network)
 
-        if is_address:
-            start_prefixlen = ip_as_network.max_prefixlen - 1
-        else:
-            start_prefixlen = prefixlen - 1
+        start_prefixlen = ip_as_network.max_prefixlen - 1 if is_address else prefixlen - 1
 
         possible_prefix_map: dict[str, int] = {}
         for candidate_len in range(start_prefixlen, -1, -1):

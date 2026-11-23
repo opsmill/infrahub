@@ -167,10 +167,11 @@ class ActionTriggerRuleTriggerDefinition(TriggerDefinition):
                 },
             )
         elif isinstance(trigger_rule.action, CoreGroupAction):
-            if trigger_rule.action.member_action == MemberAction.ADD_MEMBER:
-                flow = ACTION_ADD_NODE_TO_GROUP
-            else:
-                flow = REMOVE_ADD_NODE_FROM_GROUP
+            flow = (
+                ACTION_ADD_NODE_TO_GROUP
+                if trigger_rule.action.member_action == MemberAction.ADD_MEMBER
+                else REMOVE_ADD_NODE_FROM_GROUP
+            )
 
             workflow = ExecuteWorkflow(
                 workflow=flow,

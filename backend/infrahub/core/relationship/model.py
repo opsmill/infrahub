@@ -537,15 +537,11 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         branch = self.get_branch_based_on_support_type()
 
         source_schema = db.schema.get(name=self.source_kind, branch=self.branch, duplicate=False)
-        if _use_global_branch(schema=source_schema):
-            source_branch = registry.get_global_branch()
-        else:
-            source_branch = self.branch
+        source_branch = registry.get_global_branch() if _use_global_branch(schema=source_schema) else self.branch
         destination_schema = db.schema.get(name=self.schema.peer, branch=self.branch, duplicate=False)
-        if _use_global_branch(schema=destination_schema):
-            destination_branch = registry.get_global_branch()
-        else:
-            destination_branch = self.branch
+        destination_branch = (
+            registry.get_global_branch() if _use_global_branch(schema=destination_schema) else self.branch
+        )
 
         delete_query = await RelationshipDeleteQuery.init(
             db=db,
@@ -1553,15 +1549,11 @@ class RelationshipManager[RelationshipManagerPeerType]:
         branch = self.get_branch_based_on_support_type()
 
         source_schema = db.schema.get(name=self.node.get_kind(), branch=self.branch, duplicate=False)
-        if _use_global_branch(schema=source_schema):
-            source_branch = registry.get_global_branch()
-        else:
-            source_branch = self.branch
+        source_branch = registry.get_global_branch() if _use_global_branch(schema=source_schema) else self.branch
         destination_schema = db.schema.get(name=self.schema.peer, branch=self.branch, duplicate=False)
-        if _use_global_branch(schema=destination_schema):
-            destination_branch = registry.get_global_branch()
-        else:
-            destination_branch = self.branch
+        destination_branch = (
+            registry.get_global_branch() if _use_global_branch(schema=destination_schema) else self.branch
+        )
 
         delete_query = await RelationshipDeleteQuery.init(
             db=db,

@@ -449,10 +449,11 @@ class GraphTraversalCypherRenderer:
 
     def _branch_params(self, *, at: Timestamp) -> dict[str, Any]:
         """Branch/time params shared by every edge-visibility predicate."""
-        if self._is_user_branch and self._branched_from and at > Timestamp(self._branched_from):
-            default_time = self._branched_from
-        else:
-            default_time = at.to_string()
+        default_time = (
+            self._branched_from
+            if self._is_user_branch and self._branched_from and at > Timestamp(self._branched_from)
+            else at.to_string()
+        )
         params: dict[str, Any] = {
             "at": at.to_string(),
             "at_branches": self._at_branches,

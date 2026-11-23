@@ -337,10 +337,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         """
         if regex := schema.get_regex():
-            if schema.kind == "List":
-                validation_values = [str(entry) for entry in value]
-            else:
-                validation_values = [str(value)]
+            validation_values = [str(entry) for entry in value] if schema.kind == "List" else [str(value)]
 
             for validation_value in validation_values:
                 try:
@@ -508,10 +505,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             default_value = self.schema.default_value
             if default_value is not None:
                 default_value = self._normalize_value(default_value)
-            if isinstance(self.value, Enum):
-                has_default_value = default_value == self.value.value
-            else:
-                has_default_value = default_value == self.value
+            has_default_value = (
+                default_value == self.value.value if isinstance(self.value, Enum) else default_value == self.value
+            )
             if (self.schema.default_value is not None and not has_default_value) or (
                 self.schema.default_value is None and self.value is not None
             ):
@@ -655,16 +651,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 response[field_name] = self._owner_reference_for_graphql()
                 continue
 
-            if field_name.startswith("_"):
-                field = getattr(self, field_name[1:])
-            else:
-                field = getattr(self, field_name)
+            field = getattr(self, field_name[1:]) if field_name.startswith("_") else getattr(self, field_name)
 
             if field_name == "value" and isinstance(field, Enum):
-                if config.SETTINGS.experimental_features.graphql_enums:
-                    field = field.name
-                else:
-                    field = field.value
+                field = field.name if config.SETTINGS.experimental_features.graphql_enums else field.value
             if isinstance(field, str):
                 response[field_name] = self._filter_sensitive(value=field, filter_sensitive=filter_sensitive)
             elif isinstance(field, int | bool | dict | list):

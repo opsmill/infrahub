@@ -176,10 +176,7 @@ class SchemaBranch:
 
     def get_all_kind_id_map(self, nodes_and_generics_only: bool = False) -> dict[str, str | None]:
         kind_id_map = {}
-        if nodes_and_generics_only:
-            names = self.node_names + self.generic_names_without_templates
-        else:
-            names = self.all_names
+        names = self.node_names + self.generic_names_without_templates if nodes_and_generics_only else self.all_names
         for name in names:
             if name == InfrahubKind.NODE:
                 continue

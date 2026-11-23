@@ -145,10 +145,7 @@ def _resolve_http_status(exc: BaseException | None, code: str) -> int:
 
 def build_catalogue_extensions(exc: BaseException | None) -> dict[str, Any]:
     """Return the catalogue-aware ``extensions`` block for ``exc``."""
-    if exc is None:
-        code = UNDEFINED_ERROR_CODE
-    else:
-        code = resolve_catalogue_code(exc)
+    code = UNDEFINED_ERROR_CODE if exc is None else resolve_catalogue_code(exc)
     return {
         "code": code,
         "http_status": _resolve_http_status(exc, code),
