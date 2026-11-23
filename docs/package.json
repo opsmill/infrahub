@@ -37,10 +37,10 @@
     "@eslint/js": "^10.0.1",
     "@typescript-eslint/eslint-plugin": "^8.72.1",
     "@typescript-eslint/parser": "^8.58.0",
-    "baseline-browser-mapping": "^2.11.34",
+    "baseline-browser-mapping": "^2.11.37",
     "eslint": "^10.13.0",
-    "markdownlint-cli2": "^0.24.0",
-    "typescript": "^6.0.3"
+    "markdownlint-cli2": "^0.24.1",
+    "typescript": "^7.0.2"
   },
   "browserslist": {
     "production": [
