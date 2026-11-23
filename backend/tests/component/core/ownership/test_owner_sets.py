@@ -500,6 +500,35 @@ async def test_owner_update_that_waits_for_the_node_lock_replaces_the_owner_writ
     assert await read_owners(db=db, branch=default_branch, node_id=person.id, holder=holder) == tuple(group_ids[1:])
 
 
+async def test_value_update_that_waits_behind_a_node_delete_fails_and_leaves_a_valid_graph(
+    db: InfrahubDatabase, default_branch: Branch, person: Node
+) -> None:
+    node_is_locked = asyncio.Event()
+
+    async def delete_while_the_update_waits() -> None:
+        async with db.start_session() as session_db, session_db.start_transaction() as dbt:
+            lock_query = await NodeLockQuery.init(db=dbt, node=person)
+            await lock_query.execute(db=dbt)
+            node = await NodeManager.get_one(db=dbt, branch=default_branch, id=person.id, raise_on_error=True)
+            node_is_locked.set()
+            await _wait_for_the_other_write(db=db, other=update)
+            await node.delete(db=dbt)
+
+    async def update_value() -> None:
+        await asyncio.wait_for(node_is_locked.wait(), timeout=SECONDS_TO_WAIT)
+        async with db.start_session() as session_db, session_db.start_transaction() as dbt:
+            node = await NodeManager.get_one(db=dbt, branch=default_branch, id=person.id, raise_on_error=True)
+            node.name.value = "Jane"
+            await node.save(db=dbt)
+
+    update = asyncio.ensure_future(update_value())
+    results = await asyncio.gather(delete_while_the_update_waits(), update, return_exceptions=True)
+
+    assert results[0] is None
+    assert isinstance(results[1], Exception)
+    await verify_graph(db=db, kinds=["TestPerson"])
+
+
 async def test_attribute_rename_gives_no_set_to_a_node_whose_delete_commits_while_the_rename_waits(
     db: InfrahubDatabase, default_branch: Branch, person: Node, group_ids: list[str]
 ) -> None:
