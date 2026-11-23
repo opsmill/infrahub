@@ -17,3 +17,14 @@ def test_every_edge_type_is_indexed_on_the_times_it_was_opened_and_closed(
         if index.label == edge_type.value and index.properties == [edge_property] and index.type is IndexType.RANGE
     ]
     assert len(matching) == 1
+
+
+@pytest.mark.parametrize("edge_type", list(DatabaseEdgeType), ids=lambda edge_type: edge_type.value)
+def test_every_edge_type_is_indexed_on_its_branch(edge_type: DatabaseEdgeType) -> None:
+    """A read of the edges of one branch needs one range index per edge type on the branch name."""
+    matching = [
+        index
+        for index in rel_indexes
+        if index.label == edge_type.value and index.properties == ["branch"] and index.type is IndexType.RANGE
+    ]
+    assert len(matching) == 1
