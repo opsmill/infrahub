@@ -30,6 +30,7 @@ from infrahub.core.registry import registry
 from infrahub.exceptions import StorageEncryptionError
 from infrahub.storage import InfrahubObjectStorage, InfrahubS3ObjectStorage
 from infrahub.storage_encryption import migrate
+from infrahub.storage_encryption.codec import select_codec
 from infrahub.storage_encryption.crypto import StorageKey, seal
 from infrahub.storage_encryption.memory_budget import MemoryBudget, ProcessMemoryBudget
 from infrahub.storage_encryption.migrate import HEADER_REQUEST_LENGTH
@@ -94,7 +95,7 @@ def build_local_storage(
         settings=StorageSettings(
             local=FileSystemStorageSettings.model_validate({"path": path}), encryption_enabled=encryption_enabled
         ),
-        key=key,
+        codec=select_codec(encryption_enabled=encryption_enabled, key=key),
     )
 
 

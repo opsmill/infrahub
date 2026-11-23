@@ -12,6 +12,7 @@ from infrahub.api.storage.encryption_migration import list_stored_objects
 from infrahub.config import FileSystemStorageSettings, StorageSettings
 from infrahub.core.registry import registry
 from infrahub.storage import InfrahubObjectStorage
+from infrahub.storage_encryption.codec import PlainCodec
 from tests.helpers.storage import vanishing_directory
 
 if TYPE_CHECKING:
@@ -45,7 +46,8 @@ def storage_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     aged = time.time() - TWO_HOURS
     os.utime(tmp_path / STALE_TEMPORARY, (aged, aged))
     storage = InfrahubObjectStorage(
-        settings=StorageSettings(local=FileSystemStorageSettings.model_validate({"path": tmp_path})), key=None
+        settings=StorageSettings(local=FileSystemStorageSettings.model_validate({"path": tmp_path})),
+        codec=PlainCodec(),
     )
     monkeypatch.setattr(registry, "_storage", storage)
     return tmp_path
@@ -72,7 +74,8 @@ async def test_paging_the_route_reaches_every_object_when_one_vanishes_during_a_
     for name in ("obj-0", "obj-1", "obj-2", "obj-3", "obj-4"):
         (tmp_path / name).write_bytes(name.encode())
     storage = InfrahubObjectStorage(
-        settings=StorageSettings(local=FileSystemStorageSettings.model_validate({"path": tmp_path})), key=None
+        settings=StorageSettings(local=FileSystemStorageSettings.model_validate({"path": tmp_path})),
+        codec=PlainCodec(),
     )
     storage._storage._path = vanishing_directory(tmp_path, frozenset({"obj-1"}))
     monkeypatch.setattr(registry, "_storage", storage)

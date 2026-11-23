@@ -10,7 +10,8 @@ from structlog.testing import capture_logs
 
 from infrahub.config import FileSystemStorageSettings, StorageSettings
 from infrahub.exceptions import StorageEncryptionError
-from infrahub.storage import InfrahubObjectStorage, StoredContent
+from infrahub.storage import InfrahubObjectStorage
+from infrahub.storage_encryption.codec import StoredContent, select_codec
 from infrahub.storage_encryption.crypto import StorageKey, seal
 from infrahub.storage_encryption.memory_budget import MemoryBudget
 from infrahub.storage_encryption.migrate import (
@@ -46,7 +47,7 @@ def build_storage(
         settings=StorageSettings(
             local=FileSystemStorageSettings.model_validate({"path": path}), encryption_enabled=encryption_enabled
         ),
-        key=key,
+        codec=select_codec(encryption_enabled=encryption_enabled, key=key),
     )
 
 
@@ -258,7 +259,7 @@ class ReadCountingStorage(InfrahubObjectStorage):
     """A storage that records each read of the content of an object."""
 
     def __init__(self, settings: StorageSettings, key: StorageKey | None = None) -> None:
-        super().__init__(settings, key=key)
+        super().__init__(settings, codec=select_codec(encryption_enabled=settings.encryption_enabled, key=key))
         self.full_reads: list[str] = []
 
     def read_stored_bounded(
@@ -313,7 +314,7 @@ def test_failed_replacement_is_reported_and_keeps_the_object(tmp_path: Path) -> 
         settings=StorageSettings(
             local=FileSystemStorageSettings.model_validate({"path": tmp_path}), encryption_enabled=True
         ),
-        key=KEY,
+        codec=select_codec(encryption_enabled=True, key=KEY),
     )
 
     result = encrypt_checked(storage=storage, identifier=IDENTIFIER, checksums={CONTENT_MD5}, max_size=MAX_SIZE)
@@ -333,7 +334,7 @@ def test_failed_replacement_logs_the_error_on_the_server_and_keeps_it_out_of_the
         settings=StorageSettings(
             local=FileSystemStorageSettings.model_validate({"path": tmp_path}), encryption_enabled=True
         ),
-        key=KEY,
+        codec=select_codec(encryption_enabled=True, key=KEY),
     )
 
     with capture_logs() as logged:
@@ -358,7 +359,7 @@ def test_object_that_does_not_read_back_encrypted_is_reported_as_failed(tmp_path
         settings=StorageSettings(
             local=FileSystemStorageSettings.model_validate({"path": tmp_path}), encryption_enabled=True
         ),
-        key=KEY,
+        codec=select_codec(encryption_enabled=True, key=KEY),
     )
 
     result = encrypt_checked(storage=storage, identifier=IDENTIFIER, checksums={CONTENT_MD5}, max_size=MAX_SIZE)
@@ -411,7 +412,7 @@ class BrokenStorage(InfrahubObjectStorage):
     """A storage whose network breaks in one step: the header read, the content read or the write."""
 
     def __init__(self, settings: StorageSettings, key: StorageKey | None, broken_step: str, error: Exception) -> None:
-        super().__init__(settings, key=key)
+        super().__init__(settings, codec=select_codec(encryption_enabled=settings.encryption_enabled, key=key))
         self.broken_step = broken_step
         self.error = error
 

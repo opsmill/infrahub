@@ -24,6 +24,7 @@ from infrahub.config import FileSystemStorageSettings, StorageSettings
 from infrahub.core.registry import registry
 from infrahub.storage import InfrahubObjectStorage
 from infrahub.storage_encryption import migrate
+from infrahub.storage_encryption.codec import select_codec
 from infrahub.storage_encryption.crypto import StorageKey
 from infrahub.storage_encryption.memory_budget import (
     MEMORY_FACTOR,
@@ -60,7 +61,7 @@ class HoldRecordingStorage(InfrahubObjectStorage):
     """A local storage that records which objects are in memory: from the end of their read to their replacement."""
 
     def __init__(self, settings: StorageSettings, key: StorageKey, meet_at: int = 0) -> None:
-        super().__init__(settings=settings, key=key)
+        super().__init__(settings=settings, codec=select_codec(encryption_enabled=settings.encryption_enabled, key=key))
         self.in_memory: dict[str, int] = {}
         self.peak_bytes = 0
         self.reads: list[str] = []
