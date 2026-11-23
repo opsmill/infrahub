@@ -22,6 +22,7 @@ from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.validators.checks_runner import CheckPending
 from infrahub.events.artifact_action import ArtifactRenderRequestedEvent
+from infrahub.git import tasks as git_tasks
 from infrahub.git.models import RequestArtifactGenerate
 from infrahub.git.tasks import generate_artifact
 from infrahub.server import app
@@ -404,6 +405,26 @@ class TestRequestExternalRender(TestInfrahubAppWithoutLocalWorkflow):
         stored = await client.get(kind=CoreArtifact, id=dataset["artifact"].id, branch=default_branch.name)
         assert stored.status.value == ArtifactStatus.PENDING.value
         assert [type(event) for event in event_service.events] == [ArtifactRenderRequestedEvent]
+
+    async def test_generate_artifact_sets_error_when_the_request_raises(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        dataset: dict[str, Any],
+        subscribed_webhook: Node,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        async def _raise(**kwargs: Any) -> RenderRequestResult:
+            raise RuntimeError("Cannot query field 'description' on type 'TestDevice'")
+
+        monkeypatch.setattr(git_tasks, "request_external_render", _raise)
+        branch = await create_branch(branch_name="generate-raises", db=db)
+
+        with pytest.raises(RuntimeError, match="Cannot query field"):
+            await generate_artifact(model=_generate_model(dataset=dataset, branch=branch))
+
+        stored = await client.get(kind=CoreArtifact, id=dataset["artifact"].id, branch=branch.name)
+        assert stored.status.value == ArtifactStatus.ERROR.value
 
 
 async def _create_webhook(

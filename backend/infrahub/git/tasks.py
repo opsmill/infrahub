@@ -39,6 +39,7 @@ from infrahub.auth.session import AnonymousSession
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
+    ArtifactStatus,
     InfrahubKind,
     RepositoryDeliveryStatus,
     RepositoryInternalStatus,
@@ -1043,16 +1044,23 @@ async def generate_artifact(model: RequestArtifactGenerate) -> None:
 
     if model.transform_type == InfrahubKind.TRANSFORMEXTERNAL:
         artifact, _ = await define_artifact(model=model)
-        request = await request_external_render(
-            client=client,
-            event_service=await get_event_service(),
-            artifact=artifact,
-            model=model,
-            transformation_name=model.transformation_name,
-            transformation_version=model.transformation_version,
-            public_url=config.SETTINGS.main.public_url,
-            max_event_size_bytes=get_current_settings().server.events.maximum_size_bytes,
-        )
+        try:
+            request = await request_external_render(
+                client=client,
+                event_service=await get_event_service(),
+                artifact=artifact,
+                model=model,
+                transformation_name=model.transformation_name,
+                transformation_version=model.transformation_version,
+                public_url=config.SETTINGS.main.public_url,
+                max_event_size_bytes=get_current_settings().server.events.maximum_size_bytes,
+            )
+        # A query that no longer matches the schema raises here, and the artifact must not stay Ready with stale content.
+        except Exception:
+            log.exception("Failed to request an external render")
+            artifact.status.value = ArtifactStatus.ERROR.value
+            await artifact.save()
+            raise
         if request.error:
             log.error(f"Failed to request an external render: {request.error}")
         return
