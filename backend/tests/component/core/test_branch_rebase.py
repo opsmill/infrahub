@@ -20,6 +20,7 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.query.branch import RebaseBranchQuery
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -80,6 +81,29 @@ async def test_rebase_graph_delete(
     # Query all cars in BRANCH1, AFTER the REBASE
     persons = sorted(await NodeManager.query(schema="TestPerson", branch=branch1, db=db), key=lambda p: p.id)
     assert len(persons) == 2
+
+
+def _plan_operator_types(plan: dict) -> list[str]:
+    return [plan["operatorType"]] + [
+        operator for child in plan.get("children", []) for operator in _plan_operator_types(child)
+    ]
+
+
+async def test_rebase_query_does_not_scan_the_whole_graph(
+    db: InfrahubDatabase, base_dataset_02: dict, register_core_models_schema: SchemaBranch
+) -> None:
+    branch1 = await Branch.get_by_name(name="branch1", db=db)
+    query = await RebaseBranchQuery.init(db=db, branch=branch1, at=Timestamp())
+    rendered = query.render()
+
+    _, metadata = await db.execute_query_with_metadata(query=f"EXPLAIN\n{rendered.text}", params=rendered.params)
+
+    full_scans = [
+        operator
+        for operator in _plan_operator_types(metadata["plan"])
+        if "AllRelationshipsScan" in operator or "AllNodesScan" in operator
+    ]
+    assert full_scans == []
 
 
 async def test_merge_relationship_many(
