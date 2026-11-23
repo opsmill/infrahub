@@ -342,6 +342,7 @@ async def create_component(
     parent_template: CoreObjectTemplate,
     component: TemplateComponent,
     pool_applier: AttributePoolApplierInterface,
+    profiles_applier: NodeProfilesApplier,
     at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
 ) -> Node:
@@ -373,13 +374,7 @@ async def create_component(
 
     template_profile_ids = await get_profile_ids(db=db, obj=component.subtemplate)
     if template_profile_ids:
-        await _apply_profiles_before_create(
-            db=db,
-            node=obj_peer,
-            profiles_applier=NodeProfilesApplier(
-                db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
-            ),
-        )
+        await _apply_profiles_before_create(db=db, node=obj_peer, profiles_applier=profiles_applier)
 
     await obj_peer.save(db=db, user_id=user_id)
     NodeMutationContext.record_if_active(node=obj_peer, action=MutationAction.CREATED)
@@ -394,6 +389,7 @@ async def create_components(
     parent_template: CoreObjectTemplate,
     components: list[TemplateComponent],
     pool_applier: AttributePoolApplierInterface,
+    profiles_applier: NodeProfilesApplier,
     at: Timestamp | None = None,
     user_id: str = SYSTEM_USER_ID,
 ) -> None:
@@ -414,6 +410,7 @@ async def create_components(
             parent_template=parent_template,
             component=component,
             pool_applier=pool_applier,
+            profiles_applier=profiles_applier,
             at=at,
             user_id=user_id,
         )
@@ -425,6 +422,7 @@ async def create_components(
             parent_template=component.subtemplate,
             components=component.components,
             pool_applier=pool_applier,
+            profiles_applier=profiles_applier,
             at=at,
             user_id=user_id,
         )
@@ -712,6 +710,7 @@ async def _do_create_node(
                 parent_template=object_template,
                 components=template_components,
                 pool_applier=pool_applier,
+                profiles_applier=profiles_applier,
                 at=at,
                 user_id=user_id,
             )
