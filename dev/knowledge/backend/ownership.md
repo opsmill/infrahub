@@ -350,7 +350,11 @@ the owner edges of the default branch under the new kind.
 - The graph migration `m084` skips an attribute whose owner a branch wrote and then cleared before the upgrade.
   The release before closed the edge of the branch at the clear, and added its own `deleted` edge for the owner of
   the default branch at that time. So a read on the branch at a time between the write and the clear gives two
-  owners.
+  owners. It also skips an attribute whose branch wrote another owner and then the owner of the default branch
+  again, because the branch has an open edge to that owner. A read on the branch at a time between the two writes
+  gives both owners. A read at the current time gives one owner.
+- The object conversion writes the owners of the new node at a later time than the node, in the same transaction.
+  A read at a time between the two gives the new node without owners.
 - A branch made before the upgrade can read two owners on a branch-agnostic attribute when the release before
   changed its owner on the global branch after the start of the branch. That release gave the old global edge a
   `to` time and no `deleted` edge. `m084` reads only the owner edges of a branch, and `m085` only the edges to
