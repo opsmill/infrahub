@@ -329,7 +329,10 @@ the holders that are not attributes are in `core/ownership/fields.py` (see [Diff
 `infrahub db ownership-report` (`core/ownership/report.py`) reads only vertices and edges that the release before
 holds, so it runs before the upgrade. When the graph version of the database is the number of `m085` or later, the
 command first prints a warning: `m085` closed the owner edges from attributes to repositories, so the first section is
-empty.
+empty. Each row counts the attributes of one branch, so an attribute with an owner edge on two branches counts twice
+in the total of its section. The report does not compare the branch of the `HAS_ATTRIBUTE` edge with the branch of
+the owner edge. After a kind change on a branch, the new vertex shares the attribute vertex, so the report also lists
+the owner edges of the default branch under the new kind.
 
 ## Limits
 
