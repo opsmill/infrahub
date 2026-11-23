@@ -124,6 +124,9 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
   time and closes only those. With a time from before the lock, an update that waits behind another write of
   owners does not see the owners of that write, and both lists stay active. A value update that waits behind a
   delete of the node fails, because the attribute is not active at that time.
+- All branches share the node vertex, and `NodeLockQuery` matches it by UUID only. So two writes of one node on
+  two different branches also run one after the other, for example a profile refresh on one branch and an update
+  on another.
 - Lock order: a writer of a node locks the node vertex first, and then an attribute vertex or a set vertex. A
   write of owners, `Node._update` and `Node.delete` take the lock on the node vertex (`NodeLockQuery`, or the same
   `SET` in the query) before they write a field, on every branch. When one transaction locks a field first, it
