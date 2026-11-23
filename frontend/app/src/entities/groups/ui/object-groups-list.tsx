@@ -10,7 +10,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
 import { pluralize } from "@/shared/utils/string";
 
-import type { GroupData } from "@/entities/groups/domain/model/group";
+import { GROUP_MEMBERS_RELATIONSHIP, type GroupData } from "@/entities/groups/domain/model/group";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
@@ -57,7 +57,12 @@ function ObjectGroupItem({ objectId, group }: ObjectGroupItemProps) {
 
         <Row>
           <Link
-            to={getObjectDetailsUrl(group.__typename, group.id, undefined, "members")}
+            to={getObjectDetailsUrl(
+              group.__typename,
+              group.id,
+              undefined,
+              GROUP_MEMBERS_RELATIONSHIP
+            )}
             className="font-light text-sm hover:underline"
           >
             {pluralize(group.members.count, "member")}
