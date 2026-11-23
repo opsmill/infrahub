@@ -5,12 +5,13 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES, BranchStatus
 from infrahub.core.branch.filters import BranchListFilters
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.core.graph.index import rel_indexes
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.standard_node import StandardNodeGetListQuery
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
-    from infrahub.core.constants.database import DatabaseEdgeType
     from infrahub.database import InfrahubDatabase
 
 
@@ -185,6 +186,23 @@ DELETE v
         return self.stats.get_counter("relationships_deleted")
 
 
+def _branch_edge_reads() -> str:
+    """Render one read per edge type of the edges on `$branch_name`, joined with UNION ALL.
+
+    A pattern that names no edge type cannot use a relationship index, so Neo4j would read every edge of the graph.
+    """
+    branch_indexed_types = {index.label for index in rel_indexes if index.properties == ["branch"]}
+    reads = []
+    for edge_type in DatabaseEdgeType:
+        hint = (
+            f"USING INDEX r:{edge_type.value}(branch)"
+            if edge_type.value in branch_indexed_types
+            else f"USING SCAN r:{edge_type.value}"
+        )
+        reads.append(f"MATCH (s)-[r:{edge_type.value}]->(d)\n{hint}\nWHERE r.branch = $branch_name\nRETURN r, s, d")
+    return "\nUNION ALL\n".join(reads)
+
+
 class RebaseBranchQuery(Query):
     """Rebase a branch onto the default branch by updating edge timestamps.
 
@@ -208,9 +226,9 @@ class RebaseBranchQuery(Query):
 // --------------
 // Get all edges on this branch with their source and destination vertices
 // --------------
-MATCH (s)-[r]-(d)
-WHERE r.branch = $branch_name
-WITH DISTINCT r, s, d
+CALL () {
+%(branch_edges)s
+}
 WITH r, s, d,
     CASE
         // No `to` and `from` <= at: update
@@ -249,7 +267,7 @@ CALL (n) {
     WHERE NOT exists((n)--())
     DELETE n
 }
-        """
+        """ % {"branch_edges": _branch_edge_reads()}
         self.add_to_query(query=query)
 
 
