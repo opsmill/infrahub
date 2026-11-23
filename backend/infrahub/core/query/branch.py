@@ -5,13 +5,18 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES, BranchStatus
 from infrahub.core.branch.filters import BranchListFilters
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.core.graph.index import rel_indexes
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.standard_node import StandardNodeGetListQuery
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
-    from infrahub.core.constants.database import DatabaseEdgeType
     from infrahub.database import InfrahubDatabase
+
+BRANCH_INDEXED_EDGE_TYPES = frozenset(
+    DatabaseEdgeType(index.label) for index in rel_indexes if index.properties == ["branch"]
+)
 
 
 class DeleteBranchAgnosticRelationshipsQuery(Query):
@@ -204,13 +209,31 @@ class RebaseBranchQuery(Query):
         self.params["branch_name"] = self.branch.name
         self.params["at"] = self.at.to_string()
 
+        # Naming each edge type lets its `branch` index serve the read, so the cost follows the edges of the
+        # branch instead of every edge of the graph.
+        edge_reads = [
+            """
+    MATCH (s)-[r:%(edge_type)s]->(d)
+    %(index_hint)s
+    WHERE r.branch = $branch_name
+    RETURN r, s, d
+"""
+            % {
+                "edge_type": edge_type.value,
+                "index_hint": f"USING INDEX SEEK r:{edge_type.value}(branch)"
+                if edge_type in BRANCH_INDEXED_EDGE_TYPES
+                else "",
+            }
+            for edge_type in DatabaseEdgeType
+        ]
+
         query = """
 // --------------
 // Get all edges on this branch with their source and destination vertices
 // --------------
-MATCH (s)-[r]-(d)
-WHERE r.branch = $branch_name
-WITH DISTINCT r, s, d
+CALL () {
+%(edge_reads)s
+}
 WITH r, s, d,
     CASE
         // No `to` and `from` <= at: update
@@ -249,7 +272,7 @@ CALL (n) {
     WHERE NOT exists((n)--())
     DELETE n
 }
-        """
+        """ % {"edge_reads": "    UNION ALL".join(edge_reads)}
         self.add_to_query(query=query)
 
 
