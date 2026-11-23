@@ -1454,12 +1454,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         fields: list[str] | None = None,
     ) -> Self:
         """Create or Update the Node in the database."""
-        save_at = Timestamp(at)
-
         if self._existing:
-            self._node_changelog = await self._update(db=db, user_id=user_id, at=save_at, fields=fields)
+            # The update reads the current time after it waits for the node lock, so it sees the owners written meanwhile.
+            self._node_changelog = await self._update(db=db, user_id=user_id, at=at, fields=fields)
         else:
-            self._node_changelog = await self._create(db=db, user_id=user_id, at=save_at)
+            self._node_changelog = await self._create(db=db, user_id=user_id, at=Timestamp(at))
 
         return self
 

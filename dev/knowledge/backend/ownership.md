@@ -120,10 +120,10 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
   writers do not run through a mutation and cannot lock each node before their first write: the IPAM reconciler
   writes inside the transaction of a create, after the create, and the migrations and the merge write with Cypher
   over many nodes.
-- Known limit: `Node.save` reads the update time before `Node._update` takes the lock. A value update that waits
-  behind a delete of the node then writes at a time before the delete. The delete closed the old `HAS_VALUE` edge,
-  so the update creates a new active one on the deleted attribute, and `verify_graph` reports it
-  (`GraphCheck.ORPHANED_ACTIVE_EDGES`). The same edge appears without the node lock, so it does not come from owners.
+- `Node._update` reads the update time after it takes the lock. A write of owners reads the current edges at that
+  time and closes only those. With a time from before the lock, an update that waits behind another write of
+  owners does not see the owners of that write, and both lists stay active. A value update that waits behind a
+  delete of the node fails, because the attribute is not active at that time.
 - Lock order: a writer of a node locks the node vertex first, and then an attribute vertex or a set vertex. A
   write of owners, `Node._update` and `Node.delete` take the lock on the node vertex (`NodeLockQuery`, or the same
   `SET` in the query) before they write a field, on every branch. When one transaction locks a field first, it

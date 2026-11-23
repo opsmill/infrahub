@@ -16,6 +16,7 @@ from infrahub.core.ownership.fields import NODE_OWNERS_FIELD, owner_list_value
 from infrahub.core.ownership.models import NODE_HOLDER, HolderKey, HolderKind, StoredOwnerState, field_holder
 from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.ownership.writer import OwnershipWriter
+from infrahub.core.query.node import NodeLockQuery
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -470,6 +471,33 @@ async def test_node_update_and_node_delete_in_open_transactions_do_not_deadlock(
 
     assert results == [None, None]
     await verify_graph(db=db, kinds=["TestPerson"])
+
+
+async def test_owner_update_that_waits_for_the_node_lock_replaces_the_owner_written_meanwhile(
+    db: InfrahubDatabase, default_branch: Branch, person: Node, group_ids: list[str]
+) -> None:
+    holder = HolderKey(kind=HolderKind.ATTRIBUTE, attribute="name")
+    node_is_locked = asyncio.Event()
+
+    async def write_while_the_update_waits() -> None:
+        async with db.start_session() as session_db, session_db.start_transaction() as dbt:
+            lock_query = await NodeLockQuery.init(db=dbt, node=person)
+            await lock_query.execute(db=dbt)
+            node_is_locked.set()
+            await _wait_for_the_other_write(db=db, other=update)
+            await _write(db=dbt, branch=default_branch, node_id=person.id, holder=holder, owner_ids=group_ids[:1])
+
+    async def update_owner() -> None:
+        await asyncio.wait_for(node_is_locked.wait(), timeout=SECONDS_TO_WAIT)
+        async with db.start_session() as session_db, session_db.start_transaction() as dbt:
+            node = await NodeManager.get_one(db=dbt, branch=default_branch, id=person.id, raise_on_error=True)
+            node.name.owner = group_ids[1]
+            await node.save(db=dbt)
+
+    update = asyncio.ensure_future(update_owner())
+    await asyncio.gather(write_while_the_update_waits(), update)
+
+    assert await read_owners(db=db, branch=default_branch, node_id=person.id, holder=holder) == tuple(group_ids[1:])
 
 
 async def test_attribute_rename_gives_no_set_to_a_node_whose_delete_commits_while_the_rename_waits(
