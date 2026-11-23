@@ -157,7 +157,25 @@ async def test_branch_made_before_the_upgrade_reads_no_repository_owner_after_th
         await add_owner_edge(
             db=db, query=ADD_ATTRIBUTE_OWNER, branch=default_branch, node_id=cars[name], owner_id=repository.id
         )
+    # The branch does not read an edge that closed before its start or that started after it.
+    closed_before_branch = await create_car(db=db, name="closed-before-the-branch", person=person)
+    await add_owner_edge(
+        db=db, query=ADD_ATTRIBUTE_OWNER, branch=default_branch, node_id=closed_before_branch.id, owner_id=repository.id
+    )
+    await db.execute_query(
+        query=CLOSE_ATTRIBUTE_OWNER,
+        params={
+            "node_id": closed_before_branch.id,
+            "owner_id": repository.id,
+            "branch": default_branch.name,
+            "at": Timestamp().to_string(),
+        },
+    )
     branch = await create_branch(db=db, branch_name="branch1")
+    added_after_branch = await create_car(db=db, name="added-after-the-branch", person=person)
+    await add_owner_edge(
+        db=db, query=ADD_ATTRIBUTE_OWNER, branch=default_branch, node_id=added_after_branch.id, owner_id=repository.id
+    )
     # An owner write of an earlier release on a branch left the owner edge of the default branch open.
     await add_owner_edge(
         db=db, query=ADD_ATTRIBUTE_OWNER, branch=branch, node_id=cars["replaced-on-branch"], owner_id=group.id
@@ -203,7 +221,7 @@ async def test_branch_made_before_the_upgrade_reads_no_repository_owner_after_th
     } == owners_before
     hidden = [(edge["owner_id"], edge["branch"]) for edge in edges_after if edge["status"] == "deleted"]
     assert hidden == [(repository.id, branch.name)] * 3
-    assert len([edge for edge in edges_after if edge["status"] == "active"]) == 4
+    assert len([edge for edge in edges_after if edge["status"] == "active"]) == 6
 
 
 async def test_branch_that_replaced_an_account_owner_with_a_repository_reads_no_owner_after_the_upgrade(
@@ -256,7 +274,13 @@ async def test_branch_made_before_the_upgrade_reads_no_global_repository_owner_a
     await repository.new(db=db, name="repo01", location="git@github.com:user/repo01.git")
     await repository.save(db=db)
     groups: dict[str, str] = {}
-    for name in ("owner-group", "open-at-upgrade", "replaced-before-upgrade"):
+    for name in (
+        "owner-group",
+        "open-at-upgrade",
+        "replaced-before-upgrade",
+        "closed-before-the-branch",
+        "added-after-the-branch",
+    ):
         group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
         await group.new(db=db, name=name)
         await group.save(db=db)
@@ -265,7 +289,31 @@ async def test_branch_made_before_the_upgrade_reads_no_global_repository_owner_a
         await add_owner_edge(
             db=db, query=ADD_NAME_OWNER, branch=global_branch, node_id=groups[name], owner_id=repository.id
         )
+    # The branch does not read an edge that closed before its start or that started after it.
+    await add_owner_edge(
+        db=db,
+        query=ADD_NAME_OWNER,
+        branch=global_branch,
+        node_id=groups["closed-before-the-branch"],
+        owner_id=repository.id,
+    )
+    await db.execute_query(
+        query=CLOSE_NAME_OWNER,
+        params={
+            "node_id": groups["closed-before-the-branch"],
+            "owner_id": repository.id,
+            "branch": global_branch.name,
+            "at": Timestamp().to_string(),
+        },
+    )
     branch = await create_branch(db=db, branch_name="branch1")
+    await add_owner_edge(
+        db=db,
+        query=ADD_NAME_OWNER,
+        branch=global_branch,
+        node_id=groups["added-after-the-branch"],
+        owner_id=repository.id,
+    )
     # An owner write of an earlier release on the global branch closed the old edge only.
     replaced_at = Timestamp().to_string()
     await db.execute_query(
