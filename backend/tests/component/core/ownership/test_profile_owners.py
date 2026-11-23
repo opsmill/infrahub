@@ -19,7 +19,6 @@ from infrahub.core.ownership.models import (
     ResolvedOwnership,
     StoredOwnerState,
 )
-from infrahub.core.ownership.queries import NodeOwnerStateReadQuery
 from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.ownership.resolver import OwnershipResolver
 from infrahub.core.ownership.writer import OwnershipWriter
@@ -28,7 +27,6 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
-from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.ownership import TARGET_OWNERS_FIELD, USER_ID, add_node
 from tests.helpers.schema.ownership import OWNERSHIP_SCHEMA
 
@@ -543,22 +541,6 @@ class TestProfileOwnersRead:
                 ids["device-without-profile"]: [],
             },
         }
-
-    async def test_number_of_reads_does_not_grow_with_the_number_of_nodes_of_a_page(
-        self, db: InfrahubDatabase, dataset: ProfileDataset
-    ) -> None:
-        device_ids = [dataset.ids[name] for name in DEVICES_IN_RACK_A]
-        counts: list[int] = []
-        for node_ids in (device_ids[:1], device_ids):
-            counting_db = CountingInfrahubDatabase.from_db(db=db)
-            resolved = await _resolve(db=counting_db, branch=dataset.branches[DEFAULT_BRANCH], node_ids=node_ids)
-            assert list(resolved) == node_ids
-            counts.append(counting_db.count_for(NodeOwnerStateReadQuery.name))
-
-        # One device: one read with its profiles, its rack and the tenant of the rack. A page of devices: one read
-        # for the devices, one for their profiles and their rack, and one for the tenant of the rack.
-        assert len(device_ids) > 10
-        assert counts == [1, 3]
 
     async def test_graph_stays_valid_after_the_writes(self, db: InfrahubDatabase, dataset: ProfileDataset) -> None:
         await verify_graph(

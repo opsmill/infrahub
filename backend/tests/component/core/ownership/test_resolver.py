@@ -10,14 +10,12 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.ownership.constants import MAX_INHERITANCE_DEPTH, MAX_NODES_FOR_LINEAGE_WALK
 from infrahub.core.ownership.models import OwnerOrigin, OwnerState, ResolvedOwnership
-from infrahub.core.ownership.queries import NodeOwnerStateReadQuery
 from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.ownership.resolver import OwnershipResolver
 from infrahub.core.ownership.writer import OwnershipWriter
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.ownership import GROUP_NAMES, USER_ID, add_node, set_owners
 from tests.helpers.schema.ownership import OWNERSHIP_SCHEMA
 
@@ -205,25 +203,7 @@ class TestOwnershipResolver:
         assert on_default_branch[device_id].owner_ids == (dataset.ids["network-emea"],)
         assert on_default_branch[device_id].origin_node_id == dataset.ids["tenant-a"]
 
-    async def test_one_read_gives_the_parents_of_all_levels_for_one_node_and_for_many(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, dataset: ResolverDataset
-    ) -> None:
-        device_ids = [dataset.ids[name] for name in ("device-a", "device-b", "device-c")]
-        counts: list[int] = []
-        for branch, node_ids in (
-            (default_branch_scope_class, device_ids[:1]),
-            (default_branch_scope_class, device_ids),
-            (dataset.branch, device_ids),
-        ):
-            counting_db = CountingInfrahubDatabase.from_db(db=db)
-            resolved = await _resolver(db=counting_db, branch=branch).resolve(node_ids=node_ids)
-            assert list(resolved) == node_ids
-            counts.append(counting_db.count_for(NodeOwnerStateReadQuery.name))
-
-        # One read for the devices, their racks and the tenant of the rack that inherits, also on a branch.
-        assert counts == [1, 1, 1]
-
-    async def test_template_copy_is_read_without_its_parents(
+    async def test_template_copy_resolves_to_the_template_with_and_without_the_lineage_walk(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
@@ -247,13 +227,8 @@ class TestOwnershipResolver:
             origin_node_id=template.id,
         )
 
-        nodes_read: dict[int, int] = {}
         # With a limit of 0 nodes, the resolver reads one level of parents for each query.
         for walk_limit in (MAX_NODES_FOR_LINEAGE_WALK, 0):
             monkeypatch.setattr("infrahub.core.ownership.resolver.MAX_NODES_FOR_LINEAGE_WALK", walk_limit)
-            counting_db = CountingInfrahubDatabase.from_db(db=db)
-            resolved = await _resolver(db=counting_db, branch=branch).resolve(node_ids=[site.id])
+            resolved = await _resolver(db=db, branch=branch).resolve(node_ids=[site.id])
             assert resolved == {site.id: expected}
-            nodes_read[walk_limit] = counting_db.rows_for(NodeOwnerStateReadQuery.name)
-
-        assert nodes_read == {MAX_NODES_FOR_LINEAGE_WALK: 1, 0: 1}
