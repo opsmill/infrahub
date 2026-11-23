@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence  # noqa: TC003  needed for pydantic
 from typing import TYPE_CHECKING, Any
 
+from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 from infrahub.types import is_large_attribute_type
 
 from ..query import AttributeMigrationQuery, MigrationBaseQuery
@@ -129,12 +130,8 @@ CALL (has_value_e) {
 CALL (attr, n) {
     WITH attr, n
     WHERE $set_metadata
-    SET attr.previous_updated_at = CASE WHEN attr.updated_at IS NULL OR attr.updated_at <> $at THEN attr.updated_at ELSE attr.previous_updated_at END,
-        attr.previous_updated_by = CASE WHEN attr.updated_at IS NULL OR attr.updated_at <> $at THEN attr.updated_by ELSE attr.previous_updated_by END
-    SET attr.updated_at = $at, attr.updated_by = $user_id
-    SET n.previous_updated_at = CASE WHEN n.updated_at IS NULL OR n.updated_at <> $at THEN n.updated_at ELSE n.previous_updated_at END,
-        n.previous_updated_by = CASE WHEN n.updated_at IS NULL OR n.updated_at <> $at THEN n.updated_by ELSE n.previous_updated_by END
-    SET n.updated_at = $at, n.updated_by = $user_id
+    %(stamp_attr)s
+    %(stamp_n)s
 }
 """
 
@@ -195,7 +192,15 @@ CALL (n, attr) {
         self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
 
         template = TOWARD_INDEXED_QUERY if needs_index else TOWARD_LARGE_QUERY
-        self.add_to_query(template % {"selection": self.render_selection(), "edge_updates": EDGE_UPDATES_QUERY})
+        stamp_attr, stamp_params = stamp_vertex_metadata("attr", at=self.at, operation_ats=self.operation_ats)
+        self.params.update(stamp_params)
+        stamp_n, stamp_params = stamp_vertex_metadata("n", at=self.at, operation_ats=self.operation_ats)
+        self.params.update(stamp_params)
+        edge_updates = EDGE_UPDATES_QUERY % {
+            "stamp_attr": stamp_attr,
+            "stamp_n": stamp_n,
+        }
+        self.add_to_query(template % {"selection": self.render_selection(), "edge_updates": edge_updates})
 
 
 class AttributeKindUpdateMigration(AttributeSchemaMigration):

@@ -110,6 +110,7 @@ class MigrationInput:
     at: Timestamp = field(default_factory=Timestamp)
     user_id: str = SYSTEM_USER_ID
     console: Console = field(default_factory=get_migration_console)
+    operation_ats: list[Timestamp] = field(default_factory=list)
 
 
 def _should_propagate(db: InfrahubDatabase, exc: BaseException) -> bool:
@@ -176,6 +177,7 @@ class SchemaMigration(BaseModel):
                     at=migration_input.at,
                     migration=self,
                     user_id=migration_input.user_id,
+                    operation_ats=migration_input.operation_ats,
                 )
                 await query.execute(db=migration_input.db)
                 result.nbr_migrations_executed += query.get_nbr_migrations_executed()
@@ -202,6 +204,7 @@ class SchemaMigration(BaseModel):
                 at=migration_input.at,
                 user_id=migration_input.user_id,
                 console=migration_input.console,
+                operation_ats=migration_input.operation_ats,
             )
 
             await self.execute_pre_queries(migration_input=txn_migration_input, result=result, branch=branch)

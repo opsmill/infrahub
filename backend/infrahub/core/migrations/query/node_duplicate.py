@@ -8,6 +8,7 @@ from infrahub.core.constants import BranchSupportType, RelationshipStatus
 from infrahub.core.graph.schema import GraphNodeRelationships, GraphRelDirection
 from infrahub.core.migrations.query.selection import MigrationSelectionQuery
 from infrahub.core.query import QueryType
+from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -194,6 +195,10 @@ class NodeDuplicateQuery(MigrationSelectionQuery):
 
         self.add_to_query(self.render_selection())
 
+        stamp_node, stamp_params = stamp_vertex_metadata(
+            "active_node", at=self.at, operation_ats=self.operation_ats, at_param="current_time"
+        )
+        self.params.update(stamp_params)
         query = """
         CREATE (new_node:Node:$(target.new_labels) {
             uuid: active_node.uuid, kind: target.new_kind, namespace: target.new_namespace, branch_support: target.new_branch_support
@@ -206,15 +211,7 @@ class NodeDuplicateQuery(MigrationSelectionQuery):
             WITH active_node, new_node
             // set updated_by/at if we're on the default/global branch
             WHERE $set_metadata
-            SET active_node.previous_updated_at = CASE
-                WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_at
-                ELSE active_node.previous_updated_at
-            END,
-            active_node.previous_updated_by = CASE
-                WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_by
-                ELSE active_node.previous_updated_by
-            END
-            SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
+            %(stamp_node)s
             // new_node is created here, so it has no prior metadata to snapshot for rollback
             SET new_node.updated_at = $current_time, new_node.updated_by = $user_id
         }
@@ -269,5 +266,6 @@ class NodeDuplicateQuery(MigrationSelectionQuery):
             "sub_query_in": sub_query_in,
             "sub_query_out_args": sub_query_out_args,
             "sub_query_in_args": sub_query_in_args,
+            "stamp_node": stamp_node,
         }
         self.add_to_query(query)

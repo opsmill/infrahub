@@ -52,6 +52,7 @@ from infrahub.pools.number_pool_locker import RESOURCE_POOL_LOCK_NAMESPACE
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from tests.adapters.lock import LockTimeline, RecordingLockRegistry
 from tests.component.core.migrations.schema.metadata_helpers import (
+    EdgeFingerprint,
     VertexMetadata,
     branch_edge_fingerprint,
     branch_metadata_fingerprint,
@@ -288,7 +289,7 @@ class _AttributeAdd:
     migration_time: Timestamp
     user_id: str
     node_before: VertexMetadata
-    pre_migration_fingerprint: list[tuple]
+    pre_migration_fingerprint: list[EdgeFingerprint]
     pre_migration_metadata: list[tuple]
 
 
@@ -393,7 +394,7 @@ class TestNodeAttributeAddMetadata:
         async def _run_rollback() -> None:
             await GraphRollbacker(db=db).rollback(
                 target_branch=context.branch,
-                at=context.migration_time,
+                ats=[context.migration_time],
                 scope=RollbackScope.SINCE_TIMESTAMP,
             )
 
