@@ -104,12 +104,6 @@ def test_holder_and_field_name_map_to_each_other(test_case: RoundTripTestCase, s
     assert field_name == test_case.field_name
     assert _holder_of_name(field_name=field_name, schema=schema, schema_branch=schema_branch) == holder
 
-    holder_of_name = _holder_of_name(field_name=test_case.field_name, schema=schema, schema_branch=schema_branch)
-    assert holder_of_name == holder
-    assert stored_holder_field_name(holder=holder_of_name, schema=schema, schema_branch=schema_branch) == (
-        test_case.field_name
-    )
-
 
 def test_owners_of_an_attribute_have_no_reserved_field_name(schema_branch: SchemaBranch) -> None:
     schema = schema_branch.get(name="TestDevice", duplicate=False)
