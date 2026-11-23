@@ -33,7 +33,9 @@ from infrahub.exceptions import (
 )
 
 if TYPE_CHECKING:
-    from infrahub.artifacts.render_token import RenderTokenClaims
+    from collections.abc import Callable
+
+    from infrahub.artifacts.render_token import RenderTokenClaims, RenderTokenRequest
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
     from infrahub.services.adapters.event import InfrahubEventService
@@ -45,6 +47,7 @@ STRUCTURED_CONTENT_TYPES = frozenset({ContentType.APPLICATION_JSON.value, Conten
 
 RENDER_SUCCEEDED_MESSAGE = "Artifact rendered successfully"
 RENDER_FAILED_MESSAGE = "Failed to render artifact"
+RENDER_UNDELIVERED_MESSAGE = "render request could not be delivered"
 
 RENDER_RESULT_SUCCESS = "success"
 RENDER_RESULT_FAILURE = "failure"
@@ -241,6 +244,58 @@ class RenderResultAcceptor:
             changed=changed,
         )
         return outcome, event
+
+
+async def fail_render(
+    db: InfrahubDatabase,
+    event_service: InfrahubEventService,
+    branch: Branch,
+    artifact_id: str,
+    message: str,
+    is_active: Callable[[CoreArtifact], bool],
+) -> CoreArtifact | None:
+    """Set the artifact to Error and fail the checks waiting for it, when `is_active` still holds under the render lock.
+
+    Returns the artifact, or None when it is gone or its render request is no longer the one `is_active` expects.
+    """
+    async with artifact_render_lock(branch=branch.name, artifact_id=artifact_id), db.start_transaction() as dbt:
+        artifact = await registry.manager.get_one(db=dbt, id=artifact_id, branch=branch, kind=CoreArtifact)
+        if artifact is None or not is_active(artifact):
+            return None
+        artifact.get_attribute("status").value = ArtifactStatus.ERROR.value
+        artifact.render_deadline.value = None
+        await artifact.save(db=dbt, user_id=SYSTEM_USER_ID)
+        outcome = RenderResultOutcome(
+            artifact_id=artifact.id, branch=branch.name, status=ArtifactStatus.ERROR, message=message
+        )
+        validator_ids = await conclude_waiting_checks(db=dbt, branch=branch, outcome=outcome)
+
+    for validator_id in validator_ids:
+        await recompute_validator(
+            db=db, event_service=event_service, validator_id=validator_id, context=system_event_context(branch=branch)
+        )
+    return artifact
+
+
+async def fail_undelivered_render(
+    db: InfrahubDatabase, event_service: InfrahubEventService, request: RenderTokenRequest, reason: str
+) -> bool:
+    """End a render request that could not be delivered to the engine, and return whether it was still active.
+
+    A request that was replaced or already concluded is left as it is.
+    """
+    branch = await registry.get_branch(db=db, branch=request.branch)
+    artifact = await fail_render(
+        db=db,
+        event_service=event_service,
+        branch=branch,
+        artifact_id=request.artifact_id,
+        message=f"{RENDER_UNDELIVERED_MESSAGE}: {reason}",
+        is_active=lambda candidate: (
+            candidate.render_request_id.value == request.render_id and candidate.render_deadline.value is not None
+        ),
+    )
+    return artifact is not None
 
 
 async def conclude_waiting_checks(db: InfrahubDatabase, branch: Branch, outcome: RenderResultOutcome) -> set[str]:

@@ -8,7 +8,8 @@ from uuid import uuid4
 import pytest
 from infrahub_sdk.timestamp import Timestamp
 
-from infrahub.artifacts.render_token import mint_render_token
+from infrahub.artifacts.render_result import fail_undelivered_render
+from infrahub.artifacts.render_token import RenderTokenRequest, mint_render_token
 from infrahub.artifacts.timeouts import RENDER_TIMEOUT_MESSAGE, RenderTimeout, expire_overdue_renders
 from infrahub.core import registry
 from infrahub.core.constants import ArtifactStatus, InfrahubKind, ValidatorConclusion, ValidatorState
@@ -196,6 +197,76 @@ class TestRenderTimeouts(TestInfrahubAppWithoutLocalWorkflow):
         assert response.status_code == 409
         after_callback = await _get_artifact(db=db, branch=branch, artifact_id=overdue.artifact_id)
         assert after_callback.status.get_value() == ArtifactStatus.ERROR.value
+
+    async def test_undelivered_request_fails_the_render_before_its_deadline(
+        self, db: InfrahubDatabase, default_branch: Branch, dataset: dict[str, Any]
+    ) -> None:
+        branch = await create_branch(branch_name=f"pc-{uuid4().hex[:8]}", db=db)
+        proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+        await proposed_change.new(
+            db=db, name=f"render {branch.name}", source_branch=branch.name, destination_branch=default_branch.name
+        )
+        await proposed_change.save(db=db)
+        validator = await Node.init(db=db, schema=InfrahubKind.ARTIFACTVALIDATOR)
+        await validator.new(
+            db=db,
+            label="Artifact Validator: device-config",
+            state=ValidatorState.IN_PROGRESS.value,
+            conclusion=ValidatorConclusion.UNKNOWN.value,
+            proposed_change=proposed_change,
+            definition=dataset["definition"],
+        )
+        await validator.save(db=db)
+        artifact = dataset["artifacts"][0]
+        check = await Node.init(db=db, schema=InfrahubKind.ARTIFACTCHECK)
+        await check.new(
+            db=db,
+            name=f"device-config: {artifact.id}",
+            origin="render-repo",
+            kind="ArtifactDefinition",
+            validator=validator,
+            message="waiting for external engine",
+            conclusion=ValidatorConclusion.UNKNOWN.value,
+            severity="info",
+            artifact_id=artifact.id,
+        )
+        await check.save(db=db)
+        pending = await _mark_pending(
+            db=db, branch=branch, artifact_id=artifact.id, deadline=datetime.now(UTC) + timedelta(minutes=10)
+        )
+        event_service = MemoryInfrahubEvent()
+
+        replaced = RenderTokenRequest(
+            render_id=str(uuid4()), artifact_id=artifact.id, branch=branch.name, deadline=pending.deadline
+        )
+        assert not await fail_undelivered_render(
+            db=db, event_service=event_service, request=replaced, reason="HTTP 503 from the engine"
+        )
+        still_pending = await _get_artifact(db=db, branch=branch, artifact_id=artifact.id)
+        assert still_pending.status.get_value() == ArtifactStatus.PENDING.value
+
+        current = RenderTokenRequest(
+            render_id=pending.render_id, artifact_id=artifact.id, branch=branch.name, deadline=pending.deadline
+        )
+        assert await fail_undelivered_render(
+            db=db, event_service=event_service, request=current, reason="HTTP 503 from the engine"
+        )
+
+        failed = await _get_artifact(db=db, branch=branch, artifact_id=artifact.id)
+        assert failed.status.get_value() == ArtifactStatus.ERROR.value
+        assert failed.render_deadline.value is None
+        stored_check = await registry.manager.get_one_by_id_or_default_filter(
+            db=db, id=check.id, kind=CoreArtifactCheck, branch=default_branch
+        )
+        assert stored_check.conclusion.get_value() == ValidatorConclusion.FAILURE.value
+        assert (
+            stored_check.message.value
+            == "Failed to render artifact: render request could not be delivered: HTTP 503 from the engine"
+        )
+        stored_validator = await registry.manager.get_one_by_id_or_default_filter(
+            db=db, id=validator.id, kind=CoreValidator, branch=default_branch
+        )
+        assert stored_validator.conclusion.get_value() == ValidatorConclusion.FAILURE.value
 
     async def test_sweep_expires_an_artifact_whose_transformation_is_gone(
         self, db: InfrahubDatabase, default_branch: Branch, dataset: dict[str, Any]

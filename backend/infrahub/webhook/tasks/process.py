@@ -17,13 +17,14 @@ from prefect.logging import get_run_logger
 from prefect.runtime import flow_run
 from prefect.states import Cancelled, Failed
 
+from infrahub.artifacts.render_result import fail_undelivered_render
 from infrahub.artifacts.render_token import RenderTokenRequest, mint_render_token
 from infrahub.core.constants import EventType, InfrahubKind
 from infrahub.events.models import EventContext as InfrahubEventContext
 from infrahub.message_bus.types import KVTTL
 from infrahub.task_manager.flow_run.constants import WEBHOOK_HTTP_ARTIFACT_KEY, WEBHOOK_HTTP_ARTIFACT_TYPE
 from infrahub.task_manager.flow_run.prefect_client import PrefectClientAdapter
-from infrahub.workers.dependencies import get_cache, get_client, get_http
+from infrahub.workers.dependencies import get_cache, get_client, get_database, get_event_service, get_http
 from infrahub.workflows.utils import add_tags
 
 from ..capture import CapturedHttp, build_http_capture
@@ -383,13 +384,14 @@ async def webhook_process(
     )
     event_data = event_payload.get("data", {})
     payload = await webhook.compute_payload(data=event_data, context=webhook_context, client=client)
+    render_request = render_request_from_event(event_type=event_type, event_data=event_data)
     state = await webhook_send(
         webhook_id=webhook_id,
         webhook_kind=webhook_kind,
         webhook_name=webhook_name,
         payload=payload,
         branch_name=branch_name,
-        render_request=render_request_from_event(event_type=event_type, event_data=event_data),
+        render_request=render_request,
         return_state=True,
     )
     if state.is_completed():
@@ -397,12 +399,29 @@ async def webhook_process(
 
     # A cancelled delivery carries no result to read; the cancelled state itself is the outcome.
     if state.is_cancelled():
+        await _fail_undelivered_render(render_request=render_request, reason="the delivery was cancelled")
         return state
 
     # Any other non-completed terminal state (failed, crashed) is surfaced, not reported as success.
     outcome = await state.aresult(raise_on_failure=False)
     if isinstance(outcome, WebhookDeliveryError):
-        return Failed(message=f"{outcome.failure.message.rstrip('.')}. {outcome.failure.remediation}")
+        reason = f"{outcome.failure.message.rstrip('.')}. {outcome.failure.remediation}"
+        await _fail_undelivered_render(render_request=render_request, reason=reason)
+        return Failed(message=reason)
     if isinstance(outcome, BaseException):
+        await _fail_undelivered_render(render_request=render_request, reason=str(outcome))
         raise outcome
     return state
+
+
+async def _fail_undelivered_render(render_request: RenderTokenRequest | None, reason: str) -> None:
+    """End the render request this delivery carried, so the artifact does not wait for its deadline."""
+    if render_request is None:
+        return
+    # ponytail: one failed delivery ends the render even when a second webhook delivered the same request;
+    # track deliveries per request if several engines ever serve one artifact.
+    database = await get_database()
+    async with database.start_session() as db:
+        await fail_undelivered_render(
+            db=db, event_service=await get_event_service(), request=render_request, reason=reason
+        )

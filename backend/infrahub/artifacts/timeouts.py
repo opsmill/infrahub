@@ -9,13 +9,11 @@ from infrahub_sdk.timestamp import Timestamp
 from prefect import flow
 from prefect.logging import get_run_logger
 
-from infrahub.artifacts.render_lock import artifact_render_lock
-from infrahub.artifacts.render_result import RenderResultOutcome, conclude_waiting_checks, system_event_context
+from infrahub.artifacts.render_result import fail_render
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import SYSTEM_USER_ID, ArtifactStatus
+from infrahub.core.constants import ArtifactStatus
 from infrahub.core.protocols import CoreArtifact, CoreArtifactDefinition, CoreTransformation
-from infrahub.core.validators.checks_runner import recompute_validator
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.log import get_logger
 from infrahub.workers.dependencies import get_database, get_event_service
@@ -85,23 +83,17 @@ async def _expire_render(
     db: InfrahubDatabase, event_service: InfrahubEventService, branch: Branch, artifact_id: str, now: Timestamp
 ) -> RenderTimeout | None:
     # The deadline is read again under the lock because a callback or a new request may have replaced it.
-    async with artifact_render_lock(branch=branch.name, artifact_id=artifact_id), db.start_transaction() as dbt:
-        artifact = await registry.manager.get_one(db=dbt, id=artifact_id, branch=branch, kind=CoreArtifact)
-        if artifact is None or not _is_overdue(artifact=artifact, now=now):
-            return None
-        artifact.get_attribute("status").value = ArtifactStatus.ERROR.value
-        artifact.render_deadline.value = None
-        await artifact.save(db=dbt, user_id=SYSTEM_USER_ID)
-        outcome = RenderResultOutcome(
-            artifact_id=artifact.id, branch=branch.name, status=ArtifactStatus.ERROR, message=RENDER_TIMEOUT_MESSAGE
-        )
-        validator_ids = await conclude_waiting_checks(db=dbt, branch=branch, outcome=outcome)
-        transformation_name = await _get_transformation_name(db=dbt, artifact=artifact)
-
-    for validator_id in validator_ids:
-        await recompute_validator(
-            db=db, event_service=event_service, validator_id=validator_id, context=system_event_context(branch=branch)
-        )
+    artifact = await fail_render(
+        db=db,
+        event_service=event_service,
+        branch=branch,
+        artifact_id=artifact_id,
+        message=RENDER_TIMEOUT_MESSAGE,
+        is_active=lambda candidate: _is_overdue(artifact=candidate, now=now),
+    )
+    if artifact is None:
+        return None
+    transformation_name = await _get_transformation_name(db=db, artifact=artifact)
     return RenderTimeout(artifact_id=artifact_id, branch=branch.name, transformation_name=transformation_name)
 
 
