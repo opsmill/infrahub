@@ -224,6 +224,27 @@ RETURN count(r) AS open_edges
     await verify_graph(db=db, kinds=["TestPerson"])
 
 
+async def test_graph_validation_reports_an_open_owner_edge_of_a_set_of_a_deleted_node(
+    db: InfrahubDatabase, default_branch: Branch, person: Node, group_ids: list[str]
+) -> None:
+    holder = _holder(default_branch=default_branch, field_name="cars")
+    await _write(db=db, branch=default_branch, node_id=person.id, holder=holder, owner_ids=group_ids[:1])
+    await person.delete(db=db)
+    await verify_graph(db=db, kinds=["TestPerson"])
+
+    await db.execute_query(
+        query="""
+MATCH (:Node {uuid: $node_id})-[:HAS_OWNER_SET]->(:OwnerSet)-[r:HAS_OWNER]->(:Node)
+SET r.to = NULL
+""",
+        params={"node_id": person.id},
+    )
+
+    violations = await collect_graph_violations(db=db, kinds=["TestPerson"])
+    assert [violation.check for violation in violations] == [GraphCheck.ORPHANED_ACTIVE_EDGES]
+    assert "HAS_OWNER edge on OwnerSet 'testcar__testperson'" in violations[0].message
+
+
 @pytest.mark.parametrize(
     ("field_name", "on_branch", "delete_first"),
     [

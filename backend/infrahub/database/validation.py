@@ -231,10 +231,11 @@ RETURN elementId(p) AS node_id1, branch, from_time, edge_type, elementId(q) AS n
 
 
 async def _check_orphaned_active_edges(db: InfrahubDatabase, kinds: list[str] | None) -> list[GraphViolation]:
-    """Verify that deleting an attribute or relationship closed the edges hanging off it.
+    """Verify that deleting an attribute, a relationship or an owner set closed the edges hanging off it.
 
-    When a HAS_ATTRIBUTE or IS_RELATED edge is deleted on a branch, the second-level edges the branch holds
-    for that field (HAS_VALUE, IS_PROTECTED, HAS_OWNER, HAS_SOURCE, far-side IS_RELATED) should be closed at
+    When a HAS_ATTRIBUTE, IS_RELATED, HAS_OWNER_SET or HAS_TARGET_OWNER_SET edge is deleted on a branch, the
+    second-level edges the branch holds for that field (HAS_VALUE, IS_PROTECTED, HAS_OWNER, HAS_SOURCE, far-side
+    IS_RELATED) should be closed at
     that same moment. An edge left open is orphaned, and one written or closed afterwards is an update to a
     field that is gone.
 
@@ -247,13 +248,13 @@ async def _check_orphaned_active_edges(db: InfrahubDatabase, kinds: list[str] | 
 // Group on the uuid rather than the vertex: a kind update copies the node vertex and both copies point at
 // the same field, so an edge left open on either of them means the field is still in use on that branch.
 // ----------------
-MATCH (n:%(node_labels)s)-[r:HAS_ATTRIBUTE|IS_RELATED]-(field:Attribute|Relationship)
+MATCH (n:%(node_labels)s)-[r:HAS_ATTRIBUTE|IS_RELATED|HAS_OWNER_SET|HAS_TARGET_OWNER_SET]-(field:Attribute|Relationship|OwnerSet)
 WHERE r.status = "deleted" OR r.to IS NOT NULL
 WITH DISTINCT n.uuid AS node_id, field, r.branch AS branch
 // ----------------
 // Then every edge the branch holds between that uuid and the field, deciding whether it deleted it
 // ----------------
-MATCH (node_copy:Node {uuid: node_id})-[r:HAS_ATTRIBUTE|IS_RELATED]-(field)
+MATCH (node_copy:Node {uuid: node_id})-[r:HAS_ATTRIBUTE|IS_RELATED|HAS_OWNER_SET|HAS_TARGET_OWNER_SET]-(field)
 WHERE r.branch = branch
 WITH node_id, field, branch,
     count(CASE WHEN r.status = "active" AND r.to IS NULL THEN 1 END) AS open_edges,
@@ -288,7 +289,7 @@ AND CASE
     }
 END
 RETURN DISTINCT
-    field.name AS field_name,
+    coalesce(field.name, field.identifier, field.attribute) AS field_name,
     branch AS deleted_on,
     child.branch AS edge_on,
     labels(field)[0] AS field_type,

@@ -166,7 +166,8 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
   branch, so a later delete on the origin branch does not stop a write on the branch. The query does not read the
   time after the lock, because each caller gives the time that its other writes use: the merge writes at the merge
   time, and a save writes the owners at the time of its other fields.
-- `verify_graph` reports an open owner edge on a deleted attribute (`GraphCheck.ORPHANED_ACTIVE_EDGES`). It does not
+- `verify_graph` reports an open owner edge on a deleted attribute or on a set that its node no longer holds
+  (`GraphCheck.ORPHANED_ACTIVE_EDGES`). It does not
   report a `HAS_OWNER` edge from a `Node`, `Attribute` or `OwnerSet` vertex, or a `HAS_SOURCE` edge from a `Node`
   vertex, to a deleted node, also when a write adds the edge after the delete, because a copy of a list keeps a
   deleted owner. It reports such an edge from a `Relationship` vertex, and a `HAS_SOURCE` edge from an `Attribute`
@@ -271,7 +272,10 @@ the holders that are not attributes are in `core/ownership/fields.py` (see [Diff
 - `BulkMergeOwnershipEdgesQuery` (`core/diff/query/bulk_merge.py`) copies the owner edges of the branch as a set for
   each holder, edge type and owner. It writes the edges of a node to the `Node` vertex that is active on the target
   branch, which a kind migration on the target branch replaces. A `deleted` edge of the branch from a `Node` vertex
-  closes the active edge on each `Node` vertex of the UUID.
+  closes the active edge on each `Node` vertex of the UUID. A `deleted` edge to a set (the removal of the field on
+  the branch) also closes the open edges of the set on the target branch, as the merge closes the properties of a
+  removed link. So an owner that the target branch added after the start of the branch does not stay open on a set
+  that no node holds.
 - `ConflictsEnricher._have_same_value` (`core/diff/conflicts_enricher.py`) gives no conflict for an owner list or a
   source list with the same owner IDs on both branches, or with an update that keeps the same list.
 - `core/graph/index.py` has a range index on `branch`, on `from` and on `to` of each of `HAS_NO_OWNER`,

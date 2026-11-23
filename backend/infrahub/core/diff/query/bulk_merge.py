@@ -1186,6 +1186,18 @@ CALL (n, holder, child, src, edge_type, prop_from_user_id) {
     SET tgt.to = $at, tgt.to_user_id = prop_from_user_id
 }
 // -------------------------
+// A set of owners that the node no longer holds on target keeps no open edge there, as the properties of a closed link
+// -------------------------
+CALL (child, src, prop_from_user_id) {
+    WITH child, src, prop_from_user_id
+    WHERE src.status = "deleted" AND child:OwnerSet
+    MATCH (child)-[set_edge:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE]->()
+    WHERE set_edge.branch = $target_branch
+    AND set_edge.status = "active"
+    AND set_edge.to IS NULL
+    SET set_edge.to = $at, set_edge.to_user_id = prop_from_user_id
+}
+// -------------------------
 // For deleted edges, the work is done and we can filter to just active src edges
 // -------------------------
 WITH n, holder, src, child, edge_type
