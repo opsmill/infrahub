@@ -321,7 +321,12 @@ class DiffCalculator:
         diff_parser.parse(include_unchanged=include_unchanged)
         log.info("Calculated diff parsed")
         branch_diff = diff_parser.get_diff_root_for_branch(branch=diff_branch.name)
-        base_diff = diff_parser.get_diff_root_for_branch(branch=base_branch.name)
+        # With no path, the parser gives a new root at each call, so a diff of one branch needs one call.
+        base_diff = (
+            branch_diff
+            if base_branch.name == diff_branch.name
+            else diff_parser.get_diff_root_for_branch(branch=base_branch.name)
+        )
         log.info("Beginning diff owner calculation")
         await ownership_differ.add_owner_changes(
             request=owner_request, branch_root=branch_diff, base_root=base_diff, branch_changes=branch_owner_changes
