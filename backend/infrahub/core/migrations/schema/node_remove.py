@@ -4,6 +4,7 @@ from collections.abc import Sequence  # noqa: TC003  needed for pydantic
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipStatus
+from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 
 from ..query import MigrationQuery
 from ..shared import SchemaMigration
@@ -99,6 +100,10 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
+        stamp_peer_node, stamp_params = stamp_vertex_metadata(
+            "peer_node", at=self.at, operation_ats=self.operation_ats, at_param="current_time"
+        )
+        self.params.update(stamp_params)
         query = (
             """
     %(selection)s
@@ -124,15 +129,7 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     CALL (peer_node) {
         WITH peer_node
         WHERE $set_metadata
-        SET peer_node.previous_updated_at = CASE
-                WHEN peer_node.updated_at IS NULL OR peer_node.updated_at <> $current_time THEN peer_node.updated_at
-                ELSE peer_node.previous_updated_at
-            END,
-            peer_node.previous_updated_by = CASE
-                WHEN peer_node.updated_at IS NULL OR peer_node.updated_at <> $current_time THEN peer_node.updated_by
-                ELSE peer_node.previous_updated_by
-            END
-        SET peer_node.updated_at = $current_time, peer_node.updated_by = $user_id
+        %(stamp_peer_node)s
     }
 
     WITH active_node, rel_inbound, peer_node,
@@ -203,6 +200,7 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
         ) % {
             "branch_filter": branch_filter,
             "selection": self.render_selection(),
+            "stamp_peer_node": stamp_peer_node,
         }
         self.add_to_query(query)
 
@@ -232,6 +230,14 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
+        stamp_active_node, stamp_params = stamp_vertex_metadata(
+            "active_node", at=self.at, operation_ats=self.operation_ats, at_param="current_time"
+        )
+        self.params.update(stamp_params)
+        stamp_peer_node, stamp_params = stamp_vertex_metadata(
+            "peer_node", at=self.at, operation_ats=self.operation_ats, at_param="current_time"
+        )
+        self.params.update(stamp_params)
         query = (
             """
     %(selection)s
@@ -242,15 +248,7 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     CALL (active_node) {
         WITH active_node
         WHERE $set_metadata
-        SET active_node.previous_updated_at = CASE
-                WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_at
-                ELSE active_node.previous_updated_at
-            END,
-            active_node.previous_updated_by = CASE
-                WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_by
-                ELSE active_node.previous_updated_by
-            END
-        SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
+        %(stamp_active_node)s
     }
 
     // ----------------------------------------------------------
@@ -275,15 +273,7 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     CALL (peer_node) {
         WITH peer_node
         WHERE $set_metadata AND (peer_node:Attribute OR peer_node:Relationship)
-        SET peer_node.previous_updated_at = CASE
-                WHEN peer_node.updated_at IS NULL OR peer_node.updated_at <> $current_time THEN peer_node.updated_at
-                ELSE peer_node.previous_updated_at
-            END,
-            peer_node.previous_updated_by = CASE
-                WHEN peer_node.updated_at IS NULL OR peer_node.updated_at <> $current_time THEN peer_node.updated_by
-                ELSE peer_node.previous_updated_by
-            END
-        SET peer_node.updated_at = $current_time, peer_node.updated_by = $user_id
+        %(stamp_peer_node)s
     }
 
     WITH active_node, rel_outbound, peer_node,
@@ -351,6 +341,8 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
         ) % {
             "branch_filter": branch_filter,
             "selection": self.render_selection(),
+            "stamp_active_node": stamp_active_node,
+            "stamp_peer_node": stamp_peer_node,
         }
         self.add_to_query(query)
 

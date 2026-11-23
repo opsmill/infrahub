@@ -39,50 +39,44 @@ class PatchPlanReader:
 
     def _read_vertices_to_add(self, patch_plan_directory: Path) -> list[VertexToAdd]:
         file = patch_plan_directory / Path(PatchPlanFilename.VERTICES_TO_ADD.value)
-        vertices_to_add: list[VertexToAdd] = []
-        for raw_line in self._read_file_lines(patch_file=file):
-            if raw_line:
-                vertices_to_add.append(VertexToAdd(**json.loads(raw_line)))
+        vertices_to_add: list[VertexToAdd] = [
+            VertexToAdd(**json.loads(raw_line)) for raw_line in self._read_file_lines(patch_file=file) if raw_line
+        ]
         return vertices_to_add
 
     def _read_vertices_to_update(self, patch_plan_directory: Path) -> list[VertexToUpdate]:
         file = patch_plan_directory / Path(PatchPlanFilename.VERTICES_TO_UPDATE.value)
-        vertices_to_update: list[VertexToUpdate] = []
-        for raw_line in self._read_file_lines(patch_file=file):
-            if raw_line:
-                vertices_to_update.append(VertexToUpdate(**json.loads(raw_line)))
+        vertices_to_update: list[VertexToUpdate] = [
+            VertexToUpdate(**json.loads(raw_line)) for raw_line in self._read_file_lines(patch_file=file) if raw_line
+        ]
         return vertices_to_update
 
     def _read_vertices_to_delete(self, patch_plan_directory: Path) -> list[VertexToDelete]:
         file = patch_plan_directory / Path(PatchPlanFilename.VERTICES_TO_DELETE.value)
-        vertices_to_delete: list[VertexToDelete] = []
-        for raw_line in self._read_file_lines(patch_file=file):
-            if raw_line:
-                vertices_to_delete.append(VertexToDelete(**json.loads(raw_line)))
+        vertices_to_delete: list[VertexToDelete] = [
+            VertexToDelete(**json.loads(raw_line)) for raw_line in self._read_file_lines(patch_file=file) if raw_line
+        ]
         return vertices_to_delete
 
     def _read_edges_to_add(self, patch_plan_directory: Path) -> list[EdgeToAdd]:
         file = patch_plan_directory / Path(PatchPlanFilename.EDGES_TO_ADD.value)
-        edges_to_add: list[EdgeToAdd] = []
-        for raw_line in self._read_file_lines(patch_file=file):
-            if raw_line:
-                edges_to_add.append(EdgeToAdd(**json.loads(raw_line)))
+        edges_to_add: list[EdgeToAdd] = [
+            EdgeToAdd(**json.loads(raw_line)) for raw_line in self._read_file_lines(patch_file=file) if raw_line
+        ]
         return edges_to_add
 
     def _read_edges_to_delete(self, patch_plan_directory: Path) -> list[EdgeToDelete]:
         file = patch_plan_directory / Path(PatchPlanFilename.EDGES_TO_DELETE.value)
-        edges_to_delete: list[EdgeToDelete] = []
-        for raw_line in self._read_file_lines(patch_file=file):
-            if raw_line:
-                edges_to_delete.append(EdgeToDelete(**json.loads(raw_line)))
+        edges_to_delete: list[EdgeToDelete] = [
+            EdgeToDelete(**json.loads(raw_line)) for raw_line in self._read_file_lines(patch_file=file) if raw_line
+        ]
         return edges_to_delete
 
     def _read_edges_to_update(self, patch_plan_directory: Path) -> list[EdgeToUpdate]:
         file = patch_plan_directory / Path(PatchPlanFilename.EDGES_TO_UPDATE.value)
-        edges_to_update: list[EdgeToUpdate] = []
-        for raw_line in self._read_file_lines(patch_file=file):
-            if raw_line:
-                edges_to_update.append(EdgeToUpdate(**json.loads(raw_line)))
+        edges_to_update: list[EdgeToUpdate] = [
+            EdgeToUpdate(**json.loads(raw_line)) for raw_line in self._read_file_lines(patch_file=file) if raw_line
+        ]
         return edges_to_update
 
     def _read_added_node_db_id_map(self, patch_plan_directory: Path) -> dict[str, str] | None:

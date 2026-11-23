@@ -153,11 +153,11 @@ class RelationshipCountChecker(ConstraintCheckerInterface):
         return "relationship.count.update"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
-        return request.constraint_name in (
+        return request.constraint_name in {
             "relationship.min_count.update",
             "relationship.max_count.update",
             "relationship.cardinality.update",
-        )
+        }
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         grouped_data_paths_list: list[GroupedDataPaths] = []

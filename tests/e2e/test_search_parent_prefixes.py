@@ -36,7 +36,7 @@ class TestSearchParentPrefixes:
         await expect(search_dialog.get_by_role("option", name=re.compile(r"10\.0\.0\.0\/8.*IP Prefix"))).to_be_visible()
 
         # the existing IP address appears in the Objects section
-        await expect(search_dialog.get_by_text("Objects")).to_be_visible()
+        await expect(search_dialog.get_by_role("group", name=re.compile(r"^Objects "))).to_be_visible()
 
     async def test_no_parent_prefixes_for_non_ip_search(self, admin_page: Page, data_sites: SitesHandle) -> None:
         await admin_page.goto("/")
@@ -44,7 +44,7 @@ class TestSearchParentPrefixes:
         await admin_page.get_by_test_id("search-anywhere-input").fill("atl1")
 
         search_dialog = admin_page.get_by_test_id("search-anywhere")
-        await expect(search_dialog.get_by_text("Objects")).to_be_visible()
+        await expect(search_dialog.get_by_role("group", name=re.compile(r"^Objects "))).to_be_visible()
         await expect(search_dialog.get_by_text("Parent Prefixes")).not_to_be_visible()
 
     async def test_empty_parent_prefixes_state_for_unmatched_ip(

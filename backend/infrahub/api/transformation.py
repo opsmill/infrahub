@@ -42,7 +42,7 @@ async def transform_python(
     branch_params: BranchParams = Depends(get_branch_params),
     _: AccountSession = Depends(get_current_user),
 ) -> JSONResponse:
-    params = {key: value for key, value in request.query_params.items() if key not in ["branch", "at"]}
+    params = {key: value for key, value in request.query_params.items() if key not in {"branch", "at"}}
 
     transform = await NodeManager.get_one_by_id_or_default_filter(
         db=db,
@@ -110,7 +110,7 @@ async def transform_jinja2(
     context: InfrahubContext = Depends(get_context),
     _: AccountSession = Depends(get_current_user),
 ) -> PlainTextResponse:
-    params = {key: value for key, value in request.query_params.items() if key not in ["branch", "at"]}
+    params = {key: value for key, value in request.query_params.items() if key not in {"branch", "at"}}
 
     transform = await NodeManager.get_one_by_id_or_default_filter(
         db=db,

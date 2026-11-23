@@ -69,7 +69,7 @@ async def test_node_delete(
         properties_by_type = {prop.property_type: prop for prop in attribute_diff.properties}
         diff_property = properties_by_type[DatabaseEdgeType.HAS_VALUE]
         assert diff_property.action is DiffAction.REMOVED
-        assert diff_property.new_value in (None, "NULL")
+        assert diff_property.new_value in {None, "NULL"}
     assert len(node_diff.relationships) == 1
     relationship_diff = node_diff.relationships[0]
     assert relationship_diff.name == "owner"
@@ -144,7 +144,7 @@ async def test_node_delete_merged_into_main_time_range(
         properties_by_type = {prop.property_type: prop for prop in attribute_diff.properties}
         value_property = properties_by_type[DatabaseEdgeType.HAS_VALUE]
         assert value_property.action is DiffAction.REMOVED
-        assert value_property.new_value in (None, "NULL")
+        assert value_property.new_value in {None, "NULL"}
     relationship_diffs_by_name = {rel.name: rel for rel in node_diff.relationships}
     assert relationship_diffs_by_name["owner"].action is DiffAction.REMOVED
 
@@ -188,7 +188,7 @@ async def test_node_delete_merged_into_main_after_update_in_time_range(
     value_property = properties_by_type[DatabaseEdgeType.HAS_VALUE]
     assert value_property.action is DiffAction.REMOVED
     assert value_property.previous_value == 5
-    assert value_property.new_value in (None, "NULL")
+    assert value_property.new_value in {None, "NULL"}
 
 
 async def test_node_base_delete_branch_update(
@@ -609,7 +609,7 @@ async def test_node_delete_main_time_range_previous_value(
     value_property = properties_by_type[DatabaseEdgeType.HAS_VALUE]
     assert value_property.action is DiffAction.REMOVED
     assert value_property.previous_value == 7
-    assert value_property.new_value in (None, "NULL")
+    assert value_property.new_value in {None, "NULL"}
     assert len(node_diff.relationships) == 1
     relationship_diff = node_diff.relationships[0]
     assert relationship_diff.name == "owner"

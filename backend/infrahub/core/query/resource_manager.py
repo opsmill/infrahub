@@ -503,7 +503,7 @@ class NumberPoolGetReserved(Query):
         result = self.get_result()
         if result is None:
             return None
-        if result.get("value") in (None, NULL_VALUE):
+        if result.get("value") in {None, NULL_VALUE}:
             return None
         return result.get_as_type("value", return_type=int)
 
@@ -681,6 +681,12 @@ class NumberPoolChangeReserved(Query):
             "identifier": self.new_identifier,
         }
 
+        stamp_holding_pool, stamp_params = stamp_vertex_metadata(
+            "holding_pool", at=self.at, operation_ats=self.operation_ats
+        )
+        self.params.update(stamp_params)
+        stamp_pool, stamp_params = stamp_vertex_metadata("pool", at=self.at, operation_ats=self.operation_ats)
+        self.params.update(stamp_params)
         query = """
         // --------------
         // Anchored on the replaced object
@@ -751,8 +757,8 @@ class NumberPoolChangeReserved(Query):
         """ % {
             "number_pool": InfrahubKind.NUMBERPOOL,
             "branch_filter": branch_filter,
-            "stamp_holding_pool": stamp_vertex_metadata("holding_pool"),
-            "stamp_pool": stamp_vertex_metadata("pool"),
+            "stamp_holding_pool": stamp_holding_pool,
+            "stamp_pool": stamp_pool,
         }
         self.add_to_query(query)
         self.return_labels = ["pool.uuid AS pool_id", "new_attr.uuid AS attribute_id", "new_rel"]
@@ -1616,6 +1622,12 @@ class NumberPoolSetReserved(Query):
             "identifier": self.identifier,
         }
 
+        stamp_other_pool, stamp_params = stamp_vertex_metadata(
+            "other_pool", at=self.at, operation_ats=self.operation_ats
+        )
+        self.params.update(stamp_params)
+        stamp_pool, stamp_params = stamp_vertex_metadata("pool", at=self.at, operation_ats=self.operation_ats)
+        self.params.update(stamp_params)
         query = """
         // ----------
         // Get the NumberPool and Attribute we are interested in
@@ -1684,8 +1696,8 @@ class NumberPoolSetReserved(Query):
             AND NOT coalesce($held_value IN live_allocated_values, FALSE) AS is_provided
         """ % {
             "number_pool": InfrahubKind.NUMBERPOOL,
-            "stamp_other_pool": stamp_vertex_metadata("other_pool"),
-            "stamp_pool": stamp_vertex_metadata("pool"),
+            "stamp_other_pool": stamp_other_pool,
+            "stamp_pool": stamp_pool,
         }
 
         self.add_to_query(query)
@@ -1733,6 +1745,8 @@ class NumberPoolReleaseReserved(Query):
         self.params["at"] = self.at.to_string()
         self.params["user_id"] = self.user_id
 
+        stamp_pool, stamp_params = stamp_vertex_metadata("pool", at=self.at, operation_ats=self.operation_ats)
+        self.params.update(stamp_params)
         query = """
         MATCH (attr:Attribute { uuid: $attribute_id })
         WITH attr
@@ -1748,7 +1762,7 @@ class NumberPoolReleaseReserved(Query):
           AND live.to IS NULL
         SET live.to = $at, live.to_user_id = $user_id
         %(stamp_pool)s
-        """ % {"number_pool": InfrahubKind.NUMBERPOOL, "stamp_pool": stamp_vertex_metadata("pool")}
+        """ % {"number_pool": InfrahubKind.NUMBERPOOL, "stamp_pool": stamp_pool}
 
         self.add_to_query(query)
 
@@ -1774,13 +1788,15 @@ class NumberPoolReleaseAllReserved(Query):
         self.params["at"] = self.at.to_string()
         self.params["user_id"] = self.user_id
 
+        stamp_pool, stamp_params = stamp_vertex_metadata("pool", at=self.at, operation_ats=self.operation_ats)
+        self.params.update(stamp_params)
         query = """
         MATCH (pool:Node:%(number_pool)s { uuid: $pool_id })-[live:IS_RESERVED]->(:Attribute)
         WHERE live.status = "active"
           AND live.to IS NULL
         SET live.to = $at, live.to_user_id = $user_id
         %(stamp_pool)s
-        """ % {"number_pool": InfrahubKind.NUMBERPOOL, "stamp_pool": stamp_vertex_metadata("pool")}
+        """ % {"number_pool": InfrahubKind.NUMBERPOOL, "stamp_pool": stamp_pool}
 
         self.add_to_query(query)
 

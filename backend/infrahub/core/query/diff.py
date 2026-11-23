@@ -95,27 +95,27 @@ class DiffCountChanges(Query):
         """
         # each edge type is read through its `from` index, then through its `to` index, so the cost follows
         # the number of edges in the window instead of the size of the graph
-        edge_reads = []
+        edge_reads: list[str] = []
         for edge_type in DatabaseEdgeType:
-            edge_reads.append(
-                """
+            edge_reads.extend(
+                (
+                    """
             MATCH (p)-[diff_rel:%(edge_type)s]->(q)
             USING INDEX SEEK diff_rel:%(edge_type)s(from)
             WHERE diff_rel.from >= $from_time AND diff_rel.from < $to_time
             %(count_vertices)s
                 """
-                % {"edge_type": edge_type.value, "count_vertices": count_vertices}
-            )
-            # an edge opened and closed in the window is already counted by the read on `from`
-            edge_reads.append(
-                """
+                    % {"edge_type": edge_type.value, "count_vertices": count_vertices},
+                    # an edge opened and closed in the window is already counted by the read on `from`
+                    """
             MATCH (p)-[diff_rel:%(edge_type)s]->(q)
             USING INDEX SEEK diff_rel:%(edge_type)s(to)
             WHERE diff_rel.to >= $from_time AND diff_rel.to < $to_time
             AND NOT coalesce(diff_rel.from >= $from_time AND diff_rel.from < $to_time, false)
             %(count_vertices)s
                 """
-                % {"edge_type": edge_type.value, "count_vertices": count_vertices}
+                    % {"edge_type": edge_type.value, "count_vertices": count_vertices},
+                )
             )
         query = """
         CALL () {
@@ -1026,26 +1026,26 @@ class DiffFieldNodesQuery(DiffChangedNodesQuery):
     RETURN DISTINCT p.uuid AS node_uuid
         """
         # without the hints the planner can read every node of the graph instead of the edges in the window
-        edge_reads = []
+        edge_reads: list[str] = []
         for edge_type in (DatabaseEdgeType.HAS_ATTRIBUTE, DatabaseEdgeType.IS_RELATED):
-            edge_reads.append(
-                """
+            edge_reads.extend(
+                (
+                    """
     MATCH (p:Node)-[diff_rel:%(edge_type)s {branch: $branch_name}]-(q)
     USING INDEX SEEK diff_rel:%(edge_type)s(from)
     WHERE diff_rel.from >= $from_time AND diff_rel.from < $to_time
     AND (diff_rel.to IS NULL OR diff_rel.to > $to_time)
     %(changed_node)s
                 """
-                % {"edge_type": edge_type.value, "changed_node": changed_node}
-            )
-            edge_reads.append(
-                """
+                    % {"edge_type": edge_type.value, "changed_node": changed_node},
+                    """
     MATCH (p:Node)-[diff_rel:%(edge_type)s {branch: $branch_name}]-(q)
     USING INDEX SEEK diff_rel:%(edge_type)s(to)
     WHERE diff_rel.to >= $from_time AND diff_rel.to < $to_time
     %(changed_node)s
                 """
-                % {"edge_type": edge_type.value, "changed_node": changed_node}
+                    % {"edge_type": edge_type.value, "changed_node": changed_node},
+                )
             )
         query = """
 // -------------------------------------

@@ -3,6 +3,7 @@ import { Spinner } from "@infrahub/ui";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 
+import { GROUP_MEMBERS_RELATIONSHIP } from "@/entities/groups/domain/model/group";
 import { RelationshipTable } from "@/entities/nodes/relationships/ui/relationship-table/relationship-table";
 import { REPOSITORY_GROUP } from "@/entities/repository/domain/model/repository";
 import { useGetRepositoryGroup } from "@/entities/repository/ui/queries/get-repository-group.query";
@@ -16,7 +17,7 @@ export function RepositoryObjectsManager({ parentNodeId }: RepositoryObjectsMana
   const { isPending, data, error } = useGetRepositoryGroup({ nodeId: parentNodeId });
 
   const membersRelationship = schema.relationships?.find((relationship) => {
-    return relationship.name === "members";
+    return relationship.name === GROUP_MEMBERS_RELATIONSHIP;
   });
 
   const { schema: relationshipSchema } = useSchema(membersRelationship?.peer);
@@ -37,7 +38,7 @@ export function RepositoryObjectsManager({ parentNodeId }: RepositoryObjectsMana
     <RelationshipTable
       parentKind={REPOSITORY_GROUP}
       parentId={data.id}
-      relationshipName={"members"}
+      relationshipName={GROUP_MEMBERS_RELATIONSHIP}
       relationshipSchema={relationshipSchema}
     />
   );

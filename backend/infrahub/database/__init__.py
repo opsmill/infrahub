@@ -423,13 +423,13 @@ class InfrahubDatabase:
             if self.db_type == DatabaseType.NEO4J:
                 query_config = self.queries_names_to_config.get(name, None)
 
-                if query_config and query_config.neo4j_runtime not in [Neo4jRuntime.DEFAULT, Neo4jRuntime.UNDEFINED]:
+                if query_config and query_config.neo4j_runtime not in {Neo4jRuntime.DEFAULT, Neo4jRuntime.UNDEFINED}:
                     runtime = query_config.neo4j_runtime
 
                 if (
                     type
                     and type == QueryType.READ
-                    and runtime not in [Neo4jRuntime.DEFAULT, Neo4jRuntime.UNDEFINED]
+                    and runtime not in {Neo4jRuntime.DEFAULT, Neo4jRuntime.UNDEFINED}
                     and not (self.is_transaction and runtime == Neo4jRuntime.PARALLEL)
                 ):
                     query = f"CYPHER runtime = {runtime.value}\n" + query

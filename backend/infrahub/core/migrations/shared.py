@@ -111,6 +111,7 @@ class MigrationInput:
     at: Timestamp = field(default_factory=Timestamp)
     user_id: str = SYSTEM_USER_ID
     console: Console = field(default_factory=get_migration_console)
+    operation_ats: list[Timestamp] = field(default_factory=list)
     node_ids: frozenset[str] | None = None
 
 
@@ -178,6 +179,7 @@ class SchemaMigration(BaseModel):
                     at=migration_input.at,
                     migration=self,
                     user_id=migration_input.user_id,
+                    operation_ats=migration_input.operation_ats,
                     node_ids=migration_input.node_ids,
                 )
                 await query.execute(db=migration_input.db)

@@ -22,20 +22,18 @@ DB_PAGECACHE_SETTING = "server.memory.pagecache.size"
 
 
 async def get_server_info(db: InfrahubDatabase) -> list[TelemetryDatabaseServerData]:
-    data: list[TelemetryDatabaseServerData] = []
-
     try:
         results = await db.execute_query(query="SHOW SERVERS YIELD *", name="get_server_info", type=QueryType.READ)
     except Neo4jError:
         return []
 
-    for result in results:
-        data.append(
-            TelemetryDatabaseServerData(
-                name=result["name"],
-                version=result["version"],
-            )
+    data: list[TelemetryDatabaseServerData] = [
+        TelemetryDatabaseServerData(
+            name=result["name"],
+            version=result["version"],
         )
+        for result in results
+    ]
 
     return data
 

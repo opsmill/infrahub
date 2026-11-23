@@ -408,7 +408,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         return self._branch
 
     def __repr__(self) -> str:
-        v = f"{self.get_kind()}(ID: {str(self.id)})"
+        v = f"{self.get_kind()}(ID: {self.id!s})"
         return v if self._existing else f"{v}[NEW]"
 
     @property
@@ -688,14 +688,13 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     def _validate_mandatory_relationships(self, fields: dict, pool_pending_fields: set[str]) -> list[ValidationError]:
         """Validate that all mandatory relationships are provided."""
-        errors: list[ValidationError] = []
-        for mandatory_rel in self._schema.mandatory_relationship_names:
-            if (
-                mandatory_rel not in fields.keys()
-                and mandatory_rel not in self._profile_provided_rels
-                and mandatory_rel not in pool_pending_fields
-            ):
-                errors.append(ValidationError({mandatory_rel: f"{mandatory_rel} is mandatory for {self.get_kind()}"}))
+        errors: list[ValidationError] = [
+            ValidationError({mandatory_rel: f"{mandatory_rel} is mandatory for {self.get_kind()}"})
+            for mandatory_rel in self._schema.mandatory_relationship_names
+            if mandatory_rel not in fields.keys()
+            and mandatory_rel not in self._profile_provided_rels
+            and mandatory_rel not in pool_pending_fields
+        ]
         return errors
 
     async def _process_fields_relationships(self, fields: dict, db: InfrahubDatabase) -> list[ValidationError]:

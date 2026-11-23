@@ -400,8 +400,8 @@ async def test_utilization_measures_the_space_the_branch_schema_leaves(
         db=db, domains=schema_domains(db=db, branch=branch), pool=pool, at=Timestamp(), branch=branch
     )
 
-    assert on_main["utilization"] == 10.0
-    assert on_branch["utilization"] == 20.0
+    assert on_main["utilization"] == pytest.approx(10.0)
+    assert on_branch["utilization"] == pytest.approx(20.0)
     assert [edge["node"]["utilization"] for edge in on_main["edges"]] == [10.0]
     assert [edge["node"]["utilization"] for edge in on_branch["edges"]] == [20.0]
 
@@ -465,7 +465,7 @@ async def test_allocate_from_number_pool_for_generic(
     utilization = await resolve_number_pool_utilization(
         db=db, domains=schema_domains(db=db, branch=default_branch), pool=np1, at=Timestamp(), branch=default_branch
     )
-    assert utilization["utilization"] == 20.0
+    assert utilization["utilization"] == pytest.approx(20.0)
 
 
 async def test_allocate_from_number_pool_with_excluded_values(

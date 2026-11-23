@@ -79,7 +79,4 @@ class PeerRelationshipsDataLoader(DataLoader[str, list[Relationship]]):
                 peer_rels_by_node_id[node_id] = []
             peer_rels_by_node_id[node_id].append(rel)
 
-        results = []
-        for node_id in keys:
-            results.append(peer_rels_by_node_id.get(node_id, []))
-        return results
+        return [peer_rels_by_node_id.get(node_id, []) for node_id in keys]

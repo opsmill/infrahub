@@ -62,7 +62,7 @@ class AttributeChangelog(BaseModel):
             return DiffAction.REMOVED
         if self.value_previous is None and self.value is not None:
             return DiffAction.ADDED
-        if self.kind in ["HashedPassword", "Password"] and self._sensitive_value_changed:
+        if self.kind in {"HashedPassword", "Password"} and self._sensitive_value_changed:
             return DiffAction.UPDATED
         if self.value == self.value_previous:
             return DiffAction.UNCHANGED
@@ -99,7 +99,7 @@ class AttributeChangelog(BaseModel):
 
     @model_validator(mode="after")
     def filter_sensitive(self) -> Self:
-        if self.kind in ["HashedPassword", "Password"]:
+        if self.kind in {"HashedPassword", "Password"}:
             self._sensitive_value_changed = self.value != self.value_previous
             if self.value is not None:
                 self.value = "***"
@@ -154,7 +154,7 @@ class RelationshipCardinalityOneChangelog(BaseModel):
     def set_parent_from_relationship(self, rel_kind: RelationshipKind) -> None:
         if rel_kind == RelationshipKind.PARENT:
             if (
-                self.peer_status in [DiffAction.ADDED, DiffAction.UNCHANGED, DiffAction.UPDATED]
+                self.peer_status in {DiffAction.ADDED, DiffAction.UNCHANGED, DiffAction.UPDATED}
                 and self.peer_id
                 and self.peer_kind
             ):

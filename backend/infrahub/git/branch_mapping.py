@@ -26,10 +26,10 @@ def branch_name_matches_import_filters(branch_short_name: str, import_sync_branc
 
     A filter matches either as a full-string regular expression or as a literal name.
     """
-    for branch_filter in import_sync_branch_names:
-        if re.fullmatch(branch_filter, branch_short_name) or branch_filter == branch_short_name:
-            return True
-    return False
+    return any(
+        re.fullmatch(branch_filter, branch_short_name) or branch_filter == branch_short_name
+        for branch_filter in import_sync_branch_names
+    )
 
 
 def infrahub_branch_receives_imports(

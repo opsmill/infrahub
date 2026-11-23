@@ -62,7 +62,7 @@ async def login_user(
         await service.event.send(event=event)
     # Login event emission is best-effort telemetry; it must never fail a successful login
     except Exception as ex:  # noqa: BLE001
-        log.warning(f"Failed to emit login event for account_id={auth_result.account_id}: {str(ex)}")
+        log.warning(f"Failed to emit login event for account_id={auth_result.account_id}: {ex!s}")
     return auth_result.token
 
 
@@ -116,7 +116,7 @@ async def logout(
             await service.event.send(event=event)
         # Logout event emission is best-effort telemetry; it must never fail a successful logout
         except Exception as ex:  # noqa: BLE001
-            log.warning(f"Failed to emit logout event for account_id={user_session.account_id}: {str(ex)}")
+            log.warning(f"Failed to emit logout event for account_id={user_session.account_id}: {ex!s}")
 
     delete_response_cookies(response=response)
 

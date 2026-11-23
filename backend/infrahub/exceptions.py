@@ -478,9 +478,10 @@ class ValidationError(Error):
             if all(isinstance(item, ValidationError) for item in input_value):
                 self.message = ", ".join([validation_error.message for validation_error in input_value])
             if all(isinstance(item, dict) for item in input_value):
-                messages = []
-                for item in input_value:
-                    messages.append(", ".join([f"{message} at {location}" for location, message in item.items()]))
+                messages = [
+                    ", ".join([f"{message} at {location}" for location, message in item.items()])
+                    for item in input_value
+                ]
                 self.message = ", ".join(messages)
 
         if not self.message:

@@ -46,7 +46,7 @@ class FieldAttributeRequirement:
 
     @property
     def is_attribute_value(self) -> bool:
-        return bool(self.field and self.field.is_attribute and self.field_attr_name in ("value", "values", "isnull"))
+        return bool(self.field and self.field.is_attribute and self.field_attr_name in {"value", "values", "isnull"})
 
     @property
     def is_filter(self) -> bool:
@@ -72,7 +72,7 @@ class FieldAttributeRequirement:
     def comparison_operator(self) -> str:
         if self.field_attr_name == "isnull":
             return "=" if self.field_attr_value is True else "<>"
-        if self.field_attr_name in ("values", "ids"):
+        if self.field_attr_name in {"values", "ids"}:
             return "IN"
         if self.field_attr_name == "before":
             return "<"
@@ -144,11 +144,11 @@ def _normalize_ip_filter_value(
 
     A value that does not parse as an IP is returned unchanged.
     """
-    if attr_name not in ("value", "values"):
+    if attr_name not in {"value", "values"}:
         return attr_value
 
     normalize: Callable[[str], str]
-    if field is None and field_name in ("any", "attribute"):
+    if field is None and field_name in {"any", "attribute"}:
         normalize = _compress_ipv6
     elif isinstance(field, AttributeSchema) and field.kind in IP_ATTRIBUTE_KINDS:
         # A full conversion would append a prefix length to IPv4 text, which then no longer matches as a substring.

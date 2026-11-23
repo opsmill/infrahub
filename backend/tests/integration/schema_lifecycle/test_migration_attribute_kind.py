@@ -65,17 +65,15 @@ CALL (n, attr) {
 RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIndexed" IN labels(av) AS is_indexed
         """ % {"labels_filter": labels_filter, "branch_filter": branch_filter}
         results = await db.execute_query(query=query, params=branch_params)
-        attr_is_indexeds = []
-        for result in results:
-            attr_is_indexeds.append(
-                AttributeIsIndexed(
-                    kind=result.get("kind"),
-                    uuid=result.get("uuid"),
-                    attr_name=result.get("attr_name"),
-                    is_indexed=result.get("is_indexed"),
-                )
+        return [
+            AttributeIsIndexed(
+                kind=result.get("kind"),
+                uuid=result.get("uuid"),
+                attr_name=result.get("attr_name"),
+                is_indexed=result.get("is_indexed"),
             )
-        return attr_is_indexeds
+            for result in results
+        ]
 
     async def validate_indexed_state(
         self, db: InfrahubDatabase, branch: Branch, kind_index_map: dict[tuple[str, str], dict[str, bool]]

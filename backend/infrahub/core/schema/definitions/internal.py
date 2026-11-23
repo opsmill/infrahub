@@ -322,7 +322,7 @@ class SchemaNode(BaseModel):
             "attributes": [
                 attribute.to_dict()
                 for attribute in self.attributes
-                if attribute.name not in ["id", "attributes", "relationships"]
+                if attribute.name not in {"id", "attributes", "relationships"}
             ],
             "relationships": [relationship.to_dict() for relationship in self.relationships],
             "display_label": self.display_label,

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from infrahub.api.admission import metrics
 from infrahub.api.admission.constants import RejectionReason
 from infrahub.api.admission.observers import AdmissionMetricsObserver, SustainedLoadMetricsObserver
@@ -18,7 +20,7 @@ def test_rejection_reason_labels_the_counter_by_its_value() -> None:
 
     observer.on_rejected(priority=Priority.LOW, reason=RejectionReason.BACKSTOP)
 
-    assert _rejected(priority="low", reason="backstop") - before == 1.0
+    assert _rejected(priority="low", reason="backstop") - before == pytest.approx(1.0)
 
 
 def test_each_reason_increments_its_own_counter() -> None:
@@ -36,8 +38,8 @@ def test_sustained_load_reaches_its_gauge() -> None:
     observer = SustainedLoadMetricsObserver()
 
     observer.on_sustained_load(sustained_seconds=45.0)
-    assert metrics.SUSTAINED_LOAD_SECONDS._value.get() == 45.0
+    assert metrics.SUSTAINED_LOAD_SECONDS._value.get() == pytest.approx(45.0)
 
     # A cleared episode reports zero, so the gauge has to fall back rather than latch its peak.
     observer.on_sustained_load(sustained_seconds=0.0)
-    assert metrics.SUSTAINED_LOAD_SECONDS._value.get() == 0.0
+    assert metrics.SUSTAINED_LOAD_SECONDS._value.get() == pytest.approx(0.0)

@@ -37,14 +37,12 @@ def extract_data(query_name: str, result: ExecutionResult) -> dict:
 def find_types_implementing_interface(
     interface: GrapheneInterfaceType, root_schema: GraphQLSchema
 ) -> list[GrapheneObjectType]:
-    results = []
+    results: list[GrapheneObjectType] = []
     for value in root_schema.type_map.values():
-        if not hasattr(value, "interfaces"):
+        if not isinstance(value, GrapheneObjectType):
             continue
 
-        for item in value.interfaces:
-            if item.name == interface.name:
-                results.append(value)
+        results.extend(value for item in value.interfaces if item.name == interface.name)
 
     return results
 

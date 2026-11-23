@@ -89,7 +89,7 @@ async def generate_artifact(
 
     permission_decision = (
         PermissionDecisionFlag.ALLOW_DEFAULT
-        if branch_params.branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
+        if branch_params.branch.name in {GLOBAL_BRANCH_NAME, registry.default_branch}
         else PermissionDecisionFlag.ALLOW_OTHER
     )
     permissions = [

@@ -549,11 +549,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Return True if a worktree with a given identifier already exist."""
         worktrees = self.get_worktrees(timeout_seconds=timeout_seconds)
 
-        for worktree in worktrees:
-            if worktree.identifier == identifier:
-                return True
-
-        return False
+        return any(worktree.identifier == identifier for worktree in worktrees)
 
     def get_worktree(self, identifier: str, timeout_seconds: float | None = None) -> Worktree:
         """Access a specific worktree by its identifier.
@@ -1070,15 +1066,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         new_branches = set(remote_branches.keys()) - set(local_branches.keys())
         existing_branches = set(local_branches.keys()) - new_branches
 
-        updated_branches = []
-
-        for branch_name in existing_branches:
-            if (
-                branch_name in remote_branches
-                and branch_name in local_branches
-                and remote_branches[branch_name].commit != local_branches[branch_name].commit
-            ):
-                updated_branches.append(branch_name)
+        updated_branches = [
+            branch_name
+            for branch_name in existing_branches
+            if branch_name in remote_branches
+            and branch_name in local_branches
+            and remote_branches[branch_name].commit != local_branches[branch_name].commit
+        ]
 
         return sorted(new_branches), sorted(updated_branches)
 

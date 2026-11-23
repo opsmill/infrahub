@@ -20,7 +20,7 @@ class TestTraceSettings:
         assert settings.tls_insecure is False
         assert settings.tls_ca_bundle is None
         assert settings.exporter_protocol is TraceTransportProtocol.GRPC
-        assert settings.sample_ratio == 0.1
+        assert settings.sample_ratio == pytest.approx(0.1)
 
     @pytest.mark.parametrize("ratio", [-0.1, 1.1, float("nan"), float("inf")])
     def test_sample_ratio_must_be_a_share_of_traces(self, ratio: float) -> None:

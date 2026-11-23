@@ -2,6 +2,7 @@ from datetime import UTC
 from typing import Any
 from uuid import UUID, uuid4
 
+import pytest
 from prefect.client.schemas.filters import FlowFilter, FlowRunFilter
 from prefect.client.schemas.objects import Flow, FlowRun
 from prefect.client.schemas.objects import Log as PrefectLog
@@ -198,7 +199,7 @@ class TestPrefectTaskService:
             options=FlowRunFetchOptions(include_runs=True, include_progress=True),
         )
 
-        assert result.runs[0].progress == 0.42
+        assert result.runs[0].progress == pytest.approx(0.42)
         assert reader.read_progress_calls[0]["flow_ids"] == [flow_run.id]
 
     async def test_http_is_attached_when_requested(self) -> None:

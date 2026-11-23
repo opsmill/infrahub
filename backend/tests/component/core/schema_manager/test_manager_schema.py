@@ -3517,21 +3517,21 @@ RETURN n.uuid AS node_uuid, n.kind AS node_kind, illegal_node_edges, illegal_fie
         illegal_node_edges = [e for e in record.get("illegal_node_edges", []) if e is not None]
         illegal_field_edges = [e for e in record.get("illegal_field_edges", []) if e is not None]
 
-        for edge in illegal_node_edges:
-            error_messages.append(
-                f"Illegal edge on {node_kind} '{node_uuid}': "
-                f"type={edge.get('edge_type')}, from={edge.get('edge_from')}, "
-                f"from_user_id={edge.get('edge_from_user_id')}, "
-                f"peer_labels={edge.get('peer_labels')}, peer_uuid={edge.get('peer_uuid')}"
-            )
+        error_messages.extend(
+            f"Illegal edge on {node_kind} '{node_uuid}': "
+            f"type={edge.get('edge_type')}, from={edge.get('edge_from')}, "
+            f"from_user_id={edge.get('edge_from_user_id')}, "
+            f"peer_labels={edge.get('peer_labels')}, peer_uuid={edge.get('peer_uuid')}"
+            for edge in illegal_node_edges
+        )
 
-        for edge in illegal_field_edges:
-            error_messages.append(
-                f"Illegal field edge on {node_kind} '{node_uuid}': "
-                f"type={edge.get('edge_type')}, from={edge.get('edge_from')}, "
-                f"from_user_id={edge.get('edge_from_user_id')}, "
-                f"peer_labels={edge.get('peer_labels')}, peer_value={edge.get('peer_value')}"
-            )
+        error_messages.extend(
+            f"Illegal field edge on {node_kind} '{node_uuid}': "
+            f"type={edge.get('edge_type')}, from={edge.get('edge_from')}, "
+            f"from_user_id={edge.get('edge_from_user_id')}, "
+            f"peer_labels={edge.get('peer_labels')}, peer_value={edge.get('peer_value')}"
+            for edge in illegal_field_edges
+        )
 
     assert not error_messages, "Found illegal edges:\n" + "\n".join(error_messages)
 
@@ -4662,7 +4662,7 @@ async def test_manage_object_templates(relationship_kind: RelationshipKind) -> N
         [
             r.name
             for r in test_object_template_thing.relationships
-            if r.name not in (OBJECT_TEMPLATE_RELATIONSHIP_NAME, "related_nodes")
+            if r.name not in {OBJECT_TEMPLATE_RELATIONSHIP_NAME, "related_nodes"}
         ]
     ) == sorted([r.name for r in THING_WITH_TEMPLATE.relationships])
 

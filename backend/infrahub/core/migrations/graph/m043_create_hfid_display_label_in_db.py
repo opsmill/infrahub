@@ -133,7 +133,7 @@ class Migration043(MigrationRequiringRebase):
 
         for node_kind in node_ids_by_kind:
             schema = schema_branch.get(name=node_kind, duplicate=False)
-            if schema.branch not in (BranchSupportType.AWARE, BranchSupportType.LOCAL):
+            if schema.branch not in {BranchSupportType.AWARE, BranchSupportType.LOCAL}:
                 continue
             migrations.extend(
                 [

@@ -8,6 +8,7 @@ from infrahub.core.constants import BranchSupportType, RelationshipStatus
 from infrahub.core.graph.schema import GraphNodeRelationships, GraphRelDirection
 from infrahub.core.migrations.query.selection import MigrationSelectionQuery
 from infrahub.core.query import QueryType
+from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -92,32 +93,40 @@ class NodeDuplicateQuery(MigrationSelectionQuery):
             f"WITH peer_node, {rel_name}, active_node, new_node",
             f'WHERE type({rel_name}) = "{rel_type}"',
         ]
-        if rel_dir in [GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER]:
-            subquery.append(f"""
+        if rel_dir in {GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER}:
+            subquery.extend(
+                (
+                    f"""
                 CREATE (new_node)-[new_active_edge:{rel_type} $rel_props_new ]->(peer_node)
                 SET new_active_edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
                 SET new_active_edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
                 SET new_active_edge.hierarchy = COALESCE({rel_name}.hierarchy, NULL)
-                """)
-            subquery.append(f"""
+                """,
+                    f"""
                 CREATE (active_node)-[deleted_edge:{rel_type} $rel_props_prev ]->(peer_node)
                 SET deleted_edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
                 SET deleted_edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
                 SET deleted_edge.hierarchy = COALESCE({rel_name}.hierarchy, NULL)
-                """)
-        elif rel_dir in [GraphRelDirection.INBOUND, GraphRelDirection.EITHER]:
-            subquery.append(f"""
+                """,
+                )
+            )
+        elif rel_dir in {GraphRelDirection.INBOUND, GraphRelDirection.EITHER}:
+            subquery.extend(
+                (
+                    f"""
                 CREATE (new_node)<-[new_active_edge:{rel_type} $rel_props_new ]-(peer_node)
                 SET new_active_edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
                 SET new_active_edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
                 SET new_active_edge.hierarchy = COALESCE({rel_name}.hierarchy, NULL)
-                """)
-            subquery.append(f"""
+                """,
+                    f"""
                 CREATE (active_node)<-[deleted_edge:{rel_type} $rel_props_prev ]-(peer_node)
                 SET deleted_edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
                 SET deleted_edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
                 SET deleted_edge.hierarchy = COALESCE({rel_name}.hierarchy, NULL)
-                """)
+                """,
+                )
+            )
         return "\n".join(subquery)
 
     @classmethod
@@ -127,7 +136,7 @@ class NodeDuplicateQuery(MigrationSelectionQuery):
         sub_queries_out = [
             cls._render_sub_query_per_rel_type(rel_name=rel_name, rel_type=rel_type, rel_dir=GraphRelDirection.OUTBOUND)
             for rel_type, field_info in GraphNodeRelationships.model_fields.items()
-            if field_info.default.direction in (GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER)
+            if field_info.default.direction in {GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER}
         ]
         sub_query_out = "\nUNION\n".join(sub_queries_out)
         return sub_query_out, sub_query_out_args
@@ -139,7 +148,7 @@ class NodeDuplicateQuery(MigrationSelectionQuery):
         sub_queries_in = [
             cls._render_sub_query_per_rel_type(rel_name=rel_name, rel_type=rel_type, rel_dir=GraphRelDirection.INBOUND)
             for rel_type, field_info in GraphNodeRelationships.model_fields.items()
-            if field_info.default.direction in (GraphRelDirection.INBOUND, GraphRelDirection.EITHER)
+            if field_info.default.direction in {GraphRelDirection.INBOUND, GraphRelDirection.EITHER}
         ]
         sub_query_in = "\nUNION\n".join(sub_queries_in)
         return sub_query_in, sub_query_in_args
@@ -186,6 +195,10 @@ class NodeDuplicateQuery(MigrationSelectionQuery):
 
         self.add_to_query(self.render_selection())
 
+        stamp_node, stamp_params = stamp_vertex_metadata(
+            "active_node", at=self.at, operation_ats=self.operation_ats, at_param="current_time"
+        )
+        self.params.update(stamp_params)
         query = """
         CREATE (new_node:Node:$(target.new_labels) {
             uuid: active_node.uuid, kind: target.new_kind, namespace: target.new_namespace, branch_support: target.new_branch_support
@@ -198,15 +211,7 @@ class NodeDuplicateQuery(MigrationSelectionQuery):
             WITH active_node, new_node
             // set updated_by/at if we're on the default/global branch
             WHERE $set_metadata
-            SET active_node.previous_updated_at = CASE
-                WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_at
-                ELSE active_node.previous_updated_at
-            END,
-            active_node.previous_updated_by = CASE
-                WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_by
-                ELSE active_node.previous_updated_by
-            END
-            SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
+            %(stamp_node)s
             // new_node is created here, so it has no prior metadata to snapshot for rollback
             SET new_node.updated_at = $current_time, new_node.updated_by = $user_id
         }
@@ -261,5 +266,6 @@ class NodeDuplicateQuery(MigrationSelectionQuery):
             "sub_query_in": sub_query_in,
             "sub_query_out_args": sub_query_out_args,
             "sub_query_in_args": sub_query_in_args,
+            "stamp_node": stamp_node,
         }
         self.add_to_query(query)

@@ -28,7 +28,7 @@ class NodeMutatedEvent(InfrahubEvent):
 
     def get_related(self) -> list[dict[str, str]]:
         related = super().get_related()
-        if self.kind in [InfrahubKind.GENERATORGROUP, InfrahubKind.GENERATORAWAREGROUP, InfrahubKind.GRAPHQLQUERYGROUP]:
+        if self.kind in {InfrahubKind.GENERATORGROUP, InfrahubKind.GENERATORAWAREGROUP, InfrahubKind.GRAPHQLQUERYGROUP}:
             # Temporary workaround to avoid too large payloads for the related field
             return related
 
@@ -97,7 +97,7 @@ class NodeMutatedEvent(InfrahubEvent):
 
             elif isinstance(relationship, RelationshipCardinalityManyChangelog):
                 for peer in relationship.peers:
-                    if peer.peer_status in [DiffAction.ADDED, DiffAction.REMOVED]:
+                    if peer.peer_status in {DiffAction.ADDED, DiffAction.REMOVED}:
                         related.append(
                             self._format_relationship_resource(
                                 relationship_name=relationship.name,

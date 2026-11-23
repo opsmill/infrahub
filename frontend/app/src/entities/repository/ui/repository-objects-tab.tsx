@@ -3,6 +3,7 @@ import { Spinner } from "@infrahub/ui";
 import { Badge } from "@/shared/components/ui/badge";
 import { LinkTab } from "@/shared/components/ui/link";
 
+import { GROUP_MEMBERS_RELATIONSHIP } from "@/entities/groups/domain/model/group";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { useGetRelationshipCount } from "@/entities/nodes/relationships/ui/queries/get-relationship-count.query";
 import {
@@ -19,7 +20,7 @@ export function RepositoryObjectsTab({ objectKind, objectId }: RepositoryObjects
   const { isPending, data: objectsCount } = useGetRelationshipCount({
     objectId,
     objectKind: REPOSITORY_GROUP,
-    relationshipName: "members",
+    relationshipName: GROUP_MEMBERS_RELATIONSHIP,
     queryFilter: "repository__ids",
   });
 
