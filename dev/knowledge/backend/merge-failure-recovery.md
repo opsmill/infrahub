@@ -27,7 +27,7 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
   the write protection. Idempotent.
 - **Range rollback** (`core/rollback.py`, `GraphRollbacker` with `RollbackScope.SINCE_TIMESTAMP`):
   reopen edges closed at/after the merge start and delete edges created at/after it. The rollback
-  takes the operation's timestamps (`ats`, at least one; an empty list raises `ValueError`). Both
+  takes the operation's timestamps. Both
   passes cover two branches (`core/query/rollback.py`, `_rollback_branches`): the target branch,
   where the window follows the scope (with `SINCE_TIMESTAMP`, it starts at the earliest of the
   timestamps), and the global branch, where an edge matches only when its timestamp is *exactly* one
@@ -85,7 +85,7 @@ window's locking, write scoping, timestamping, or metadata handling changes.**
 
 5. **Vertex metadata carries a restorable previous value.** The rollback restores
    `updated_at`/`updated_by` from `previous_updated_at`/`previous_updated_by` on every endpoint
-   vertex whose `updated_at` equals any of the operation's timestamps (`updated_at IN $ats`) — not
+   vertex whose `updated_at` equals any of the operation's timestamps — not
    the whole window, and not varying with the scope. A vertex stamped without a snapshot was new to
    the branch, so restoring its NULL snapshot correctly resets its metadata to unset. The exact
    match also keeps the restore idempotent when every writer of the operation received the
