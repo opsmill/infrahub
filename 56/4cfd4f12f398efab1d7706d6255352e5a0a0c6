@@ -1,0 +1,22 @@
+backend/infrahub/core/schema/schema_branch.py
+  s_29ee9c595a6e47::t_8be405b230b98d 586-590
+  s_29ee9c595a6e47::t_80f34a7c81d1f4 575-585,591-592
+backend/tests/unit/core/schema/test_schema_branch_dependent_kinds.py
+  s_29ee9c595a6e47::t_f41767b4a220e9 1-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "564cfd4f12f398efab1d7706d6255352e5a0a0c6",
+  "prompts": {},
+  "sessions": {
+    "s_29ee9c595a6e47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6739bd57-3231-493b-9d6f-e3d752abed62",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
