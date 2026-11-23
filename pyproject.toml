@@ -531,8 +531,6 @@ allow-dunder-method-names = [
     "INP001",   # File is part of an implicit namespace package
     "N801",     # Class name should use CapWords convention
     "N806",     # Variable in function should be lowercase
-    "PGH003",   # Use specific rule codes when ignoring type issues
-    "PGH004",   # Use specific rule codes when using `noqa`
     "PLR0904",  # Too many public methods
     "PLR0912",  # Too many branches
     "PLR0913",  # Too many arguments in function definition
@@ -660,13 +658,6 @@ allow-dunder-method-names = [
 ]
 
 
-"tasks/container_ops.py" = [
-    ##################################################################################################
-    # Review and change the below later                                                              #
-    ##################################################################################################
-    "PGH004",  # Use specific rule codes when using `ruff: noqa`
-]
-
 "tests/e2e/**.py" = [
     # pytest-playwright e2e suite: relax the same test-idiom rules the other
     # test trees relax (fixtures injected by name, asserts, hardcoded demo
@@ -699,7 +690,6 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
-    "PGH003",   # Use specific rule codes when ignoring type issues
     "RUF067",   # `__init__` module should only contain docstrings and re-exports
 ]
 
@@ -802,7 +792,6 @@ allow-dunder-method-names = [
     "ERA001",   # Found commented-out code
     "INP001",   # File is part of an implicit namespace package
     "N806",     # Variable in function should be lowercase
-    "PGH003",   # Use specific rule codes when ignoring type issues
     "PLC2701",  # Private name import from external module
     "PLR0904",  # Too many public methods
     "PLR0913",  # Too many arguments in function definition
@@ -831,7 +820,6 @@ allow-dunder-method-names = [
     "ERA001",   # Found commented-out code
     "FIX",      # flake8-fixme
     "INP001",   # File is part of an implicit namespace package
-    "PGH003",   # Use specific rule codes when ignoring type issues
     "PLR0904",  # Too many public methods
     "PLR0913",  # Too many arguments in function definition
     "PLR0914",  # Too many local variables
@@ -878,7 +866,6 @@ allow-dunder-method-names = [
     ##################################################################################################
     "ERA001",   # Found commented-out code
     "N806",     # Variable in function should be lowercase
-    "PGH004",   # Use specific rule codes when using `ruff: noqa`
     "PLR0914",  # Too many local variables
     "S311",     # Standard pseudo-random generators are not suitable for crypto
     "UP031",    # Use format specifiers instead of percent format
@@ -900,8 +887,6 @@ allow-dunder-method-names = [
     "INP001",   # File is part of an implicit namespace package
     "N802",     # Function name should be lowercase
     "N806",     # Variable in function should be lowercase
-    "PGH003",   # Use specific rule codes when ignoring type issues
-    "PGH004",   # Use specific rule codes when using `noqa`
     "PLC2701",  # Private name import from external module
     "PLR0904",  # Too many public methods
     "PLR0912",  # Too many branches
@@ -1135,15 +1120,6 @@ allow-dunder-method-names = [
     "PLR0915", # Too many statements
     "SLF001",  # Private member accessed
     "TD",      # flake8-todos
-]
-
-"models/examples/**.py" = [
-    ##################################################################################################
-    # The ignored rules below should be removed once the code has been updated, they are included    #
-    # like this so that we can reactivate them one by one. Alternatively ignored after further       #
-    # investigation if they are deemed to not make sense.                                            #
-    ##################################################################################################
-    "PGH004", #Use specific rule codes when using `ruff: noqa`
 ]
 
 "tasks/**.py" = [

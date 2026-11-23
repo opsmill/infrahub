@@ -229,7 +229,7 @@ class GraphQLSchemaManager:
     def get_gql_query(self) -> type[InfrahubBaseQuery]:
         QueryMixin = self.generate_query_mixin()
 
-        class Query(InfrahubBaseQuery, QueryMixin):  # type: ignore
+        class Query(InfrahubBaseQuery, QueryMixin):  # type: ignore[valid-type,misc]  # ty: ignore[unsupported-base]
             pass
 
         return Query
@@ -237,7 +237,7 @@ class GraphQLSchemaManager:
     def get_gql_mutation(self) -> type[InfrahubBaseMutation]:
         MutationMixin = self.generate_mutation_mixin()
 
-        class Mutation(InfrahubBaseMutation, MutationMixin):  # type: ignore
+        class Mutation(InfrahubBaseMutation, MutationMixin):  # type: ignore[valid-type,misc]  # ty: ignore[unsupported-base]
             pass
 
         return Mutation

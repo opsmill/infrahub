@@ -9,12 +9,11 @@ from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
 
-# flake8: noqa
-
-
 DEVICE_ROLES = ["edge"]
 INTF_ROLES = ["backbone", "transit", "peering", "peer", "loopback", "management", "spare"]
 SITES = ["atl1", "ord1", "jfk1"]
+
+LUMEN_BACKBONE_LINK_MAX_INDEX = 2
 
 DEVICES = (
     ("edge1", "active", "7280R3", "profile1", "edge", ["red", "green"]),
@@ -124,7 +123,7 @@ BGP_PEER_GROUPS = (
 log = get_logger()
 
 
-async def load_data(db: InfrahubDatabase):
+async def load_data(db: InfrahubDatabase) -> None:  # noqa: C901, PLR0912, PLR0915
     # ------------------------------------------
     # Create User Accounts and Groups
     # ------------------------------------------
@@ -169,8 +168,8 @@ async def load_data(db: InfrahubDatabase):
             name=peer_group[0],
             import_policies=peer_group[1],
             export_policies=peer_group[2],
-            local_as=asn_dict.get(peer_group[3], None),
-            remote_as=asn_dict.get(peer_group[4], None),
+            local_as=asn_dict.get(peer_group[3]),
+            remote_as=asn_dict.get(peer_group[4]),
         )
         await obj.save(db=db)
 
@@ -192,7 +191,7 @@ async def load_data(db: InfrahubDatabase):
 
     log.info("Creating Site & Device")
 
-    for site_idx, site_name in enumerate(SITES):
+    for site_name in SITES:
         site = await Node.init(db=db, schema="Location")
         await site.new(db=db, name=site_name, type="SITE")
         await site.save(db=db)
@@ -209,7 +208,7 @@ async def load_data(db: InfrahubDatabase):
         other_sites.remove(site_name)
         other_sites = sorted(other_sites)
 
-        for idx, device in enumerate(DEVICES):
+        for device in DEVICES:
             device_name = f"{site_name}-{device[0]}"
             device_type = device[2]
 
@@ -245,7 +244,7 @@ async def load_data(db: InfrahubDatabase):
             await intf.save(db=db)
 
             ip = await Node.init(db=db, schema="IPAddress")
-            await ip.new(db=db, interface=intf.id, address=f"{str(next(LOOPBACK_POOL))}/32")
+            await ip.new(db=db, interface=intf.id, address=f"{next(LOOPBACK_POOL)!s}/32")
             await ip.save(db=db)
 
             loopback_ip_dict[device_name] = ip
@@ -265,7 +264,7 @@ async def load_data(db: InfrahubDatabase):
             await intf.save(db=db)
 
             ip = await Node.init(db=db, schema="IPAddress")
-            await ip.new(db=db, interface=intf.id, address=f"{str(next(MANAGEMENT_IPS))}/24")
+            await ip.new(db=db, interface=intf.id, address=f"{next(MANAGEMENT_IPS)!s}/24")
             await ip.save(db=db)
 
             # Other Interfaces
@@ -289,20 +288,20 @@ async def load_data(db: InfrahubDatabase):
 
                 address = None
                 if intf_role == "peer":
-                    address = f"{str(next(peer_networks[intf_idx]))}/31"
+                    address = f"{next(peer_networks[intf_idx])!s}/31"
 
                 if intf_role == "backbone":
-                    site_idx = intf_idx - 2
-                    other_site_name = other_sites[site_idx]  # f"{other_sites[site_idx]}-{device[0]}"
+                    other_site_idx = intf_idx - 2
+                    other_site_name = other_sites[other_site_idx]  # f"{other_sites[other_site_idx]}-{device[0]}"
                     sites = sorted([site_name, other_site_name])
                     link_id = (sites[0], device[0], sites[1], device[0])
-                    address = f"{str(next(P2P_NETWORKS_POOL[link_id]))}/31"
+                    address = f"{next(P2P_NETWORKS_POOL[link_id])!s}/31"
 
-                if intf_role in ["transit", "peering"]:
+                if intf_role in {"transit", "peering"}:
                     subnet = next(NETWORKS_POOL_EXTERNAL).hosts()
-                    address = f"{str(next(subnet))}/29"
+                    address = f"{next(subnet)!s}/29"
 
-                    peer_address = f"{str(next(subnet))}/29"
+                    peer_address = f"{next(subnet)!s}/29"
 
                 if not address:
                     continue
@@ -317,7 +316,7 @@ async def load_data(db: InfrahubDatabase):
                 await ip.save(db=db)
 
                 # Create Circuit and BGP session for transit and peering
-                if intf_role in ["transit", "peering"]:
+                if intf_role in {"transit", "peering"}:
                     circuit_id = next(EXTERNAL_CIRCUIT_IDS_GEN)
                     transit_providers = ["Telia", "Colt"]
 
@@ -376,11 +375,12 @@ async def load_data(db: InfrahubDatabase):
                         await bgp_session.save(db=db)
 
                         log.info(
-                            f" Created BGP Session '{device_name}' >> '{provider_name}': '{peer_group_name}' '{ip.address.value}' >> '{peer_ip.address.value}'"
+                            f" Created BGP Session '{device_name}' >> '{provider_name}': '{peer_group_name}'"
+                            f" '{ip.address.value}' >> '{peer_ip.address.value}'"
                         )
 
         # Connect pair within a site together
-        for idx in range(0, 2):
+        for idx in range(2):
             intf1 = INTERFACE_OBJS[f"{site_name}-edge1"][idx]
             intf2 = INTERFACE_OBJS[f"{site_name}-edge2"][idx]
 
@@ -447,10 +447,7 @@ async def load_data(db: InfrahubDatabase):
 
         circuit_id = BACKBONE_CIRCUIT_IDS[idx]
 
-        if idx <= 2:
-            provider_name = "Lumen"
-        else:
-            provider_name = "Zayo"
+        provider_name = "Lumen" if idx <= LUMEN_BACKBONE_LINK_MAX_INDEX else "Zayo"
 
         provider = orgs_dict[provider_name]
         obj = await Node.init(db=db, schema="Circuit")

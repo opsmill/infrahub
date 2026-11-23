@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from .shared import (
     AVAILABLE_SERVICES,
     BUILD_NAME,
-    SERVICE_TASK_MANAGER_NAME,
     SERVICE_SERVER_NAME,
+    SERVICE_TASK_MANAGER_NAME,
     SERVICE_WORKER_NAME,
     Namespace,
     build_compose_files_cmd,
@@ -21,6 +21,13 @@ from .utils import ESCAPED_REPO_PATH
 
 if TYPE_CHECKING:
     from invoke.context import Context
+
+BYTES_PER_UNIT = 1024
+DOCKER_STATS_NAME_COLUMN = 1
+CPU_PERCENT_CRITICAL = 50
+CPU_PERCENT_WARNING = 20
+MEMORY_PERCENT_CRITICAL = 80
+MEMORY_PERCENT_WARNING = 50
 
 
 def build_images(
@@ -72,7 +79,7 @@ def pull_images(context: Context, database: str, namespace: Namespace) -> None:
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=namespace)
         compose_cmd = get_compose_cmd(namespace=namespace)
         for service in AVAILABLE_SERVICES:
-            if service in [SERVICE_SERVER_NAME, SERVICE_WORKER_NAME, SERVICE_TASK_MANAGER_NAME]:
+            if service in {SERVICE_SERVER_NAME, SERVICE_WORKER_NAME, SERVICE_TASK_MANAGER_NAME}:
                 continue
             command = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME} pull {service}"
             execute_command(context=context, command=command)
@@ -150,19 +157,18 @@ def upgrade_infrahub(context: Context, database: str, namespace: Namespace, reba
 def format_bytes(bytes_value: int) -> str:
     """Convert bytes to human readable format."""
     for unit in ["B", "KB", "MB", "GB", "TB"]:
-        if bytes_value < 1024:
+        if bytes_value < BYTES_PER_UNIT:
             return f"{bytes_value:.1f} {unit}"
-        bytes_value /= 1024
+        bytes_value /= BYTES_PER_UNIT
     return f"{bytes_value:.1f} PB"
 
 
 def collect_system_metrics() -> dict:
     """Collect system-wide metrics."""
-    # ruff: noqa
     import psutil
 
     return {
-        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+        "timestamp": datetime.now(tz=UTC).isoformat(),
         "cpu": {
             "percent": psutil.cpu_percent(interval=1),
             "count": psutil.cpu_count(),
@@ -187,10 +193,10 @@ def parse_docker_stats_line(line: str) -> tuple[str, str, str, str, str, str, st
     """Parse a line of docker stats output safely."""
     try:
         parts = line.split()
-        if len(parts) < 2 or not parts[1].startswith(BUILD_NAME):
+        if len(parts) <= DOCKER_STATS_NAME_COLUMN or not parts[DOCKER_STATS_NAME_COLUMN].startswith(BUILD_NAME):
             return None
 
-        name = parts[1].replace(f"{BUILD_NAME}-", "")
+        name = parts[DOCKER_STATS_NAME_COLUMN].replace(f"{BUILD_NAME}-", "")
         cpu = next((part for part in parts if part.endswith("%")), "0.00%")
 
         mem_index = next((i for i, part in enumerate(parts) if "MiB" in part or "GiB" in part), -1)
@@ -221,19 +227,20 @@ def parse_docker_stats_line(line: str) -> tuple[str, str, str, str, str, str, st
         return None
 
 
-def display_container_status(
+def display_container_status(  # noqa: PLR0915
     context: Context,
     database: str,
     namespace: Namespace,
     watch: bool = False,
     interval: int = 2,
-    project_name: str = None,
+    project_name: str | None = None,
 ) -> None:
     """Display detailed status and metrics of all services."""
+    import time
+
     from rich.console import Console
     from rich.panel import Panel
     from rich.table import Table
-    import time
 
     console = Console(force_terminal=True, color_system="auto")
     if not project_name:
@@ -252,7 +259,7 @@ def display_container_status(
             if watch:
                 console.clear()
 
-            current_time = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+            current_time = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
             console.print(Panel(f"[bold]Status at:[/bold] {current_time}", expand=False, style="cyan"))
 
             status_result = show_service_status(
@@ -302,8 +309,20 @@ def display_container_status(
                     except ValueError:
                         cpu_value = 0.0
                         mem_value = 0.0
-                    cpu_style = "red" if cpu_value > 50 else "yellow" if cpu_value > 20 else "green"
-                    mem_style = "red" if mem_value > 80 else "yellow" if mem_value > 50 else "green"
+                    cpu_style = (
+                        "red"
+                        if cpu_value > CPU_PERCENT_CRITICAL
+                        else "yellow"
+                        if cpu_value > CPU_PERCENT_WARNING
+                        else "green"
+                    )
+                    mem_style = (
+                        "red"
+                        if mem_value > MEMORY_PERCENT_CRITICAL
+                        else "yellow"
+                        if mem_value > MEMORY_PERCENT_WARNING
+                        else "green"
+                    )
                     container_table.add_row(
                         name,
                         f"[{cpu_style}]{cpu}[/{cpu_style}]",
@@ -323,7 +342,7 @@ def display_container_status(
         console.print("\n[bold red]Monitoring stopped.[/bold red]")
 
 
-def discover_infrahub_projects(context: Context) -> Dict[str, Dict]:
+def discover_infrahub_projects(context: Context) -> dict[str, dict]:
     """Discover all available InfraHub docker-compose projects."""
     compose_result = execute_command(context=context, command="docker compose ls", hide=True)
     essential_services = [
@@ -337,7 +356,7 @@ def discover_infrahub_projects(context: Context) -> Dict[str, Dict]:
     ]
     infrahub_projects = {}
 
-    if compose_result and compose_result.stdout:
+    if compose_result and compose_result.stdout:  # noqa: PLR1702
         lines = compose_result.stdout.strip().split("\n")
         if len(lines) > 1:
             for line in lines[1:]:
@@ -360,7 +379,7 @@ def discover_infrahub_projects(context: Context) -> Dict[str, Dict]:
     return infrahub_projects
 
 
-def display_infrahub_projects(projects: Dict[str, Dict]) -> None:
+def display_infrahub_projects(projects: dict[str, dict]) -> None:
     """Display discovered InfraHub projects in a simple line format."""
     if not projects:
         print("No projects with InfraHub services found.")
@@ -388,9 +407,8 @@ def display_infrahub_projects(projects: Dict[str, Dict]) -> None:
         print(" | ".join(components))
 
 
-def select_infrahub_project(projects: Dict[str, Dict]) -> Optional[Dict]:
+def select_infrahub_project(projects: dict[str, dict]) -> dict | None:
     """Let user select a project if multiple are found."""
-
     if not projects:
         print("No InfraHub projects found. Exiting.")
         return None
@@ -402,7 +420,7 @@ def select_infrahub_project(projects: Dict[str, Dict]) -> Optional[Dict]:
         return {"name": requested_project, **project_info}
 
     if len(projects) == 1:
-        project_name = list(projects.keys())[0]
+        project_name = next(iter(projects))
         project_info = projects[project_name]
         print(f"Found single InfraHub project: {project_name} (using {project_info['server_name']})")
         return {"name": project_name, **project_info}
@@ -413,7 +431,7 @@ def select_infrahub_project(projects: Dict[str, Dict]) -> Optional[Dict]:
         print(f"{i}. {project_name} (using {server_name})")
 
     print("\nPlease specify which project to use with the --project parameter:")
-    for project_name in projects.keys():
+    for project_name in projects:
         print(f"  --project {project_name}")
 
     print("\nExiting. Please run the command again with a specific project.")
