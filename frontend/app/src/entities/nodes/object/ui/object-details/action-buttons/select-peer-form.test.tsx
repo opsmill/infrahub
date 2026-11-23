@@ -75,4 +75,63 @@ describe("SelectPeerForm", () => {
       relationshipIds: ["tag-red"],
     });
   });
+
+  test("adds a peer allocated from a resource pool to the viewed object", async () => {
+    // GIVEN
+    const ipAddressSchema = generateNodeSchema({
+      kind: "IpamIPAddress",
+      name: "IPAddress",
+      label: "IP Address",
+      inherit_from: ["BuiltinIPAddress"],
+      relationships: [],
+    });
+    const ipAddressPoolSchema = generateNodeSchema({
+      kind: "CoreIPAddressPool",
+      name: "IPAddressPool",
+      label: "IP Address Pool",
+      relationships: [],
+    });
+    store.set(nodeSchemasAtom, [ipAddressSchema, ipAddressPoolSchema]);
+    vi.mocked(getRelationships).mockImplementation(async ({ peer }) =>
+      peer === "CoreIPAddressPool"
+        ? [
+            {
+              id: "pool-loopbacks",
+              display_label: "Loopbacks pool",
+              __typename: "CoreIPAddressPool",
+            },
+          ]
+        : []
+    );
+
+    const onSuccess = vi.fn();
+    const component = await render(
+      <SelectPeerForm
+        objectId="device-1"
+        relationshipSchema={generateRelationshipSchema({
+          name: "primary_address",
+          label: "Primary address",
+          peer: "IpamIPAddress",
+          kind: "Attribute",
+          cardinality: "one",
+        })}
+        onSuccess={onSuccess}
+        onCancel={() => {}}
+      />
+    );
+    await component.getByRole("tab", { name: "From pool" }).click();
+    await component.getByTestId("select-open-pool-option-button").click();
+    await component.getByRole("option", { name: "Loopbacks pool" }).click();
+
+    // WHEN
+    await component.getByRole("button", { name: "Save" }).click();
+
+    // THEN
+    await expect.poll(() => onSuccess).toHaveBeenCalledOnce();
+    expect(vi.mocked(addRelationships).mock.calls[0]?.[0]).toMatchObject({
+      objectId: "device-1",
+      relationshipName: "primary_address",
+      relationshipIds: [{ from_pool: { id: "pool-loopbacks" } }],
+    });
+  });
 });
