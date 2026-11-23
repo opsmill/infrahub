@@ -266,7 +266,7 @@ async def test_get_many_with_multiple_profiles_same_priority(
     assert updated_field_names == ["color"]
     await crit_low.save(db=db)
 
-    lowest_uuid_profile = sorted(crit_profiles, key=lambda p: p.id)[0]
+    lowest_uuid_profile = min(crit_profiles, key=lambda p: p.id)
     node_map = await NodeManager.get_many(
         db=db, branch=branch, ids=[criticality_low.id, criticality_medium.id], include_metadata=MetadataOptions.SOURCE
     )

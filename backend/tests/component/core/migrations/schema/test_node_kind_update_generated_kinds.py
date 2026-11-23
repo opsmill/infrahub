@@ -83,9 +83,7 @@ async def _migrate_node_kind(
             previous_node_schema=previous_node,
             new_node_schema=new_node,
         ),
-        schema_path=SchemaPath(
-            path_type=SchemaPathType.ATTRIBUTE, schema_kind=new_node.kind, field_name=sorted(changes)[0]
-        ),
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=new_node.kind, field_name=min(changes)),
     )
     registry.schema.set_schema_branch(name=branch.name, schema=candidate_schema)
     return await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
