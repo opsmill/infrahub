@@ -33,22 +33,22 @@ function AddRelationshipFormContent({
   onCancel,
 }: AddRelationshipFormProps) {
   const peerSchema = useSchema(relationshipSchema.peer);
-  const peerParentRelationship = peerSchema.schema?.relationships?.find(
+  const peerRequiresObjectAsParent = !!peerSchema.schema?.relationships?.some(
     (r) => r.kind === "Parent" && !r.optional && isOfKind(r.peer, objectSchema)
   );
-
-  if (
+  const createsNewPeer =
     relationshipSchema.kind === "Component" &&
-    peerParentRelationship &&
-    relationshipSchema.peer
-  ) {
+    peerRequiresObjectAsParent &&
+    !!relationshipSchema.peer;
+
+  if (createsNewPeer) {
     return <ObjectForm kind={relationshipSchema.peer} onSuccess={onSuccess} onCancel={onCancel} />;
   }
 
-  if (
-    isOfKind(GROUP_GENERIC, objectSchema) &&
-    relationshipSchema.name === GROUP_MEMBERS_RELATIONSHIP
-  ) {
+  const addsGroupMembers =
+    isOfKind(GROUP_GENERIC, objectSchema) && relationshipSchema.name === GROUP_MEMBERS_RELATIONSHIP;
+
+  if (addsGroupMembers) {
     return (
       <AddGroupMembersForm
         groupId={objectData.id}

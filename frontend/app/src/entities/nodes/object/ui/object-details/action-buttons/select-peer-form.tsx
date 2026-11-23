@@ -2,14 +2,24 @@ import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
 import DynamicForm from "@/shared/components/form/dynamic-form";
+import type {
+  DynamicRelationshipFieldProps,
+  FormFieldPool,
+  FormFieldValue,
+} from "@/shared/components/form/type";
 import type { SelectOption } from "@/shared/components/inputs/select-old";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
+import type { AddRelationshipsParams } from "@/entities/nodes/relationships/domain/use-cases/add-relationships";
 import { useAddRelationships } from "@/entities/nodes/relationships/ui/queries/add-relationships.mutation";
 import { getPoolKindFromSchema } from "@/entities/resource-manager/domain/rules/get-pool-kind-from-schema";
 import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
+type RelationshipId = AddRelationshipsParams["relationshipIds"][number];
+
+const RELATION_FIELD_NAME = "relation";
 
 interface SelectPeerFormProps {
   objectId: string;
@@ -31,35 +41,35 @@ export function SelectPeerForm({
 
   const generic = generics.find((g) => g.kind === relationshipSchema.kind);
   const poolKind = peerSchema.schema ? getPoolKindFromSchema(peerSchema.schema) : null;
-  const relationshipLabel = relationshipSchema.label ?? relationshipSchema.kind ?? "relationship";
 
-  const options: SelectOption[] = [];
+  const kindOptions: Array<SelectOption> = generic
+    ? (generic.used_by ?? []).flatMap((kind) => {
+        const usedBySchema = schemaList.find((s) => s.kind === kind);
+        return usedBySchema?.kind ? [{ id: usedBySchema.kind, name: usedBySchema.name }] : [];
+      })
+    : schemaList.flatMap((s) =>
+        s.kind && s.kind === relationshipSchema.peer
+          ? [{ id: s.kind, name: s.label ?? s.name }]
+          : []
+      );
 
-  if (generic) {
-    for (const kind of generic.used_by ?? []) {
-      const relatedSchema = schemaList.find((s) => s.kind === kind);
-      if (relatedSchema?.kind) {
-        options.push({ id: relatedSchema.kind, name: relatedSchema.name });
-      }
-    }
-  } else {
-    const relatedSchema = schemaList.find((s) => s.kind === relationshipSchema.peer);
-    if (relatedSchema?.kind) {
-      options.push({
-        id: relatedSchema.kind,
-        name: relatedSchema.label ?? relatedSchema.name,
-      });
-    }
-  }
+  const pool: FormFieldPool | undefined =
+    poolKind && peerSchema.schema?.kind
+      ? { kind: poolKind, defaultAllocatedObjectKind: peerSchema.schema.kind }
+      : undefined;
 
-  const handleSubmit = async (data: any) => {
-    const { relation } = data;
+  const relationField: DynamicRelationshipFieldProps = {
+    name: RELATION_FIELD_NAME,
+    label: relationshipSchema.label ?? relationshipSchema.kind ?? "relationship",
+    type: "relationship",
+    relationship: { ...relationshipSchema, cardinality: "one", inherited: true },
+    options: kindOptions,
+    pool,
+  };
 
-    if (!relation?.id && !relation?.from_pool) return;
-
-    const relationshipId = relation.from_pool
-      ? { from_pool: { id: relation.from_pool.id } }
-      : relation.id;
+  const addPeer = async (fieldValue: FormFieldValue | undefined) => {
+    const relationshipId = toRelationshipId(fieldValue?.value);
+    if (!relationshipId) return;
 
     await addRelationship({
       objectId,
@@ -79,30 +89,16 @@ export function SelectPeerForm({
 
   return (
     <DynamicForm
-      fields={[
-        {
-          name: "relation",
-          label: relationshipLabel,
-          type: "relationship",
-          relationship: {
-            ...relationshipSchema,
-            cardinality: "one",
-            inherited: true,
-          } as RelationshipSchema,
-          options,
-          pool:
-            poolKind && peerSchema.schema?.kind
-              ? {
-                  kind: poolKind,
-                  defaultAllocatedObjectKind: peerSchema.schema.kind,
-                }
-              : undefined,
-        },
-      ]}
-      onSubmit={async ({ relation }) => {
-        await handleSubmit({ relation: relation?.value });
-      }}
+      fields={[relationField]}
+      onSubmit={(formData) => addPeer(formData[RELATION_FIELD_NAME])}
       onCancel={onCancel}
     />
   );
+}
+
+function toRelationshipId(value: FormFieldValue["value"] | undefined): RelationshipId | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  if ("from_pool" in value) return { from_pool: { id: value.from_pool.id } };
+  if ("id" in value && typeof value.id === "string") return value.id;
+  return null;
 }
