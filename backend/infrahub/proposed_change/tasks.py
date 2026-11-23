@@ -92,9 +92,11 @@ from infrahub.git.models import TriggerRepositoryInternalChecks, TriggerReposito
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.git.utils import fetch_artifact_definition_targets, fetch_proposed_change_generator_definition_targets
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
-from infrahub.graphql.execution import cached_parse
+from infrahub.graphql.execution import cached_parse, cached_validate
+from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.log import get_logger
 from infrahub.message_bus.types import (
+    ProposedChangeArtifactDefinition,
     ProposedChangeBranchDiff,
     ProposedChangeRepository,
 )
@@ -849,44 +851,52 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
 
     repository = model.branch_diff.get_repository(repository_id=model.artifact_definition.repository_id)
 
-    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
     database = await get_database()
-    async with database.start_session() as db:
-        impact_resolver = FieldLevelImpactResolver(db=db, client=client)
-        selection = await impact_resolver.resolve(
-            query_report=impact_resolver.analyze(
-                query_payload=model.artifact_definition.query_payload, query_branch=model.source_branch
-            ),
-            diff_summary=diff_summary,
-            query_branch=model.source_branch,
-            subscriber_kind=InfrahubKind.ARTIFACT,
-            every_target=list(artifacts_by_member.values()),
-        )
-    impacted_artifacts = set(selection.ids)
-    if selection.widening is not None:
-        log.warning(
-            f"Artifact definition {artifact_definition.name.value}: {selection.widening.detail}. "
-            "All targets will be processed."
-        )
-    elif not impacted_artifacts:
-        log.info(
-            f"Artifact definition {artifact_definition.name.value} has no applicable node changes. "
-            "Existing artifacts will not be re-rendered."
-        )
+    invalid_query_message = _invalid_query_message(
+        definition=model.artifact_definition, branch_name=model.source_branch
+    )
+    if invalid_query_message is not None:
+        log.warning(f"Artifact definition {artifact_definition.name.value}: {invalid_query_message}")
+        impacted_artifacts: set[str] = set()
+        managed_branch = True
+    else:
+        diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
+        async with database.start_session() as db:
+            impact_resolver = FieldLevelImpactResolver(db=db, client=client)
+            selection = await impact_resolver.resolve(
+                query_report=impact_resolver.analyze(
+                    query_payload=model.artifact_definition.query_payload, query_branch=model.source_branch
+                ),
+                diff_summary=diff_summary,
+                query_branch=model.source_branch,
+                subscriber_kind=InfrahubKind.ARTIFACT,
+                every_target=list(artifacts_by_member.values()),
+            )
+        impacted_artifacts = set(selection.ids)
+        if selection.widening is not None:
+            log.warning(
+                f"Artifact definition {artifact_definition.name.value}: {selection.widening.detail}. "
+                "All targets will be processed."
+            )
+        elif not impacted_artifacts:
+            log.info(
+                f"Artifact definition {artifact_definition.name.value} has no applicable node changes. "
+                "Existing artifacts will not be re-rendered."
+            )
 
-    repo_diff_for_definition = repo_diff_or_none(
-        branch_diff=model.branch_diff, repository_id=model.artifact_definition.repository_id
-    )
-    managed_branch = (
-        query_changed(definition=model.artifact_definition, diff_summary=diff_summary).matched
-        or definition_changed(definition=model.artifact_definition, diff_summary=diff_summary).matched
-        or (
-            repo_diff_for_definition is not None
-            and transform_changed(definition=model.artifact_definition, repo_diff=repo_diff_for_definition).matched
+        repo_diff_for_definition = repo_diff_or_none(
+            branch_diff=model.branch_diff, repository_id=model.artifact_definition.repository_id
         )
-    )
-    if managed_branch:
-        log.info("Query, definition or repository file change detected, all artifacts will be processed")
+        managed_branch = (
+            query_changed(definition=model.artifact_definition, diff_summary=diff_summary).matched
+            or definition_changed(definition=model.artifact_definition, diff_summary=diff_summary).matched
+            or (
+                repo_diff_for_definition is not None
+                and transform_changed(definition=model.artifact_definition, repo_diff=repo_diff_for_definition).matched
+            )
+        )
+        if managed_branch:
+            log.info("Query, definition or repository file change detected, all artifacts will be processed")
 
     check_models: list[CheckArtifactCreate] = []
 
@@ -929,26 +939,16 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
 
             check_models.append(check_model)
 
-    if model.artifact_definition.transform_kind == InfrahubKind.TRANSFORMEXTERNAL:
-        # Every check exists, waiting, before any runs, so an early engine reply cannot complete the validator
-        # while the checks of other targets are not stored yet.
-        for check_model in check_models:
-            await write_artifact_check(
-                client=client,
-                model=check_model,
-                conclusion=ValidatorConclusion.UNKNOWN,
-                severity="info",
-                message=WAITING_FOR_EXTERNAL_ENGINE_MESSAGE,
-                artifact_result=ArtifactCheckResult(artifact_id=check_model.artifact_id),
-            )
-    checks: list[Coroutine[Any, Any, CheckResult]] = [
-        _run_artifact_check(client=client, model=check_model, context=context) for check_model in check_models
-    ]
-
     event_service = await get_event_service()
     pending = await run_checks_and_update_validator(
         event_service=event_service,
-        checks=checks,
+        checks=await _artifact_checks(
+            client=client,
+            check_models=check_models,
+            transform_kind=model.artifact_definition.transform_kind,
+            invalid_query_message=invalid_query_message,
+            context=context,
+        ),
         validator=validator,
         proposed_change_id=model.proposed_change,
         context=context,
@@ -961,6 +961,61 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
             )
 
 
+def _invalid_query_message(definition: ProposedChangeArtifactDefinition, branch_name: str) -> str | None:
+    """Describe why the query of the definition cannot run against the schema of the branch, or None when it can."""
+    branch = registry.get_branch_from_registry(branch=branch_name)
+    graphql_schema = graphql_registry.get_manager_for_branch(
+        branch=branch, schema_branch=registry.schema.get_schema_branch(name=branch_name)
+    ).get_graphql_schema()
+    errors = cached_validate(graphql_schema, cached_parse(definition.query_payload))
+    if not errors:
+        return None
+    return f"query {definition.query_name} is not valid on branch {branch_name}: " + " ".join(
+        error.message for error in errors
+    )
+
+
+async def _write_failed_artifact_check(
+    client: InfrahubClient, model: CheckArtifactCreate, message: str
+) -> ValidatorConclusion:
+    await write_artifact_check(
+        client=client,
+        model=model,
+        conclusion=ValidatorConclusion.FAILURE,
+        severity="critical",
+        message=f"{RENDER_FAILED_MESSAGE}: {message}",
+        artifact_result=ArtifactCheckResult(artifact_id=model.artifact_id),
+    )
+    return ValidatorConclusion.FAILURE
+
+
+async def _artifact_checks(
+    client: InfrahubClient,
+    check_models: list[CheckArtifactCreate],
+    transform_kind: str,
+    invalid_query_message: str | None,
+    context: InfrahubContext,
+) -> list[Coroutine[Any, Any, CheckResult]]:
+    if invalid_query_message is not None:
+        return [
+            _write_failed_artifact_check(client=client, model=check_model, message=invalid_query_message)
+            for check_model in check_models
+        ]
+    if transform_kind == InfrahubKind.TRANSFORMEXTERNAL:
+        # Every check exists, waiting, before any runs, so an early engine reply cannot complete the validator
+        # while the checks of other targets are not stored yet.
+        for check_model in check_models:
+            await write_artifact_check(
+                client=client,
+                model=check_model,
+                conclusion=ValidatorConclusion.UNKNOWN,
+                severity="info",
+                message=WAITING_FOR_EXTERNAL_ENGINE_MESSAGE,
+                artifact_result=ArtifactCheckResult(artifact_id=check_model.artifact_id),
+            )
+    return [_run_artifact_check(client=client, model=check_model, context=context) for check_model in check_models]
+
+
 async def _run_artifact_check(
     client: InfrahubClient, model: CheckArtifactCreate, context: InfrahubContext
 ) -> CheckResult:
@@ -970,14 +1025,7 @@ async def _run_artifact_check(
             workflow=GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE, context=context, parameters={"model": model}
         )
     except Exception as exc:
-        await write_artifact_check(
-            client=client,
-            model=model,
-            conclusion=ValidatorConclusion.FAILURE,
-            severity="critical",
-            message=f"{RENDER_FAILED_MESSAGE}: {exc}",
-            artifact_result=ArtifactCheckResult(artifact_id=model.artifact_id),
-        )
+        await _write_failed_artifact_check(client=client, model=model, message=str(exc))
         raise
 
 

@@ -1,0 +1,1 @@
+A proposed change now fails the artifact check of a definition when a schema change on its source branch makes the definition's GraphQL query invalid, and each check names the query error. Previously the artifact check passed without checking any artifact.

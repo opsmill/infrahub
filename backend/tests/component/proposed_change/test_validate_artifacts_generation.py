@@ -5,11 +5,12 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.protocols import CoreArtifactCheck, CoreArtifactValidator
 
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
+from infrahub.core.constants import HashableModelState, InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
@@ -60,6 +61,25 @@ ARTIFACT_SCHEMA = SchemaRoot(
                 AttributeSchema(name="name", kind="Text", unique=True),
                 AttributeSchema(name="description", kind="Text", optional=True),
                 AttributeSchema(name="color", kind="Text", optional=True),
+            ],
+        )
+    ]
+)
+
+# The source branch schema without 'color', an attribute the query of the artifact definitions reads.
+ARTIFACT_SCHEMA_WITHOUT_COLOR = SchemaRoot(
+    nodes=[
+        NodeSchema(
+            name="NetworkDevice",
+            namespace="Test",
+            default_filter="name__value",
+            display_label="name__value",
+            inherit_from=["CoreArtifactTarget"],
+            uniqueness_constraints=[["name__value"]],
+            attributes=[
+                AttributeSchema(name="name", kind="Text", unique=True),
+                AttributeSchema(name="description", kind="Text", optional=True),
+                AttributeSchema(name="color", kind="Text", optional=True, state=HashableModelState.ABSENT),
             ],
         )
     ]
@@ -873,3 +893,78 @@ class TestValidateArtifactsGeneration(TestInfrahubAppWithoutLocalWorkflow):
 
         triggered_ids = {c["parameters"]["model"].target_id for c in workflow_recorder.execute_calls}
         assert triggered_ids == {artifact_dataset["dev1_id"]}
+
+    @pytest.mark.parametrize(
+        ("transform_kind", "branch_name"),
+        [
+            (InfrahubKind.TRANSFORMJINJA2, "artifact-color-removed-jinja2"),
+            (InfrahubKind.TRANSFORMEXTERNAL, "artifact-color-removed-external"),
+        ],
+    )
+    async def test_query_invalid_on_branch_schema_fails_every_check(
+        self,
+        transform_kind: str,
+        branch_name: str,
+        artifact_dataset: dict[str, Any],
+        db: InfrahubDatabase,
+        memory_cache: MemoryCache,
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        client: InfrahubClient,
+    ) -> None:
+        """The branch removes 'color', which the query reads, while no node data changes."""
+        branch = await create_branch(branch_name=branch_name, db=db)
+        await load_schema(db=db, schema=ARTIFACT_SCHEMA_WITHOUT_COLOR, branch_name=branch_name, update_db=False)
+
+        definition = artifact_dataset["artdef_full"].model_copy(update={"transform_kind": transform_kind})
+        for device_key in ("dev1_id", "dev2_id", "dev3_id", "dev4_id"):
+            artifact = await Node.init(db=db, schema=InfrahubKind.ARTIFACT, branch=branch)
+            await artifact.new(
+                db=db,
+                name="device-config",
+                definition=definition.definition_id,
+                status="Ready",
+                object=artifact_dataset[device_key],
+                content_type="application/json",
+            )
+            await artifact.save(db=db)
+
+        proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+        await proposed_change.new(
+            db=db, name=f"pc-{branch_name}", source_branch=branch_name, destination_branch=default_branch.name
+        )
+        await proposed_change.save(db=db)
+
+        model = RequestArtifactDefinitionCheck(
+            artifact_definition=definition,
+            branch_diff=await self._make_branch_diff(artifact_dataset, uuid.uuid4()),
+            proposed_change=proposed_change.id,
+            source_branch=branch_name,
+            source_branch_sync_with_git=False,
+            destination_branch=default_branch.name,
+        )
+
+        await self._run(
+            model=model,
+            context=self._make_context(admin_account, default_branch),
+            diff_summary=[],
+            memory_cache=memory_cache,
+        )
+
+        assert workflow_recorder.execute_calls == []
+        validators = await client.filters(kind=CoreArtifactValidator, proposed_change__ids=[proposed_change.id])
+        assert [(validator.state.value, validator.conclusion.value) for validator in validators] == [
+            ("completed", "failure")
+        ]
+        checks = await client.filters(kind=CoreArtifactCheck, validator__ids=[validators[0].id])
+        expected_message = (
+            f"Failed to render artifact: query GetNetworkDevice is not valid on branch {branch_name}: "
+            "Cannot query field 'color' on type 'TestNetworkDevice'."
+        )
+        assert sorted(
+            (check.name.value, check.conclusion.value, check.severity.value, check.message.value) for check in checks
+        ) == [
+            (f"device-config: {device}", "failure", "critical", expected_message)
+            for device in ("dev1", "dev2", "dev3", "dev4")
+        ]
