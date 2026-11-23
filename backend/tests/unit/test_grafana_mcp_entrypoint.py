@@ -10,6 +10,10 @@ ENTRYPOINT = Path(__file__).resolve().parents[3] / "development" / "grafana-mcp"
 EVERY_INTERFACE = "0.0.0.0"  # noqa: S104 - a setting value under test, nothing listens
 CALLER_TOKEN = "caller-token-0123456789"
 ALLOWED_HOSTS = "localhost:8100,127.0.0.1:8100"
+INSTRUCTIONS_TEXT = (
+    "In this stack the Grafana MCP server only reads: it has no tool that creates or changes dashboards, "
+    "folders, annotations, incidents, alert rules or data sources."
+)
 SERVER_ARGUMENTS = [
     "--transport",
     "streamable-http",
@@ -22,6 +26,8 @@ SERVER_ARGUMENTS = [
     "--disable-api",
     "--disable-docs",
     "--disable-plugin",
+    "--instructions-append",
+    INSTRUCTIONS_TEXT,
 ]
 TLS_ARGUMENTS = [
     "--server.tls-cert-file",

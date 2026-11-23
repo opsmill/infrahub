@@ -6,7 +6,9 @@
 # before the server starts, so the token is required and never crosses a network
 # unencrypted. The server only reads Grafana: every write tool and the tool that
 # calls any Grafana API route are off. The documentation and plugin tools are off
-# too, because they send the search text to grafana.com.
+# too, because they send the search text to grafana.com. The instructions that the
+# server sends to its clients say what it cannot do in this setup, because its own
+# text says that it can create dashboards and incidents.
 set -eu
 
 refuse() {
@@ -51,7 +53,8 @@ set -- \
     --disable-write \
     --disable-api \
     --disable-docs \
-    --disable-plugin
+    --disable-plugin \
+    --instructions-append "In this stack the Grafana MCP server only reads: it has no tool that creates or changes dashboards, folders, annotations, incidents, alert rules or data sources."
 
 if [ "$tls" = on ]; then
     # The two settings are paths on the Docker host; Compose mounts the files at these paths.

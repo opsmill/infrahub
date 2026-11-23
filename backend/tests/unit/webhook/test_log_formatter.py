@@ -278,3 +278,78 @@ def test_delivery_succeeded_writes_the_url_without_the_parts_that_can_hold_a_sec
     message = formatter.delivery_succeeded(url=case.url, status_code=200, attempt=1, elapsed_ms=12.4)
 
     assert message == f"Webhook delivered to {case.expected} attempt 1/4, HTTP 200 in 12 ms"
+
+
+WEBHOOK_CREATED_PAYLOAD = {
+    "data": {
+        "kind": "CoreStandardWebhook",
+        "action": "created",
+        "changelog": {
+            "hfid": ["manual-unreachable"],
+            "attributes": {
+                "url": {
+                    "kind": "URL",
+                    "name": "url",
+                    "value": "http://hookuser:secret-value@unreachable.invalid/hook?token=secret-value",
+                },
+                "name": {"kind": "Text", "name": "name", "value": "manual-unreachable"},
+            },
+        },
+    },
+    "account_id": "18eab694-442e-556b-3b76-c51a540b49d2",
+}
+MASKED_URL_LINE = '"value": "http:\\/\\/unreachable.invalid\\/hook?[MASKED]"'
+
+
+def test_outgoing_request_writes_a_url_inside_the_payload_without_its_secrets(
+    formatter: WebhookLogFormatter,
+) -> None:
+    message = formatter.outgoing_request(
+        webhook_name="notify",
+        url="https://example.test/hook",
+        headers={},
+        payload=WEBHOOK_CREATED_PAYLOAD,
+        attempt=1,
+    )
+
+    assert MASKED_URL_LINE in message
+    assert "secret-value" not in message
+    assert "hookuser" not in message
+    assert '"value": "manual-unreachable"' in message
+    assert '"account_id": "18eab694-442e-556b-3b76-c51a540b49d2"' in message
+
+
+def test_full_payload_writes_a_url_inside_the_payload_without_its_secrets(formatter: WebhookLogFormatter) -> None:
+    message = formatter.full_payload(webhook_name="notify", payload=WEBHOOK_CREATED_PAYLOAD, attempt=1)
+
+    assert MASKED_URL_LINE in message
+    assert "secret-value" not in message
+    assert "hookuser" not in message
+
+
+def test_logging_a_payload_does_not_change_the_payload_that_is_sent(formatter: WebhookLogFormatter) -> None:
+    payload = {"url": "http://unreachable.invalid/hook?token=secret-value"}
+
+    formatter.outgoing_request(
+        webhook_name="notify", url="https://example.test/hook", headers={}, payload=payload, attempt=1
+    )
+    formatter.full_payload(webhook_name="notify", payload=payload, attempt=1)
+
+    assert payload == {"url": "http://unreachable.invalid/hook?token=secret-value"}
+
+
+class _PayloadThatJsonCannotWrite:
+    def __str__(self) -> str:
+        return "payload http://unreachable.invalid/hook?token=secret-value"
+
+
+def test_payload_that_json_cannot_write_is_logged_without_its_url_secrets(formatter: WebhookLogFormatter) -> None:
+    message = formatter.outgoing_request(
+        webhook_name="notify",
+        url="https://example.test/hook",
+        headers={},
+        payload=_PayloadThatJsonCannotWrite(),
+        attempt=1,
+    )
+
+    assert message.endswith("Payload:\n  payload http://unreachable.invalid/hook?[MASKED]")

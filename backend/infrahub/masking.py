@@ -12,6 +12,9 @@ MASKED_VALUE = "[MASKED]"
 # A URL with a scheme, followed by its query string; both end at a space, a quote or an angle bracket.
 _URL_WITH_QUERY = re.compile(r"(?P<base>\b[a-zA-Z][a-zA-Z0-9+.-]*://[^\s?'\"<>`]*)\?[^\s'\"<>`]*")
 
+# A URL with a scheme, followed by a user and a password up to the last "@" before the host.
+_URL_WITH_USER_INFO = re.compile(r"(?P<scheme>\b[a-zA-Z][a-zA-Z0-9+.-]*://)[^\s/?#'\"<>`]*@")
+
 
 def replace_value(value: Any) -> str:  # noqa: ARG001
     return MASKED_VALUE
@@ -43,6 +46,28 @@ def url_without_secrets(url: str) -> str:
 def replace_url_queries_in_text(text: str) -> str:
     """Return `text` with the query string of every URL in it replaced, keeping the scheme, host, path and other text."""
     return _URL_WITH_QUERY.sub(lambda match: f"{match.group('base')}?{MASKED_VALUE}", text)
+
+
+def replace_url_secrets_in_text(text: str) -> str:
+    """Return `text` with the user and password removed, and the query string replaced, in every URL in it.
+
+    The scheme, the host, the path and the other text stay readable.
+    """
+    return replace_url_queries_in_text(_URL_WITH_USER_INFO.sub(lambda match: match.group("scheme"), text))
+
+
+def replace_url_secrets_in_nested(value: Any) -> Any:
+    """Return a copy of `value` with `replace_url_secrets_in_text` applied to every string in its mappings and lists.
+
+    A copy is returned, because the caller may still use the value it passed in.
+    """
+    if isinstance(value, str):
+        return replace_url_secrets_in_text(text=value)
+    if isinstance(value, Mapping):
+        return {key: replace_url_secrets_in_nested(value=item) for key, item in value.items()}
+    if isinstance(value, list | tuple):
+        return type(value)(replace_url_secrets_in_nested(value=item) for item in value)
+    return value
 
 
 @dataclass(frozen=True)

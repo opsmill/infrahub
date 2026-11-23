@@ -5,7 +5,7 @@ from typing import Any
 
 import ujson
 
-from infrahub.masking import url_without_secrets
+from infrahub.masking import replace_url_secrets_in_nested, replace_url_secrets_in_text, url_without_secrets
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,8 @@ class WebhookLogFormatter:
     ) -> str:
         """Summarize the outgoing request: target, headers one per line, and the truncated payload.
 
-        The target is written without its query string, user and password, which can hold a secret.
+        The target, and every URL inside the payload, is written without its query string, user and password,
+        which can hold a secret.
         """
         return (
             f"Webhook '{webhook_name}' {self._attempt_phrase(attempt)}\n"
@@ -47,7 +48,7 @@ class WebhookLogFormatter:
         )
 
     def full_payload(self, *, webhook_name: str, payload: Any, attempt: int | None) -> str:
-        """Render the full, untruncated payload for the debug-level line."""
+        """Render the full, untruncated payload for the debug-level line, with the same URL masking."""
         return (
             f"Webhook '{webhook_name}' {self._attempt_phrase(attempt)} full payload:\n"
             f"{self._indent(self._to_json(payload))}"
@@ -91,7 +92,7 @@ class WebhookLogFormatter:
     @staticmethod
     def _to_json(payload: Any) -> str:
         try:
-            return ujson.dumps(payload, indent=2)
+            return ujson.dumps(replace_url_secrets_in_nested(value=payload), indent=2)
         except (TypeError, ValueError) as exc:
             logger.warning(
                 "Webhook payload of type '%s' could not be serialized to JSON for logging (%s); "
@@ -99,7 +100,7 @@ class WebhookLogFormatter:
                 type(payload).__name__,
                 exc,
             )
-            return str(payload)
+            return replace_url_secrets_in_text(text=str(payload))
 
     @staticmethod
     def _indent(text: str) -> str:

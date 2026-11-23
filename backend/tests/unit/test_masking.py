@@ -5,7 +5,14 @@ from typing import Any
 
 import pytest
 
-from infrahub.masking import MASKING_RULES, mask_mapping, replace_url_queries_in_text, url_without_secrets
+from infrahub.masking import (
+    MASKING_RULES,
+    mask_mapping,
+    replace_url_queries_in_text,
+    replace_url_secrets_in_nested,
+    replace_url_secrets_in_text,
+    url_without_secrets,
+)
 
 
 @dataclass(frozen=True)
@@ -256,3 +263,88 @@ URL_WITHOUT_SECRETS_TEST_CASES: list[UrlWithoutSecretsTestCase] = [
 @pytest.mark.parametrize("test_case", URL_WITHOUT_SECRETS_TEST_CASES, ids=lambda test_case: test_case.name)
 def test_url_without_secrets(test_case: UrlWithoutSecretsTestCase) -> None:
     assert url_without_secrets(url=test_case.url) == test_case.expected
+
+
+@dataclass(frozen=True)
+class UrlSecretsInTextTestCase:
+    name: str
+    text: str
+    expected: str
+
+
+URL_SECRETS_IN_TEXT_TEST_CASES: list[UrlSecretsInTextTestCase] = [
+    UrlSecretsInTextTestCase(
+        name="query_string",
+        text="http://unreachable.invalid/hook?token=secret-value",
+        expected="http://unreachable.invalid/hook?[MASKED]",
+    ),
+    UrlSecretsInTextTestCase(
+        name="user_and_password",
+        text="https://hookuser:secret-value@example.test/hook",
+        expected="https://example.test/hook",
+    ),
+    UrlSecretsInTextTestCase(
+        name="user_password_and_query_string",
+        text="https://hookuser:secret-value@example.test/hook?token=abc",
+        expected="https://example.test/hook?[MASKED]",
+    ),
+    UrlSecretsInTextTestCase(
+        name="password_with_an_at_sign",
+        text="https://user:p@ss@example.test/hook",
+        expected="https://example.test/hook",
+    ),
+    UrlSecretsInTextTestCase(
+        name="two_urls_in_a_sentence",
+        text="from http://a.test/x?t=1 to https://u:p@b.test/y and back",
+        expected="from http://a.test/x?[MASKED] to https://b.test/y and back",
+    ),
+    UrlSecretsInTextTestCase(
+        name="at_sign_in_the_path_is_kept",
+        text="https://example.test/users/a@b/hook",
+        expected="https://example.test/users/a@b/hook",
+    ),
+    UrlSecretsInTextTestCase(
+        name="email_address_outside_a_url_is_kept",
+        text="contact otto@example.test about https://example.test/hook",
+        expected="contact otto@example.test about https://example.test/hook",
+    ),
+    UrlSecretsInTextTestCase(name="no_url", text="Otto Manual Changed", expected="Otto Manual Changed"),
+    UrlSecretsInTextTestCase(name="empty", text="", expected=""),
+]
+
+
+@pytest.mark.parametrize("test_case", URL_SECRETS_IN_TEXT_TEST_CASES, ids=lambda test_case: test_case.name)
+def test_replace_url_secrets_in_text(test_case: UrlSecretsInTextTestCase) -> None:
+    assert replace_url_secrets_in_text(text=test_case.text) == test_case.expected
+
+
+def test_replace_url_secrets_in_nested_walks_mappings_lists_and_tuples() -> None:
+    value = {
+        "data": {
+            "url": {"kind": "URL", "value": "http://unreachable.invalid/hook?token=secret-value"},
+            "targets": ["https://u:p@a.test/x", ("https://b.test/y?k=v", 3)],
+        },
+        "count": 4,
+        "active": True,
+        "missing": None,
+        "label": "Otto Manual",
+    }
+
+    assert replace_url_secrets_in_nested(value=value) == {
+        "data": {
+            "url": {"kind": "URL", "value": "http://unreachable.invalid/hook?[MASKED]"},
+            "targets": ["https://a.test/x", ("https://b.test/y?[MASKED]", 3)],
+        },
+        "count": 4,
+        "active": True,
+        "missing": None,
+        "label": "Otto Manual",
+    }
+
+
+def test_replace_url_secrets_in_nested_leaves_its_input_unchanged() -> None:
+    value = {"url": "http://a.test/x?t=1", "items": ["http://b.test/y?t=2"]}
+
+    replace_url_secrets_in_nested(value=value)
+
+    assert value == {"url": "http://a.test/x?t=1", "items": ["http://b.test/y?t=2"]}
