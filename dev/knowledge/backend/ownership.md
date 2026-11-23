@@ -122,8 +122,9 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
   over many nodes.
 - `Node._update` reads the update time after it takes the lock only when the caller gives no time. A write of
   owners reads the current edges at its time and closes only those. A write with a time from before the lock does
-  not see the edges of a write that committed while it waited, so it fails instead (see the check below). A value
-  update that waits behind a delete of the node fails, because the attribute is not active at that time.
+  not see the edges of a write that committed while it waited, so it fails instead (see the check below). An update
+  or a delete that waits behind a delete of the node raises `NodeNotFoundError`: `NodeLockQuery` reads, after the
+  lock, whether the node is still active on its branch.
 - All branches share the node vertex, and `NodeLockQuery` matches it by UUID only. So two writes of one node on
   two different branches also run one after the other, for example a profile refresh on one branch and an update
   on another.
@@ -370,6 +371,11 @@ the owner edges of the default branch under the new kind.
   adds its `deleted` edge at the time of the upgrade, so a read on the branch at a time between the branch write and
   the upgrade gives both the new owner and the repository. The release before gave the new owner only. A read at
   the current time, the diff and the merge are not affected.
+- The rename of a branch-agnostic attribute on the default branch writes the `HAS_ATTRIBUTE`, `HAS_VALUE` and
+  `IS_PROTECTED` edges of the new attribute on the default branch, not on the global branch, so `verify_graph`
+  reports `ATTRIBUTE_EDGE_BRANCH`. A second run of the same migration copies the attribute again, and `verify_graph`
+  also reports `DUPLICATE_ATTRIBUTES`. The owners that a profile or an object template gives to the attribute follow
+  the rename, and a second run changes no owner. The rename query writes these edges as the release before does.
 - The object conversion writes the owners of the new node at a later time than the node, in the same transaction.
   A read at a time between the two gives the new node without owners.
 - A branch made before the upgrade can read two owners on a branch-agnostic attribute when the release before

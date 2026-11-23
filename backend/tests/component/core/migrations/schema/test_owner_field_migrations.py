@@ -780,7 +780,7 @@ async def test_owners_that_a_profile_that_all_branches_share_gives_follow_the_at
         SHARED_ATTRIBUTE: (group_ids["dc-emea"],),
         **after,
     }
-    # A second run changes nothing.
+    # A second run changes no owner. After a rename, it copies the attribute again (see the graph check below).
     result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
     assert not result.errors
     assert await _target_owners(db=db, branch=default_branch, node_id=profile_id) == after
