@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class AttributeAddQuery(MigrationSelectionQuery):
     """Create missing attribute rows on the nodes of the given kinds.
 
-    ``uuids`` optionally restricts the write to specific nodes.
+    ``node_ids`` optionally restricts the write to specific nodes.
 
     Created edges live on the query's branch, except when ``branch_support`` is
     agnostic: those rows belong to the global branch, visible from every branch.
@@ -35,7 +35,6 @@ class AttributeAddQuery(MigrationSelectionQuery):
         attribute_kind: str,
         branch_support: str,
         default_value: Any | None = None,
-        uuids: list[str] | None = None,
         **kwargs: Any,
     ) -> None:
         self.node_kinds = node_kinds
@@ -43,15 +42,13 @@ class AttributeAddQuery(MigrationSelectionQuery):
         self.attribute_kind = attribute_kind
         self.branch_support = branch_support
         self.default_value = default_value
-        self.uuids = uuids
         super().__init__(**kwargs)
 
     def render_selection(self, carry: Sequence[str] = ()) -> str:
         """Return the selection, passing the variables named in `carry` through its ``WITH`` clause."""
         branch_filter, _ = self.branch.get_query_filter_path(at=self.at.to_string())
         return """
-        MATCH (n:%(node_kinds_str)s)
-        WHERE $node_uuids IS NULL OR n.uuid IN $node_uuids
+        %(node_match)s
         CALL (n) {
             MATCH (:Root)<-[r:IS_PART_OF]-(n)
             WHERE %(branch_filter)s
@@ -67,7 +64,7 @@ class AttributeAddQuery(MigrationSelectionQuery):
         WITH n, is_part_of_e, has_attr_e%(carry)s
         WHERE is_part_of_e.status = "active" AND (has_attr_e IS NULL OR has_attr_e.status = "deleted")
         """ % {
-            "node_kinds_str": "|".join(self.node_kinds),
+            "node_match": self.render_node_match("n", self.node_kinds),
             "branch_filter": branch_filter,
             "carry": "".join(f", {variable}" for variable in carry),
         }
@@ -79,7 +76,6 @@ class AttributeAddQuery(MigrationSelectionQuery):
         write_time = self.at.to_string()
 
         self.params["node_kinds"] = self.node_kinds
-        self.params["node_uuids"] = self.uuids
         self.params["attr_name"] = self.attribute_name
         self.params["branch_support"] = self.branch_support
         self.params["current_time"] = write_time

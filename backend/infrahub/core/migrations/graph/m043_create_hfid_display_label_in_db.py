@@ -131,14 +131,13 @@ class Migration043(MigrationRequiringRebase):
         await get_added_nodes_by_kind_for_branch_query.execute(db=db)
         node_ids_by_kind = get_added_nodes_by_kind_for_branch_query.get_node_ids_by_kind()
 
-        for node_kind, node_ids in node_ids_by_kind.items():
+        for node_kind in node_ids_by_kind:
             schema = schema_branch.get(name=node_kind, duplicate=False)
             if schema.branch not in {BranchSupportType.AWARE, BranchSupportType.LOCAL}:
                 continue
             migrations.extend(
                 [
                     NodeAttributeAddMigration(
-                        uuids=node_ids,
                         new_node_schema=schema,
                         previous_node_schema=schema,
                         schema_path=SchemaPath(
@@ -146,7 +145,6 @@ class Migration043(MigrationRequiringRebase):
                         ),
                     ),
                     NodeAttributeAddMigration(
-                        uuids=node_ids,
                         new_node_schema=schema,
                         previous_node_schema=schema,
                         schema_path=SchemaPath(

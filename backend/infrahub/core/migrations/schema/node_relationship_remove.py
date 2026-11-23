@@ -13,7 +13,6 @@ from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import retry_db_transaction
 
 from ..query import MigrationBaseQuery
-from ..query.selection import MigrationSelectionQuery
 from ..shared import MigrationResult, RelationshipSchemaMigration
 
 if TYPE_CHECKING:
@@ -40,7 +39,7 @@ class RelationshipMigrationQuery(MigrationBaseQuery):
         super().__init__(**kwargs)
 
 
-class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery, MigrationSelectionQuery):
+class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery):
     """Close the graph data for a relationship, given a precomputed set of parameters.
 
     For every node of the given kinds, every ``Relationship`` vertex carrying one of the given
@@ -70,8 +69,7 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery, Migration
         // ----------------------------------------------------------
         // Find all active nodes of the kind the relationship was removed from
         // ----------------------------------------------------------
-        MATCH (node:%(node_kinds)s)
-        WHERE none(label IN labels(node) WHERE label IN $kinds_to_skip)
+        %(node_match)s
         CALL (node) {
             MATCH (root:Root)<-[r:IS_PART_OF]-(node)
             WHERE %(branch_filter)s
@@ -112,7 +110,14 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery, Migration
         WITH active_node, rel, far_peer, far_edge
         WHERE far_edge.status = "active"
           AND none(label IN labels(far_peer) WHERE label IN $kinds_to_skip)
-        """ % {"node_kinds": "|".join(self.query_params.node_kinds), "branch_filter": branch_filter}
+        """ % {
+            "node_match": self.render_node_match(
+                "node",
+                self.query_params.node_kinds,
+                conditions=["none(label IN labels(node) WHERE label IN $kinds_to_skip)"],
+            ),
+            "branch_filter": branch_filter,
+        }
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         params = self.query_params
@@ -292,6 +297,7 @@ class NodeRelationshipRemoveMigration(RelationshipSchemaMigration):
                 user_id=migration_input.user_id,
                 operation_ats=migration_input.operation_ats,
                 query_params=query_params,
+                node_ids=migration_input.node_ids,
             )
             await query.execute(db=ts)
             result.nbr_migrations_executed += query.get_nbr_migrations_executed()

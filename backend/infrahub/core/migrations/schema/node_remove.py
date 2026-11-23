@@ -7,14 +7,13 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipStatus
 from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 
 from ..query import MigrationQuery
-from ..query.selection import MigrationSelectionQuery
 from ..shared import SchemaMigration
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class NodeRemoveMigrationBaseQuery(MigrationQuery, MigrationSelectionQuery):
+class NodeRemoveMigrationBaseQuery(MigrationQuery):
     """Shared parameter setup for node-remove migrations."""
 
     def _branch_from_existing(self, existing: str) -> str:
@@ -54,7 +53,7 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery, MigrationSelectionQuery):
     // ----------------------------------------------------------
     // Find all active nodes of the kind being removed
     // ----------------------------------------------------------
-    MATCH (node:%(node_kind)s)
+    %(node_match)s
     CALL (node) {
         MATCH (root:Root)<-[r:IS_PART_OF]-(node)
         WHERE %(branch_filter)s
@@ -64,7 +63,10 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery, MigrationSelectionQuery):
     }
     WITH node AS active_node, root_edge
     WHERE root_edge.status = "active"
-    """ % {"node_kind": self.migration.previous_schema.kind, "branch_filter": branch_filter}
+    """ % {
+            "node_match": self.render_node_match("node", [self.migration.previous_schema.kind]),
+            "branch_filter": branch_filter,
+        }
 
     def get_nbr_migrations_executed(self) -> int:
         return self.stats.get_counter(name="nodes_created")
