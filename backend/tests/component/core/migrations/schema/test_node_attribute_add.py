@@ -138,7 +138,7 @@ async def init_database(db: InfrahubDatabase) -> None:
         CREATE (n)-[r:IS_PART_OF $rel_props ]->(root)
     )
     RETURN root
-    """ % {}
+    """
     await db.execute_query(query=query_init_root, params=params)
 
 

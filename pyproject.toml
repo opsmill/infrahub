@@ -956,13 +956,6 @@ allow-dunder-method-names = [
     "UP035",    # `typing.List` is deprecated, use `list` instead
 ]
 
-"backend/tests/component/core/migrations/schema/test_node_attribute_add.py" = [
-    ##################################################################################################
-    # Refactor code and remove the ignore rule
-    ##################################################################################################
-    "F507",    # `%`-format string has a different number of placeholders and substitutions
-]
-
 "models/**.py" = [
     ##################################################################################################
     # Rules that have violations in models/ directory                                                #
