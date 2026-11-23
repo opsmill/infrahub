@@ -3,9 +3,7 @@ from __future__ import annotations
 import hashlib
 from typing import TYPE_CHECKING
 
-from infrahub import config
 from infrahub.artifacts.queries import ArtifactChecksumsQuery
-from infrahub.core import registry
 from infrahub.exceptions import ArtifactChecksumMismatchError, ArtifactChecksumMissingError, StorageIntegrityError
 from infrahub.log import get_logger
 from infrahub.storage_encryption.checksums import matches_recorded_checksum
@@ -14,22 +12,24 @@ from infrahub.storage_encryption.crypto import IntegrityFailure
 if TYPE_CHECKING:
     from collections.abc import Collection
 
+    from infrahub.config import StorageSettings
     from infrahub.database import InfrahubDatabase
     from infrahub.storage import InfrahubObjectStorage
 
 log = get_logger()
 
 
-def get_artifact_content_reader(db: InfrahubDatabase) -> ArtifactContentReader:
-    """Build the reader of the configured storage.
+def build_artifact_content_reader(
+    db: InfrahubDatabase, storage: InfrahubObjectStorage, settings: StorageSettings
+) -> ArtifactContentReader:
+    """Build the reader of `storage` for the storage `settings`.
 
     While storage encryption is enabled, content that was stored before it was enabled is always checked
     against its recorded checksum, whatever `verify_artifact_checksum` says.
     """
-    settings = config.SETTINGS.storage
     return ArtifactContentReader(
         db=db,
-        storage=registry.storage,
+        storage=storage,
         verify_checksum=settings.verify_artifact_checksum or settings.encryption_enabled,
         verify_file_objects=settings.encryption_enabled,
         trust_decrypted=settings.encryption_enabled,

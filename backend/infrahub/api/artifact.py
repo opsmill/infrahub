@@ -7,13 +7,14 @@ from pydantic import BaseModel, Field
 
 from infrahub.api.dependencies import (
     BranchParams,
+    get_artifact_content_reader,
     get_branch_params,
     get_context,
     get_current_user,
     get_db,
     get_permission_manager,
 )
-from infrahub.artifacts.content import get_artifact_content_reader
+from infrahub.artifacts.content import ArtifactContentReader  # noqa: TC001
 from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
@@ -49,6 +50,7 @@ class ArtifactGenerateResponse(BaseModel):
 async def get_artifact(
     artifact_id: str,
     db: InfrahubDatabase = Depends(get_db),
+    reader: ArtifactContentReader = Depends(get_artifact_content_reader),
     branch_params: BranchParams = Depends(get_branch_params),
     _: AccountSession = Depends(get_current_user),
 ) -> Response:
@@ -60,9 +62,7 @@ async def get_artifact(
             branch_name=branch_params.branch.name, node_type=InfrahubKind.ARTIFACT, identifier=artifact_id
         )
 
-    content = await get_artifact_content_reader(db=db).read_artifact(
-        storage_id=str(artifact.storage_id.value), checksum=artifact.checksum.value
-    )
+    content = await reader.read_artifact(storage_id=str(artifact.storage_id.value), checksum=artifact.checksum.value)
     return Response(content=content, headers={"Content-Type": artifact.content_type.value.value})
 
 
