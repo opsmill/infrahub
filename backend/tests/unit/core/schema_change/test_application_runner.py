@@ -33,9 +33,11 @@ from tests.unit.core.schema_change.helpers import (
     RECORDER_FAIL_IF_RUNNING,
     RECORDER_START,
     BlockingSchemaUpdateExecutor,
+    FailGate,
     FailingApplicationRecorder,
     FailingCompleteApplicationRecorder,
     FailingSchemaUpdateExecutor,
+    GatedFailApplicationRecorder,
     RecordingApplicationRecorder,
     RecordingSchemaUpdateExecutor,
     SchemaApplicationCall,
@@ -281,6 +283,28 @@ async def test_run_records_the_failure_and_raises_the_cancellation_when_the_load
 
     with pytest.raises(asyncio.CancelledError):
         await load
+    assert calls == [_start_call(run_input), _execute_call(run_input), _cancelled_fail_call(run_input)]
+
+
+async def test_run_finishes_recording_the_failure_when_the_load_is_cancelled_again_during_the_write() -> None:
+    calls: list[SchemaApplicationCall] = []
+    executor = BlockingSchemaUpdateExecutor(calls=calls)
+    gate = FailGate()
+    runner = SchemaChangeApplicationRunner(
+        recorder=GatedFailApplicationRecorder(calls=calls, gate=gate), executor=executor
+    )
+    run_input = _build_run_input()
+    load = asyncio.create_task(_run(runner=runner, run_input=run_input))
+    await executor.started.wait()
+    load.cancel()
+    await gate.started.wait()
+
+    load.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await load
+    gate.opened.set()
+    await gate.finished.wait()
+
     assert calls == [_start_call(run_input), _execute_call(run_input), _cancelled_fail_call(run_input)]
 
 
