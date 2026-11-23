@@ -187,6 +187,15 @@ export const GenericRelationshipField = ({
     setSelectedParent(defaultParent);
   }
 
+  // The single-node input builds this filter from its parent prop; the multi-node input takes it ready-made.
+  const manualParentFilterQuery =
+    parentRelationship && selectedParent?.id
+      ? { [`${parentRelationship.name}__ids`]: [selectedParent.id] }
+      : undefined;
+  const manyPeerFilterQuery = commonParent.isActive
+    ? commonParent.filterQuery
+    : manualParentFilterQuery;
+
   const form = useFormContext();
 
   // A user switching the kind invalidates any node picked under the previous kind, along with
@@ -216,49 +225,9 @@ export const GenericRelationshipField = ({
             field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
           };
 
-          const renderObjectInput = (peer: string) => {
-            if (isMany) {
-              const manualParentFilterQuery =
-                parentRelationship && selectedParent?.id
-                  ? { [`${parentRelationship.name}__ids`]: [selectedParent.id] }
-                  : undefined;
-
-              return (
-                <RelationshipManyInput
-                  {...field}
-                  peer={peer}
-                  value={toRelationshipManyInputValue(fieldData)}
-                  onChange={(nodes) => {
-                    field.onChange(
-                      updateRelationshipFieldValue(nodes.length > 0 ? nodes : null, defaultValue)
-                    );
-                  }}
-                  filterQuery={
-                    commonParent.isActive ? commonParent.filterQuery : manualParentFilterQuery
-                  }
-                  enforceFilterQueryOnIdSearch={commonParent.isActive}
-                  addNewInitialObject={commonParent.addNewInitialObject}
-                  disabled={props.disabled}
-                />
-              );
-            }
-
-            return (
-              <RelationshipInput
-                {...field}
-                {...props}
-                options={undefined}
-                value={toRelationshipInputValue(fieldData)}
-                onChange={onChange}
-                peer={peer}
-                parent={
-                  commonParent.isActive
-                    ? commonParent.parent
-                    : { name: parentRelationship?.name, value: selectedParent?.id }
-                }
-                addNewInitialObject={commonParent.addNewInitialObject}
-                disabled={props.disabled}
-              />
+          const onNodesChange = (nodes: Array<NodeCore>) => {
+            field.onChange(
+              updateRelationshipFieldValue(nodes.length > 0 ? nodes : null, defaultValue)
             );
           };
 
@@ -291,7 +260,36 @@ export const GenericRelationshipField = ({
                   variant="small"
                 />
                 <Col className="gap-2">
-                  <FormInput>{renderObjectInput(selectedGeneric.id)}</FormInput>
+                  <FormInput>
+                    {isMany ? (
+                      <RelationshipManyInput
+                        {...field}
+                        peer={selectedGeneric.id}
+                        value={toRelationshipManyInputValue(fieldData)}
+                        onChange={onNodesChange}
+                        filterQuery={manyPeerFilterQuery}
+                        enforceFilterQueryOnIdSearch={commonParent.isActive}
+                        addNewInitialObject={commonParent.addNewInitialObject}
+                        disabled={props.disabled}
+                      />
+                    ) : (
+                      <RelationshipInput
+                        {...field}
+                        {...props}
+                        options={undefined}
+                        value={toRelationshipInputValue(fieldData)}
+                        onChange={onChange}
+                        peer={selectedGeneric.id}
+                        parent={
+                          commonParent.isActive
+                            ? commonParent.parent
+                            : { name: parentRelationship?.name, value: selectedParent?.id }
+                        }
+                        addNewInitialObject={commonParent.addNewInitialObject}
+                        disabled={props.disabled}
+                      />
+                    )}
+                  </FormInput>
 
                   <FormMessage />
                 </Col>

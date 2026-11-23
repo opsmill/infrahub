@@ -2,13 +2,11 @@ import { Button, Sheet, Tooltip } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 
-import { queryClient } from "@/shared/api/rest/client";
 import { Icon } from "@/shared/components/display/icon";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { AddRelationshipForm } from "@/entities/nodes/object/ui/object-details/action-buttons/add-relationship-form";
-import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { genericSchemasAtom } from "@/entities/schema/stores/schema.atom";
@@ -41,11 +39,6 @@ export function RelationshipsButtons({
     return null;
   }
 
-  const closeAfterSuccess = async () => {
-    await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
-    setShowAddDrawer(false);
-  };
-
   const closeDrawer = () => {
     setShowAddDrawer(false);
   };
@@ -77,7 +70,7 @@ export function RelationshipsButtons({
           objectData={objectDetailsData}
           objectSchema={objectSchema}
           relationshipSchema={relationshipSchema}
-          onSuccess={closeAfterSuccess}
+          onSuccess={closeDrawer}
           onCancel={closeDrawer}
         />
       </Sheet>

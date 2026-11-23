@@ -87,7 +87,7 @@ describe("AddRelationshipForm", () => {
     cardinality: "many",
   });
 
-  const onSuccess = vi.fn(async () => {});
+  const onSuccess = vi.fn();
   const onCancel = vi.fn();
 
   beforeEach(() => {

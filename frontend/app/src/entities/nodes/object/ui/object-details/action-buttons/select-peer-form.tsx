@@ -1,4 +1,3 @@
-import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
 import DynamicForm from "@/shared/components/form/dynamic-form";
@@ -7,14 +6,12 @@ import type {
   FormFieldPool,
   FormFieldValue,
 } from "@/shared/components/form/type";
-import type { SelectOption } from "@/shared/components/inputs/select-old";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import type { AddRelationshipsParams } from "@/entities/nodes/relationships/domain/use-cases/add-relationships";
 import { useAddRelationships } from "@/entities/nodes/relationships/ui/queries/add-relationships.mutation";
 import { getPoolKindFromSchema } from "@/entities/resource-manager/domain/rules/get-pool-kind-from-schema";
 import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
-import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 type RelationshipId = AddRelationshipsParams["relationshipIds"][number];
@@ -24,7 +21,7 @@ const RELATION_FIELD_NAME = "relation";
 interface SelectPeerFormProps {
   objectId: string;
   relationshipSchema: RelationshipSchema;
-  onSuccess: () => Promise<void>;
+  onSuccess: () => void;
   onCancel: () => void;
 }
 
@@ -35,23 +32,9 @@ export function SelectPeerForm({
   onCancel,
 }: SelectPeerFormProps) {
   const { mutateAsync: addRelationship } = useAddRelationships();
-  const generics = useAtomValue(genericSchemasAtom);
-  const schemaList = useAtomValue(nodeSchemasAtom);
   const peerSchema = useSchema(relationshipSchema.peer);
 
-  const generic = generics.find((g) => g.kind === relationshipSchema.kind);
   const poolKind = peerSchema.schema ? getPoolKindFromSchema(peerSchema.schema) : null;
-
-  const kindOptions: Array<SelectOption> = generic
-    ? (generic.used_by ?? []).flatMap((kind) => {
-        const usedBySchema = schemaList.find((s) => s.kind === kind);
-        return usedBySchema?.kind ? [{ id: usedBySchema.kind, name: usedBySchema.name }] : [];
-      })
-    : schemaList.flatMap((s) =>
-        s.kind && s.kind === relationshipSchema.peer
-          ? [{ id: s.kind, name: s.label ?? s.name }]
-          : []
-      );
 
   const pool: FormFieldPool | undefined =
     poolKind && peerSchema.schema?.kind
@@ -63,7 +46,6 @@ export function SelectPeerForm({
     label: relationshipSchema.label ?? relationshipSchema.kind ?? "relationship",
     type: "relationship",
     relationship: { ...relationshipSchema, cardinality: "one", inherited: true },
-    options: kindOptions,
     pool,
   };
 
@@ -84,7 +66,7 @@ export function SelectPeerForm({
       />
     );
 
-    await onSuccess();
+    onSuccess();
   };
 
   return (

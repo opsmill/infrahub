@@ -13,7 +13,7 @@ interface AddRelationshipFormProps {
   objectData: NodeObject;
   objectSchema: ModelSchema;
   relationshipSchema: RelationshipSchema;
-  onSuccess: () => Promise<void>;
+  onSuccess: () => void;
   onCancel: () => void;
 }
 
