@@ -6,12 +6,9 @@ import pytest
 from neo4j.exceptions import ClientError, TransientError
 from typing_extensions import Self
 
-import infrahub.core.migrations  # noqa: F401  imports every schema migration module, so every query class is defined
 from infrahub import config
 from infrahub.core.constants import SchemaPathType
-from infrahub.core.migrations.query import AttributeMigrationQuery, MigrationQuery
-from infrahub.core.migrations.query.selection import MigrationSelectionQuery
-from infrahub.core.migrations.schema.node_relationship_remove import RelationshipMigrationQuery
+from infrahub.core.migrations.query import MigrationQuery
 from infrahub.core.migrations.shared import GraphMigration, MigrationInput, SchemaMigration
 from infrahub.core.path import SchemaPath
 from infrahub.core.query import Query, QueryType
@@ -42,7 +39,7 @@ def _fast_retry() -> Generator[None, None, None]:
     config.SETTINGS.database.retry_jitter_max = original_jitter_max
 
 
-class DeadlockOnceMigrationQuery(MigrationQuery, MigrationSelectionQuery):
+class DeadlockOnceMigrationQuery(MigrationQuery):
     name = "test_deadlock_once_migration"
     type: QueryType = QueryType.WRITE
     insert_return = False
@@ -62,7 +59,7 @@ class DeadlockOnceMigrationQuery(MigrationQuery, MigrationSelectionQuery):
         return 1
 
 
-class AlwaysDeadlockMigrationQuery(MigrationQuery, MigrationSelectionQuery):
+class AlwaysDeadlockMigrationQuery(MigrationQuery):
     name = "test_always_deadlock_migration"
     type: QueryType = QueryType.WRITE
     insert_return = False
@@ -83,7 +80,7 @@ def _entity_not_found_error() -> ClientError:
     return error
 
 
-class EntityNotFoundOnceMigrationQuery(MigrationQuery, MigrationSelectionQuery):
+class EntityNotFoundOnceMigrationQuery(MigrationQuery):
     name = "test_entity_not_found_once_migration"
     type: QueryType = QueryType.WRITE
     insert_return = False
@@ -212,36 +209,3 @@ class TestMigrationTransientErrorRetry:
         assert not result.success
         assert result.errors == ["deadlock detected"]
         assert AlwaysDeadlockGraphQuery.calls == 1
-
-
-def _all_subclasses(cls: type) -> set[type]:
-    subclasses: set[type] = set()
-    for subclass in cls.__subclasses__():
-        subclasses.add(subclass)
-        subclasses |= _all_subclasses(subclass)
-    return subclasses
-
-
-def test_every_migration_bound_query_is_a_selection_query() -> None:
-    query_classes = (
-        _all_subclasses(MigrationQuery)
-        | _all_subclasses(AttributeMigrationQuery)
-        | _all_subclasses(RelationshipMigrationQuery)
-    )
-
-    assert sorted(cls.__name__ for cls in query_classes if cls.__module__.startswith("infrahub.")) == [
-        "AttributeKindUpdateMigrationQuery",
-        "AttributeNameUpdateMigrationQuery01",
-        "NodeAttributeAddMigrationQuery01",
-        "NodeAttributeRemoveMigrationQuery01",
-        "NodeKindUpdateMigrationQuery01",
-        "NodeRelationshipRemoveMigrationQuery",
-        "NodeRemoveMigrationBaseQuery",
-        "NodeRemoveMigrationQueryIn",
-        "NodeRemoveMigrationQueryOut",
-        "ProfilesAttributeAddMigrationQuery",
-        "ProfilesAttributeRemoveMigrationQuery",
-        "TemplatesAttributeAddMigrationQuery",
-        "TemplatesAttributeRemoveMigrationQuery",
-    ]
-    assert {cls for cls in query_classes if not issubclass(cls, MigrationSelectionQuery)} == set()

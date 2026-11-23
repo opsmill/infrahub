@@ -12,7 +12,6 @@ from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.database import retry_db_transaction
 
 from ..query import MigrationBaseQuery
-from ..query.selection import MigrationSelectionQuery
 from ..shared import MigrationResult, RelationshipSchemaMigration
 
 if TYPE_CHECKING:
@@ -39,7 +38,7 @@ class RelationshipMigrationQuery(MigrationBaseQuery):
         super().__init__(**kwargs)
 
 
-class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery, MigrationSelectionQuery):
+class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery):
     """Close the graph data for a relationship, given a precomputed set of parameters.
 
     For every node of the given kinds, every ``Relationship`` vertex carrying one of the given

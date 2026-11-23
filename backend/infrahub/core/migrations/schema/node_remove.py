@@ -6,14 +6,13 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipStatus
 
 from ..query import MigrationQuery
-from ..query.selection import MigrationSelectionQuery
 from ..shared import SchemaMigration
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class NodeRemoveMigrationBaseQuery(MigrationQuery, MigrationSelectionQuery):
+class NodeRemoveMigrationBaseQuery(MigrationQuery):
     """Shared parameter setup for node-remove migrations."""
 
     def _branch_from_existing(self, existing: str) -> str:

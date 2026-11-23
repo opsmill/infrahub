@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any
 from infrahub.types import is_large_attribute_type
 
 from ..query import AttributeMigrationQuery, MigrationBaseQuery
-from ..query.selection import MigrationSelectionQuery
 from ..shared import AttributeSchemaMigration, MigrationInput, MigrationResult
 
 if TYPE_CHECKING:
@@ -139,7 +138,7 @@ CALL (attr, n) {
 """
 
 
-class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery, MigrationSelectionQuery):
+class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
     name = "migration_attribute_kind"
     insert_return = False
     selected_node = "n"
