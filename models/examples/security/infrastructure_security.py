@@ -1,6 +1,6 @@
 import logging
 import random
-from ipaddress import IPv4Interface, IPv4Network
+from ipaddress import IPv4Address, IPv4Interface, IPv4Network
 
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.batch import InfrahubBatch
@@ -143,8 +143,8 @@ def prepare_log(node: InfrahubNode, log: logging.Logger) -> None:
 async def create_infra_ip(
     client: InfrahubClient,
     branch: str,
-    name: str,
-    address: str,
+    name: str | IPv4Address,
+    address: str | IPv4Address,
     statuses: list[str],
     source: str,
     batch: InfrahubBatch,
