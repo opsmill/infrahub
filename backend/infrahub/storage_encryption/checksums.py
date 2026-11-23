@@ -19,4 +19,4 @@ def matches_recorded_checksum(content: bytes, checksums: Collection[str]) -> boo
         hashlib.new(CHECKSUM_ALGORITHMS[length], content, usedforsecurity=False).hexdigest()
         for length in {len(checksum) for checksum in comparable}
     }
-    return not comparable.isdisjoint(digests)
+    return bool(comparable & digests)
