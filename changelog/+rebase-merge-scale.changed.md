@@ -1,1 +1,1 @@
-Rebasing a branch, updating its diff, and merging a branch or a proposed change are faster on large databases. The first start of Infrahub after the upgrade creates a new database index in the background.
+Rebasing a branch, updating its diff, and merging a branch or a proposed change are faster on large databases.
