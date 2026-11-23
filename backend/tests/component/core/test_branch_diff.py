@@ -899,7 +899,7 @@ async def test_diff_relationship_one_conflict(
     assert len(rels["main"]["person_previous__car"].keys()) == 1
     assert len(rels["branch2"]["person_previous__car"].keys()) == 2
 
-    rel_id_main = list(rels["main"]["person_previous__car"].keys())[0]
+    rel_id_main = next(iter(rels["main"]["person_previous__car"].keys()))
     rels_branch = [value.model_dump() for value in rels["branch2"]["person_previous__car"].values()]
 
     # ---------------------------------------------------
@@ -1055,8 +1055,8 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
     assert len(rels["main"]["builtintag__coreorganization"].keys()) == 1
     assert len(rels["branch1"]["builtintag__coreorganization"].keys()) == 1
 
-    rel_id_main = list(rels["main"]["builtintag__coreorganization"].keys())[0]
-    rel_id_branch = list(rels["branch1"]["builtintag__coreorganization"].keys())[0]
+    rel_id_main = next(iter(rels["main"]["builtintag__coreorganization"].keys()))
+    rel_id_branch = next(iter(rels["branch1"]["builtintag__coreorganization"].keys()))
 
     org1 = base_dataset_04["org1"]
     red = base_dataset_04["red"]

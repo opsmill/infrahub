@@ -357,7 +357,7 @@ async def test_query_RelationshipDeleteQuery(
     )
     assert len(paths) == 1
 
-    rel_node = [node for node in paths[0][0]._nodes if "Relationship" in node.labels][0]
+    rel_node = next(node for node in paths[0][0]._nodes if "Relationship" in node.labels)
 
     rel_data = RelationshipPeerData(
         source_id=person_jack_tags_main.id,
@@ -569,7 +569,7 @@ async def test_query_RelationshipDeleteQuery_updates_node_metadata(
 
     jack_main = await NodeManager.get_one(db=db, id=person_jack_tags_main.id)
     tags_rels = await jack_main.tags.get(db=db)
-    blue_tag_rel = [t for t in tags_rels if t.peer_id == tag_blue_main.id][0]
+    blue_tag_rel = next(t for t in tags_rels if t.peer_id == tag_blue_main.id)
 
     delete_time = Timestamp()
     query = await RelationshipDeleteQuery.init(
@@ -670,7 +670,7 @@ async def test_query_RelationshipUpdatePropertyQuery_updates_node_metadata(
 
     jack_main = await NodeManager.get_one(db=db, id=person_jack_tags_main.id)
     tags_rels = await jack_main.tags.get(db=db)
-    blue_tag_rel = [t for t in tags_rels if t.peer_id == tag_blue_main.id][0]
+    blue_tag_rel = next(t for t in tags_rels if t.peer_id == tag_blue_main.id)
 
     update_time = Timestamp()
     query = await RelationshipUpdatePropertyQuery.init(
