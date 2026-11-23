@@ -32,7 +32,7 @@ describe("AddGroupMembersForm", () => {
   const deviceSchema = generateNodeSchema({ kind: "TestDevice", name: "Device", label: "Device" });
   const tagSchema = generateNodeSchema({ kind: "TestTag", name: "Tag", label: "Tag" });
 
-  const membersRelationship = generateRelationshipSchema({
+  const membersRelationshipSchema = generateRelationshipSchema({
     name: "members",
     label: "Members",
     peer: "CoreNode",
@@ -60,7 +60,7 @@ describe("AddGroupMembersForm", () => {
     const component = await render(
       <AddGroupMembersForm
         groupId="group-1"
-        membersRelationship={membersRelationship}
+        membersRelationshipSchema={membersRelationshipSchema}
         onSuccess={onSuccess}
         onCancel={() => {}}
       />
@@ -90,7 +90,7 @@ describe("AddGroupMembersForm", () => {
       <Sheet isOpen onOpenChange={onOpenChange}>
         <AddGroupMembersForm
           groupId="group-1"
-          membersRelationship={membersRelationship}
+          membersRelationshipSchema={membersRelationshipSchema}
           onSuccess={() => {}}
           onCancel={() => {}}
         />
@@ -115,7 +115,7 @@ describe("AddGroupMembersForm", () => {
     const component = await render(
       <AddGroupMembersForm
         groupId="group-1"
-        membersRelationship={membersRelationship}
+        membersRelationshipSchema={membersRelationshipSchema}
         onSuccess={() => {}}
         onCancel={() => {}}
       />

@@ -124,7 +124,7 @@ describe("RelationshipsButtons", () => {
   });
 
   test("opens the multi-select members form on a group's members relationship", async () => {
-    // GIVEN a group node that inherits the members relationship from CoreGroup.
+    // GIVEN
     const groupSchema = generateNodeSchema({
       kind: "TestStandardGroup",
       name: "StandardGroup",
@@ -152,10 +152,10 @@ describe("RelationshipsButtons", () => {
       />
     );
 
-    // WHEN opening the add drawer
+    // WHEN
     await component.getByTestId("open-relationship-form-button").click();
 
-    // THEN the members form is shown instead of the single-peer associate form.
+    // THEN
     await expect.element(component.getByTestId("add-group-members-form")).toBeVisible();
     await expect.poll(() => component.getByTestId("associate-form").query()).toBeNull();
   });

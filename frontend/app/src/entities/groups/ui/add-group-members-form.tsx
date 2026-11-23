@@ -15,7 +15,7 @@ import type { RelationshipSchema } from "@/entities/schema/domain/model/schema";
 
 interface AddGroupMembersFormProps {
   groupId: string;
-  membersRelationship: RelationshipSchema;
+  membersRelationshipSchema: RelationshipSchema;
   onSuccess: () => void;
   onCancel: () => void;
 }
@@ -26,7 +26,7 @@ type AddGroupMembersFormValues = {
 
 export function AddGroupMembersForm({
   groupId,
-  membersRelationship,
+  membersRelationshipSchema,
   onSuccess,
   onCancel,
 }: AddGroupMembersFormProps) {
@@ -57,8 +57,8 @@ export function AddGroupMembersForm({
       <GenericRelationshipField
         type="relationship"
         name={GROUP_MEMBERS_RELATIONSHIP}
-        label={membersRelationship.label ?? "Members"}
-        relationship={membersRelationship}
+        label={membersRelationshipSchema.label ?? "Members"}
+        relationship={membersRelationshipSchema}
         rules={{ validate: isRequired }}
       />
 
