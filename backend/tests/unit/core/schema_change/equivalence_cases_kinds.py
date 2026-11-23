@@ -93,19 +93,6 @@ def _change_kind_namespace(scope: CaseScope, schema: SchemaBranch) -> SchemaRoot
     return SchemaRoot(nodes=[tag])
 
 
-def _rename_kind_and_add_a_kind_under_its_name(scope: CaseScope, schema: SchemaBranch) -> SchemaRoot:
-    tag = scope.node(TestKind.TAG)
-    tag.id = scope.element_id(schema, TestKind.TAG)
-    tag.name = "Label"
-    new_tag = NodeSchema(
-        name="Tag",
-        namespace=scope.namespace,
-        label="Tag",
-        attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
-    )
-    return SchemaRoot(nodes=[tag, new_tag])
-
-
 def _rename_kind_and_namespace_past_an_existing_kind(scope: CaseScope, schema: SchemaBranch) -> SchemaRoot:
     """Give the tag the name of the case's SFP kind and move it to another namespace, which ends on a free kind."""
     tag = scope.node(TestKind.TAG)
@@ -181,12 +168,6 @@ KIND_EQUIVALENCE_CASES: list[CombinedLoadCase] = [
         namespace="Namespacemove",
         base_kinds=TAG_KINDS,
         schema_file=_change_kind_namespace,
-    ),
-    CombinedLoadCase(
-        name="rename_kind_and_add_a_kind_under_its_name",
-        namespace="Reusedkind",
-        base_kinds=TAG_KINDS,
-        schema_file=_rename_kind_and_add_a_kind_under_its_name,
     ),
     CombinedLoadCase(
         name="rename_kind_and_namespace_past_an_existing_kind",

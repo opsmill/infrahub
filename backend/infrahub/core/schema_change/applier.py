@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, assert_never
 
 from pydantic import BaseModel, TypeAdapter
@@ -10,6 +9,7 @@ from infrahub.core.schema import GenericSchema, NodeSchema, RelationshipSchema
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
 from infrahub.core.schema_change.constants import SCHEMA_ELEMENT_NAME_PROPERTY
 from infrahub.core.schema_change.enums import SchemaOperationNodeType, SchemaOperationSection, SchemaOperationType
+from infrahub.core.schema_change.field_name_changes import FieldNameChanges
 from infrahub.core.schema_change.operations import read_kind_name
 from infrahub.core.schema_change.schema_elements import find_element, split_property_path
 from infrahub.exceptions import SchemaOperationTargetExistsError, SchemaOperationTargetNotFoundError
@@ -24,41 +24,6 @@ if TYPE_CHECKING:
     from infrahub.core.schema_change.operations import SchemaOperation
 
 ATTRIBUTE_KIND_KEY = "kind"
-
-
-@dataclass
-class _FieldNameChanges:
-    """The attribute and relationship names that the operations removed or renamed on one kind, by name before the change."""
-
-    removed: set[str] = field(default_factory=set)
-    renamed: dict[str, str] = field(default_factory=dict)
-    rename_positions: dict[str, int] = field(default_factory=dict)
-    """The position of the operation that renamed each element, by the ID of the element."""
-
-    original_names: dict[str, str] = field(default_factory=dict)
-    """The name of each renamed element before the operations, by the ID of the element."""
-
-    def rename(self, element: AttributeSchema | RelationshipSchema, old_name: str, position: int) -> None:
-        if element.id is None:
-            original_name = self._original_name(name=old_name)
-        else:
-            original_name = self.original_names.setdefault(element.id, old_name)
-            self.rename_positions[element.id] = position
-        self.renamed[original_name] = element.name
-
-    def was_renamed(self, element: AttributeSchema | RelationshipSchema) -> bool:
-        return element.id is not None and element.id in self.rename_positions
-
-    def remove(self, name: str) -> None:
-        original_name = self._original_name(name=name)
-        self.renamed.pop(original_name, None)
-        self.removed.add(original_name)
-
-    def _original_name(self, name: str) -> str:
-        for original_name, new_name in self.renamed.items():
-            if new_name == name:
-                return original_name
-        return name
 
 
 class SchemaChangeApplier:
@@ -82,7 +47,7 @@ class SchemaChangeApplier:
 
         """
         schema = target_schema.duplicate()
-        field_name_changes: dict[str, _FieldNameChanges] = {}
+        field_name_changes: dict[str, FieldNameChanges] = {}
         for position, operation in enumerate(operations):
             self._apply_operation(
                 schema=schema, position=position, operation=operation, field_name_changes=field_name_changes
@@ -93,7 +58,7 @@ class SchemaChangeApplier:
                 continue
             node = schema.get(name=kind)
             self._refuse_a_rename_onto_a_kept_name(node=node, changes=changes)
-            node.apply_schema_path_updates(deleted_field_names=changes.removed, renamed_field_name_map=changes.renamed)
+            changes.rewrite_paths(node=node)
             schema.set(name=kind, schema=node)
 
         schema.process(default_branch_schema=default_branch_schema)
@@ -104,7 +69,7 @@ class SchemaChangeApplier:
         schema: SchemaBranch,
         position: int,
         operation: SchemaOperation,
-        field_name_changes: dict[str, _FieldNameChanges],
+        field_name_changes: dict[str, FieldNameChanges],
     ) -> None:
         match operation.operation_type:
             case SchemaOperationType.NODE_ADD:
@@ -120,9 +85,9 @@ class SchemaChangeApplier:
                 schema.set(name=operation.kind, schema=node)
             case SchemaOperationType.NODE_PROPERTY:
                 node = self._get_kind(schema=schema, position=position, operation=operation)
-                self._set_property(
-                    holder=node, property_name=self._property_name(operation=operation), value=operation.value
-                )
+                property_name = self._property_name(operation=operation)
+                self._set_property(holder=node, property_name=property_name, value=operation.value)
+                field_name_changes.setdefault(operation.kind, FieldNameChanges()).set_property(property_name)
                 schema.set(name=operation.kind, schema=node)
             case SchemaOperationType.NODE_RENAME:
                 self._rename_kind(
@@ -142,7 +107,7 @@ class SchemaChangeApplier:
                     node.attributes = [item for item in node.attributes if item is not element]
                 else:
                     node.relationships = [item for item in node.relationships if item is not element]
-                field_name_changes.setdefault(operation.kind, _FieldNameChanges()).remove(name=element.name)
+                field_name_changes.setdefault(operation.kind, FieldNameChanges()).remove(name=element.name)
                 schema.set(name=operation.kind, schema=node)
             case SchemaOperationType.ELEMENT_PROPERTY:
                 node = self._get_kind(schema=schema, position=position, operation=operation)
@@ -153,7 +118,7 @@ class SchemaChangeApplier:
                 name_before = element.name
                 self._set_property(holder=element, property_name=property_name, value=operation.value)
                 if property_name == SCHEMA_ELEMENT_NAME_PROPERTY and element.name != name_before:
-                    field_name_changes.setdefault(operation.kind, _FieldNameChanges()).rename(
+                    field_name_changes.setdefault(operation.kind, FieldNameChanges()).rename(
                         element=element, old_name=name_before, position=position
                     )
                 schema.set(name=operation.kind, schema=node)
@@ -165,7 +130,7 @@ class SchemaChangeApplier:
         schema: SchemaBranch,
         position: int,
         operation: SchemaOperation,
-        field_name_changes: dict[str, _FieldNameChanges],
+        field_name_changes: dict[str, FieldNameChanges],
     ) -> None:
         node = self._get_kind(schema=schema, position=position, operation=operation)
         kind_name = read_kind_name(operation.value)
@@ -225,7 +190,7 @@ class SchemaChangeApplier:
         node: NodeSchema | GenericSchema,
         position: int,
         operation: SchemaOperation,
-        changes: _FieldNameChanges | None,
+        changes: FieldNameChanges | None,
     ) -> AttributeSchema | RelationshipSchema:
         """Return the element that the operation names, preferring one that no earlier operation renamed.
 
@@ -254,7 +219,7 @@ class SchemaChangeApplier:
             )
         return element
 
-    def _refuse_a_rename_onto_a_kept_name(self, node: MainSchemaTypes, changes: _FieldNameChanges) -> None:
+    def _refuse_a_rename_onto_a_kept_name(self, node: MainSchemaTypes, changes: FieldNameChanges) -> None:
         for section in SchemaOperationSection:
             elements: Sequence[AttributeSchema | RelationshipSchema] = (
                 node.attributes if section == SchemaOperationSection.ATTRIBUTES else node.relationships

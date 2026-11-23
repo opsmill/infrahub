@@ -123,7 +123,159 @@ def _swap_relationship_names(scope: CaseScope, schema: SchemaBranch) -> SchemaRo
     return SchemaRoot(nodes=[device])
 
 
+PHYSICAL_INTERFACE_SFP_RELATIONSHIP = "sfp"
+PHYSICAL_INTERFACE_SPARE_SFP_RELATIONSHIP = "spare_sfp"
+PHYSICAL_INTERFACE_TYPE_ATTRIBUTE = "phys_type"
+SFP_SERIAL_NUMBER_PATH = "serial_number__value"
+PHYSICAL_INTERFACE_ORDER_BY = [
+    f"{PHYSICAL_INTERFACE_SFP_RELATIONSHIP}__{SFP_SERIAL_NUMBER_PATH}",
+    f"{PHYSICAL_INTERFACE_TYPE_ATTRIBUTE}__value",
+]
+
+
+def _spare_sfp_relationship(scope: CaseScope) -> RelationshipSchema:
+    return RelationshipSchema(
+        name=PHYSICAL_INTERFACE_SPARE_SFP_RELATIONSHIP,
+        peer=scope.kind(TestKind.SFP),
+        kind=RelationshipKind.GENERIC,
+        cardinality=RelationshipCardinality.ONE,
+        optional=True,
+        identifier=f"{scope.namespace.lower()}__physicalinterface__spare_sfp",
+    )
+
+
+def _base_with_spare_sfp_and_order(scope: CaseScope) -> SchemaRoot:
+    base = scope.schema_root(INTERFACE_KINDS)
+    physical_interface = next(node for node in base.nodes if node.kind == scope.kind(TestKind.PHYSICAL_INTERFACE))
+    physical_interface.relationships.append(_spare_sfp_relationship(scope))
+    physical_interface.order_by = list(PHYSICAL_INTERFACE_ORDER_BY)
+    return base
+
+
+def _physical_interface_with_spare_sfp(scope: CaseScope, schema: SchemaBranch) -> NodeSchema:
+    """Return the physical interface of a case whose base has the spare SFP and an order, with the IDs of its fields."""
+    physical_interface = scope.node(TestKind.PHYSICAL_INTERFACE)
+    physical_interface.relationships.append(_spare_sfp_relationship(scope))
+    for name in (PHYSICAL_INTERFACE_SFP_RELATIONSHIP, PHYSICAL_INTERFACE_SPARE_SFP_RELATIONSHIP):
+        physical_interface.get_relationship(name=name).id = scope.element_id(schema, TestKind.PHYSICAL_INTERFACE, name)
+    physical_interface.get_attribute(name=PHYSICAL_INTERFACE_TYPE_ATTRIBUTE).id = scope.element_id(
+        schema, TestKind.PHYSICAL_INTERFACE, PHYSICAL_INTERFACE_TYPE_ATTRIBUTE
+    )
+    return physical_interface
+
+
+def _swap_sfp_relationship_names(physical_interface: NodeSchema) -> None:
+    sfp = physical_interface.get_relationship(name=PHYSICAL_INTERFACE_SFP_RELATIONSHIP)
+    spare_sfp = physical_interface.get_relationship(name=PHYSICAL_INTERFACE_SPARE_SFP_RELATIONSHIP)
+    sfp.name, spare_sfp.name = PHYSICAL_INTERFACE_SPARE_SFP_RELATIONSHIP, PHYSICAL_INTERFACE_SFP_RELATIONSHIP
+
+
+def _chain_relationship_renames_with_the_order_in_the_new_names(scope: CaseScope, schema: SchemaBranch) -> SchemaRoot:
+    physical_interface = _physical_interface_with_spare_sfp(scope, schema)
+    physical_interface.get_relationship(name=PHYSICAL_INTERFACE_SPARE_SFP_RELATIONSHIP).name = "backup_sfp"
+    physical_interface.get_relationship(
+        name=PHYSICAL_INTERFACE_SFP_RELATIONSHIP
+    ).name = PHYSICAL_INTERFACE_SPARE_SFP_RELATIONSHIP
+    physical_interface.order_by = [
+        f"{PHYSICAL_INTERFACE_SPARE_SFP_RELATIONSHIP}__{SFP_SERIAL_NUMBER_PATH}",
+        f"{PHYSICAL_INTERFACE_TYPE_ATTRIBUTE}__value",
+    ]
+    return SchemaRoot(nodes=[physical_interface])
+
+
+def _swap_relationship_names_with_the_order_in_the_new_names(scope: CaseScope, schema: SchemaBranch) -> SchemaRoot:
+    physical_interface = _physical_interface_with_spare_sfp(scope, schema)
+    _swap_sfp_relationship_names(physical_interface)
+    physical_interface.order_by = [
+        f"{PHYSICAL_INTERFACE_SPARE_SFP_RELATIONSHIP}__{SFP_SERIAL_NUMBER_PATH}",
+        f"{PHYSICAL_INTERFACE_TYPE_ATTRIBUTE}__value",
+    ]
+    return SchemaRoot(nodes=[physical_interface])
+
+
+def _swap_relationship_names_with_the_order_unchanged(scope: CaseScope, schema: SchemaBranch) -> SchemaRoot:
+    """State the order as it was, so that after the swap it orders by the other relationship."""
+    physical_interface = _physical_interface_with_spare_sfp(scope, schema)
+    _swap_sfp_relationship_names(physical_interface)
+    physical_interface.order_by = list(PHYSICAL_INTERFACE_ORDER_BY)
+    return SchemaRoot(nodes=[physical_interface])
+
+
+def _swap_relationship_names_without_the_order(scope: CaseScope, schema: SchemaBranch) -> SchemaRoot:
+    physical_interface = _physical_interface_with_spare_sfp(scope, schema)
+    _swap_sfp_relationship_names(physical_interface)
+    return SchemaRoot(nodes=[physical_interface])
+
+
+def _rename_relationship_and_an_attribute_onto_its_name(scope: CaseScope, schema: SchemaBranch) -> SchemaRoot:
+    physical_interface = _physical_interface_with_spare_sfp(scope, schema)
+    physical_interface.get_relationship(name=PHYSICAL_INTERFACE_SPARE_SFP_RELATIONSHIP).name = "backup_sfp"
+    physical_interface.get_attribute(
+        name=PHYSICAL_INTERFACE_TYPE_ATTRIBUTE
+    ).name = PHYSICAL_INTERFACE_SPARE_SFP_RELATIONSHIP
+    physical_interface.order_by = [
+        f"{PHYSICAL_INTERFACE_SFP_RELATIONSHIP}__{SFP_SERIAL_NUMBER_PATH}",
+        f"{PHYSICAL_INTERFACE_SPARE_SFP_RELATIONSHIP}__value",
+    ]
+    return SchemaRoot(nodes=[physical_interface])
+
+
+def _rename_attribute_and_a_relationship_onto_its_name(scope: CaseScope, schema: SchemaBranch) -> SchemaRoot:
+    physical_interface = _physical_interface_with_spare_sfp(scope, schema)
+    physical_interface.get_attribute(name=PHYSICAL_INTERFACE_TYPE_ATTRIBUTE).name = "port_type"
+    physical_interface.get_relationship(
+        name=PHYSICAL_INTERFACE_SPARE_SFP_RELATIONSHIP
+    ).name = PHYSICAL_INTERFACE_TYPE_ATTRIBUTE
+    physical_interface.order_by = [
+        f"{PHYSICAL_INTERFACE_TYPE_ATTRIBUTE}__{SFP_SERIAL_NUMBER_PATH}",
+        "port_type__value",
+    ]
+    return SchemaRoot(nodes=[physical_interface])
+
+
 RELATIONSHIP_EQUIVALENCE_CASES: list[CombinedLoadCase] = [
+    CombinedLoadCase(
+        name="chain_relationship_renames_with_the_order_in_the_new_names",
+        namespace="Relchainorder",
+        base_kinds=INTERFACE_KINDS,
+        schema_file=_chain_relationship_renames_with_the_order_in_the_new_names,
+        base_file=_base_with_spare_sfp_and_order,
+    ),
+    CombinedLoadCase(
+        name="swap_relationship_names_with_the_order_in_the_new_names",
+        namespace="Relswaporder",
+        base_kinds=INTERFACE_KINDS,
+        schema_file=_swap_relationship_names_with_the_order_in_the_new_names,
+        base_file=_base_with_spare_sfp_and_order,
+    ),
+    CombinedLoadCase(
+        name="swap_relationship_names_with_the_order_unchanged",
+        namespace="Relsameorder",
+        base_kinds=INTERFACE_KINDS,
+        schema_file=_swap_relationship_names_with_the_order_unchanged,
+        base_file=_base_with_spare_sfp_and_order,
+    ),
+    CombinedLoadCase(
+        name="swap_relationship_names_without_the_order",
+        namespace="Relnoorder",
+        base_kinds=INTERFACE_KINDS,
+        schema_file=_swap_relationship_names_without_the_order,
+        base_file=_base_with_spare_sfp_and_order,
+    ),
+    CombinedLoadCase(
+        name="rename_relationship_and_an_attribute_onto_its_name",
+        namespace="Relattrreuse",
+        base_kinds=INTERFACE_KINDS,
+        schema_file=_rename_relationship_and_an_attribute_onto_its_name,
+        base_file=_base_with_spare_sfp_and_order,
+    ),
+    CombinedLoadCase(
+        name="rename_attribute_and_a_relationship_onto_its_name",
+        namespace="Attrrelreuse",
+        base_kinds=INTERFACE_KINDS,
+        schema_file=_rename_attribute_and_a_relationship_onto_its_name,
+        base_file=_base_with_spare_sfp_and_order,
+    ),
     CombinedLoadCase(
         name="rename_relationship_and_add_one_under_its_name",
         namespace="Relreuse",

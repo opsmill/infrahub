@@ -129,9 +129,11 @@ class SchemaCandidateBuilder:
 ```
 
 - `from_schema_root`: raises `SchemaNotFoundError` when the file gives a kind of the branch
-  schema an ID that the branch schema does not hold, before it builds any operation. It then
-  builds the operations, and raises `SchemaNameReusedError` (HTTP 422) when they free an attribute
-  name or a kind and give it to another owner (spec, FR-017) before it applies any. It then applies them to `branch_schema` with the applier, and compares the result
+  schema an ID that the branch schema does not hold, and `SchemaNameReusedError` (HTTP 422) when
+  the file renames a kind and states a kind without an ID under its old name, before it builds any
+  operation. It then builds the operations, and raises `SchemaNameReusedError` when they free an
+  attribute name, including one that a generic frees or takes for the kinds that inherit from it,
+  or a kind, and give it to another owner (spec, FR-017) before it applies any. It then applies them to `branch_schema` with the applier, and compares the result
   with `direct_load_schema` with the comparer. It raises `SchemaOperationsRebuildError` (HTTP 422)
   when the applier raises `SchemaOperationTargetNotFoundError`,
   `SchemaOperationTargetExistsError` or a `ValueError`, or when the comparer returns kinds; the
