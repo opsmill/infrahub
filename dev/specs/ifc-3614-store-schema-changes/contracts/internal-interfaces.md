@@ -73,7 +73,7 @@ class SchemaChangeApplier:
 - While a chain or a swap of renames runs, two elements of a kind can share a name. An operation
   then finds the element that no earlier operation renamed; renamed elements are tracked by ID.
 - Given the same target and the same operations, it returns a schema with the same hash each time.
-- The six operation types are a closed set. The applier selects the handling of an operation with
+- The seven operation types are a closed set. The applier selects the handling of an operation with
   an exhaustive `match` on `SchemaOperationType` that ends with `typing.assert_never`, so a type
   added with a later format version fails the type check until the applier handles it.
 

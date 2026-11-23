@@ -184,9 +184,9 @@ the branch schema and data are as they were before the load.
    **Then** they view each migration with its status and errors: a migration that finished
    before the failure is `rolled_back`, one that was running is `failed` with the error of the
    load, and one that never started is `cancelled`.
-3. **Given** that failed load, **When** the schema owner queries the history, **Then** the applied
-   schema changes are listed by version, and the failed schema change is listed by the time it was
-   created.
+3. **Given** that failed load, **When** the schema owner queries the history, **Then** the schema
+   changes are listed by the time they were created, the most recent first, so the failed schema
+   change is listed among the applied ones at the time it was created.
 4. **Given** a failed schema change on a branch, **When** the schema owner loads a corrected file
    that succeeds, **Then** the new schema change gets the next version, and its parent is the last
    applied schema change, not the failed one.
@@ -262,7 +262,7 @@ branch. Count the records of that branch and of main before and after.
 - **Two branches created from the same version of main** can each hold a schema change with the
   same version. A version is unique only within one branch.
 - **A version above 99999**: the name becomes longer than five digits. Pages are ordered by
-  version, not by name, so the order stays correct.
+  creation time, not by name, so the order stays correct.
 - **A branch created before this feature is deployed**, or main with no stored schema change:
   main's version is 0, so the branch's first schema change has the version 1.
 - **A write of the schema change or its application that fails**: the load fails. When the write

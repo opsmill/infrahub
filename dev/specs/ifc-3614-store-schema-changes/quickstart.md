@@ -53,8 +53,8 @@ What they must show:
   migration records in pages.
 - The highest version of a branch ignores the schema changes that are not applied, and the highest
   version at a time counts the schema changes applied at or before that time.
-- The history query returns applied schema changes by version and the others by creation time,
-  and the count of all pages, and pages the operations, the applications and the migrations. It
+- The history query returns the schema changes by creation time, the most recent first, and the
+  count of all pages, and pages the operations, the applications and the migrations. It
   refuses a limit or an offset out of range.
 - A dropdown or enum mutation stores one schema change with one operation. A refused mutation
   stores none.
