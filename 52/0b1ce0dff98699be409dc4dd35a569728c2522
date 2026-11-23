@@ -1,0 +1,21 @@
+frontend/app/src/shared/api/graphql/error-handling.test.ts
+  s_d39781b4d6a4c3::t_e358ee00573310 11,102,105,108,112-113,118,121,123,131,134-137,141,143-149,151-152,154-162,166-172,175,191-192,203-204
+frontend/app/src/shared/api/graphql/error-handling.ts
+  s_d39781b4d6a4c3::t_f3fa34cd997dd8 15-16,88-89,93-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "520b1ce0dff98699be409dc4dd35a569728c2522",
+  "prompts": {},
+  "sessions": {
+    "s_d39781b4d6a4c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87386907-69dd-4d37-9a17-8c0b6c8a25aa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
