@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
-from typing import TYPE_CHECKING
+import threading
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from infrahub import config
+from infrahub.api.storage.encryption_migration import encrypt_stored_object_route
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -15,13 +19,17 @@ from infrahub.core.protocols import CoreArtifact
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.exceptions import DatabaseError, QueryTimeoutError
+from infrahub.storage import InfrahubObjectStorage
 from infrahub.storage_encryption import artifact_values
+from infrahub.storage_encryption.codec import select_codec
 from infrahub.storage_encryption.crypto import StorageKey, seal
+from tests.adapters.cache import MemoryCache
 from tests.helpers.artifact import create_sibling_artifact, create_stored_artifact, stored_artifact_encryption
 from tests.helpers.schema.file_contract import FILE_CONTRACT
 
 if TYPE_CHECKING:
     from pathlib import Path
+    from types import TracebackType
 
     from fastapi.testclient import TestClient
 
@@ -334,3 +342,91 @@ async def test_artifact_that_exists_only_on_a_branch_gets_the_value_on_that_bran
     assert response.json()["outcome"] == "encrypted"
     assert reloaded is not None
     assert reloaded.encryption.value == "encrypted"
+
+
+class HeldStorage(InfrahubObjectStorage):
+    """A storage whose replacement of an object waits until the test lets it go on."""
+
+    def __init__(self, settings: config.StorageSettings, key: StorageKey) -> None:
+        super().__init__(settings=settings, codec=select_codec(encryption_enabled=True, key=key))
+        self.replacing = threading.Event()
+        self.go_on = threading.Event()
+
+    def replace(self, identifier: str, content: bytes) -> None:
+        self.replacing.set()
+        assert self.go_on.wait(timeout=30)
+        super().replace(identifier=identifier, content=content)
+
+
+class AllowAllPermissions:
+    def has_permission(self, permission: object) -> bool:
+        return True
+
+    def raise_for_permission(self, permission: object, message: str = "") -> None:
+        return None
+
+
+class RecordedSession:
+    """A session of the database that tells when it was closed."""
+
+    def __init__(self, session: InfrahubDatabase, closed: asyncio.Event) -> None:
+        self._session = session
+        self._closed = closed
+
+    async def __aenter__(self) -> InfrahubDatabase:
+        return await self._session.__aenter__()
+
+    async def __aexit__(
+        self, exc_type: type[BaseException] | None, exc: BaseException | None, traceback: TracebackType | None
+    ) -> None:
+        await self._session.__aexit__(exc_type, exc, traceback)
+        self._closed.set()
+
+
+class RecordingDatabase:
+    """The database of the application, opening sessions that tell when they were closed."""
+
+    def __init__(self, db: InfrahubDatabase) -> None:
+        self._db = db
+        self.closed = asyncio.Event()
+
+    def start_session(self) -> RecordedSession:
+        return RecordedSession(session=self._db.start_session(), closed=self.closed)
+
+
+async def test_artifact_value_is_stored_when_the_request_is_cancelled_while_the_object_is_written(
+    db: InfrahubDatabase,
+    local_storage_dir: Path,
+    artifacts: dict[str, Node],
+    authentication_base: Node,
+    encryption_enabled: StorageKey,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    write_plain_files(local_storage_dir, "a")
+    storage = HeldStorage(settings=config.SETTINGS.storage, key=encryption_enabled)
+    monkeypatch.setattr(registry, "_storage", storage)
+    application_db = RecordingDatabase(db=db)
+    request: Any = SimpleNamespace(
+        app=SimpleNamespace(state=SimpleNamespace(service=SimpleNamespace(cache=MemoryCache()), db=application_db))
+    )
+    permission_manager: Any = AllowAllPermissions()
+    account: Any = SimpleNamespace(account_id=authentication_base.id)
+    handler = asyncio.create_task(
+        encrypt_stored_object_route(
+            request=request,
+            identifier=STORAGE_IDS["a"],
+            allow_unverified=False,
+            permission_manager=permission_manager,
+            account=account,
+        )
+    )
+    await asyncio.to_thread(storage.replacing.wait, 30)
+
+    handler.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await handler
+    storage.go_on.set()
+    await asyncio.wait_for(application_db.closed.wait(), timeout=30)
+
+    assert (local_storage_dir / STORAGE_IDS["a"]).read_bytes()[:4] == ENVELOPE_MAGIC
+    assert await stored_values(db=db, artifacts=artifacts) == {"a": "encrypted", "b": "plaintext", "c": "plaintext"}

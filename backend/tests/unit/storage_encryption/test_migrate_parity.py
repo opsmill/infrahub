@@ -260,7 +260,6 @@ async def call_route(call: Call) -> Described:
     response = await encrypt_stored_object_route(
         identifier=call.identifier,
         allow_unverified=call.allow_unverified,
-        db=NO_DATABASE,
         permission_manager=ALLOW_ALL,
         request=CALLER_REQUEST,
         account=CALLER_ACCOUNT,
@@ -271,7 +270,6 @@ async def call_route(call: Call) -> Described:
 async def call_batch(call: Call) -> Described:
     response = await encrypt_stored_objects_route(
         request=EncryptBatchRequest(identifiers=[call.identifier], allow_unverified=call.allow_unverified),
-        db=NO_DATABASE,
         permission_manager=ALLOW_ALL,
         http_request=CALLER_REQUEST,
         account=CALLER_ACCOUNT,
@@ -287,7 +285,6 @@ async def call_batch_with_neighbours(call: Call) -> Described:
         request=EncryptBatchRequest(
             identifiers=[neighbours[0], call.identifier, neighbours[1]], allow_unverified=call.allow_unverified
         ),
-        db=NO_DATABASE,
         permission_manager=ALLOW_ALL,
         http_request=CALLER_REQUEST,
         account=CALLER_ACCOUNT,
@@ -756,7 +753,6 @@ async def test_batch_with_several_files_gives_each_the_outcome_of_the_shared_fun
             identifiers=list(identifiers.values()),
             allow_unverified=allow_unverified,
         ),
-        db=NO_DATABASE,
         permission_manager=ALLOW_ALL,
         http_request=CALLER_REQUEST,
         account=CALLER_ACCOUNT,

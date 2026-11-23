@@ -291,7 +291,6 @@ def use_storage(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> HoldRecordin
     return storage
 
 
-NO_DATABASE: Any = None
 ALLOW_ALL: Any = AllowAll()
 
 
@@ -299,7 +298,6 @@ async def call_single_route() -> list[EncryptOutcome]:
     response = await encrypt_stored_object_route(
         identifier=FILE_ONE,
         allow_unverified=False,
-        db=NO_DATABASE,
         permission_manager=ALLOW_ALL,
         request=CALLER_REQUEST,
         account=CALLER_ACCOUNT,
@@ -310,7 +308,6 @@ async def call_single_route() -> list[EncryptOutcome]:
 async def call_batch_route() -> list[EncryptOutcome]:
     response = await encrypt_stored_objects_route(
         request=EncryptBatchRequest(identifiers=[FILE_ONE]),
-        db=NO_DATABASE,
         permission_manager=ALLOW_ALL,
         http_request=CALLER_REQUEST,
         account=CALLER_ACCOUNT,

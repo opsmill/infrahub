@@ -9,10 +9,9 @@ from pydantic import BaseModel
 from starlette.status import HTTP_409_CONFLICT, HTTP_422_UNPROCESSABLE_CONTENT, HTTP_429_TOO_MANY_REQUESTS
 
 from infrahub import config
-from infrahub.api.dependencies import get_current_user, get_db, get_permission_manager
+from infrahub.api.dependencies import get_current_user, get_permission_manager
 from infrahub.core import registry
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
-from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import StorageEncryptionError
 from infrahub.permissions import PermissionManager  # noqa: TC001
 from infrahub.permissions.globals import SUPER_ADMIN_PERMISSION
@@ -135,7 +134,6 @@ async def list_stored_objects(
 
 async def _encrypt(
     request: Request,
-    db: InfrahubDatabase,
     permission_manager: PermissionManager,
     account: AccountSession,
     identifiers: list[str],
@@ -144,7 +142,8 @@ async def _encrypt(
 ) -> list[EncryptResult]:
     """Encrypt the objects, then store `encrypted` on the artifacts that point at them.
 
-    Both steps run in a task that outlives a cancelled request, so an object that was read is still written. A
+    Both steps run in a task that outlives a cancelled request, so an object that was read is still written. The
+    task opens its own database session, because the session of the request is closed when the request ends. A
     failure to store a value does not change the result of its object.
 
     Raises:
@@ -155,22 +154,23 @@ async def _encrypt(
     merge_write_blocker = MergeWriteBlocker(cache=request.app.state.service.cache)
 
     async def encrypt_and_store() -> list[EncryptResult]:
-        results = await encrypt_stored_objects(
-            db=db,
-            storage=registry.storage,
-            identifiers=identifiers,
-            max_size=config.SETTINGS.storage.encryption_migration_max_size * BYTES_PER_MEGABYTE,
-            budget=memory_budget(),
-            wait_seconds=wait_seconds,
-            allow_unverified=allow_unverified,
-        )
-        await store_encrypted_artifact_values(
-            db=db,
-            results=results,
-            permission_manager=permission_manager,
-            merge_write_blocker=merge_write_blocker,
-            user_id=account.account_id,
-        )
+        async with request.app.state.db.start_session() as db:
+            results = await encrypt_stored_objects(
+                db=db,
+                storage=registry.storage,
+                identifiers=identifiers,
+                max_size=config.SETTINGS.storage.encryption_migration_max_size * BYTES_PER_MEGABYTE,
+                budget=memory_budget(),
+                wait_seconds=wait_seconds,
+                allow_unverified=allow_unverified,
+            )
+            await store_encrypted_artifact_values(
+                db=db,
+                results=results,
+                permission_manager=permission_manager,
+                merge_write_blocker=merge_write_blocker,
+                user_id=account.account_id,
+            )
         return results
 
     task = asyncio.create_task(encrypt_and_store())
@@ -195,7 +195,6 @@ async def encrypt_stored_object_route(
     allow_unverified: bool = Query(
         default=False, description="Encrypt the object even when no node records a checksum for it"
     ),
-    db: InfrahubDatabase = Depends(get_db),
     permission_manager: PermissionManager = Depends(get_permission_manager),
     account: AccountSession = Depends(get_current_user),
 ) -> EncryptObjectResponse:
@@ -211,7 +210,6 @@ async def encrypt_stored_object_route(
 
     (result,) = await _encrypt(
         request=request,
-        db=db,
         permission_manager=permission_manager,
         account=account,
         identifiers=[identifier],
@@ -225,7 +223,6 @@ async def encrypt_stored_object_route(
 async def encrypt_stored_objects_route(
     http_request: Request,
     request: EncryptBatchRequest,
-    db: InfrahubDatabase = Depends(get_db),
     permission_manager: PermissionManager = Depends(get_permission_manager),
     account: AccountSession = Depends(get_current_user),
 ) -> EncryptBatchResponse:
@@ -251,7 +248,6 @@ async def encrypt_stored_objects_route(
 
     results = await _encrypt(
         request=http_request,
-        db=db,
         permission_manager=permission_manager,
         account=account,
         identifiers=request.identifiers,
