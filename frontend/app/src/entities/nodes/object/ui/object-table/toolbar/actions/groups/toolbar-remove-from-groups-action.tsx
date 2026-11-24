@@ -4,6 +4,7 @@ import { DialogTrigger } from "react-aria-components";
 import { queryClient } from "@/shared/api/rest/client";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { GROUP_MEMBERS_RELATIONSHIP } from "@/entities/groups/domain/model/group";
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { BulkMutateGroups } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/bulk-mutate-groups";
@@ -42,7 +43,7 @@ export function ToolbarRemoveFromGroupsAction({ selectedRows }: ToolbarRemoveFro
               mutationFn={async (group) => {
                 await removeRelationships({
                   objectId: group.id,
-                  relationshipName: "members",
+                  relationshipName: GROUP_MEMBERS_RELATIONSHIP,
                   relationshipIds: selectedRows.map((row) => row.id),
                   branchName: currentBranch.name,
                 });
