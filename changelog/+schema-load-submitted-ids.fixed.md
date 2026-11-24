@@ -1,0 +1,1 @@
+Fixed loading a schema file that carries IDs from another Infrahub instance; unknown IDs are now ignored with a warning. A load is refused when an ID belongs to another element, to another branch or to a deleted element, or is given to two elements. An element marked `state: absent` whose ID is on another branch or deleted is skipped, with its attributes and relationships.

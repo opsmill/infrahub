@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -51,6 +52,8 @@ from infrahub.core.schema import (
     TemplateSchema,
 )
 from infrahub.core.schema.constants import SchemaNamespace  # noqa: TC001
+from infrahub.core.schema.submitted_ids.repository import SchemaElementRepository
+from infrahub.core.schema.submitted_ids.resolver import SubmittedSchemaIdResolver
 from infrahub.core.schema.update_coordinator import SchemaUpdateCoordinator
 from infrahub.core.schema_change.factory import build_schema_candidate_builder, build_schema_change_application_runner
 from infrahub.core.timestamp import Timestamp
@@ -249,6 +252,45 @@ def build_candidate_from_schemas(
     return candidate
 
 
+@dataclass(frozen=True)
+class SubmittedSchemaCandidate:
+    candidate: SchemaCandidate
+    id_warnings: list[SchemaWarning]
+
+
+async def build_candidate_from_submitted_schemas(
+    *,
+    db: InfrahubDatabase,
+    candidate_builder: SchemaCandidateBuilder,
+    branch_schema: SchemaBranch,
+    default_branch_schema: SchemaBranch,
+    schemas: Sequence[SchemaRoot],
+) -> SubmittedSchemaCandidate:
+    """Resolve the IDs of the submitted schema files, then build their candidate schema over the branch schema.
+
+    Raises:
+        SchemaNotValidError: When a submitted ID refuses the load, or the candidate is not a valid update of the
+            branch schema.
+        SchemaNotFoundError: When a file gives a kind of the branch schema an ID that the branch schema does not hold.
+        SchemaOperationsRebuildError: When the operations built from the files cannot be applied, or when the schema
+            they build differs from the files laid over the branch schema.
+
+    """
+    resolution = await SubmittedSchemaIdResolver(lookup=SchemaElementRepository(db=db)).resolve(
+        branch_schema=branch_schema, schemas=schemas
+    )
+    if resolution.errors:
+        raise SchemaNotValidError(message=", ".join(resolution.errors))
+
+    candidate = build_candidate_from_schemas(
+        candidate_builder=candidate_builder,
+        branch_schema=branch_schema,
+        default_branch_schema=default_branch_schema,
+        schemas=resolution.schemas,
+    )
+    return SubmittedSchemaCandidate(candidate=candidate, id_warnings=resolution.warnings)
+
+
 @router.get("")
 async def get_schema(
     branch: Branch = Depends(get_branch_dep),
@@ -441,13 +483,16 @@ async def load_schema(
         default_branch_schema = registry.schema.get_schema_branch(name=registry.default_branch)
         original_hash = branch_schema.get_hash()
 
-        candidate = build_candidate_from_schemas(
+        submitted = await build_candidate_from_submitted_schemas(
+            db=db,
             candidate_builder=candidate_builder,
             branch_schema=branch_schema,
             default_branch_schema=default_branch_schema,
             schemas=candidate_schemas,
         )
+        candidate = submitted.candidate
         result = candidate.validation
+        warnings += submitted.id_warnings
 
         if not result.diff.all:
             return SchemaUpdate(hash=original_hash, previous_hash=original_hash, diff=result.diff, warnings=warnings)
@@ -503,6 +548,7 @@ async def load_schema(
 async def check_schema(
     request: Request,
     schemas: SchemasLoadAPI,
+    db: InfrahubDatabase = Depends(get_db),
     branch: Branch = Depends(get_branch_dep),
     context: InfrahubContext = Depends(get_context),
     _: AccountSession = Depends(get_current_user),
@@ -524,12 +570,15 @@ async def check_schema(
     if errors:
         raise SchemaNotValidError(message=", ".join(errors))
 
-    candidate = build_candidate_from_schemas(
+    submitted = await build_candidate_from_submitted_schemas(
+        db=db,
         candidate_builder=candidate_builder,
         branch_schema=registry.schema.get_schema_branch(name=branch.name),
         default_branch_schema=registry.schema.get_schema_branch(name=registry.default_branch),
         schemas=candidate_schemas,
     )
+    candidate = submitted.candidate
+    warnings += submitted.id_warnings
 
     # ----------------------------------------------------------
     # Validate if the new schema is valid with the content of the database
