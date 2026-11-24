@@ -9,8 +9,8 @@ from typing import Any
 
 MASKED_VALUE = "[MASKED]"
 
-# A URL with a scheme, followed by its query string; both end at a space, a quote or an angle bracket.
-_URL_WITH_QUERY = re.compile(r"(?P<base>\b[a-zA-Z][a-zA-Z0-9+.-]*://[^\s?'\"<>`]*)\?[^\s'\"<>`]*")
+# A URL with a scheme, followed by its query string or its fragment; both end at a space, a quote or an angle bracket.
+_URL_WITH_QUERY = re.compile(r"(?P<base>\b[a-zA-Z][a-zA-Z0-9+.-]*://[^\s?#'\"<>`]*)(?P<separator>[?#])[^\s'\"<>`]*")
 
 # A URL with a scheme, followed by a user and a password up to the last "@" before the host.
 _URL_WITH_USER_INFO = re.compile(r"(?P<scheme>\b[a-zA-Z][a-zA-Z0-9+.-]*://)[^\s/?#'\"<>`]*@")
@@ -44,12 +44,16 @@ def url_without_secrets(url: str) -> str:
 
 
 def replace_url_queries_in_text(text: str) -> str:
-    """Return `text` with the query string of every URL in it replaced, keeping the scheme, host, path and other text."""
-    return _URL_WITH_QUERY.sub(lambda match: f"{match.group('base')}?{MASKED_VALUE}", text)
+    """Return `text` with the query string and the fragment of every URL in it replaced.
+
+    The scheme, the host, the path and the other text stay readable. A fragment can hold a secret, such as an
+    `access_token` in an OAuth callback URL.
+    """
+    return _URL_WITH_QUERY.sub(lambda match: f"{match.group('base')}{match.group('separator')}{MASKED_VALUE}", text)
 
 
 def replace_url_secrets_in_text(text: str) -> str:
-    """Return `text` with the user and password removed, and the query string replaced, in every URL in it.
+    """Return `text` with the user and password removed, and the query string and fragment replaced, in every URL in it.
 
     The scheme, the host, the path and the other text stay readable.
     """

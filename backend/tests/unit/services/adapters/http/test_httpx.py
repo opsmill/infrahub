@@ -133,6 +133,14 @@ FAILED_REQUEST_CASES = [
         expected_log_level="warning",
         expected_log=f"Unhandled HTTP error for {URL} (cannot reach {URL}?[MASKED])",
     ),
+    FailedRequestCase(
+        name="other_error_that_repeats_a_url_with_user_and_password",
+        error=httpx.ConnectError("cannot reach https://hookuser:secret-value@other.example.test/hook"),
+        expected_error=HTTPServerError,
+        expected_message=f"Unknown http error when connecting to {URL}",
+        expected_log_level="warning",
+        expected_log=f"Unhandled HTTP error for {URL} (cannot reach https://other.example.test/hook)",
+    ),
 ]
 
 

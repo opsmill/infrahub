@@ -8,7 +8,7 @@ import httpx
 from infrahub import config
 from infrahub.exceptions import HTTPServerError, HTTPServerSSLError, HTTPServerTimeoutError
 from infrahub.log import get_logger
-from infrahub.masking import replace_url_queries_in_text, url_without_secrets
+from infrahub.masking import replace_url_secrets_in_text, url_without_secrets
 from infrahub.services.adapters.http import InfrahubHTTP
 
 if TYPE_CHECKING:
@@ -136,7 +136,7 @@ class HttpxAdapter(InfrahubHTTP):
                 if isinstance(exc, httpx.LocalProtocolError):
                     detail = type(exc).__name__
                 else:
-                    detail = replace_url_queries_in_text(str(exc))
+                    detail = replace_url_secrets_in_text(str(exc))
                 log.warning(f"Unhandled HTTP error for {safe_url} ({detail})")
                 raise HTTPServerError(message=f"Unknown http error when connecting to {safe_url}") from exc
 

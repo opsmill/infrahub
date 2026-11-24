@@ -151,6 +151,21 @@ FREE_TEXT_TEST_CASES: list[FreeTextTestCase] = [
         expected="Is the branch main? code=abc",
     ),
     FreeTextTestCase(
+        name="fragment_without_query_string",
+        text="redirect to 'https://app.example.com/cb#access_token=abc&state=xyz'",
+        expected="redirect to 'https://app.example.com/cb#[MASKED]'",
+    ),
+    FreeTextTestCase(
+        name="query_string_and_fragment",
+        text="GET https://idp.example.com/token?code=abc#frag failed",
+        expected="GET https://idp.example.com/token?[MASKED] failed",
+    ),
+    FreeTextTestCase(
+        name="text_with_masked_fragment_is_unchanged",
+        text="url 'https://app.example.com/cb#[MASKED]'",
+        expected="url 'https://app.example.com/cb#[MASKED]'",
+    ),
+    FreeTextTestCase(
         name="text_already_masked_is_unchanged",
         text="url 'https://idp.example.com/token?[MASKED]'",
         expected="url 'https://idp.example.com/token?[MASKED]'",
@@ -287,6 +302,11 @@ URL_SECRETS_IN_TEXT_TEST_CASES: list[UrlSecretsInTextTestCase] = [
         name="user_password_and_query_string",
         text="https://hookuser:secret-value@example.test/hook?token=abc",
         expected="https://example.test/hook?[MASKED]",
+    ),
+    UrlSecretsInTextTestCase(
+        name="user_password_and_fragment",
+        text="https://hookuser:secret-value@example.test/hook#access_token=abc",
+        expected="https://example.test/hook#[MASKED]",
     ),
     UrlSecretsInTextTestCase(
         name="password_with_an_at_sign",
