@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, type ButtonProps, Menu, MenuItem, MenuTrigger, Popover } from "@infrahub/ui";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Icon } from "@/shared/components/display/icon";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { QSP } from "@/shared/config/qsp";
 

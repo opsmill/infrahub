@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, Generator, Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from infrahub.database.load_signal import UNSTRESSED_RATIO
 from infrahub.log import get_logger
@@ -11,6 +11,8 @@ from infrahub.log import get_logger
 from .constants import RejectionReason
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Generator
+
     from infrahub.database.load_signal import LoadSignal
 
     from .codel import CoDelController

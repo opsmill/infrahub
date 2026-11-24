@@ -1,8 +1,12 @@
-"""The one predicate that decides whether a branch-agnostic field is still retained by any branch.
+"""The one predicate that decides whether a field with global edges is still retained by any branch.
 
 A branch-agnostic field keeps its value on edges carrying the global branch name, which every branch
 reads. Those edges may only be closed once **NO** branch can still reach a live owner over a live field
 edge. Cypher for this is consolidated here to ensure consistency.
+
+A branch-aware attribute a number pool tracks carries one global edge too: the pool's IS_RESERVED
+edge. The predicate reads each branch's own view of the owning and existence edges, so it answers the
+same question for that attribute, and the retirement queries hand it such attributes as candidates.
 
 Retention is decided per branch **and** per linked vertex: under that branch's view, the vertex's
 existence edge and its edge to the field must both resolve to `active`. Surviving edges are summed
@@ -13,13 +17,14 @@ A `:Relationship` needs two qualifying field edges rather than one, because a re
 peer is not a relationship. A `:Relationship` must also have two distinct active peers to be
 considered active.
 
-The winner lookups are OPTIONAL CALL subqueries and the peers are counted conditionally rather than
-filtered so that a field with no live edge on a branch reaches the end of the predicate carrying a
-count of zero -- a plain CALL or MATCH would drop its row instead.
+A candidate that no branch holds live still reaches the end of the predicate, carrying a live-peer
+count of zero, rather than being dropped along the way.
 
 Assumption: every branch forks from the default branch. A branch-of-branch feature would not extend
 this logic.
 """
+
+from infrahub.core.query.branch_windows import render_branch_windows_clause
 
 # Expects `agnostic_candidates` in scope -- a list of the candidate `:Attribute` / `:Relationship`
 # vertices -- together with `branch_windows`, the collected read window of every retaining branch,
@@ -110,25 +115,9 @@ WITH field
 # vertices, plus the `$global_branch_name` and `$at` parameters. Emits one row per candidate that no
 # branch retains, with `field` as the only variable in scope.
 UNRETAINED_AGNOSTIC_FIELD_PREDICATE = """
-MATCH (branch:Branch)
-WHERE branch.name <> $global_branch_name
-// ----------------------
-// Don't consider DELETING branches when determining reachability
-// ----------------------
-AND branch.status <> "DELETING"
-// ----------------------
-// The branches are read once for the whole run and carried as a list.
-// ----------------------
-WITH
-    agnostic_candidates,
-    collect({
-        name: branch.name,
-        origin_name: CASE WHEN branch.is_default THEN NULL ELSE branch.origin_branch END,
-        origin_at: CASE
-            WHEN branch.is_default THEN NULL
-            WHEN branch.branched_from < $at THEN branch.branched_from
-            ELSE $at
-        END
-    }) AS branch_windows
+%(branch_windows)s
 %(unretained_evaluation)s
-""" % {"unretained_evaluation": UNRETAINED_AGNOSTIC_FIELD_EVALUATION}
+""" % {
+    "branch_windows": render_branch_windows_clause(carry=["agnostic_candidates"], time_param="at"),
+    "unretained_evaluation": UNRETAINED_AGNOSTIC_FIELD_EVALUATION,
+}

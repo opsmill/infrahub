@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.ipam.size import get_prefix_space
+from infrahub.core.ipam.size import PREFIX_SPACE_ATTRIBUTES, get_prefix_space
 from infrahub.core.ipam.utilization import PrefixUtilizationGetter
 from infrahub.core.manager import NodeManager
 
@@ -36,12 +36,7 @@ class BuiltinIPPrefix(Node):
                     response[read_only_attr] = {"value": getattr(self.prefix, read_only_attr)}  # type: ignore[attr-defined,has-type]
 
             if "utilization" in fields:
-                if self.member_type.id is None or self.prefix.id is None:  # type: ignore[has-type]
-                    retrieved = await NodeManager.get_one(
-                        db=db, branch=self._branch, id=self.id, fields={"member_type": None, "prefix": None}
-                    )
-                    self.member_type = retrieved.member_type  # type: ignore[attr-defined,union-attr]
-                    self.prefix = retrieved.prefix  # type: ignore[attr-defined,union-attr]
+                await self._load_prefix_space_attributes(db=db)
                 utilization_getter = PrefixUtilizationGetter(db=db, ip_prefixes=[self], branch=self._branch)
                 utilization = await utilization_getter.get_use_percentage(ip_prefixes=[self])
                 response["utilization"] = {"value": int(utilization)}
@@ -49,12 +44,19 @@ class BuiltinIPPrefix(Node):
         return response
 
     async def get_resource_weight(self, db: InfrahubDatabase) -> int:
-        member_type = self.member_type.value  # type: ignore[has-type]
-        prefixlen = self.prefix.prefixlen  # type: ignore[has-type]
-        if member_type is None or prefixlen is None:
-            retrieved = await NodeManager.get_one(
-                db=db, branch=self._branch, id=self.id, fields={"member_type": None, "prefix": None}
-            )
-            self.member_type = retrieved.member_type  # type: ignore[attr-defined,union-attr]
-            self.prefix = retrieved.prefix  # type: ignore[attr-defined,union-attr]
+        await self._load_prefix_space_attributes(db=db)
         return get_prefix_space(self)
+
+    async def _load_prefix_space_attributes(self, db: InfrahubDatabase) -> None:
+        """Load the attributes that the usable address count depends on, when the query did not load them.
+
+        An attribute that was not loaded holds its schema default, which can differ from the stored value.
+        """
+        missing = [name for name in PREFIX_SPACE_ATTRIBUTES if self.get_attribute(name=name).id is None]
+        if not missing:
+            return
+        retrieved = await NodeManager.get_one(
+            db=db, branch=self._branch, at=self._at, id=self.id, fields=dict.fromkeys(missing), raise_on_error=True
+        )
+        for name in missing:
+            setattr(self, name, retrieved.get_attribute(name=name))

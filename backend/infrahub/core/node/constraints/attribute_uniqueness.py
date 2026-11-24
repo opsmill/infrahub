@@ -49,5 +49,7 @@ class NodeAttributeUniquenessConstraint(NodeConstraintInterface):
 
             if any(n for n in nodes if n.get_id() != node.id):
                 raise UniquenessViolationError(
-                    {unique_attr.name: f"An object already exist with this value: {unique_attr.name}: {attr.value}"}
+                    f"An object already exist with this value: {unique_attr.name}: {attr.value}",
+                    node_kind=node_schema.kind,
+                    fields=[unique_attr.name],
                 )

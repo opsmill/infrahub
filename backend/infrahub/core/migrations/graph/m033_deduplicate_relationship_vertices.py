@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence  # noqa: TC003  needed for pydantic
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.migrations.shared import GraphMigration, MigrationResult
 from infrahub.log import get_logger
@@ -25,7 +26,7 @@ class DeduplicateRelationshipVerticesQuery(Query):
     type = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 MATCH (root:Root)
 WITH root.default_branch AS default_branch_name
@@ -48,9 +49,11 @@ CALL (rel) {
 // ------------
 // for each IS_RELATED edge of the relationship, check the IS_PART_OF edges of the Node vertex
 // to determine if this side of the relationship is legal
+// EXISTS rather than OPTIONAL MATCH with ORDER BY and LIMIT, because Neo4j 2026.05 can return NULL
+// for the latter when it plans the IS_PART_OF read through a relationship index
 // ------------
-CALL (n, is_rel_e, rel_branched_from, default_branch_name) {
-    OPTIONAL MATCH (n)-[is_part_of_e:IS_PART_OF {status: "active"}]->(:Root)
+WITH rel, EXISTS {
+    MATCH (n)-[is_part_of_e:IS_PART_OF {status: "active"}]->(:Root)
     WHERE (
         // the Node's create time must precede the Relationship's create time
         is_part_of_e.from <= is_rel_e.from AND (is_part_of_e.to >= is_rel_e.from OR is_part_of_e.to IS NULL)
@@ -69,15 +72,9 @@ CALL (n, is_rel_e, rel_branched_from, default_branch_name) {
             OR is_part_of_e.from <= rel_branched_from
         )
     )
-    WITH is_part_of_e IS NOT NULL AS is_legal
-    ORDER BY is_legal DESC
-    RETURN is_legal
-    LIMIT 1
-}
-WITH rel, is_legal
-ORDER BY rel, is_legal ASC
-WITH rel, head(collect(is_legal)) AS is_legal
-WHERE is_legal = false
+} AS is_legal
+WITH rel, collect(is_legal) AS legal_sides
+WHERE false IN legal_sides
 DETACH DELETE rel
         """
         self.add_to_query(query)

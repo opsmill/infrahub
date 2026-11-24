@@ -1,4 +1,4 @@
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from infrahub.core.query import QueryType
 from infrahub.database import InfrahubDatabase

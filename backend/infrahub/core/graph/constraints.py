@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import TYPE_CHECKING, ForwardRef, Optional, Union, get_origin
+from typing import TYPE_CHECKING, ForwardRef, Optional, Self, Union, get_origin
 
 from pydantic import BaseModel
-from typing_extensions import Self
 
 from infrahub.core.query import QueryType
 

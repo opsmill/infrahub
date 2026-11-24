@@ -4,8 +4,9 @@ import asyncio
 import functools
 import random
 import time
+from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, TypeVar
+from typing import TYPE_CHECKING, Any, Self, TypeVar
 
 from neo4j import (
     READ_ACCESS,
@@ -26,7 +27,6 @@ from neo4j import (
 )
 from neo4j.exceptions import ClientError, Neo4jError, ServiceUnavailable, TransientError
 from opentelemetry import trace
-from typing_extensions import Self
 
 from infrahub import config, lock
 from infrahub.constants.database import DatabaseType, Neo4jRuntime
@@ -35,23 +35,30 @@ from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
 )
 from infrahub.core.query import QueryType
+from infrahub.core.schema import GenericSchema, NodeSchema
 from infrahub.exceptions import DatabaseError, QueryTimeoutError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
+from .connection_metrics import instrument_connection_pool
 from .load_signal_registry import get_reference_query_load_tracker
 from .metrics import (
     CONNECTION_POOL_USAGE,
+    CONNECTION_WAIT_METRICS,
     QUERY_EXECUTION_METRICS,
     REFERENCE_QUERY_NAME,
     TRANSACTION_RETRIES,
 )
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Callable, Coroutine
     from types import TracebackType
 
+    # neo4j only exports the concrete trust stores, not the base class the driver accepts.
+    from neo4j._conf import TrustStore
+
     from infrahub.core.branch import Branch
-    from infrahub.core.schema import GenericSchema, MainSchemaTypes, NodeSchema
+    from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
 
 validated_database: dict[str, bool] = {}
@@ -90,15 +97,19 @@ class DatabaseSchemaManager:
     def __init__(self, db: InfrahubDatabase) -> None:
         self._db = db
 
-    def get(self, name: str, branch: Branch | str | None = None, duplicate: bool = True) -> MainSchemaTypes:
+    def get(
+        self, name: str, branch: Branch | str | None = None, duplicate: bool = True, check_branch_only: bool = False
+    ) -> MainSchemaTypes:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
-            return registry.schema.get(name=name, branch=branch, duplicate=duplicate)
+            return registry.schema.get(
+                name=name, branch=branch, duplicate=duplicate, check_branch_only=check_branch_only
+            )
         return self._db._schemas[branch_name].get(name=name, duplicate=duplicate)
 
     def get_node_schema(self, name: str, branch: Branch | str | None = None, duplicate: bool = True) -> NodeSchema:
         schema = self.get(name=name, branch=branch, duplicate=duplicate)
-        if schema.is_node_schema:
+        if isinstance(schema, NodeSchema):
             return schema
 
         raise ValueError("The selected node is not of type NodeSchema")
@@ -107,16 +118,17 @@ class DatabaseSchemaManager:
         self, name: str, branch: Branch | str | None = None, duplicate: bool = True
     ) -> GenericSchema:
         schema = self.get(name=name, branch=branch, duplicate=duplicate)
-        if schema.is_generic_schema:
+        if isinstance(schema, GenericSchema):
             return schema
 
         raise ValueError("The selected node is not of type GenericSchema")
 
-    def set(self, name: str, schema: MainSchemaTypes, branch: str | None = None) -> int:
+    def set(self, name: str, schema: MainSchemaTypes, branch: str | None = None) -> None:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
-            return registry.schema.set(name=name, schema=schema, branch=branch)
-        return self._db._schemas[branch_name].set(name=name, schema=schema)
+            registry.schema.set(name=name, schema=schema, branch=branch)
+            return
+        self._db._schemas[branch_name].set(name=name, schema=schema)
 
     def has(self, name: str, branch: Branch | str | None = None) -> bool:
         branch_name = get_branch_name(branch=branch)
@@ -168,6 +180,8 @@ class InfrahubDatabase:
         self._session_mode: InfrahubDatabaseSessionMode = session_mode
         self._is_session_local: bool = False
         self._transaction: AsyncTransaction | None = transaction
+        self._transaction_holds: AsyncExitStack | None = None
+        self._transaction_task: asyncio.Task[Any] | None = None
         self.default_neo4j_runtime = default_neo4j_runtime
         self.queries_names_to_config = queries_names_to_config if queries_names_to_config is not None else {}
 
@@ -227,7 +241,7 @@ class InfrahubDatabase:
             mode=InfrahubDatabaseMode.SESSION,
             db_type=self.db_type,
             default_neo4j_runtime=self.default_neo4j_runtime,
-            schemas=schemas or self._schemas.values(),
+            schemas=schemas or list(self._schemas.values()),
             driver=self._driver,
             session_mode=session_mode,
             queries_names_to_config=self.queries_names_to_config,
@@ -241,7 +255,7 @@ class InfrahubDatabase:
             mode=InfrahubDatabaseMode.TRANSACTION,
             db_type=self.db_type,
             default_neo4j_runtime=self.default_neo4j_runtime,
-            schemas=schemas or self._schemas.values(),
+            schemas=schemas or list(self._schemas.values()),
             driver=self._driver,
             session=self._session,
             session_mode=self._session_mode,
@@ -289,8 +303,40 @@ class InfrahubDatabase:
         elif self._mode == InfrahubDatabaseMode.TRANSACTION:
             session = await self.session()
             self._transaction = await session.begin_transaction()
+            self._transaction_holds = AsyncExitStack()
+            self._transaction_task = asyncio.current_task()
 
         return self
+
+    @property
+    def can_hold_until_transaction_end(self) -> bool:
+        """Whether a transaction is open on this object; only the task that opened it can hold a context."""
+        return self._transaction_holds is not None
+
+    async def hold_until_transaction_end(self, context: AbstractAsyncContextManager[object]) -> None:
+        """Enter `context` and exit it once the transaction commits or rolls back.
+
+        Raises:
+            RuntimeError: When no transaction was opened on this object with `async with`, or when a task other
+                than the one that opened the transaction calls it.
+
+        """
+        if self._transaction_holds is None:
+            raise RuntimeError("No database transaction is open to hold the context until it ends")
+        # Locks record their holder per task, so a context entered by another task cannot be exited at the end.
+        if asyncio.current_task() is not self._transaction_task:
+            raise RuntimeError("Only the task that opened the database transaction can hold a context until it ends")
+        await self._transaction_holds.enter_async_context(context)
+
+    def _get_open_session(self) -> AsyncSession:
+        if self._session is None:
+            raise RuntimeError("No database session is currently open")
+        return self._session
+
+    def _get_open_transaction(self) -> AsyncTransaction:
+        if self._transaction is None:
+            raise RuntimeError("No database transaction is currently open")
+        return self._transaction
 
     async def __aexit__(
         self,
@@ -299,22 +345,39 @@ class InfrahubDatabase:
         traceback: TracebackType | None,
     ) -> None:
         if self._mode == InfrahubDatabaseMode.SESSION:
-            await self._session.close()
+            await self._get_open_session().close()
             return
 
         if self._mode == InfrahubDatabaseMode.TRANSACTION:
-            if exc_type is not None:
-                await self._transaction.rollback()
-            else:
+            transaction = self._get_open_transaction()
+            try:
+                if exc_type is not None:
+                    await transaction.rollback()
+                else:
+                    try:
+                        await transaction.commit()
+                    except Neo4jError as exc:
+                        raise exc
+                    finally:
+                        await transaction.close()
+            finally:
                 try:
-                    await self._transaction.commit()
-                except Neo4jError as exc:
-                    raise exc
+                    await self._release_transaction_holds()
                 finally:
-                    await self._transaction.close()
+                    if self._is_session_local:
+                        await self._get_open_session().close()
 
-            if self._is_session_local:
-                await self._session.close()
+    async def _release_transaction_holds(self) -> None:
+        """Exit every context held until the transaction ended; raises nothing but cancellation."""
+        holds, self._transaction_holds = self._transaction_holds, None
+        self._transaction_task = None
+        if holds is None:
+            return
+        try:
+            await holds.aclose()
+        # Cleanup after the commit or rollback, whose outcome a failed release must not replace.
+        except Exception:
+            log.exception("Failed to release a context held until the end of the transaction")
 
     async def close(self) -> None:
         await self._driver.close()
@@ -426,27 +489,28 @@ class InfrahubDatabase:
         name: str | None = "undefined",
         timeout_seconds: float | None = None,
     ) -> AsyncResult:
-        _query: str | Query = query
         if self.is_transaction:
             # An explicit transaction's timeout is fixed at begin_transaction time, so a
             # per-query timeout cannot be applied here; auto-commit queries carry it on the
             # Query wrapper below.
-            execution_method = await self.transaction(name=name)
-        else:
-            _query = Query(
-                text=query,
-                metadata={"name": name, "infrahub_id": f"{trace.get_current_span().get_span_context().span_id:x}"},
-                timeout=timeout_seconds,
-            )
-            execution_method = await self.session()
+            transaction = await self.transaction(name=name)
+            try:
+                return await transaction.run(query=query, parameters=params)
+            except ServiceUnavailable as exc:
+                log.error("Database Service unavailable", error=str(exc))
+                raise DatabaseError(message="Unable to connect to the database") from exc
 
+        session = await self.session()
+        auto_commit_query = Query(
+            text=query,
+            metadata={"name": name, "infrahub_id": f"{trace.get_current_span().get_span_context().span_id:x}"},
+            timeout=timeout_seconds,
+        )
         try:
-            response = await execution_method.run(query=_query, parameters=params)
+            return await session.run(query=auto_commit_query, parameters=params)
         except ServiceUnavailable as exc:
             log.error("Database Service unavailable", error=str(exc))
             raise DatabaseError(message="Unable to connect to the database") from exc
-
-        return response
 
     def render_list_comprehension(self, items: str, item_name: str) -> str:
         if self.db_type == DatabaseType.MEMGRAPH:
@@ -542,7 +606,7 @@ def build_address_resolver(members: list[str], default_port: int) -> Callable[[A
 
 
 async def get_db(retry: int = 0) -> AsyncDriver:
-    trusted_certificates = TrustSystemCAs()
+    trusted_certificates: TrustStore = TrustSystemCAs()
     if config.SETTINGS.database.tls_insecure:
         trusted_certificates = TrustAll()
     elif config.SETTINGS.database.tls_ca_file:
@@ -581,6 +645,11 @@ async def get_db(retry: int = 0) -> AsyncDriver:
         max_connection_pool_size=config.SETTINGS.database.max_connection_pool_size,
         **pool_connection_kwargs,
     )
+    instrument_connection_pool(
+        driver=driver,
+        pool_size=config.SETTINGS.database.max_connection_pool_size,
+        record_wait=CONNECTION_WAIT_METRICS.observe,
+    )
 
     if config.SETTINGS.database.database_name not in validated_database:
         await validate_database(
@@ -597,6 +666,16 @@ def is_retriable_db_error(exc: BaseException) -> bool:
     if isinstance(exc, ClientError):
         return exc.code == "Neo.ClientError.Statement.EntityNotFound"
     return False
+
+
+@asynccontextmanager
+async def within_transaction(db: InfrahubDatabase) -> AsyncIterator[InfrahubDatabase]:
+    """Yield a database running a transaction, joining the one already open rather than nesting a second one."""
+    if db.is_transaction:
+        yield db
+        return
+    async with db.start_transaction() as dbt:
+        yield dbt
 
 
 def retry_db_transaction(

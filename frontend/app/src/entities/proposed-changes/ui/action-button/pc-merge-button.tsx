@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Tooltip } from "@infrahub/ui";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Icon } from "@/shared/components/display/icon";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-navigate-after-branch-removal";
@@ -65,7 +65,7 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
     <>
       <Tooltip message={isUnavailable ? tooltipMessage : undefined} className="whitespace-pre">
         <Button
-          className="flex h-full grow flex-wrap gap-2 rounded-r-none border-r-white"
+          className="flex h-full grow flex-wrap gap-2 rounded-r-none"
           onPress={handleAction}
           variant={"active"}
           isPending={isPending}

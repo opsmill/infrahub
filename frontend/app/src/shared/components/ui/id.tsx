@@ -1,6 +1,6 @@
 import { Clipboard } from "@/shared/components/buttons/clipboard";
-import { BadgeCircle, CIRCLE_BADGE_TYPES } from "@/shared/components/display/badge-circle";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { Badge } from "@/shared/components/ui/badge";
 
 import { NODE_OBJECT } from "@/entities/nodes/object/domain/model/object-kinds";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
@@ -31,11 +31,11 @@ export const Id = ({ id, kind = NODE_OBJECT, preventCopy, branch, date }: tId) =
   }
 
   if (error || !getNodeLabel(object)) {
-    return <BadgeCircle type={CIRCLE_BADGE_TYPES.LIGHT}>Name not found</BadgeCircle>;
+    return <Badge variant="white">Name not found</Badge>;
   }
 
   return (
-    <BadgeCircle type={CIRCLE_BADGE_TYPES.LIGHT}>
+    <Badge variant="white" className="font-medium">
       {getNodeLabel(object)}
 
       {!preventCopy && (
@@ -46,6 +46,6 @@ export const Id = ({ id, kind = NODE_OBJECT, preventCopy, branch, date }: tId) =
           className="ml-2 rounded-full p-1"
         />
       )}
-    </BadgeCircle>
+    </Badge>
   );
 };

@@ -1,5 +1,6 @@
 import type { TagGroupProps } from "react-aria-components";
 
+import { GROUP_GENERIC } from "@/entities/groups/domain/model/group";
 import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
 import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/ip-availability/domain/model/ip-availability-filter";
 import { IpAvailabilityFilterTag } from "@/entities/ipam/ip-availability/ui/ip-availability-filter-tag";
@@ -51,13 +52,13 @@ export function ActiveObjectFilterTags({ schema, ...props }: ActiveObjectsFilter
   const { filters, setFilters } = useObjectTableContext();
 
   const hasAdditionalTags =
-    isOfKind("CoreGroup", schema) ||
+    isOfKind(GROUP_GENERIC, schema) ||
     isOfKind(IP_PREFIX_GENERIC, schema) ||
     isOfKind(IP_ADDRESS_GENERIC, schema);
 
   const additionalTags = hasAdditionalTags ? (
     <>
-      {isOfKind("CoreGroup", schema) && <InternalGroupsFilterTag />}
+      {isOfKind(GROUP_GENERIC, schema) && <InternalGroupsFilterTag />}
       {isOfKind(IP_PREFIX_GENERIC, schema) && (
         <IpAvailabilityFilterTag label="Available IP prefixes" />
       )}

@@ -16,14 +16,24 @@ import {
 // Stub the preference-aware formatter; these tests assert labels/conditions, not date formatting.
 const formatDate: UseFormatDateResult["formatDate"] = (date) => new Date(date).toISOString();
 
+const syncStatusSchema = generateAttributeSchema({
+  name: "sync_status",
+  label: "Sync status",
+  kind: "Dropdown",
+  choices: [
+    { name: "in-sync", label: "In Sync" },
+    { name: "error-import", label: "Import Error" },
+  ],
+});
+
 describe("formatAttributeFilterValue", () => {
   it("returns string representation for boolean kind", () => {
     // GIVEN
-    const kind = "Boolean" as const;
+    const schema = generateAttributeSchema({ kind: "Boolean" });
     const value = true;
 
     // WHEN
-    const result = formatAttributeFilterValue({ kind, value, formatDate });
+    const result = formatAttributeFilterValue({ schema, value, formatDate });
 
     // THEN
     expect(result).toBe("true");
@@ -31,14 +41,59 @@ describe("formatAttributeFilterValue", () => {
 
   it("returns the value as-is for text kind", () => {
     // GIVEN
-    const kind = "Text" as const;
+    const schema = generateAttributeSchema({ kind: "Text" });
     const value = "hello";
 
     // WHEN
-    const result = formatAttributeFilterValue({ kind, value, formatDate });
+    const result = formatAttributeFilterValue({ schema, value, formatDate });
 
     // THEN
     expect(result).toBe("hello");
+  });
+
+  it("formats the value as a date for datetime kind", () => {
+    // GIVEN
+    const schema = generateAttributeSchema({ kind: "DateTime" });
+    const value = "2024-01-15T10:30:00Z";
+
+    // WHEN
+    const result = formatAttributeFilterValue({ schema, value, formatDate });
+
+    // THEN
+    expect(result).toBe("2024-01-15T10:30:00.000Z");
+  });
+
+  it("returns the choice label of a dropdown value", () => {
+    // GIVEN
+    const value = "error-import";
+
+    // WHEN
+    const result = formatAttributeFilterValue({ schema: syncStatusSchema, value, formatDate });
+
+    // THEN
+    expect(result).toBe("Import Error");
+  });
+
+  it("keeps the stored dropdown value when it matches no choice", () => {
+    // GIVEN
+    const value = "error-ref-missing";
+
+    // WHEN
+    const result = formatAttributeFilterValue({ schema: syncStatusSchema, value, formatDate });
+
+    // THEN
+    expect(result).toBe("error-ref-missing");
+  });
+
+  it("keeps the stored value of a text attribute with an enum", () => {
+    // GIVEN
+    const schema = generateAttributeSchema({ kind: "Text", enum: ["OPEN", "MERGED"] });
+
+    // WHEN
+    const result = formatAttributeFilterValue({ schema, value: "OPEN", formatDate });
+
+    // THEN
+    expect(result).toBe("OPEN");
   });
 });
 
@@ -63,6 +118,26 @@ describe("getFilterTagDisplay", () => {
       label: "Hostname",
       condition: "contains",
       value: "server01",
+    });
+  });
+
+  it("shows the dropdown choice label in the tag", () => {
+    // GIVEN
+    const filter = { name: "sync_status__value", value: "error-import" };
+
+    // WHEN
+    const result = getFilterTagDisplay({
+      formatDate,
+      filter,
+      fieldKey: "value",
+      filterDefinition: { type: "attribute", schema: syncStatusSchema },
+    });
+
+    // THEN
+    expect(result).toEqual({
+      label: "Sync status",
+      condition: "contains",
+      value: "Import Error",
     });
   });
 

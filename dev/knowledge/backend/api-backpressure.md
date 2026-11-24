@@ -231,7 +231,11 @@ and alerted on).
 Stress signal (`infrahub_db_reference_query_*`): `floor_seconds`, `window_min_seconds`,
 `stress_ratio_median`. The floor and window-min gauges aggregate across workers as `min` and the
 stress ratio as `max` under a `MultiProcessCollector` (when `PROMETHEUS_MULTIPROC_DIR` is set), so
-the scraped values are meaningful cross-worker figures.
+the scraped values are meaningful cross-worker figures. The admission state stays per worker, but its
+gauges declare a multiprocess mode too: `in_flight`, `waiters` and `max_concurrency` are summed over
+live workers (`livesum`), so total usage compares with total capacity, and `sustained_load_seconds`
+keeps one series per live worker (`liveall`). See
+[Observability](observability.md#every-gauge-declares-how-processes-are-combined).
 
 ## Configuration
 

@@ -34,7 +34,7 @@ class InfrahubObjectType(ObjectType):
 
     @classmethod
     async def get_list(
-        cls, fields: StandardNodeQueryFields, graphql_context: GraphqlContext, **kwargs
+        cls, fields: StandardNodeQueryFields, graphql_context: GraphqlContext, **kwargs: Any
     ) -> list[dict[str, Any]]:
         async with graphql_context.db.session(database=config.SETTINGS.database.database_name) as db:
             filters = {key: value for key, value in kwargs.items() if "__" in key and value}

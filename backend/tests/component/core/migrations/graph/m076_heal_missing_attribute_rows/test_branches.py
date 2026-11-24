@@ -14,8 +14,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
 from tests.db_snapshot import DbSnapshotter
-
-from .conftest import (
+from tests.helpers.attribute_rows import (
     CAR_ATTRIBUTE_NAMES,
     build_asset_schema,
     build_inheriting_kind,

@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
 import React from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import { Badge } from "@/shared/components/ui/badge";
 import {
   Combobox,
@@ -156,9 +156,10 @@ export const RelationshipHierarchicalManyInput = ({
     <Combobox open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <div
+          data-testid="relationship-hierarchical-many-input"
           className={classNames(
             inputStyle,
-            "has-[>:last-child:focus]:border-custom-blue-600 has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25",
+            "has-[>:last-child:focus]:border-ring has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-ring-halo",
             "cursor-pointer",
             className
           )}
@@ -175,7 +176,7 @@ export const RelationshipHierarchicalManyInput = ({
                   onPress={() => {
                     onChange(value?.filter((item) => item.id !== node.id));
                   }}
-                  className="h-4 w-4 text-gray-500 data-hovered:text-gray-800"
+                  className="h-4 w-4 text-subtle-muted data-hovered:text-foreground"
                   aria-label={`Remove ${getNodeLabel(node)}`}
                   data-testid="remove-option"
                 >
@@ -185,15 +186,15 @@ export const RelationshipHierarchicalManyInput = ({
             ))}
           </div>
 
-          <PopoverTrigger ref={ref} asChild {...props}>
-            <button
-              type="button"
-              className="h-3.5 w-3.5 text-gray-600 outline-hidden"
-              aria-label={`Open ${peer}`}
-            >
-              <Icon icon="mdi:unfold-more-horizontal" />
-            </button>
-          </PopoverTrigger>
+          <button
+            ref={ref}
+            type="button"
+            className="h-3.5 w-3.5 text-subtle-muted outline-hidden"
+            aria-label={`Open ${peer}`}
+            {...props}
+          >
+            <Icon icon="mdi:unfold-more-horizontal" />
+          </button>
         </div>
       </PopoverTrigger>
 

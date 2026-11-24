@@ -1,4 +1,5 @@
 import ipaddress
+from typing import Any
 from uuid import uuid4
 
 from infrahub.core import registry
@@ -13,6 +14,7 @@ from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.ipam import IPPrefixReconcileQuery
+from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -803,3 +805,111 @@ async def test_reconcile_query_for_address_with_prefix_added_on_branch_and_merge
     assert data.current_children_uuids == ()
     assert data.calculated_parent_uuid == new_prefix.id
     assert data.calculated_children_uuids == ()
+
+
+SHARED_PREFIXES = ("172.30.0.0/16", "172.30.0.0/20", "172.30.0.0/24")
+NBR_NAMESPACES_WITH_MORE_ADDRESSES = 2
+NBR_ADDRESSES_PER_SHARED_SUBNET = 5
+NBR_ADDRESSES_OUTSIDE_SHARED_PREFIXES = 40
+
+
+async def _count_outgoing_edges(db: InfrahubDatabase, namespace_id: str, candidate_ids: list[str]) -> tuple[int, int]:
+    records = await db.execute_query(
+        query="""
+        MATCH (namespace:Node {uuid: $namespace_id})
+        MATCH (candidate:Node)
+        WHERE candidate.uuid IN $candidate_ids
+        RETURN COUNT { (namespace)-[:IS_RELATED]->() } AS namespace_edges,
+            sum(COUNT { (candidate)-[:IS_RELATED]->() }) AS candidate_edges
+        """,
+        params={"namespace_id": namespace_id, "candidate_ids": candidate_ids},
+        name="count_outgoing_edges",
+    )
+    return records[0]["namespace_edges"], records[0]["candidate_edges"]
+
+
+async def test_reconcile_query_finds_the_parent_in_its_namespace_when_other_namespaces_hold_the_same_prefixes(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01: dict[str, Node]
+) -> None:
+    """The namespace check starts from whichever side has fewer edges: the namespace or the candidate prefixes."""
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+
+    async def create(schema: NodeSchema | str, **kwargs: Any) -> Node:
+        node = await Node.init(db=db, schema=schema, branch=default_branch)
+        await node.new(db=db, **kwargs)
+        await node.save(db=db)
+        return node
+
+    async def create_shared_prefixes(namespace: Node, nbr_addresses: int) -> tuple[list[Node], Node]:
+        prefixes: list[Node] = []
+        for prefix_value in SHARED_PREFIXES:
+            hierarchy = {"parent": prefixes[-1]} if prefixes else {}
+            prefixes.append(await create(prefix_schema, prefix=prefix_value, ip_namespace=namespace, **hierarchy))
+        addresses = [
+            await create(address_schema, address=f"172.30.0.{host}/24", ip_namespace=namespace, ip_prefix=prefixes[-1])
+            for host in range(1, nbr_addresses + 1)
+        ]
+        return prefixes, addresses[0]
+
+    sparse_namespace = await create(InfrahubKind.NAMESPACE, name="sparse")
+    sparse_prefixes, sparse_address = await create_shared_prefixes(namespace=sparse_namespace, nbr_addresses=1)
+    all_prefixes = list(sparse_prefixes)
+    for idx in range(NBR_NAMESPACES_WITH_MORE_ADDRESSES):
+        namespace = await create(InfrahubKind.NAMESPACE, name=f"shared{idx}")
+        prefixes, _ = await create_shared_prefixes(namespace=namespace, nbr_addresses=NBR_ADDRESSES_PER_SHARED_SUBNET)
+        all_prefixes.extend(prefixes)
+    dense_namespace = await create(InfrahubKind.NAMESPACE, name="dense")
+    dense_prefixes, dense_address = await create_shared_prefixes(namespace=dense_namespace, nbr_addresses=1)
+    all_prefixes.extend(dense_prefixes)
+    other_prefix = await create(prefix_schema, prefix="192.168.0.0/24", ip_namespace=dense_namespace)
+    for host in range(1, NBR_ADDRESSES_OUTSIDE_SHARED_PREFIXES + 1):
+        await create(
+            address_schema, address=f"192.168.0.{host}/24", ip_namespace=dense_namespace, ip_prefix=other_prefix
+        )
+
+    sparse_subnet = sparse_prefixes[-1]
+    sparse_subnet_value = sparse_subnet.get_attribute(name="prefix").value
+    assert isinstance(sparse_subnet_value, str)
+    larger_prefix_ids = [
+        prefix.id for prefix in all_prefixes if prefix.get_attribute(name="prefix").value != sparse_subnet_value
+    ]
+    for namespace, node, ip_value, candidate_ids, expected_parent, from_namespace in (
+        (
+            sparse_namespace,
+            sparse_address,
+            ipaddress.ip_interface("172.30.0.1/24"),
+            [prefix.id for prefix in all_prefixes],
+            sparse_subnet,
+            True,
+        ),
+        (
+            sparse_namespace,
+            sparse_subnet,
+            ipaddress.ip_network(sparse_subnet_value),
+            larger_prefix_ids,
+            sparse_prefixes[-2],
+            True,
+        ),
+        (
+            dense_namespace,
+            dense_address,
+            ipaddress.ip_interface("172.30.0.1/24"),
+            [prefix.id for prefix in all_prefixes],
+            dense_prefixes[-1],
+            False,
+        ),
+    ):
+        namespace_edges, candidate_edges = await _count_outgoing_edges(
+            db=db, namespace_id=namespace.id, candidate_ids=candidate_ids
+        )
+        assert (namespace_edges < candidate_edges) is from_namespace
+
+        query = await IPPrefixReconcileQuery.init(
+            db=db, branch=default_branch, ip_value=ip_value, namespace=namespace.id, node_uuid=node.id
+        )
+        await query.execute(db=db)
+        data = query.get_data()
+        assert data is not None
+        assert data.ip_node_uuid == node.id
+        assert data.calculated_parent_uuid == expected_parent.id

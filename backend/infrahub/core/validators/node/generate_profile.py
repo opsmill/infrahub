@@ -28,8 +28,8 @@ class NodeGenerateProfileValidatorQuery(SchemaValidatorQuery):
         super().__init__(*args, **kwargs)
         self.profile_kind = f"Profile{self.node_schema.kind}"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at, is_isolated=self.is_isolated)
         self.params.update(branch_params)
 
         query = """
@@ -87,6 +87,7 @@ class NodeGenerateProfileChecker(ConstraintCheckerInterface):
                 branch=self.branch,
                 node_schema=request.node_schema,
                 schema_path=request.schema_path,
+                is_isolated=request.is_isolated,
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())

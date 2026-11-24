@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
+import pytest
+
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.regeneration.definitions import parse_artifact_definitions
+from infrahub.core.regeneration.definitions import parse_artifact_definitions, selects_repository
 
 QUERY_PAYLOAD = "query { TestingCar { edges { node { name { value } } } } }"
 
@@ -78,7 +81,7 @@ def test_computed_closure_is_carried_through() -> None:
     parsed = parse_artifact_definitions(
         [
             _artifact_definition_edge(
-                dependencies=[".infrahub.yml", "templates/config.j2"],
+                dependencies=["partials/header.j2", "templates/config.j2"],
                 dependencies_complete=True,
                 fingerprint="abc123",
             )
@@ -86,7 +89,7 @@ def test_computed_closure_is_carried_through() -> None:
     )
 
     definition = parsed[0]
-    assert definition.dependencies == [".infrahub.yml", "templates/config.j2"]
+    assert definition.dependencies == ["partials/header.j2", "templates/config.j2"]
     assert definition.dependencies_complete is True
     assert definition.fingerprint == "abc123"
 
@@ -114,3 +117,38 @@ def test_python_transform_carries_its_entry_point() -> None:
         "",
     )
     assert definition.convert_query_response is True
+
+
+@dataclass(frozen=True, kw_only=True)
+class RepositoryFilterCase:
+    name: str
+    exclude_repository_ids: list[str] | None
+    include_repository_ids: list[str] | None
+    expected: bool
+
+
+REPOSITORY_FILTER_CASES = [
+    RepositoryFilterCase(
+        name="empty_include_list_keeps_the_definition",
+        exclude_repository_ids=None,
+        include_repository_ids=[],
+        expected=True,
+    ),
+    RepositoryFilterCase(
+        name="exclusion_wins_over_inclusion",
+        exclude_repository_ids=["repo-1"],
+        include_repository_ids=["repo-1"],
+        expected=False,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in REPOSITORY_FILTER_CASES])
+def test_selects_repository(case: RepositoryFilterCase) -> None:
+    selected = selects_repository(
+        repository_id="repo-1",
+        exclude_repository_ids=case.exclude_repository_ids,
+        include_repository_ids=case.include_repository_ids,
+    )
+
+    assert selected is case.expected

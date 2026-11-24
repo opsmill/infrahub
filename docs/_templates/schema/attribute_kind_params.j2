@@ -1,15 +1,16 @@
+<!-- markdownlint-disable-file MD041 -->
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
 <!-- vale Infrahub.spelling = NO -->
 
-<Tabs>
+<Tabs groupId="attribute-kind" queryString>
 {%- for kind, params in kinds.items() | sort %}
 <TabItem value="{{ kind }}">
 | Parameter | Default |
 | --------- | ------- |
-{%   for name, info in params.items() -%}
-| {{ name }} | {{ info.default | default(False) }} |
+{%   for name, default in params.items() -%}
+| {{ name }} | {{ default }} |
 {%   endfor -%}
 </TabItem>
 {%- endfor %}

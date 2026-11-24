@@ -17,6 +17,7 @@ export interface ObjectKeysBaseParams extends ContextParams {
 export interface ObjectListKeysParams extends ObjectKeysBaseParams {
   filters?: Filter[];
   sort?: Sort[] | null;
+  revealedFields?: readonly string[];
 }
 
 export interface ObjectDetailKeysParams extends ObjectKeysBaseParams {
@@ -49,8 +50,17 @@ export const objectQueryKeys = {
     ] as const,
   count: (params: ObjectListKeysParams) =>
     [...objectQueryKeys.lists(params), "count", params.filters] as const,
+  // A revealed field widens the GraphQL selection set, so it must be part of the key or a reveal
+  // would read a page cached without that field. The spread is conditional on purpose: it keeps the
+  // key byte-identical for callers that never reveal anything, so no cache is invalidated.
+  // `count` needs no equivalent: the count query selects no fields.
   list: (params: ObjectListKeysParams) =>
-    [...objectQueryKeys.lists(params), params.filters, params.sort] as const,
+    [
+      ...objectQueryKeys.lists(params),
+      params.filters,
+      params.sort,
+      ...(params.revealedFields?.length ? [params.revealedFields] : []),
+    ] as const,
   profiles: (params: ObjectKeysBaseParams) =>
     [...objectQueryKeys.lists(params), "profiles"] as const,
   detail: (params: ObjectDetailKeysParams) =>

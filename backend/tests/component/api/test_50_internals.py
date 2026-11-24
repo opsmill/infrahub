@@ -1,8 +1,6 @@
 from collections.abc import Generator
-from typing import Any
 
 import pytest
-from fast_depends import Provider
 from fastapi.testclient import TestClient
 
 from infrahub import config
@@ -12,9 +10,7 @@ from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus.messages import RefreshSettingsResponseDelay
 from infrahub.message_bus.operations.refresh import settings as refresh_settings
-from infrahub.workers.dependencies import build_message_bus
-from tests.conftest import TestHelper
-from tests.helpers.dependency_override import override_dependency
+from tests.adapters.message_bus import BusRecorder
 from tests.helpers.fixtures import get_fixtures_dir
 
 
@@ -152,16 +148,6 @@ async def test_no_search_docs(client: TestClient, no_search_index_path: None) ->
     }
 
 
-@pytest.fixture
-def recorder_bus(helper: TestHelper, dependency_provider: Provider) -> Generator[Any, None, None]:
-    original = config.OVERRIDE.message_bus
-    bus = helper.get_message_bus_recorder()
-    config.OVERRIDE.message_bus = bus
-    with override_dependency(build_message_bus, lambda: bus, dependency_provider=dependency_provider):
-        yield bus
-    config.OVERRIDE.message_bus = original
-
-
 async def test_response_delay_endpoint_broadcasts(
     db: InfrahubDatabase,
     client: TestClient,
@@ -169,7 +155,7 @@ async def test_response_delay_endpoint_broadcasts(
     default_branch: Branch,
     register_core_models_schema: None,
     create_test_admin: Node,
-    recorder_bus: Any,
+    recorder_bus: BusRecorder,
 ) -> None:
     with client:
         response = client.post("/api/response-delay", headers=admin_headers, json={"response_delay": 1})
@@ -179,6 +165,7 @@ async def test_response_delay_endpoint_broadcasts(
 
     published = recorder_bus.messages_per_routing_key.get("refresh.settings.response_delay")
     assert published
+    assert isinstance(published[0], RefreshSettingsResponseDelay)
     assert published[0].response_delay == 1
 
 

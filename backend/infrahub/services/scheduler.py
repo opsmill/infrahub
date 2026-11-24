@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.log import get_logger
-from infrahub.tasks.recurring import trigger_branch_refresh
+from infrahub.tasks.recurring import trigger_branch_refresh, trigger_resource_refresh
 
 if TYPE_CHECKING:
     from infrahub.services import InfrahubServices, ServiceFunction
@@ -55,6 +55,10 @@ class InfrahubScheduler:
                     name="branch_refresh", interval=900, function=trigger_branch_refresh, start_delay=random_number
                 )
             )
+            # Startup already stored a reading.
+            self.schedules.append(
+                Schedule(name="resource_refresh", interval=300, function=trigger_resource_refresh, start_delay=300)
+            )
 
     async def start_schedule(self) -> None:
         if self.running and self.heartbeat is not None:
@@ -90,7 +94,8 @@ class InfrahubScheduler:
         while self.running:
             try:
                 await schedule.function(self.service)
-            except Exception as exc:
+            # Keep-alive: a failing recurring task must not kill the scheduler loop
+            except Exception as exc:  # noqa: BLE001
                 self.service.log.error(str(exc))
             for _ in range(schedule.interval):
                 if not self.running:

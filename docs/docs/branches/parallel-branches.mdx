@@ -47,13 +47,13 @@ A merge does make the stored diff of every other open branch out of date, and In
 
 ## Allocate values from a pool
 
-A value allocated from a [resource pool](../resource-manager/overview.mdx#branch-agnostic-allocation) is reserved for every branch at the moment you allocate it, so a request from another branch to the same pool gets a different one. Infrahub also locks each pool while it allocates from it, so simultaneous requests from different branches or Generators get different values.
+A value allocated from a [resource pool](../resource-manager/overview.mdx#branch-agnostic-allocation) is reserved for every branch at the moment you allocate it, so a request from another branch to the same pool gets a different one. On a number pool with an [allocation scope](../resource-manager/allocate-numbers-per-scope.mdx), this applies within each allocation scope: with a pool scoped by site, VLANs in two different sites can both receive 100. Infrahub also locks each pool while it allocates from it, or each allocation scope of a scoped number pool, so simultaneous requests from different branches or Generators get different values.
 
 A value you type into a unique attribute is not reserved. Two branches can each hold the same typed value. Once one of them merges, the other is refused at its next rebase or merge, and its Proposed Change reports the duplicate under **Schema Integrity**.
 
 How you request a value depends on where you work:
 
-- **Web interface**: when you create the object, click the pool button next to the field, labeled "select a pool", and choose the pool. On an IP address, the button is next to **Address**.
+- **Web interface**: when you create the object, click the pool button next to the field, labeled "select a pool", and choose the pool. On an IP address, the button is next to **Address**. On a number attribute, open the **From pool** tab of the field and choose the pool in **Pool**.
 - **GraphQL API**: pass `from_pool` on the attribute or relationship. For an IP address pool or an IP prefix pool, you can also call the pool's mutation directly, `InfrahubIPAddressPoolGetResource` or `InfrahubIPPrefixPoolGetResource`.
 
 Through the GraphQL API, you can pass an `identifier` when you allocate from an IP address pool or an IP prefix pool, and Infrahub returns the same value for a later request with the same identifier. The web interface sends no identifier, and Infrahub applies its default. Build one identifier per object, from the object it is allocated to, such as a device and its interface. On another branch that cannot yet read the object the value was allocated to, Infrahub allocates a different value for the same identifier, with no error. See [Idempotent allocation](../resource-manager/overview.mdx#idempotent-allocation).
@@ -70,7 +70,7 @@ For both ways to run a rebase, and what to do when one is refused, see [Rebase a
 
 You can build a small service that rebases the open branches each time a branch merges. Infrahub's [event actions](../events/event-actions.mdx) add objects to groups or remove them, and run Generators, and none of them rebases a branch, so this approach combines a webhook with the GraphQL API. You build and run the service yourself.
 
-1. Create a [webhook](../webhooks/overview.mdx) for the `infrahub.branch.merged` event that points at your service, and set its branch scope to **All Branches**. With the default scope, **Default Branch**, the webhook does not fire on a merge. See [Configuring branch types](../webhooks/overview.mdx#configuring-branch-types).
+1. Create a [webhook](../webhooks/overview.mdx) for the `infrahub.branch.merged` event that points at your service. Keep the default branch scope, **Default Branch**, or set **All Branches**: Infrahub emits the merge event on the default branch, so a webhook scoped to **Other Branches** does not fire on a merge. See [Configuring branch types](../webhooks/overview.mdx#configuring-branch-types).
 2. When your service receives the webhook, list the branches with the `Branch` query shown in [What changes when another branch merges](#what-changes-when-another-branch-merges). Skip the default branch (`is_default`) and any branch with the status `MERGED` or `MERGING`.
 3. For each remaining branch, send `BranchRebase` to `/graphql` and let it wait for the rebase, which is the default, so the response contains the outcome.
 4. Handle a refusal according to the `code` in the error's `extensions`:

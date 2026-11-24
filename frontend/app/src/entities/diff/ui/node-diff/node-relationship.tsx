@@ -1,6 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router";
 
+import { Icon } from "@/shared/components/display/icon";
 import { Badge } from "@/shared/components/ui/badge";
 
 import { DiffThread } from "@/entities/diff/ui/node-diff/thread";
@@ -56,7 +56,7 @@ export const DiffNodeRelationship = ({ status, relationship }: DiffNodeRelations
         </div>
       }
     >
-      <div className="divide-y divide-gray-200 border-gray-200 border-t">
+      <div className="divide-y border-t">
         {relationship.elements.map((element, index: number) => (
           <DiffNodeRelationshipElement key={index} element={element} status={status} />
         ))}

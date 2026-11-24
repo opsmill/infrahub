@@ -8,21 +8,39 @@ declare module "react-aria-components" {
   }
 }
 
-const EXTERNAL_HREF_PREFIXES = ["https://", "http://", "mailto:", "blob:", "data:"];
+const ABSOLUTE_HREF_PREFIXES = ["https://", "http://", "mailto:", "blob:", "data:"];
+
+function isAbsoluteHref(path: string) {
+  return ABSOLUTE_HREF_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
 
 function useAbsoluteHref(path: To) {
   const relative = useHref(path);
-  if (
-    typeof path === "string" &&
-    EXTERNAL_HREF_PREFIXES.some((prefix) => path.startsWith(prefix))
-  ) {
-    return path;
-  }
-  return relative;
+  return typeof path === "string" && isAbsoluteHref(path) ? path : relative;
 }
 
-export function ReactAriaRouterProvider({ children }: { children: React.ReactNode }) {
-  const navigate = useNavigate();
+function navigateWithBrowser(url: string) {
+  window.location.assign(url);
+}
+
+interface ReactAriaRouterProviderProps {
+  children: React.ReactNode;
+  browserNavigate?: (url: string) => void;
+}
+
+export function ReactAriaRouterProvider({
+  children,
+  browserNavigate = navigateWithBrowser,
+}: ReactAriaRouterProviderProps) {
+  const routerNavigate = useNavigate();
+
+  const navigate = (to: To, options?: NavigateOptions) => {
+    if (typeof to === "string" && isAbsoluteHref(to)) {
+      browserNavigate(to);
+      return;
+    }
+    routerNavigate(to, options);
+  };
 
   return (
     <AriaRouterProvider navigate={navigate} useHref={useAbsoluteHref}>

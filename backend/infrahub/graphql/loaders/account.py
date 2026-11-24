@@ -111,7 +111,6 @@ class AccountDataLoader(DataLoader[str, dict[str, Any] | None]):
                     fields=self.params.fields,
                     at=self.params.at,
                     branch=self.params.branch,
-                    branch_agnostic=True,  # Accounts are always branch-agnostic
                 )
 
                 for node_id, node in nodes.items():

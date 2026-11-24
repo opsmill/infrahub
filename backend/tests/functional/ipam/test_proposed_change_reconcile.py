@@ -3,10 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from infrahub_sdk.protocols import CoreProposedChange
 
 from infrahub.components import ComponentType
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -57,11 +57,11 @@ class TestProposedChangeReconcile(TestIpamReconcileBase):
     ) -> None:
         await service.component.refresh_heartbeat()
         proposed_change_create = await client.create(
-            kind=InfrahubKind.PROPOSEDCHANGE,
+            kind=CoreProposedChange,
             data={"source_branch": branch_1.name, "destination_branch": "main", "name": "add_address_pc"},
         )
         await proposed_change_create.save()
-        proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
+        proposed_change_create.state.value = "merged"
         await service.cache.set(
             key=f"workers:active:{ComponentType.API_SERVER}:worker:{WORKER_IDENTITY}",
             value=Timestamp().to_string(),
@@ -84,7 +84,7 @@ class TestProposedChangeReconcile(TestIpamReconcileBase):
         new_address_1: Node,
     ) -> None:
         proposed_change_create = await client.create(
-            kind=InfrahubKind.PROPOSEDCHANGE,
+            kind=CoreProposedChange,
             data={"source_branch": branch_2.name, "destination_branch": "main", "name": "delete_prefix_pc"},
         )
         await proposed_change_create.save()
@@ -96,7 +96,7 @@ class TestProposedChangeReconcile(TestIpamReconcileBase):
         assert deleted_prefix_branch
         await deleted_prefix_branch.delete(db=db)
 
-        proposed_change_create.state.value = "merged"  # type: ignore[attr-defined]
+        proposed_change_create.state.value = "merged"
         await proposed_change_create.save()
 
         deleted_prefix = await NodeManager.get_one(db=db, id=deleted_prefix_branch.id)

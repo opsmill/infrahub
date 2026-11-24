@@ -1,4 +1,4 @@
-from typing import Callable
+from collections.abc import Callable
 
 from infrahub.auth.session import AccountSession
 from infrahub.core.branch import Branch

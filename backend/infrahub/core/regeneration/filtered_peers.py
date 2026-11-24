@@ -15,8 +15,8 @@ if TYPE_CHECKING:
     from infrahub_sdk.diff import NodeDiff
 
     from infrahub.core.constants import RelationshipDirection
+    from infrahub.core.relationship.dependent_resolver import DependentNodeResolver
     from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.core.validators.uniqueness.dependent_resolver import UniquenessDependentResolverInterface
 
     from .models import PeerFilters, RelationshipHop, RelationshipRead
 
@@ -108,7 +108,7 @@ class FilteredPeerReads:
         self,
         *,
         changes: ChangedNodeIndex,
-        dependents: UniquenessDependentResolverInterface,
+        dependents: DependentNodeResolver,
         peers: RelationshipPeerReader,
     ) -> None:
         self._changes = changes

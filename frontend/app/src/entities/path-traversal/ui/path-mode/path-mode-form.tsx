@@ -185,7 +185,7 @@ export function PathModeForm({ form, onSubmit, isPending }: PathModeFormProps) {
                     </FormInput>
                     <FormLabel className="cursor-pointer">Shortest paths only</FormLabel>
                   </div>
-                  <p className="text-gray-500 text-xs">
+                  <p className="text-foreground-muted text-xs">
                     Only return the shortest path through each intermediate object. Uncheck to
                     return all loopless paths within the max depth.
                   </p>

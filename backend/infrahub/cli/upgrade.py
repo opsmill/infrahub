@@ -62,7 +62,8 @@ async def validate_prerequisites(db: InfrahubDatabase) -> bool:
     except DatabaseError as exc:
         console.log(f"{ERROR_BADGE} Database prerequisite check failed: {exc}")
         return False
-    except Exception as exc:
+    # CLI prerequisite boundary: report any failure as an unreachable database and abort cleanly
+    except Exception as exc:  # noqa: BLE001
         console.log(f"{ERROR_BADGE} Database is unreachable: {exc}")
         console.log(
             "  Verify that the database is running and that the connection settings in your configuration file are correct."
@@ -241,7 +242,8 @@ async def _upgrade_check(db: InfrahubDatabase, root_node_graph_version: int) -> 
             console.log("  Schema has differences, update required")
         else:
             console.log("  Up to date, nothing to do")
-    except Exception as exc:
+    # Best-effort dry-run report: a failed schema probe is reported inline and the remaining checks still run
+    except Exception as exc:  # noqa: BLE001
         console.log(f"  Unable to check: {exc}")
 
     console.log("\nBranches:")

@@ -61,7 +61,7 @@ class TestObjectHierarchyTreeLite:
         await expect(admin_page.get_by_role("button", name="Back", exact=True)).to_be_visible()
         await expect(object_hierarchy_tree_lite.get_by_text("North America")).to_be_visible()
         await expect(object_hierarchy_tree_lite.get_by_role("row", name="United States of America")).to_contain_class(
-            "bg-neutral-100"
+            "bg-selected"
         )
         await expect(object_hierarchy_tree_lite.get_by_text("Canada")).to_be_visible()
 

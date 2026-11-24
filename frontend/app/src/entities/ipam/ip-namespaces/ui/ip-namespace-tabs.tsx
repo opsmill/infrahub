@@ -16,7 +16,7 @@ export function IpNamespaceTabs({ objectId, schema }: IpNamespaceTabsProps) {
   );
 
   return (
-    <div className="flex w-full items-stretch gap-2 border-gray-200 border-b px-2.5 text-sm">
+    <div className="flex w-full items-stretch gap-2 border-b px-2.5 text-sm">
       {relationshipSchemaWithIpPrefix && (
         <ObjectDetailsTab
           parentKind={schema.kind!}

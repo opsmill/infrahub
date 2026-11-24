@@ -10,7 +10,7 @@ from csv import DictReader, DictWriter
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 import typer
@@ -91,6 +91,8 @@ def get_timestamp_string() -> str:
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from prefect.server.database.interface import PrefectDBInterface
 
     from infrahub.cli.context import CliContext
@@ -1064,6 +1066,7 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
         branch=default_branch,
         schema_branch=candidate_schema,
         constraints=result.constraints,
+        is_isolated=True,
     )
     responses = await schema_validate_migrations(message=validate_migration_data)
     error_messages = [violation.message for response in responses for violation in response.violations]

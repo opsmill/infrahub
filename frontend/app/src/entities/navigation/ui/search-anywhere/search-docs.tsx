@@ -9,10 +9,10 @@ import { SearchAnywhereItem } from "@/entities/navigation/ui/search-anywhere/sea
 
 export const SearchDocs = () => {
   const query = useCommandState((state) => state.search);
-  const queryDebounced = useDebounce(query, 300);
+  const queryDebounced = useDebounce(query.trim(), 300);
   const { data: results, error, isPending } = useGetSearchDocs({ query: queryDebounced });
 
-  if (query === "") {
+  if (query.trim() === "") {
     return null;
   }
 
@@ -38,7 +38,7 @@ export const SearchDocs = () => {
           className="flex-col items-start gap-0"
         >
           <div className="font-medium text-sm">{doc.title}</div>
-          <div className="truncate text-neutral-500 text-xs">
+          <div className="truncate text-foreground-muted text-xs">
             {doc.breadcrumb.slice(1).join(" > ")}
           </div>
         </SearchAnywhereItem>

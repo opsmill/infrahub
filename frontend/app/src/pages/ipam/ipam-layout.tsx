@@ -69,7 +69,7 @@ function IpamToolbar({ className }: { className?: string }) {
           shape="square"
           aria-label="toggle IPAM tree"
           onPress={() => setCollapsed(!collapsed)}
-          className="m-1 shrink-0 rounded-lg text-gray-400 data-hovered:text-neutral-600"
+          className="m-1 shrink-0 rounded-lg text-subtle-muted data-hovered:text-subtle"
         >
           <SidebarIcon className="size-4" />
         </Button>

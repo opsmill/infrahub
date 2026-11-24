@@ -2,23 +2,30 @@ import operator
 import time
 from asyncio import Event, create_task, gather, sleep, wait, wait_for
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 import pytest
 from redis.exceptions import RedisError
 
 from infrahub import config, lock
 from infrahub.config import CacheSettings
+from infrahub.core.timestamp import current_timestamp
 from infrahub.lock import (
     GLOBAL_SCHEMA_LOCK,
     GLOBAL_TASKMGR_INIT_LOCK,
     GLOBAL_WORKER_TASKMGR_INIT_LOCK,
+    LOCK_ACQUIRE_TIME_METRICS,
+    LOCK_RESERVE_TIME_METRICS,
     InfrahubLock,
     InfrahubLockRegistry,
     InfrahubMultiLock,
+    get_lock_cache_key,
+    get_requested_at_from_lock_token,
     get_worker_id_from_lock_token,
     initialize_lock,
 )
 from tests.helpers.log import find_logged_events
+from tests.helpers.metrics import bucket_bounds
 
 
 @dataclass
@@ -40,6 +47,53 @@ LOCK_TOKEN_CASES = [
 @pytest.mark.parametrize("case", LOCK_TOKEN_CASES, ids=[c.name for c in LOCK_TOKEN_CASES])
 def test_get_worker_id_from_lock_token(case: LockTokenCase) -> None:
     assert get_worker_id_from_lock_token(case.token) == case.expected
+
+
+@dataclass
+class LockRequestedAtCase:
+    name: str
+    token: str | None
+    expected: datetime | None
+
+
+LOCK_REQUESTED_AT_CASES = [
+    LockRequestedAtCase(
+        name="valid",
+        token="2026-01-01T10:20:30.123456Z::worker-7",
+        expected=datetime(2026, 1, 1, 10, 20, 30, 123456, tzinfo=UTC),
+    ),
+    LockRequestedAtCase(name="none", token=None, expected=None),
+    LockRequestedAtCase(name="empty", token="", expected=None),
+    LockRequestedAtCase(name="no-separator", token="2026-01-01T10:20:30.123456Z", expected=None),
+    LockRequestedAtCase(name="not-a-timestamp", token="yesterday::worker-7", expected=None),
+    LockRequestedAtCase(name="no-offset", token="2026-01-01T10:20:30.123456::worker-7", expected=None),
+    LockRequestedAtCase(name="empty-worker-id", token="2026-01-01T10:20:30.123456Z::", expected=None),
+]
+
+
+@pytest.mark.parametrize("case", LOCK_REQUESTED_AT_CASES, ids=[c.name for c in LOCK_REQUESTED_AT_CASES])
+def test_get_requested_at_from_lock_token(case: LockRequestedAtCase) -> None:
+    assert get_requested_at_from_lock_token(case.token) == case.expected
+
+
+def test_the_request_time_of_a_token_written_by_a_lock_is_read_back() -> None:
+    before = datetime.now(tz=UTC)
+
+    requested_at = get_requested_at_from_lock_token(f"{current_timestamp()}::worker-7")
+
+    assert requested_at is not None
+    assert before <= requested_at <= datetime.now(tz=UTC)
+
+
+def test_lock_cache_key_names_the_key_a_held_lock_is_stored_under() -> None:
+    assert get_lock_cache_key(name="my-repository", namespace="repository") == "lock.repository.my-repository"
+
+
+def test_lock_cache_key_matches_the_key_of_a_registry_lock() -> None:
+    """The key is read by a process that does not hold the lock, so it must name what the lock writes."""
+    held = InfrahubLockRegistry().get(name="my-repository", namespace="repository")
+
+    assert held.remote.name == get_lock_cache_key(name="my-repository", namespace="repository")
 
 
 async def do_nothing(id: str, wait_sec: float, lock_name: str = "test1") -> tuple[str, int, int]:
@@ -186,13 +240,15 @@ async def test_multi_lock_releases_every_lock_it_took_when_one_fails_to_release(
         async with InfrahubMultiLock(lock_registry=lock_registry, locks=["first", "second", "third"]):
             pass
 
+    # Held here so the registry keeps handing out this lock and the checks below look at the one the multi-lock took.
+    first_lock = lock_registry.get(name="first")
     holder = create_task(hold_third_lock())
     try:
         await wait_for(third_lock_held.wait(), timeout=10)
         waiter = create_task(take_all_locks())
         # Yields once so the multi-lock takes the first two locks and queues on the third.
         await sleep(0)
-        assert await lock_registry.get(name="first").locked()
+        assert await first_lock.locked()
 
         with caplog.at_level("ERROR", logger="infrahub"):
             waiter.cancel()
@@ -200,7 +256,7 @@ async def test_multi_lock_releases_every_lock_it_took_when_one_fails_to_release(
 
         assert waiter in done
         assert waiter.cancelled()
-        assert not await lock_registry.get(name="first").locked()
+        assert not await first_lock.locked()
         failures = find_logged_events(
             caplog, event="Could not release a lock after a multi-lock failed to acquire", lock="second"
         )
@@ -209,6 +265,73 @@ async def test_multi_lock_releases_every_lock_it_took_when_one_fails_to_release(
     finally:
         release_third_lock.set()
         await wait_for(holder, timeout=10)
+
+
+async def test_registry_keeps_no_lock_after_its_holders_released_it() -> None:
+    lock_registry = InfrahubLockRegistry(local_only=True)
+
+    for index in range(3):
+        async with lock_registry.get(name=f"object.single.{index}"):
+            assert lock_registry.get_existing(name=f"object.single.{index}", namespace=None) is not None
+        async with InfrahubMultiLock(
+            lock_registry=lock_registry, locks=[f"object.first.{index}", f"object.second.{index}"], metrics=False
+        ):
+            assert lock_registry.get_existing(name=f"object.first.{index}", namespace=None) is not None
+
+    assert dict(lock_registry.locks) == {}
+
+
+async def test_multi_lock_excludes_a_second_holder_until_it_releases() -> None:
+    lock_registry = InfrahubLockRegistry(local_only=True)
+    events: list[str] = []
+    first_held = Event()
+    second_trying = Event()
+    release_first = Event()
+
+    async def hold_first() -> None:
+        async with InfrahubMultiLock(lock_registry=lock_registry, locks=["object.a", "object.b"], metrics=False):
+            events.append("first acquired")
+            first_held.set()
+            await release_first.wait()
+            events.append("first releasing")
+
+    async def take_second() -> None:
+        await first_held.wait()
+        # Nothing awaits between setting the event and queueing on the held lock, so the holder releases only after.
+        second_trying.set()
+        async with InfrahubMultiLock(lock_registry=lock_registry, locks=["object.a", "object.b"], metrics=False):
+            events.append("second acquired")
+
+    holder = create_task(hold_first())
+    taker = create_task(take_second())
+    await wait_for(second_trying.wait(), timeout=10)
+    release_first.set()
+    await wait_for(gather(holder, taker), timeout=10)
+
+    assert events == ["first acquired", "first releasing", "second acquired"]
+    assert dict(lock_registry.locks) == {}
+
+
+async def test_multi_lock_entered_twice_releases_its_locks_on_the_outer_exit() -> None:
+    lock_registry = InfrahubLockRegistry(local_only=True)
+    multi_lock = InfrahubMultiLock(lock_registry=lock_registry, locks=["object.a", "object.b"])
+    lock_a = lock_registry.get(name="object.a")
+
+    async with multi_lock:
+        async with multi_lock:
+            pass
+        assert await lock_a.locked()
+
+    assert not await lock_a.locked()
+
+
+async def test_local_schema_wait_returns_once_the_schema_lock_was_released() -> None:
+    lock_registry = InfrahubLockRegistry(local_only=True)
+
+    async with lock_registry.local_schema_lock():
+        pass
+
+    await wait_for(lock_registry.local_schema_wait(), timeout=10)
 
 
 def test_generate_name() -> None:
@@ -290,6 +413,41 @@ async def test_reentrant_lock_allows_nested_acquisitions() -> None:
         "inner released",
         "outer released",
         "waiter acquired",
+    ]
+
+
+BOUNDS_PROBE_LABELS = {"lock": "bucket_bounds_probe", "type": "local"}
+
+
+def test_lock_acquire_time_is_recorded_up_to_five_minutes() -> None:
+    LOCK_ACQUIRE_TIME_METRICS.labels(**BOUNDS_PROBE_LABELS).observe(0)
+
+    assert bucket_bounds(LOCK_ACQUIRE_TIME_METRICS, labels=BOUNDS_PROBE_LABELS) == [
+        "0.0005",
+        "0.25",
+        "0.5",
+        "1.0",
+        "5.0",
+        "30.0",
+        "60.0",
+        "120.0",
+        "300.0",
+    ]
+
+
+def test_lock_reserved_time_is_recorded_up_to_five_minutes() -> None:
+    LOCK_RESERVE_TIME_METRICS.labels(**BOUNDS_PROBE_LABELS).observe(0)
+
+    assert bucket_bounds(LOCK_RESERVE_TIME_METRICS, labels=BOUNDS_PROBE_LABELS) == [
+        "0.001",
+        "0.5",
+        "1.0",
+        "5.0",
+        "10.0",
+        "30.0",
+        "60.0",
+        "120.0",
+        "300.0",
     ]
 
 

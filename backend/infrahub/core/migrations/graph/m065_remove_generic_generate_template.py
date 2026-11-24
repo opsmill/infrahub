@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence  # noqa: TC003  needed for pydantic
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.query import Query, QueryType
@@ -18,7 +19,7 @@ class RemoveGenericGenerateTemplateQuery(Query):
     type: QueryType = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 MATCH (sg:SchemaGeneric)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: "generate_template"})
 WITH DISTINCT attr
@@ -34,7 +35,7 @@ class RemoveGenericGenerateTemplateSchemaAttributeQuery(Query):
     type: QueryType = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
 // Find the SchemaGeneric type definition (stored as SchemaNode)
 MATCH p1 = (sn:SchemaNode)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(:AttributeValueIndexed {value: "Generic"})

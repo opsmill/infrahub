@@ -11,6 +11,7 @@ from infrahub.git import InfrahubRepository
 from infrahub.git.repository import get_initialized_repo
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.flow import call_in_flow
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -22,14 +23,13 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 # No generator in the fixture declares `watch.files`, so each one's closure is its own
-# source file plus the repository config file, which the aggregator includes for every
-# definition. The four generators share the `generators/` directory and its query, and
+# source file. The four generators share the `generators/` directory and its query, and
 # none of that reaches any of their closures.
 CLOSURE_BY_GENERATOR = {
-    "cartags": {".infrahub.yml", "generators/cartags.py"},
-    "cartags_convert_response": {".infrahub.yml", "generators/cartags_convert_response.py"},
-    "cartags_title": {".infrahub.yml", "generators/cartags_title.py"},
-    "cartags_upper": {".infrahub.yml", "generators/cartags_upper.py"},
+    "cartags": {"generators/cartags.py"},
+    "cartags_convert_response": {"generators/cartags_convert_response.py"},
+    "cartags_title": {"generators/cartags_title.py"},
+    "cartags_upper": {"generators/cartags_upper.py"},
 }
 
 
@@ -83,6 +83,7 @@ class TestGeneratorImportClosure(TestInfrahubApp):
 
         assert set(generators) == set(CLOSURE_BY_GENERATOR)
         for name, generator in generators.items():
+            assert generator.dependencies.value is not None
             assert set(generator.dependencies.value) == CLOSURE_BY_GENERATOR[name]
             assert generator.dependencies_complete.value is True
 
@@ -96,11 +97,12 @@ class TestGeneratorImportClosure(TestInfrahubApp):
             repository_id=repository_id,
             name="car-dealership",
             repository_kind=InfrahubKind.REPOSITORY,
+            infrahub_branch_name="main",
         )
         assert isinstance(repo, InfrahubRepository)
 
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        config_file = await call_in_flow(lambda: repo.get_repository_config(branch_name="main", commit=commit))
         assert config_file
 
         # Drift the stored closure away from the worktree while leaving every other
@@ -113,5 +115,6 @@ class TestGeneratorImportClosure(TestInfrahubApp):
         await repo.import_generator_definitions(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
 
         refreshed = (await client.filters(kind=CoreGeneratorDefinition, name__value="cartags"))[0]
+        assert refreshed.dependencies.value is not None
         assert set(refreshed.dependencies.value) == CLOSURE_BY_GENERATOR["cartags"]
         assert refreshed.dependencies_complete.value is True

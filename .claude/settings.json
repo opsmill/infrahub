@@ -1,8 +1,5 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "env": {
-    "PR_REVIEW": "off"
-  },
   "hooks": {
     "SessionStart": [
       {
@@ -11,6 +8,15 @@
           {
             "type": "command",
             "command": "dev/setup-environment.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.specify/extensions/opsmill/scripts/bash/python-env.sh"
           }
         ]
       }
@@ -28,6 +34,15 @@
             "type": "command",
             "if": "Bash(*git push*)",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.agents/hooks/pr-review.sh push"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__github__create_pull_request",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.agents/hooks/pr-review.sh claude"
           }
         ]
       }

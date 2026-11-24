@@ -15,30 +15,34 @@ import { store } from "@/shared/stores";
 
 import { AuthProvider } from "@/entities/authentication/ui/auth-provider";
 import { ConfigProvider } from "@/entities/config/ui/config-provider";
+import { ThemeProvider } from "@/entities/config/ui/theme-provider";
 import { DatePreferencesProvider } from "@/entities/preferences/ui/date-preferences-provider";
 
 import "@/app/styles/index.css";
 import "react-toastify/dist/ReactToastify.css";
+import "@/app/styles/toastify-overrides.css";
 
 addCollection(mdiIcons);
 
 export function App() {
   return (
-    <ErrorBoundary FallbackComponent={ErrorBoundaryApp}>
-      <NuqsAdapter>
-        <Provider store={store}>
-          <QueryClientProvider client={queryClient}>
-            <AuthProvider>
-              <ConfigProvider>
-                <DatePreferencesProvider>
-                  <RouterProvider router={router} />
-                </DatePreferencesProvider>
-              </ConfigProvider>
-            </AuthProvider>
-            <TanStackQueryDevtools buttonPosition="bottom-left" />
-          </QueryClientProvider>
-        </Provider>
-      </NuqsAdapter>
-    </ErrorBoundary>
+    <ThemeProvider>
+      <ErrorBoundary FallbackComponent={ErrorBoundaryApp}>
+        <NuqsAdapter>
+          <Provider store={store}>
+            <QueryClientProvider client={queryClient}>
+              <AuthProvider>
+                <ConfigProvider>
+                  <DatePreferencesProvider>
+                    <RouterProvider router={router} />
+                  </DatePreferencesProvider>
+                </ConfigProvider>
+              </AuthProvider>
+              <TanStackQueryDevtools buttonPosition="bottom-left" />
+            </QueryClientProvider>
+          </Provider>
+        </NuqsAdapter>
+      </ErrorBoundary>
+    </ThemeProvider>
   );
 }

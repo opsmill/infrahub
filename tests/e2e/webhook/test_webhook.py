@@ -89,16 +89,15 @@ class TestCoreWebhook:
         await admin_page.get_by_test_id("identifier-cell").get_by_role("link", name=webhook, exact=True).click()
 
         await expect(admin_page.get_by_text("Activities", exact=True)).to_be_visible()
-        await expect(admin_page.get_by_test_id("activities-panel").get_by_text("Loading...")).to_be_hidden()
 
+        # The page fetches the activities once, so it shows none until a reload after the events are stored.
+        view_all_activities_link = admin_page.get_by_test_id("activities-panel").get_by_text("View all activities")
         deadline = Deadline("the webhook activity log to be populated")
-        while await admin_page.get_by_text("No activity found for this").is_visible():
+        while await view_all_activities_link.is_hidden():
             await deadline.tick()
-            await admin_page.reload()
-            await expect(admin_page.get_by_text("Activities", exact=True)).to_be_visible()
-            await expect(admin_page.get_by_test_id("activities-panel").get_by_text("Loading...")).to_be_hidden()
+            if await admin_page.get_by_text("No activity found for this object.").is_visible():
+                await admin_page.reload()
         await expect(admin_page.get_by_text("NameAnsible EDA")).to_be_visible()
-        await expect(admin_page.get_by_text("View all activities")).to_be_visible()
         await save_screenshot_for_docs(admin_page, "webhook_detail")
 
     async def test_delete_webhook(self, admin_page: Page, webhook: str) -> None:

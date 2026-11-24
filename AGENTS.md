@@ -8,10 +8,10 @@ Style: be direct and substantive. Challenge flawed approaches and ask before gue
 
 ## Tech Stack
 
-Exact versions: `pyproject.toml` (Python), `frontend/pnpm-workspace.yaml` / `frontend/app/package.json` (frontend dependencies) and `frontend/package.json` (pnpm itself, via `packageManager`).
+Exact versions: `pyproject.toml` (Python) and `frontend/pnpm-workspace.yaml` / `frontend/package.json` / `frontend/app/package.json` (frontend; `frontend/package.json` also pins pnpm via `packageManager`).
 
 - **Backend:** Python 3.14, FastAPI, Neo4j 2026.05 (driver 6), Pydantic 2
-- **Frontend:** TypeScript 5, React 19, Vite 8, Tailwind CSS 4
+- **Frontend:** TypeScript 6, React 19, Vite 8, Tailwind CSS 4
 - **Testing:** pytest 9, Vitest 5, Playwright
 - **Linting:** ruff, mypy 2, Biome 2
 - **Package Managers:** uv (Python), pnpm (Frontend; corepack applies the pinned version only when pnpm runs inside `frontend/`, so never run it from the repo root or pass `--pm-on-fail=ignore`)
@@ -99,9 +99,9 @@ See `tests/e2e/README.md` for the suite architecture and data fixtures.
 ### Linting & Formatting
 
 ```bash
-uv run invoke format                  # ruff format + fix on all Python code except python_sdk (same scope as CI)
-uv run invoke lint                    # yamllint; ruff and ty on all Python code except python_sdk (same scope as CI); mypy on backend
-cd frontend/app && pnpm biome:fix     # Format/lint frontend
+uv run invoke format                  # ruff format + fix on all Python code except python_sdk and .specify (same scope as CI)
+uv run invoke lint                    # yamllint; ruff and ty on all Python code except python_sdk and .specify (same scope as CI); mypy on backend
+cd frontend && pnpm biome:fix         # Format/lint frontend (app + packages/*)
 uv run invoke docs.lint               # Lint documentation
 ```
 
@@ -156,12 +156,14 @@ checkout.
 - `schema/schema.graphql` - GraphQL schema of the Core Schema
 - `schema/openapi.json` - OpenAPI schema for the REST API
 - `docs/docs/reference/{infrahub-cli,schema,infrahub-events}/`, `docs/docs/reference/{dotinfrahub,message-bus-events,configuration}.mdx` – Reference docs rendered from backend source (CLI, schema, events, repository config, message-bus events, configuration)
+- `docker-compose.yml` – The root compose file's env block is rendered from the backend settings
 
 Regenerate backend (offline): `uv run invoke backend.generate`
 Export GraphQL schema: `uv run invoke schema.generate-graphqlschema`
 Export OpenAPI schema: `uv run invoke schema.generate-jsonschema`
 Regenerate frontend types (offline, reads local schema files): `cd frontend/app && pnpm codegen`
 Regenerate reference docs (offline): `uv run invoke docs.generate`
+Regenerate the root compose env block: `uv run invoke release.gen-config-env --update-docker-file` (without the flag it renders nothing)
 
 CI validates that all generated files are committed — the `validate-generated-documentation` job runs `uv run invoke docs.validate` and fails when a generated doc is stale. After changing event classes, schema models, CLI commands, or config, regenerate and commit the affected files. See `dev/knowledge/backend/code-generation.md` for the full pipeline.
 
@@ -171,13 +173,15 @@ CI validates that all generated files are committed — the `validate-generated-
 
 - Before tracking down a bug, reviewing a change or modifying code in any domain, read the relevant docs in `dev/knowledge/` for that domain. The architectural intent (which layer owns a concern) is often the answer to the bug — don't reason from code alone
 - Before you open an issue, branch or pull request for a vulnerability fix or a security report, read *How We Prepare and Release Security Fixes* in `SECURITY.md`: for Infrahub's own code, severity decides whether the work is public or stays in the private repository; already-published third-party vulnerabilities are handled in a public pull request regardless of severity
+- Investigate test timeouts for avoidable work and optimize the measured bottleneck while preserving assertions and isolation; follow [Investigating test timeouts](dev/guides/backend/investigating-test-timeouts.md) before increasing a deadline.
 - Run formatters before committing (`uv run invoke format`, `pnpm biome:fix`)
 - Write tests for new functionality
 - Add a towncrier changelog fragment for any user-visible change, UI styling included (use the `creating-changelog-entries` skill). `housekeeping` is not a catch-all: internal maintenance gets a fragment only when a user could still notice the change (the skill draws the boundary on user visibility) — agent-doc, CI-config, and test-only tweaks are the typical cases a user never notices, so they get none
 - Use type hints for Python (backend) and TypeScript types (frontend)
 - In `tasks/*.py`, use the shared helpers for project-scoped Docker Compose operations rather than hard-coding `docker compose` or service names: build the command with `get_compose_cmd` (it selects the required `--profile`/`--ansi never` options) plus `get_env_vars`, run it through `execute_command` (which handles `sudo`), and reference named services via the shared constants (e.g. `SERVICE_WORKER_NAME`). Literal `docker compose` is acceptable only for genuinely global, project-agnostic discovery commands.
 - Before pushing, run the lint commands under *Linting & Formatting* for the areas you changed and `uv run invoke docs.validate` (CI fails if a generated doc is stale), then remind the user to run `/pre-ci` (`$pre-ci` in Codex): it runs the locally-executable CI checks for the areas you changed, and only the user can start it
-- Before writing a changelog fragment, PR description, or ADR that names a specific identifier, metric, or config default, grep the actual diff/code for it — state what landed, not what the plan intended. When a later fix changes a figure — or reverses a decision — that a spec-kit doc set already stated, grep the whole `dev/specs/<feature>/` directory for the old value or decision and update every file that repeats it in the same commit
+- After opening a pull request, pass its URL to the `reviewing-pull-requests` skill, which runs the built-in review with the rules in `REVIEW.md`; skip this when the `PR_REVIEW` hook has already started that review. When the session's skill list does not offer the skill, read `.agents/skills/reviewing-pull-requests/SKILL.md` and follow it
+- Before writing a changelog fragment, PR description, ADR, setting description, `dev/knowledge` statement, or spec-kit critique/summary row, grep the actual diff/code for every specific claim it makes — an identifier, metric, or config default, and equally the condition under which the behavior applies ("when X is omitted", "also deletes Y", "never serves Z"). State what landed, scoped exactly as the code scopes it, not what the plan intended. When a later fix changes a figure — or reverses a decision — that a spec-kit doc set already stated, grep the whole `dev/specs/<feature>/` directory for the old value or decision and update every file that repeats it in the same commit
 
 ### Ask First
 
@@ -186,9 +190,11 @@ CI validates that all generated files are committed — the `validate-generated-
 - New dependencies
 - CI/CD workflow changes
 - Authentication/authorization changes
+- Edits to files installed from another repository (`.agents/skills/speckit-*`, the skills in `skills-lock.json`, `.specify/extensions/`) — the next upgrade or install overwrites them. Make the change upstream; when this repository needs it sooner, open the upstream issue and list the local patch in the upgrade PR
 
 ### Never Do
 
+- Skip, quarantine, mark as expected failure, or deselect a test to address flakiness. Keep its assertions active; when the cause is unknown, collect diagnostics and report the unresolved failure.
 - Commit secrets, API keys, or credentials
 - Edit generated files manually
 - Skip linting in CI

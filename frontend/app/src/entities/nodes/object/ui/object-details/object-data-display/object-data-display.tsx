@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import { Sheet } from "@infrahub/ui";
 import { useState } from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import { FROM_RESOURCE_POOL_SUFFIX } from "@/shared/components/form/constants";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
@@ -77,7 +77,7 @@ export function ObjectDataDisplay({
   const fields = showExtra ? allFields : allFields.filter((field) => field.display !== "extra");
 
   return (
-    <div className="divide-y divide-gray-200">
+    <div className="divide-y">
       {fields.map((field) => {
         const fieldName = field.name;
         const fieldData = objectData[fieldName];
@@ -147,7 +147,7 @@ export function ObjectDataDisplay({
               <div className="ml-1.5 pb-1">{currentBranch.name}</div>
             </div>
           </div>
-          <div className="text-gray-500">Metadata</div>
+          <div className="text-foreground-muted">Metadata</div>
         </div>
         <FieldMetadataForm
           onCancel={() => setShowMetaEditModal(false)}

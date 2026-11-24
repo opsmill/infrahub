@@ -1,3 +1,7 @@
+import asyncio
+
+import pytest
+
 from infrahub import config, lock
 from infrahub.lock import (
     GLOBAL_GRAPH_LOCK,
@@ -16,12 +20,68 @@ async def test_records_acquire_and_release_order(recording_lock_timeline: LockTi
 
     assert recording_lock_timeline.acquire_sequence() == ["repository.repo-a", "repository.repo-b"]
     assert [event.action for event in recording_lock_timeline.events] == [
+        LockAction.WAIT,
         LockAction.ACQUIRE,
         LockAction.RELEASE,
+        LockAction.WAIT,
         LockAction.ACQUIRE,
         LockAction.RELEASE,
     ]
     assert recording_lock_timeline.currently_held() == set()
+
+
+async def test_counts_the_callers_that_wait_for_a_held_lock(recording_lock_timeline: LockTimeline) -> None:
+    repo_lock = lock.registry.get(name="repo-a", namespace="repository")
+    held = asyncio.Event()
+    release = asyncio.Event()
+
+    async def hold() -> None:
+        async with repo_lock:
+            held.set()
+            await release.wait()
+
+    async def wait_for_the_lock() -> None:
+        async with repo_lock:
+            pass
+
+    holder = asyncio.create_task(hold())
+    await asyncio.wait_for(held.wait(), timeout=5)
+    waiter = asyncio.create_task(wait_for_the_lock())
+    await asyncio.sleep(0)
+
+    assert recording_lock_timeline.waiting("repository.repo-a") == 1
+    release.set()
+    await asyncio.wait_for(asyncio.gather(holder, waiter), timeout=5)
+    assert recording_lock_timeline.waiting("repository.repo-a") == 0
+
+
+async def test_a_cancelled_wait_no_longer_counts_as_waiting(recording_lock_timeline: LockTimeline) -> None:
+    repo_lock = lock.registry.get(name="repo-a", namespace="repository")
+    held = asyncio.Event()
+    release = asyncio.Event()
+
+    async def hold() -> None:
+        async with repo_lock:
+            held.set()
+            await release.wait()
+
+    async def wait_for_the_lock() -> None:
+        async with repo_lock:
+            pass
+
+    holder = asyncio.create_task(hold())
+    await asyncio.wait_for(held.wait(), timeout=5)
+    waiter = asyncio.create_task(wait_for_the_lock())
+    await asyncio.sleep(0)
+    assert recording_lock_timeline.waiting("repository.repo-a") == 1
+
+    waiter.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await waiter
+
+    assert recording_lock_timeline.waiting("repository.repo-a") == 0
+    release.set()
+    await asyncio.wait_for(holder, timeout=5)
 
 
 async def test_held_at_checkpoint(recording_lock_timeline: LockTimeline) -> None:
@@ -42,6 +102,26 @@ async def test_reentrant_acquire_records_single_boundary(recording_lock_timeline
     assert recording_lock_timeline.acquire_sequence() == ["repository.repo-a"]
     assert [event.action for event in recording_lock_timeline.events].count(LockAction.RELEASE) == 1
     recording_lock_timeline.assert_held_at_checkpoint("repository.repo-a", "nested")
+
+
+async def test_an_exclusive_acquire_nested_under_a_shared_one_records_a_single_exclusive_boundary(
+    recording_lock_timeline: LockTimeline,
+) -> None:
+    pool_lock = lock.registry.get_shared(name="pool-1", namespace="resource_pool")
+    async with pool_lock.exclusive(), pool_lock.shared(), pool_lock.exclusive():
+        pass
+
+    assert [(event.name, event.action) for event in recording_lock_timeline.events] == [
+        ("resource_pool.pool-1:exclusive", LockAction.WAIT),
+        ("resource_pool.pool-1", LockAction.WAIT),
+        ("resource_pool.pool-1", LockAction.ACQUIRE),
+        ("resource_pool.pool-1:exclusive", LockAction.ACQUIRE),
+        ("resource_pool.pool-1:shared", LockAction.WAIT),
+        ("resource_pool.pool-1:shared", LockAction.ACQUIRE),
+        ("resource_pool.pool-1:shared", LockAction.RELEASE),
+        ("resource_pool.pool-1", LockAction.RELEASE),
+        ("resource_pool.pool-1:exclusive", LockAction.RELEASE),
+    ]
 
 
 async def test_multi_lock_records_each_member(recording_lock_timeline: LockTimeline) -> None:

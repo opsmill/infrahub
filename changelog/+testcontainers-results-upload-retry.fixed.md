@@ -1,1 +1,0 @@
-Fixed the `infrahub-testcontainers` pytest plugin losing the performance results after one failed upload: it now retries the upload up to 3 times, a number that `--performance-result-retries` changes.

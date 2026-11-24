@@ -17,12 +17,7 @@ export interface ProposedChangeTabsProps {
 
 export function ProposedChangeTabs({ sourceBranch, proposedChangeId }: ProposedChangeTabsProps) {
   return (
-    <ScrollArea
-      scrollX
-      scrollY={false}
-      scrollBarClassName="hidden"
-      className="shrink-0 border-gray-200 border-b"
-    >
+    <ScrollArea scrollX scrollY={false} scrollBarClassName="hidden" className="shrink-0 border-b">
       <nav aria-label="Tabs">
         <Row className="items-end gap-4 px-4">
           <OverviewTab proposedChangeId={proposedChangeId} />

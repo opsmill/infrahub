@@ -1,0 +1,143 @@
+/* react-datepicker ships a light-only stylesheet — hardcoded #fff/#f0f0f0 chrome, #216ba5
+   selection, no custom properties to hook into — so in dark mode the popup stayed a white island.
+   These overrides re-point every colour it paints at the theme's tokens; layout is left alone.
+   Selectors are copied from the stock sheet so specificity matches without !important.
+
+   The selection pairs --active with --content: each theme's active indigo against that same
+   theme's content surface, so the pairing clears contrast in both without naming a palette. */
+
+.react-datepicker {
+  background-color: var(--content);
+  color: var(--foreground);
+  border-color: var(--border-strong);
+}
+
+.react-datepicker__header {
+  background-color: var(--content-muted);
+  border-bottom-color: var(--border);
+}
+
+.react-datepicker__current-month,
+.react-datepicker-time__header,
+.react-datepicker-year-header,
+.react-datepicker__day-name,
+.react-datepicker__day,
+.react-datepicker__time-name {
+  color: var(--foreground);
+}
+
+/* The popper's arrow is an SVG: fill is the face it points out of (header when the popup opens
+   below the trigger, body when above), stroke is the popup's border. */
+.react-datepicker-popper .react-datepicker__triangle {
+  stroke: var(--border-strong);
+}
+.react-datepicker-popper[data-placement^="bottom"] .react-datepicker__triangle {
+  fill: var(--content-muted);
+  color: var(--content-muted);
+}
+.react-datepicker-popper[data-placement^="top"] .react-datepicker__triangle {
+  fill: var(--content);
+  color: var(--content);
+}
+
+.react-datepicker__navigation-icon::before,
+.react-datepicker__year-read-view--down-arrow,
+.react-datepicker__month-read-view--down-arrow,
+.react-datepicker__month-year-read-view--down-arrow {
+  border-color: var(--foreground-muted);
+}
+.react-datepicker__navigation:hover *::before {
+  border-color: var(--foreground);
+}
+
+.react-datepicker__day:not([aria-disabled="true"]):hover,
+.react-datepicker__month-text:not([aria-disabled="true"]):hover,
+.react-datepicker__quarter-text:not([aria-disabled="true"]):hover,
+.react-datepicker__year-text:not([aria-disabled="true"]):hover {
+  background-color: var(--content-strong);
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--in-selecting-range,
+.react-datepicker__day--in-range,
+.react-datepicker__month-text--selected,
+.react-datepicker__month-text--in-selecting-range,
+.react-datepicker__month-text--in-range,
+.react-datepicker__quarter-text--selected,
+.react-datepicker__quarter-text--in-selecting-range,
+.react-datepicker__quarter-text--in-range,
+.react-datepicker__year-text--selected,
+.react-datepicker__year-text--in-selecting-range,
+.react-datepicker__year-text--in-range {
+  background-color: var(--active);
+  color: var(--content);
+}
+.react-datepicker__day--selected:not([aria-disabled="true"]):hover,
+.react-datepicker__day--in-selecting-range:not([aria-disabled="true"]):hover,
+.react-datepicker__day--in-range:not([aria-disabled="true"]):hover,
+.react-datepicker__month-text--selected:not([aria-disabled="true"]):hover,
+.react-datepicker__quarter-text--selected:not([aria-disabled="true"]):hover,
+.react-datepicker__year-text--selected:not([aria-disabled="true"]):hover {
+  background-color: var(--active);
+  color: var(--content);
+}
+
+.react-datepicker__day--keyboard-selected,
+.react-datepicker__month-text--keyboard-selected,
+.react-datepicker__quarter-text--keyboard-selected,
+.react-datepicker__year-text--keyboard-selected {
+  background-color: var(--active-surface);
+  color: var(--foreground);
+}
+.react-datepicker__day--keyboard-selected:not([aria-disabled="true"]):hover,
+.react-datepicker__month-text--keyboard-selected:not(
+  [aria-disabled="true"]
+):hover,
+.react-datepicker__quarter-text--keyboard-selected:not(
+  [aria-disabled="true"]
+):hover,
+.react-datepicker__year-text--keyboard-selected:not(
+  [aria-disabled="true"]
+):hover {
+  background-color: var(--content-strong);
+  color: var(--foreground);
+}
+
+.react-datepicker__day--disabled,
+.react-datepicker__day--outside-month {
+  color: var(--foreground-muted);
+}
+
+.react-datepicker__time-container {
+  border-left-color: var(--border);
+}
+.react-datepicker__time-container .react-datepicker__time {
+  background: var(--content);
+}
+.react-datepicker__time-container
+  .react-datepicker__time
+  .react-datepicker__time-box
+  ul.react-datepicker__time-list
+  li.react-datepicker__time-list-item:hover {
+  background-color: var(--content-strong);
+}
+.react-datepicker__time-container
+  .react-datepicker__time
+  .react-datepicker__time-box
+  ul.react-datepicker__time-list
+  li.react-datepicker__time-list-item--selected,
+.react-datepicker__time-container
+  .react-datepicker__time
+  .react-datepicker__time-box
+  ul.react-datepicker__time-list
+  li.react-datepicker__time-list-item--selected:hover {
+  background-color: var(--active);
+  color: var(--content);
+}
+.react-datepicker__time-container
+  .react-datepicker__time
+  .react-datepicker__time-box
+  ul.react-datepicker__time-list
+  li.react-datepicker__time-list-item--disabled {
+  color: var(--foreground-muted);
+}

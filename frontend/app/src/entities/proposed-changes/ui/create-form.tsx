@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import { Card, CardContent, LinkButton, Spinner } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import { useQueryState } from "nuqs";
@@ -8,6 +7,7 @@ import { toast } from "react-toastify";
 
 import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Icon } from "@/shared/components/display/icon";
 import { MarkdownEditor } from "@/shared/components/editor/markdown";
 import { RelationshipManyInput } from "@/shared/components/inputs/relationship-many";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -74,7 +74,7 @@ export const ProposedChangeCreateForm = () => {
         navigate(url);
       }}
     >
-      <Card className="w-full border-gray-300 shadow-xs">
+      <Card className="w-full border-border-strong shadow-xs">
         <CardContent className="flex flex-row flex-wrap items-start justify-center gap-4 md:flex-nowrap">
           <FormField
             name="source_branch"
@@ -131,7 +131,7 @@ export const ProposedChangeCreateForm = () => {
 
           <Icon
             icon="mdi:arrow-bottom"
-            className="shrink-0 text-gray-500 text-xl md:mt-8 md:-rotate-90"
+            className="shrink-0 text-subtle-muted text-xl md:mt-8 md:-rotate-90"
           />
 
           <FormField
@@ -209,7 +209,7 @@ export const ProposedChangeCreateForm = () => {
       </div>
 
       {error && (
-        <div className="rounded-md bg-red-100 p-4 text-red-800 text-sm">
+        <div className="rounded-md bg-danger-surface p-4 text-danger text-sm">
           {(error as Error).message}
         </div>
       )}

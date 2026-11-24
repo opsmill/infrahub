@@ -20,6 +20,8 @@ How Infrahub enforces read-only constraints on branches based on their lifecycle
 
 `MERGED` is terminal — there is no transition back to `OPEN`. `MERGING` is transient: it becomes `MERGED` on success, reverts to `OPEN` if the merge rolls back, or is flipped to `MERGE_FAILED` if the merge worker dies. `MERGE_FAILED` is cleared only by recovery (it returns the branch to `OPEN`).
 
+A branch carries one status, not a history of them: `Branch` is a `StandardNode`, outside branch-aware versioning. A time-travel read (`at=...`) therefore cannot reconstruct which branches existed, or what status they held, at a past time. Select branches by their current state and document the answer as "as the branch list stands now" — a row set filtered partly by the requested time and partly by today's status answers as of neither.
+
 ### Failed merge detection
 
 `backend/infrahub/core/merge/failure_identifier.py`
@@ -95,9 +97,11 @@ Exception: Branch delete is handled by the middleware allowlist, not by the perm
 
 `backend/infrahub/core/branch/tasks.py`
 
-Setting `MERGED` is the **final** step of the merge flow — only after all other operations succeed (graph merge, repository merge, schema updates, migrations, diff tracking). If any earlier step fails, the branch remains `OPEN`.
+Setting `MERGED` is the point of no return of the merge flow. It comes only after the graph merge, schema updates and migrations succeed. If any of them fails, the merge rolls back and the branch remains `OPEN`. Diff finalization runs next and only logs a failure, so the branch still becomes `MERGED`. The repository merge runs after `MERGED`, as a follow-up, so a Git merge that fails leaves the branch merged in Infrahub and not in Git: see [Git Integration](git-integration.md#two-checks-keep-a-merge-on-the-commits-the-graph-imported).
 
 After setting `MERGED`, the flow triggers `BRANCH_CANCEL_PROPOSED_CHANGES` to cancel any open proposed changes that reference the merged branch as their source.
+
+A merge that cannot go ahead for a reason the user can clear raises a `ValidationError` subclass registered with `@suppress_traceback_in_logs` (`backend/infrahub/log.py`): `MergeRefusedError`, `MergeRepositoryImportError`, `RepositoryNotSynchronizedError`, `RepositoryCredentialsRefusedError`, `MergeConflictsUnresolvedError` and `MergeConstraintsViolatedError`. The task log then shows the refusal message in the `Finished in state Failed(...)` line, with no traceback. The first four are raised before the merge start is recorded, so the branch stays `OPEN`. The conflict and constraint refusals come from the graph merge, after the branch is set to `MERGING`; the rollback returns it to `OPEN`. The filter matches the exact type, so a new refusal needs a registered type of its own, or raises `MergeRefusedError`; a plain `ValidationError` keeps its traceback. A merge refused because the merge of another branch failed and needs recovery raises `MergeRecoveryRequiredError`, which is not registered, so its traceback stays in the log. The proposed change merge returns the message of each refusal as its failed state, except a constraint refusal, which it records as a failed Schema Integrity check.
 
 ## Adding a New Status Check
 

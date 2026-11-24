@@ -6,6 +6,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from infrahub.core.constants.schema import DISPLAY_LABEL_ATTRIBUTE_NAME, HFID_ATTRIBUTE_NAME
 from infrahub.core.schema import AttributeSchema  # noqa: TC001
 from infrahub.core.schema.derived_path import ScopedToReadingKind
 
@@ -13,13 +14,14 @@ if TYPE_CHECKING:
     from collections.abc import Container, Iterable, Mapping
 
     from infrahub.core.schema import MainSchemaTypes, NodeSchema
+    from infrahub.core.schema.computed_attribute import ComputedAttribute
     from infrahub.core.schema.derived_path import DerivedPathResolver
 
 # Reads of these computed/derived fields cannot be mapped back to a precise set of backing
 # schema elements, so any change to the kind read through them can move the value: editing a
 # display_label template moves every label with no data change.
 # Data-change triggers do filter on them by name. Schema names, not the GraphQL spelling.
-IMPRECISE_READ_FIELDS = frozenset({"display_label", "human_friendly_id"})
+IMPRECISE_READ_FIELDS = frozenset({DISPLAY_LABEL_ATTRIBUTE_NAME, HFID_ATTRIBUTE_NAME})
 
 
 def derived_read_is_scopable(
@@ -136,6 +138,13 @@ class PythonTransformRegistry:
 
     def get_attributes_per_node(self) -> dict[str, list[AttributeSchema]]:
         return self._map
+
+    def get_transform_attribute(self, node_kind: str, name: str) -> ComputedAttribute | None:
+        """The named Python transform computed attribute of a kind, or None when the kind has none."""
+        for attribute in self._map.get(node_kind, []):
+            if attribute.name == name:
+                return attribute.computed_attribute
+        return None
 
     @property
     def attributes_by_transform(self) -> dict[str, list[PythonDefinition]]:

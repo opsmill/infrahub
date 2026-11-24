@@ -3,6 +3,7 @@ from .branch import BranchQueryList, InfrahubBranchQueryList
 from .graphql_query_report import InfrahubGraphQLQueryReport
 from .internal import InfrahubInfo
 from .ipam import InfrahubIPAddressGetNextAvailable, InfrahubIPPrefixGetNextAvailable
+from .number_pool import InfrahubNumberPoolAllocations, InfrahubNumberPoolDivisions, InfrahubNumberPoolUtilization
 from .path import InfrahubPathTraversal
 from .preferences import (
     InfrahubEffectivePreferences,
@@ -12,6 +13,10 @@ from .preferences import (
 from .proposed_change import ProposedChangeAvailableActions
 from .reachable import InfrahubReachableNodes
 from .relationship import Relationship
+from .repository_git_state import (
+    InfrahubRepositoryActivity,
+    InfrahubRepositoryCommits,
+)
 from .resource_manager import InfrahubResourcePoolAllocated, InfrahubResourcePoolUtilization
 from .search import InfrahubSearchAnywhere
 from .status import InfrahubStatus
@@ -28,8 +33,13 @@ __all__ = [
     "InfrahubIPAddressGetNextAvailable",
     "InfrahubIPPrefixGetNextAvailable",
     "InfrahubInfo",
+    "InfrahubNumberPoolAllocations",
+    "InfrahubNumberPoolDivisions",
+    "InfrahubNumberPoolUtilization",
     "InfrahubPathTraversal",
     "InfrahubReachableNodes",
+    "InfrahubRepositoryActivity",
+    "InfrahubRepositoryCommits",
     "InfrahubResourcePoolAllocated",
     "InfrahubResourcePoolUtilization",
     "InfrahubSearchAnywhere",

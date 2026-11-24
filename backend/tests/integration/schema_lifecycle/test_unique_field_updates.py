@@ -124,7 +124,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         self, schema_person_03_unique_fields: dict[str, Any]
     ) -> dict[str, Any]:
         """Rename the name attribute."""
-        updated_schema = {**schema_person_03_unique_fields}
+        updated_schema: dict[str, Any] = {**schema_person_03_unique_fields}
         for attr in updated_schema["attributes"]:
             if attr["name"] == "name":
                 attr["name"] = "real_name"
@@ -139,7 +139,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         self, schema_person_04_rename_original_unique_fields: dict[str, Any]
     ) -> dict[str, Any]:
         """Delete the name attribute."""
-        updated_schema = {**schema_person_04_rename_original_unique_fields}
+        updated_schema: dict[str, Any] = {**schema_person_04_rename_original_unique_fields}
         for attr in updated_schema["attributes"]:
             if attr["name"] == "real_name":
                 attr["state"] = "absent"
@@ -153,7 +153,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
     @pytest.fixture(scope="class")
     def schema_generic_06_delete_unique_field(self, schema_generic_01: dict[str, Any]) -> dict[str, Any]:
         """Delete the unique attribute."""
-        updated_schema = {**schema_generic_01}
+        updated_schema: dict[str, Any] = {**schema_generic_01}
         for attr in updated_schema["attributes"]:
             if attr["name"] == "unique_attr":
                 attr["state"] = "absent"

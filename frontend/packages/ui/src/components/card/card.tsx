@@ -1,26 +1,28 @@
 import type React from "react";
+import { cn, tv, type VariantProps } from "tailwind-variants";
 
-import { cn } from "tailwind-variants";
+const cardVariants = tv({
+  base: "flex flex-col rounded-2xl border",
+  variants: {
+    variant: {
+      card: "bg-card shadow-card",
+      secondary: "bg-secondary shadow-secondary",
+      panel: "border-border-strong bg-panel shadow-panel",
+    },
+  },
+  defaultVariants: {
+    variant: "card",
+  },
+});
 
-export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface CardProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof cardVariants> {
   ref?: React.Ref<HTMLDivElement>;
 }
 
-export function Card({ className, ref, ...props }: CardProps) {
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        "flex flex-col",
-        "rounded-2xl",
-        "bg-linear-to-b from-stone-50 to-white to-10%",
-        "border border-neutral-200",
-        "shadow-[0_1px_1px_rgba(0,0,0,0.02)] inset-shadow-[0_2px_0_rgb(255,255,255),0_-1px_2px_1px_rgba(0,0,0,0.03)]",
-        className,
-      )}
-      {...props}
-    />
-  );
+export function Card({ className, ref, variant, ...props }: CardProps) {
+  return <div ref={ref} className={cardVariants({ variant, class: className })} {...props} />;
 }
 
 export interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -33,12 +35,12 @@ export function CardHeader({ className, ref, ...props }: CardHeaderProps) {
       ref={ref}
       className={cn(
         "rounded-t-[inherit]",
-        "border-b border-b-neutral-200",
-        "bg-linear-to-b from-neutral-100 to-neutral-50",
+        "border-b",
+        "bg-card-header",
         "px-3 py-2",
-        "text-sm font-medium tracking-tight text-neutral-700",
-        "inset-shadow-[0_1px_0_rgba(255,255,255,0.85)]",
-        className,
+        "font-medium text-card-header-foreground text-sm tracking-tight",
+        "shadow-card-header",
+        className
       )}
       {...props}
     />

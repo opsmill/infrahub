@@ -1,0 +1,23 @@
+schema_version: "1.0"
+
+extension:
+  id: "checkpoint"
+  name: "Spec Checkpoint"
+  version: "1.0.0"
+  description: "An extension to commit the changes made during the middle of the implementation, so you don't end up with just one very large commit at the end."
+  author: "Aaron Sun"
+  repository: "https://github.com/aaronrsun/spec-kit-checkpoint"
+  license: "MIT"
+
+requires:
+  speckit_version: ">=0.1.0"
+
+provides:
+  commands:
+    - name: "speckit.checkpoint.commit"
+      file: "commands/commit.md"
+      description: "Commit changes"
+
+tags:
+  - "checkpoint"
+  - "commit"

@@ -76,6 +76,6 @@ class ResolveDiffConflict(Mutation):
             # Generated protocols type enum-backed attributes as stdlib `enum.Enum`, whose `.value`
             # is read-only. At runtime the attribute is an infrahub Enum/Dropdown with a writable
             # value.
-            cdc.keep_branch.value = keep_branch  # type: ignore[misc]
+            cdc.keep_branch.value = keep_branch  # type: ignore[misc]  # ty: ignore[invalid-assignment]
             await cdc.save(db=graphql_context.db)
         return cls(ok=True)

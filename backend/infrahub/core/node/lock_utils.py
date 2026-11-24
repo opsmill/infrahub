@@ -5,6 +5,10 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.schema import GenericSchema
+from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
+from infrahub.pools.number_pool_locker import RESOURCE_POOL_LOCK_NAMESPACE, picking_lock_name
+from infrahub.profiles.data_reader import ProfileDataReader
+from infrahub.profiles.node_applier import NodeProfilesApplier
 
 if TYPE_CHECKING:
     from infrahub.core.node import Node
@@ -12,21 +16,29 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-RESOURCE_POOL_LOCK_NAMESPACE = "resource_pool"
+NUMBER_POOL_TARGET_LOCK_NAMESPACE = "number_pool_target"
 RELATIONSHIP_COUNT_LOCK_NAMESPACE = "relationship_count"
 
 
 async def apply_payload_for_lock_names(db: InfrahubDatabase, node: Node, data: dict[str, Any]) -> None:
     """Apply a mutation payload to a node used only to compute lock names.
 
-    The peers this node already has in the database are left unread: the relationship lock names
-    are built from the peers the payload sets, and no pool is allocated. Marking the relationships
-    as fetched is what keeps `from_graphql` from reading them; this node is a preview that is never
-    saved, so the peers it ends up holding only have to cover the payload.
+    The peers the payload replaces are left unread: the relationship lock names are built from the
+    peers the payload sets, and no pool is allocated. Marking those relationships as fetched is what
+    keeps `from_graphql` from reading them; this node is a preview that is never saved, so the peers
+    it ends up holding only have to cover the payload. The relationships not set by the payload stay
+    unmarked, so that they will be read if necessary instead of assumed empty.
     """
-    node.mark_relationships_as_fetched()
+    node.mark_relationships_as_fetched(names=set(data))
 
-    await node.from_graphql(db=db, data=data, process_pools=False)
+    pool_applier = build_attribute_pool_applier(
+        profiles_applier=NodeProfilesApplier(
+            db=db, branch=node.get_branch(), profile_data_reader=ProfileDataReader(db=db, branch=node.get_branch())
+        ),
+        db=db,
+        schema_branch=db.schema.get_schema_branch(name=node.get_branch().name),
+    )
+    await node.from_graphql(db=db, data=data, pool_applier=pool_applier, process_pools=False)
 
 
 def _get_kinds_to_lock_on_object_mutation(kind: str, schema_branch: SchemaBranch) -> list[str]:
@@ -82,27 +94,43 @@ def _any_subtype_has_count_constraint(
     )
 
 
+def _attribute_pool_lock_name(from_pool: dict[str, Any]) -> str:
+    """Return the lock that allocations take to pick a number from the pool, per division when the pool has a scope."""
+    return picking_lock_name(pool_id=from_pool["id"], division_key=from_pool.get("division"))
+
+
+def get_pool_lock_names(node: Node) -> set[str]:
+    """Return the locks the node takes to draw from the resource pools its attributes and relationships name."""
+    lock_names: set[str] = set()
+    for attr_name in node.get_schema().attribute_names:
+        attribute = getattr(node, attr_name, None)
+        if attribute is not None and getattr(attribute, "from_pool", None) and "id" in attribute.from_pool:
+            lock_names.add(_attribute_pool_lock_name(from_pool=attribute.from_pool))
+
+    for rel_name in node._relationships:
+        for rel in node.get_relationship(rel_name)._relationships:
+            if rel.from_pool and "id" in rel.from_pool:
+                lock_names.add(ip_pool_lock_name(pool_id=rel.from_pool["id"]))
+    return lock_names
+
+
+def ip_pool_lock_name(pool_id: str) -> str:
+    """Return the name of the lock that allocations from the same IP address or IP prefix pool take."""
+    return f"{RESOURCE_POOL_LOCK_NAMESPACE}.{pool_id}"
+
+
 def get_lock_names_on_object_mutation(node: Node, schema_branch: SchemaBranch) -> list[str]:
     """Return lock names for object on which we want to avoid concurrent mutation (create/update).
 
     Lock names include kind, some generic kinds, resource pool ids, peer ids for cardinality one relationships,
     and values of attributes of corresponding uniqueness constraints.
     """
-    lock_names: set[str] = set()
+    lock_names = get_pool_lock_names(node=node)
 
-    # Check if node is using resource manager allocation via attributes
-    for attr_name in node.get_schema().attribute_names:
-        attribute = getattr(node, attr_name, None)
-        if attribute is not None and getattr(attribute, "from_pool", None) and "id" in attribute.from_pool:
-            lock_names.add(f"{RESOURCE_POOL_LOCK_NAMESPACE}.{attribute.from_pool['id']}")
-
-    # Check if relationships allocate resources or have cardinality one constraint
+    # Check if relationships have cardinality one constraint
     for rel_name in node._relationships:
         rel_manager = node.get_relationship(rel_name)
         for rel in rel_manager._relationships:
-            if rel.from_pool and "id" in rel.from_pool:
-                lock_names.add(f"{RESOURCE_POOL_LOCK_NAMESPACE}.{rel.from_pool['id']}")
-
             peer_id = rel.peer_id
             if not peer_id or not rel.schema.identifier:
                 continue

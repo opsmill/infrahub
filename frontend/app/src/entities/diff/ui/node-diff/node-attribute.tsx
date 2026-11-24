@@ -42,7 +42,7 @@ export const DiffNodeAttribute = ({
       left={previousValue}
       right={newValue}
     >
-      <div className="divide-y divide-gray-200 border-gray-200 border-t">
+      <div className="divide-y border-t">
         {attribute.conflict && pathname.includes("/proposed-changes") && (
           <Conflict
             id={attribute.conflict.uuid}

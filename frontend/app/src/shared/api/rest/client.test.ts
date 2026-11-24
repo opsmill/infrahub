@@ -34,7 +34,7 @@ describe("authMiddleware.onRequest — outbound X-Priority header", () => {
 });
 
 describe("authMiddleware 401 replay — X-Priority survives the stored clone", () => {
-  let fetchQuerySpy: ReturnType<typeof vi.spyOn>;
+  let querySpy: ReturnType<typeof vi.spyOn>;
   let fetchSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -49,7 +49,7 @@ describe("authMiddleware 401 replay — X-Priority survives the stored clone", (
     // Capture the Request handed to the replay `fetch(clonedRequest)`.
     fetchSpy = vi.fn(async () => new Response(null, { status: 200 }));
     vi.stubGlobal("fetch", fetchSpy);
-    fetchQuerySpy = vi.spyOn(queryClient, "fetchQuery");
+    querySpy = vi.spyOn(queryClient, "query");
   });
 
   afterEach(() => {
@@ -59,7 +59,7 @@ describe("authMiddleware 401 replay — X-Priority survives the stored clone", (
 
   it("replays the 401'd request with the original X-Priority carried on the clone", async () => {
     // GIVEN
-    fetchQuerySpy.mockResolvedValue({ access_token: "new-token", refresh_token: "new-refresh" });
+    querySpy.mockResolvedValue({ access_token: "new-token", refresh_token: "new-refresh" });
     const request = new Request("http://localhost:8000/api/test");
 
     // WHEN

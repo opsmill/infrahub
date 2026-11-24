@@ -31,7 +31,7 @@ export function Breadcrumb({ children, className, ...props }: BreadcrumbProps) {
           <span
             role="presentation"
             aria-hidden="true"
-            className="text-lg font-medium text-neutral-300 select-none"
+            className="select-none font-medium text-border-strong text-lg"
           >
             /
           </span>
@@ -45,11 +45,11 @@ export function Breadcrumb({ children, className, ...props }: BreadcrumbProps) {
 const breadcrumbItemVariants = tv({
   base: [
     focusVisibleStyle,
-    "inline-flex items-center truncate rounded-lg border border-transparent px-2 py-0.5 text-stone-800",
+    "inline-flex items-center truncate rounded-lg border border-transparent px-2 py-0.5 text-foreground",
   ],
   variants: {
     isPressed: {
-      true: "bg-stone-100",
+      true: "bg-highlight",
     },
   },
 });
@@ -65,7 +65,7 @@ export function BreadcrumbItem(props: BreadcrumbItemProps) {
       <Breadcrumb>
         <AriaLink
           className={composeAriaClassName(className, ({ isPressed }) =>
-            cn(breadcrumbItemVariants({ isPressed }), "hover:underline"),
+            cn(breadcrumbItemVariants({ isPressed }), "hover:underline")
           )}
           {...rest}
         />
@@ -78,7 +78,7 @@ export function BreadcrumbItem(props: BreadcrumbItemProps) {
     <Breadcrumb>
       <AriaButton
         className={composeAriaClassName(className, ({ isPressed }) =>
-          breadcrumbItemVariants({ isPressed }),
+          breadcrumbItemVariants({ isPressed })
         )}
         {...rest}
       />

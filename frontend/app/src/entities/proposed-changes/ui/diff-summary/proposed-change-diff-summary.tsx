@@ -32,7 +32,7 @@ export function ProposedChangeDiffSummary({
       <ErrorScreen
         message={error?.message ?? "No diff summary available."}
         hideIcon
-        className="items-start p-0 text-gray-600 text-sm"
+        className="items-start p-0 text-foreground-muted text-sm"
       />
     );
   }

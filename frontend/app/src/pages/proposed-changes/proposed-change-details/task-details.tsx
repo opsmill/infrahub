@@ -1,5 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router";
+
+import { Icon } from "@/shared/components/display/icon";
 
 import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/ui/routing/proposed-change-urls";
 import { useProposedChangeOutlet } from "@/entities/proposed-changes/ui/routing/use-proposed-change-outlet";
@@ -10,7 +11,7 @@ export function Component() {
 
   return (
     <div>
-      <div className="flex bg-white text-sm">
+      <div className="flex bg-content text-sm">
         <Link
           to={getProposedChangeDetailsUrl(proposedChangeData.id, "tasks")}
           className="flex items-center p-2"

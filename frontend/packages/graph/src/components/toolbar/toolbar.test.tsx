@@ -1,7 +1,7 @@
 import { Button } from "@infrahub/ui";
 import { describe, expect, test } from "vitest";
-import { render } from "vitest-browser-react";
 import { userEvent } from "vitest/browser";
+import { render } from "vitest-browser-react";
 
 import { Toolbar } from "./toolbar";
 
@@ -13,7 +13,7 @@ describe("Toolbar", () => {
         <Button variant="ghost" size="sm" shape="square" aria-label="Zoom in">
           <svg aria-hidden="true" />
         </Button>
-      </Toolbar>,
+      </Toolbar>
     );
 
     // THEN
@@ -31,7 +31,7 @@ describe("Toolbar", () => {
         <Button variant="ghost" size="sm" shape="square" aria-label="Zoom out">
           <svg aria-hidden="true" />
         </Button>
-      </Toolbar>,
+      </Toolbar>
     );
 
     // THEN both buttons + the separator exist
@@ -50,7 +50,7 @@ describe("Toolbar", () => {
         <Button variant="ghost" size="sm" shape="square" aria-label="Zoom out">
           <svg aria-hidden="true" />
         </Button>
-      </Toolbar>,
+      </Toolbar>
     );
 
     // WHEN focusing the first control and pressing ArrowRight

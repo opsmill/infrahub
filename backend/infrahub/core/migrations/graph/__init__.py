@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 from .discovery import discover_migrations
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from ..shared import BaseMigration
 
 MIGRATIONS: list[type[BaseMigration]] = discover_migrations()

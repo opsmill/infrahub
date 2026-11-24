@@ -111,6 +111,8 @@ Most configuration related to Infrahub goes inside the `infrahub` top-level key.
 <ReferenceLink title="Infrahub Enterprise Helm Chart" url="https://github.com/opsmill/infrahub-helm/tree/stable/charts/infrahub-enterprise" openInNewTab />
 <ReferenceLink title="ArtifactHub" url="https://artifacthub.io/packages/helm/infrahub-enterprise/infrahub-enterprise" openInNewTab />
 
+To run the Infrahub MCP server in the same release as Infrahub Enterprise, set `infrahub.infrahub-mcp.enabled: true` in your values file and put the MCP server settings under the `infrahub.infrahub-mcp:` key. With the default settings, every MCP client reads and writes data in Infrahub through one shared API token. To require each client to send its own API token, and for the other settings, see [Deploy on Kubernetes with Helm](https://docs.infrahub.app/mcp/guides/kubernetes) in the Infrahub MCP server documentation.
+
 ### Production deployment requirements
 
 The following are required for production deployments using Helm:

@@ -1,7 +1,8 @@
+from infrahub_sdk.protocols import CoreArtifactCheck
 from prefect import flow
 
 from infrahub.artifacts.models import CheckArtifactCreate
-from infrahub.core.constants import InfrahubKind, ValidatorConclusion
+from infrahub.core.constants import ValidatorConclusion
 from infrahub.core.timestamp import Timestamp
 from infrahub.git.repository import get_initialized_repo
 from infrahub.tasks.artifact import define_artifact
@@ -21,6 +22,7 @@ async def create(model: CheckArtifactCreate) -> ValidatorConclusion:
         repository_id=model.repository_id,
         name=model.repository_name,
         repository_kind=model.repository_kind,
+        infrahub_branch_name=model.branch_name,
         commit=model.commit,
     )
 
@@ -44,7 +46,8 @@ async def create(model: CheckArtifactCreate) -> ValidatorConclusion:
         check_message = "Artifact rendered successfully"
         conclusion = ValidatorConclusion.SUCCESS
 
-    except Exception as exc:
+    # Check boundary: any render failure must be recorded as a failed artifact check, not crash the flow
+    except Exception as exc:  # noqa: BLE001
         artifact.status.value = "Error"
         await artifact.save()
         severity = "critical"
@@ -54,7 +57,7 @@ async def create(model: CheckArtifactCreate) -> ValidatorConclusion:
     check = None
     check_name = f"{model.artifact_name}: {model.target_name}"
     existing_check = await client.filters(
-        kind=InfrahubKind.ARTIFACTCHECK, validator__ids=[model.validator_id], name__value=check_name
+        kind=CoreArtifactCheck, validator__ids=[model.validator_id], name__value=check_name
     )
     if existing_check:
         check = existing_check[0]
@@ -70,7 +73,7 @@ async def create(model: CheckArtifactCreate) -> ValidatorConclusion:
         await check.save()
     else:
         check = await client.create(
-            kind=InfrahubKind.ARTIFACTCHECK,
+            kind=CoreArtifactCheck,
             data={
                 "name": check_name,
                 "origin": model.repository_id,

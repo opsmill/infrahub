@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence  # noqa: TC003  needed for pydantic
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.query import Query, QueryType
@@ -16,7 +17,7 @@ class Migration011Query01(Query):
     type: QueryType = QueryType.WRITE
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
         // get all the SchemaRelationship nodes for 'profiles' relationships
         MATCH (sr_to_delete:SchemaRelationship)-[HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[HAS_VALUE]->(av:AttributeValue {value: "profiles"})

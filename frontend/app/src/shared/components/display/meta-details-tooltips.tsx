@@ -1,9 +1,9 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, Popover, PopoverTrigger } from "@infrahub/ui";
 import { FileBoxIcon } from "lucide-react";
 import type React from "react";
 
 import type { AnyAttribute } from "@/shared/api/graphql/generated/types";
+import { Icon } from "@/shared/components/display/icon";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Link } from "@/shared/components/ui/link";
@@ -77,7 +77,13 @@ export default function MetaDetailsTooltip({
 
   return (
     <PopoverTrigger>
-      <Button size="xs" shape="circle" variant="ghost" data-testid="view-metadata-button">
+      <Button
+        size="xs"
+        shape="circle"
+        variant="ghost"
+        className="text-foreground-muted"
+        data-testid="view-metadata-button"
+      >
         <Icon icon="mdi:information-slab-circle-outline" />
       </Button>
 

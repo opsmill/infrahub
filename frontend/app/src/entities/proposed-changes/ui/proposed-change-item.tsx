@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import { Tooltip } from "@infrahub/ui";
 import { ClockIcon } from "lucide-react";
 import { ListBoxItem } from "react-aria-components";
@@ -7,6 +6,7 @@ import { Link } from "react-router";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
 import { DateDisplay } from "@/shared/components/display/date-display";
+import { Icon } from "@/shared/components/display/icon";
 import { Badge } from "@/shared/components/ui/badge";
 import { classNames } from "@/shared/utils/common";
 
@@ -92,14 +92,16 @@ const ProposedChangesInfo = ({
         <span className="flex items-center space-x-4">
           <Link
             to={constructPath(`/proposed-changes/${id}`)}
-            className={classNames("font-semibold text-lg transition-all hover:text-gray-500")}
+            className={classNames(
+              "font-semibold text-lg transition-all hover:text-foreground-muted"
+            )}
           >
             <Icon
               icon={"mdi:file-replace-outline"}
               className={classNames(
                 "text-base",
                 "text-green-700",
-                isDraft && "text-gray-500",
+                isDraft && "text-subtle-muted",
                 isApproved && "text-custom-blue-500"
               )}
             />{" "}

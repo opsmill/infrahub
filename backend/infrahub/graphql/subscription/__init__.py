@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, AsyncGenerator
+from typing import TYPE_CHECKING, Any
 
 from graphene import Field, Int, ObjectType, String
 from graphene.types.generic import GenericScalar
@@ -8,6 +8,8 @@ from graphene.types.generic import GenericScalar
 from .graphql_query import resolver_graphql_query
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from graphql import GraphQLResolveInfo, GraphQLSchema
 
 GraphQLQuerySubscription = Field(

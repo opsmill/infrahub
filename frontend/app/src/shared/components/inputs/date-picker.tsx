@@ -1,7 +1,9 @@
-import { Icon } from "@iconify-icon/react";
 import type React from "react";
 import DateTimePicker from "react-datepicker";
+
+import { Icon } from "@/shared/components/display/icon";
 import "react-datepicker/dist/react-datepicker.css";
+import "./datepicker-overrides.css";
 
 import { Button } from "@infrahub/ui";
 import { isValid } from "date-fns";
@@ -86,7 +88,7 @@ export const DatePicker = ({
               handleClear();
             }}
           >
-            <Icon icon="mdi:close" className="text-gray-400" />
+            <Icon icon="mdi:close" className="text-subtle-muted" />
           </Button>
         </div>
       )}

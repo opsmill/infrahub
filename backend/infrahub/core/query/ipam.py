@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import ipaddress
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.graph.schema import GraphAttributeIPHostNode, GraphAttributeIPNetworkNode
 from infrahub.core.ipam.constants import AllIPTypes, IPAddressType, IPNetworkType
 from infrahub.core.query import Query, QueryResult, QueryType
+from infrahub.core.query.branch_windows import build_branch_windows_query, render_outranks, render_window_filter
 from infrahub.core.registry import registry
 from infrahub.core.utils import convert_ip_to_binary_str
 
@@ -16,6 +17,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 
@@ -103,6 +105,172 @@ def _get_namespace_id(
     return registry.default_ipnamespace
 
 
+@dataclass(frozen=True)
+class _AllocatedChild:
+    """Where the value of a prefix or an address allocated in a namespace is stored."""
+
+    node_label: str
+    relationship_name: str
+    attribute_name: str
+    value_label: str
+
+
+_ALLOCATED_PREFIX = _AllocatedChild(
+    node_label=InfrahubKind.IPPREFIX,
+    relationship_name="ip_namespace__ip_prefix",
+    attribute_name="prefix",
+    value_label=PREFIX_ATTRIBUTE_LABEL,
+)
+_ALLOCATED_ADDRESS = _AllocatedChild(
+    node_label=InfrahubKind.IPADDRESS,
+    relationship_name="ip_namespace__ip_address",
+    attribute_name="address",
+    value_label=ADDRESS_ATTRIBUTE_LABEL,
+)
+
+
+def _build_allocated_values_query(
+    *, branch: Branch, at: Timestamp, branch_agnostic: bool, child: _AllocatedChild, child_filter: str = ""
+) -> tuple[str, dict[str, Any]]:
+    """Return the Cypher that matches the namespace `$ns_id`, then the value `av` of each child allocated in it.
+
+    The rows hold `namespace_id` and `av`, with `av` NULL when no child is in range, and there is no row when the
+    namespace is not active. A kind migration leaves one vertex per kind for the same namespace, so callers group the
+    values by `namespace_id`, never by vertex. The value must match `$prefix_binary`, `$maxprefixlen` and `$ip_version`, and `child_filter` can
+    exclude a `child` node. In branch-agnostic mode, the namespace and a child count when they are active in the
+    window of at least one live branch, so a value stays taken while any live branch holds it.
+    """
+    if branch_agnostic:
+        return _build_allocated_values_in_windows_query(at=at, child=child, child_filter=child_filter)
+
+    branch_filter, branch_params = branch.get_query_filter_path(at=at.to_string())
+    query = """
+        MATCH (ns:%(ns_label)s)
+        WHERE ns.uuid = $ns_id
+        CALL (ns) {
+            MATCH (ns)-[r:IS_PART_OF]-(root:Root)
+            WHERE %(branch_filter)s
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH ns, r
+        WHERE r.status = "active"
+        WITH ns
+        OPTIONAL MATCH path2 = (ns)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(child:%(node_label)s)-[:HAS_ATTRIBUTE]-(an:Attribute {name: "%(attribute_name)s"})-[:HAS_VALUE]-(av:%(value_label)s)
+        WHERE ns_rel.name = "%(relationship_name)s"
+            AND av.binary_address STARTS WITH $prefix_binary
+            AND av.prefixlen >= $maxprefixlen
+            AND av.version = $ip_version
+            %(child_filter)s
+            AND all(r IN relationships(path2) WHERE (%(branch_filter)s) AND r.status = "active")
+        WITH ns.uuid AS namespace_id, av
+    """ % {
+        "ns_label": InfrahubKind.IPNAMESPACE,
+        "node_label": child.node_label,
+        "attribute_name": child.attribute_name,
+        "value_label": child.value_label,
+        "relationship_name": child.relationship_name,
+        "child_filter": child_filter,
+        "branch_filter": branch_filter,
+    }
+    return query, branch_params
+
+
+_PATH_EDGES = ("child_part_of", "namespace_edge", "child_edge", "attribute_edge", "value_edge")
+
+
+def _render_edge_in_some_window(edge: str) -> str:
+    """Render whether `edge` is active and visible in the window of at least one live branch."""
+    return (
+        f'{edge}.status = "active" AND {edge}.from <= $windows_at'
+        f" AND ({edge}.to IS NULL OR {edge}.to > oldest_origin_at)"
+        f" AND any(window IN branch_windows WHERE {render_window_filter(edge=edge)})"
+    )
+
+
+def _build_allocated_values_in_windows_query(
+    *, at: Timestamp, child: _AllocatedChild, child_filter: str
+) -> tuple[str, dict[str, Any]]:
+    windows_query, windows_params = build_branch_windows_query(at=at, enabled=True)
+    path_edges = ", ".join(_PATH_EDGES)
+    query = """
+        %(windows_query)s
+        // An edge closed before the oldest fork point is visible in no window
+        WITH branch_windows, reduce(oldest = $windows_at, window IN branch_windows |
+            CASE WHEN window.origin_at < oldest THEN window.origin_at ELSE oldest END
+        ) AS oldest_origin_at,
+        head([window IN branch_windows WHERE window.origin_name IS NULL | window.name]) AS default_branch_name
+        MATCH (ns:%(ns_label)s)-[ns_part_of:IS_PART_OF]->(:Root)
+        WHERE ns.uuid = $ns_id
+            AND ns_part_of.status = "active"
+            AND ns_part_of.from <= $windows_at
+            AND (ns_part_of.to IS NULL OR ns_part_of.to > oldest_origin_at)
+            AND any(window IN branch_windows WHERE %(ns_part_of_visible)s
+                AND NOT EXISTS { MATCH (ns)-[r:IS_PART_OF]->(:Root) WHERE %(competitor_visible)s AND %(outranks_ns_part_of)s })
+        WITH DISTINCT ns, branch_windows, oldest_origin_at, default_branch_name
+        OPTIONAL CALL (ns, branch_windows, oldest_origin_at, default_branch_name) {
+            MATCH (ns)-[namespace_edge:IS_RELATED]-(ns_rel:Relationship)-[child_edge:IS_RELATED]-(child:%(node_label)s)-[attribute_edge:HAS_ATTRIBUTE]->(an:Attribute {name: "%(attribute_name)s"})-[value_edge:HAS_VALUE]->(av:%(value_label)s),
+                (child)-[child_part_of:IS_PART_OF]->(:Root)
+            WHERE ns_rel.name = "%(relationship_name)s"
+                AND av.binary_address STARTS WITH $prefix_binary
+                AND av.prefixlen >= $maxprefixlen
+                AND av.version = $ip_version
+                %(child_filter)s
+                AND %(child_part_of_seen)s
+                AND %(namespace_edge_seen)s
+                AND %(child_edge_seen)s
+                AND %(attribute_edge_seen)s
+                AND %(value_edge_seen)s
+            // A write closes the open edge it replaces on its branch and a field never mixes default and global edges, so open default-branch edges hold the value
+            WITH ns, ns_rel, child, an, av, branch_windows, %(path_edges)s,
+                default_branch_name IS NOT NULL AND %(open_on_default_branch)s AS open_on_default_branch
+            CALL (ns, ns_rel, child, an, av, branch_windows, %(path_edges)s, open_on_default_branch) {
+                WITH av, open_on_default_branch
+                WHERE open_on_default_branch
+                RETURN av AS held_av
+                UNION ALL
+                WITH ns, ns_rel, child, an, av, branch_windows, %(path_edges)s, open_on_default_branch
+                WHERE NOT open_on_default_branch
+                // Each edge and its competitors are read once, so testing them in every window reads nothing more
+                WITH av, branch_windows, [
+                    {edge: child_part_of {%(edge_fields)s}, competitors: [(child)-[r:IS_PART_OF]->(:Root) | r {%(edge_fields)s}]},
+                    {edge: namespace_edge {%(edge_fields)s}, competitors: [(ns)-[r:IS_RELATED]-(ns_rel) | r {%(edge_fields)s}]},
+                    {edge: child_edge {%(edge_fields)s}, competitors: [(ns_rel)-[r:IS_RELATED]-(child) | r {%(edge_fields)s}]},
+                    {edge: attribute_edge {%(edge_fields)s}, competitors: [(child)-[r:HAS_ATTRIBUTE]->(an) | r {%(edge_fields)s}]},
+                    {edge: value_edge {%(edge_fields)s}, competitors: [(an)-[r:HAS_VALUE]->() | r {%(edge_fields)s}]}
+                ] AS edges
+                // Keep the child if, on one branch, its five edges are visible and no visible edge outranks them
+                WHERE any(window IN branch_windows WHERE all(path_edge IN edges WHERE %(path_edge_visible)s
+                    AND none(r IN path_edge.competitors WHERE %(competitor_visible)s AND %(outranks_path_edge)s)))
+                RETURN av AS held_av
+            }
+            RETURN held_av AS av
+        }
+        WITH ns.uuid AS namespace_id, av
+    """ % {
+        "windows_query": windows_query,
+        "ns_label": InfrahubKind.IPNAMESPACE,
+        "node_label": child.node_label,
+        "attribute_name": child.attribute_name,
+        "value_label": child.value_label,
+        "relationship_name": child.relationship_name,
+        "child_filter": child_filter,
+        "path_edges": path_edges,
+        "edge_fields": ".branch, .branch_level, .from, .to",
+        "competitor_visible": render_window_filter(edge="r"),
+        "ns_part_of_visible": render_window_filter(edge="ns_part_of"),
+        "outranks_ns_part_of": render_outranks(edge="ns_part_of"),
+        "path_edge_visible": render_window_filter(edge="path_edge.edge"),
+        "outranks_path_edge": render_outranks(edge="path_edge.edge"),
+        "open_on_default_branch": " AND ".join(
+            f"{edge}.branch = default_branch_name AND {edge}.to IS NULL" for edge in _PATH_EDGES
+        ),
+        **{f"{edge}_seen": _render_edge_in_some_window(edge=edge) for edge in _PATH_EDGES},
+    }
+    return query, windows_params
+
+
 class IPParentPrefixLookupQuery(Query):
     name = "ip_parent_prefix_lookup"
     type = QueryType.READ
@@ -111,7 +279,7 @@ class IPParentPrefixLookupQuery(Query):
     def __init__(
         self,
         ip_value: ipaddress.IPv4Address | ipaddress.IPv6Address | ipaddress.IPv4Network | ipaddress.IPv6Network,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.ip_value = ip_value
         super().__init__(**kwargs)
@@ -146,7 +314,7 @@ class IPParentPrefixLookupQuery(Query):
         self.params["possible_prefix_list"] = list(possible_prefix_map.keys())
         self.params["ip_version"] = ip_as_network.version
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self._build_possible_parent_prefixes()
 
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
@@ -243,14 +411,14 @@ class IPPrefixSubnetFetch(Query):
         self,
         obj: IPNetworkType,
         namespace: Node | str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.obj = obj
         self.namespace_id = _get_namespace_id(namespace)
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["ns_id"] = self.namespace_id
 
         prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
@@ -335,7 +503,7 @@ class IPPrefixSubnetFetchFree(Query):
         target_prefixlen: int,
         namespace: Node | str | None = None,
         parent_uuid: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.obj = obj
         self.target_prefixlen = target_prefixlen
@@ -344,7 +512,7 @@ class IPPrefixSubnetFetchFree(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["ns_id"] = self.namespace_id
 
         prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
@@ -356,52 +524,35 @@ class IPPrefixSubnetFetchFree(Query):
         self.params["block_size"] = 1 << (32 - self.target_prefixlen)
         self.params["exclude_uuid"] = self.parent_uuid or ""
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        # The resource prefix sits at the parent's own address, so counting it would fill the whole parent.
+        allocated_query, allocated_params = _build_allocated_values_query(
+            branch=self.branch,
+            at=self.at,
+            branch_agnostic=self.branch_agnostic,
+            child=_ALLOCATED_PREFIX,
+            child_filter="AND child.uuid <> $exclude_uuid",
         )
-        self.params.update(branch_params)
+        self.params.update(allocated_params)
 
         # ruff: noqa: E501
         query = """
-        // First match on IPNAMESPACE
-        MATCH (ns:%(ns_label)s)
-        WHERE ns.uuid = $ns_id
-        CALL (ns) {
-            MATCH (ns)-[r:IS_PART_OF]-(root:Root)
-            WHERE %(branch_filter)s
-            RETURN r
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH ns, r
-        WHERE r.status = "active"
-        WITH ns
-        OPTIONAL MATCH path2 = (ns)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(pfx:%(node_label)s)-[:HAS_ATTRIBUTE]-(an:Attribute {name: "prefix"})-[:HAS_VALUE]-(av:AttributeIPNetwork)
-        WHERE ns_rel.name = "ip_namespace__ip_prefix"
-            AND av.binary_address STARTS WITH $prefix_binary
-            AND av.prefixlen >= $maxprefixlen
-            // Exclude the pool-resource prefix node itself: it appears in the DB at the same
-            // address as the parent, so without this filter it would be counted as occupied
-            // space and prevent allocating a prefix of the same length as the resource.
-            AND pfx.uuid <> $exclude_uuid
-            AND av.version = $ip_version
-            AND all(r IN relationships(path2) WHERE (%(branch_filter)s) AND r.status = "active")
-        WITH collect({binary: av.binary_address, prefixlen: av.prefixlen}) AS ranges_raw
+        %(allocated_query)s
+        WITH namespace_id, collect({binary: av.binary_address, prefixlen: av.prefixlen}) AS ranges_raw
         // Convert binary strings to integer ranges for gap detection
         // - start: Convert binary string to decimal by iterating through each bit
         //          and accumulating (dec * 2 + bit_value), which is binary-to-decimal conversion
         // - end: start + (2^host_bits - 1), where host_bits = 32 - prefixlen
         //        This gives the broadcast address (last IP) of the prefix
-        WITH [r IN ranges_raw |
+        WITH namespace_id, [r IN ranges_raw |
                 {
                     start: reduce(dec = 0, b IN split(r.binary, "") | dec * 2 + toInteger(b)),
                     end: reduce(dec = 0, b IN split(r.binary, "") | dec * 2 + toInteger(b)) + toInteger(2 ^ (32 - r.prefixlen)) - 1
                 }
             ] AS ranges
         UNWIND CASE WHEN size(ranges) = 0 THEN [{start: null, end: null}] ELSE ranges END AS r
-        WITH r
+        WITH namespace_id, r
         ORDER BY r.start ASC
-        WITH collect(r) AS ranges_sorted_raw
+        WITH namespace_id, collect(r) AS ranges_sorted_raw
         WITH [r IN ranges_sorted_raw WHERE r.start IS NOT NULL] AS ranges_sorted
         // Gap detection algorithm using reduce to scan through sorted ranges
         // acc.cursor: current candidate position for a free block (always block-aligned)
@@ -434,11 +585,7 @@ class IPPrefixSubnetFetchFree(Query):
             ELSE NULL
         END AS free_start
         WHERE free_start IS NOT NULL
-        """ % {
-            "ns_label": InfrahubKind.IPNAMESPACE,
-            "node_label": InfrahubKind.IPPREFIX,
-            "branch_filter": branch_filter,
-        }
+        """ % {"allocated_query": allocated_query}
 
         self.add_to_query(query)
         self.return_labels = ["free_start"]
@@ -469,7 +616,7 @@ class IPv6PrefixSubnetFetchFree(Query):
         target_prefixlen: int,
         namespace: Node | str | None = None,
         parent_uuid: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.obj = obj
         self.target_prefixlen = target_prefixlen
@@ -478,7 +625,7 @@ class IPv6PrefixSubnetFetchFree(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["ns_id"] = self.namespace_id
 
         prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
@@ -491,39 +638,22 @@ class IPv6PrefixSubnetFetchFree(Query):
         self.params["parent_end_bin"] = format(int(self.obj.broadcast_address), "0128b")
         self.params["exclude_uuid"] = self.parent_uuid or ""
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        # The resource prefix sits at the parent's own address, so counting it would fill the whole parent.
+        allocated_query, allocated_params = _build_allocated_values_query(
+            branch=self.branch,
+            at=self.at,
+            branch_agnostic=self.branch_agnostic,
+            child=_ALLOCATED_PREFIX,
+            child_filter="AND child.uuid <> $exclude_uuid",
         )
-        self.params.update(branch_params)
+        self.params.update(allocated_params)
 
         # ruff: noqa: E501
         query = """
-        // First match on IPNAMESPACE
-        MATCH (ns:%(ns_label)s)
-        WHERE ns.uuid = $ns_id
-        CALL (ns) {
-            MATCH (ns)-[r:IS_PART_OF]-(root:Root)
-            WHERE %(branch_filter)s
-            RETURN r
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH ns, r
-        WHERE r.status = "active"
-        WITH ns
-        OPTIONAL MATCH path2 = (ns)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(pfx:%(node_label)s)-[:HAS_ATTRIBUTE]-(an:Attribute {name: "prefix"})-[:HAS_VALUE]-(av:AttributeIPNetwork)
-        WHERE ns_rel.name = "ip_namespace__ip_prefix"
-            AND av.binary_address STARTS WITH $prefix_binary
-            AND av.prefixlen >= $maxprefixlen
-            // Exclude the pool-resource prefix node itself: it appears in the DB at the same
-            // address as the parent, so without this filter it would be counted as occupied
-            // space and prevent allocating a prefix of the same length as the resource.
-            AND pfx.uuid <> $exclude_uuid
-            AND av.version = $ip_version
-            AND all(r IN relationships(path2) WHERE (%(branch_filter)s) AND r.status = "active")
-        WITH collect({binary: av.binary_address, prefixlen: av.prefixlen}) AS ranges_raw
+        %(allocated_query)s
+        WITH namespace_id, collect({binary: av.binary_address, prefixlen: av.prefixlen}) AS ranges_raw
         // Create ranges with start (block-aligned) and end_block (the block containing the end address)
-        WITH [r IN ranges_raw WHERE r.binary IS NOT NULL |
+        WITH namespace_id, [r IN ranges_raw WHERE r.binary IS NOT NULL |
                 {
                     // Start block: first target_prefixlen bits of network address
                     start_block: left(r.binary, $target_prefixlen),
@@ -533,9 +663,9 @@ class IPv6PrefixSubnetFetchFree(Query):
                 }
             ] AS ranges
         UNWIND CASE WHEN size(ranges) = 0 THEN [{start_block: null, end_block: null}] ELSE ranges END AS r
-        WITH r
+        WITH namespace_id, r
         ORDER BY r.start_block ASC
-        WITH collect(r) AS ranges_sorted_raw
+        WITH namespace_id, collect(r) AS ranges_sorted_raw
         WITH [r IN ranges_sorted_raw WHERE r.start_block IS NOT NULL] AS ranges_sorted
         // Find first available slot using binary string comparison
         // We track cursor as the current candidate block (target_prefixlen bits)
@@ -615,11 +745,7 @@ class IPv6PrefixSubnetFetchFree(Query):
         WHERE free_start_partial IS NOT NULL
         // Pad the partial binary to full 128 bits
         WITH free_start_partial + reduce(s = "", i IN range(1, 128 - $target_prefixlen) | s + "0") AS free_start_bin
-        """ % {
-            "ns_label": InfrahubKind.IPNAMESPACE,
-            "node_label": InfrahubKind.IPPREFIX,
-            "branch_filter": branch_filter,
-        }
+        """ % {"allocated_query": allocated_query}
 
         self.add_to_query(query)
         self.return_labels = ["free_start_bin"]
@@ -641,14 +767,14 @@ class IPPrefixIPAddressFetch(Query):
         self,
         obj: IPNetworkType,
         namespace: Node | str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.obj = obj
         self.namespace_id = _get_namespace_id(namespace)
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["ns_id"] = self.namespace_id
 
         prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
@@ -715,7 +841,7 @@ class IPPrefixIPAddressFetchFree(Query):
         obj: IPNetworkType,
         is_pool: bool,
         namespace: Node | str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.obj = obj
         self.namespace_id = _get_namespace_id(namespace)
@@ -723,7 +849,7 @@ class IPPrefixIPAddressFetchFree(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["ns_id"] = self.namespace_id
 
         prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
@@ -738,42 +864,23 @@ class IPPrefixIPAddressFetchFree(Query):
         self.params["ip_version"] = self.obj.version
         self.limit = 1  # Query only works at returning a single, free entry
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        allocated_query, allocated_params = _build_allocated_values_query(
+            branch=self.branch, at=self.at, branch_agnostic=self.branch_agnostic, child=_ALLOCATED_ADDRESS
         )
-        self.params.update(branch_params)
+        self.params.update(allocated_params)
 
         # ruff: noqa: E501
         query = """
-        // First match on IPNAMESPACE
-        MATCH (ns:%(ns_label)s)
-        WHERE ns.uuid = $ns_id
-        CALL (ns) {
-            MATCH (ns)-[r:IS_PART_OF]-(root:Root)
-            WHERE %(branch_filter)s
-            RETURN r
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH ns, r
-        WHERE r.status = "active"
-        WITH ns
-        // MATCH all IPAddress that are IN SCOPE
-        MATCH path2 = (ns)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(addr:%(node_label)s)-[:HAS_ATTRIBUTE]-(an:Attribute {name: "address"})-[:HAS_VALUE]-(av:AttributeIPHost)
-        WHERE ns_rel.name = "ip_namespace__ip_address"
-            AND av.binary_address STARTS WITH $prefix_binary
-            AND av.prefixlen >= $maxprefixlen
-            AND av.version = $ip_version
-            AND all(r IN relationships(path2) WHERE (%(branch_filter)s) and r.status = "active")
-        ORDER BY av.binary_address
+        %(allocated_query)s
         // Gap detection algorithm: collect used addresses and find first available slot
         // Each used_address is a single binary string representing an allocated IP
-        WITH DISTINCT av.binary_address AS used_address
+        WITH DISTINCT namespace_id, av.binary_address AS used_address
+        ORDER BY used_address
         // Convert binary string to integer for comparison
-        WITH [x IN split(used_address, "") | toInteger(x)] AS bits
+        WITH namespace_id, [x IN split(used_address, "") | toInteger(x)] AS bits
         // Build array: [start_range - 1] prepended to all used addresses as integers
         // This creates a baseline for gap detection starting from the range beginning
-        WITH [$start_range - 1] + collect(reduce(dec = 0, b IN bits | dec * 2 + b)) AS nums
+        WITH namespace_id, [$start_range - 1] + collect(reduce(dec = 0, b IN bits | dec * 2 + b)) AS nums
         UNWIND range(0, size(nums) - 1) AS idx
         CALL (nums, idx) {
             // Compare expected sequential address with actual address at this position
@@ -784,11 +891,7 @@ class IPPrefixIPAddressFetchFree(Query):
         WITH addr, is_free, is_last
         WHERE is_free = true OR is_last = true
         WITH addr AS free_addr, is_free, is_last
-        """ % {
-            "ns_label": InfrahubKind.IPNAMESPACE,
-            "node_label": InfrahubKind.IPADDRESS,
-            "branch_filter": branch_filter,
-        }
+        """ % {"allocated_query": allocated_query}
 
         self.add_to_query(query)
         self.return_labels = ["free_addr", "is_free", "is_last"]
@@ -832,7 +935,7 @@ class IPv6PrefixIPAddressFetchFree(Query):
         obj: IPNetworkType,
         is_pool: bool,
         namespace: Node | str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.obj = obj
         self.namespace_id = _get_namespace_id(namespace)
@@ -840,7 +943,7 @@ class IPv6PrefixIPAddressFetchFree(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["ns_id"] = self.namespace_id
 
         prefix_bin = convert_ip_to_binary_str(self.obj)[: self.obj.prefixlen]
@@ -859,37 +962,18 @@ class IPv6PrefixIPAddressFetchFree(Query):
 
         self.limit = 1  # Query only works at returning a single, free entry
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        allocated_query, allocated_params = _build_allocated_values_query(
+            branch=self.branch, at=self.at, branch_agnostic=self.branch_agnostic, child=_ALLOCATED_ADDRESS
         )
-        self.params.update(branch_params)
+        self.params.update(allocated_params)
 
         # ruff: noqa: E501
         query = """
-        // First match on IPNAMESPACE
-        MATCH (ns:%(ns_label)s)
-        WHERE ns.uuid = $ns_id
-        CALL (ns) {
-            MATCH (ns)-[r:IS_PART_OF]-(root:Root)
-            WHERE %(branch_filter)s
-            RETURN r
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH ns, r
-        WHERE r.status = "active"
-        WITH ns
-        // MATCH all IPAddress that are IN SCOPE
-        OPTIONAL MATCH path2 = (ns)-[:IS_RELATED]-(ns_rel:Relationship)-[:IS_RELATED]-(addr:%(node_label)s)-[:HAS_ATTRIBUTE]-(an:Attribute {name: "address"})-[:HAS_VALUE]-(av:AttributeIPHost)
-        WHERE ns_rel.name = "ip_namespace__ip_address"
-            AND av.binary_address STARTS WITH $prefix_binary
-            AND av.prefixlen >= $maxprefixlen
-            AND av.version = $ip_version
-            AND all(r IN relationships(path2) WHERE (%(branch_filter)s) and r.status = "active")
-        WITH DISTINCT av.binary_address AS used_address
+        %(allocated_query)s
+        WITH DISTINCT namespace_id, av.binary_address AS used_address
         ORDER BY used_address
         // Collect used addresses as binary strings, prepend a sentinel value before start_range
-        WITH collect(used_address) AS used_addrs_raw
+        WITH namespace_id, collect(used_address) AS used_addrs_raw
         WITH [addr IN used_addrs_raw WHERE addr IS NOT NULL AND addr >= $start_range_bin AND addr <= $end_range_bin] AS used_addrs
         // Gap detection using binary string comparison
         // We iterate through used addresses and find the first gap
@@ -955,11 +1039,7 @@ class IPv6PrefixIPAddressFetchFree(Query):
         END AS result
         WHERE result.addr IS NOT NULL
         WITH result.addr AS free_addr_bin, result.is_free AS is_free, result.is_last AS is_last
-        """ % {
-            "ns_label": InfrahubKind.IPNAMESPACE,
-            "node_label": InfrahubKind.IPADDRESS,
-            "branch_filter": branch_filter,
-        }
+        """ % {"allocated_query": allocated_query}
 
         self.add_to_query(query)
         self.return_labels = ["free_addr_bin", "is_free", "is_last"]
@@ -1013,7 +1093,7 @@ class IPPrefixUtilization(Query):
     name = "ipprefix_utilization_prefix"
     type = QueryType.READ
 
-    def __init__(self, ip_prefixes: list[Node], allocated_kinds: list[str], branch: Branch, **kwargs) -> None:
+    def __init__(self, ip_prefixes: list[Node], allocated_kinds: list[str], branch: Branch, **kwargs: Any) -> None:
         self.ip_prefixes = ip_prefixes
         self.allocated_kinds = sorted(allocated_kinds)
         self.allocated_kinds_rel = [
@@ -1022,7 +1102,7 @@ class IPPrefixUtilization(Query):
         ]
         super().__init__(branch=branch, **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["ids"] = [p.get_id() for p in self.ip_prefixes]
         self.params["allocated_kinds_rel"] = self.allocated_kinds_rel
 
@@ -1165,7 +1245,7 @@ class IPPrefixReconcileQuery(Query):
         ip_value: AllIPTypes,
         namespace: Node | str | None = None,
         node_uuid: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.ip_value = ip_value
         self.ip_uuid = node_uuid
@@ -1198,7 +1278,7 @@ class IPPrefixReconcileQuery(Query):
         ]
         self.params["possible_prefix_list"] = list(possible_prefix_map.keys())
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
         self.params["namespace_kind"] = InfrahubKind.IPNAMESPACE
@@ -1228,9 +1308,9 @@ class IPPrefixReconcileQuery(Query):
 
         namespace_query = """
         // ------------------
-        // Get IP Namespace
+        // Get IP Namespace, through the index on Node(uuid)
         // ------------------
-        MATCH (ip_namespace:%(namespace_kind)s {uuid: $namespace_id})-[r:IS_PART_OF]->(root:Root)
+        MATCH (ip_namespace:Node:%(namespace_kind)s {uuid: $namespace_id})-[r:IS_PART_OF]->(root:Root)
         WHERE %(branch_filter)s
         ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
         LIMIT 1
@@ -1243,9 +1323,9 @@ class IPPrefixReconcileQuery(Query):
             self.params["node_uuid"] = self.ip_uuid
             get_node_by_id_query = """
             // ------------------
-            // Get IP Prefix node by UUID
+            // Get IP Prefix node by UUID, through the index on Node(uuid) as the kind label has none
             // ------------------
-            OPTIONAL MATCH (ip_node:%(ip_kind)s {uuid: $node_uuid})-[r:IS_PART_OF]->(:Root)
+            OPTIONAL MATCH (ip_node:Node:%(ip_kind)s {uuid: $node_uuid})-[r:IS_PART_OF]->(:Root)
             WHERE %(branch_filter)s
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
@@ -1368,7 +1448,7 @@ class IPPrefixReconcileQuery(Query):
         // ------------------
         // Identify the correct parent, if any, for the prefix node
         // ------------------
-        CALL (ip_namespace) {
+        CALL () {
             // ------------------
             // start with just the AttributeValue vertices b/c we have an index on them
             // ------------------
@@ -1378,25 +1458,49 @@ class IPPrefixReconcileQuery(Query):
             AND any(prefix_and_length IN $possible_prefix_and_length_list WHERE av.binary_address = prefix_and_length[0] AND av.prefixlen <= prefix_and_length[1])
             // ------------------
             // now get all the possible IPPrefix nodes for these AttributeValues
+            // the namespace is checked next, as a path through it here can start from the namespace
             // ------------------
-            OPTIONAL MATCH parent_path = (ip_namespace)-[:IS_RELATED]-(:Relationship {name: "ip_namespace__ip_prefix"})
-            -[:IS_RELATED]-(maybe_new_parent:%(ip_prefix_kind)s)
+            OPTIONAL MATCH parent_path = (maybe_new_parent:%(ip_prefix_kind)s)
             -[:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})
             -[:HAS_VALUE]->(av:AttributeValue)
             WHERE all(r IN relationships(parent_path) WHERE (%(branch_filter)s))
-            RETURN DISTINCT maybe_new_parent
+            WITH DISTINCT maybe_new_parent
+            RETURN collect(maybe_new_parent) AS candidates,
+                sum(COUNT { (maybe_new_parent)-[:IS_RELATED]->() }) AS candidates_degree
         }
-        CALL (ip_namespace, maybe_new_parent) {
+        // ------------------
+        // the candidates include the prefixes of every namespace that holds the same values,
+        // so the namespace is checked from the side with fewer edges, which Neo4j counts without reading them
+        // ------------------
+        WITH ip_namespace, ip_node, current_parent, current_children, candidates,
+            COUNT { (ip_namespace)-[:IS_RELATED]->() } < candidates_degree AS from_namespace
+        CALL (ip_namespace, candidates, from_namespace) {
+            CALL (ip_namespace, candidates, from_namespace) {
+                WITH ip_namespace, candidates, from_namespace
+                WHERE from_namespace
+                MATCH (ip_namespace)-[r1:IS_RELATED]->(:Relationship {name: "ip_namespace__ip_prefix"})<-[r2:IS_RELATED]-(maybe_new_parent)
+                WHERE maybe_new_parent IN candidates
+                AND all(r IN [r1, r2] WHERE (%(branch_filter)s))
+                RETURN maybe_new_parent, r1, r2
+                UNION ALL
+                WITH ip_namespace, candidates, from_namespace
+                WHERE NOT from_namespace
+                UNWIND candidates AS maybe_new_parent
+                // the namespace relationship is bidirectional, so the prefix's outgoing edges exclude those of its child prefixes
+                MATCH (ip_namespace)-[r1:IS_RELATED]->(:Relationship {name: "ip_namespace__ip_prefix"})<-[r2:IS_RELATED]-(maybe_new_parent)
+                WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+                RETURN maybe_new_parent, r1, r2
+            }
             // ------------------
             // filter to only active maybe_new_parent Nodes in the correct namespace
             // ------------------
-            OPTIONAL MATCH (ip_namespace)-[r1:IS_RELATED]-(:Relationship {name: "ip_namespace__ip_prefix"})-[r2:IS_RELATED]-(maybe_new_parent)
-            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
             WITH maybe_new_parent, r1, r2, r1.status = "active" AND r2.status = "active" AS is_active
             ORDER BY elementId(maybe_new_parent), r1.branch_level DESC, r1.from DESC, r1.status ASC, r2.branch_level DESC, r2.from DESC, r2.status ASC
             WITH maybe_new_parent, head(collect(is_active)) AS is_active
-            RETURN is_active = TRUE AS parent_in_namespace
+            RETURN collect(CASE WHEN is_active THEN maybe_new_parent END) AS parents_in_namespace
         }
+        // a single NULL candidate keeps the row of the IP node when no prefix of the namespace can be its parent
+        UNWIND CASE WHEN size(parents_in_namespace) = 0 THEN [NULL] ELSE parents_in_namespace END AS maybe_new_parent
         CALL (maybe_new_parent) {
             // ------------------
             // filter to only active maybe_new_parent Nodes currently linked to one of the allowed AttributeValues
@@ -1426,9 +1530,7 @@ class IPPrefixReconcileQuery(Query):
         // set inactive maybe_new_parents to NULL
         // ------------------
         WITH ip_namespace, ip_node, current_parent, current_children, allowed_av.prefixlen AS mnp_prefixlen,
-            CASE WHEN parent_in_namespace = TRUE AND allowed_av IS NOT NULL
-                THEN maybe_new_parent ELSE NULL
-            END AS maybe_new_parent
+            CASE WHEN allowed_av IS NOT NULL THEN maybe_new_parent ELSE NULL END AS maybe_new_parent
         WITH ip_namespace, ip_node, current_parent, current_children, maybe_new_parent, mnp_prefixlen
         ORDER BY ip_node.uuid, mnp_prefixlen DESC
         WITH ip_namespace, ip_node, current_parent, current_children, head(collect(maybe_new_parent)) as new_parent

@@ -246,4 +246,20 @@ describe("validateNumberAttribute", () => {
       data: 0,
     });
   });
+
+  it("refuses a negative number when the minimum is 0", () => {
+    // WHEN
+    const result = validateNumberAttribute({ min: 0 }, -1);
+
+    // THEN
+    expect(result).toEqual({ success: false, error: "Value must be at least 0" });
+  });
+
+  it("refuses a positive number when the maximum is 0", () => {
+    // WHEN
+    const result = validateNumberAttribute({ max: 0 }, 1);
+
+    // THEN
+    expect(result).toEqual({ success: false, error: "Value must be at most 0" });
+  });
 });

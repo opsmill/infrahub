@@ -72,7 +72,7 @@ export const GenericSelector = ({
     .filter((item) => !!item);
 
   return (
-    <div className="bg-gray-200 p-4">
+    <div className="bg-surface p-4">
       <Label htmlFor={id}>Select an object type</Label>
       <Combobox open={open} onOpenChange={setOpen}>
         <ComboboxTrigger id={id}>

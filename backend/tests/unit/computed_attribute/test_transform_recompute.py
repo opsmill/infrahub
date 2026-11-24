@@ -18,7 +18,7 @@ from infrahub.workflows.constants import WorkflowTag
 from tests.adapters.workflow import WorkflowRecorder
 
 if TYPE_CHECKING:
-    from infrahub_sdk.node import InfrahubNode
+    from infrahub_sdk.protocols import CoreTransformPython
 
 BRANCH = "main"
 TRANSFORM_NAME = "transform_a"
@@ -48,11 +48,11 @@ class _FetcherReturning:
     async def get(
         self,
         *,
-        kind: str,
+        kind: type[CoreTransformPython],
         id: str,
         branch: str,
         raise_when_missing: bool,
-    ) -> InfrahubNode | None:
+    ) -> CoreTransformPython | None:
         self.requested_ids.append(id)
         return self._transform  # type: ignore[return-value]  # ty: ignore[invalid-return-type]
 
