@@ -203,7 +203,7 @@ apart from the streams that the docs name.
 **Purpose**: Docs, checks across the three repositories, the release conditions and the handover.
 
 - [x] T058 [P] Add a section "Connect an AI assistant" to `docs/docs/deploy-manage/install-configure/install/observability-stack.mdx` with every item of FR-025 (turn on, token, allowed hosts, the four network settings as one block, TLS and the refusal without TLS, CA trust, certificate renewal, token change, Grafana admin password) and of FR-026 (what reaches the AI model provider, the streams of `log-audit.md` under FR-022a), with the `writing-infrahub-docs` skill (depends on T024, T057)
-- [ ] T059 [P] Link the skill from `docs/docs/overview/build-with-ai/index.mdx` ("Where to start" table and MCP table), `docs/docs/overview/build-with-ai/setup.mdx` (prerequisites), `docs/docs/overview/build-with-ai/working-with-ai.mdx` and `docs/docs/faq/faq.mdx` (FR-027); merge only when the skill is published (depends on T037)
+- [x] T059 [P] Name the skill in plain text, without a link, in `docs/docs/overview/build-with-ai/index.mdx` ("Where to start" table and its prose), `docs/docs/overview/build-with-ai/setup.mdx` (prerequisites), `docs/docs/overview/build-with-ai/working-with-ai.mdx` and `docs/docs/faq/faq.mdx` (FR-027). The MCP table of `index.mdx` does not need it, and the pages do not wait for the published skill (both decided by Daniel on 2026-11-24)
 - [ ] T060 Run `uv run invoke format`, `uv run invoke lint`, `uv run ruff check . --exclude python_sdk`, `uv run ruff format --check --exclude python_sdk .`, `uv run invoke docs.lint` and `uv run invoke docs.validate`, then remind Daniel to run `/pre-ci`
 - [ ] T061 Grep `dev/specs/infp-745-ai-diagnose-slowness/` for each value that implementation decided or changed (restart policy, TLS mount, init image, probe scheme, eval pass rate) and update every file that repeats it
 - [ ] T062 Run [quickstart.md](quickstart.md) check 10 (automated checks) in `opsmill/infrahub` and `infrahub-skills`
@@ -231,13 +231,13 @@ apart from the streams that the docs name.
 - **User Story 3 (Phase 5)**: independent of stories 1 and 2, except T043, which reads the Grafana MCP
   server's own logs (T015). The log fixes (T046 to T052) can start at once. A confirmed finding in
   the Python SDK is not fixed here, but in [IFC-3658](https://opsmill.atlassian.net/browse/IFC-3658) (T053).
-- **Polish (Phase 6)**: T058 needs stories 1 and 3; T059 needs the published skill. The security
+- **Polish (Phase 6)**: T058 needs stories 1 and 3; T059 does not wait for the published skill. The security
   review has two parts: Compose after T015 (T063), Helm after T024 (T070).
 
 ### Order of the pull requests (plan, "Structure Decision")
 
 1. `opsmill/infrahub`: Compose services and log fixes (stories 1 and 3). The docs pages (T058, T059)
-   go in a later pull request, merged only when the skill is published.
+   are in the same pull request, because the skill is named without a link.
 2. `opsmill/infrahub-helm`: T017 to T023, T055, T067. After the merge, the chart is released and
    pinned in the `infrahub` chart (T071).
 3. `opsmill/infrahub-skills`: T068, T025 to T037, T069.

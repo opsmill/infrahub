@@ -147,7 +147,7 @@ backend/tests/component/
 
 docs/docs/
 ├── deploy-manage/install-configure/install/observability-stack.mdx   # Connect an AI assistant (FR-025, FR-026)
-├── overview/build-with-ai/{index,setup,working-with-ai}.mdx          # Links to the skill (FR-027)
+├── overview/build-with-ai/{index,setup,working-with-ai}.mdx          # Names the skill (FR-027)
 └── faq/faq.mdx                                                       # Entry for the skill (FR-027)
 
 dev/knowledge/backend/observability.md            # Renaming section: the skill depends on names (FR-020)
@@ -179,8 +179,8 @@ skills/infrahub-analyzing-diagnostics/SKILL.md   # DO NOT TRIGGER: the new skill
 
 **Structure Decision**: Three repositories, one pull request each, in this order: this repository
 (Compose, log fixes, docs), then `infrahub-helm`, then `infrahub-skills`. The skill's fixtures are
-recorded from the Compose stack, so the Compose change comes first. The docs link to the skill, so the
-docs pull request is merged only when the skill is published.
+recorded from the Compose stack, so the Compose change comes first. The docs name the skill in plain
+text, without a link, so they do not wait for the published skill (decided by Daniel on 2026-11-24).
 
 ## Phases of the work
 

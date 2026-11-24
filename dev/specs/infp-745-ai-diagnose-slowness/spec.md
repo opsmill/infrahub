@@ -434,9 +434,12 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
   URL paths and query names readable (D9). They MUST also name each log stream that the audit lists
   under FR-022a, and each line that FR-023 keeps.
 - **FR-027**: The Build with AI pages ([`index.mdx`](../../../docs/docs/overview/build-with-ai/index.mdx):
-  "Where to start" table and MCP table; [`setup.mdx`](../../../docs/docs/overview/build-with-ai/setup.mdx):
+  "Where to start" table and its prose; [`setup.mdx`](../../../docs/docs/overview/build-with-ai/setup.mdx):
   prerequisites; [`working-with-ai.mdx`](../../../docs/docs/overview/build-with-ai/working-with-ai.mdx))
-  and [`faq.mdx`](../../../docs/docs/faq/faq.mdx) MUST link to the skill (design document, section 6).
+  and [`faq.mdx`](../../../docs/docs/faq/faq.mdx) MUST name the skill (design document, section 6). They
+  name it in plain text, without a link, so the docs do not wait for the published skill. The MCP
+  table of `index.mdx` compares the Infrahub Skills with the Infrahub MCP server, which reads Infrahub
+  data, so it does not name the skill (both decided by Daniel on 2026-11-24).
 
 ### Key Entities
 
