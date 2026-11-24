@@ -71,6 +71,7 @@ class SchemaCandidateBuilder:
         Raises:
             ValueError: When the schema file cannot be laid over the branch schema, or when the candidate removes a
                 kind that another kind still references.
+            ValidationError: When processing the schema file laid over the branch schema refuses it.
             SchemaNotFoundError: When the schema file gives a kind of the branch schema an ID that the branch schema
                 does not hold.
             SchemaNameReusedError: When the schema file frees a kind and gives it to another kind, including a new

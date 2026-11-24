@@ -1069,7 +1069,13 @@ async def update_core_schema(
                 default_branch_schema=branch_schema,
                 enforce_update_support=False,
             )
-        except (ValueError, SchemaNotFoundError, SchemaNameReusedError, SchemaOperationsRebuildError) as exc:
+        except (
+            ValueError,
+            ValidationError,
+            SchemaNotFoundError,
+            SchemaNameReusedError,
+            SchemaOperationsRebuildError,
+        ) as exc:
             get_migration_console().log(f"{ERROR_BADGE} | Unable to update the schema: {exc}")
             raise typer.Exit(1) from exc
 

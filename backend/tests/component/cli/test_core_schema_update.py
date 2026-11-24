@@ -19,10 +19,10 @@ from infrahub.core.schema_change.candidate import SchemaCandidateBuilder
 from infrahub.core.schema_change.candidate_comparer import SchemaCandidateComparer
 from infrahub.core.schema_change.enums import SchemaChangeEdgeType, SchemaChangeRecordLabel, SchemaChangeSource
 from infrahub.core.schema_change.factory import build_schema_candidate_builder, build_schema_change_recorder
-from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder
+from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder, SchemaOperationBuildResult
 from infrahub.core.timestamp import Timestamp
+from infrahub.exceptions import ValidationError
 from infrahub.lock import GLOBAL_SCHEMA_LOCK
-from tests.adapters.lock.timeline import LockAction
 from tests.helpers.schema_change import (
     StoredSchemaChangeRecord,
     build_seeded_operations,
@@ -42,6 +42,8 @@ if TYPE_CHECKING:
 TAG_KIND = "BuiltinTag"
 ADDED_ATTRIBUTE = "description"
 MIGRATION_FAILURE = "The description of the tags could not be added"
+PROCESSING_FAILURE = "HFID of TestDevice refers to peer BuiltinTag with a non-unique combination of attributes"
+MIGRATION_CHECKPOINT = "core schema migration"
 
 
 @dataclass(frozen=True)
@@ -119,6 +121,15 @@ class DifferingKindComparer(SchemaCandidateComparer):
         return [TAG_KIND]
 
 
+class OperationBuilderThatFailsProcessing(SchemaOperationBuilder):
+    """Raises the error that processing a schema file raises when it refuses the schema."""
+
+    def build(
+        self, *, branch_schema: SchemaBranch, schema_root: SchemaRoot, default_branch_schema: SchemaBranch
+    ) -> SchemaOperationBuildResult:
+        raise ValidationError(input_value=PROCESSING_FAILURE)
+
+
 @pytest.fixture
 async def older_core_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
     """The core schema of a database from an older release, where the tag kind has no description yet."""
@@ -130,6 +141,28 @@ def failing_tag_attribute_add_migration() -> Generator[None]:
     original_map = tasks_module.MIGRATION_MAP.copy()
     tasks_module.MIGRATION_MAP["node.attribute.add"] = TagAttributeAddMigrationThatFails
     yield
+    tasks_module.MIGRATION_MAP.clear()
+    tasks_module.MIGRATION_MAP.update(original_map)
+
+
+@pytest.fixture
+def checkpointing_tag_attribute_add_migration(recording_lock_timeline: LockTimeline) -> Generator[list[int]]:
+    """Record a checkpoint on the lock timeline each time the migration that adds an attribute runs."""
+    checkpoints: list[int] = []
+
+    class CheckpointingAttributeAddMigration(NodeAttributeAddMigration):
+        async def execute(
+            self,
+            migration_input: MigrationInput,
+            branch: Branch,
+            queries: Sequence[type[MigrationBaseQuery]] | None = None,
+        ) -> MigrationResult:
+            checkpoints.append(recording_lock_timeline.checkpoint(label=MIGRATION_CHECKPOINT))
+            return await super().execute(migration_input=migration_input, branch=branch, queries=queries)
+
+    original_map = tasks_module.MIGRATION_MAP.copy()
+    tasks_module.MIGRATION_MAP["node.attribute.add"] = CheckpointingAttributeAddMigration
+    yield checkpoints
     tasks_module.MIGRATION_MAP.clear()
     tasks_module.MIGRATION_MAP.update(original_map)
 
@@ -281,20 +314,36 @@ class TestCoreSchemaUpdate:
             (record.properties["status"], record.properties.get("version")) for record in records.schema_changes
         ) == [("applied", 1), ("failed", None)]
 
-    async def test_core_schema_update_holds_the_global_schema_lock(
+    async def test_core_schema_update_holds_the_global_schema_lock_while_its_migrations_run(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
         older_core_schema: None,
         recording_lock_timeline: LockTimeline,
+        checkpointing_tag_attribute_add_migration: list[int],
     ) -> None:
         await update_core_schema(db=db, candidate_builder=build_schema_candidate_builder(), initialize=False)
 
         assert [
-            event.action
-            for event in recording_lock_timeline.events
-            if event.name == GLOBAL_SCHEMA_LOCK and event.action in {LockAction.ACQUIRE, LockAction.RELEASE}
-        ] == [LockAction.ACQUIRE, LockAction.RELEASE]
+            GLOBAL_SCHEMA_LOCK in recording_lock_timeline.held_at(seq=checkpoint)
+            for checkpoint in checkpointing_tag_attribute_add_migration
+        ] == [True]
         assert [record.properties["status"] for record in (await _read_main_records(db=db)).schema_changes] == [
             "applied"
         ]
+
+    async def test_core_schema_that_processing_refuses_stops_the_update(
+        self, db: InfrahubDatabase, default_branch: Branch, older_core_schema: None
+    ) -> None:
+        candidate_builder = SchemaCandidateBuilder(
+            operation_builder=OperationBuilderThatFailsProcessing(),
+            applier=SchemaChangeApplier(),
+            comparer=SchemaCandidateComparer(),
+        )
+
+        with pytest.raises(typer.Exit) as exit_info:
+            await update_core_schema(db=db, candidate_builder=candidate_builder, initialize=False)
+
+        assert exit_info.value.exit_code == 1
+        assert await count_schema_change_records(db=db) == 0
+        assert ADDED_ATTRIBUTE not in await _stored_tag_attribute_names(db=db, branch=default_branch)
