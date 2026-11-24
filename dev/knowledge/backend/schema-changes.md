@@ -254,7 +254,10 @@ and `core/migrations/schema/runner.py::SchemaMigrationRunner` runs them:
   `core/migrations/schema/phases.py::MigrationPhase` defines them: kind updates, node removals,
   attribute and relationship removals, attribute renames, attribute kind changes, attribute
   additions, property updates. Removals run before additions, so a removal and an addition of the
-  same attribute name cannot race.
+  same attribute name cannot race. A property update (`optional`, `read_only`, `unique`, the
+  uniqueness constraints) adds or removes the attribute on profile and template nodes when the
+  change decides whether they hold it. It runs after the renames and the kind changes, because it
+  finds the attribute by its new name and adds it with its new kind.
 - Kind updates run one at a time, because two duplications of overlapping vertices can each create
   a replacement vertex.
 - In the other phases, migrations whose changed kinds overlap, directly or through another
