@@ -39,7 +39,7 @@ if TYPE_CHECKING:
     from infrahub.core.query import QueryType
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.schema.update_coordinator import SchemaUpdateFinalStep
-    from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus
+    from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus, SchemaChangeSource
     from infrahub.core.schema_change.operations import SchemaOperation
     from infrahub.core.schema_change.repository import AppliedSchemaChangeVersion, CreatedSchemaChange
     from infrahub.core.timestamp import Timestamp
@@ -576,9 +576,17 @@ class RecordingSchemaChangeRepository(SchemaChangeRecordStore, AppliedVersionRea
 
     @override
     async def create_schema_change(
-        self, *, branch: str, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
+        self,
+        *,
+        branch: str,
+        operations: Sequence[SchemaOperation],
+        at: Timestamp,
+        user_id: str,
+        source: SchemaChangeSource,
     ) -> CreatedSchemaChange:
-        self._record(CREATE_SCHEMA_CHANGE, branch=branch, operations=list(operations), at=at, user_id=user_id)
+        self._record(
+            CREATE_SCHEMA_CHANGE, branch=branch, operations=list(operations), at=at, user_id=user_id, source=source
+        )
         return self._created.pop(0)
 
     @override
@@ -780,12 +788,24 @@ class RecordingApplicationRecorder(ApplicationRecorder):
 
     @override
     async def start(
-        self, *, branch: Branch, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
+        self,
+        *,
+        branch: Branch,
+        operations: Sequence[SchemaOperation],
+        at: Timestamp,
+        user_id: str,
+        source: SchemaChangeSource,
     ) -> SchemaChangeRecording:
         self.calls.append(
             SchemaApplicationCall(
                 method=RECORDER_START,
-                arguments={"branch": branch, "operations": list(operations), "at": at, "user_id": user_id},
+                arguments={
+                    "branch": branch,
+                    "operations": list(operations),
+                    "at": at,
+                    "user_id": user_id,
+                    "source": source,
+                },
             )
         )
         return SchemaChangeRecording(

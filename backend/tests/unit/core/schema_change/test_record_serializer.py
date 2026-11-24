@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 import pytest
@@ -9,6 +9,7 @@ from infrahub.core.constants import SchemaPathType
 from infrahub.core.schema_change.enums import (
     SchemaChangeApplicationStatus,
     SchemaChangeMigrationStatus,
+    SchemaChangeSource,
     SchemaChangeStatus,
     SchemaOperationNodeType,
     SchemaOperationSection,
@@ -35,6 +36,7 @@ RUNNING_SCHEMA_CHANGE = SchemaChange(
     uuid=UUID,
     branch="main",
     status=SchemaChangeStatus.RUNNING,
+    source=SchemaChangeSource.USER,
     summary="testcar_color_update",
     format_version=1,
     created_at=CREATED_AT,
@@ -46,6 +48,7 @@ RUNNING_SCHEMA_CHANGE_PROPERTIES: dict[str, CypherValue] = {
     "uuid": UUID,
     "branch": "main",
     "status": "running",
+    "source": "user",
     "summary": "testcar_color_update",
     "format_version": 1,
     "created_at": CREATED_AT,
@@ -77,6 +80,22 @@ def test_schema_change_without_version_has_no_version_and_no_applied_at_property
     )
 
 
+def test_schema_change_without_source_property_reads_as_user() -> None:
+    serializer = SchemaChangeRecordSerializer()
+    properties = {key: value for key, value in RUNNING_SCHEMA_CHANGE_PROPERTIES.items() if key != "source"}
+
+    assert serializer.schema_change_from_properties(properties=properties).source == SchemaChangeSource.USER
+
+
+def test_core_schema_update_source_round_trips() -> None:
+    serializer = SchemaChangeRecordSerializer()
+    record = replace(RUNNING_SCHEMA_CHANGE, source=SchemaChangeSource.CORE_SCHEMA_UPDATE)
+    properties: dict[str, CypherValue] = {**RUNNING_SCHEMA_CHANGE_PROPERTIES, "source": "core_schema_update"}
+
+    assert serializer.schema_change_to_properties(record=record) == properties
+    assert serializer.schema_change_from_properties(properties=properties) == record
+
+
 def test_applied_schema_change_keeps_its_version_and_applied_at() -> None:
     serializer = SchemaChangeRecordSerializer()
     properties: dict[str, CypherValue] = {
@@ -92,6 +111,7 @@ def test_applied_schema_change_keeps_its_version_and_applied_at() -> None:
         uuid=UUID,
         branch="main",
         status=SchemaChangeStatus.APPLIED,
+        source=SchemaChangeSource.USER,
         summary="testcar_color_update",
         format_version=1,
         created_at=CREATED_AT,

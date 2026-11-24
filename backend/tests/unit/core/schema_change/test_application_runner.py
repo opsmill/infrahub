@@ -16,7 +16,7 @@ from infrahub.core.path import SchemaPath
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.schema_change.application_runner import LOAD_CANCELLED_ERROR, SchemaChangeApplicationRunner
 from infrahub.core.schema_change.candidate import SchemaCandidate
-from infrahub.core.schema_change.enums import SchemaOperationSection, SchemaOperationType
+from infrahub.core.schema_change.enums import SchemaChangeSource, SchemaOperationSection, SchemaOperationType
 from infrahub.core.schema_change.operations import SchemaOperation
 from infrahub.core.schema_change.recorder import SchemaChangeRecording
 from infrahub.core.timestamp import Timestamp
@@ -101,6 +101,7 @@ async def _run(runner: SchemaChangeApplicationRunner, run_input: RunInput) -> st
         at=run_input.at,
         context=run_input.context,
         user_id=USER_ID,
+        source=SchemaChangeSource.CORE_SCHEMA_UPDATE,
     )
 
 
@@ -112,6 +113,7 @@ def _start_call(run_input: RunInput) -> SchemaApplicationCall:
             "operations": run_input.candidate.operations,
             "at": run_input.at,
             "user_id": USER_ID,
+            "source": SchemaChangeSource.CORE_SCHEMA_UPDATE,
         },
     )
 

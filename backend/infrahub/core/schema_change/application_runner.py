@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.schema.update_coordinator import SchemaUpdateFinalStep
     from infrahub.core.schema_change.candidate import SchemaCandidate
+    from infrahub.core.schema_change.enums import SchemaChangeSource
     from infrahub.core.schema_change.operations import SchemaOperation
     from infrahub.core.schema_change.recorder import SchemaChangeRecording
     from infrahub.core.timestamp import Timestamp
@@ -27,7 +28,13 @@ LOAD_CANCELLED_ERROR = "The schema load was cancelled before it completed"
 
 class ApplicationRecorder(Protocol):
     async def start(
-        self, *, branch: Branch, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
+        self,
+        *,
+        branch: Branch,
+        operations: Sequence[SchemaOperation],
+        at: Timestamp,
+        user_id: str,
+        source: SchemaChangeSource,
     ) -> SchemaChangeRecording: ...
 
     async def complete(self, *, recording: SchemaChangeRecording, branch: Branch, user_id: str) -> None: ...
@@ -79,6 +86,7 @@ class SchemaChangeApplicationRunner:
         at: Timestamp,
         context: InfrahubContext,
         user_id: str,
+        source: SchemaChangeSource,
     ) -> str:
         """Record a running schema change, apply the candidate at `at`, then record the schema change as applied.
 
@@ -115,7 +123,9 @@ class SchemaChangeApplicationRunner:
                 final_step=None,
             )
 
-        recording = await self.recorder.start(branch=branch, operations=candidate.operations, at=at, user_id=user_id)
+        recording = await self.recorder.start(
+            branch=branch, operations=candidate.operations, at=at, user_id=user_id, source=source
+        )
 
         async def record_completion() -> None:
             await self.recorder.complete(recording=recording, branch=branch, user_id=user_id)

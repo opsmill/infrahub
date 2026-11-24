@@ -22,8 +22,10 @@ change or its application.
 (SchemaChangeApplication)-[:SCHEMA_APPLICATION_HAS_MIGRATION]->(SchemaChangeMigration)
 ```
 
-- `SchemaChange`: the branch name as a `branch` property, the status, the version, the summary,
-  the operation format version, and `applied_at`. The name, `<version in five digits>_<summary>`,
+- `SchemaChange`: the branch name as a `branch` property, the status, the source, the version, the
+  summary, the operation format version, and `applied_at`. The source is `user` for a schema load
+  or a dropdown or enum mutation, and `core_schema_update` for the core schema update of an upgrade;
+  a vertex without the property reads as `user`. The name, `<version in five digits>_<summary>`,
   is calculated when the GraphQL resolver reads it, and is the summary alone without a version.
 - `SchemaChangeOperation`: one operation, at a `position` from 0. `value` and `previous_value` are
   JSON text, so the JSON value `null` stays apart from a field that is not set. No field holds a

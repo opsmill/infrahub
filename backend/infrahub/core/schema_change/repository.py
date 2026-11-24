@@ -11,6 +11,7 @@ from infrahub.core.schema_change.cypher_names import CYPHER_NAMES
 from infrahub.core.schema_change.enums import (
     SchemaChangeApplicationStatus,
     SchemaChangeMigrationStatus,
+    SchemaChangeSource,
     SchemaChangeStatus,
 )
 from infrahub.core.schema_change.models import SchemaChange, SchemaChangeApplication, SchemaChangeMigration
@@ -460,7 +461,13 @@ class SchemaChangeRepository:
         await query.execute(db=self.db)
 
     async def create_schema_change(
-        self, *, branch: str, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
+        self,
+        *,
+        branch: str,
+        operations: Sequence[SchemaOperation],
+        at: Timestamp,
+        user_id: str,
+        source: SchemaChangeSource,
     ) -> CreatedSchemaChange:
         """Create a running schema change with its operations, and its running application at `at`.
 
@@ -473,6 +480,7 @@ class SchemaChangeRepository:
             uuid=str(UUIDT()),
             branch=branch,
             status=SchemaChangeStatus.RUNNING,
+            source=source,
             summary=build_schema_change_summary(operations=operations),
             format_version=SCHEMA_OPERATION_FORMAT_VERSION,
             created_at=created_at,

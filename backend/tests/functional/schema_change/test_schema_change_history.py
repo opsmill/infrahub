@@ -14,6 +14,7 @@ from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.schema_change.enums import (
     SchemaChangeApplicationStatus,
     SchemaChangeMigrationStatus,
+    SchemaChangeSource,
     SchemaChangeStatus,
     SchemaOperationSection,
     SchemaOperationType,
@@ -242,9 +243,15 @@ class TestSchemaChangeHistory(TestSchemaChangeBase):
         assert history.page.count == 1
         [schema_change_id] = history.schema_change_ids
         [entry] = history.page.entries
-        assert (entry.schema_change.branch, entry.schema_change.status, entry.schema_change.summary) == (
+        assert (
+            entry.schema_change.branch,
+            entry.schema_change.status,
+            entry.schema_change.source,
+            entry.schema_change.summary,
+        ) == (
             schema_change_dataset.branch_name,
             SchemaChangeStatus.APPLIED,
+            SchemaChangeSource.USER,
             CARD_SERIAL_SUMMARY,
         )
         operations = history.operations[schema_change_id]
