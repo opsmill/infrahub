@@ -67,7 +67,10 @@ def suppress_internal_logs() -> Iterator[None]:
 def find_previous_attribute_schema(
     previous_schema: MainSchemaTypes, attribute: AttributeSchema
 ) -> AttributeSchema | None:
-    """Return the previous version of an attribute, found by ID first, so that an attribute renamed in the same load is found."""
+    """Return the previous version of an attribute: the one with the same ID, so that a renamed attribute is found.
+
+    Falls back to the attribute with the same name.
+    """
     attribute_id = attribute.id or attribute.source_attribute_id
     if attribute_id:
         for previous_attribute in previous_schema.attributes:

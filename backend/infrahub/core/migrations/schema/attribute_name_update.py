@@ -32,6 +32,7 @@ class AttributeNameUpdateMigrationQuery01(AttributeMigrationQuery, AttributeRena
 
         previous_attr = AttributeInfo(
             name=prev_attr_schema.name,
+            # The kind rename runs in an earlier phase, so the nodes already carry the new kind
             node_kind=migration.new_schema.kind,
             branch_support=prev_attr_schema.get_branch().value,
         )

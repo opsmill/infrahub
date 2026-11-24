@@ -157,7 +157,7 @@ async def _active_value_labels(
     return [sorted(record["value_labels"]) for record in results]
 
 
-ACTIVE_RELATIONSHIP_EDGES_QUERY = """
+OPEN_RELATIONSHIP_EDGES_QUERY = """
 MATCH (node:Node {uuid: $node_id})-[is_related:IS_RELATED]-(:Relationship {name: $identifier})
 WHERE is_related.branch = $branch_name AND is_related.to IS NULL
 RETURN is_related.status AS status
@@ -169,7 +169,7 @@ async def _open_relationship_edge_statuses(
 ) -> list[str]:
     """Return the statuses of the open edges between a node and the relationships with an identifier."""
     results = await db.execute_query(
-        query=ACTIVE_RELATIONSHIP_EDGES_QUERY,
+        query=OPEN_RELATIONSHIP_EDGES_QUERY,
         params={"node_id": node_id, "identifier": identifier, "branch_name": branch.name},
     )
     return sorted(record["status"] for record in results)
@@ -461,32 +461,28 @@ async def rename_data(
     )
 
 
-@pytest.fixture(scope="class", params=["default", "user"], ids=["default", "user"])
-def branch_kind(request: pytest.FixtureRequest) -> str:
-    """The branch the loads run on; the empty database and the registry depend on it, so each kind starts from a fresh load."""
-    return request.param
-
-
-@pytest.fixture(scope="class")
-async def empty_database_scope_class(db: InfrahubDatabase, branch_kind: str) -> None:
-    await do_empty_database(db=db)
-
-
-@pytest.fixture(scope="class")
-async def reset_registry_scope_class(db: InfrahubDatabase, branch_kind: str) -> None:
-    await do_reset_registry(db=db)
-
-
-@pytest.fixture(scope="class")
-async def target_branch(
-    db: InfrahubDatabase, default_branch_scope_class: Branch, rename_data: RenameData, branch_kind: str
-) -> Branch:
-    if branch_kind == "default":
-        return default_branch_scope_class
-    return await create_branch(db=db, branch_name="rename-and-change")
-
-
 class TestSchemaLoadsThatRenameAndChange:
+    @pytest.fixture(scope="class", params=["default", "user"], ids=["default", "user"])
+    def branch_kind(self, request: pytest.FixtureRequest) -> str:
+        """The branch the loads run on; the empty database and the registry depend on it, so each kind starts from a fresh load."""
+        return request.param
+
+    @pytest.fixture(scope="class")
+    async def empty_database_scope_class(self, db: InfrahubDatabase, branch_kind: str) -> None:
+        await do_empty_database(db=db)
+
+    @pytest.fixture(scope="class")
+    async def reset_registry_scope_class(self, db: InfrahubDatabase, branch_kind: str) -> None:
+        await do_reset_registry(db=db)
+
+    @pytest.fixture(scope="class")
+    async def target_branch(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, rename_data: RenameData, branch_kind: str
+    ) -> Branch:
+        if branch_kind == "default":
+            return default_branch_scope_class
+        return await create_branch(db=db, branch_name="rename-and-change")
+
     async def test_an_attribute_renamed_with_a_new_kind_keeps_its_values(
         self, db: InfrahubDatabase, target_branch: Branch, rename_data: RenameData
     ) -> None:
@@ -591,4 +587,14 @@ class TestSchemaLoadsThatRenameAndChange:
         assert await _open_relationship_edge_statuses(
             db=db, node_id=rename_data.trailer, identifier=identifier, branch=target_branch
         ) == [RelationshipStatus.DELETED.value]
-        await verify_graph(db=db, kinds=["TestCaravan", "TestPerson", "TemplateTestCaravan", "TemplateTestPerson"])
+        await verify_graph(
+            db=db,
+            kinds=[
+                "TestCaravan",
+                "TestPerson",
+                "ProfileTestCaravan",
+                "ProfileTestPerson",
+                "TemplateTestCaravan",
+                "TemplateTestPerson",
+            ],
+        )

@@ -176,6 +176,7 @@ class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
 
     def render_selection(self) -> str:
         branch_filter, _ = self.branch.get_query_filter_path(at=self.at)
+        # The kind rename runs in an earlier phase, so the nodes already carry the new kind
         schema_kinds = _get_node_kinds(self.migration.new_schema.kind)
         # The index hint of the node scope applies only to a MATCH that holds the node alone.
         node_match = self.render_node_match("n", schema_kinds)
@@ -221,6 +222,7 @@ CALL (n, attr) {
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["at"] = self.at.to_string()
+        # The attribute rename runs in an earlier phase, so the attribute already carries its new name
         self.params["attr_name"] = self.migration.new_attribute_schema.name
         self.params["user_id"] = self.user_id
 
