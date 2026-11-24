@@ -362,7 +362,7 @@ class TestExternalArtifact(TestInfrahubApp):
         group = await Node.init(schema=InfrahubKind.STANDARDGROUP, db=db)
         await group.new(db=db, name="edge-routers", members=devices)
         await group.save(db=db)
-        return {device.name.value: device.id for device in devices}  # type: ignore[attr-defined]
+        return {device.name.value: device.id for device in devices}
 
     @pytest.fixture(scope="class")
     async def definition_id(
