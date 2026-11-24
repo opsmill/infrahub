@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -21,8 +22,8 @@ from infrahub.core.schema_change.enums import SchemaChangeEdgeType, SchemaChange
 from infrahub.core.schema_change.factory import build_schema_candidate_builder, build_schema_change_recorder
 from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder, SchemaOperationBuildResult
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import ValidationError
 from infrahub.lock import GLOBAL_SCHEMA_LOCK
+from tests.helpers.log import find_logged_events
 from tests.helpers.schema_change import (
     StoredSchemaChangeRecord,
     build_seeded_operations,
@@ -42,8 +43,9 @@ if TYPE_CHECKING:
 TAG_KIND = "BuiltinTag"
 ADDED_ATTRIBUTE = "description"
 MIGRATION_FAILURE = "The description of the tags could not be added"
-PROCESSING_FAILURE = "HFID of TestDevice refers to peer BuiltinTag with a non-unique combination of attributes"
 MIGRATION_CHECKPOINT = "core schema migration"
+UNEXPECTED_FAILURE = "The operation builder failed in a way it does not document"
+CANDIDATE_FAILURE_EVENT = "Could not build the candidate of the core schema update"
 
 
 @dataclass(frozen=True)
@@ -121,13 +123,13 @@ class DifferingKindComparer(SchemaCandidateComparer):
         return [TAG_KIND]
 
 
-class OperationBuilderThatFailsProcessing(SchemaOperationBuilder):
-    """Raises the error that processing a schema file raises when it refuses the schema."""
+class OperationBuilderThatFailsUnexpectedly(SchemaOperationBuilder):
+    """Raises an error that building operations does not document."""
 
     def build(
         self, *, branch_schema: SchemaBranch, schema_root: SchemaRoot, default_branch_schema: SchemaBranch
     ) -> SchemaOperationBuildResult:
-        raise ValidationError(input_value=PROCESSING_FAILURE)
+        raise RuntimeError(UNEXPECTED_FAILURE)
 
 
 @pytest.fixture
@@ -332,18 +334,24 @@ class TestCoreSchemaUpdate:
             "applied"
         ]
 
-    async def test_core_schema_that_processing_refuses_stops_the_update(
-        self, db: InfrahubDatabase, default_branch: Branch, older_core_schema: None
+    async def test_unexpected_error_building_the_candidate_stops_the_update_and_logs_its_traceback(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        older_core_schema: None,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         candidate_builder = SchemaCandidateBuilder(
-            operation_builder=OperationBuilderThatFailsProcessing(),
+            operation_builder=OperationBuilderThatFailsUnexpectedly(),
             applier=SchemaChangeApplier(),
             comparer=SchemaCandidateComparer(),
         )
 
-        with pytest.raises(typer.Exit) as exit_info:
+        with caplog.at_level(logging.ERROR, logger="infrahub"), pytest.raises(typer.Exit) as exit_info:
             await update_core_schema(db=db, candidate_builder=candidate_builder, initialize=False)
 
         assert exit_info.value.exit_code == 1
+        [failure] = find_logged_events(caplog, event=CANDIDATE_FAILURE_EVENT)
+        assert failure["exc_info"]
         assert await count_schema_change_records(db=db) == 0
         assert ADDED_ATTRIBUTE not in await _stored_tag_attribute_names(db=db, branch=default_branch)

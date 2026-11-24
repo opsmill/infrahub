@@ -60,7 +60,7 @@ from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.manager import SchemaManager
-from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
+from infrahub.core.schema.update_coordinator import DirectMigrations, SchemaUpdateCoordinator
 from infrahub.core.schema_change.enums import SchemaChangeSource
 from infrahub.core.schema_change.factory import build_schema_candidate_builder, build_schema_change_application_runner
 from infrahub.core.timestamp import Timestamp
@@ -71,13 +71,9 @@ from infrahub.database import DatabaseType
 from infrahub.database.memgraph import IndexManagerMemgraph
 from infrahub.database.neo4j import IndexManagerNeo4j
 from infrahub.dependencies.registry import build_component_registry
-from infrahub.exceptions import (
-    SchemaNameReusedError,
-    SchemaNotFoundError,
-    SchemaOperationsRebuildError,
-    ValidationError,
-)
+from infrahub.exceptions import ValidationError
 from infrahub.lock import initialize_lock
+from infrahub.log import get_logger
 
 from .constants import APPLIED_BADGE, ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
 from .db_commands.check_inheritance import check_inheritance
@@ -108,6 +104,8 @@ if TYPE_CHECKING:
     from infrahub.core.schema_change.candidate import SchemaCandidateBuilder
     from infrahub.database import InfrahubDatabase
     from infrahub.database.index import IndexManagerBase
+
+log = get_logger()
 
 app = AsyncTyper()
 app.add_typer(patch_app, name="patch")
@@ -1062,6 +1060,7 @@ async def update_core_schema(
         registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
         branch_schema = registry.schema.get_schema_branch(name=registry.default_branch)
 
+        # Any error stops the upgrade, so one that the builder does not document is logged with its traceback.
         try:
             candidate = candidate_builder.from_schema_root(
                 branch_schema=branch_schema,
@@ -1069,13 +1068,8 @@ async def update_core_schema(
                 default_branch_schema=branch_schema,
                 enforce_update_support=False,
             )
-        except (
-            ValueError,
-            ValidationError,
-            SchemaNotFoundError,
-            SchemaNameReusedError,
-            SchemaOperationsRebuildError,
-        ) as exc:
+        except Exception as exc:
+            log.exception("Could not build the candidate of the core schema update")
             get_migration_console().log(f"{ERROR_BADGE} | Unable to update the schema: {exc}")
             raise typer.Exit(1) from exc
 
@@ -1125,7 +1119,6 @@ async def update_core_schema(
             db=db,
             schema_manager=registry.schema,
             rollbacker=GraphRollbacker(db=db),
-            migration_executor=MigrationExecutor.DIRECT,
         )
         runner = build_schema_change_application_runner(
             db=db, executor=coordinator, default_branch_name=registry.default_branch
@@ -1137,9 +1130,9 @@ async def update_core_schema(
                 origin_schema=origin_schema,
                 candidate=candidate,
                 at=Timestamp(),
-                context=None,
                 user_id=SYSTEM_USER_ID,
                 source=SchemaChangeSource.CORE_SCHEMA_UPDATE,
+                migrations_run=DirectMigrations(),
             )
         except Exception as exc:
             get_migration_console().log(f"{ERROR_BADGE} | Schema update failed: {exc}")

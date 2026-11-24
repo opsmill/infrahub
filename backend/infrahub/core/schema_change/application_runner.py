@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.models import SchemaDiff, SchemaUpdateMigrationInfo
     from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.core.schema.update_coordinator import SchemaUpdateFinalStep
+    from infrahub.core.schema.update_coordinator import MigrationExecutor, MigrationsRun, SchemaUpdateFinalStep
     from infrahub.core.schema_change.candidate import SchemaCandidate
     from infrahub.core.schema_change.enums import SchemaChangeSource
     from infrahub.core.schema_change.operations import SchemaOperation
@@ -54,6 +54,7 @@ class SchemaUpdateExecutor(Protocol):
         candidate_schema: SchemaBranch,
         at: Timestamp,
         context: InfrahubContext | None,
+        migration_executor: MigrationExecutor,
         diff: SchemaDiff,
         migrations: list[SchemaUpdateMigrationInfo],
         limit: list[str],
@@ -84,9 +85,9 @@ class SchemaChangeApplicationRunner:
         origin_schema: SchemaBranch,
         candidate: SchemaCandidate,
         at: Timestamp,
-        context: InfrahubContext | None,
         user_id: str,
         source: SchemaChangeSource,
+        migrations_run: MigrationsRun,
     ) -> str:
         """Record a running schema change, apply the candidate at `at`, then record the schema change as applied.
 
@@ -117,7 +118,7 @@ class SchemaChangeApplicationRunner:
                 origin_schema=origin_schema,
                 candidate=candidate,
                 at=at,
-                context=context,
+                migrations_run=migrations_run,
                 user_id=user_id,
                 application_id=None,
                 final_step=None,
@@ -136,7 +137,7 @@ class SchemaChangeApplicationRunner:
                 origin_schema=origin_schema,
                 candidate=candidate,
                 at=at,
-                context=context,
+                migrations_run=migrations_run,
                 user_id=user_id,
                 application_id=recording.application_id,
                 final_step=record_completion,
@@ -155,7 +156,7 @@ class SchemaChangeApplicationRunner:
         origin_schema: SchemaBranch,
         candidate: SchemaCandidate,
         at: Timestamp,
-        context: InfrahubContext | None,
+        migrations_run: MigrationsRun,
         user_id: str,
         application_id: str | None,
         final_step: SchemaUpdateFinalStep | None,
@@ -166,7 +167,8 @@ class SchemaChangeApplicationRunner:
             rollback_schema=origin_schema,
             candidate_schema=candidate.schema,
             at=at,
-            context=context,
+            context=migrations_run.context,
+            migration_executor=migrations_run.migration_executor,
             diff=candidate.validation.diff,
             migrations=candidate.validation.migrations,
             limit=candidate.validation.diff.all,

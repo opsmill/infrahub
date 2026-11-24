@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, NoReturn, Protocol
+from typing import TYPE_CHECKING, ClassVar, NoReturn, Protocol
 
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
@@ -35,6 +36,25 @@ class MigrationExecutor(Enum):
     WORKFLOW = "workflow"  # Execute via workflow service
 
 
+@dataclass(frozen=True)
+class WorkflowMigrations:
+    """Run the migrations of a schema update as a workflow, under the context of the request that started it."""
+
+    context: InfrahubContext
+    migration_executor: ClassVar[MigrationExecutor] = MigrationExecutor.WORKFLOW
+
+
+@dataclass(frozen=True)
+class DirectMigrations:
+    """Run the migrations of a schema update in the process that applies it, with no request context."""
+
+    context: ClassVar[None] = None
+    migration_executor: ClassVar[MigrationExecutor] = MigrationExecutor.DIRECT
+
+
+MigrationsRun = WorkflowMigrations | DirectMigrations
+
+
 class SchemaUpdateFinalStep(Protocol):
     """The last step of a schema update, which runs after the schema is saved and the migrations succeed."""
 
@@ -58,7 +78,6 @@ class SchemaUpdateCoordinator:
         rollbacker: GraphRollbacker,
         workflow: InfrahubWorkflow | None = None,
         logger: logging.Logger | logging.LoggerAdapter[logging.Logger] | None = None,
-        migration_executor: MigrationExecutor = MigrationExecutor.WORKFLOW,
     ) -> None:
         """Initialize the coordinator.
 
@@ -68,13 +87,11 @@ class SchemaUpdateCoordinator:
             rollbacker: Reverses database writes when a schema update fails
             workflow: Workflow service for executing migrations (required for the WORKFLOW executor)
             logger: Logger to use (defaults to module logger)
-            migration_executor: How to execute migrations when a call to `execute` does not say
 
         """
         self.db = db
         self.schema_manager = schema_manager
         self.rollbacker = rollbacker
-        self.migration_executor = migration_executor
         self.workflow = workflow
         self.log = logger or _default_log
 
@@ -98,7 +115,7 @@ class SchemaUpdateCoordinator:
         candidate_schema: SchemaBranch,
         at: Timestamp,
         context: InfrahubContext | None = None,
-        migration_executor: MigrationExecutor | None = None,
+        migration_executor: MigrationExecutor = MigrationExecutor.WORKFLOW,
         diff: SchemaDiff | None = None,
         migrations: list[SchemaUpdateMigrationInfo] | None = None,
         limit: list[str] | None = None,
@@ -120,7 +137,7 @@ class SchemaUpdateCoordinator:
             candidate_schema: New schema to apply
             at: Timestamp for all operations (enables atomic rollback)
             context: Infrahub context (required for the WORKFLOW executor)
-            migration_executor: How to execute migrations (DIRECT or WORKFLOW); None uses the executor of the coordinator
+            migration_executor: How to execute migrations (DIRECT or WORKFLOW)
             diff: Schema diff for update_schema_branch (optional, for incremental updates)
             migrations: List of migrations to run
             limit: Limit schema update to specific items
@@ -142,8 +159,6 @@ class SchemaUpdateCoordinator:
             Exception: Original exception if migrations fail via exception, or the exception of `final_step`
 
         """
-        if migration_executor is None:
-            migration_executor = self.migration_executor
         if (
             migrations
             and migration_executor is MigrationExecutor.WORKFLOW

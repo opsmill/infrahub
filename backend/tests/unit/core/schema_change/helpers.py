@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from infrahub.core.models import SchemaDiff, SchemaUpdateMigrationInfo, SchemaUpdateValidationResult
     from infrahub.core.query import QueryType
     from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.core.schema.update_coordinator import SchemaUpdateFinalStep
+    from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateFinalStep
     from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus, SchemaChangeSource
     from infrahub.core.schema_change.operations import SchemaOperation
     from infrahub.core.schema_change.repository import AppliedSchemaChangeVersion, CreatedSchemaChange
@@ -902,6 +902,7 @@ class RecordingSchemaUpdateExecutor(SchemaUpdateExecutor):
         candidate_schema: SchemaBranch,
         at: Timestamp,
         context: InfrahubContext | None,
+        migration_executor: MigrationExecutor,
         diff: SchemaDiff,
         migrations: list[SchemaUpdateMigrationInfo],
         limit: list[str],
@@ -919,6 +920,7 @@ class RecordingSchemaUpdateExecutor(SchemaUpdateExecutor):
                     "candidate_schema": candidate_schema,
                     "at": at,
                     "context": context,
+                    "migration_executor": migration_executor,
                     "diff": diff,
                     "migrations": list(migrations),
                     "limit": list(limit),
@@ -957,6 +959,7 @@ class FailingSchemaUpdateExecutor(RecordingSchemaUpdateExecutor):
         candidate_schema: SchemaBranch,
         at: Timestamp,
         context: InfrahubContext | None,
+        migration_executor: MigrationExecutor,
         diff: SchemaDiff,
         migrations: list[SchemaUpdateMigrationInfo],
         limit: list[str],
@@ -971,6 +974,7 @@ class FailingSchemaUpdateExecutor(RecordingSchemaUpdateExecutor):
             candidate_schema=candidate_schema,
             at=at,
             context=context,
+            migration_executor=migration_executor,
             diff=diff,
             migrations=migrations,
             limit=limit,
@@ -998,6 +1002,7 @@ class BlockingSchemaUpdateExecutor(RecordingSchemaUpdateExecutor):
         candidate_schema: SchemaBranch,
         at: Timestamp,
         context: InfrahubContext | None,
+        migration_executor: MigrationExecutor,
         diff: SchemaDiff,
         migrations: list[SchemaUpdateMigrationInfo],
         limit: list[str],
@@ -1012,6 +1017,7 @@ class BlockingSchemaUpdateExecutor(RecordingSchemaUpdateExecutor):
             candidate_schema=candidate_schema,
             at=at,
             context=context,
+            migration_executor=migration_executor,
             diff=diff,
             migrations=migrations,
             limit=limit,

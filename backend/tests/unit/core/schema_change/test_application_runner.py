@@ -14,6 +14,7 @@ from infrahub.core.constants import SchemaPathType
 from infrahub.core.models import HashableModelDiff, SchemaDiff, SchemaUpdateMigrationInfo, SchemaUpdateValidationResult
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.schema.update_coordinator import DirectMigrations, MigrationExecutor, WorkflowMigrations
 from infrahub.core.schema_change.application_runner import LOAD_CANCELLED_ERROR, SchemaChangeApplicationRunner
 from infrahub.core.schema_change.candidate import SchemaCandidate
 from infrahub.core.schema_change.enums import SchemaChangeSource, SchemaOperationSection, SchemaOperationType
@@ -99,9 +100,9 @@ async def _run(runner: SchemaChangeApplicationRunner, run_input: RunInput) -> st
         origin_schema=run_input.origin_schema,
         candidate=run_input.candidate,
         at=run_input.at,
-        context=run_input.context,
         user_id=USER_ID,
         source=SchemaChangeSource.CORE_SCHEMA_UPDATE,
+        migrations_run=WorkflowMigrations(context=run_input.context),
     )
 
 
@@ -129,6 +130,7 @@ def _execute_call(run_input: RunInput, application_id: str | None = RECORDED_APP
             "candidate_schema": run_input.candidate.schema,
             "at": run_input.at,
             "context": run_input.context,
+            "migration_executor": MigrationExecutor.WORKFLOW,
             "diff": validation.diff,
             "migrations": validation.migrations,
             "limit": [CHANGED_KIND],
@@ -163,6 +165,31 @@ async def test_run_starts_then_executes_with_the_application_id_then_completes_a
             arguments={"recording": _recording(run_input), "branch": run_input.branch, "user_id": USER_ID},
         ),
     ]
+
+
+async def test_run_with_direct_migrations_executes_them_directly_without_a_context() -> None:
+    calls: list[SchemaApplicationCall] = []
+    runner = SchemaChangeApplicationRunner(
+        recorder=RecordingApplicationRecorder(calls=calls),
+        executor=RecordingSchemaUpdateExecutor(calls=calls, updated_hash=UPDATED_HASH),
+    )
+    run_input = _build_run_input()
+
+    await runner.run(
+        branch=run_input.branch,
+        origin_schema=run_input.origin_schema,
+        candidate=run_input.candidate,
+        at=run_input.at,
+        user_id=USER_ID,
+        source=SchemaChangeSource.CORE_SCHEMA_UPDATE,
+        migrations_run=DirectMigrations(),
+    )
+
+    [execute_call] = [call for call in calls if call.method == EXECUTOR_EXECUTE]
+    assert (execute_call.arguments["context"], execute_call.arguments["migration_executor"]) == (
+        None,
+        MigrationExecutor.DIRECT,
+    )
 
 
 @dataclass(frozen=True)

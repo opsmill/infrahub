@@ -252,12 +252,19 @@ The core schema update of `infrahub upgrade` and `infrahub db update-core-schema
 internal schema, the core models and the deprecated models into one schema file
 (`build_core_schema_root`) and builds its candidate with `from_schema_root` and
 `enforce_update_support=False`, so a change to a property that has no migration (`UpdateSupport.NOT_SUPPORTED`)
-is saved without an error, a migration or a constraint check. The runner applies it with a
-coordinator built for the `DIRECT` executor, with no context and the system user, and stores a
-schema change on the default branch with the source `core_schema_update`. When the operations do not
-rebuild the merged files, or any other error of `from_schema_root`, the upgrade stops with exit code
-1 before any write, as it does for a failed validation; running it again gives the same error, because
-the cause is in the core schema files or in the operation builder, not in the data.
+is saved without an error, a migration or a constraint check. The runner applies it with
+`DirectMigrations`, so the migrations run in the CLI process with no request context, as the system
+user, and stores a schema change on the default branch with the source `core_schema_update`. Any
+error of `from_schema_root`, an operation mismatch included, is logged with its traceback and stops
+the upgrade with exit code 1 before any write, as a failed validation does; running it again gives
+the same error, because the cause is in the core schema files or in the operation builder, not in the
+data.
+
+`SchemaChangeApplicationRunner.run` takes how the migrations run as one value
+(`core/schema/update_coordinator.py`): `WorkflowMigrations`, which holds the request context that
+the migration workflow needs, or `DirectMigrations`, which has none. The runner passes its executor
+and context to the coordinator, so a workflow run without a context cannot be built. A schema load
+passes `WorkflowMigrations`.
 
 A dropdown or enum mutation calls `SchemaChangeRecorder.record_applied` inside its database
 transaction, before `update_schema_branch`, because `update_schema_branch` replaces the schema in

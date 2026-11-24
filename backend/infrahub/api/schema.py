@@ -54,7 +54,7 @@ from infrahub.core.schema import (
 from infrahub.core.schema.constants import SchemaNamespace  # noqa: TC001
 from infrahub.core.schema.submitted_ids.repository import SchemaElementRepository
 from infrahub.core.schema.submitted_ids.resolver import SubmittedSchemaIdResolver
-from infrahub.core.schema.update_coordinator import SchemaUpdateCoordinator
+from infrahub.core.schema.update_coordinator import SchemaUpdateCoordinator, WorkflowMigrations
 from infrahub.core.schema_change.enums import SchemaChangeSource
 from infrahub.core.schema_change.factory import build_schema_candidate_builder, build_schema_change_application_runner
 from infrahub.core.timestamp import Timestamp
@@ -518,11 +518,11 @@ async def load_schema(
             origin_schema=origin_schema,
             candidate=candidate,
             at=Timestamp(),
-            # The caller blocks on this request: a priority stamped into the
-            # context puts the migration task tree in the interactive lane.
-            context=context.model_copy(update={"priority": WorkflowPriority.HIGH}),
             user_id=account_session.account_id,
             source=SchemaChangeSource.USER,
+            # The caller blocks on this request: a priority stamped into the
+            # context puts the migration task tree in the interactive lane.
+            migrations_run=WorkflowMigrations(context=context.model_copy(update={"priority": WorkflowPriority.HIGH})),
         )
 
     await service.component.refresh_schema_hash(branches=[branch.name])
