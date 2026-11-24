@@ -1,0 +1,21 @@
+backend/infrahub/core/migrations/schema/phases.py
+  s_29ee9c595a6e47::t_10727515f052e2 17
+dev/knowledge/backend/schema-changes.md
+  s_29ee9c595a6e47::t_10727515f052e2 257-260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e25301b165d7d27ccdf6b342af0b894955cd4105",
+  "prompts": {},
+  "sessions": {
+    "s_29ee9c595a6e47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6739bd57-3231-493b-9d6f-e3d752abed62",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
