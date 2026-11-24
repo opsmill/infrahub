@@ -1,0 +1,68 @@
+backend/tests/unit/core/schema/submitted_ids/test_resolver.py
+  s_96af57a97e42ec::t_25476390134339 582-657
+backend/tests/unit/core/schema/test_schema_branch.py
+  s_96af57a97e42ec::t_25476390134339 484-508
+backend/tests/integration/schema_lifecycle/test_schema_load_submitted_ids_challenge.py
+  s_96af57a97e42ec::t_4e85f46d9f1abc 9,15-16,53,70-73
+  s_96af57a97e42ec::t_f6c501500f17cc 1-8,10-14,17-52,54-55,62-66,68,74-107
+  s_96af57a97e42ec::t_46f4dd5e9719c7 69
+  s_96af57a97e42ec::t_1da1b030320a24 56-61,67
+backend/tests/component/core/merge/test_schema_analyzer_challenge.py
+  s_ebb35addb781e6::t_2016fd0d16b3d0 1-159
+backend/tests/component/core/node/test_schema_pool_stored_scope.py
+  s_b9a6d6fe7f6062::t_77ed5e7ce60e91 1-148
+backend/tests/component/core/node/test_template_pool_default_value.py
+  s_dc3fd14f120060::t_e8849e60efe319 1-104
+backend/tests/component/core/resource_manager/test_number_pool_scope_sources.py
+  s_dc3fd14f120060::t_8dddb6a32c2620 1-126
+backend/tests/integration/schema_lifecycle/test_merge_schema_validation_challenge.py
+  s_91328cfc9bd7ea::t_26fc8ee778397a 1-391
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8bd608434d13d9e991a6f72624c29211fb496173",
+  "prompts": {},
+  "sessions": {
+    "s_91328cfc9bd7ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "198a05a9-6d16-48bd-be2d-9db6bc847527",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_96af57a97e42ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5b278aec-d7eb-4bd2-840a-4ec42b408797",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_b9a6d6fe7f6062": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d3691c3-96a2-4512-98cf-b57cf6fe7d48",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_dc3fd14f120060": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "634e5b23-6c00-43e1-aeba-64517e6fba39",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_ebb35addb781e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1780b3e6-ef0e-420a-9a42-4220f764b970",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
