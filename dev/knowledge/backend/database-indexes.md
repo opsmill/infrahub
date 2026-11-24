@@ -48,10 +48,11 @@ RETURN sum(num_edges) AS num_edges
 - Name the label or the edge type in the pattern. A pattern that names none cannot use any index.
 - Write one `MATCH` per edge type and per property, joined with `UNION ALL`, and put `USING INDEX SEEK` on each. One `MATCH` over several types, or two properties joined with `OR`, leaves the choice to the planner: a seek is not guaranteed, and with `OR` a seek can be bounded on one side of the range only.
 - Hint the index of the predicate that keeps the fewest rows. An index on `branch` keeps nearly every edge when the branch is the default branch.
+- Leave out a label that the edge type already implies on the other end of a hinted edge, such as `:Node` on the start of `HAS_ATTRIBUTE`. To check the label, the planner can join the seek with a scan of every vertex of that label.
 - Aggregate, or return `DISTINCT` rows, inside each read, and combine the results after the `UNION ALL`. Each read then returns a few rows instead of one row per edge.
 - When one edge can match two reads, exclude it from one of them. In the example, the read on `to` leaves out an edge that was opened and closed inside the window, because the read on `from` already counts it.
 
-`DiffCountChanges`, `DiffFieldNodesQuery` and `DiffPropertyNodesQuery` (`backend/infrahub/core/query/diff.py`) read a time window this way, and `RebaseBranchQuery` (`backend/infrahub/core/query/branch.py`) reads the edges of one branch through the `branch` index of each edge type: read them alongside a new instance. [Query Pattern — Query performance](query-pattern.md#query-performance) holds the rules for the indexes on node `uuid`, node `kind` and attribute values.
+`DiffCountChanges`, `DiffFieldNodesQuery` and `DiffPropertyNodesQuery` (`backend/infrahub/core/query/diff.py`) read a time window this way, and `RebaseBranchQuery` (`backend/infrahub/core/query/branch.py`) and the bulk merge queries that read the source branch (`backend/infrahub/core/diff/query/bulk_merge.py`) read the edges of one branch through the `branch` index of each edge type: read them alongside a new instance. [Query Pattern — Query performance](query-pattern.md#query-performance) holds the rules for the indexes on node `uuid`, node `kind` and attribute values.
 
 ## Check that the index is used
 
