@@ -31,7 +31,7 @@ class AttributeEnumUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         self.params["allowed_values"] = self.attribute_schema.enum
         self.params["null_value"] = NULL_VALUE
         query = """
-        MATCH (n:%(node_kind)s)
+        %(match_nodes)s
         CALL (n) {
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
             WHERE all(
@@ -47,7 +47,7 @@ class AttributeEnumUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         AND attribute_value IS NOT NULL
         AND attribute_value <> $null_value
         AND NOT (attribute_value IN $allowed_values)
-        """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
+        """ % {"branch_filter": branch_filter, "match_nodes": self.match_nodes()}
 
         self.add_to_query(query)
         self.return_labels = ["node.uuid", "attribute_value", "value_relationship"]
@@ -72,6 +72,7 @@ class AttributeEnumUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 
 
 class AttributeEnumChecker(ConstraintCheckerInterface):
+    reads_listed_nodes = True
     query_classes = [AttributeEnumUpdateValidatorQuery]
 
     def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
@@ -101,6 +102,7 @@ class AttributeEnumChecker(ConstraintCheckerInterface):
                 node_schema=request.node_schema,
                 schema_path=request.schema_path,
                 is_isolated=request.is_isolated,
+                node_uuids=request.node_uuids,
             )
 
             await query.execute(db=self.db)

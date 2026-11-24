@@ -1,5 +1,3 @@
-from typing import Any
-
 from infrahub.core.branch import Branch
 from infrahub.core.graph.schema import GraphAttributeValueIndexedNode
 from infrahub.core.initialization import create_branch
@@ -13,6 +11,7 @@ from infrahub.core.validators.uniqueness.query import (
     UniquenessValidationQuery,
 )
 from infrahub.database import InfrahubDatabase
+from tests.helpers.query_plan import explain_plan_operators
 
 
 async def test_query_uniqueness_no_violations(
@@ -359,13 +358,6 @@ async def test_query_relationship_no_violation_same_peer_different_rels(
     assert set(violation_nodes) == {(jane_dog.id, "TestDog"), (joes_dog.id, "TestDog"), (johns_dog.id, "TestDog")}
 
 
-def _plan_operators(plan: dict[str, Any]) -> list[str]:
-    operator = f"{plan.get('operatorType', '')}: {plan.get('args', {}).get('Details', '')}"
-    return [operator] + [
-        child_operator for child in plan.get("children", []) for child_operator in _plan_operators(child)
-    ]
-
-
 async def test_query_relationship_then_attribute_checks_the_attribute_from_the_nodes_found(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -398,12 +390,9 @@ async def test_query_relationship_then_attribute_checks_the_attribute_from_the_n
     )
     query = await UniquenessValidationQuery.init(db=db, branch=default_branch, query_request=query_request)
     await query.execute(db=db)
-    rendered = query.render()
-    _, metadata = await db.execute_query_with_metadata(
-        query="EXPLAIN\n" + rendered.text, params=rendered.params, name="explain_uniqueness_validation"
-    )
+    plan_operators = await explain_plan_operators(db=db, query=query)
 
     assert query.get_violation_nodes() == [(cars["johns-car"].id, "TestCar")]
     # Every attribute holding the value links to one value vertex, so a seek on it reads all of them.
     value_index = f"{GraphAttributeValueIndexedNode.get_default_label()}(value)"
-    assert [operator for operator in _plan_operators(metadata["plan"]) if value_index in operator] == []
+    assert [operator for operator in plan_operators if value_index in operator] == []

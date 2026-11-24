@@ -529,3 +529,24 @@ async def test_validator_on_branch_reads_the_requested_view_of_main(
             value=case.expected_value,
         )
     ]
+
+
+async def test_validator_checks_only_the_listed_nodes(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
+) -> None:
+    car_schema = registry.schema.get(name="TestCar")
+    car_schema.get_attribute(name="name").kind = "IPNetwork"
+
+    request = SchemaConstraintValidatorRequest(
+        branch=default_branch,
+        constraint_name="attribute.kind.update",
+        node_schema=car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="name"),
+        schema_branch=SchemaBranch(cache={}, name="test"),
+        node_uuids=[car_camry_main.id],
+    )
+
+    grouped_data_paths = await AttributeKindChecker(db=db, branch=default_branch).check(request)
+
+    # both cars hold a name that is not a network, but only the listed one is checked
+    assert [path.node_id for paths in grouped_data_paths for path in paths.get_all_data_paths()] == [car_camry_main.id]

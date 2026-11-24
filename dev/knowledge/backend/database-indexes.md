@@ -51,7 +51,7 @@ RETURN sum(num_edges) AS num_edges
 - Aggregate, or return `DISTINCT` rows, inside each read, and combine the results after the `UNION ALL`. Each read then returns a few rows instead of one row per edge.
 - When one edge can match two reads, exclude it from one of them. In the example, the read on `to` leaves out an edge that was opened and closed inside the window, because the read on `from` already counts it.
 
-`DiffCountChanges` and `DiffFieldNodesQuery` (`backend/infrahub/core/query/diff.py`) are the queries to read alongside a new instance. [Query Pattern — Query performance](query-pattern.md#query-performance) holds the rules for the indexes on node `uuid`, node `kind` and attribute values.
+`DiffCountChanges`, `DiffFieldNodesQuery` and `DiffPropertyNodesQuery` (`backend/infrahub/core/query/diff.py`) read a time window this way, and `RebaseBranchQuery` (`backend/infrahub/core/query/branch.py`) reads the edges of one branch through the `branch` index of each edge type: read them alongside a new instance. [Query Pattern — Query performance](query-pattern.md#query-performance) holds the rules for the indexes on node `uuid`, node `kind` and attribute values.
 
 ## Check that the index is used
 

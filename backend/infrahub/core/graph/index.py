@@ -53,4 +53,5 @@ rel_indexes: list[IndexItem] = [
     IndexItem(name="is_part_of_branch", label="IS_PART_OF", properties=["branch"], type=IndexType.RANGE),
     IndexItem(name="reserved_from", label="IS_RESERVED", properties=["from"], type=IndexType.RANGE),
     IndexItem(name="reserved_to", label="IS_RESERVED", properties=["to"], type=IndexType.RANGE),
+    IndexItem(name="reserved_branch", label="IS_RESERVED", properties=["branch"], type=IndexType.RANGE),
 ]

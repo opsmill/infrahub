@@ -20,6 +20,7 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.query.branch import RebaseBranchQuery
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -33,6 +34,7 @@ from tests.adapters.cache import MemoryCache
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.paused_branch_list import PausedBranchList
+from tests.helpers.query_plan import explain_plan_operators
 from tests.helpers.schema import load_schema
 
 
@@ -80,6 +82,18 @@ async def test_rebase_graph_delete(
     # Query all cars in BRANCH1, AFTER the REBASE
     persons = sorted(await NodeManager.query(schema="TestPerson", branch=branch1, db=db), key=lambda p: p.id)
     assert len(persons) == 2
+
+
+async def test_rebase_query_reads_the_edges_of_the_branch_by_type(
+    db: InfrahubDatabase, base_dataset_02: dict, register_core_models_schema: SchemaBranch
+) -> None:
+    branch1 = await Branch.get_by_name(name="branch1", db=db)
+    query = await RebaseBranchQuery.init(db=db, branch=branch1, at=Timestamp())
+
+    plan_operators = await explain_plan_operators(db=db, query=query)
+
+    # A read that names no edge type cannot use an index, so it reads every edge of the graph.
+    assert [operator for operator in plan_operators if "AllRelationshipsScan" in operator] == []
 
 
 async def test_merge_relationship_many(

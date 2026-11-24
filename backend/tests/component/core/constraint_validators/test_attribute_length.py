@@ -251,6 +251,31 @@ async def test_validator(
     )
 
 
+async def test_validator_checks_only_the_listed_nodes(
+    db: InfrahubDatabase, default_branch: Branch, person_john_main: Node, person_albert_main: Node
+) -> None:
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="Maximilian")
+    await person.save(db=db)
+
+    person_schema = registry.schema.get(name="TestPerson", branch=default_branch)
+    person_schema.get_attribute(name="name").parameters.max_length = 5
+
+    request = SchemaConstraintValidatorRequest(
+        branch=default_branch,
+        constraint_name=ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MAX_LENGTH_UPDATE.value,
+        node_schema=person_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
+        schema_branch=SchemaBranch(cache={}, name="test"),
+        node_uuids=[person_john_main.id, person.id],
+    )
+
+    grouped_data_paths = await AttributeLengthChecker(db=db, branch=default_branch).check(request)
+
+    # Albert is too long as well, but he is not listed
+    assert [path.node_id for paths in grouped_data_paths for path in paths.get_all_data_paths()] == [person.id]
+
+
 @dataclass(frozen=True)
 class ViewCase:
     name: str
