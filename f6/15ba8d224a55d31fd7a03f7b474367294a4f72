@@ -1,0 +1,43 @@
+backend/infrahub/core/schema/queries.py
+  s_05196466af1985::t_88dd70ba65a3c0 387
+  s_05196466af1985::t_4dcaa46b19f68d 368
+backend/infrahub/core/schema/submitted_ids/resolver.py
+  s_05196466af1985::t_cc92271365e4b4 107-111
+changelog/+schema-load-submitted-ids.fixed.md
+  s_05196466af1985::t_03fc2d397e7f0f 1
+backend/tests/unit/core/schema/submitted_ids/test_resolver.py
+  s_05196466af1985::t_3cdf9bb2207198 313
+  s_05196466af1985::t_ef02d2d4673f02 308-312,314-323
+  s_05196466af1985::t_8e409fdffe79d1 307
+backend/tests/component/core/schema_manager/test_schema_element_ids_query.py
+  s_05196466af1985::t_63e514f505a3bc 120-128
+dev/knowledge/backend/schema-definitions.md
+  s_05196466af1985::t_e30c121ff840b0 252-255
+  s_05196466af1985::t_2eb34bb7684836 225-226
+dev/knowledge/backend/schema-changes.md
+  s_759d6ad8a10936::t_d0854d816bfbbb 107-111,115-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f615ba8d224a55d31fd7a03f7b474367294a4f72",
+  "prompts": {},
+  "sessions": {
+    "s_05196466af1985": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "124d0d26-f7c5-4a25-b789-a162eac7a3fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    },
+    "s_759d6ad8a10936": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b6b11bd-cdbf-4a27-a3e5-47e600fa2588",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
