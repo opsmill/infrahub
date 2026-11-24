@@ -194,6 +194,15 @@ async def _record_schema_integrity_failure(
         await recorder.record_conflicts(proposed_change_id=proposed_change_id, conflicts=schema_conflicts)
 
 
+async def _clear_schema_integrity_failure(
+    database: InfrahubDatabase, proposed_change_id: str, recorded_before: Timestamp
+) -> None:
+    """Replace a failure of the Schema Integrity validator completed before `recorded_before` with a passing result."""
+    async with database.start_transaction() as db:
+        recorder = _build_schema_integrity_validator_recorder(db=db)
+        await recorder.clear_failure(proposed_change_id=proposed_change_id, recorded_before=recorded_before)
+
+
 async def _merge_branch_for_proposed_change(
     db: InfrahubDatabase,
     proposed_change: InternalCoreProposedChange,
@@ -529,6 +538,8 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
 
 @flow(name="proposed-changed-schema-integrity", flow_run_name="Process schema integrity")
 async def run_proposed_change_schema_integrity_check(model: RequestProposedChangeSchemaIntegrity) -> None:
+    # A merge refused after this point checked newer data than this run, so its failure must be kept.
+    check_started_at = Timestamp()
     # For now, we retrieve the latest schema for each branch from the registry
     # In the future it would be good to generate the object SchemaUpdateValidationResult from message.branch_diff
     await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
@@ -581,6 +592,9 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     constraints = merger.merge(candidate_schema, constraints_from_data_diff, constraints_from_schema_diff)
 
     if not constraints:
+        await _clear_schema_integrity_failure(
+            database=database, proposed_change_id=model.proposed_change, recorded_before=check_started_at
+        )
         return
 
     # ----------------------------------------------------------
@@ -588,7 +602,7 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     # ----------------------------------------------------------
     responses = await schema_validate_migrations(
         message=SchemaValidateMigrationData(
-            branch=source_branch, schema_branch=candidate_schema, constraints=constraints
+            branch=source_branch, schema_branch=candidate_schema, constraints=constraints, is_isolated=True
         )
     )
 
@@ -627,7 +641,7 @@ async def _get_proposed_change_schema_integrity_constraints(
             # The SDK diff summary reports element_type using the DiffElementType member name
             # (e.g. "RELATIONSHIP_ONE"), not its value ("RelationshipOne").
             element_type = element["element_type"]
-            if element_type in (DiffElementType.RELATIONSHIP_MANY.name, DiffElementType.RELATIONSHIP_ONE.name):
+            if element_type in {DiffElementType.RELATIONSHIP_MANY.name, DiffElementType.RELATIONSHIP_ONE.name}:
                 field_summary.add_relationship_node_uuid(name=element_name, node_uuid=node_id)
             elif element_type == DiffElementType.ATTRIBUTE.name:
                 field_summary.add_attribute_node_uuid(name=element_name, node_uuid=node_id)
@@ -844,7 +858,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
             subscriber_kind=InfrahubKind.ARTIFACT,
             every_target=list(artifacts_by_member.values()),
         )
-    impacted_artifacts = selection.ids
+    impacted_artifacts = set(selection.ids)
     if selection.widening is not None:
         log.warning(
             f"Artifact definition {artifact_definition.name.value}: {selection.widening.detail}. "
@@ -997,7 +1011,7 @@ async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: Infra
     except Exception as exc:
         conclusion = ValidatorConclusion.FAILURE
         generator_instance.status.value = GeneratorInstanceStatus.ERROR.value
-        check_message = f"Failed to execute generator: {str(exc)}"
+        check_message = f"Failed to execute generator: {exc!s}"
         log.exception(check_message, exc_info=exc)
 
     log.info("Generator run completed, starting update")
@@ -1141,7 +1155,7 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
             every_target=list(instance_by_member.values()),
         )
     definition_name = model.generator_definition.definition_name
-    impacted_instances = selection.ids
+    impacted_instances = set(selection.ids)
     if selection.widening is not None:
         log.warning(
             f"Generator definition {definition_name}: {selection.widening.detail}. All targets will be processed."
@@ -1215,6 +1229,8 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
 
 @flow(name="proposed-changed-pipeline", flow_run_name="Execute proposed changed pipeline")
 async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, context: InfrahubContext) -> None:
+    # A merge refused after this point checked newer data than this run, so its failure must be kept.
+    pipeline_started_at = Timestamp()
     client = get_client()
     client.request_context = context.to_request_context()
     repositories = await _get_proposed_change_repositories(model=model, client=client)
@@ -1274,7 +1290,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
             context=context,
         )
 
-    if model.check_type in [CheckType.ALL, CheckType.GENERATOR]:
+    if model.check_type in {CheckType.ALL, CheckType.GENERATOR}:
         model_proposed_change_run_generator = RequestProposedChangeRunGenerators(
             proposed_change=model.proposed_change,
             source_branch=model.source_branch,
@@ -1290,7 +1306,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
             parameters={"model": model_proposed_change_run_generator},
         )
 
-    if model.check_type in [CheckType.ALL, CheckType.DATA] and has_node_changes(
+    if model.check_type in {CheckType.ALL, CheckType.DATA} and has_node_changes(
         diff_summary=diff_summary, branch=model.source_branch
     ):
         model_proposed_change_data_integrity = RequestProposedChangeDataIntegrity(
@@ -1306,7 +1322,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
             parameters={"model": model_proposed_change_data_integrity},
         )
 
-    if model.check_type in [CheckType.REPOSITORY, CheckType.USER]:
+    if model.check_type in {CheckType.REPOSITORY, CheckType.USER}:
         model_proposed_change_repo_checks = RequestProposedChangeRepositoryChecks(
             proposed_change=model.proposed_change,
             source_branch=model.source_branch,
@@ -1320,9 +1336,14 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
             parameters={"model": model_proposed_change_repo_checks},
         )
 
-    if model.check_type in [CheckType.ALL, CheckType.SCHEMA] and has_data_changes(
+    if model.check_type in {CheckType.ALL, CheckType.SCHEMA} and not has_data_changes(
         diff_summary=diff_summary, branch=model.source_branch
     ):
+        # A merge refused for this proposed change records a failure that no later check would replace.
+        await _clear_schema_integrity_failure(
+            database=database, proposed_change_id=model.proposed_change, recorded_before=pipeline_started_at
+        )
+    elif model.check_type in {CheckType.ALL, CheckType.SCHEMA}:
         await get_workflow().submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
             context=context,
@@ -1337,7 +1358,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
             },
         )
 
-    if model.check_type in [CheckType.ALL, CheckType.TEST]:
+    if model.check_type in {CheckType.ALL, CheckType.TEST}:
         await get_workflow().submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_USER_TESTS,
             context=context,
@@ -1558,18 +1579,16 @@ def _parse_repositories(repositories: list[dict]) -> list[Repository]:
     * SOURCE_REPOSITORIES
     * SOURCE_READONLY_REPOSITORIES
     """
-    parsed = []
-    for repo in repositories:
-        parsed.append(
-            Repository(
-                repository_id=repo["node"]["id"],
-                repository_name=repo["node"]["name"]["value"],
-                read_only=repo["node"]["__typename"] == InfrahubKind.READONLYREPOSITORY,
-                commit=repo["node"]["commit"]["value"] or "",
-                internal_status=repo["node"]["internal_status"]["value"],
-            )
+    return [
+        Repository(
+            repository_id=repo["node"]["id"],
+            repository_name=repo["node"]["name"]["value"],
+            read_only=repo["node"]["__typename"] == InfrahubKind.READONLYREPOSITORY,
+            commit=repo["node"]["commit"]["value"] or "",
+            internal_status=repo["node"]["internal_status"]["value"],
         )
-    return parsed
+        for repo in repositories
+    ]
 
 
 async def _get_proposed_change_repositories(

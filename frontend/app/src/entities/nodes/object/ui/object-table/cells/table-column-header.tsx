@@ -323,7 +323,12 @@ function ColumnHeaderMenu({
                   <span className="sr-only">sorted ascending</span>
                 </>
               ))}
-            {currentColumnFilters && <ListFilterIcon className="size-4 text-active" />}
+            {currentColumnFilters && (
+              <>
+                <ListFilterIcon className="size-4 text-active" />
+                <span className="sr-only">filtered</span>
+              </>
+            )}
           </Row>
         </Button>
 

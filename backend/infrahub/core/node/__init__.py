@@ -408,7 +408,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         return self._branch
 
     def __repr__(self) -> str:
-        v = f"{self.get_kind()}(ID: {str(self.id)})"
+        v = f"{self.get_kind()}(ID: {self.id!s})"
         return v if self._existing else f"{v}[NEW]"
 
     @property
@@ -688,14 +688,13 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     def _validate_mandatory_relationships(self, fields: dict, pool_pending_fields: set[str]) -> list[ValidationError]:
         """Validate that all mandatory relationships are provided."""
-        errors: list[ValidationError] = []
-        for mandatory_rel in self._schema.mandatory_relationship_names:
-            if (
-                mandatory_rel not in fields.keys()
-                and mandatory_rel not in self._profile_provided_rels
-                and mandatory_rel not in pool_pending_fields
-            ):
-                errors.append(ValidationError({mandatory_rel: f"{mandatory_rel} is mandatory for {self.get_kind()}"}))
+        errors: list[ValidationError] = [
+            ValidationError({mandatory_rel: f"{mandatory_rel} is mandatory for {self.get_kind()}"})
+            for mandatory_rel in self._schema.mandatory_relationship_names
+            if mandatory_rel not in fields.keys()
+            and mandatory_rel not in self._profile_provided_rels
+            and mandatory_rel not in pool_pending_fields
+        ]
         return errors
 
     async def _process_fields_relationships(self, fields: dict, db: InfrahubDatabase) -> list[ValidationError]:
@@ -1106,10 +1105,14 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         profiles_mandatory_field_getter: ProfilesMandatoryFieldGetter,
         process_pools: bool = True,
         user_id: str = SYSTEM_USER_ID,
+        generated_id: str | None = None,
     ) -> Self:
         """Initialize the node from field values keyed by name, where an `id` key, when set, is the node's uuid.
 
         Keeping the field values in a dict lets a schema name a field like any parameter of this method.
+        Without an `id` key the node takes `generated_id`, a uuid the caller generated for it, which is not
+        checked against the database; without either, the node generates its uuid. `generated_id` is a parameter
+        and never a key of `fields`, so that no payload can set a uuid that is not checked.
 
         Raises:
             ValidationError: When the `id` is not a valid UUID or is already in use.
@@ -1124,7 +1127,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             if await query.count(db=db):
                 raise ValidationError({"id": f"{node_id} is already in use"})
 
-        self.id = node_id or str(UUIDT())
+        self.id = node_id or generated_id or str(UUIDT())
 
         await self._process_fields(
             db=db,

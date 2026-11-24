@@ -322,8 +322,8 @@ async def test_node_changelog_update_with_cardinality_one_relationship(
     secondary_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=dog1_update.node_changelog)
     assert len(secondary_changelogs) == 2
 
-    person1_secondary = [changelog for changelog in secondary_changelogs if changelog.node_id == person1.id][0]
-    person2_secondary = [changelog for changelog in secondary_changelogs if changelog.node_id == person2.id][0]
+    person1_secondary = next(changelog for changelog in secondary_changelogs if changelog.node_id == person1.id)
+    person2_secondary = next(changelog for changelog in secondary_changelogs if changelog.node_id == person2.id)
 
     assert isinstance(person1_secondary.relationships["animals"], RelationshipCardinalityManyChangelog)
     assert len(person1_secondary.relationships["animals"].peers) == 1

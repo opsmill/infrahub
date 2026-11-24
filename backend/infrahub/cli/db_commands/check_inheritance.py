@@ -161,7 +161,7 @@ ORDER BY kind ASC
             num_nodes = result.get_as_type(label="num_nodes", return_type=int)
             labels: list[str] = result.get_as_type(label="labels", return_type=list)
             # we can ignore the Node label and the label that matches the kind
-            cleaned_labels = frozenset(str(lbl) for lbl in labels if lbl not in ["Node", "CoreNode", kind])
+            cleaned_labels = frozenset(str(lbl) for lbl in labels if lbl not in {"Node", "CoreNode", kind})
             kind_label_counts.append(KindLabelCount(kind=kind, labels=cleaned_labels, num_nodes=num_nodes))
         return kind_label_counts
 

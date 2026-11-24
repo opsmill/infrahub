@@ -505,9 +505,7 @@ CALL (node) {
         self.return_labels = ["node.uuid AS node_uuid", "node.kind AS node_kind"]
 
     def get_violation_nodes(self) -> list[tuple[str, str]]:
-        violation_tuples = []
-        for result in self.results:
-            violation_tuples.append(
-                (result.get_as_type("node_uuid", return_type=str), result.get_as_type("node_kind", return_type=str))
-            )
-        return violation_tuples
+        return [
+            (result.get_as_type("node_uuid", return_type=str), result.get_as_type("node_kind", return_type=str))
+            for result in self.results
+        ]

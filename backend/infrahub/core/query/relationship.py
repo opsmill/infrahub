@@ -1181,7 +1181,7 @@ class RelationshipGetByIdentifierQuery(Query):
 
     def get_peers(self) -> Generator[RelationshipPeersData, None, None]:
         for result in self.get_results():
-            data = RelationshipPeersData(
+            yield RelationshipPeersData(
                 id=result.get_node("rl").get("uuid"),
                 identifier=result.get_node("rl").get("name"),
                 source_id=result.get_node("src").get("uuid"),
@@ -1189,7 +1189,6 @@ class RelationshipGetByIdentifierQuery(Query):
                 destination_id=result.get_node("dst").get("uuid"),
                 destination_kind=result.get_node("dst").get("kind"),
             )
-            yield data
 
 
 @dataclass(frozen=True)

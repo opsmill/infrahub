@@ -429,7 +429,7 @@ async def test_update_attribute_under_agnostic_node(
         assert prop_diff.new_value == new_value
 
 
-@pytest.mark.parametrize("new_source,expected_action", [(True, DiffAction.UPDATED), (False, DiffAction.REMOVED)])
+@pytest.mark.parametrize(("new_source", "expected_action"), [(True, DiffAction.UPDATED), (False, DiffAction.REMOVED)])
 async def test_diff_attribute_single_source_property_change(
     db: InfrahubDatabase,
     default_branch: Branch,

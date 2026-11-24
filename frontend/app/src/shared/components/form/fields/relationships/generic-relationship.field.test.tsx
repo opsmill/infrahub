@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
+import { userEvent } from "vitest/browser";
 
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import type { DynamicRelationshipFieldProps } from "@/shared/components/form/type";
@@ -622,6 +623,69 @@ describe("GenericRelationshipField", () => {
 
       await expect.element(component.getByRole("tab", { name: "Object" })).toBeDisabled();
       await expect.element(component.getByRole("tab", { name: "From pool" })).toBeDisabled();
+    });
+  });
+
+  describe("cardinality-many relationship", () => {
+    const manyRelationshipSchema = generateRelationshipSchema({
+      name: "members",
+      peer: "TestGenericDevice",
+      kind: "Generic",
+      cardinality: "many",
+    });
+
+    const manyProps: DynamicRelationshipFieldProps = {
+      type: "relationship",
+      name: "members",
+      label: "Members",
+      peer: "TestGenericDevice",
+      relationship: manyRelationshipSchema,
+    };
+
+    const deviceNodes = [
+      { id: "device-a-1", display_label: "atl1-edge", __typename: "TestDeviceA" },
+      { id: "device-a-2", display_label: "atl1-core", __typename: "TestDeviceA" },
+    ];
+
+    beforeEach(() => {
+      vi.mocked(getRelationships).mockImplementation(async ({ peer }) =>
+        peer === "TestDeviceA" ? deviceNodes : []
+      );
+    });
+
+    test("selects several nodes of the chosen kind and submits them together", async () => {
+      const onSubmit = vi.fn();
+      const component = await render(
+        <TestForm onSubmit={onSubmit}>
+          <GenericRelationshipField {...manyProps} defaultValue={DEFAULT_FORM_FIELD_VALUE} />
+        </TestForm>
+      );
+
+      await component.getByRole("combobox", { name: "Kind" }).click();
+      await component.getByRole("option", { name: /Device A/ }).click();
+      await component.getByLabelText("Device A", { exact: true }).click();
+      await component.getByRole("option", { name: "atl1-edge" }).click();
+      await component.getByRole("option", { name: "atl1-core" }).click();
+      await userEvent.keyboard("{Escape}");
+      await component.getByRole("button", { name: "Submit" }).click();
+
+      await expect.poll(() => onSubmit.mock.calls.length).toBeGreaterThan(0);
+      expect(onSubmit.mock.calls[0]?.[0]?.members?.value).toEqual(deviceNodes);
+    });
+
+    test("does not offer a pool, because a pool allocates a single peer", async () => {
+      const component = await render(
+        <TestForm>
+          <GenericRelationshipField
+            {...manyProps}
+            pool={{ kind: "CoreNumberPool", defaultAllocatedObjectKind: "TestGenericDevice" }}
+            defaultValue={DEFAULT_FORM_FIELD_VALUE}
+          />
+        </TestForm>
+      );
+
+      await expect.element(component.getByRole("combobox", { name: "Kind" })).toBeVisible();
+      await expect.poll(() => component.getByRole("tab", { name: "From pool" }).query()).toBeNull();
     });
   });
 });

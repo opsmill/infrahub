@@ -359,9 +359,9 @@ class TestIpamUtilization(TestIpam):
         assert result.data
         pool_data = result.data["InfrahubResourcePoolUtilization"]
         assert pool_data["count"] == 2
-        assert pool_data["utilization"] == 12.5
-        assert pool_data["utilization_default_branch"] == 100 / 16
-        assert pool_data["utilization_branches"] == 100 / 16
+        assert pool_data["utilization"] == pytest.approx(12.5)
+        assert pool_data["utilization_default_branch"] == pytest.approx(100 / 16)
+        assert pool_data["utilization_branches"] == pytest.approx(100 / 16)
         prefix_details_list = pool_data["edges"]
         assert {
             "node": {
@@ -437,8 +437,8 @@ class TestIpamUtilization(TestIpam):
         pool_data = result.data["InfrahubResourcePoolUtilization"]
         assert pool_data["count"] == 2
         assert pool_data["utilization"] == 100
-        assert pool_data["utilization_default_branch"] == 25.0
-        assert pool_data["utilization_branches"] == 75.0
+        assert pool_data["utilization_default_branch"] == pytest.approx(25.0)
+        assert pool_data["utilization_branches"] == pytest.approx(75.0)
         prefix_details_list = pool_data["edges"]
         assert {
             "node": {
@@ -517,9 +517,9 @@ class TestIpamUtilization(TestIpam):
         # Pool space = 2 * 256 = 512. On branch2 container shows prefix + prefix2 (main's
         # prefix2 deletion is invisible to the branch) plus prefix_branch alive on the branch,
         # totalling 48/512. On main only prefix survives: 16/512.
-        assert pool_data["utilization"] == (48 / 512) * 100
-        assert pool_data["utilization_default_branch"] == (16 / 512) * 100
-        assert pool_data["utilization_branches"] == (32 / 512) * 100
+        assert pool_data["utilization"] == pytest.approx((48 / 512) * 100)
+        assert pool_data["utilization_default_branch"] == pytest.approx((16 / 512) * 100)
+        assert pool_data["utilization_branches"] == pytest.approx((32 / 512) * 100)
         prefix_details_list = pool_data["edges"]
         assert {
             "node": {
@@ -598,9 +598,9 @@ class TestIpamUtilization(TestIpam):
         # On branch2 prefix sees 13 addresses (the 7 originally on main, untouched by main's
         # later deletion thanks to isolation, plus 7 from branch2 minus the one removed there);
         # prefix_branch sees 13 of its 14. Total 26 over a 28-address pool.
-        assert pool_data["utilization"] == (26 / 28) * 100
-        assert pool_data["utilization_default_branch"] == (6 / 28) * 100
-        assert pool_data["utilization_branches"] == (20 / 28) * 100
+        assert pool_data["utilization"] == pytest.approx((26 / 28) * 100)
+        assert pool_data["utilization_default_branch"] == pytest.approx((6 / 28) * 100)
+        assert pool_data["utilization_branches"] == pytest.approx((20 / 28) * 100)
         prefix_details_list = pool_data["edges"]
         assert {
             "node": {

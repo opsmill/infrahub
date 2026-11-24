@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import sys
-from collections.abc import Iterable, Iterator, Mapping, Sequence
+from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
@@ -174,11 +174,9 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
     def __hash__(self) -> int:
         """Generate a hash based on the Peer and the properties."""
         values = [self.id, self.db_id, self.peer_id]
-        for prop_name in self._flag_properties:
-            values.append(getattr(self, prop_name))
+        values.extend(getattr(self, prop_name) for prop_name in self._flag_properties)
 
-        for prop_name in self._node_properties:
-            values.append(getattr(self, f"{prop_name}_id"))
+        values.extend(getattr(self, f"{prop_name}_id") for prop_name in self._node_properties)
 
         return hash(tuple(values))
 
@@ -271,7 +269,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
     def _process_dict_data(self, data: dict) -> None:
         for key, value in data.items():
-            if key in ["peer", "id"]:
+            if key in {"peer", "id"}:
                 self.set_peer(value=value)
             elif key == "hfid" and self.peer_id is None:
                 self.peer_hfid = value
@@ -895,6 +893,14 @@ class RelationshipValidatorList:
         self._relationship_ids.discard(id(value))
         self._relationships_count -= 1
 
+    def remove_peers(self, peer_ids: Collection[str]) -> None:
+        kept = [rel for rel in self._relationships if rel.get_peer_id() not in peer_ids]
+        if self.min_count and len(kept) < self.min_count:
+            self._raise_too_few()
+        self._relationships[:] = kept
+        self._relationship_ids = {id(rel) for rel in kept}
+        self._relationships_count = len(kept)
+
     def as_list(self) -> Sequence[Relationship]:
         return self._relationships
 
@@ -1310,8 +1316,8 @@ class RelationshipManager[RelationshipManagerPeerType]:
 
         self.has_fetched_relationships = True
 
-        for peer_id in details.peer_ids_present_local_only:
-            await self.remove_locally(peer_id=peer_id, db=db)
+        if details.peer_ids_present_local_only:
+            self._relationships.remove_peers(peer_ids=set(details.peer_ids_present_local_only))
 
     async def get(self, db: InfrahubDatabase) -> Relationship | Sequence[Relationship] | None:
         rels = await self.get_relationships(db=db)

@@ -132,7 +132,7 @@ class RelationshipSchema(GeneratedRelationshipSchema):
 
             return query_filter, query_params, query_where
 
-        if filter_name in ("ids", "isnull"):
+        if filter_name in {"ids", "isnull"}:
             query_filter.extend(
                 [
                     QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),

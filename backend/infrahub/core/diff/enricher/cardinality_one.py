@@ -50,9 +50,9 @@ class DiffCardinalityOneEnricher(DiffEnricherInterface):
     def _determine_action(self, previous_value: Any, new_value: Any) -> DiffAction:
         if previous_value == new_value:
             return DiffAction.UNCHANGED
-        if previous_value in (None, NULL_VALUE):
+        if previous_value in {None, NULL_VALUE}:
             return DiffAction.ADDED
-        if new_value in (None, NULL_VALUE):
+        if new_value in {None, NULL_VALUE}:
             return DiffAction.REMOVED
         return DiffAction.UPDATED
 

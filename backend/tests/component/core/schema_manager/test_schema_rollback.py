@@ -21,6 +21,7 @@ from infrahub.core.timestamp import Timestamp
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 
@@ -168,7 +169,7 @@ class TestSchemaUpdateAndRollback:
         # Step 6: Run rollback
         await GraphRollbacker(db=db).rollback(
             target_branch=default_branch,
-            at=schema_update_at,
+            ats=[schema_update_at],
             scope=RollbackScope.AT_TIMESTAMP,
         )
 
@@ -211,7 +212,7 @@ class TestSchemaUpdateAndRollback:
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        register_core_schema_db: None,
+        register_core_models_schema: SchemaBranch,
     ) -> None:
         """Failures raised by schema.process() after the DB write must trigger rollback."""
         parent_child_schema_dict = {
@@ -231,7 +232,7 @@ class TestSchemaUpdateAndRollback:
                 },
             ],
         }
-        seed_schema = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
+        seed_schema = register_core_models_schema.duplicate()
         seed_schema.load_schema(schema=SchemaRoot(**parent_child_schema_dict))
         seed_schema.process()
         registry.schema.set_schema_branch(name=default_branch.name, schema=seed_schema)

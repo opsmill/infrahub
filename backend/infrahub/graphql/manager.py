@@ -229,7 +229,7 @@ class GraphQLSchemaManager:
     def get_gql_query(self) -> type[InfrahubBaseQuery]:
         QueryMixin = self.generate_query_mixin()
 
-        class Query(InfrahubBaseQuery, QueryMixin):  # type: ignore
+        class Query(InfrahubBaseQuery, QueryMixin):  # type: ignore[valid-type,misc]  # ty: ignore[unsupported-base]
             pass
 
         return Query
@@ -237,7 +237,7 @@ class GraphQLSchemaManager:
     def get_gql_mutation(self) -> type[InfrahubBaseMutation]:
         MutationMixin = self.generate_mutation_mixin()
 
-        class Mutation(InfrahubBaseMutation, MutationMixin):  # type: ignore
+        class Mutation(InfrahubBaseMutation, MutationMixin):  # type: ignore[valid-type,misc]  # ty: ignore[unsupported-base]
             pass
 
         return Mutation
@@ -481,7 +481,7 @@ class GraphQLSchemaManager:
                 if (
                     (isinstance(node_schema, NodeSchema) and node_schema.hierarchy)
                     or (isinstance(node_schema, GenericSchema) and node_schema.hierarchical)
-                ) and rel.name in ("parent", "children", "ancestors", "descendants"):
+                ) and rel.name in {"parent", "children", "ancestors", "descendants"}:
                     continue
 
                 peer_schema = self.schema.get(name=rel.peer, duplicate=False)
@@ -569,7 +569,7 @@ class GraphQLSchemaManager:
             class_attrs[node_schema.kind] = graphene.Field(
                 node_type,
                 resolver=default_paginated_list_resolver
-                if node_name not in [InfrahubKind.IPADDRESS, InfrahubKind.IPPREFIX]
+                if node_name not in {InfrahubKind.IPADDRESS, InfrahubKind.IPPREFIX}
                 else ipam_paginated_list_resolver,
                 required=True,
                 **node_filters,
@@ -1150,7 +1150,7 @@ class GraphQLSchemaManager:
             # Add metadata filters for filtering by created_by, updated_by, created_at, updated_at
             filters.update(self._generate_metadata_filters())
 
-            if schema.kind in [InfrahubKind.IPADDRESS, InfrahubKind.IPPREFIX]:
+            if schema.kind in {InfrahubKind.IPADDRESS, InfrahubKind.IPPREFIX}:
                 # This is only available for IPAM generics
                 filters["include_available"] = graphene.Boolean()
                 filters["kinds"] = graphene.List(graphene.NonNull(graphene.String))

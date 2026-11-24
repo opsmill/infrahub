@@ -2,13 +2,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.query import Query, QueryType
+from infrahub.core.query import QueryType
+
+from .selection import MigrationSelectionQuery
 
 if TYPE_CHECKING:
     from ..shared import AttributeSchemaMigration, SchemaMigration
 
 
-class MigrationBaseQuery(Query):
+class MigrationBaseQuery(MigrationSelectionQuery):
     def get_nbr_migrations_executed(self) -> int:
         return self.num_of_results
 

@@ -9,7 +9,7 @@ Step-by-step guide for adding a new graph migration that transforms existing Neo
 Create a migration when you need to:
 
 - Modify node/relationship properties or labels
-- Add or remove indexes / constraints
+- Drop or replace an index, or add or remove a constraint (adding an index needs no migration: the API server creates every declared index when it starts — see [Database Indexes](../../knowledge/backend/database-indexes.md))
 - Normalize stored values to a new format
 - Backfill data after a schema change
 - Clean up orphaned or malformed data
@@ -30,7 +30,11 @@ Choose the right base class in `backend/infrahub/core/migrations/shared.py`:
 - **`ArbitraryMigration`** — Implements a custom `execute()` method. Use when you need Python logic (e.g., JSON parsing, conditional branching, batching decisions driven by fetched data).
 - **`InternalSchemaMigration`** — Modifies internal schema definitions. Rarely used directly.
 
-`SchemaMigration` is a separate family under `backend/infrahub/core/migrations/schema/`, registered in `MIGRATION_MAP` and selected by the schema diff rather than by `GRAPH_VERSION`. Steps 1-3 below do not apply to it, but the retry rule does.
+`SchemaMigration` is a separate family under `backend/infrahub/core/migrations/schema/`, registered in `MIGRATION_MAP` and selected by the schema diff rather than by `GRAPH_VERSION`. Steps 1-3 below do not apply to it, but the retry rule does. A new `MIGRATION_MAP` entry with a class also needs a case in `backend/tests/component/core/migrations/schema/test_migration_second_run.py`, which runs the migration twice on one branch; `test_every_migration_class_has_a_second_run_case` fails until it has one.
+
+Every `SchemaMigration` query inherits `backend/infrahub/core/migrations/query/selection.py::MigrationSelectionQuery` through `MigrationBaseQuery`. Put the Cypher that selects the nodes in `render_selection()`: the match on the kinds and every active-state check. The selection ends with the selected node in scope, under the name in `selected_node` (`active_node` unless the query sets another). The write then inserts that selection, so `count_changes()` counts, per kind, exactly the nodes the write runs on. Nodes of other kinds that the write changes as a side effect are not counted. Keep write-only steps, such as a `MERGE` that creates shared vertices, out of the selection.
+
+Open the selection with `render_node_match()`, not a hand-written `MATCH`, so that the caller's node scope (`MigrationInput.node_ids`) applies. Without a scope it renders a `MATCH` on the kinds; with one it adds `USING INDEX SEEK` on `Node(uuid)`, so the query starts from a seek on the `node_uuid` index instead of a scan of the kinds. The scope applies to profile and template nodes too: the selection includes a profile or template node only when its ID is in the scope. A write can still change a node outside the scope as a side effect, such as the peer of a removed relationship.
 
 ## Migrations run at the current timestamp
 

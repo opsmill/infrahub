@@ -30,7 +30,9 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
     name: str = "attribute_constraints_kind_validator"
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), is_isolated=self.is_isolated
+        )
         self.params.update(branch_params)
 
         self.params["attr_name"] = self.attribute_schema.name
@@ -66,7 +68,7 @@ class AttributeKindUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         infrahub_attribute_class = infrahub_data_type.get_infrahub_class()
         for result in self.get_results():
             value = result.get("attribute_value")
-            if value in (None, NULL_VALUE):
+            if value is None or value == NULL_VALUE:
                 continue
             try:
                 attr_value = result.get("attribute_value")
@@ -126,7 +128,11 @@ class AttributeKindChecker(ConstraintCheckerInterface):
         for query_class in self.query_classes:
             # TODO add exception handling
             query = await query_class.init(
-                db=self.db, branch=self.branch, node_schema=request.node_schema, schema_path=request.schema_path
+                db=self.db,
+                branch=self.branch,
+                node_schema=request.node_schema,
+                schema_path=request.schema_path,
+                is_isolated=request.is_isolated,
             )
 
             await query.execute(db=self.db)

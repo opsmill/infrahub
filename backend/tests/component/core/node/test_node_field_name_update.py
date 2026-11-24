@@ -63,7 +63,7 @@ class TestNodeUpdate:
         assert original_node_schema.order_by == order_by
 
     @pytest.mark.parametrize(
-        ["uniqueness_constraints", "human_friendly_id", "display_labels", "order_by"],
+        ("uniqueness_constraints", "human_friendly_id", "display_labels", "order_by"),
         [(None, None, None, None), ([["def__value"]], ["def__value"], ["def__value"], ["def__value"])],
     )
     def test_old_fields_with_update(

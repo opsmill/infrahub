@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING, Any, TextIO
 import pytest
 
 if TYPE_CHECKING:
-    import subprocess  # noqa: S404 - the server being reported on is a subprocess
+    import subprocess
     from pathlib import Path
 
 # How much of the server log to show. Enough to hold the stack dump of every thread plus

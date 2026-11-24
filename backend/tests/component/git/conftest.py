@@ -82,7 +82,7 @@ def git_upstream_repo_03(git_upstream_repo_01: dict[str, str | Path]) -> dict[st
     repo = Repo(git_upstream_repo_01["path"])
 
     for local_branch in repo.refs:
-        if local_branch.is_remote() or str(local_branch) in ["main", "branch01"]:
+        if local_branch.is_remote() or str(local_branch) in {"main", "branch01"}:
             continue
 
         repo.git.branch("-D", str(local_branch))
@@ -810,7 +810,7 @@ async def schema_02(client: InfrahubClient, helper: TestHelper, car_data_01: dic
 
 @pytest.fixture
 async def gql_query_node_03(client: InfrahubClient, gql_query_data_03: dict[str, Any]) -> InfrahubNode:
-    backend_schema = [model for model in SchemaRoot(**core_models).nodes if model.kind == InfrahubKind.GRAPHQLQUERY][0]
+    backend_schema = next(model for model in SchemaRoot(**core_models).nodes if model.kind == InfrahubKind.GRAPHQLQUERY)
     schema = NodeSchemaAPI(**backend_schema.model_dump())
     return InfrahubNode(client=client, schema=schema, data=gql_query_data_03)
 
@@ -880,7 +880,7 @@ async def artifact_definition_data_01() -> dict[str, Any]:
 async def artifact_definition_node_01(
     client: InfrahubClient, schema_02: ClientSchemaRoot, artifact_definition_data_01: dict[str, Any]
 ) -> InfrahubNode:
-    schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACTDEFINITION][0]
+    schema = next(model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACTDEFINITION)
     return InfrahubNode(client=client, schema=schema, data=artifact_definition_data_01)
 
 
@@ -922,7 +922,7 @@ async def artifact_definition_data_02() -> dict[str, Any]:
 async def artifact_definition_node_02(
     client: InfrahubClient, schema_02: ClientSchemaRoot, artifact_definition_data_02: dict[str, Any]
 ) -> InfrahubNode:
-    schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACTDEFINITION][0]
+    schema = next(model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACTDEFINITION)
     return InfrahubNode(client=client, schema=schema, data=artifact_definition_data_02)
 
 
@@ -955,7 +955,7 @@ async def artifact_data_01() -> dict[str, Any]:
 async def artifact_node_01(
     client: InfrahubClient, schema_02: ClientSchemaRoot, artifact_data_01: dict[str, Any]
 ) -> InfrahubNode:
-    schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACT][0]
+    schema = next(model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACT)
     return InfrahubNode(client=client, schema=schema, data=artifact_data_01)
 
 
@@ -990,7 +990,7 @@ async def artifact_data_02() -> dict[str, Any]:
 async def artifact_node_02(
     client: InfrahubClient, schema_02: ClientSchemaRoot, artifact_data_02: dict[str, Any]
 ) -> InfrahubNode:
-    schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACT][0]
+    schema = next(model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACT)
     return InfrahubNode(client=client, schema=schema, data=artifact_data_02)
 
 
@@ -1071,7 +1071,7 @@ async def transformation_data_01() -> dict:
 async def transformation_node_01(
     client: InfrahubClient, schema_02: ClientSchemaRoot, transformation_data_01: dict
 ) -> InfrahubNode:
-    schema = [model for model in schema_02.nodes if model.kind == "CoreTransformPython"][0]
+    schema = next(model for model in schema_02.nodes if model.kind == "CoreTransformPython")
     return InfrahubNode(client=client, schema=schema, data=transformation_data_01)
 
 
@@ -1109,7 +1109,7 @@ async def transformation_data_02() -> dict:
 async def transformation_node_02(
     client: InfrahubClient, schema_02: ClientSchemaRoot, transformation_data_02: dict
 ) -> InfrahubNode:
-    schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.TRANSFORMJINJA2][0]
+    schema = next(model for model in schema_02.nodes if model.kind == InfrahubKind.TRANSFORMJINJA2)
     return InfrahubNode(client=client, schema=schema, data=transformation_data_02)
 
 
@@ -1157,7 +1157,7 @@ async def car_data_01() -> dict:
 
 @pytest.fixture
 async def car_node_01(client: InfrahubClient, schema_02: ClientSchemaRoot, car_data_01: dict) -> InfrahubNode:
-    schema = [model for model in schema_02.nodes if model.name == "ElectricCar"][0]
+    schema = next(model for model in schema_02.nodes if model.name == "ElectricCar")
     return InfrahubNode(client=client, schema=schema, data=car_data_01)
 
 

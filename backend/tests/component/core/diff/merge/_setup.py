@@ -288,7 +288,7 @@ async def setup_updated_attribute_property(
 
     branch_node = await NodeManager.get_one(db=db, branch=branch, id=node_on_main.id)
     attr = branch_node.get_attribute(attribute_name)
-    if property_name in ("source", "owner"):
+    if property_name in {"source", "owner"}:
         assert peer_node is not None
         setattr(attr, property_name, peer_node)
     else:  # is_protected
@@ -379,7 +379,7 @@ async def setup_updated_relationship_property(
     assert main_rel is not None
     original_updated_at = main_rel._get_updated_at()
     original_updated_by = main_rel._get_updated_by()
-    if property_name in ("source", "owner"):
+    if property_name in {"source", "owner"}:
         # prefetch_relationships=True drops peer-valued properties; re-fetch without prefetch.
         main_node_peers = await NodeManager.get_one(db=db, id=node_on_main.id)
         main_rel_peers = next(
@@ -397,7 +397,7 @@ async def setup_updated_relationship_property(
 
     branch_node = await NodeManager.get_one(db=db, branch=branch, id=node_on_main.id)
     data: dict[str, Any] = {"id": peer_id}
-    if property_name in ("source", "owner"):
+    if property_name in {"source", "owner"}:
         assert property_peer_node is not None
         data[f"_relation__{property_name}"] = property_peer_node.id
     else:  # is_protected

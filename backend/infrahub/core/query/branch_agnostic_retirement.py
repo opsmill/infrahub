@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.agnostic_retention import UNRETAINED_AGNOSTIC_FIELD_EVALUATION
+from infrahub.core.query.branch_windows import render_branch_windows_clause
 
 if TYPE_CHECKING:
     from infrahub.core.timestamp import Timestamp
@@ -21,18 +22,7 @@ WITH deleted_branch.origin_branch AS origin_name, deleted_branch.branched_from A
 // The retaining branches -- every branch but the global one and those being deleted -- are read
 // once for the whole run and imported into every batch below.
 // -----------------
-MATCH (branch:Branch)
-WHERE branch.name <> $global_branch_name
-AND branch.status <> "DELETING"
-WITH origin_name, fork_at, collect({
-        name: branch.name,
-        origin_name: CASE WHEN branch.is_default THEN NULL ELSE branch.origin_branch END,
-        origin_at: CASE
-            WHEN branch.is_default THEN NULL
-            WHEN branch.branched_from < $at THEN branch.branched_from
-            ELSE $at
-        END
-    }) AS branch_windows
+%(branch_windows)s
 // -----------------
 // Every Node the deleted branch could read that other branches could not necessarily read: created
 // on this branch, or deleted on the default branch after the fork. Kept as an unaggregated stream:
@@ -118,7 +108,10 @@ CALL (reachable_node, branch_windows) {
     RETURN count(edge_to_close) AS batch_closed_edges
 } IN TRANSACTIONS OF $batch_size ROWS
 RETURN sum(batch_closed_edges) AS edges_closed
-""" % {"unretained_evaluation": UNRETAINED_AGNOSTIC_FIELD_EVALUATION}
+""" % {
+    "branch_windows": render_branch_windows_clause(carry=["origin_name", "fork_at"], time_param="at"),
+    "unretained_evaluation": UNRETAINED_AGNOSTIC_FIELD_EVALUATION,
+}
 
 
 class RetireBranchAgnosticFieldsQuery(Query):

@@ -75,7 +75,7 @@ class TestDefaultBranchPermission:
             assert is_supported == user.authenticated
 
     @pytest.mark.parametrize(
-        "contains_mutation,branch_name",
+        ("contains_mutation", "branch_name"),
         [(True, "main"), (False, "main"), (True, "not_default_branch"), (False, "not_default_branch")],
     )
     async def test_account_with_permission(
@@ -126,7 +126,7 @@ class TestDefaultBranchPermission:
         assert resolution == CheckerResolution.NEXT_CHECKER
 
     @pytest.mark.parametrize(
-        "contains_mutation,branch_name",
+        ("contains_mutation", "branch_name"),
         [(True, "main"), (False, "main"), (True, "not_default_branch"), (False, "not_default_branch")],
     )
     async def test_account_without_permission(

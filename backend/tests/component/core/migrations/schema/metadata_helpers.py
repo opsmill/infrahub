@@ -6,6 +6,7 @@ stored on Node/Attribute/Relationship vertices, snapshots the prior values into
 """
 
 from dataclasses import dataclass
+from typing import NamedTuple
 
 from infrahub.database import InfrahubDatabase
 
@@ -102,7 +103,18 @@ async def branch_metadata_fingerprint(db: InfrahubDatabase, branch_name: str) ->
     )
 
 
-async def branch_edge_fingerprint(db: InfrahubDatabase, branch_name: str) -> list[tuple]:
+class EdgeFingerprint(NamedTuple):
+    """One edge of a branch; an unset ``edge_from``, ``edge_to`` or ``status`` is an empty string."""
+
+    edge_type: str
+    src: str
+    dst: str
+    edge_from: str
+    edge_to: str
+    status: str
+
+
+async def branch_edge_fingerprint(db: InfrahubDatabase, branch_name: str) -> list[EdgeFingerprint]:
     """Snapshot every edge on a branch, keyed on endpoints, timestamps and status.
 
     Two snapshots compare equal only when the branch's edges are identical, so an empty diff between a
@@ -117,13 +129,13 @@ async def branch_edge_fingerprint(db: InfrahubDatabase, branch_name: str) -> lis
         params={"branch": branch_name},
     )
     return sorted(
-        (
-            row["edge_type"],
-            row["src"],
-            row["dst"],
-            row["edge_from"] or "",
-            row["edge_to"] or "",
-            row["status"] or "",
+        EdgeFingerprint(
+            edge_type=row["edge_type"],
+            src=row["src"],
+            dst=row["dst"],
+            edge_from=row["edge_from"] or "",
+            edge_to=row["edge_to"] or "",
+            status=row["status"] or "",
         )
         for row in results
     )

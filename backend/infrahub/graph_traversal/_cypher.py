@@ -570,10 +570,12 @@ class GraphTraversalCypherRenderer:
         if dedup is not None:
             preds.append(dedup)
         if self._is_user_branch:
-            preds.append(
-                _DELETION_SHADOW_PREDICATE.format(from_var=from_var, to_var="rel", edge_var="ri", del_var="del_a")
+            preds.extend(
+                (
+                    _DELETION_SHADOW_PREDICATE.format(from_var=from_var, to_var="rel", edge_var="ri", del_var="del_a"),
+                    _DELETION_SHADOW_PREDICATE.format(from_var="rel", to_var="b", edge_var="ro", del_var="del_b"),
+                )
             )
-            preds.append(_DELETION_SHADOW_PREDICATE.format(from_var="rel", to_var="b", edge_var="ro", del_var="del_b"))
         return " AND ".join(preds)
 
     def render_bfs_hop(
@@ -751,14 +753,14 @@ class GraphTraversalCypherRenderer:
             f"{qpp.end}.uuid <> $source_id",
         ]
         if self._is_user_branch:
-            preds.append(
-                _DELETION_SHADOW_PREDICATE.format(
-                    from_var=qpp.start, to_var=qpp.rel, edge_var=qpp.edge_in, del_var=f"del_{qpp.edge_in}"
-                )
-            )
-            preds.append(
-                _DELETION_SHADOW_PREDICATE.format(
-                    from_var=qpp.rel, to_var=qpp.end, edge_var=qpp.edge_out, del_var=f"del_{qpp.edge_out}"
+            preds.extend(
+                (
+                    _DELETION_SHADOW_PREDICATE.format(
+                        from_var=qpp.start, to_var=qpp.rel, edge_var=qpp.edge_in, del_var=f"del_{qpp.edge_in}"
+                    ),
+                    _DELETION_SHADOW_PREDICATE.format(
+                        from_var=qpp.rel, to_var=qpp.end, edge_var=qpp.edge_out, del_var=f"del_{qpp.edge_out}"
+                    ),
                 )
             )
         return (
@@ -840,9 +842,7 @@ class GraphTraversalCypherRenderer:
             for start in sorted(starts):
                 rel_map = plan.get_relationship_map_for_kind(start)
                 for rel_name in sorted(rel_map):
-                    for end in rel_map[rel_name]:
-                        if end in ends:
-                            hop_tuples.append(HopTuple(start, rel_name, end))
+                    hop_tuples.extend(HopTuple(start, rel_name, end) for end in rel_map[rel_name] if end in ends)
             if not hop_tuples:
                 return None
             tuples_per_hop.append(hop_tuples)
@@ -1073,10 +1073,12 @@ RETURN
         if is_intermediate and intermediate_exclude_target:
             preds.append(f"{to_var} <> target")
         if self._is_user_branch:
-            preds.append(
-                _DELETION_SHADOW_PREDICATE.format(from_var=from_var, to_var=rel_var, edge_var=r_in, del_var="del_a")
-            )
-            preds.append(
-                _DELETION_SHADOW_PREDICATE.format(from_var=rel_var, to_var=to_var, edge_var=r_out, del_var="del_b")
+            preds.extend(
+                (
+                    _DELETION_SHADOW_PREDICATE.format(
+                        from_var=from_var, to_var=rel_var, edge_var=r_in, del_var="del_a"
+                    ),
+                    _DELETION_SHADOW_PREDICATE.format(from_var=rel_var, to_var=to_var, edge_var=r_out, del_var="del_b"),
+                )
             )
         return preds

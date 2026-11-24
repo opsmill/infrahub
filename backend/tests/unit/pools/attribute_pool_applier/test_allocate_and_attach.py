@@ -19,6 +19,7 @@ from tests.unit.pools.attribute_pool_applier.helpers import (
     POOL_ID,
     InMemoryNumberPoolFinder,
     PoolCall,
+    PoolLockLog,
     RecordingNumberAllocator,
     apply_on_create,
     make_ticket_attribute,
@@ -30,8 +31,9 @@ if TYPE_CHECKING:
 
 
 async def test_pool_named_by_id_gives_the_attribute_its_number(
-    applier: AttributePoolApplier, allocator: RecordingNumberAllocator
+    applier: AttributePoolApplier, allocator: RecordingNumberAllocator, pool_lock_log: PoolLockLog
 ) -> None:
+    """With no saved number to check against other branches, the allocation alone takes the pool's locks."""
     ticket_id = make_ticket_id(payload={"from_pool": {"id": POOL_ID}})
 
     await apply_on_create(applier=applier, attribute=ticket_id)
@@ -44,6 +46,7 @@ async def test_pool_named_by_id_gives_the_attribute_its_number(
             action="allocate", pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id", reuse_reservation=False
         )
     ]
+    assert pool_lock_log.entries == [("allocate", POOL_ID)]
 
 
 async def test_the_account_making_the_write_reaches_the_allocator(
@@ -111,7 +114,7 @@ async def test_a_number_provided_on_create_is_kept_and_tracked_as_provided(
 
 
 async def test_a_number_provided_on_update_is_attached_to_the_pool(
-    applier: AttributePoolApplier, allocator: RecordingNumberAllocator
+    applier: AttributePoolApplier, allocator: RecordingNumberAllocator, pool_lock_log: PoolLockLog
 ) -> None:
     ticket_id = make_ticket_id(payload={"value": 7, "from_pool": {"id": POOL_ID}}, saved=True)
 
@@ -120,6 +123,7 @@ async def test_a_number_provided_on_update_is_attached_to_the_pool(
     assert ticket_id.value == 7
     assert ticket_id.tracking_pool == TrackingPool(pool_id=POOL_ID, provenance=PoolRecordProvenance.PROVIDED)
     assert allocator.calls == [PoolCall(action="attach", pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id")]
+    assert pool_lock_log.entries == [("hold", POOL_ID), ("read", POOL_ID), ("end hold", POOL_ID)]
 
 
 async def test_an_attached_number_equal_to_the_schema_default_stops_being_a_default(
@@ -167,8 +171,12 @@ async def test_the_pool_alone_on_a_number_no_pool_tracks_is_refused(
 
 
 async def test_naming_another_pool_with_a_null_value_moves_the_attribute_to_it(
-    applier: AttributePoolApplier, finder: InMemoryNumberPoolFinder, allocator: RecordingNumberAllocator
+    applier: AttributePoolApplier,
+    finder: InMemoryNumberPoolFinder,
+    allocator: RecordingNumberAllocator,
+    pool_lock_log: PoolLockLog,
 ) -> None:
+    """The ranges are read and the number drawn while the pool is held, inside the lock of the division."""
     finder.tracking_pool_ids[ATTRIBUTE_ID] = OTHER_POOL_ID
     ticket_id = make_ticket_id(payload={"value": None, "from_pool": {"id": POOL_ID}}, saved=True)
 
@@ -180,6 +188,14 @@ async def test_naming_another_pool_with_a_null_value_moves_the_attribute_to_it(
         PoolCall(
             action="allocate", pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id", reuse_reservation=False
         )
+    ]
+    assert pool_lock_log.entries == [
+        ("pick", POOL_ID),
+        ("hold", POOL_ID),
+        ("read", POOL_ID),
+        ("allocate", POOL_ID),
+        ("end hold", POOL_ID),
+        ("end pick", POOL_ID),
     ]
 
 

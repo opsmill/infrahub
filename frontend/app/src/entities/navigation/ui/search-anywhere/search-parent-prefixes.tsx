@@ -14,14 +14,14 @@ export const SearchParentPrefixes = () => {
   const queryDebounced = useDebounce(query.trim(), 300);
   const caseSensitive = useAtomValue(searchCaseSensitiveAtom);
 
-  const { data, isPending, error } = useGetSearchAnywhere(
+  const { data } = useGetSearchAnywhere(
     { search: queryDebounced, caseSensitive },
     {
       enabled: !!queryDebounced,
     }
   );
 
-  if (!queryDebounced || isPending || error || !data?.parentPrefixes) return null;
+  if (!queryDebounced || !data?.parentPrefixes) return null;
 
   if (data.parentPrefixes.length === 0) {
     return (

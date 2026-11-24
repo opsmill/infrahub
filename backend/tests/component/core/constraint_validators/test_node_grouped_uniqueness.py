@@ -241,7 +241,7 @@ class TestNodeGroupedUniquenessConstraint:
         await self.__call_system_under_test(db=db, branch=default_branch, node=car_node)
 
     @pytest.mark.parametrize(
-        ["node_constraints", "parent_constraints", "expected_number_calls_by_kind"],
+        ("node_constraints", "parent_constraints", "expected_number_calls_by_kind"),
         [
             (
                 [

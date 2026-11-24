@@ -140,7 +140,7 @@ async def load_data(db: InfrahubDatabase, nbr_devices: int = 0) -> None:
             await ip.new(db=db, interface=intf, address=f"192.168.{idx}.10/24")
             await ip.save(db=db)
 
-        if device[4] not in ["spine", "leaf"]:
+        if device[4] not in {"spine", "leaf"}:
             continue
 
         # Create and connect interfaces
@@ -150,7 +150,7 @@ async def load_data(db: InfrahubDatabase, nbr_devices: int = 0) -> None:
             # intf_role_id = roles_dict[intf_role].id
 
             enabled = True
-            if intf_idx in [0, 1]:
+            if intf_idx in {0, 1}:
                 enabled = False
 
             intf = await Node.init(db=db, schema="InfraInterfaceL3")

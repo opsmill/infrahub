@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, RelationshipStatus
-from infrahub.core.query import Query
+from infrahub.core.migrations.query.selection import MigrationSelectionQuery
 from infrahub.core.query.agnostic_field_closure import CLOSE_UNRETAINED_AGNOSTIC_FIELDS
+from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -18,7 +19,7 @@ class AttributeInfo(BaseModel):
     branch_support: str = BranchSupportType.AWARE.value
 
 
-class AttributeRenameQuery(Query):
+class AttributeRenameQuery(MigrationSelectionQuery):
     name = "attribute_rename"
     insert_return: bool = False
 
@@ -34,13 +35,52 @@ class AttributeRenameQuery(Query):
 
     def render_match(self) -> str:
         """Select the nodes to rename the attribute on. Subclasses narrow this to add their own guards."""
+        kind = self.previous_attr.node_kind
         return """
         // --------------
         // Find all possible nodes
         // --------------
-        MATCH (node:%(node_kind)s|Profile%(node_kind)s|Template%(node_kind)s)
-        WHERE exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $prev_attr.name }))
-        """ % {"node_kind": self.previous_attr.node_kind}
+        %(node_match)s
+        """ % {
+            "node_match": self.render_node_match(
+                "node",
+                [kind, f"Profile{kind}", f"Template{kind}"],
+                conditions=["exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $prev_attr.name }))"],
+            )
+        }
+
+    def render_selection(self) -> str:
+        branch_filter, _ = self.branch.get_query_filter_path(at=self.at.to_string())
+        return (
+            self.render_match()
+            + """
+        // --------------
+        // Filter to just the active nodes
+        // --------------
+        CALL (node) {
+            MATCH (root:Root)<-[r:IS_PART_OF]-(node)
+            WHERE %(branch_filter)s
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH node as active_node
+        WHERE r.status = "active"
+        // --------------
+        // Find all the attributes that need to be updated
+        // --------------
+        CALL (active_node) {
+            MATCH (active_node)-[r:HAS_ATTRIBUTE]-(active_attr:Attribute { name: $prev_attr.name })
+            WHERE %(branch_filter)s
+            RETURN r, active_attr
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH active_node, active_attr
+        WHERE r.status = "active"
+        """
+            % {"branch_filter": branch_filter}
+        )
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
@@ -79,34 +119,10 @@ class AttributeRenameQuery(Query):
         self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
         self.params["at"] = self.at.to_string()
 
-        self.add_to_query(self.render_match())
+        self.add_to_query(self.render_selection())
 
         add_uuid = db.render_uuid_generation(node_label="new_attr", node_attr="uuid")
         query = """
-        // --------------
-        // Filter to just the active nodes
-        // --------------
-        CALL (node) {
-            MATCH (root:Root)<-[r:IS_PART_OF]-(node)
-            WHERE %(branch_filter)s
-            RETURN r
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH node as active_node
-        WHERE r.status = "active"
-        // --------------
-        // Find all the attributes that need to be updated
-        // --------------
-        CALL (active_node) {
-            MATCH (active_node)-[r:HAS_ATTRIBUTE]-(active_attr:Attribute { name: $prev_attr.name })
-            WHERE %(branch_filter)s
-            RETURN r, active_attr
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH active_node, active_attr
-        WHERE r.status = "active"
         // --------------
         // Create the new attribute vertexes
         // --------------
@@ -162,6 +178,10 @@ class AttributeRenameQuery(Query):
         """ % {"branch_filter": branch_filter, "add_uuid": add_uuid}
         self.add_to_query(query)
 
+        stamp_node, stamp_params = stamp_vertex_metadata(
+            "active_node", at=self.at, operation_ats=self.operation_ats, at_param="current_time"
+        )
+        self.params.update(stamp_params)
         query = """
         // --------------
         // An edge owned by another branch cannot be modified from here, so on a branch other than the
@@ -202,15 +222,7 @@ class AttributeRenameQuery(Query):
             // The renamed Attribute vertex is created here, so it has no prior metadata to snapshot
             SET new_attr.created_at = $current_time, new_attr.created_by = $user_id
             SET new_attr.updated_at = $current_time, new_attr.updated_by = $user_id
-            SET active_node.previous_updated_at = CASE
-                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_at
-                    ELSE active_node.previous_updated_at
-                END,
-                active_node.previous_updated_by = CASE
-                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_by
-                    ELSE active_node.previous_updated_by
-                END
-            SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
+            %(stamp_node)s
         }
         // --------------
         // Retire the global edges linked to the old Attribute vertex if it is no longer reachable
@@ -219,5 +231,8 @@ class AttributeRenameQuery(Query):
         WITH collect(active_attr) AS agnostic_candidates, count(new_attr) AS nbr_new_attributes
         %(close_unretained_agnostic_fields)s
         RETURN nbr_new_attributes
-        """ % {"close_unretained_agnostic_fields": CLOSE_UNRETAINED_AGNOSTIC_FIELDS}
+        """ % {
+            "close_unretained_agnostic_fields": CLOSE_UNRETAINED_AGNOSTIC_FIELDS,
+            "stamp_node": stamp_node,
+        }
         self.add_to_query(query)

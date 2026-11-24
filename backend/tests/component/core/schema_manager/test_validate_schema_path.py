@@ -77,7 +77,7 @@ class TestValidateSchemaPath:
         assert "only supports attributes" in str(exc.value)
 
     @pytest.mark.parametrize(
-        "path,allowed_types",
+        ("path", "allowed_types"),
         [
             # standalone
             ("primary_tag", SchemaElementPathType.REL_ONE),
@@ -128,7 +128,7 @@ class TestValidateSchemaPath:
         assert "this property only supports relationships" in str(exc.value)
 
     @pytest.mark.parametrize(
-        "path,allowed_types",
+        ("path", "allowed_types"),
         [
             # standalone
             ("tags", SchemaElementPathType.REL_MANY),

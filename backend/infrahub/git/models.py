@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -26,6 +27,26 @@ class GitRepoNode(BaseModel):
     id: str
     name: str
     location: str
+
+
+@dataclass(frozen=True)
+class MemberFilter:
+    member_ids: frozenset[str]
+    limit_ids: frozenset[str]
+
+    def selects(self, *, member_id: str, artifact_id: str | None) -> bool:
+        """Whether the member should have its artifact (re)generated.
+
+        ``member_ids`` filters on the member node id, so a member with no artifact yet is still
+        selected when its id is listed. ``limit_ids`` filters on the existing artifact id, so it can
+        only ever narrow to members that already have an artifact -- a member whose ``artifact_id``
+        is ``None`` is skipped by a non-empty ``limit_ids``. An empty filter imposes no restriction.
+        """
+        if self.member_ids and member_id not in self.member_ids:
+            return False
+        if self.limit_ids and artifact_id not in self.limit_ids:
+            return False
+        return True
 
 
 class RequestArtifactDefinitionGenerate(BaseModel):
@@ -58,19 +79,10 @@ class RequestArtifactDefinitionGenerate(BaseModel):
         """
         return not self.members and not self.limit
 
-    def selects_member(self, *, member_id: str, artifact_id: str | None) -> bool:
-        """Whether the member should have its artifact (re)generated under this request's filters.
-
-        ``members`` filters on the member node id, so a member with no artifact yet is still
-        selected when its id is listed. ``limit`` filters on the existing artifact id, so it can
-        only ever narrow to members that already have an artifact -- a member whose ``artifact_id``
-        is ``None`` is skipped by a non-empty ``limit``. An empty filter imposes no restriction.
-        """
-        if self.members and member_id not in self.members:
-            return False
-        if self.limit and artifact_id not in self.limit:
-            return False
-        return True
+    def get_member_filter(self) -> MemberFilter:
+        """Return the filter that selects the members to (re)generate under this request's filters."""
+        # Built per call and not cached on the model, so a copy with other filters never reads stale sets.
+        return MemberFilter(member_ids=frozenset(self.members), limit_ids=frozenset(self.limit))
 
 
 class RequestArtifactGenerate(BaseModel):

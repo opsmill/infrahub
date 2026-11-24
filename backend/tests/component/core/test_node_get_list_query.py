@@ -871,7 +871,7 @@ async def test_query_NodeGetListQuery_metadata_order_pagination(
 
     # Expected updated_at DESC order: widget-5 (most recent), widget-2, then rest in reverse creation order
     # Nodes not updated retain their original updated_at (same as created_at)
-    non_updated_ids = [id for i, id in enumerate(main_created_ids) if i not in (2, 5)]
+    non_updated_ids = [id for i, id in enumerate(main_created_ids) if i not in {2, 5}]
     expected_updated_order_desc = [main_created_ids[5], main_created_ids[2]] + list(reversed(non_updated_ids))
 
     # Test pagination with updated_at DESC ordering on default branch

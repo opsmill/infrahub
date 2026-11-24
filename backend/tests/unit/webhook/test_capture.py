@@ -1,3 +1,5 @@
+import pytest
+
 from infrahub.webhook.capture import CapturedHttp, build_http_capture
 from infrahub.webhook.classifier import ClassifiedFailure, StatusClass
 from infrahub.webhook.constants import RESPONSE_BODY_CAPTURE_LIMIT
@@ -16,7 +18,7 @@ def test_success_capture_has_request_and_response_and_no_error() -> None:
     assert capture.request.headers["webhook-signature"] == "***"
     assert capture.response is not None
     assert capture.response.status_code == 200
-    assert capture.response.latency_ms == 7.5
+    assert capture.response.latency_ms == pytest.approx(7.5)
     assert capture.error is None
 
 

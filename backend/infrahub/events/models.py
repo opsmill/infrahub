@@ -144,14 +144,14 @@ class EventMeta(BaseModel):
                 }
             )
 
-        for ancestor in self.ancestors:
-            related.append(
-                {
-                    "prefect.resource.id": ancestor.id,
-                    "prefect.resource.role": "infrahub.ancestor_event",
-                    "infrahub.ancestor_event.name": ancestor.name,
-                }
-            )
+        related.extend(
+            {
+                "prefect.resource.id": ancestor.id,
+                "prefect.resource.role": "infrahub.ancestor_event",
+                "infrahub.ancestor_event.name": ancestor.name,
+            }
+            for ancestor in self.ancestors
+        )
 
         return related
 

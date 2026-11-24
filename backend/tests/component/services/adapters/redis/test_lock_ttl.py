@@ -48,3 +48,5 @@ async def test_release_reraises_when_lock_lost_without_ttl(redis: dict[int, int]
 
     with pytest.raises(LockNotOwnedError):
         await lock_obj.release()
+
+    assert not lock_obj.held_by_current_task()

@@ -258,7 +258,7 @@ async def token(
         await service.event.send(event=event)
     # Login event emission is best-effort telemetry; it must never fail a successful OIDC login
     except Exception as ex:  # noqa: BLE001
-        log.warning(f"Failed to emit OIDC login event for account_id={auth_result.account_id}: {str(ex)}")
+        log.warning(f"Failed to emit OIDC login event for account_id={auth_result.account_id}: {ex!s}")
 
     return models.UserTokenWithUrl(
         access_token=auth_result.token.access_token,

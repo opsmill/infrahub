@@ -15,7 +15,7 @@ from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.database import InfrahubDatabase
 
 
-@pytest.mark.parametrize("min_value,max_value", [(None, None), (None, 300), (1, None), (10, 300)])
+@pytest.mark.parametrize(("min_value", "max_value"), [(None, None), (None, 300), (1, None), (10, 300)])
 async def test_query_number_constraints_success(
     db: InfrahubDatabase,
     default_branch: Branch,
