@@ -4,7 +4,8 @@ from dataclasses import dataclass
 
 import pytest
 
-from infrahub.core.constants import HashableModelState
+from infrahub.core.constants import BranchSupportType, HashableModelState, SchemaPathType, UpdateValidationErrorType
+from infrahub.core.path import SchemaPath
 from infrahub.core.schema import AttributeSchema, DropdownChoice, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.schema_change.applier import SchemaChangeApplier
@@ -649,3 +650,45 @@ def test_an_id_that_a_file_gives_a_new_kind_or_attribute_is_left_out(
     assert [operation.operation_type for operation in candidate.operations] == [
         SchemaOperationType.NODE_ADD if test_case.element_name is None else SchemaOperationType.ELEMENT_ADD
     ]
+
+
+def _make_manufacturer_branch_agnostic() -> SchemaRoot:
+    device = base_node_definition(TestKind.DEVICE)
+    device.get_attribute(name="manufacturer").branch = BranchSupportType.AGNOSTIC
+    return SchemaRoot(nodes=[device])
+
+
+MANUFACTURER_BRANCH_PATH = SchemaPath(
+    path_type=SchemaPathType.ATTRIBUTE,
+    schema_kind=TestKind.DEVICE,
+    field_name="manufacturer",
+    property_name="branch",
+)
+
+
+def test_unsupported_property_change_is_an_error_by_default(equivalence_base_schema: SchemaBranch) -> None:
+    candidate = build_schema_candidate_builder().from_schema_root(
+        branch_schema=equivalence_base_schema,
+        schema_root=_make_manufacturer_branch_agnostic(),
+        default_branch_schema=equivalence_base_schema,
+    )
+
+    assert [(error.path, error.error) for error in candidate.validation.errors] == [
+        (MANUFACTURER_BRANCH_PATH, UpdateValidationErrorType.NOT_SUPPORTED)
+    ]
+
+
+def test_unsupported_property_change_is_accepted_without_the_update_support_check(
+    equivalence_base_schema: SchemaBranch,
+) -> None:
+    candidate = build_schema_candidate_builder().from_schema_root(
+        branch_schema=equivalence_base_schema,
+        schema_root=_make_manufacturer_branch_agnostic(),
+        default_branch_schema=equivalence_base_schema,
+        enforce_update_support=False,
+    )
+
+    assert candidate.validation.errors == []
+    assert (candidate.validation.migrations, candidate.validation.constraints) == ([], [])
+    device = candidate.schema.get(name=TestKind.DEVICE, duplicate=False)
+    assert device.get_attribute(name="manufacturer").branch == BranchSupportType.AGNOSTIC

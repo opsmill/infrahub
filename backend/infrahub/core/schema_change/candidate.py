@@ -55,12 +55,18 @@ class SchemaCandidateBuilder:
         self.comparer = comparer
 
     def from_schema_root(
-        self, *, branch_schema: SchemaBranch, schema_root: SchemaRoot, default_branch_schema: SchemaBranch
+        self,
+        *,
+        branch_schema: SchemaBranch,
+        schema_root: SchemaRoot,
+        default_branch_schema: SchemaBranch,
+        enforce_update_support: bool = True,
     ) -> SchemaCandidate:
         """Build the candidate of a schema file from the operations it makes; `branch_schema` is unchanged.
 
         The candidate schema is the operations applied to the branch schema, and it must equal the schema file laid
-        over the branch schema, kind by kind.
+        over the branch schema, kind by kind. With `enforce_update_support` off, a change to a property that has no
+        migration is not an error, and it gets no migration and no constraint check.
 
         Raises:
             ValueError: When the schema file cannot be laid over the branch schema, or when the candidate removes a
@@ -100,7 +106,12 @@ class SchemaCandidateBuilder:
         )
         if differing_kinds:
             raise SchemaOperationsRebuildError(kinds=differing_kinds)
-        return self._validate(branch_schema=branch_schema, operations=build_result.operations, schema=schema)
+        return self._validate(
+            branch_schema=branch_schema,
+            operations=build_result.operations,
+            schema=schema,
+            enforce_update_support=enforce_update_support,
+        )
 
     def from_operations(
         self,
@@ -122,7 +133,9 @@ class SchemaCandidateBuilder:
         schema = self.applier.apply(
             target_schema=branch_schema, operations=operations, default_branch_schema=default_branch_schema
         )
-        return self._validate(branch_schema=branch_schema, operations=operations, schema=schema)
+        return self._validate(
+            branch_schema=branch_schema, operations=operations, schema=schema, enforce_update_support=True
+        )
 
     def _refuse_an_unknown_id_for_an_existing_kind(
         self, *, branch_schema: SchemaBranch, schema_root: SchemaRoot
@@ -205,9 +218,16 @@ class SchemaCandidateBuilder:
         return [kind]
 
     def _validate(
-        self, *, branch_schema: SchemaBranch, operations: Sequence[SchemaOperation], schema: SchemaBranch
+        self,
+        *,
+        branch_schema: SchemaBranch,
+        operations: Sequence[SchemaOperation],
+        schema: SchemaBranch,
+        enforce_update_support: bool,
     ) -> SchemaCandidate:
         diff = branch_schema.diff(other=schema)
         schema.validate_node_deletions(diff=diff)
-        validation = branch_schema.validate_update(other=schema, diff=diff)
+        validation = branch_schema.validate_update(
+            other=schema, diff=diff, enforce_update_support=enforce_update_support
+        )
         return SchemaCandidate(operations=list(operations), schema=schema, validation=validation)
