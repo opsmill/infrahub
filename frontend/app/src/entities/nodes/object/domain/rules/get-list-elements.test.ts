@@ -49,7 +49,7 @@ describe("getListElements", () => {
 
   it("should type a node-shaped object of an unknown kind as Object", () => {
     // GIVEN
-    const values = [{ id: "42", __typename: "Order" }];
+    const values = [{ id: "18e58040-c2d1-f5e4-35cd-c51803239164", __typename: "Order" }];
 
     // WHEN
     const result = getListElements(values, isKnownKind);

@@ -23,6 +23,10 @@ describe("isNodeReference", () => {
     ["a numeric id", { id: 1, __typename: "BuiltinTag" }],
     ["an id that is not a UUID", { id: "x?branch=other", __typename: "BuiltinTag" }],
     [
+      "an hfid with a number",
+      { id: "18e58040-c2d1-f5e4-35cd-c51803239164", __typename: "BuiltinTag", hfid: [1] },
+    ],
+    [
       "a string hfid",
       { id: "18e58040-c2d1-f5e4-35cd-c51803239164", __typename: "BuiltinTag", hfid: "blue" },
     ],

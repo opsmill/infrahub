@@ -80,9 +80,11 @@ describe("ObjectAttributeValue for a List", () => {
     await component.getByRole("button", { name: "View all 12 elements of Uplinks" }).click();
 
     // THEN
-    await expect
-      .element(component.getByRole("dialog").getByText("Ethernet1/12", { exact: true }))
-      .toBeInTheDocument();
+    for (const uplink of uplinks) {
+      await expect
+        .element(component.getByRole("dialog").getByText(uplink, { exact: true }))
+        .toBeInTheDocument();
+    }
   });
 
   test("opens a short List from View all when an element is an object", async () => {

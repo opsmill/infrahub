@@ -19,7 +19,7 @@ describe("getJsonPreview", () => {
     const result = getJsonPreview(value);
 
     // THEN
-    expect(result).toHaveLength(200);
+    expect(result).toBe(`{ "description": "${"x".repeat(182)}`);
   });
 
   it("should render a scalar as JSON", () => {

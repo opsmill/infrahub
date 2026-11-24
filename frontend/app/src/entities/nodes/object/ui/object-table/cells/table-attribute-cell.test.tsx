@@ -106,6 +106,7 @@ describe("TableAttributeCell", () => {
 
     // THEN
     await expect.element(component.getByRole("heading", { name: "Config · JSON" })).toBeVisible();
+    await expect.element(component.getByRole("dialog").getByText("65101")).toBeVisible();
   });
 
   test("renders an Any array as a List", async () => {

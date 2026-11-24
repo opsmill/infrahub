@@ -15,6 +15,7 @@ export function isNodeReference(value: unknown): value is NodeCore {
     isUuid(value.id) &&
     typeof value.__typename === "string" &&
     (value.display_label == null || typeof value.display_label === "string") &&
-    (value.hfid == null || Array.isArray(value.hfid))
+    (value.hfid == null ||
+      (Array.isArray(value.hfid) && value.hfid.every((part) => typeof part === "string")))
   );
 }
