@@ -1,4 +1,5 @@
 import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
+import type { ContextParams } from "@/shared/api/types";
 
 const GET_RESOURCE_ALLOCATED = graphql(`
   query GET_RESOURCE_POOL_ALLOCATED(
@@ -28,13 +29,16 @@ const GET_RESOURCE_ALLOCATED = graphql(`
 `);
 
 export interface GetResourceAllocatedFromApiParams
-  extends VariablesOf<typeof GET_RESOURCE_ALLOCATED> {}
+  extends VariablesOf<typeof GET_RESOURCE_ALLOCATED>,
+    ContextParams {}
 
 export function getResourceAllocatedFromApi({
   poolId,
   resourceId,
   limit,
   offset,
+  branchName,
+  atDate,
 }: GetResourceAllocatedFromApiParams) {
   return graphqlClient.query({
     query: GET_RESOURCE_ALLOCATED,
@@ -43,6 +47,10 @@ export function getResourceAllocatedFromApi({
       resourceId,
       limit,
       offset,
+    },
+    context: {
+      branch: branchName,
+      date: atDate,
     },
   });
 }

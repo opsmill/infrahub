@@ -7,11 +7,15 @@ import type {
 
 export interface ResourceUtilizationKeysParams {
   poolId: string;
+  branchName: string;
+  atDate?: Date | null;
 }
 
 export interface ResourceAllocatedKeysParams extends PaginationParams {
   poolId: string;
   resourceId: string;
+  branchName: string;
+  atDate?: Date | null;
 }
 
 export interface NumberPoolKeysParams {
@@ -50,7 +54,13 @@ export interface NumberPoolsKeysParams {
 export const resourceManagerQueryKeys = {
   all: ["resource-manager"] as const,
   utilization: (params: ResourceUtilizationKeysParams) =>
-    [...resourceManagerQueryKeys.all, "utilization", params.poolId] as const,
+    [
+      ...resourceManagerQueryKeys.all,
+      "utilization",
+      params.poolId,
+      params.branchName,
+      params.atDate,
+    ] as const,
   allocated: (params: ResourceAllocatedKeysParams) =>
     [
       ...resourceManagerQueryKeys.all,
@@ -59,6 +69,8 @@ export const resourceManagerQueryKeys = {
       params.resourceId,
       params.limit,
       params.offset,
+      params.branchName,
+      params.atDate,
     ] as const,
   numberPool: (params: NumberPoolKeysParams) =>
     [
