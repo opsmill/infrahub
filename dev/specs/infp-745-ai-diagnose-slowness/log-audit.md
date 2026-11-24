@@ -64,7 +64,8 @@ Then each marker was searched for in:
   log levels only.
 - Every path where an exception message is logged with `exc_info`. The audit covers the paths that the
   five steps above reach: the HTTP adapter, the webhook delivery and the Git connectivity check.
-- The Helm chart: which pods its Alloy collects (task T045, in `opsmill/infrahub-helm`).
+- The log lines of the Helm pods that Compose does not run. The list of pods is in "Log streams in
+  Helm" below; no line of these pods was read.
 - Neo4j Enterprise query logging, which is off in the Compose stack.
 - Longer use. The stack ran for about 15 minutes, so a line that a service writes rarely, such as a
   PostgreSQL statement error, was not seen.
@@ -128,7 +129,37 @@ names and for IP addresses outside the Docker network.
 **FR-022a.** No `drop` rule was added to `development/alloy/config.alloy`, and no stream needs a docs
 entry, because no value was found. This holds for default log levels only (see "Not checked").
 
-Helm: not checked (task T045, in `opsmill/infrahub-helm`).
+## Log streams in Helm
+
+Checked on 2026-11-24 by reading the chart on the branch of
+[opsmill/infrahub-helm#131](https://github.com/opsmill/infrahub-helm/pull/131) (task T045). No
+cluster was started, so no log line was read.
+
+The Alloy of the `infrahub-observability` chart reads the logs of every container of every pod in
+the Infrahub namespace (`templates/alloy-config.yaml:37-42` and `80-83`). The namespace is
+`global.infrahubNamespace`, or the release namespace when that value is empty. There is no label
+selector and no `drop` stage, so the pods of any other workload in that namespace reach Loki too.
+Other namespaces are not read.
+
+These pods run the same software as the Compose containers above: the Infrahub server, the task
+worker, Neo4j, Redis, RabbitMQ, the Prefect server and its database, Grafana, Loki, Tempo, Alloy,
+the node exporter and the Grafana MCP server.
+
+These pods are in Helm only, and their lines were not read:
+
+| Pod | Source in the charts | When it runs |
+|-----|----------------------|--------------|
+| Prometheus server and its config reloader | `prometheus` dependency | Always |
+| Prefect exporter | `templates/prefect-exporter-deployment.yaml` | Always |
+| Dashboard and data source loaders of Grafana | `grafana` dependency | Always, as extra containers of the Grafana pod |
+| Service account Job of the Grafana MCP server | `templates/grafana-mcp-sa-job.yaml` | After an install or an upgrade. Its script writes neither the token nor the admin password (source and a unit test of `run.sh`) |
+| Emma | `charts/infrahub/templates/emma.yaml` | When it is turned on |
+| Infrahub upgrade Job | `charts/infrahub/templates/infrahub-upgrade-job.yaml` | During an upgrade |
+| Infrahub demo data Job | `charts/infrahub/templates/infrahub-demo-data-job.yaml` | When it is turned on |
+| Any other workload in the Infrahub namespace | No selector | Not known |
+
+**FR-022a in Helm.** No `drop` rule was added to the chart (task T055), because no line of these
+pods was read, so no value to drop is known. Whether the pods above write a secret, an email address or a URL query string is not known.
 
 ## Metric labels in Prometheus
 
