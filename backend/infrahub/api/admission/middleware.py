@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 EXCLUDED_PATHS: tuple[str, ...] = (
     "/health",
+    "/api/health",
     "/metrics",
     "/assets",
     "/favicons",
