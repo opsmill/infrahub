@@ -52,6 +52,8 @@ CONSTRAINT_VALIDATOR_MAP: dict[str, type[ConstraintCheckerInterface] | None] = {
     ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value: UniquenessChecker,
     "node.parent.update": NodeHierarchyChecker,
     "node.children.update": NodeHierarchyChecker,
+    "node.hierarchy.update": NodeHierarchyChecker,
+    "node.hierarchical.update": NodeHierarchyChecker,
     "node.generate_profile.update": NodeGenerateProfileChecker,
     "node.attribute.add": NodeAttributeAddChecker,
     "node.relationship.add": NodeRelationshipAddChecker,

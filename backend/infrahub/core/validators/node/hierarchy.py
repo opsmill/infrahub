@@ -145,34 +145,49 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
         return "node.hierarchy.update"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
-        return request.constraint_name in ("node.parent.update", "node.children.update")
+        return request.constraint_name in (
+            "node.parent.update",
+            "node.children.update",
+            "node.hierarchy.update",
+            "node.hierarchical.update",
+        )
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         grouped_data_paths_list: list[GroupedDataPaths] = []
 
+        # A generic stores no nodes, and each node inheriting from it is checked through its own hierarchy.
         if not isinstance(request.node_schema, NodeSchema):
             return grouped_data_paths_list
-        check_parent = request.constraint_name == "node.parent.update"
-        peer_kind = request.node_schema.parent if check_parent else request.node_schema.children
-        if not peer_kind:
-            return grouped_data_paths_list
-        if not request.node_schema.hierarchy:
-            raise RuntimeError(f"No 'hierarchy' defined for {request.node_schema.kind}")
-
-        for query_class in self.query_classes:
-            # TODO add exception handling
-            query = await query_class.init(
-                db=self.db,
-                branch=self.branch,
-                node_schema=request.node_schema,
-                schema_path=request.schema_path,
-                allowed_peer_kinds=get_kinds_with_previous_names(db=self.db, request=request, kinds=[peer_kind]),
-                allowed_hierarchy_kinds=get_kinds_with_previous_names(
-                    db=self.db, request=request, kinds=[request.node_schema.hierarchy]
-                ),
-                check_children=not check_parent,
-                check_parent=check_parent,
+        node_schema = request.node_schema
+        directions = [
+            (check_parent, peer_kind)
+            for check_parent, peer_kind, constraint_names in (
+                (True, node_schema.parent, ("node.parent.update", "node.hierarchy.update")),
+                (False, node_schema.children, ("node.children.update", "node.hierarchy.update")),
             )
-            await query.execute(db=self.db)
-            grouped_data_paths_list.append(await query.get_paths())
+            if peer_kind and request.constraint_name in constraint_names
+        ]
+        if not directions:
+            return grouped_data_paths_list
+        if not node_schema.hierarchy:
+            raise RuntimeError(f"No 'hierarchy' defined for {node_schema.kind}")
+        allowed_hierarchy_kinds = get_kinds_with_previous_names(
+            db=self.db, request=request, kinds=[node_schema.hierarchy]
+        )
+
+        for check_parent, peer_kind in directions:
+            for query_class in self.query_classes:
+                # TODO add exception handling
+                query = await query_class.init(
+                    db=self.db,
+                    branch=self.branch,
+                    node_schema=node_schema,
+                    schema_path=request.schema_path,
+                    allowed_peer_kinds=get_kinds_with_previous_names(db=self.db, request=request, kinds=[peer_kind]),
+                    allowed_hierarchy_kinds=allowed_hierarchy_kinds,
+                    check_children=not check_parent,
+                    check_parent=check_parent,
+                )
+                await query.execute(db=self.db)
+                grouped_data_paths_list.append(await query.get_paths())
         return grouped_data_paths_list
