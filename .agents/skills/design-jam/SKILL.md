@@ -3,9 +3,9 @@ name: design-jam
 description: >-
   Takes one piece of Infrahub frontend UI from a rough idea to a design the team can
   approve, before any implementation starts. Seven phases, each writing one file: frame,
-  inventory (what @infrahub/ui already covers), explore (3-4 directions behind a switcher),
-  refine, review, hand off (a published design doc and a draft PR), improve (fixes to this
-  skill and the docs). Progress lives in `.design/<slug>/`, so a run can resume after a
+  inventory (what @infrahub/ui already covers), explore (3-4 directions behind a control
+  panel, and a draft design PR), refine, review, hand off (a published design doc), improve
+  (fixes to this skill and the docs). Progress lives in `.design/<slug>/`, so a run can resume after a
   crash, a `/clear` or a week away. TRIGGER when: the user wants to design a screen, flow
   or component before building it; says "design jam", "let's design this", "what should
   this look like"; or asks to resume a design-jam run. DO NOT TRIGGER when: the design is
@@ -26,17 +26,15 @@ $ARGUMENTS
 
 ## Setup, once per machine
 
-design-jam is designed to run with the paid skills, and falls back to public skills when
-a paid one is not installed. Install both sets before the first run:
+Install both sets. design-jam uses a paid skill when it is installed and its public
+fallback otherwise:
 
-- **Public skills**, needed in every run: `prototype`, `emil-design-eng` and `break-ui`,
-  from [`emilkowalski/skills`](https://github.com/emilkowalski/skills) (MIT).
-  `grilling-ideas` ships with this repo. The run blocks until these are installed.
-- **Paid skills**, the other `emil-*` skills from
-  [aiforui.dev](https://aiforui.dev/learn/skills). With them, phase 0 adds product
-  framing, phase 2 uses `emil-prototype`, and phase 4 runs the full review. OpsMill team
-  members: follow the internal setup page in Notion. People outside OpsMill can run the
-  public fallback without them.
+- **Public**, needed in every run: `prototype`, `emil-design-eng` and `break-ui`, from
+  [`emilkowalski/skills`](https://github.com/emilkowalski/skills) (MIT). `grilling-ideas`
+  ships with this repo.
+- **Paid**: the other `emil-*` skills, from [aiforui.dev](https://aiforui.dev/learn/skills).
+  They add product framing in phase 0, `emil-prototype` in phase 2 and the full review in
+  phase 4. OpsMill team members: follow the internal setup page in Notion.
 
 Keep any access token out of this checkout, design-jam files, commits and PRs. Do not copy
 the paid skills into `.agents/skills/`: their licence does not allow it, and this repo is
@@ -44,20 +42,15 @@ public.
 
 ## Start of every invocation
 
-1. Run `bash <this skill's folder>/reference/preflight.sh` and show the result. If a
-   required skill is missing, stop and name it. Do not run its phase from memory: the
-   output would look like a design-jam run with the important pass missing. Say which
-   skill set preflight reports (paid or public fallback), which passes will be skipped and
-   which skills only the user can start. If it reports the public fallback, tell the user
-   once that OpsMill team members get the full run by installing the paid skills, then
-   continue. Run it on resumed runs too.
+1. Run `bash <this skill's folder>/reference/preflight.sh` and show the result, on resumed
+   runs too. If it is blocked, stop and name the missing skill. Otherwise say the skill set
+   (paid or public fallback), the skipped passes and the skills only the user can start.
 2. Run `ls .design/` from the repo root. If a directory matches the request, read
    `STATE.md`, then the `.design/` files it points to and the current phase's file in
-   `reference/`. Say the phase, round and revision you
-   are resuming and what `next:` says, before doing anything else. If the user says
-   "gather" or pastes a *Copy all notes* block, resume at the *Gather* step of a round.
-   When `STATE.md` is missing or disagrees with `git log --oneline -- .design/<slug>/`,
-   trust git and say so.
+   `reference/`. Say the phase, round and revision you are resuming and what `next:` says,
+   before doing anything else. If the user says "gather" or pastes a *Copy all notes*
+   block, resume at the *Gather* step of a round. When `STATE.md` is missing or disagrees
+   with `git log --oneline -- .design/<slug>/`, trust git and say so.
 3. Otherwise, pick a slug (`branch-diff-summary`, `schema-kind-picker`), create the design
    branch, then `.design/<slug>/`.
 
@@ -66,9 +59,6 @@ Create the branch before any file, because every checkpoint commits. Name it
 asks (`--base stable`). Write the base as `base:` in `STATE.md`: the design PR and the
 implementation branch read it from there. Never take the base from `origin/HEAD`, which is
 `stable` in this repo.
-
-Commit `.design/`. It is the record someone reads months later to learn why the UI works
-the way it does.
 
 ## Phases
 
@@ -85,15 +75,14 @@ checkpoint. Read the phase's file when the phase starts, not before.
 | 5 | Hand off | none, publishes an Artifact | [phase-5-hand-off.md](reference/phase-5-hand-off.md) | `05-handoff.md`, `05-implement.md` |
 | 6 | Improve | none, reads the run | [phase-6-improve.md](reference/phase-6-improve.md) | `06-improvements.md` |
 
-Invoke skills in the order shown, with the Skill tool. Do not work from your memory of a
-skill: its current rules must shape the output. Use the paid alternative when it is
-installed. Each phase file names its conditional skills; use them only when their condition
+Invoke skills in the order shown, with the Skill tool. Never do a skill's work from memory
+or from its `SKILL.md`: the output would look like a design-jam run with the important pass
+missing. Each phase file names its conditional skills; use them only when their condition
 holds, and use no other skills.
 
-Preflight marks some skills "you type": they set `disable-model-invocation`, so the Skill
-tool refuses them. When a phase needs one, ask the user to type its command (for example
-`/emil-product-thinking`) with the input it should work on, wait for its result, and
-continue the phase from it. Do not read its `SKILL.md` and do the work yourself.
+Preflight marks some skills "you type": the Skill tool refuses them. When a phase needs
+one, ask the user to type its command (for example `/emil-product-thinking`) with the input
+it should work on, wait for its result, and continue the phase from it.
 
 ## Rules for every phase
 
@@ -112,7 +101,8 @@ continue the phase from it. Do not read its `SKILL.md` and do the work yourself.
 At the end of every phase:
 
 1. Rewrite `STATE.md`.
-2. Commit `.design/<slug>/` and the prototype changes together, for example
+2. Commit `.design/<slug>/` and the prototype changes together. `.design/` is the record
+   someone reads months later to learn why the UI works the way it does. For example
    `design(<slug>): phase 2, three directions for the change summary` or
    `design(<slug>): rev 3, filters moved into the header`. Use one plain `git` command per
    step, never `-i`. If a hook blocks the commit, use `/usr/bin/git`. Never amend or squash
