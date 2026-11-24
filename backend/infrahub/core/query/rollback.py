@@ -7,6 +7,8 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.core.branch import Branch
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
@@ -15,13 +17,13 @@ if TYPE_CHECKING:
 class RollbackScope(Enum):
     """Which writes on the target branch a rollback reverses.
 
-    AT_TIMESTAMP reverses only writes stamped exactly at the rollback timestamp. It is for callers
-    that run every operation to revert at a single unified timestamp while other writers may still
+    AT_TIMESTAMP reverses only writes stamped exactly at one of the operation's timestamps. It is for
+    callers that run every operation to revert at known timestamps while other writers may still
     be active on the branch — a range would revert those unrelated writes too.
 
-    SINCE_TIMESTAMP reverses every write stamped at or after the rollback timestamp. It is only
-    safe when the caller owns all writes on the target branch from that point on (the merge
-    write-block guarantees this for the merge window).
+    SINCE_TIMESTAMP reverses every write stamped at or after the earliest of the operation's
+    timestamps. It is only safe when the caller owns all writes on the target branch from that
+    point on (the merge write-block guarantees this for the merge window).
     """
 
     AT_TIMESTAMP = "at_timestamp"
@@ -34,9 +36,9 @@ def _rollback_branches(target_branch: Branch, rollback_scope: RollbackScope) -> 
     The target branch follows the scope. All changes on the branch for the scope (exact or range)
     are assumed to be part of a single group of changes.
 
-    The global branch is always included, and always matched on the exact timestamp. Only exact
-    timestamp changes are rolled back on the global branch b/c changes with later timestamps could
-    be from change groups on other branches.
+    The global branch is always included, and always matched on the operation's exact timestamps. Only
+    exact timestamp changes are rolled back on the global branch b/c changes with other timestamps
+    could be from change groups on other branches.
     """
     branches: list[dict[str, Any]] = [
         {"name": target_branch.name, "exact": rollback_scope is RollbackScope.AT_TIMESTAMP}
@@ -46,22 +48,28 @@ def _rollback_branches(target_branch: Branch, rollback_scope: RollbackScope) -> 
     return branches
 
 
+def _timestamp_params(ats: Sequence[Timestamp]) -> dict[str, Any]:
+    """The operation's timestamps as strings, and the earliest of them."""
+    as_strings = [t.to_string() for t in ats]
+    return {"ats": as_strings, "earliest_at": min(as_strings)}
+
+
 def _render_restore_metadata_pipeline() -> str:
     """Restore the metadata snapshots of the vertices an edge reversal touched.
 
-    Matches the operation's exact timestamp on every pass, independent of branch and scope.
-    All ``updated_at`` properties on ``:Node``, ``:Attribute``, and ``:Relationship`` vertexes
-    are assumed to be updated at the exact timestamp if changed on the default/global branches.
-    The exact timestamp match also ensures that metadata is only restored one time and never
-    attempts multiple restores, which would lead to NULL updated_at/by.
+    Matches the operation's exact timestamps on every pass, independent of branch and scope.
+    A restored vertex stays restored after a later match only when every writer of the operation received
+    the operation's earlier timestamps, because the restored value is then the one from before the
+    operation. Otherwise the restored value can be one of those timestamps and a later match nulls
+    the metadata.
     """
     return """
     UNWIND [src, dst] AS endpoint
     OPTIONAL MATCH (endpoint:Attribute|Relationship)-[:HAS_ATTRIBUTE|IS_RELATED]-(owner:Node)
-    WHERE owner.updated_at = $at
+    WHERE owner.updated_at IN $ats
     UNWIND [endpoint, owner] AS restore_vertex
     WITH DISTINCT restore_vertex
-    WHERE restore_vertex.updated_at = $at
+    WHERE restore_vertex.updated_at IN $ats
     SET restore_vertex.updated_at = restore_vertex.previous_updated_at,
         restore_vertex.updated_by = restore_vertex.previous_updated_by
     SET restore_vertex.previous_updated_at = NULL, restore_vertex.previous_updated_by = NULL
@@ -84,26 +92,26 @@ class RollbackReopenEdgesQuery(Query):
 
     def __init__(
         self,
-        at: Timestamp,
+        ats: Sequence[Timestamp],
         target_branch: Branch,
         scope: RollbackScope,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
-        self.rollback_at = at
+        self.rollback_ats = ats
         self.target_branch = target_branch
         self.scope = scope
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
-            "at": self.rollback_at.to_string(),
+            **_timestamp_params(self.rollback_ats),
             "rollback_branches": _rollback_branches(target_branch=self.target_branch, rollback_scope=self.scope),
         }
         query = """
 UNWIND $rollback_branches AS rollback_branch
 MATCH (src)-[edge {branch: rollback_branch.name}]->(dst)
-WHERE (rollback_branch.exact AND edge.to = $at)
-   OR (NOT rollback_branch.exact AND edge.to >= $at)
+WHERE (rollback_branch.exact AND edge.to IN $ats)
+   OR (NOT rollback_branch.exact AND edge.to >= $earliest_at)
 CALL (edge, src, dst) {
     SET edge.to = NULL, edge.to_user_id = NULL
     WITH src, dst%(restore)s
@@ -130,26 +138,26 @@ class RollbackDeleteEdgesQuery(Query):
 
     def __init__(
         self,
-        at: Timestamp,
+        ats: Sequence[Timestamp],
         target_branch: Branch,
         scope: RollbackScope,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
-        self.rollback_at = at
+        self.rollback_ats = ats
         self.target_branch = target_branch
         self.scope = scope
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
-            "at": self.rollback_at.to_string(),
+            **_timestamp_params(self.rollback_ats),
             "rollback_branches": _rollback_branches(target_branch=self.target_branch, rollback_scope=self.scope),
         }
         query = """
 UNWIND $rollback_branches AS rollback_branch
 MATCH (src)-[edge {branch: rollback_branch.name}]->(dst)
-WHERE (rollback_branch.exact AND edge.from = $at)
-   OR (NOT rollback_branch.exact AND edge.from >= $at)
+WHERE (rollback_branch.exact AND edge.from IN $ats)
+   OR (NOT rollback_branch.exact AND edge.from >= $earliest_at)
 CALL (src, dst) {
     %(restore)s
 } IN TRANSACTIONS OF 500 ROWS

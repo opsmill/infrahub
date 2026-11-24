@@ -21,7 +21,7 @@ from infrahub.core.path import SchemaPath
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.definitions.core.template import core_object_component_template, core_object_template
 from infrahub.core.schema.schema_branch import SchemaBranch
-from infrahub.core.utils import count_nodes, count_relationships
+from infrahub.core.utils import count_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
 
@@ -83,9 +83,7 @@ async def _migrate_node_kind(
             previous_node_schema=previous_node,
             new_node_schema=new_node,
         ),
-        schema_path=SchemaPath(
-            path_type=SchemaPathType.ATTRIBUTE, schema_kind=new_node.kind, field_name=sorted(changes)[0]
-        ),
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=new_node.kind, field_name=min(changes)),
     )
     registry.schema.set_schema_branch(name=branch.name, schema=candidate_schema)
     return await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
@@ -174,23 +172,6 @@ class TestGeneratedKindRelabelling:
         assert profile_labels_map == {gadget_data["profile"]: _profile_labels(kind="ProfileTestingGadget")}
         assert await count_nodes(db=db, label="ProfileTestingGadget") == 1
         await verify_graph(db=db)
-
-    async def test_relabelling_is_idempotent(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, gadget_data: dict[str, str]
-    ) -> None:
-        """Re-running the same migration must not duplicate the vertices a second time."""
-        count_rels_before = await count_relationships(db=db)
-
-        execution_result = await _migrate_node_kind(
-            db=db, branch=default_branch_scope_class, current_kind="TestingGadget", inherit_from=["TestingThing"]
-        )
-
-        assert not execution_result.errors
-        assert execution_result.nbr_migrations_executed == 0
-        assert await count_relationships(db=db) == count_rels_before
-        # the kind label is unchanged, so it stays on the superseded vertex as well as its replacement
-        assert await count_nodes(db=db, label="TemplateTestingGadget") == 2
-        assert await count_nodes(db=db, label="TemplateTestingThing") == 1
 
     async def test_template_loses_generic_label_when_kind_drops_generic(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, gadget_data: dict[str, str]

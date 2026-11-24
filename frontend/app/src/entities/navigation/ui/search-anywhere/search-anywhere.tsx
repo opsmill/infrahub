@@ -47,10 +47,10 @@ export function SearchAnywhere() {
       <SearchAnywhereTrigger onClick={openDialog} />
 
       <SearchAnywhereDialog>
-        <Command shouldFilter={false}>
+        <Command shouldFilter={false} className="contents">
           <SearchAnywhereInput />
 
-          <Command.List className="[&_[cmdk-group]]:mt-2">
+          <Command.List className="flex min-h-0 flex-col [&>[cmdk-list-sizer]]:contents">
             <SearchAnywhereEmpty />
             <SearchActions />
             <SearchParentPrefixes />

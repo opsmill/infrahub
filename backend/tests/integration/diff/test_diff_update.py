@@ -195,7 +195,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         john = await NodeManager.get_one_by_id_or_default_filter(
             db=db, id="John", kind=TestKind.PERSON, branch=branch1.name
         )
-        john.age.value = 26  # type: ignore[attr-defined]
+        john.age.value = 26
         await john.save(db=db)
 
     @pytest.fixture(scope="class")
@@ -323,7 +323,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
             }
             for prop_diff in properties_by_type.values():
                 assert prop_diff.action is DiffAction.REMOVED
-                assert prop_diff.new_value in [None, NULL_VALUE]
+                assert prop_diff.new_value in {None, NULL_VALUE}
         relationships_by_name = {r.name: r for r in ed_209_node.relationships}
         assert set(relationships_by_name.keys()) == {"manufacturer", "owner"}
         manufacturer_rel = relationships_by_name["manufacturer"]
@@ -822,7 +822,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         node_removed_conflict = self.retrieve_item("node_removed")
 
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
-        core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
+        core_data_checks = await data_validator.checks.get_peers(db=db)
         data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
         assert set(data_checks_by_conflict_id.keys()) == {
             attribute_value_conflict.conflict_id,
@@ -894,7 +894,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert manufacturer_element.conflict.selected_branch is peer_conflict.conflict_selection
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
-        core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
+        core_data_checks = await data_validator.checks.get_peers(db=db)
         data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
         assert peer_conflict.conflict_id in data_checks_by_conflict_id
         peer_data_check = data_checks_by_conflict_id[peer_conflict.conflict_id]
@@ -987,7 +987,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
 
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
-        core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
+        core_data_checks = await data_validator.checks.get_peers(db=db)
         data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
         assert cardinality_one_property_conflict_a.conflict_id in data_checks_by_conflict_id
         assert cardinality_one_property_conflict_b.conflict_id in data_checks_by_conflict_id
@@ -1048,7 +1048,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert owner_property.conflict.selected_branch is cardinality_many_property_conflict.conflict_selection
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
-        core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
+        core_data_checks = await data_validator.checks.get_peers(db=db)
         data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
         assert cardinality_many_property_conflict.conflict_id in data_checks_by_conflict_id
         peer_data_check = data_checks_by_conflict_id[cardinality_many_property_conflict.conflict_id]
@@ -1101,7 +1101,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         assert resolved_kara_node.action is DiffAction.UNCHANGED
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
-        core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
+        core_data_checks = await data_validator.checks.get_peers(db=db)
         data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
         assert node_removed_conflict.conflict_id not in set(data_checks_by_conflict_id.keys())
 
@@ -1123,7 +1123,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
 
         # check CoreDataChecks
         _, data_validator = await self._get_proposed_change_and_data_validator(db=db)
-        core_data_checks = await data_validator.checks.get_peers(db=db)  # type: ignore[attr-defined]
+        core_data_checks = await data_validator.checks.get_peers(db=db)
         data_checks_by_conflict_id = {cdc.enriched_conflict_id.value: cdc for cdc in core_data_checks.values()}
         assert set(data_checks_by_conflict_id.keys()) == {tc.conflict_id for tc in tracked_conflicts}
         for tracked_conflict in tracked_conflicts:

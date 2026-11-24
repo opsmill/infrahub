@@ -1031,8 +1031,8 @@ async def test_migrated_kind_with_property_level_changes(
     }
 
     # validate person_alfred_main migrated
-    alfred_previous_diff = [n for n in nodes_by_id[person_alfred_main.id] if n.action is DiffAction.REMOVED][0]
-    alfred_new_diff = [n for n in nodes_by_id[person_alfred_main.id] if n.action is DiffAction.ADDED][0]
+    alfred_previous_diff = next(n for n in nodes_by_id[person_alfred_main.id] if n.action is DiffAction.REMOVED)
+    alfred_new_diff = next(n for n in nodes_by_id[person_alfred_main.id] if n.action is DiffAction.ADDED)
     assert alfred_previous_diff.is_node_kind_migration is True
     assert alfred_previous_diff.attributes == []
     assert alfred_previous_diff.relationships == []
@@ -1041,8 +1041,8 @@ async def test_migrated_kind_with_property_level_changes(
     assert alfred_new_diff.relationships == []
 
     # validate person_john_main migrated
-    john_previous_diff = [n for n in nodes_by_id[person_john_main.id] if n.action is DiffAction.REMOVED][0]
-    john_new_diff = [n for n in nodes_by_id[person_john_main.id] if n.action is DiffAction.ADDED][0]
+    john_previous_diff = next(n for n in nodes_by_id[person_john_main.id] if n.action is DiffAction.REMOVED)
+    john_new_diff = next(n for n in nodes_by_id[person_john_main.id] if n.action is DiffAction.ADDED)
     assert john_previous_diff.is_node_kind_migration is True
     assert john_previous_diff.attributes == []
     assert john_previous_diff.relationships == []
@@ -1075,8 +1075,8 @@ async def test_migrated_kind_with_property_level_changes(
     assert is_protected_prop.previous_value is False
 
     # validate person_jane_main migrated
-    jane_previous_diff = [n for n in nodes_by_id[person_jane_main.id] if n.action is DiffAction.REMOVED][0]
-    jane_new_diff = [n for n in nodes_by_id[person_jane_main.id] if n.action is DiffAction.ADDED][0]
+    jane_previous_diff = next(n for n in nodes_by_id[person_jane_main.id] if n.action is DiffAction.REMOVED)
+    jane_new_diff = next(n for n in nodes_by_id[person_jane_main.id] if n.action is DiffAction.ADDED)
     assert jane_previous_diff.is_node_kind_migration is True
     assert jane_previous_diff.attributes == []
     assert jane_previous_diff.relationships == []

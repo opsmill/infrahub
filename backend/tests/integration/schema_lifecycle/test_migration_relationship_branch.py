@@ -293,7 +293,7 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
             db=db, schema=CAR_KIND, filters={"main_driver__name__value": "John"}, branch=self.branch1
         )
         assert len(john_cars) == 2
-        john = await john_cars[0].main_driver.get_peer(db=db)  # type: ignore[attr-defined]
+        john = await john_cars[0].main_driver.get_peer(db=db)
         assert john.id == initial_dataset["john"]
         tags = await john.tags.get_peers(db=db)
         assert len(tags) == 2
@@ -352,7 +352,7 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
 
         john = await registry.manager.get_one(db=db, id=initial_dataset["john"], branch=self.branch1)
         assert john
-        tags = await john.tags.get_peers(db=db)  # type: ignore[attr-defined]
+        tags = await john.tags.get_peers(db=db)
         assert len(tags) == 2
 
         red_branch = await registry.manager.get_one(db=db, id=initial_dataset["red"], branch=self.branch1)
@@ -360,7 +360,7 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
 
         red_main = await registry.manager.get_one(db=db, id=initial_dataset["red"])
         assert red_main
-        persons = await red_main.persons.get_peers(db=db)  # type: ignore[attr-defined]
+        persons = await red_main.persons.get_peers(db=db)
         assert len(persons) == 1
 
     async def test_rebase(self, db: InfrahubDatabase, client: InfrahubClient, initial_dataset: dict[str, str]) -> None:
@@ -372,7 +372,7 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
             db=db, schema=CAR_KIND, filters={"main_driver__name__value": "Jane"}, branch=self.branch1.name
         )
         assert len(jane_cars) == 2
-        jane = await jane_cars[0].main_driver.get_peer(db=db)  # type: ignore[attr-defined]
+        jane = await jane_cars[0].main_driver.get_peer(db=db)
         assert jane.id == initial_dataset["jane"]
         tags = await jane.tags.get_peers(db=db)
         assert len(tags) == 1
@@ -385,14 +385,14 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         # Ensure that we can query the nodes with the new schema in BRANCH1
         jane_cars = await registry.manager.query(db=db, schema=CAR_KIND, filters={"main_driver__name__value": "Jane"})
         assert len(jane_cars) == 2
-        jane = await jane_cars[0].main_driver.get_peer(db=db)  # type: ignore[attr-defined]
+        jane = await jane_cars[0].main_driver.get_peer(db=db)
         assert jane.id == initial_dataset["jane"]
         tags = await jane.tags.get_peers(db=db)
         assert len(tags) == 1
 
         john_cars = await registry.manager.query(db=db, schema=CAR_KIND, filters={"main_driver__name__value": "John"})
         assert len(john_cars) == 2
-        john = await john_cars[0].main_driver.get_peer(db=db)  # type: ignore[attr-defined]
+        john = await john_cars[0].main_driver.get_peer(db=db)
         assert john.id == initial_dataset["john"]
         tags = await john.tags.get_peers(db=db)
         assert len(tags) == 2

@@ -42,4 +42,4 @@ class AttributeNameUpdateMigrationQuery01(AttributeMigrationQuery, AttributeRena
 
 class AttributeNameUpdateMigration(AttributeSchemaMigration):
     name: str = "attribute.name.update"
-    queries: Sequence[type[AttributeMigrationQuery]] = [AttributeNameUpdateMigrationQuery01]  # type: ignore[assignment]
+    queries: Sequence[type[AttributeMigrationQuery]] = [AttributeNameUpdateMigrationQuery01]

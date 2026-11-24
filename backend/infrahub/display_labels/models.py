@@ -215,9 +215,9 @@ class DisplayLabelJinja2GraphQL(BaseModel):
         rendered_response: list[DisplayLabelJinja2GraphQLResponse] = []
         if kind_payload := response.get(self.node_schema.kind):
             edges = kind_payload.get("edges", [])
-            for node in edges:
-                if node_response := self.to_node_response(node_dict=node):
-                    rendered_response.append(node_response)
+            rendered_response.extend(
+                node_response for node in edges if (node_response := self.to_node_response(node_dict=node))
+            )
         return rendered_response
 
     def to_node_response(self, node_dict: dict[str, Any]) -> DisplayLabelJinja2GraphQLResponse | None:

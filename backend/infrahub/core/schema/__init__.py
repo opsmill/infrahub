@@ -108,10 +108,11 @@ class SchemaRoot(BaseModel):
 
     def _validate_namespaces(self) -> list[str]:
         models = self.nodes + self.generics
-        errors: list[str] = []
-        for model in models:
-            if model.namespace in RESTRICTED_NAMESPACES:
-                errors.append(f"Restricted namespace '{model.namespace}' used on '{model.name}'")
+        errors: list[str] = [
+            f"Restricted namespace '{model.namespace}' used on '{model.name}'"
+            for model in models
+            if model.namespace in RESTRICTED_NAMESPACES
+        ]
 
         return errors
 
@@ -119,16 +120,16 @@ class SchemaRoot(BaseModel):
         models = self.nodes + self.generics + self.extensions.nodes
         errors: list[str] = []
         for model in models:
-            for attr in model.attributes:
-                if attr.name.endswith(RESOURCE_POOL_REL_SUFFIX):
-                    errors.append(
-                        f"Reserved suffix '{RESOURCE_POOL_REL_SUFFIX}' used on attribute '{attr.name}' in '{model.kind}'"
-                    )
-            for rel in model.relationships:
-                if rel.name.endswith(RESOURCE_POOL_REL_SUFFIX):
-                    errors.append(
-                        f"Reserved suffix '{RESOURCE_POOL_REL_SUFFIX}' used on relationship '{rel.name}' in '{model.kind}'"
-                    )
+            errors.extend(
+                f"Reserved suffix '{RESOURCE_POOL_REL_SUFFIX}' used on attribute '{attr.name}' in '{model.kind}'"
+                for attr in model.attributes
+                if attr.name.endswith(RESOURCE_POOL_REL_SUFFIX)
+            )
+            errors.extend(
+                f"Reserved suffix '{RESOURCE_POOL_REL_SUFFIX}' used on relationship '{rel.name}' in '{model.kind}'"
+                for rel in model.relationships
+                if rel.name.endswith(RESOURCE_POOL_REL_SUFFIX)
+            )
         return errors
 
     def gather_warnings(self) -> list[SchemaWarning]:

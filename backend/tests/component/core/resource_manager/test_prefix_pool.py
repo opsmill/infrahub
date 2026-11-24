@@ -1,16 +1,18 @@
 import re
+from dataclasses import dataclass
 
 import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import PoolExhaustedError, ValidationError
 
 
 async def test_get_next(
@@ -44,6 +46,84 @@ async def test_get_next(
         db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", identifier="item1", branch=default_branch
     )
     assert next_prefix.id == next_prefix2.id
+
+
+@dataclass
+class UnreadableReservationCase:
+    name: str
+    delete_first_branch: bool
+
+
+UNREADABLE_RESERVATION_CASES: list[UnreadableReservationCase] = [
+    UnreadableReservationCase(name="first-reservation-on-sibling-branch", delete_first_branch=False),
+    UnreadableReservationCase(name="first-reservation-on-deleted-branch", delete_first_branch=True),
+]
+
+
+class TestGetResourceWithUnreadableReservation:
+    @pytest.fixture(scope="class")
+    async def namespace(
+        self,
+        db: InfrahubDatabase,
+        register_core_models_schema_scope_class: SchemaBranch,
+        register_ipam_schema_scope_class: SchemaBranch,
+        default_ipnamespace_scope_class: Node | None,
+    ) -> Node:
+        namespace = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+        await namespace.new(db=db, name="ns1")
+        await namespace.save(db=db)
+        return namespace
+
+    @pytest.fixture(scope="class")
+    async def pool_prefixes(self, db: InfrahubDatabase, namespace: Node) -> list[Node]:
+        prefixes = []
+        for value in ("10.10.0.0/16", "10.11.0.0/16"):
+            prefix = await Node.init(db=db, schema="IpamIPPrefix")
+            await prefix.new(db=db, prefix=value, ip_namespace=namespace)
+            await prefix.save(db=db)
+            prefixes.append(prefix)
+        return prefixes
+
+    @pytest.mark.parametrize("case", UNREADABLE_RESERVATION_CASES, ids=lambda case: case.name)
+    async def test_branch_keeps_its_own_prefix(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        namespace: Node,
+        pool_prefixes: list[Node],
+        case: UnreadableReservationCase,
+    ) -> None:
+        """A branch that cannot read an identifier's first reservation keeps returning its own prefix."""
+        prefix_pool_schema = registry.schema.get_node_schema(
+            name=InfrahubKind.IPPREFIXPOOL, branch=default_branch_scope_class
+        )
+        pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db)
+        await pool.new(db=db, name=f"pool-{case.name}", resources=pool_prefixes, ip_namespace=namespace)
+        await pool.save(db=db)
+
+        branch_a = await create_branch(branch_name=f"{case.name}-a", db=db)
+        branch_b = await create_branch(branch_name=f"{case.name}-b", db=db)
+
+        async def reserve(branch: Branch) -> Node:
+            return await pool.get_resource(
+                db=db,
+                prefixlen=17,
+                prefix_type="IpamIPPrefix",
+                member_type="prefix",
+                identifier=case.name,
+                branch=branch,
+            )
+
+        prefix_a = await reserve(branch=branch_a)
+        if case.delete_first_branch:
+            await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch_a)
+
+        first = await reserve(branch=branch_b)
+        second = await reserve(branch=branch_b)
+        third = await reserve(branch=branch_b)
+
+        assert first.id != prefix_a.id
+        assert [second.id, third.id] == [first.id, first.id]
 
 
 async def test_get_resource_conflicting_prefixlen_raises(
@@ -369,7 +449,7 @@ async def test_get_all_resources(
     prefix3 = await pool.get_resource(
         db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", branch=another_branch
     )
-    with pytest.raises(IndexError):
+    with pytest.raises(PoolExhaustedError, match=r"^No more resources available in the pool$"):
         await pool.get_resource(
             db=db, prefixlen=17, prefix_type="IpamIPPrefix", member_type="prefix", branch=default_branch
         )
@@ -518,7 +598,7 @@ async def test_ipv4_small_prefix_pool_full_allocation(
 
     The prefix 255.255.255.240/28 contains 16 addresses.
     Allocating 8 x /31 prefixes (2 addresses each) should fill the pool completely.
-    The 9th allocation should fail with IndexError.
+    The 9th allocation should fail with PoolExhaustedError.
     """
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
 
@@ -562,7 +642,7 @@ async def test_ipv4_small_prefix_pool_full_allocation(
     for i, prefix in enumerate(allocated_prefixes):
         assert prefix.prefix.value == expected_prefixes[i]
 
-    with pytest.raises(IndexError):
+    with pytest.raises(PoolExhaustedError, match=r"^No more resources available in the pool$"):
         await pool.get_resource(
             db=db,
             prefixlen=31,
@@ -580,7 +660,7 @@ async def test_ipv6_small_prefix_pool_full_allocation(
 
     The prefix ffff:ffff:ffff:ffff:ffff:ffff:ffff:fff0/124 contains 16 addresses.
     Allocating 8 x /127 prefixes (2 addresses each) should fill the pool completely.
-    The 9th allocation should fail with IndexError.
+    The 9th allocation should fail with PoolExhaustedError.
     """
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
 
@@ -624,7 +704,7 @@ async def test_ipv6_small_prefix_pool_full_allocation(
     for i, prefix in enumerate(allocated_prefixes):
         assert prefix.prefix.value == expected_prefixes[i]
 
-    with pytest.raises(IndexError):
+    with pytest.raises(PoolExhaustedError, match=r"^No more resources available in the pool$"):
         await pool.get_resource(
             db=db,
             prefixlen=127,
@@ -641,7 +721,7 @@ async def test_ipv4_same_prefixlen_pool_exhaustion(
     """Test that a pool whose resource prefix length equals the requested allocation length.
 
     Allocates exactly one prefix and then signals exhaustion rather than returning duplicates.
-    A /30 parent has room for exactly one /30 allocation. The second request must raise IndexError.
+    A /30 parent has room for exactly one /30 allocation. The second request must raise PoolExhaustedError.
     """
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
 
@@ -669,7 +749,7 @@ async def test_ipv4_same_prefixlen_pool_exhaustion(
     )
     assert first.prefix.value == "172.16.0.0/30"
 
-    with pytest.raises(IndexError):
+    with pytest.raises(PoolExhaustedError, match=r"^No more resources available in the pool$"):
         await pool.get_resource(
             db=db,
             prefixlen=30,
@@ -726,7 +806,7 @@ async def test_mixed_prefixlen_allocation_two_resources(
     assert first_30.prefix.value == "192.168.0.4/30"
 
     # second /30 is exhausted, first /30 can't fit another /30 — fails
-    with pytest.raises(IndexError):
+    with pytest.raises(PoolExhaustedError, match=r"^No more resources available in the pool$"):
         await pool.get_resource(
             db=db,
             prefixlen=30,
@@ -754,7 +834,7 @@ async def test_ipv6_same_prefixlen_pool_exhaustion(
     """Test that a pool whose resource prefix length equals the requested allocation length.
 
     Allocates exactly one prefix and then signals exhaustion rather than returning duplicates.
-    A /127 parent has room for exactly one /127 allocation. The second request must raise IndexError.
+    A /127 parent has room for exactly one /127 allocation. The second request must raise PoolExhaustedError.
     """
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
 
@@ -782,7 +862,7 @@ async def test_ipv6_same_prefixlen_pool_exhaustion(
     )
     assert first.prefix.value == "2001:db8::/127"
 
-    with pytest.raises(IndexError):
+    with pytest.raises(PoolExhaustedError, match=r"^No more resources available in the pool$"):
         await pool.get_resource(
             db=db,
             prefixlen=127,

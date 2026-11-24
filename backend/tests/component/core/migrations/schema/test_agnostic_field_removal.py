@@ -519,7 +519,7 @@ async def test_a_rolled_back_removal_leaves_the_global_edges_open(
 
     await GraphRollbacker(db=db).rollback(
         target_branch=default_branch,
-        at=removed_at,
+        ats=[removed_at],
         scope=RollbackScope.AT_TIMESTAMP,
     )
 

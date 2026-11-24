@@ -37,7 +37,7 @@ class ConditionalGZipMiddleware(GZipMiddleware):
         super().__init__(app, minimum_size=minimum_size, compresslevel=compresslevel)
         self.include_paths = include_paths
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:  # type: ignore[override]
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return

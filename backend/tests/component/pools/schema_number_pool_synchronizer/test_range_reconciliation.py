@@ -12,6 +12,7 @@ from infrahub.core.node import Node
 from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters, NumberPoolRangeParameters
+from infrahub.pools.number_pool_locker import NumberPoolLock
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
@@ -42,6 +43,7 @@ async def redeclare(
     await SchemaNumberPoolSynchronizer(
         db=db,
         scope_reader=ScopedNumberPoolReader(db=db),
+        pool_locker=NumberPoolLock(db=db),
         schema_manager=registry.schema,
         upserter=upserter,
         range_store_factory=range_store_factory,

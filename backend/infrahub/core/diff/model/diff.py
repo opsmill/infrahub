@@ -167,7 +167,7 @@ class ModifiedPath(BaseModel):
         if (
             self.modification_type == "node"
             and self.action == other.action
-            and self.action in [DiffAction.REMOVED, DiffAction.UPDATED]
+            and self.action in {DiffAction.REMOVED, DiffAction.UPDATED}
         ):
             return False
 
@@ -207,7 +207,7 @@ class ModifiedPath(BaseModel):
 
     @property
     def change_type(self) -> str:
-        if self.path_type in [PathType.ATTRIBUTE, PathType.RELATIONSHIP_MANY, PathType.RELATIONSHIP_ONE]:
+        if self.path_type in {PathType.ATTRIBUTE, PathType.RELATIONSHIP_MANY, PathType.RELATIONSHIP_ONE}:
             if self.property_name and self.property_name != "HAS_VALUE":
                 return f"{self.path_type.value}_property"
             return f"{self.path_type.value}_value"

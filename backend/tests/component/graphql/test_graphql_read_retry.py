@@ -68,7 +68,7 @@ query {
 
 
 @pytest.fixture(scope="module")
-def neo4j_small_thread_pool(request: pytest.FixtureRequest) -> int:
+def neo4j_small_thread_pool() -> Generator[int, None, None]:
     """Start a dedicated Neo4j container with a minimal Bolt thread pool (size=10)."""
     if not INFRAHUB_USE_TEST_CONTAINERS:
         pytest.skip("Test containers are disabled")
@@ -77,9 +77,11 @@ def neo4j_small_thread_pool(request: pytest.FixtureRequest) -> int:
         neo4j_image=NEO4J_IMAGE,
         extra_env={"NEO4J_server_bolt_thread__pool__max__size": "10"},
     )
-    request.addfinalizer(container.stop)
 
-    return get_exposed_port(container, PORT_BOLT_NEO4J)
+    try:
+        yield get_exposed_port(container, PORT_BOLT_NEO4J)
+    finally:
+        container.stop()
 
 
 @pytest.fixture(scope="module")
@@ -236,9 +238,11 @@ async def test_concurrent_queries_fail_without_retries(
         if isinstance(r, TransientError):
             transient_failures.append(r)
         elif hasattr(r, "errors") and r.errors:
-            for err in r.errors:
-                if isinstance(getattr(err, "original_error", None), TransientError):
-                    transient_failures.append(err.original_error)
+            transient_failures.extend(
+                err.original_error
+                for err in r.errors
+                if isinstance(getattr(err, "original_error", None), TransientError)
+            )
 
     # With thread_pool_max_size=10 and no retries, we expect at least some TransientError failures
     assert len(transient_failures) > 0, (

@@ -1,0 +1,36 @@
+---
+title: Release 1.12.1
+release_date: 2026-11-12
+release_type: security
+description: "Infrahub 1.12.1 updates documentation dependencies and the frontend plugin template to address security advisories, and speeds up getting the next available prefix in a parent prefix with many subnets and loading many objects with their relationships. It also fixes the utilization of IP prefixes that are pools, which depended on the fields of the GraphQL query, and the single sign-on buttons on the login page, which did not open the identity provider."
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.12.1</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>November 12th, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.12.1](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.12.1)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Security
+
+- Updated documentation dependencies to address `minimatch`, RE2JS, and UUID security advisories, and updated `minimatch` in the frontend plugin template.
+
+### Changed
+
+- Getting the next available prefix in a parent prefix that holds many subnets is now faster.
+- Loading many objects together with their relationships is now faster.
+
+### Fixed
+
+- Fixed the utilization of an IP prefix with `is_pool` set to true depending on the fields of the GraphQL query: a query that did not request `is_pool` left the network and broadcast addresses out of the usable total and returned a utilization that was too high. ([#11260](https://github.com/opsmill/infrahub/issues/11260))
+- Fixed the single sign-on buttons on the login page, which did not open the identity provider when clicked. ([#11541](https://github.com/opsmill/infrahub/issues/11541))

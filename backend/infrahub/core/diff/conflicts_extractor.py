@@ -217,7 +217,7 @@ class DiffConflictsExtractor:
         if not diff_property.conflict:
             return None
         change_type = PathType.ATTRIBUTE.value
-        if diff_property.property_type in (DatabaseEdgeType.HAS_VALUE, DatabaseEdgeType.IS_RELATED):
+        if diff_property.property_type in {DatabaseEdgeType.HAS_VALUE, DatabaseEdgeType.IS_RELATED}:
             change_type = f"{path_type.value}_value"
         else:
             change_type = f"{path_type.value}_property"

@@ -102,17 +102,16 @@ class TestNumberPoolHeal:
         await runtime_server.new(db=db, name="runtime")
         await runtime_server.save(db=db)
 
-        damaged: list[str] = []
-        for _ in range(3):
-            damaged.append(
-                await create_damaged_node(
-                    db=db,
-                    branch=default,
-                    labels="TestServer:TestAsset",
-                    kind="TestServer",
-                    created_at=Timestamp().subtract(seconds=240),
-                )
+        damaged: list[str] = [
+            await create_damaged_node(
+                db=db,
+                branch=default,
+                labels="TestServer:TestAsset",
+                kind="TestServer",
+                created_at=Timestamp().subtract(seconds=240),
             )
+            for _ in range(3)
+        ]
 
         switch_uuids = await _seed_switches_and_damage(
             db=db, branch=default, allocation_scope=["site"], damaged_names=["s1-c", "s2-a"]

@@ -118,7 +118,7 @@ class RelationshipChangelogGetter:
         secondaries: list[NodeChangelog] = []
         rel_schema = node_schema.get_relationship(name=relationship.name)
 
-        if relationship.peer_status in (DiffAction.ADDED, DiffAction.UPDATED):
+        if relationship.peer_status in {DiffAction.ADDED, DiffAction.UPDATED}:
             peer_schema = schema_branch.get(name=str(relationship.peer_kind), duplicate=False)
             secondaries.extend(
                 self._process_reciprocal_peers(
@@ -131,7 +131,7 @@ class RelationshipChangelogGetter:
                     peer_status=DiffAction.ADDED,
                 )
             )
-        if relationship.peer_status in (DiffAction.UPDATED, DiffAction.REMOVED):
+        if relationship.peer_status in {DiffAction.UPDATED, DiffAction.REMOVED}:
             previous_peer_schema = schema_branch.get(name=str(relationship.peer_kind_previous), duplicate=False)
             secondaries.extend(
                 self._process_reciprocal_peers(
@@ -158,7 +158,7 @@ class RelationshipChangelogGetter:
         rel_schema = node_schema.get_relationship(name=relationship.name)
 
         for peer in relationship.peers:
-            if peer.peer_status not in (DiffAction.ADDED, DiffAction.REMOVED):
+            if peer.peer_status not in {DiffAction.ADDED, DiffAction.REMOVED}:
                 continue
             peer_schema = schema_branch.get(name=peer.peer_kind, duplicate=False)
             secondaries.extend(

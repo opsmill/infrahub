@@ -149,13 +149,11 @@ class TestConvertObjectType(TestInfrahubApp):
 
         assert (await jack_2.favorite_car.get_peer(db=db)).id == car_1.id
         assert (await jack_2.worst_car.get_peer(db=db)).id == car_3.id
-        assert sorted([node.id for _, node in (await jack_2.fastest_cars.get_peers(db=db)).items()]) == sorted(
+        assert sorted([node.id for node in (await jack_2.fastest_cars.get_peers(db=db)).values()]) == sorted(
             [car_1.id, car_2.id]
         )
-        assert sorted([node.id for _, node in (await jack_2.slowest_cars.get_peers(db=db)).items()]) == sorted(
-            [car_3.id]
-        )
-        assert sorted([node.id for _, node in (await jack_2.bags.get_peers(db=db)).items()]) == sorted([bag.id])
+        assert sorted([node.id for node in (await jack_2.slowest_cars.get_peers(db=db)).values()]) == sorted([car_3.id])
+        assert sorted([node.id for node in (await jack_2.bags.get_peers(db=db)).values()]) == sorted([bag.id])
 
         # Make sure retrieving nodes works
         for node in [car_1, car_2, car_3, bag]:
@@ -353,7 +351,7 @@ class TestConvertObjectType(TestInfrahubApp):
         assert jack_2.age_aware.value == 25
         assert jack_2.height_aware.value == 170
         assert (await jack_2.favorite_car.get_peer(db=db)).id == car_1.id
-        assert {node.id for _, node in (await jack_2.other_cars.get_peers(db=db)).items()} == {car_1.id}
+        assert {node.id for node in (await jack_2.other_cars.get_peers(db=db)).values()} == {car_1.id}
 
         # Make sure other branches are in need rebase state
         br2 = await Branch.get_by_name(name=branch_name, db=db)

@@ -154,8 +154,7 @@ and remove them when touching the code:
   `authentication`'s `ui/queries` refresh-token query), most of `shared/components/inputs/`
   (`peer`, `enum`, `dropdown`, `pool-select`, `relationship-one`/`-many`, `node-kind-select`,
   `kind-multi-select`), plus `shared/components/display/slide-over.tsx`,
-  `shared/components/display/meta-details-tooltips.tsx`, `shared/components/table/data-table.tsx`,
-  `shared/components/ui/id.tsx`, and `shared/libs/graphiql/use-graphiql-fetcher.ts` (which even
+  `shared/components/table/data-table.tsx`, `shared/components/ui/id.tsx`, and `shared/libs/graphiql/use-graphiql-fetcher.ts` (which even
   reaches `nodes/object`'s `api/`).
 <!-- Extracted from specs/001-entities-arch-migration on 2026-07-03 -->
 - Backend-authoritative violation: `path-traversal/domain/rules/visible-namespace.ts`
@@ -340,6 +339,51 @@ Do not write a one-off `resolveUuid` function.
     context: { processErrorMessage: () => {} }, // caller renders the toast; don't double up
   });
   ```
+
+## GraphQL variables, not inlined values
+
+Send every value that changes from one request to the next (`limit`, `offset`, search text, ids, input payloads) as a GraphQL variable. The server reuses its work on a query only when the query text is the same as an earlier one, so a value written into the text makes every page, node or search a new query. Kind names, field selections and constants written in the source stay in the text.
+
+```ts
+// ✅ One query text for every page and every node
+const query = graphql(
+  jsonToGraphQLQuery({
+    query: {
+      __name: `GetObjects${kind}`,
+      __variables: { limit: "Int", offset: "Int", ids: "[ID]" },
+      [kind]: {
+        __args: {
+          limit: new VariableType("limit"),
+          offset: new VariableType("offset"),
+          ids: new VariableType("ids"),
+        },
+        edges: { node: { id: true, display_label: true } },
+      },
+    },
+  })
+);
+
+graphqlClient.query({ query, variables: { limit, offset, ids: [objectId] } });
+```
+
+```ts
+// ❌ A different query text for each page and each node
+const query = graphql(
+  jsonToGraphQLQuery({
+    query: {
+      __name: `GetObjects${kind}`,
+      [kind]: {
+        __args: { limit, offset, ids: [objectId] },
+        edges: { node: { id: true, display_label: true } },
+      },
+    },
+  })
+);
+
+graphqlClient.query({ query });
+```
+
+List filters built by `addFiltersToRequest` still write their values into the query text. Do not copy that in a new query.
 
 ## Backend is authoritative
 

@@ -30,7 +30,7 @@ from tests.helpers.selective_regen import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Collection, Sequence
 
     from infrahub_sdk.diff import NodeDiff
 
@@ -72,7 +72,9 @@ class _RecordingSelector[DefinitionT: DefinitionModel, RequestT](DefinitionSelec
     async def _fetch_member_ids(self, *, definition: DefinitionT, target_branch: str) -> list[str]:
         raise NotImplementedError
 
-    def _should_render(self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: list[str]) -> bool:
+    def _should_render(
+        self, *, subscriber_id: str | None, regenerate_all_members: bool, impacted: Collection[str]
+    ) -> bool:
         raise NotImplementedError
 
     def _build_request(self, *, definition: DefinitionT, target_branch: str, members: list[str]) -> RequestT:

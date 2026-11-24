@@ -33,7 +33,7 @@ class BuiltinIPPrefix(Node):
         if fields:
             for read_only_attr in ["netmask", "hostmask", "network_address", "broadcast_address"]:
                 if read_only_attr in fields:
-                    response[read_only_attr] = {"value": getattr(self.prefix, read_only_attr)}  # type: ignore[attr-defined,has-type]
+                    response[read_only_attr] = {"value": getattr(self.prefix, read_only_attr)}  # type: ignore[attr-defined]
 
             if "utilization" in fields:
                 await self._load_prefix_space_attributes(db=db)

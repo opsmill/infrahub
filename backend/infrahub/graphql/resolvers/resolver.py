@@ -237,7 +237,7 @@ async def default_paginated_list_resolver(
     async with graphql_context.db.start_session(read_only=True) as db:
         response: dict[str, Any] = {"edges": []}
         filters = {
-            key: value for key, value in kwargs.items() if ("__" in key and value is not None) or key in ("ids", "hfid")
+            key: value for key, value in kwargs.items() if ("__" in key and value is not None) or key in {"ids", "hfid"}
         }
         filters = _transform_metadata_day_filters(filters)
 

@@ -389,7 +389,7 @@ class SchemaUpdateCoordinator:
         """
         await self.rollbacker.rollback(
             target_branch=branch,
-            at=at,
+            ats=[at],
             scope=RollbackScope.AT_TIMESTAMP,
         )
 

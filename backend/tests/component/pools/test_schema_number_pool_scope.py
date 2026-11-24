@@ -15,6 +15,7 @@ from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import ValidationError
+from infrahub.pools.number_pool_locker import NumberPoolLock
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
@@ -65,6 +66,7 @@ async def _load_and_provision(db: InfrahubDatabase, schema: SchemaRoot, branch_n
     await SchemaNumberPoolSynchronizer(
         db=db,
         scope_reader=ScopedNumberPoolReader(db=db),
+        pool_locker=NumberPoolLock(db=db),
         schema_manager=registry.schema,
         upserter=upserter,
         range_store_factory=NumberPoolRepository,

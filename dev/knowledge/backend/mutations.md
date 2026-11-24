@@ -22,7 +22,9 @@ GraphQL mutations for creating, updating, upserting, and deleting nodes. All mut
 ```
 mutate_create()
   -> create_node()                    # create.py
-       -> preview node (process_pools=False) for lock calculation
+       -> preview node (process_pools=False) for lock calculation, with the id of the node to create
+       -> read_template_components()   # template only: the subtemplates, read a level at a time
+       -> get_template_pool_lock_names()  # template only: the pool locks of the object and its components
        -> acquire InfrahubMultiLock
        -> _do_create_node()
             -> NodeMutationContext     # records the other nodes the mutation writes, for events
@@ -30,14 +32,15 @@ mutate_create()
                  -> _process_fields()  # validates, hydrates attrs & rels
                  -> _process_macros()  # evaluates mandatory computed attrs
             -> NodeConstraintRunner.check()
+            -> NodeProfilesApplier.apply_profiles()  # if the node has profiles
+                 -> _process_macros()  # again, if the profiles changed a field
             -> Node.save()
                  -> resolve_relationships()  # loads peers with extra_filters
                  -> _create()
                       -> add_human_friendly_id()
                       -> add_display_label()
                       -> NodeCreateAllQuery  # bulk Neo4j insert
-            -> handle_template_relationships()  # template instantiation, read a level at a time
-       -> apply profiles if applicable
+            -> create_components()  # template instantiation, created depth first
   -> emit NodeCreatedEvent
 ```
 
@@ -114,7 +117,7 @@ decoration:
 
 - Wrap only a scope whose writes are fully contained in a transaction the retry can roll back. The
   create path is the trap: `create_node()` commits its own transaction and then does post-commit
-  work (profiles, response reads), so a decorator on the whole mutation replays a commit that
+  work (response reads), so a decorator on the whole mutation replays a commit that
   already succeeded and creates a duplicate node. The update path keeps its response build inside
   `db.start_transaction()`, which is what makes it replay-safe.
 - Skip the retry when `db.is_transaction` — a caller-supplied transaction is already failed after a
@@ -148,9 +151,19 @@ A relationship's peers are all-or-nothing with respect to Profile sourcing: eith
 
 `NodeProfilesApplier` then treats such a relationship as user-defined and does not re-apply Profile peers to it.
 
+`NodeProfilesApplier.apply_profiles()` changes the node in memory only, relationships included, and returns the names of the fields it changed. Save the node with those fields: the save writes the Profile values and records them in the node changelog, so they reach the node event.
+
+`RelationshipRemove` on a node's `profiles` runs `RelationshipProfileRemovalConstraint` before the transaction, as a node update does: it refuses to remove a Profile that gives the node a required attribute or relationship.
+
 On the Profile side, `RelationshipAdd` and `RelationshipRemove` on `related_nodes` or `related_templates` apply no Profile value in the request. Before the transaction, `RelationshipRemove` on `related_nodes` runs `RelationshipProfileRemovalConstraint`, as a Profile update or delete does: it refuses to remove a node that inherits a required attribute or relationship from the Profile, because the refresh flow could not clear that value. After the transaction commits, they submit the chunked profile refresh for the peers they added or removed, so the values arrive with the refresh flows and their readers recompute. A failed submission is logged and the mutation still returns `ok`: the change is committed, and a retry would add or remove no peer, so it would submit nothing.
 
 The Profile update and upsert mutations also submit the refresh for the peers that a `related_nodes` or `related_templates` payload adds or removes. The refresh automation of a Profile does not trigger on these two relationships, so without it the peers that the payload adds would not get the Profile values. As for `RelationshipAdd` and `RelationshipRemove`, a failed submission is logged and the mutation still returns `ok`.
+
+Before the commit, `RelationshipProfileRemovalConstraint` refuses a Profile update or upsert, or a `RelationshipRemove` on a relationship of the Profile, that leaves that relationship with no peer, when a related node requires the relationship and inherits it from the Profile. This includes the Profile of a generic. The refresh flow runs after the commit, so it could not refuse the change, and it could not clear the relationship.
+
+The check reads the related nodes of the Profile on the branch of the request only. A node that another branch links to the Profile is not checked, so a merge or a rebase can bring together a Profile that no longer sets a required relationship and a node that inherits that relationship from it. When the refresh flow meets such a node, for example in the refresh after a rebase, it skips the node: the node keeps the old peer and the other old Profile values, and the flow logs a warning.
+
+These refusals do not look at the other Profiles of the node. If another Profile sets the same relationship or attribute, the refresh would apply its value, but the request is refused all the same. The node update and the Profile delete have the same limit.
 
 ### UUID vs HFID References
 
@@ -228,8 +241,10 @@ A peer that must keep its relationship, such as a component under a mandatory pa
 
 ## Locking Strategy
 
-1. A preview node is created with `process_pools=False` (no side effects)
-2. Lock names are computed from uniqueness constraints and resource pool fields
+1. A preview node is created with `process_pools=False` (no side effects); a create gives it the id of
+   the node it creates
+2. Lock names are computed from uniqueness constraints and resource pool fields; for a create from a
+   template they also include the pool locks of its components
 3. `InfrahubMultiLock` acquired before the transaction
 4. Actual mutation runs inside the lock
 
@@ -250,13 +265,123 @@ object locks, because the IPAM reconciliation that follows rewrites parent relat
   mutations of different addresses do not wait for each other. On other branches an IP address
   mutation takes no IPAM lock, because reconciliation runs again at merge.
 
+### Number pool locks
+
+A change to a number pool's ranges and a write that checks a number against those ranges must not
+overlap: otherwise the write can commit a number from a range the change just removed. Every such path
+goes through the `NumberPoolLocker` protocol, which `NumberPoolLock` in `pools/number_pool_locker.py`
+implements with two locks:
+
+| Lock | Taken by | Mode |
+|------|----------|------|
+| `resource_pool.<pool id>` | range create, update and delete, pool delete, pool updates that send `start_range`, `end_range` or `ranges`, the schema-pool synchronizer's range, scope and deletion changes to existing pools, the schema migration that adds a NumberPool attribute | exclusive (`changing`) |
+| `resource_pool.<pool id>` | allocation that picks a new number, attaching a supplied number, editing a tracked number | shared (`holding`) |
+| `resource_pool.<pool id>.<division key>`, or `.all` without a scope | allocation, also in the mutation's lock names | mutex (`picking`) |
+
+Pool create and update, and range create and update, also take `number_pool_target.<kind>.<attribute>`
+before the pool's exclusive lock, so two pools on the same unique attribute cannot gain overlapping ranges
+at the same time. Allocations never take it. Pool create takes only this lock: no other request can read
+the new pool before its transaction commits, so no write can hold it.
+
+- **Shared holders run in parallel.** Each one records an entry that expires, at
+  `lock.shared.<lock name>.<holder id>`, adds its id to the set `lock.shared.<lock name>`, and renews
+  the entry while it holds the lock, so allocations in different divisions never wait for each other.
+  Checking for holders reads that set and the entries of the ids in it, and drops the ids whose entries
+  expired.
+- **A hold lasts until the commit.** Inside a transaction, `holding` and `changing` hand their release
+  to `InfrahubDatabase.hold_until_transaction_end`, because a number or a range only becomes visible to
+  other writes once it is committed. This also covers allocations that run inside a transaction outside
+  the mutation lock, such as migrations.
+- **An exclusive request waits for the shared holders.** It takes the mutex, so new shared requests
+  queue behind it, then waits until no entry remains. After `INFRAHUB_CACHE_EXCLUSIVE_LOCK_WAIT_SECS`
+  it releases the mutex and the range change fails with a retry message. The lock error, which names
+  the setting, is logged as a warning, so that the API message does not name a server setting.
+- **The division's lock comes before the pool's shared hold.** A write that holds the pool until its
+  commit and then waits for a division's lock can wait on an allocation that is itself queued behind a
+  range change, so allocations take `picking` first. A create from a template takes it before its
+  transaction, with the exceptions listed in
+  [Pool locks of a create from a template](#pool-locks-of-a-create-from-a-template).
+- **A task that holds the pool exclusively skips `picking`.** Every other allocation picks inside its
+  shared hold, so none can pick while the pool is held exclusively, and skipping the division's lock keeps
+  the exclusive holder from waiting on an allocation that is itself queued behind it.
+- **The schema migration that adds a NumberPool attribute holds the pool exclusively until its commit.**
+  It allocates a number to every existing node in one transaction, and holds `changing` from before its
+  first allocation until the commit, so that no other allocation picks a number the migration drew but
+  has not committed yet, and no range changes under it. When writes still hold the pool after
+  `INFRAHUB_CACHE_EXCLUSIVE_LOCK_WAIT_SECS`, the migration fails. The Prefect task that runs it retries it
+  up to 3 times, and the schema update is rolled back only when the last attempt also fails. A kind with
+  no nodes allocates nothing and takes no pool lock.
+- **A dead worker makes range changes fail until its entry expires**, after
+  `INFRAHUB_CACHE_SHARED_LOCK_TTL_SECS`.
+- **An allocation that returns its identifier's reservation does not hold the pool.** The reserved
+  number is already tracked, so the range check already counts it.
+- **The schema-pool synchronizer locks only the pools it changes.** It runs on every schema load and
+  every merge, so it first reads a pool's ranges and shorthand without the lock, and skips the pool when
+  both match the declaration.
+- **The schema-pool synchronizer reports a range change it could not apply** and moves on to the other
+  pools; the flow raises the refusals once every pool was processed.
+- **Not covered:** the IP prefix and IP address pool `GetResource` mutations run without a transaction,
+  so a number drawn by the IP node they create is released before its write.
+
+### Pool locks of a create from a template
+
+A create from a template draws from pools inside its transaction: the pools the template names for the
+object, and the pools its components draw from. The query that creates a node with a number that a
+number pool tracks locks that pool's vertex in Neo4j until the commit, for every division. A write that
+waits for a division's lock inside its transaction, after it wrote such a number, can therefore wait on
+an allocation that holds that lock and itself waits for the vertex. Neither wait has a time limit, and
+Neo4j does not detect the cycle. So `create_node()` adds the division locks and the IP pool locks of the
+create to the mutation's lock names, which it takes before it opens its transaction; the allocations
+inside the transaction take them again without waiting. The pool's shared hold is still taken inside the
+transaction. The exceptions are listed below.
+
+`get_template_pool_lock_names()` in `core/node/create.py` returns the names the preview of the object
+does not already hold:
+
+| Draws from | Object created from the template | Component created from a subtemplate |
+|------------|----------------------------------|--------------------------------------|
+| Number pool the template names, with a scope | preview of the object | `resource_pool.<pool id>.<division key>` |
+| Number pool the template names, without a scope | `resource_pool.<pool id>.all` | `resource_pool.<pool id>.all` |
+| `NumberPool` attribute of the schema | preview of the object | `resource_pool.<pool id>.<division key>`, or `.all` without a scope |
+| IP address or IP prefix pool the template names | `resource_pool.<pool id>` | `resource_pool.<pool id>` |
+
+- **Each pooled component is built twice.** `create_node()` builds an unsaved preview of each component
+  that draws from a pool, and of each component above one, to read its division. A component draws from a
+  pool when its subtemplate names one or its kind has a `NumberPool` attribute. A preview of a component in
+  a scoped number pool reads the pool once more, and the peers or the profiles that hold a scope element
+  when the preview does not hold them. A template whose components draw from no pool builds no preview.
+- **The preview and the object created share one id.** `create_node()` generates the id of the object
+  before it builds the preview, unless the payload sets one, and each `TemplateComponent` holds the id of
+  the component it describes. So a lock name that holds the id of a new object, such as the division of a
+  component whose scope names its new parent, or `relationship_count.<identifier>.<node id>`, names the
+  object created. An id that `create_node()` generated is not checked against the database; an id the
+  payload sets is.
+- **The subtemplates are read before the locks, as the template is.** A subtemplate that another write
+  changes or deletes while the create waits for a lock is applied as it was read.
+- **A validation error of a component that draws from a pool, or holds one that does, is raised before the
+  object's own checks**, because its preview is built before the locks. Other components are validated
+  after them.
+- **Not covered: a scope element that a pool fills.** When a pool fills a field that another pool's scope
+  names, on the object or on a component, the preview reads that element as empty. The create takes the
+  lock of that empty division (`.all` when the scope has one element), and takes the lock of the real
+  division inside the transaction.
+- **Not covered: an IP pool whose address or prefix kind has a `NumberPool` attribute.** The IP node is
+  created inside the transaction, where it takes the lock of that number pool. A create that names the IP
+  pool with `from_pool` on a relationship does the same.
+- **Not covered: a caller that passes a database with a transaction already open.** `create_node()` then
+  takes the locks inside that transaction.
+
+`backend/tests/component/core/node/test_template_pool_lock_order.py` covers every cell of the table, a
+nested component, a payload that sets the `id`, and a division that holds the object created.
+
 ## Key Files
 
 | File | What |
 |------|------|
 | `graphql/mutations/main.py` | Mutation dispatcher, create/update/upsert/delete |
 | `core/node/__init__.py` | `Node.new()`, `load()`, `from_graphql()`, `_create()`, `_update()`, `save()` |
-| `core/node/create.py` | `create_node()`, `_do_create_node()`, template relationship handling |
+| `core/node/create.py` | `create_node()`, `_do_create_node()`, `read_template_components()`, `get_template_pool_lock_names()`, `create_components()` |
+| `core/node/lock_utils.py` | `get_lock_names_on_object_mutation()`, `get_pool_lock_names()`, `ip_pool_lock_name()` |
 | `core/relationship/model.py` | `RelationshipManager.update()`, `resolve()`, `save()` |
 | `core/constraint/node/runner.py` | `NodeConstraintRunner` for uniqueness/constraint checks |
 | `core/query/node.py` | `NodeCreateAllQuery` and other DB queries |

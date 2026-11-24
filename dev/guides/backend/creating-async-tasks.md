@@ -172,6 +172,10 @@ async def my_workflow(branch: str, node_id: str, context: InfrahubContext) -> No
 `add_tags()` is enough for tags that only annotate a run for a human reading the task list. A tag
 another system *filters* on must also be passed at submission — see the caution below and Step 6.
 
+A branch tag has a second effect: once the run has settled, it is deleted when that branch is
+deleted. Leave the branch tag off a run that a caller follows across the deletion of that branch —
+see [Branch-tagged runs outlive their branch](../../knowledge/backend/async-tasks.md#branch-tagged-runs-outlive-their-branch).
+
 **Caution:** `add_tags()` rebuilds the tag list from the tags present at flow start, not from
 what an earlier `add_tags()` call in this same run just set — so if this flow (or a shared helper
 it calls, e.g. a recompute dispatcher) calls `add_tags` more than once, only the last call's own
@@ -194,8 +198,8 @@ await workflow.submit_workflow(
     workflow=MY_WORKFLOW,
     context=context,
     parameters={"resource_id": "abc123", "branch": branch},
-    # Creation tag: branch-scoped task queries filter on this, and a tag added from
-    # inside the run does not reach that filter.
+    # Creation tag: branch-scoped task queries filter on this. A tag added from inside the run
+    # is absent until the flow starts, and a later in-flow tag update can drop it.
     tags=[WorkflowTag.BRANCH.render(identifier=branch)],
 )
 ```

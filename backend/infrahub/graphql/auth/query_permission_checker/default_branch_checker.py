@@ -39,10 +39,10 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         query_parameters: GraphqlParams,
         branch: Branch,  # noqa: ARG002
     ) -> CheckerResolution:
-        operates_on_default_branch = analyzed_query.branch is None or analyzed_query.branch.name in (
+        operates_on_default_branch = analyzed_query.branch is None or analyzed_query.branch.name in {
             GLOBAL_BRANCH_NAME,
             registry.default_branch,
-        )
+        }
         is_exempt_operation = all(
             operation_name in self.exempt_operations for operation_name in analyzed_query.operation_names
         )

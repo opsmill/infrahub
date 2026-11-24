@@ -80,9 +80,9 @@ class PermissionResolver:
 
         for permission in self.permissions["object_permissions"]:
             if (
-                permission.namespace in [namespace, *self.wildcard_values]
-                and permission.name in [name, *self.wildcard_values]
-                and permission.action in [action, *self.wildcard_actions]
+                permission.namespace in {namespace, *self.wildcard_values}
+                and permission.name in {name, *self.wildcard_values}
+                and permission.action in {action, *self.wildcard_actions}
             ):
                 permission_decision = PermissionDecisionFlag(value=permission.decision)
                 specificity = self._compute_specificity(permission=permission)
@@ -123,7 +123,7 @@ class PermissionResolver:
         """Compute the branch-relative permission decision for a kind/action."""
         global_report = self.build_global_report()
 
-        if branch.status in (BranchStatus.MERGED, BranchStatus.NEED_REBASE) and action != "view":
+        if branch.status in {BranchStatus.MERGED, BranchStatus.NEED_REBASE} and action != "view":
             return BranchRelativePermissionDecision.DENY
 
         if global_report[GlobalPermissions.SUPER_ADMIN]:
@@ -140,7 +140,7 @@ class PermissionResolver:
                 )
 
         # Object permissions with branch-relative logic
-        is_default_branch = branch.name in (GLOBAL_BRANCH_NAME, self.default_branch_name)
+        is_default_branch = branch.name in {GLOBAL_BRANCH_NAME, self.default_branch_name}
         decision = self.report_object_permission(namespace=node_schema.namespace, name=node_schema.name, action=action)
 
         if (

@@ -45,10 +45,10 @@ class ProposedChangeState(InfrahubStringEnum):
         if self == ProposedChangeState.OPEN:
             return
 
-        if self == ProposedChangeState.CLOSED and updated_state not in [
+        if self == ProposedChangeState.CLOSED and updated_state not in {
             ProposedChangeState.CANCELED,
             ProposedChangeState.OPEN,
-        ]:
+        }:
             raise ValidationError(
                 input_value="A closed proposed change is only allowed to transition to the open state"
             )

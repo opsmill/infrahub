@@ -104,6 +104,26 @@ async def test_reentrant_acquire_records_single_boundary(recording_lock_timeline
     recording_lock_timeline.assert_held_at_checkpoint("repository.repo-a", "nested")
 
 
+async def test_an_exclusive_acquire_nested_under_a_shared_one_records_a_single_exclusive_boundary(
+    recording_lock_timeline: LockTimeline,
+) -> None:
+    pool_lock = lock.registry.get_shared(name="pool-1", namespace="resource_pool")
+    async with pool_lock.exclusive(), pool_lock.shared(), pool_lock.exclusive():
+        pass
+
+    assert [(event.name, event.action) for event in recording_lock_timeline.events] == [
+        ("resource_pool.pool-1:exclusive", LockAction.WAIT),
+        ("resource_pool.pool-1", LockAction.WAIT),
+        ("resource_pool.pool-1", LockAction.ACQUIRE),
+        ("resource_pool.pool-1:exclusive", LockAction.ACQUIRE),
+        ("resource_pool.pool-1:shared", LockAction.WAIT),
+        ("resource_pool.pool-1:shared", LockAction.ACQUIRE),
+        ("resource_pool.pool-1:shared", LockAction.RELEASE),
+        ("resource_pool.pool-1", LockAction.RELEASE),
+        ("resource_pool.pool-1:exclusive", LockAction.RELEASE),
+    ]
+
+
 async def test_multi_lock_records_each_member(recording_lock_timeline: LockTimeline) -> None:
     async with lock.registry.global_graph_lock():
         held = recording_lock_timeline.currently_held()

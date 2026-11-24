@@ -33,7 +33,7 @@ async def check_repo_correctly_created(repo_id: str, db: InfrahubDatabase, branc
         branch=branch_name,
     )
     assert manufacturer_mercedes.name.value == "Mercedes"
-    assert list((await manufacturer_mercedes.customers.get_peers(db=db)).values())[0].name.value == "Ethan Carter"
+    assert next(iter((await manufacturer_mercedes.customers.get_peers(db=db)).values())).name.value == "Ethan Carter"
 
     manufacturer_ford = await NodeManager.get_one_by_default_filter(
         db=db,
@@ -44,7 +44,7 @@ async def check_repo_correctly_created(repo_id: str, db: InfrahubDatabase, branc
         branch=branch_name,
     )
     assert manufacturer_ford.name.value == "Ford"
-    assert list((await manufacturer_ford.customers.get_peers(db=db)).values())[0].name.value == "Olivia Bennett"
+    assert next(iter((await manufacturer_ford.customers.get_peers(db=db)).values())).name.value == "Olivia Bennett"
 
     # Check repository groups have been correctly created
     repository_group = await NodeManager.get_one_by_default_filter(

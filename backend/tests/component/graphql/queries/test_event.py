@@ -556,12 +556,12 @@ async def test_event_query_prefect(
     clean_result = filter_outofscope_events(mutated_nodes.data, event_ids_inscope)
 
     assert len(clean_result["InfrahubEvent"]["edges"]) == 2
-    created = [
+    created = next(
         entry for entry in clean_result["InfrahubEvent"]["edges"] if entry["node"]["event"] == "infrahub.node.created"
-    ][0]
-    updated = [
+    )
+    updated = next(
         entry for entry in clean_result["InfrahubEvent"]["edges"] if entry["node"]["event"] == "infrahub.node.updated"
-    ][0]
+    )
 
     assert created["node"]["attributes"] == [
         {"action": "ADDED", "kind": "List", "name": "human_friendly_id", "value": "['red']", "value_previous": None},

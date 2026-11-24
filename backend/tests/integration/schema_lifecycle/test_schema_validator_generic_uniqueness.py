@@ -312,12 +312,12 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         boomer_main = await NodeManager.get_one_by_id_or_default_filter(
             db=db, kind=CYLON_KIND, id=initial_dataset["boomer"]
         )
-        boomer_main.favorite_color.value = "green"  # type: ignore[attr-defined]
+        boomer_main.favorite_color.value = "green"
         await boomer_main.save(db=db)
         athena_branch = await NodeManager.get_one_by_id_or_default_filter(
             db=db, kind=CYLON_KIND, id=initial_dataset["athena"], branch=branch_2
         )
-        athena_branch.favorite_color.value = "green"  # type: ignore[attr-defined]
+        athena_branch.favorite_color.value = "green"
         await athena_branch.save(db=db)
 
         with pytest.raises(GraphQLError) as exc:
@@ -337,12 +337,12 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         boomer_main = await NodeManager.get_one_by_id_or_default_filter(
             db=db, kind=CYLON_KIND, id=initial_dataset["boomer"]
         )
-        boomer_main.favorite_color.value = "green"  # type: ignore[attr-defined]
+        boomer_main.favorite_color.value = "green"
         await boomer_main.save(db=db)
         caprica_main = await NodeManager.get_one_by_id_or_default_filter(
             db=db, kind=CYLON_KIND, id=initial_dataset["caprica"]
         )
-        caprica_main.favorite_color.value = "green"  # type: ignore[attr-defined]
+        caprica_main.favorite_color.value = "green"
         await caprica_main.save(db=db)
 
         success, response = await client.schema.check(schemas=[schema_03_generic_and_node_uniqueness_failure])
@@ -363,12 +363,12 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         boomer_main = await NodeManager.get_one_by_id_or_default_filter(
             db=db, kind=CYLON_KIND, id=initial_dataset["boomer"]
         )
-        boomer_main.favorite_color.value = None  # type: ignore[attr-defined]
+        boomer_main.favorite_color.value = None
         await boomer_main.save(db=db)
         caprica_main = await NodeManager.get_one_by_id_or_default_filter(
             db=db, kind=CYLON_KIND, id=initial_dataset["caprica"]
         )
-        caprica_main.favorite_color.value = None  # type: ignore[attr-defined]
+        caprica_main.favorite_color.value = None
         await caprica_main.save(db=db)
 
     async def test_step_04_check_generic_and_node_uniqueness_constraint_rebase_failure(
@@ -387,22 +387,22 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         boomer_main = await NodeManager.get_one_by_id_or_default_filter(
             db=db, kind=CYLON_KIND, id=initial_dataset["boomer"]
         )
-        boomer_main.favorite_color.value = "green"  # type: ignore[attr-defined]
+        boomer_main.favorite_color.value = "green"
         await boomer_main.save(db=db)
         athena_branch = await NodeManager.get_one_by_id_or_default_filter(
             db=db, kind=CYLON_KIND, id=initial_dataset["athena"], branch=branch_2
         )
-        athena_branch.favorite_color.value = "green"  # type: ignore[attr-defined]
+        athena_branch.favorite_color.value = "green"
         await athena_branch.save(db=db)
         starbuck_main = await NodeManager.get_one_by_id_or_default_filter(
             db=db, kind=PERSON_KIND, id=initial_dataset["starbuck"]
         )
-        starbuck_main.favorite_color.value = "purple"  # type: ignore[attr-defined]
+        starbuck_main.favorite_color.value = "purple"
         await starbuck_main.save(db=db)
         president_branch = await NodeManager.get_one_by_id_or_default_filter(
             db=db, kind=PERSON_KIND, id=initial_dataset["president"], branch=branch_2
         )
-        president_branch.favorite_color.value = "purple"  # type: ignore[attr-defined]
+        president_branch.favorite_color.value = "purple"
         await president_branch.save(db=db)
 
         with pytest.raises(GraphQLError) as exc:

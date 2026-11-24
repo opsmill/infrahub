@@ -20,6 +20,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
 from tests.component.core.migrations.schema.metadata_helpers import (
+    EdgeFingerprint,
     VertexMetadata,
     branch_edge_fingerprint,
     branch_metadata_fingerprint,
@@ -131,6 +132,194 @@ async def test_query_indexed_to_not_indexed(db: InfrahubDatabase, default_branch
     assert num_non_indexed == 1
 
 
+GAUGE_SCHEMA = {
+    "version": "1.0",
+    "nodes": [
+        {
+            "name": "Gauge",
+            "namespace": "Test",
+            "attributes": [
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "serial", "kind": "Number", "default_value": 2},
+                {"name": "rank", "kind": "Number"},
+                {"name": "code", "kind": "Text"},
+                {"name": "notes", "kind": "TextArea", "default_value": "w"},
+            ],
+        }
+    ],
+}
+
+
+async def _update_gauge_attribute_kind(
+    db: InfrahubDatabase, branch: Branch, attribute_name: str, previous_kind: str, new_kind: str
+) -> None:
+    schema = registry.schema.get_schema_branch(name=branch.name)
+    previous_schema = schema.get(name="TestGauge")
+    previous_schema.get_attribute(name=attribute_name).kind = previous_kind
+    new_schema = schema.get(name="TestGauge")
+    new_schema.get_attribute(name=attribute_name).kind = new_kind
+    migration = AttributeKindUpdateMigration(
+        previous_node_schema=previous_schema,
+        new_node_schema=new_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestGauge", field_name=attribute_name),
+    )
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
+    assert not execution_result.errors
+
+
+async def _get_open_values(
+    db: InfrahubDatabase, branch: Branch, attribute_name: str
+) -> list[tuple[str, str | int, bool, bool]]:
+    """Return one row per open active value edge of the attribute on the branch: gauge name, value, is_default and is_indexed."""
+    results = await db.execute_query(
+        query="""
+        MATCH (n:TestGauge)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE {status: "active"}]->(name_av)
+        MATCH (n)-[:HAS_ATTRIBUTE]->(:Attribute {name: $attribute_name})-[r:HAS_VALUE {branch: $branch, status: "active"}]->(av)
+        WHERE r.to IS NULL
+        RETURN name_av.value AS name, av.value AS value, av.is_default AS is_default,
+            "AttributeValueIndexed" IN labels(av) AS is_indexed
+        """,
+        params={"attribute_name": attribute_name, "branch": branch.name},
+    )
+    return sorted((result["name"], result["value"], result["is_default"], result["is_indexed"]) for result in results)
+
+
+async def _get_value_vertex_counts(
+    db: InfrahubDatabase, values: list[str | int]
+) -> dict[tuple[str | int, bool, bool], int]:
+    """Return the number of AttributeValue vertices per value, is_default and is_indexed, for the given values."""
+    results = await db.execute_query(
+        query="""
+        MATCH (av:AttributeValue)
+        WHERE av.value IN $values
+        RETURN av.value AS value, av.is_default AS is_default, "AttributeValueIndexed" IN labels(av) AS is_indexed,
+            count(av) AS num_vertices
+        """,
+        params={"values": values},
+    )
+    return {(result["value"], result["is_default"], result["is_indexed"]): result["num_vertices"] for result in results}
+
+
+async def _get_open_active_edge_counts(
+    db: InfrahubDatabase, attribute_names: list[str]
+) -> dict[tuple[str, str, str], int]:
+    """Return the number of open active HAS_VALUE edges per gauge, attribute and branch, for the given attributes."""
+    results = await db.execute_query(
+        query="""
+        MATCH (n:TestGauge)-[:HAS_ATTRIBUTE]->(attr:Attribute)-[r:HAS_VALUE {status: "active"}]->()
+        WHERE r.to IS NULL AND attr.name IN $attribute_names
+        RETURN n.uuid AS node_id, attr.name AS attribute_name, r.branch AS branch, count(r) AS num_edges
+        """,
+        params={"attribute_names": attribute_names},
+    )
+    return {(result["node_id"], result["attribute_name"], result["branch"]): result["num_edges"] for result in results}
+
+
+@dataclass
+class KindUpdateBranchCase:
+    name: str
+    on_user_branch: bool
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [
+        pytest.param(KindUpdateBranchCase(name="default_branch", on_user_branch=False), id="default_branch"),
+        pytest.param(KindUpdateBranchCase(name="user_branch", on_user_branch=True), id="user_branch"),
+    ],
+)
+async def test_kind_update_reuses_value_vertices(
+    db: InfrahubDatabase, default_branch: Branch, test_case: KindUpdateBranchCase
+) -> None:
+    """A kind update to a large kind and back links each attribute to the value vertex of the new kind for its value.
+
+    A vertex is reused only when its value and ``is_default`` both match, and one is created when none exists:
+    before ``serial`` changes kind, the explicit 2 already has a non-indexed vertex but the default 2 does not, and
+    the integer 1 has none although the string "1" does. Toward an indexed kind, the explicit "x" reuses the indexed
+    vertex written by ``code`` while the explicit and default "w", written only as ``notes`` values, get one each.
+    """
+    await load_schema(db=db, schema=SchemaRoot(**GAUGE_SCHEMA))
+    g1 = await Node.init(db=db, schema="TestGauge")
+    await g1.new(db=db, name="g1", serial=1, rank=2, code="1", notes="x")
+    g2 = await Node.init(db=db, schema="TestGauge")
+    await g2.new(db=db, name="g2", serial=2, rank=2, code="x", notes="w")
+    g3 = await Node.init(db=db, schema="TestGauge")
+    await g3.new(db=db, name="g3", serial=3, rank=4, code="y", notes="w")
+    g4 = await Node.init(db=db, schema="TestGauge")
+    await g4.new(db=db, name="g4", rank=4, code="y")
+    for gauge in [g1, g2, g3, g4]:
+        await gauge.save(db=db)
+    branch = default_branch
+    if test_case.on_user_branch:
+        branch = await create_branch(branch_name="branch-gauge-kind-update", db=db)
+
+    await _update_gauge_attribute_kind(db, branch, "code", previous_kind="Text", new_kind="TextArea")
+    await _update_gauge_attribute_kind(db, branch, "rank", previous_kind="Number", new_kind="TextArea")
+    await _update_gauge_attribute_kind(db, branch, "serial", previous_kind="Number", new_kind="TextArea")
+    assert await _get_value_vertex_counts(db=db, values=["1", 1, 2, 3]) == {
+        ("1", False, True): 1,
+        ("1", False, False): 1,
+        (1, False, True): 1,
+        (1, False, False): 1,
+        (2, False, True): 1,
+        (2, False, False): 1,
+        (2, True, True): 1,
+        (2, True, False): 1,
+        (3, False, True): 1,
+        (3, False, False): 1,
+    }
+    assert await _get_open_values(db=db, branch=branch, attribute_name="serial") == [
+        ("g1", 1, False, False),
+        ("g2", 2, False, False),
+        ("g3", 3, False, False),
+        ("g4", 2, True, False),
+    ]
+
+    await _update_gauge_attribute_kind(db, branch, "serial", previous_kind="TextArea", new_kind="Number")
+    await _update_gauge_attribute_kind(db, branch, "notes", previous_kind="TextArea", new_kind="Text")
+    assert await _get_value_vertex_counts(db=db, values=[1, 2, 3, "x", "w"]) == {
+        (1, False, True): 1,
+        (1, False, False): 1,
+        (2, False, True): 1,
+        (2, False, False): 1,
+        (2, True, True): 1,
+        (2, True, False): 1,
+        (3, False, True): 1,
+        (3, False, False): 1,
+        ("x", False, True): 1,
+        ("x", False, False): 1,
+        ("w", False, True): 1,
+        ("w", False, False): 1,
+        ("w", True, True): 1,
+        ("w", True, False): 1,
+    }
+    assert await _get_open_values(db=db, branch=branch, attribute_name="serial") == [
+        ("g1", 1, False, True),
+        ("g2", 2, False, True),
+        ("g3", 3, False, True),
+        ("g4", 2, True, True),
+    ]
+    assert await _get_open_values(db=db, branch=branch, attribute_name="notes") == [
+        ("g1", "x", False, True),
+        ("g2", "w", False, True),
+        ("g3", "w", False, True),
+        ("g4", "w", True, True),
+    ]
+
+    attribute_names = ["name", "serial", "rank", "code", "notes"]
+    edge_counts = await _get_open_active_edge_counts(db=db, attribute_names=attribute_names)
+    expected_branches = {default_branch.name, branch.name}
+    expected_edge_counts = {
+        (node_id, attribute_name, branch_name): 1
+        for node_id in [g1.id, g2.id, g3.id, g4.id]
+        for attribute_name in attribute_names
+        for branch_name in expected_branches
+        if branch_name == default_branch.name or attribute_name != "name"
+    }
+    assert edge_counts == expected_edge_counts
+    await verify_graph(db=db)
+
+
 async def test_migration_no_change_when_same_index_status(db: InfrahubDatabase, default_branch: Branch) -> None:
     """Test that migration does nothing when attribute indexing status doesn't change."""
     await load_schema(db=db, schema=SchemaRoot(**CAR_SCHEMA_TEXT))
@@ -207,7 +396,7 @@ class _AttributeKindUpdate:
     user_id: str
     node_before: VertexMetadata
     attr_before: VertexMetadata
-    pre_migration_fingerprint: list[tuple]
+    pre_migration_fingerprint: list[EdgeFingerprint]
     pre_migration_metadata: list[tuple]
 
 
@@ -329,7 +518,7 @@ class TestAttributeKindUpdateMetadata:
         async def _run_rollback() -> None:
             await GraphRollbacker(db=db).rollback(
                 target_branch=update.branch,
-                at=update.migration_time,
+                ats=[update.migration_time],
                 scope=RollbackScope.SINCE_TIMESTAMP,
             )
 

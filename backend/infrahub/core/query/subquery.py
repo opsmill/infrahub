@@ -66,7 +66,7 @@ async def build_subquery_filter(
     query_filter_function: QueryFilterFunction
     if field:
         query_filter_function = field.get_query_filter
-    elif name in ["any", "attribute"]:
+    elif name in {"any", "attribute"}:
         query_filter_function = default_attribute_query_filter
     else:
         raise ValueError("Either a field must be provided or name must be any or attribute")
@@ -282,16 +282,18 @@ async def build_subquery_order(
     with_str_to_alias_parts: list[str] = []
     with_str_alias_parts: list[str] = []
     with_str_from_list_parts: list[str] = ["latest_node_details[0] AS is_active"]
-    index = 1
-    for k, v in with_parts.items():
+    for index, (k, v) in enumerate(with_parts.items(), start=1):
         with_str_to_alias_parts.append(f"{k} AS {v}" if v else k)
         alias = v or k
         with_str_alias_parts.append(alias)
         with_str_from_list_parts.append(f"latest_node_details[{index}] AS {alias}")
-        index += 1
-    with_str_to_alias_parts.append(f"{branch_level_str} AS branch_level")
-    with_str_to_alias_parts.append(f"{froms_str} AS froms")
-    with_str_to_alias_parts.append("""all(r IN relationships(path) WHERE r.status = "active") AS is_active""")
+    with_str_to_alias_parts.extend(
+        (
+            f"{branch_level_str} AS branch_level",
+            f"{froms_str} AS froms",
+            """all(r IN relationships(path) WHERE r.status = "active") AS is_active""",
+        )
+    )
     with_str_to_alias = ", ".join(with_str_to_alias_parts)
     with_str_alias = ", ".join(with_str_alias_parts)
     with_str_from_list = ", ".join(with_str_from_list_parts)
@@ -319,7 +321,7 @@ def build_subquery_order_metadata(
     node_alias: str = "n",
     subquery_idx: int = 1,
 ) -> tuple[str, dict[str, Any], str]:
-    if metadata_field not in (METADATA_CREATED_AT, METADATA_UPDATED_AT):
+    if metadata_field not in {METADATA_CREATED_AT, METADATA_UPDATED_AT}:
         raise ValueError(f"Unsupported metadata field for ordering: {metadata_field!r}")
 
     prefix = f"order_metadata_{metadata_field}_{subquery_idx}"

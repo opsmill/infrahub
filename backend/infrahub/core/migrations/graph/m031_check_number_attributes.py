@@ -54,7 +54,7 @@ class Migration031(InternalSchemaMigration):
         node_id_to_error_message = {}
 
         branches = await Branch.get_list(db=db)
-        for branch in branches:  # noqa
+        for branch in branches:  # noqa: PLR1702
             schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch)
             for node_schema_kind in schema_branch.node_names:
                 schema = schema_branch.get_node(name=node_schema_kind, duplicate=False)
