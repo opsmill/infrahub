@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -8,7 +7,7 @@ import pytest
 import typer
 
 import infrahub.core.migrations.schema.tasks as tasks_module
-from infrahub.cli.db import update_core_schema
+from infrahub.cli.db import CoreSchemaStatus, check_core_schema_diff, update_core_schema
 from infrahub.core import registry
 from infrahub.core.constants import SYSTEM_USER_ID, BranchSupportType
 from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddMigration
@@ -23,7 +22,6 @@ from infrahub.core.schema_change.factory import build_schema_candidate_builder, 
 from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder, SchemaOperationBuildResult
 from infrahub.core.timestamp import Timestamp
 from infrahub.lock import GLOBAL_SCHEMA_LOCK
-from tests.helpers.log import find_logged_events
 from tests.helpers.schema_change import (
     StoredSchemaChangeRecord,
     build_seeded_operations,
@@ -46,7 +44,12 @@ ADDED_ATTRIBUTE = "description"
 MIGRATION_FAILURE = "The description of the tags could not be added"
 MIGRATION_CHECKPOINT = "core schema migration"
 UNEXPECTED_FAILURE = "The operation builder failed in a way it does not document"
-CANDIDATE_FAILURE_EVENT = "Could not build the candidate of the core schema update"
+MISMATCH_REPORT = (
+    "Unable to update the schema: The schema change cannot be built accurately, so the request was not completed. "
+    "This is an error in Infrahub, not in the schema file: the operations built from the file do not rebuild its "
+    "schema for the kinds BuiltinTag."
+)
+LOCK_WAIT_REPORT = "Waiting for the global schema lock"
 
 
 @dataclass(frozen=True)
@@ -78,6 +81,11 @@ class OlderDatabase:
     """A database from an older release whose main already holds one schema change of a user."""
 
     user_change_id: str
+
+
+def _console_text(capsys: pytest.CaptureFixture[str]) -> str:
+    # The migration console wraps long lines, so the words are compared without the line breaks.
+    return " ".join(capsys.readouterr().out.split())
 
 
 def _make_tag_older(schema_branch: SchemaBranch) -> None:
@@ -184,27 +192,36 @@ def checkpointing_tag_attribute_add_migration(recording_lock_timeline: LockTimel
 class TestCoreSchemaUpdate:
     """Each step runs the core schema update on the database that the steps before it left."""
 
-    async def test_step01_operations_that_do_not_rebuild_the_core_schema_refuse_the_update(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, older_database: OlderDatabase
+    async def test_step01_check_and_update_report_that_the_operations_do_not_rebuild_the_core_schema(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        older_database: OlderDatabase,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         candidate_builder = SchemaCandidateBuilder(
             operation_builder=SchemaOperationBuilder(), applier=SchemaChangeApplier(), comparer=DifferingKindComparer()
         )
 
+        status = await check_core_schema_diff(db=db, candidate_builder=candidate_builder)
+        check_report = _console_text(capsys)
         with pytest.raises(typer.Exit) as exit_info:
             await update_core_schema(db=db, candidate_builder=candidate_builder, initialize=False)
+        update_report = _console_text(capsys)
 
+        assert status == CoreSchemaStatus.REFUSED
+        assert (MISMATCH_REPORT in check_report, MISMATCH_REPORT in update_report) == (True, True)
         assert exit_info.value.exit_code == 1
         records = await _read_main_records(db=db)
         assert [record.properties["uuid"] for record in records.schema_changes] == [older_database.user_change_id]
         await _assert_tag_is_as_before(db=db, branch=default_branch_scope_class)
 
-    async def test_step02_unexpected_error_building_the_candidate_stops_the_update_and_logs_its_traceback(
+    async def test_step02_unexpected_error_building_the_candidate_stops_the_update_and_shows_its_traceback(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
         older_database: OlderDatabase,
-        caplog: pytest.LogCaptureFixture,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         candidate_builder = SchemaCandidateBuilder(
             operation_builder=OperationBuilderThatFailsUnexpectedly(),
@@ -212,12 +229,16 @@ class TestCoreSchemaUpdate:
             comparer=SchemaCandidateComparer(),
         )
 
-        with caplog.at_level(logging.ERROR, logger="infrahub"), pytest.raises(typer.Exit) as exit_info:
+        with pytest.raises(typer.Exit) as exit_info:
             await update_core_schema(db=db, candidate_builder=candidate_builder, initialize=False)
+        report = _console_text(capsys)
 
         assert exit_info.value.exit_code == 1
-        [failure] = find_logged_events(caplog, event=CANDIDATE_FAILURE_EVENT)
-        assert failure["exc_info"]
+        assert (
+            f"Unable to update the schema: {UNEXPECTED_FAILURE}" in report,
+            "Traceback (most recent call last)" in report,
+            f"RuntimeError: {UNEXPECTED_FAILURE}" in report,
+        ) == (True, True, True)
         records = await _read_main_records(db=db)
         assert [record.properties["uuid"] for record in records.schema_changes] == [older_database.user_change_id]
         await _assert_tag_is_as_before(db=db, branch=default_branch_scope_class)
@@ -247,15 +268,26 @@ class TestCoreSchemaUpdate:
         assert [record.properties["status"] for record in records.migrations] == ["failed"]
         await _assert_tag_is_as_before(db=db, branch=default_branch_scope_class)
 
-    async def test_step04_update_stores_the_next_applied_schema_change_of_main_under_the_global_schema_lock(
+    async def test_step04_check_reports_that_the_core_schema_needs_an_update(
+        self, db: InfrahubDatabase, older_database: OlderDatabase, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        status = await check_core_schema_diff(db=db, candidate_builder=build_schema_candidate_builder())
+
+        assert status == CoreSchemaStatus.UPDATE_REQUIRED
+        assert "Unable to update the schema" not in _console_text(capsys)
+
+    async def test_step05_update_stores_the_next_applied_schema_change_of_main_under_the_global_schema_lock(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
         older_database: OlderDatabase,
         recording_lock_timeline: LockTimeline,
         checkpointing_tag_attribute_add_migration: list[int],
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         await update_core_schema(db=db, candidate_builder=build_schema_candidate_builder(), initialize=False)
+
+        assert LOCK_WAIT_REPORT in _console_text(capsys)
 
         records = await _read_main_records(db=db)
         by_status = {
@@ -328,11 +360,13 @@ class TestCoreSchemaUpdate:
         tag = await _stored_tag(db=db, branch=default_branch_scope_class)
         assert (ADDED_ATTRIBUTE in tag.attribute_names, tag.branch) == (True, BranchSupportType.AWARE)
 
-    async def test_step05_up_to_date_core_schema_stores_no_schema_change(
+    async def test_step06_up_to_date_core_schema_stores_no_schema_change(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, older_database: OlderDatabase
     ) -> None:
         nbr_records = await count_schema_change_records(db=db)
 
+        status = await check_core_schema_diff(db=db, candidate_builder=build_schema_candidate_builder())
         await update_core_schema(db=db, candidate_builder=build_schema_candidate_builder(), initialize=False)
 
+        assert status == CoreSchemaStatus.UP_TO_DATE
         assert await count_schema_change_records(db=db) == nbr_records

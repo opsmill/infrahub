@@ -72,8 +72,7 @@ from infrahub.database.memgraph import IndexManagerMemgraph
 from infrahub.database.neo4j import IndexManagerNeo4j
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import ValidationError
-from infrahub.lock import initialize_lock
-from infrahub.log import get_logger
+from infrahub.lock import GLOBAL_SCHEMA_LOCK, LOCK_PREFIX, initialize_lock
 
 from .constants import APPLIED_BADGE, ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
 from .db_commands.check_inheritance import check_inheritance
@@ -101,11 +100,11 @@ if TYPE_CHECKING:
 
     from infrahub.cli.context import CliContext
     from infrahub.core.root import Root
-    from infrahub.core.schema_change.candidate import SchemaCandidateBuilder
+    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.core.schema_change.candidate import SchemaCandidate, SchemaCandidateBuilder
     from infrahub.database import InfrahubDatabase
     from infrahub.database.index import IndexManagerBase
 
-log = get_logger()
 
 app = AsyncTyper()
 app.add_typer(patch_app, name="patch")
@@ -117,6 +116,12 @@ class ConstraintAction(StrEnum):
     SHOW = "show"
     ADD = "add"
     DROP = "drop"
+
+
+class CoreSchemaStatus(StrEnum):
+    UP_TO_DATE = "up_to_date"
+    UPDATE_REQUIRED = "update_required"
+    REFUSED = "refused"
 
 
 class IndexAction(StrEnum):
@@ -944,22 +949,20 @@ async def migrate_database(
     return True
 
 
-async def check_core_schema_diff(db: InfrahubDatabase) -> bool:
-    """Check if the core schema has pending changes. Returns True if an update is needed."""
+async def check_core_schema_diff(db: InfrahubDatabase, candidate_builder: SchemaCandidateBuilder) -> CoreSchemaStatus:
+    """Report whether the core schema update would change the core schema, printing why it would stop if it would."""
     default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
 
     schema_default_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
     registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
     branch_schema = registry.schema.get_schema_branch(name=registry.default_branch)
 
-    candidate_schema = branch_schema.duplicate()
-    candidate_schema.load_schema(schema=SchemaRoot(**internal_schema))
-    candidate_schema.load_schema(schema=SchemaRoot(**core_models))
-    candidate_schema.load_schema(schema=SchemaRoot(**deprecated_models))
-    candidate_schema.process()
-
-    schema_diff = branch_schema.diff(other=candidate_schema)
-    return bool(schema_diff.all)
+    candidate = build_core_schema_candidate(branch_schema=branch_schema, candidate_builder=candidate_builder)
+    if candidate is None:
+        return CoreSchemaStatus.REFUSED
+    if candidate.validation.diff.all:
+        return CoreSchemaStatus.UPDATE_REQUIRED
+    return CoreSchemaStatus.UP_TO_DATE
 
 
 async def get_branches_needing_rebase(db: InfrahubDatabase) -> list[Branch]:
@@ -1031,6 +1034,37 @@ def build_core_schema_root() -> SchemaRoot:
     )
 
 
+def build_core_schema_candidate(
+    branch_schema: SchemaBranch, candidate_builder: SchemaCandidateBuilder
+) -> SchemaCandidate | None:
+    """Build the candidate of the core schema update, or print on the migration console why it cannot be applied.
+
+    Returns:
+        The candidate, or None when it cannot be built or fails validation.
+
+    """
+    console = get_migration_console()
+    # Any error stops the update, so one that the builder does not document is shown with its traceback.
+    try:
+        candidate = candidate_builder.from_schema_root(
+            branch_schema=branch_schema,
+            schema_root=build_core_schema_root(),
+            default_branch_schema=branch_schema,
+            enforce_update_support=False,
+        )
+    except Exception as exc:  # noqa: BLE001
+        console.log(f"{ERROR_BADGE} | Unable to update the schema: {exc}")
+        console.print_exception()
+        return None
+
+    if candidate.validation.errors:
+        console.log(f"{ERROR_BADGE} | Unable to update the schema, due to failed validations")
+        for error in candidate.validation.errors:
+            console.log(error.to_string())
+        return None
+    return candidate
+
+
 async def update_core_schema(
     db: InfrahubDatabase, candidate_builder: SchemaCandidateBuilder, initialize: bool = True, debug: bool = False
 ) -> None:
@@ -1052,6 +1086,10 @@ async def update_core_schema(
 
     default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
 
+    get_migration_console().log(
+        f"Waiting for the global schema lock ({LOCK_PREFIX}.{GLOBAL_SCHEMA_LOCK}). If the update stays here, another "
+        "process holds the lock: stop it, or delete the key from the cache if that process no longer runs."
+    )
     async with lock.registry.global_schema_lock():
         # ----------------------------------------------------------
         # Load Current Schema from the database
@@ -1060,26 +1098,11 @@ async def update_core_schema(
         registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
         branch_schema = registry.schema.get_schema_branch(name=registry.default_branch)
 
-        # Any error stops the upgrade, so one that the builder does not document is logged with its traceback.
-        try:
-            candidate = candidate_builder.from_schema_root(
-                branch_schema=branch_schema,
-                schema_root=build_core_schema_root(),
-                default_branch_schema=branch_schema,
-                enforce_update_support=False,
-            )
-        except Exception as exc:
-            log.exception("Could not build the candidate of the core schema update")
-            get_migration_console().log(f"{ERROR_BADGE} | Unable to update the schema: {exc}")
-            raise typer.Exit(1) from exc
-
-        result = candidate.validation
-        if result.errors:
-            get_migration_console().log(f"{ERROR_BADGE} | Unable to update the schema, due to failed validations")
-            for error in result.errors:
-                get_migration_console().log(error.to_string())
+        candidate = build_core_schema_candidate(branch_schema=branch_schema, candidate_builder=candidate_builder)
+        if candidate is None:
             raise typer.Exit(1)
 
+        result = candidate.validation
         if not result.diff.all:
             get_migration_console().log("Core Schema Up to date, nothing to update")
             return

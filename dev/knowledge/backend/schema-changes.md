@@ -259,10 +259,14 @@ internal schema, the core models and the deprecated models into one schema file
 is saved without an error, a migration or a constraint check. The runner applies it with
 `DirectMigrations`, so the migrations run in the CLI process with no request context, as the system
 user, and stores a schema change on the default branch with the source `core_schema_update`. Any
-error of `from_schema_root`, an operation mismatch included, is logged with its traceback and stops
-the upgrade with exit code 1 before any write, as a failed validation does; running it again gives
-the same error, because the cause is in the core schema files or in the operation builder, not in the
-data.
+error of `from_schema_root`, an operation mismatch included, is printed with its traceback on the
+migration console, which `infrahub upgrade` shows without `--verbose`, and stops the upgrade with
+exit code 1 before any write, as a failed validation does; running it again gives the same error,
+because the cause is in the core schema files or in the operation builder, not in the data.
+`build_core_schema_candidate` builds the candidate and prints these errors for both the update and
+`infrahub upgrade --check`, so the check reports the same error. Before it takes the lock, the update
+prints that it is waiting for `lock.global.schema`, because a key left by a process that stopped
+while holding it makes the update wait with no other output.
 
 `SchemaChangeApplicationRunner.run` takes how the migrations run as one value
 (`core/schema/update_coordinator.py`): `WorkflowMigrations`, which holds the request context that
