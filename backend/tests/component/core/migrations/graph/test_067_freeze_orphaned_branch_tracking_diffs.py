@@ -27,6 +27,7 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.migrations.graph.m067_freeze_orphaned_branch_tracking_diffs import Migration067
 from infrahub.core.migrations.shared import MigrationInput
+from infrahub.core.schema_change.factory import build_schema_change_repository
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 from tests.helpers.diff_factories import EnrichedRootFactory
@@ -144,7 +145,9 @@ class TestMigration067:
             from_time=deleted_from,
             to_time=deleted_from.add(seconds=60),
         )
-        await BranchDataDeleter(db=db, batch_size=5).delete(branch=deleted_branch)
+        await BranchDataDeleter(
+            db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)
+        ).delete(branch=deleted_branch)
         expectations.append(
             DiffExpectation(
                 name="deleted branch frozen",
@@ -185,7 +188,9 @@ class TestMigration067:
             from_time=v1_from,
             to_time=v1_from.add(seconds=60),
         )
-        await BranchDataDeleter(db=db, batch_size=5).delete(branch=reused_v1)
+        await BranchDataDeleter(
+            db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)
+        ).delete(branch=reused_v1)
         reused_v2 = await create_branch(db=db, branch_name=reused_name)
         v2_from = Timestamp(reused_v2.get_branched_from())
         reused_v2_diff, reused_v2_base = await self._create_diff_pair(
@@ -221,7 +226,9 @@ class TestMigration067:
             to_time=frozen_from.add(seconds=60),
         )
         await diff_repository.freeze_diffs_for_branch(branch_name=frozen_branch.name)
-        await BranchDataDeleter(db=db, batch_size=5).delete(branch=frozen_branch)
+        await BranchDataDeleter(
+            db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)
+        ).delete(branch=frozen_branch)
         expectations.append(
             DiffExpectation(
                 name="already frozen unchanged",
@@ -244,7 +251,9 @@ class TestMigration067:
         lifecycle_v1.status = BranchStatus.MERGED
         await lifecycle_v1.save(db=db)
         await diff_repository.mark_tracking_ids_merged(tracking_ids=[BranchTrackingId(name=lifecycle_name)])
-        await BranchDataDeleter(db=db, batch_size=5).delete(branch=lifecycle_v1)
+        await BranchDataDeleter(
+            db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)
+        ).delete(branch=lifecycle_v1)
         lifecycle_v2 = await create_branch(db=db, branch_name=lifecycle_name)
         lc_v2_from = Timestamp(lifecycle_v2.get_branched_from())
         lc_v2_diff, lc_v2_base = await self._create_diff_pair(

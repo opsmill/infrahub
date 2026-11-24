@@ -1,31 +1,40 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Self
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Self, assert_never
 
 from graphene import Boolean, Field, InputObjectType, Mutation, String
+from pydantic_core import to_jsonable_python
 
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.constants import RESTRICTED_NAMESPACES, GlobalPermissions
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import DropdownChoice, GenericSchema, NodeSchema
+from infrahub.core.schema_change.enums import SchemaOperationSection, SchemaOperationType
+from infrahub.core.schema_change.factory import build_schema_candidate_builder, build_schema_change_recorder
+from infrahub.core.schema_change.operations import SchemaOperation
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
 from infrahub.events import EventMeta
 from infrahub.events.schema_action import SchemaUpdatedEvent, build_changed_elements_payload
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import SchemaOperationsRebuildError, ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_log_data, get_logger
 from infrahub.permissions import define_global_permission_from_branch
+from infrahub.utils import InfrahubStringEnum
 from infrahub.worker import WORKER_IDENTITY
 
 from ..types import DropdownFields
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
+    from pydantic import JsonValue
 
     from infrahub.context import InfrahubContext
     from infrahub.core.branch import Branch
+    from infrahub.core.schema import AttributeSchema
     from infrahub.services import InfrahubServices
 
     from ..initialization import GraphqlContext
@@ -39,6 +48,110 @@ def _validate_schema_permission(graphql_context: GraphqlContext) -> None:
             permission=GlobalPermissions.MANAGE_SCHEMA, branch_name=graphql_context.branch.name
         )
     )
+
+
+class AttributeListProperty(InfrahubStringEnum):
+    """The list properties of an attribute that a dropdown or enum mutation changes."""
+
+    CHOICES = "choices"
+    ENUM = "enum"
+
+
+@dataclass(frozen=True)
+class DropdownChoiceAddition:
+    choice: DropdownChoice
+
+    @property
+    def property_name(self) -> AttributeListProperty:
+        return AttributeListProperty.CHOICES
+
+    def build_list(self, kind: str, attribute: AttributeSchema) -> list[DropdownChoice]:
+        """Return the choices of `attribute` with the choice added.
+
+        Raises:
+            ValidationError: The attribute already has a choice of that name.
+
+        """
+        choices = attribute.choices or []
+        if any(entry.name == self.choice.name for entry in choices):
+            raise ValidationError(
+                f"The dropdown value {self.choice.name} already exists on {kind} in attribute {attribute.name}"
+            )
+        return [*choices, self.choice]
+
+
+@dataclass(frozen=True)
+class DropdownChoiceRemoval:
+    name: str
+
+    @property
+    def property_name(self) -> AttributeListProperty:
+        return AttributeListProperty.CHOICES
+
+    def build_list(self, kind: str, attribute: AttributeSchema) -> list[DropdownChoice]:
+        """Return the choices of `attribute` without the choice of that name.
+
+        Raises:
+            ValidationError: The attribute has no choice of that name, or it is the attribute's last choice.
+
+        """
+        choices = attribute.choices or []
+        if not any(entry.name == self.name for entry in choices):
+            raise ValidationError(
+                f"The dropdown value {self.name} does not exists on {kind} in attribute {attribute.name}"
+            )
+        if len(choices) == 1:
+            raise ValidationError(f"Unable to remove the last dropdown on {kind} in attribute {attribute.name}")
+        return [entry for entry in choices if entry.name != self.name]
+
+
+@dataclass(frozen=True)
+class EnumValueAddition:
+    value: str
+
+    @property
+    def property_name(self) -> AttributeListProperty:
+        return AttributeListProperty.ENUM
+
+    def build_list(self, kind: str, attribute: AttributeSchema) -> list[str]:
+        """Return the enum values of `attribute` with the value added.
+
+        Raises:
+            ValidationError: The attribute already has the value.
+
+        """
+        enum_values = attribute.enum or []
+        if self.value in enum_values:
+            raise ValidationError(f"The enum value {self.value} already exists on {kind} in attribute {attribute.name}")
+        return [*enum_values, self.value]
+
+
+@dataclass(frozen=True)
+class EnumValueRemoval:
+    value: str
+
+    @property
+    def property_name(self) -> AttributeListProperty:
+        return AttributeListProperty.ENUM
+
+    def build_list(self, kind: str, attribute: AttributeSchema) -> list[str]:
+        """Return the enum values of `attribute` without the value.
+
+        Raises:
+            ValidationError: The attribute does not have the value, or it is the attribute's last value.
+
+        """
+        enum_values = attribute.enum or []
+        if self.value not in enum_values:
+            raise ValidationError(
+                f"The enum value {self.value} does not exists on {kind} in attribute {attribute.name}"
+            )
+        if len(enum_values) == 1:
+            raise ValidationError(f"Unable to remove the last enum on {kind} in attribute {attribute.name}")
+        return [entry for entry in enum_values if entry != self.value]
+
+
+type AttributeListChange = DropdownChoiceAddition | DropdownChoiceRemoval | EnumValueAddition | EnumValueRemoval
 
 
 class SchemaEnumInput(InputObjectType):
@@ -81,22 +194,16 @@ class SchemaDropdownAdd(Mutation):
         _validate_schema_permission(graphql_context=graphql_context)
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
-        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name, duplicate=True)
+        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name, duplicate=False)
         attribute = str(data.attribute)
         validate_kind_dropdown(kind=kind, attribute=attribute)
         dropdown = str(data.dropdown)
         choice = DropdownChoice(name=dropdown, color=data.color, label=data.label, description=data.description)
 
-        if found_attribute := [attrib for attrib in kind.attributes if attrib.name == attribute]:
-            attrib = found_attribute[0]
-            if [dropdown_entry for dropdown_entry in attrib.choices if dropdown_entry.name == dropdown]:
-                raise ValidationError(
-                    f"The dropdown value {dropdown} already exists on {kind.kind} in attribute {attribute}"
-                )
-            attrib.choices.append(choice)
-
-        await update_registry(
-            kind=kind,
+        await apply_attribute_property_change(
+            kind=kind.kind,
+            attribute=attribute,
+            change=DropdownChoiceAddition(choice=choice),
             branch=graphql_context.branch,
             db=graphql_context.db,
             account_id=graphql_context.active_account_session.account_id,
@@ -141,7 +248,7 @@ class SchemaDropdownRemove(Mutation):
         graphql_context: GraphqlContext = info.context
 
         _validate_schema_permission(graphql_context=graphql_context)
-        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name, duplicate=True)
+        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name, duplicate=False)
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         attribute = str(data.attribute)
@@ -156,18 +263,10 @@ class SchemaDropdownRemove(Mutation):
         if nodes_with_dropdown:
             raise ValidationError(f"There are still {kind.kind} objects using this dropdown")
 
-        if found_attribute := [attrib for attrib in kind.attributes if attrib.name == attribute]:
-            attrib = found_attribute[0]
-            if not [dropdown_entry for dropdown_entry in attrib.choices if dropdown_entry.name == dropdown]:
-                raise ValidationError(
-                    f"The dropdown value {dropdown} does not exists on {kind.kind} in attribute {attribute}"
-                )
-            if len(attrib.choices) == 1:
-                raise ValidationError(f"Unable to remove the last dropdown on {kind.kind} in attribute {attribute}")
-            attrib.choices = [entry for entry in attrib.choices if dropdown != entry.name]
-
-        await update_registry(
-            kind=kind,
+        await apply_attribute_property_change(
+            kind=kind.kind,
+            attribute=attribute,
+            change=DropdownChoiceRemoval(name=dropdown),
             branch=graphql_context.branch,
             db=graphql_context.db,
             account_id=graphql_context.active_account_session.account_id,
@@ -197,23 +296,17 @@ class SchemaEnumAdd(Mutation):
         graphql_context: GraphqlContext = info.context
 
         _validate_schema_permission(graphql_context=graphql_context)
-        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name, duplicate=True)
+        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name, duplicate=False)
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         attribute = str(data.attribute)
         enum = str(data.enum)
         validate_kind_enum(kind=kind, attribute=attribute)
 
-        for attrib in kind.attributes:
-            if attribute == attrib.name:
-                if enum in attrib.enum:
-                    raise ValidationError(
-                        f"The enum value {enum} already exists on {kind.kind} in attribute {attribute}"
-                    )
-                attrib.enum.append(enum)
-
-        await update_registry(
-            kind=kind,
+        await apply_attribute_property_change(
+            kind=kind.kind,
+            attribute=attribute,
+            change=EnumValueAddition(value=enum),
             branch=graphql_context.branch,
             db=graphql_context.db,
             account_id=graphql_context.active_account_session.account_id,
@@ -243,7 +336,7 @@ class SchemaEnumRemove(Mutation):
         graphql_context: GraphqlContext = info.context
 
         _validate_schema_permission(graphql_context=graphql_context)
-        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name, duplicate=True)
+        kind = graphql_context.db.schema.get(name=str(data.kind), branch=graphql_context.branch.name, duplicate=False)
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
         attribute = str(data.attribute)
@@ -258,18 +351,10 @@ class SchemaEnumRemove(Mutation):
         if nodes_with_enum:
             raise ValidationError(f"There are still {kind.kind} objects using this enum")
 
-        for attrib in kind.attributes:
-            if attribute == attrib.name:
-                if enum not in attrib.enum:
-                    raise ValidationError(
-                        f"The enum value {enum} does not exists on {kind.kind} in attribute {attribute}"
-                    )
-                if len(attrib.enum) == 1:
-                    raise ValidationError(f"Unable to remove the last enum on {kind.kind} in attribute {attribute}")
-                attrib.enum = [entry for entry in attrib.enum if entry != enum]
-
-        await update_registry(
-            kind=kind,
+        await apply_attribute_property_change(
+            kind=kind.kind,
+            attribute=attribute,
+            change=EnumValueRemoval(value=enum),
             branch=graphql_context.branch,
             db=graphql_context.db,
             account_id=graphql_context.active_account_session.account_id,
@@ -306,30 +391,80 @@ def validate_kind(kind: GenericSchema | NodeSchema, attribute: str) -> None:
         raise ValidationError(f"Attribute {attribute} on {kind.kind} is inherited and must be changed on the generic")
 
 
-async def update_registry(
-    kind: NodeSchema,
+def _read_attribute_list(attribute: AttributeSchema, property_name: AttributeListProperty) -> JsonValue:
+    match property_name:
+        case AttributeListProperty.CHOICES:
+            return to_jsonable_python(attribute.choices, serialize_as_any=True)
+        case AttributeListProperty.ENUM:
+            return to_jsonable_python(attribute.enum, serialize_as_any=True)
+        case _:
+            assert_never(property_name)
+
+
+async def apply_attribute_property_change(
+    *,
+    kind: str,
+    attribute: str,
+    change: AttributeListChange,
     db: InfrahubDatabase,
     branch: Branch,
     account_id: str,
     service: InfrahubServices,
     context: InfrahubContext,
 ) -> None:
+    """Apply `change` to the dropdown choices or the enum values of an attribute of the branch schema, and save it.
+
+    The list is read and the change validated under the schema lock, so concurrent changes to one list all apply. The
+    schema is saved with an applied schema change that holds the one operation, in the same transaction.
+
+    Raises:
+        ValidationError: The attribute no longer exists, or the change does not apply to its current list.
+        SchemaOperationsRebuildError: The operation of the change cannot be applied to the branch schema.
+
+    """
+    candidate_builder = build_schema_candidate_builder()
     async with lock.registry.global_schema_lock():
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
-
-        # We create a copy of the existing branch schema to do some validation before loading it.
-        tmp_schema = branch_schema.duplicate()
-
-        tmp_schema.set(name=kind.kind, schema=kind)
-        tmp_schema.process(default_branch_schema=registry.schema.get_schema_branch(name=registry.default_branch))
-
-        diff = tmp_schema.diff(branch_schema)
+        attribute_schema = branch_schema.get(name=kind, duplicate=False).get_attribute_or_none(name=attribute)
+        if attribute_schema is None:
+            # Another request can remove the attribute between the checks of the mutation and the lock.
+            raise ValidationError(f"Unable to find the attribute {attribute} on {kind}")
+        previous_value = _read_attribute_list(attribute=attribute_schema, property_name=change.property_name)
+        value = change.build_list(kind=kind, attribute=attribute_schema)
+        operation = SchemaOperation(
+            operation_type=SchemaOperationType.ELEMENT_PROPERTY,
+            kind=kind,
+            section=SchemaOperationSection.ATTRIBUTES,
+            element_name=attribute,
+            property_name=change.property_name.value,
+            value=to_jsonable_python(value, serialize_as_any=True),
+            previous_value=previous_value,
+        )
+        try:
+            candidate = candidate_builder.from_operations(
+                branch_schema=branch_schema,
+                operations=[operation],
+                default_branch_schema=registry.schema.get_schema_branch(name=registry.default_branch),
+            )
+        except ValueError as exc:
+            raise SchemaOperationsRebuildError(kinds=[kind]) from exc
+        diff = candidate.validation.diff
 
         if diff.all:
             log.info(f"Schema has diff, will need to be updated {diff.all}", branch=branch.name)
+            at = Timestamp()
             async with db.start_transaction() as dbt:
+                # The registry is replaced before the commit, so a failed record write must happen before it.
+                recorder = build_schema_change_recorder(db=dbt, default_branch_name=registry.default_branch)
+                await recorder.record_applied(branch=branch, operations=[operation], at=at, user_id=account_id)
                 await registry.schema.update_schema_branch(
-                    schema=tmp_schema, db=dbt, branch=branch.name, limit=diff.all, update_db=True, user_id=account_id
+                    schema=candidate.schema,
+                    db=dbt,
+                    branch=branch.name,
+                    limit=diff.all,
+                    update_db=True,
+                    at=at,
+                    user_id=account_id,
                 )
                 branch.update_schema_hash()
                 log.info("Schema has been updated", branch=branch.name, hash=branch.active_schema_hash.main)

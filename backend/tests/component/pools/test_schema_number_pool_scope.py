@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.api.schema import evaluate_candidate_schemas
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -14,6 +13,7 @@ from infrahub.core.protocols import CoreNumberPool as CoreNumberPoolProtocol
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema_change.factory import build_schema_candidate_builder
 from infrahub.exceptions import ValidationError
 from infrahub.pools.number_pool_locker import NumberPoolLock
 from infrahub.pools.number_pool_repository import NumberPoolRepository
@@ -239,9 +239,10 @@ async def test_loading_a_kind_new_on_a_branch_whose_pool_the_default_branch_scop
     branch_device.attributes.append(_pooled_attribute(name="vlan_index", scope=None))
 
     with pytest.raises(ValidationError) as exc_info:
-        evaluate_candidate_schemas(
+        build_schema_candidate_builder().from_schema_root(
             branch_schema=registry.schema.get_schema_branch(name=branch.name),
-            schemas_to_evaluate=[_schema(device=branch_device)],
+            schema_root=_schema(device=branch_device),
+            default_branch_schema=registry.schema.get_schema_branch(name=registry.default_branch),
         )
 
     assert exc_info.value.message == (
@@ -262,9 +263,10 @@ async def test_loading_on_a_branch_a_declaration_of_an_existing_kind_leaving_out
     branch_device = copy.deepcopy(SCOPED_DEVICE)
     branch_device.attributes.append(_pooled_attribute(name="vlan_index", scope=None))
 
-    _, result = evaluate_candidate_schemas(
+    candidate = build_schema_candidate_builder().from_schema_root(
         branch_schema=registry.schema.get_schema_branch(name=branch.name),
-        schemas_to_evaluate=[_schema(device=branch_device)],
+        schema_root=_schema(device=branch_device),
+        default_branch_schema=registry.schema.get_schema_branch(name=registry.default_branch),
     )
 
-    assert result.errors == []
+    assert candidate.validation.errors == []

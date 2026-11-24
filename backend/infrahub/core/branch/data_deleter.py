@@ -46,6 +46,10 @@ class BranchDataDeleterInterface(Protocol):
     async def delete(self, branch: Branch, user_id: str = SYSTEM_USER_ID) -> BranchDeleteResult: ...
 
 
+class SchemaChangeRecordDeleter(Protocol):
+    async def delete_branch_schema_changes(self, *, branch: str, batch_size: int) -> int: ...
+
+
 class LoggerInterface(Protocol):
     """Just enough of a logger for progress reporting."""
 
@@ -60,9 +64,16 @@ class BranchDataDeleter:
     an interrupted delete can be resumed by running the whole thing again.
     """
 
-    def __init__(self, db: InfrahubDatabase, batch_size: int, log: LoggerInterface | None = None) -> None:
+    def __init__(
+        self,
+        db: InfrahubDatabase,
+        batch_size: int,
+        schema_change_records: SchemaChangeRecordDeleter,
+        log: LoggerInterface | None = None,
+    ) -> None:
         self.db = db
         self.batch_size = batch_size
+        self.schema_change_records = schema_change_records
         self.log = log or get_logger()
 
     async def delete(self, branch: Branch, user_id: str = SYSTEM_USER_ID) -> BranchDeleteResult:
@@ -96,11 +107,13 @@ class BranchDataDeleter:
         """Remove a branch's data without requiring the branch itself to still exist.
 
         Returns the number of edges removed, so a caller whose own logging is the only thing the
-        operator can see is able to report progress.
+        operator can see is able to report progress. The schema change records of the branch are
+        deleted too, and their edges are not part of that number.
         """
         agnostic_edges_count = await self._delete_agnostic_peers(branch_name=branch_name)
         await self._retire_agnostic_fields(branch_name=branch_name, user_id=user_id)
         branch_edges_count = await self._delete_edges(branch_name=branch_name)
+        await self._delete_schema_changes(branch_name=branch_name)
         return agnostic_edges_count + branch_edges_count
 
     async def _delete_agnostic_peers(self, branch_name: str) -> int:
@@ -194,3 +207,11 @@ class BranchDataDeleter:
                 self.log.info(f"Deleted {deleted_total} {edge_type.value} edge(s) on branch '{branch_name}'")
 
         return edges_removed
+
+    async def _delete_schema_changes(self, branch_name: str) -> None:
+        """Delete the schema changes recorded on the branch, with their operations, applications and migration records."""
+        deleted = await self.schema_change_records.delete_branch_schema_changes(
+            branch=branch_name, batch_size=self.batch_size
+        )
+        if deleted:
+            self.log.info(f"Deleted {deleted} schema change(s) of branch '{branch_name}' with their records")

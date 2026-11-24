@@ -27,6 +27,15 @@ node_indexes: list[IndexItem] = [
     ),
     IndexItem(name="diff_branch", label="DiffRoot", properties=["diff_branch"], type=IndexType.RANGE),
     IndexItem(name="diff_tracking_id", label="DiffRoot", properties=["tracking_id"], type=IndexType.RANGE),
+    # schema change indices
+    IndexItem(name="schema_change_uuid", label="SchemaChange", properties=["uuid"], type=IndexType.RANGE),
+    IndexItem(name="schema_change_branch", label="SchemaChange", properties=["branch"], type=IndexType.RANGE),
+    IndexItem(
+        name="schema_change_application_uuid",
+        label="SchemaChangeApplication",
+        properties=["uuid"],
+        type=IndexType.RANGE,
+    ),
 ]
 
 rel_indexes: list[IndexItem] = [

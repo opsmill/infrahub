@@ -11,6 +11,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.schema_change.factory import build_schema_change_repository
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import PoolExhaustedError, ValidationError
 
@@ -111,7 +112,9 @@ class TestGetResourceWithUnreadableReservation:
 
         address_a = await reserve(branch=branch_a)
         if case.delete_first_branch:
-            await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch_a)
+            await BranchDataDeleter(
+                db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)
+            ).delete(branch=branch_a)
 
         first = await reserve(branch=branch_b)
         second = await reserve(branch=branch_b)

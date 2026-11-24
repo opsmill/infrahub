@@ -12,6 +12,7 @@ from infrahub.core.initialization import initialize_registry
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema_change.factory import build_schema_change_repository
 from tests.helpers.agnostic_edges import TEST_ACTOR_ID, IsReservedEdge, is_reserved_edge_on
 from tests.helpers.number_pool import (
     SCOPED_CIRCUIT_SCHEMA,
@@ -90,7 +91,9 @@ async def pooled_widget(
 
 
 async def delete_branch(db: InfrahubDatabase, branch: Branch) -> None:
-    result = await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch, user_id=TEST_ACTOR_ID)
+    result = await BranchDataDeleter(
+        db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)
+    ).delete(branch=branch, user_id=TEST_ACTOR_ID)
     assert result.branch_deleted
 
 

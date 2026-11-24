@@ -15,6 +15,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
+from infrahub.core.schema_change.factory import build_schema_change_repository
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -391,7 +392,9 @@ class TestDiffTreeTerminalBranch:
         merged_branch: Branch,
     ) -> Branch:
         """Delete the branch and remove it from registry."""
-        await BranchDataDeleter(db=db, batch_size=5).delete(branch=merged_branch)
+        await BranchDataDeleter(
+            db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)
+        ).delete(branch=merged_branch)
         registry.branch.pop(merged_branch.name, None)
         return merged_branch
 

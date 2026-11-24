@@ -18650,6 +18650,167 @@ export type InfrahubRepositoryBranchStatusType = {
   edges: Array<InfrahubRepositoryBranchStatusEdge>;
 };
 
+/** One time a schema change was applied to a branch. */
+export type InfrahubSchemaChangeApplication = {
+  __typename: 'InfrahubSchemaChangeApplication';
+  /** Timestamp of the graph writes of this application. */
+  at: Scalars['DateTime']['output'];
+  /** Branch the schema change was applied to. */
+  branch: Scalars['String']['output'];
+  created_at: Scalars['DateTime']['output'];
+  /** Set when the status is FAILED. */
+  error: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  migrations: InfrahubSchemaChangeMigrations;
+  status: SchemaChangeApplicationStatus;
+  updated_at: Scalars['DateTime']['output'];
+};
+
+
+/** One time a schema change was applied to a branch. */
+export type InfrahubSchemaChangeApplicationMigrationsArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+};
+
+export type InfrahubSchemaChangeApplicationEdge = {
+  __typename: 'InfrahubSchemaChangeApplicationEdge';
+  node: InfrahubSchemaChangeApplication;
+};
+
+/** One page of the applications of a schema change, in the order of `at`. */
+export type InfrahubSchemaChangeApplications = {
+  __typename: 'InfrahubSchemaChangeApplications';
+  /** Number of applications of the schema change. */
+  count: Scalars['Int']['output'];
+  edges: Array<InfrahubSchemaChangeApplicationEdge>;
+};
+
+export type InfrahubSchemaChangeEdge = {
+  __typename: 'InfrahubSchemaChangeEdge';
+  node: InfrahubSchemaChangeNode;
+};
+
+/** One migration that an application of a schema change runs on the data of its branch. */
+export type InfrahubSchemaChangeMigration = {
+  __typename: 'InfrahubSchemaChangeMigration';
+  errors: Array<Scalars['String']['output']>;
+  field_name: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  /** For example "node.attribute.add". */
+  migration_name: Scalars['String']['output'];
+  /** Text form of the schema path, for example "schema/DcimCloudDevice/serial". */
+  path: Scalars['String']['output'];
+  path_type: SchemaPathType;
+  /** Order in the list of migrations of the application, from 0. */
+  position: Scalars['Int']['output'];
+  property_name: Maybe<Scalars['String']['output']>;
+  schema_kind: Scalars['String']['output'];
+  status: SchemaChangeMigrationStatus;
+  /** Time of the last status change. */
+  updated_at: Scalars['DateTime']['output'];
+};
+
+export type InfrahubSchemaChangeMigrationEdge = {
+  __typename: 'InfrahubSchemaChangeMigrationEdge';
+  node: InfrahubSchemaChangeMigration;
+};
+
+/** One page of the migration records of an application of a schema change, in the order of `position`. */
+export type InfrahubSchemaChangeMigrations = {
+  __typename: 'InfrahubSchemaChangeMigrations';
+  /** Number of migration records of the application. */
+  count: Scalars['Int']['output'];
+  edges: Array<InfrahubSchemaChangeMigrationEdge>;
+};
+
+/** One change to the schema of a branch, made of one or more operations. */
+export type InfrahubSchemaChangeNode = {
+  __typename: 'InfrahubSchemaChangeNode';
+  applications: InfrahubSchemaChangeApplications;
+  /** Timestamp at which the schema was written to the branch. Null unless the status is APPLIED. */
+  applied_at: Maybe<Scalars['DateTime']['output']>;
+  branch: Scalars['String']['output'];
+  created_at: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  /** "<version, five digits>_<summary>", or the summary when there is no version. */
+  name: Scalars['String']['output'];
+  operations: InfrahubSchemaChangeOperations;
+  /** The applied schema change that this one follows. Null for the first schema change of main, for a branch's first schema change when main has none, and for a schema change without a version. */
+  parent: Maybe<InfrahubSchemaChangeParent>;
+  status: SchemaChangeStatus;
+  summary: Scalars['String']['output'];
+  /** Time of the last change of the record. */
+  updated_at: Scalars['DateTime']['output'];
+  /** Null unless the status is APPLIED. */
+  version: Maybe<Scalars['Int']['output']>;
+};
+
+
+/** One change to the schema of a branch, made of one or more operations. */
+export type InfrahubSchemaChangeNodeApplicationsArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+/** One change to the schema of a branch, made of one or more operations. */
+export type InfrahubSchemaChangeNodeOperationsArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+};
+
+/** One operation of a schema change; the operations apply in the order of `position`. */
+export type InfrahubSchemaChangeOperation = {
+  __typename: 'InfrahubSchemaChangeOperation';
+  /** Name of the attribute or relationship. Set for the three ELEMENT types; for a rename, the name before the operation. */
+  element_name: Maybe<Scalars['String']['output']>;
+  kind: Scalars['String']['output'];
+  /** Set for NODE_ADD. */
+  node_type: Maybe<SchemaOperationNodeType>;
+  operation_type: SchemaOperationType;
+  /** Order in which the operation applies, from 0. */
+  position: Scalars['Int']['output'];
+  /** Value before the change. Set for the two PROPERTY types. */
+  previous_value: Maybe<Scalars['GenericScalar']['output']>;
+  /** Name of the property, dotted when nested. Set for the two PROPERTY types. */
+  property_name: Maybe<Scalars['String']['output']>;
+  /** Set for the three ELEMENT types. */
+  section: Maybe<SchemaOperationSection>;
+  /** New value for a PROPERTY type, full definition for an ADD type. An added attribute or relationship also holds the order_weight that processing gave it when the file sets none. */
+  value: Maybe<Scalars['GenericScalar']['output']>;
+};
+
+export type InfrahubSchemaChangeOperationEdge = {
+  __typename: 'InfrahubSchemaChangeOperationEdge';
+  node: InfrahubSchemaChangeOperation;
+};
+
+/** One page of the operations of a schema change. */
+export type InfrahubSchemaChangeOperations = {
+  __typename: 'InfrahubSchemaChangeOperations';
+  /** Number of operations of the schema change. */
+  count: Scalars['Int']['output'];
+  edges: Array<InfrahubSchemaChangeOperationEdge>;
+};
+
+/** The applied schema change that a schema change follows. */
+export type InfrahubSchemaChangeParent = {
+  __typename: 'InfrahubSchemaChangeParent';
+  branch: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  version: Scalars['Int']['output'];
+};
+
+/** One page of the schema changes of a branch. */
+export type InfrahubSchemaChanges = {
+  __typename: 'InfrahubSchemaChanges';
+  /** Number of schema changes that match, on all pages. */
+  count: Scalars['Int']['output'];
+  edges: Array<InfrahubSchemaChangeEdge>;
+};
+
 /**
  * Write preferences for one writable scope, USER or GLOBAL.
  *
@@ -26320,6 +26481,8 @@ export type Query = {
   InfrahubResourcePoolAllocated: PoolAllocated;
   /** Utilization of one resource pool and of each of its resources. For a number pool, the figures cover the whole pool and ignore its allocation scope; read InfrahubNumberPoolUtilization and InfrahubNumberPoolDivisions instead. */
   InfrahubResourcePoolUtilization: PoolUtilization;
+  /** Retrieve the schema changes of the branch of the request, the most recently created first. */
+  InfrahubSchemaChange: InfrahubSchemaChanges;
   InfrahubSearchAnywhere: NodeEdges;
   /** Retrieve the status of all infrahub workers. */
   InfrahubStatus: Status;
@@ -38899,6 +39062,13 @@ export type QueryInfrahubResourcePoolUtilizationArgs = {
 };
 
 
+export type QueryInfrahubSchemaChangeArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  status?: InputMaybe<Array<SchemaChangeStatus>>;
+};
+
+
 export type QueryInfrahubSearchAnywhereArgs = {
   case_sensitive?: InputMaybe<Scalars['Boolean']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
@@ -40085,6 +40255,36 @@ export type ResolveDiffConflictInput = {
   selected_branch?: InputMaybe<ConflictSelection>;
 };
 
+/** Status of one application of a schema change to a branch. */
+export const SchemaChangeApplicationStatus = {
+  APPLIED: 'APPLIED',
+  FAILED: 'FAILED',
+  ROLLED_BACK: 'ROLLED_BACK',
+  RUNNING: 'RUNNING',
+  SKIPPED: 'SKIPPED'
+} as const;
+
+export type SchemaChangeApplicationStatus = typeof SchemaChangeApplicationStatus[keyof typeof SchemaChangeApplicationStatus];
+/** Status of one migration that an application of a schema change runs on the data of its branch. */
+export const SchemaChangeMigrationStatus = {
+  APPLIED: 'APPLIED',
+  CANCELLED: 'CANCELLED',
+  FAILED: 'FAILED',
+  ROLLED_BACK: 'ROLLED_BACK',
+  RUNNING: 'RUNNING',
+  WAITING: 'WAITING'
+} as const;
+
+export type SchemaChangeMigrationStatus = typeof SchemaChangeMigrationStatus[keyof typeof SchemaChangeMigrationStatus];
+/** Status of a schema change of a branch. */
+export const SchemaChangeStatus = {
+  APPLIED: 'APPLIED',
+  FAILED: 'FAILED',
+  RUNNING: 'RUNNING',
+  STAGED: 'STAGED'
+} as const;
+
+export type SchemaChangeStatus = typeof SchemaChangeStatus[keyof typeof SchemaChangeStatus];
 export type SchemaDropdownAdd = {
   __typename: 'SchemaDropdownAdd';
   object: Maybe<DropdownFields>;
@@ -40127,6 +40327,40 @@ export type SchemaEnumRemove = {
   ok: Maybe<Scalars['Boolean']['output']>;
 };
 
+/** Whether a kind that a schema operation adds is a node or a generic. */
+export const SchemaOperationNodeType = {
+  GENERIC: 'GENERIC',
+  NODE: 'NODE'
+} as const;
+
+export type SchemaOperationNodeType = typeof SchemaOperationNodeType[keyof typeof SchemaOperationNodeType];
+/** Whether the element of a schema operation is an attribute or a relationship. */
+export const SchemaOperationSection = {
+  ATTRIBUTES: 'ATTRIBUTES',
+  RELATIONSHIPS: 'RELATIONSHIPS'
+} as const;
+
+export type SchemaOperationSection = typeof SchemaOperationSection[keyof typeof SchemaOperationSection];
+/** Type of a schema operation: add, remove or change a property of a kind, or of an attribute or relationship. */
+export const SchemaOperationType = {
+  ELEMENT_ADD: 'ELEMENT_ADD',
+  ELEMENT_PROPERTY: 'ELEMENT_PROPERTY',
+  ELEMENT_REMOVE: 'ELEMENT_REMOVE',
+  NODE_ADD: 'NODE_ADD',
+  NODE_PROPERTY: 'NODE_PROPERTY',
+  NODE_REMOVE: 'NODE_REMOVE',
+  NODE_RENAME: 'NODE_RENAME'
+} as const;
+
+export type SchemaOperationType = typeof SchemaOperationType[keyof typeof SchemaOperationType];
+/** Whether a schema path names a kind, an attribute or a relationship. */
+export const SchemaPathType = {
+  ATTRIBUTE: 'ATTRIBUTE',
+  NODE: 'NODE',
+  RELATIONSHIP: 'RELATIONSHIP'
+} as const;
+
+export type SchemaPathType = typeof SchemaPathType[keyof typeof SchemaPathType];
 export type StandardEvent = EventNodeInterface & {
   __typename: 'StandardEvent';
   /** The account ID that triggered the event. */

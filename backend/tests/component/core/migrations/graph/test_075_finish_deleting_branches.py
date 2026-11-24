@@ -9,6 +9,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m075_finish_deleting_branches import Migration075
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
+from infrahub.core.schema_change.factory import build_schema_change_repository
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import BranchNotFoundError, NodeNotFoundError
 
@@ -42,7 +43,8 @@ class Migration075WithFailingDeleter(Migration075):
 
     def build_deleter(self, db: InfrahubDatabase) -> BranchDataDeleterInterface:
         self.deleter = FailingBranchDeleter(
-            deleter=BranchDataDeleter(db=db, batch_size=5), failing_branch_name=self.failing_branch_name
+            deleter=BranchDataDeleter(db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)),
+            failing_branch_name=self.failing_branch_name,
         )
         return self.deleter
 
