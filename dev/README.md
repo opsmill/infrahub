@@ -70,6 +70,7 @@ Backend architecture documentation in [knowledge/backend/](knowledge/backend/):
 - [api-backpressure.md](knowledge/backend/api-backpressure.md) - Priority-aware load shedding and the database-stress signal
 - [observability.md](knowledge/backend/observability.md) - Traces, logs and metrics: trace propagation, sampling, span masking and the multiprocess metric rules
 - [telemetry.md](knowledge/backend/telemetry.md) - Anonymous usage telemetry (categories, windowing, retention, degradation)
+- [licensing.md](knowledge/backend/licensing.md) - License service contract, license states and notices, the surfaces that show them, and where the key is read
 - [graphql-execution.md](knowledge/backend/graphql-execution.md) - Sync vs async field completion and why middleware must stay synchronous
 - [tls.md](knowledge/backend/tls.md) - How the CA bundle of every outbound TLS connection is resolved and where each component applies it
 - [repository-git-state.md](knowledge/backend/repository-git-state.md) - How the API server reads a repository's commit log from a worker's clone

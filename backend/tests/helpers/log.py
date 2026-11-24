@@ -27,6 +27,31 @@ def traceback_suppression() -> Iterator[TracebackSuppressionFilter]:
             logging.getLogger(prefect_logger_name).removeFilter(traceback_filter)
 
 
+class _RecordCollector(logging.Handler):
+    def __init__(self, records: list[logging.LogRecord], level: int) -> None:
+        super().__init__(level=level)
+        self._records = records
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self._records.append(record)
+
+
+@contextmanager
+def capture_log_records(logger_name: str, level: int) -> Iterator[list[logging.LogRecord]]:
+    """Collect what one logger emits at ``level`` or above inside the block, then put its level and handlers back."""
+    records: list[logging.LogRecord] = []
+    handler = _RecordCollector(records=records, level=level)
+    target = logging.getLogger(logger_name)
+    previous_level = target.level
+    target.addHandler(handler)
+    target.setLevel(level)
+    try:
+        yield records
+    finally:
+        target.removeHandler(handler)
+        target.setLevel(previous_level)
+
+
 def find_logged_events(caplog: pytest.LogCaptureFixture, *, event: str, **fields: Any) -> list[dict]:
     """Return the structured payloads of the captured log entries with the given event name and bound fields.
 
@@ -47,3 +72,12 @@ def find_logged_event(caplog: pytest.LogCaptureFixture, *, event: str, **fields:
     """Return the structured payload of the first matching log entry, or ``None`` when none was captured."""
     matches = find_logged_events(caplog, event=event, **fields)
     return matches[0] if matches else None
+
+
+def infrahub_log_payloads(caplog: pytest.LogCaptureFixture) -> list[dict[str, Any]]:
+    """Return the infrahub logger's structured payloads in order, without timestamps, so each compares whole."""
+    return [
+        {name: value for name, value in record.msg.items() if name != "timestamp"}
+        for record in caplog.records
+        if record.name == "infrahub" and isinstance(record.msg, dict)
+    ]

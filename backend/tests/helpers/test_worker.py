@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from typing import Any, AsyncGenerator
 from uuid import UUID
 
@@ -18,6 +19,7 @@ from infrahub.workers.infrahub_async import (
 from infrahub.workflows.catalogue import INFRAHUB_WORKER_POOL
 from infrahub.workflows.initialization import setup_blocks
 from infrahub.workflows.models import WorkerPoolDefinition
+from tests.helpers.log import capture_log_records
 from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
 
 
@@ -82,6 +84,11 @@ class TestWorkerInfrahubAsync(TestInfrahubAppWithoutLocalWorkflow):
             await flow.save(client=prefect_client, work_pool=INFRAHUB_WORKER_POOL)
 
     @pytest.fixture(scope="class")
+    def worker_setup_records(self) -> list[logging.LogRecord]:
+        """What the infrahub logger emitted at INFO and above while the class's worker ran its setup."""
+        return []
+
+    @pytest.fixture(scope="class")
     async def prefect_worker(
         self,
         client: InfrahubClient,
@@ -89,6 +96,7 @@ class TestWorkerInfrahubAsync(TestInfrahubAppWithoutLocalWorkflow):
         prefect_client: PrefectClient,
         work_pool: WorkPool,
         git_global_config_env_setting: Any,
+        worker_setup_records: list[logging.LogRecord],
     ) -> AsyncGenerator[InfrahubWorkerAsync, None]:
         worker = InfrahubWorkerAsync(work_pool_name=work_pool.name)
         ready: asyncio.Future[None] = asyncio.get_running_loop().create_future()
@@ -99,7 +107,9 @@ class TestWorkerInfrahubAsync(TestInfrahubAppWithoutLocalWorkflow):
         # teardown run in different tasks, so the whole worker lifecycle runs in one task.
         async def lifecycle() -> None:
             try:
-                await worker.setup(client=client, metric_port=0)
+                with capture_log_records(logger_name="infrahub", level=logging.INFO) as setup_records:
+                    await worker.setup(client=client, metric_port=0)
+                worker_setup_records.extend(setup_records)
                 await worker.sync_with_backend()
             # Any failure (incl. CancelledError) must resolve the "ready" future, else the fixture awaiting it hangs forever
             except BaseException as exc:  # noqa: BLE001
