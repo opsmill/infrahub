@@ -55,20 +55,19 @@ class Relationships(ObjectType):
 
             await query.execute(db=db)
 
-            nodes = []
-            for peers in query.get_peers():
-                nodes.append(
-                    {
-                        "node": {
-                            "id": peers.id,
-                            "identifier": peers.identifier,
-                            "peers": [
-                                {"id": peers.source_id, "kind": peers.source_kind},
-                                {"id": peers.destination_id, "kind": peers.destination_kind},
-                            ],
-                        }
+            nodes = [
+                {
+                    "node": {
+                        "id": peers.id,
+                        "identifier": peers.identifier,
+                        "peers": [
+                            {"id": peers.source_id, "kind": peers.source_kind},
+                            {"id": peers.destination_id, "kind": peers.destination_kind},
+                        ],
                     }
-                )
+                }
+                for peers in query.get_peers()
+            ]
             response["edges"] = nodes
 
             return response

@@ -259,7 +259,7 @@ async def test_put_succeeds_when_the_event_cannot_be_sent(
     response = started_client.put(URL, headers=admin_headers, json={"ratio": 1.0, "duration_seconds": 1800})
 
     assert response.status_code == 200
-    assert response.json()["ratio_in_force"] == 1.0
+    assert response.json()["ratio_in_force"] == pytest.approx(1.0)
     assert len(_sent_messages(recorder_bus)) == 1
 
 

@@ -43,7 +43,7 @@ async def wait_for_artifacts(
             artifacts = [a for a in artifacts if a.name.value == expected_name]
 
         if artifacts and all(
-            a.status.value in (ArtifactStatus.READY.value, ArtifactStatus.ERROR.value) for a in artifacts
+            a.status.value in {ArtifactStatus.READY.value, ArtifactStatus.ERROR.value} for a in artifacts
         ):
             return artifacts
         await asyncio.sleep(interval)

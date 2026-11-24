@@ -400,10 +400,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
     def get_relationships_by_identifier(self, id: str) -> list[RelationshipSchema]:
         """Return a list of relationship instead of a single one."""
-        rels: list[RelationshipSchema] = []
-        for item in self.relationships:
-            if item.identifier == id:
-                rels.append(item)
+        rels: list[RelationshipSchema] = [item for item in self.relationships if item.identifier == id]
 
         return rels
 
@@ -782,7 +779,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
                 continue
             local_value = local_text_values[field_name]
             # keep current local value if it's already None or ""
-            setattr(self, field_name, local_value if local_value in (None, "") else None)
+            setattr(self, field_name, local_value if local_value in {None, ""} else None)
 
         return self
 

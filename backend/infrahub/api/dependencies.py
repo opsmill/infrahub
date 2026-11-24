@@ -123,7 +123,7 @@ async def get_current_user(
     if (
         account_session.authenticated
         or request.url.path.startswith("/graphql")
-        or (config.SETTINGS.main.allow_anonymous_access and request.method.lower() in ["get", "options"])
+        or (config.SETTINGS.main.allow_anonymous_access and request.method.lower() in {"get", "options"})
     ):
         request.state.account_session = account_session
         return account_session

@@ -125,19 +125,19 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/", versio
         chart_yaml = yaml.load(chart_path)
 
         if "appVersion" not in chart_yaml:
-            raise ValueError(f"appVersion not found in {str(chart_path)}; no updates made.")
+            raise ValueError(f"appVersion not found in {chart_path!s}; no updates made.")
 
         old_app_version = Version(chart_yaml.get("appVersion", ""))
         if old_app_version == app_version:
             print(
-                f"{str(chart_path)} updates not required, `appVersion` of {old_app_version} matches current from `pyproject.toml`"
+                f"{chart_path!s} updates not required, `appVersion` of {old_app_version} matches current from `pyproject.toml`"
             )
             continue
 
         # Handle Helm chart version increment
         old_helm_version = Version(chart_yaml.get("version", ""))
         if not old_helm_version:
-            raise ValueError(f"Helm chart `version` not found in {str(chart_path)}; no updates made.")
+            raise ValueError(f"Helm chart `version` not found in {chart_path!s}; no updates made.")
 
         new_helm_version = old_helm_version
 
@@ -181,11 +181,11 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/", versio
                 or values_yaml["prefect-server"]["global"]["prefect"]["image"]["repository"]
                 != "registry.opsmill.io/opsmill/infrahub"
             ):
-                print(f"prefect-server image tag not found in {str(values_path)}; no updates made.")
+                print(f"prefect-server image tag not found in {values_path!s}; no updates made.")
             else:
                 values_yaml["prefect-server"]["global"]["prefect"]["image"]["prefectTag"] = new_app_version
                 yaml_values.dump(values_yaml, values_path)
-                print(f"{str(values_path)} updated with `prefectTag`: {new_app_version}")
+                print(f"{values_path!s} updated with `prefectTag`: {new_app_version}")
         elif chart == "infrahub-enterprise":
             if "dependencies" in chart_yaml:
                 for dependency in chart_yaml["dependencies"]:
@@ -197,7 +197,7 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/", versio
 
         yaml.dump(chart_yaml, chart_path)
 
-        print(f"{str(chart_path)} updated with Helm `version`: {new_helm_version} and `appVersion`: {new_app_version}")
+        print(f"{chart_path!s} updated with Helm `version`: {new_helm_version} and `appVersion`: {new_app_version}")
 
 
 @task
@@ -406,24 +406,24 @@ def update_docker_compose_env_vars(
             match = pattern.match(existing_value)
             if match and match.group(1) == var and match.group(2) == default_value_str:
                 new_config_lines.append(docker_compose[line_idx])
-            elif var in [
+            elif var in {
                 "INFRAHUB_BROKER_USERNAME",
                 "INFRAHUB_BROKER_PASSWORD",
                 "INFRAHUB_CACHE_USERNAME",
                 "INFRAHUB_CACHE_PASSWORD",
-            ]:
+            }:
                 key_name = var.replace("INFRAHUB_", "").lower()
                 new_config_lines.append(f"  {var}: &{key_name} ${{{var}:-{default_value_str}}}")
             elif default_value_str:
                 new_config_lines.append(f"  {var}: ${{{var}:-{default_value_str}}}")
             else:
                 new_config_lines.append(f"  {var}:")
-        elif var in [
+        elif var in {
             "INFRAHUB_BROKER_USERNAME",
             "INFRAHUB_BROKER_PASSWORD",
             "INFRAHUB_CACHE_USERNAME",
             "INFRAHUB_CACHE_PASSWORD",
-        ]:
+        }:
             key_name = var.replace("INFRAHUB_", "").lower()
             new_config_lines.append(f"  {var}: &{key_name} ${{{var}:-{default_value_str}}}")
         elif default_value_str:

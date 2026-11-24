@@ -109,18 +109,18 @@ async def test_merge_diff_changelogs(
     events = await diff_events.collect_changelogs()
     assert len(events) == 5
     changelogs = [changelog[1] for changelog in events]
-    p1_changelog = [node for node in changelogs if node.node_id == p1.id][0]
-    p2_changelog = [node for node in changelogs if node.node_id == p2.id][0]
-    p4_changelog = [node for node in changelogs if node.node_id == p4.id][0]
-    c1_changelog = [node for node in changelogs if node.node_id == car1.id][0]
-    c2_changelog = [node for node in changelogs if node.node_id == car2.id][0]
+    p1_changelog = next(node for node in changelogs if node.node_id == p1.id)
+    p2_changelog = next(node for node in changelogs if node.node_id == p2.id)
+    p4_changelog = next(node for node in changelogs if node.node_id == p4.id)
+    c1_changelog = next(node for node in changelogs if node.node_id == car1.id)
+    c2_changelog = next(node for node in changelogs if node.node_id == car2.id)
 
     assert not p1_changelog.attributes
     assert "cars" in p1_changelog.relationships
     assert isinstance(p1_changelog.relationships["cars"], RelationshipCardinalityManyChangelog)
     assert len(p1_changelog.relationships["cars"].peers) == 2
-    peer_car1 = [peer for peer in p1_changelog.relationships["cars"].peers if peer.peer_id == car1.id][0]
-    peer_car2 = [peer for peer in p1_changelog.relationships["cars"].peers if peer.peer_id == car2.id][0]
+    peer_car1 = next(peer for peer in p1_changelog.relationships["cars"].peers if peer.peer_id == car1.id)
+    peer_car2 = next(peer for peer in p1_changelog.relationships["cars"].peers if peer.peer_id == car2.id)
     assert peer_car1.peer_status == DiffAction.REMOVED
     assert peer_car2.peer_status == DiffAction.ADDED
 

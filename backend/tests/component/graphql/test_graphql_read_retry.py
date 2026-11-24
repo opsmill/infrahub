@@ -238,9 +238,11 @@ async def test_concurrent_queries_fail_without_retries(
         if isinstance(r, TransientError):
             transient_failures.append(r)
         elif hasattr(r, "errors") and r.errors:
-            for err in r.errors:
-                if isinstance(getattr(err, "original_error", None), TransientError):
-                    transient_failures.append(err.original_error)
+            transient_failures.extend(
+                err.original_error
+                for err in r.errors
+                if isinstance(getattr(err, "original_error", None), TransientError)
+            )
 
     # With thread_pool_max_size=10 and no retries, we expect at least some TransientError failures
     assert len(transient_failures) > 0, (

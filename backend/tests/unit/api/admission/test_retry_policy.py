@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from infrahub.api.admission.retry_policy import RetryAfterPolicy
 
 
@@ -77,7 +79,7 @@ def test_warm_up_zone_never_accrues_sustained_time() -> None:
 
     # The episode never started, so the top tier stays at its unescalated base.
     assert policy.retry_after(tier=3) == 10
-    assert recorded[-1] == 0.0
+    assert recorded[-1] == pytest.approx(0.0)
 
 
 def test_sustained_load_escalates_by_duration() -> None:
@@ -90,7 +92,7 @@ def test_sustained_load_escalates_by_duration() -> None:
     clock.advance(60)
     policy.observe(ratio=25.0)  # 60s sustained -> warn tier -> x2
     assert policy.retry_after(tier=2) == 10
-    assert recorded[-1] == 60.0
+    assert recorded[-1] == pytest.approx(60.0)
 
     clock.advance(300)
     policy.observe(ratio=25.0)  # 360s sustained -> high tier -> x3
@@ -120,7 +122,7 @@ def test_episode_resets_when_load_clears() -> None:
     clock.advance(10)
     policy.observe(ratio=5.0)  # load clears -> episode resets
 
-    assert recorded[-1] == 0.0
+    assert recorded[-1] == pytest.approx(0.0)
     assert policy.retry_after(tier=1) == 1  # back to x1
 
 

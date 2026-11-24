@@ -16,7 +16,7 @@ class InfrahubCheckSpineNbrInterfaceDisabled(InfrahubCheck):
 
             if nbr_intf_disabled > 1:
                 self.log_error(
-                    message=f"{device_name} has {str(nbr_intf_disabled)} interfaces disabled, only 1 allowed.",
+                    message=f"{device_name} has {nbr_intf_disabled!s} interfaces disabled, only 1 allowed.",
                     object_id=device_id,
                     object_type="device",
                 )

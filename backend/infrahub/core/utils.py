@@ -263,7 +263,7 @@ class SubclassWithMeta_Meta(type):
         return cls.__name__
 
     def __repr__(cls) -> str:
-        return f"<{cls.__name__} meta={repr(cls._meta)}>"
+        return f"<{cls.__name__} meta={cls._meta!r}>"
 
 
 class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):

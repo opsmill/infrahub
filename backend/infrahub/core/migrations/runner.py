@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 class MigrationRunner:
     def __init__(self, branch: Branch) -> None:
-        if branch.name in (registry.default_branch, GLOBAL_BRANCH_NAME):
+        if branch.name in {registry.default_branch, GLOBAL_BRANCH_NAME}:
             raise ValueError("MigrationRunner cannot be used to apply migration on default branches")
 
         self.branch = branch

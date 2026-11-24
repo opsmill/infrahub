@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import operator
 from collections import defaultdict
-from collections.abc import Callable, Generator, Iterator, Mapping
+from collections.abc import Callable, Generator, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import lru_cache
@@ -497,6 +497,7 @@ class Query:
         order_by: list[str] | None = None,
         branch_agnostic: bool = False,
         user_id: str = SYSTEM_USER_ID,
+        operation_ats: Sequence[Timestamp] = (),
     ) -> None:
         if branch:
             self.branch = branch
@@ -513,6 +514,7 @@ class Query:
         self.offset = offset
         self.order_by = order_by
         self.user_id = user_id
+        self.operation_ats: list[Timestamp] = list(operation_ats)
 
         # Initialize internal variables
         self.params: dict = {}
@@ -699,7 +701,7 @@ class Query:
 
         for key, value in params.items():
             if isinstance(value, int | list):
-                rendered.append(f"{key}: {str(value)}")
+                rendered.append(f"{key}: {value!s}")
             else:
                 rendered.append(f'{key}: "{value}"')
 

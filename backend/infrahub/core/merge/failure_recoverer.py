@@ -277,7 +277,7 @@ class MergeFailureRecoverer:
             return
         await self.rollbacker.rollback(
             target_branch=self.default_branch,
-            at=Timestamp(merge_started_at),
+            ats=[Timestamp(merge_started_at)],
             scope=RollbackScope.SINCE_TIMESTAMP,
         )
 

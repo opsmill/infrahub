@@ -151,7 +151,7 @@ class TestLDAPSettingsDefaults:
         # user_search_filter is derived at model-construction time from
         # attribute_username (sAMAccountName by default).
         assert s.user_search_filter == "(sAMAccountName={username})"
-        assert s.per_server_timeout == 10.0
+        assert s.per_server_timeout == pytest.approx(10.0)
         assert s.display_label == "Sign in with LDAP"
         assert s.icon == "mdi:account-key-outline"
         assert s.admin_enabled is False

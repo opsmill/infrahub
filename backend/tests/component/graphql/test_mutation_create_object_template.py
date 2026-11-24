@@ -195,7 +195,7 @@ async def test_create_with_object_template(
     assert sorted([interface.name.value for interface in device_interfaces.values()]) == if_names
     # verify attributes and metadata on interfaces
     for interface in interfaces:
-        assert interface.name.value in ["et-0/0/0", "et-0/0/1", "et-0/0/2", "et-0/0/3"]
+        assert interface.name.value in {"et-0/0/0", "et-0/0/1", "et-0/0/2", "et-0/0/3"}
         template_obj = interface_templates_by_name[interface.name.value]
         assert interface.name.is_default is False
         assert interface.name.source_id == template_obj.id

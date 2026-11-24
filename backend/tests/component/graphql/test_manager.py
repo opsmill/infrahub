@@ -9,13 +9,25 @@ from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.manager import GraphQLSchemaManager
+from infrahub.graphql.mutations.attribute import BaseAttributeCreate, BaseAttributeUpdate
 from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.graphql.types import InfrahubObject
 from infrahub.graphql.types.node import InfrahubObjectWithoutMeta
 
 
-async def test_input_type_registration() -> None:
-    assert registry.input_type is not {}  # noqa
+async def test_input_type_registration(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(registry, "input_type", {})
+
+    class SampleAttributeCreate(BaseAttributeCreate):
+        pass
+
+    class SampleAttributeUpdate(BaseAttributeUpdate):
+        pass
+
+    assert registry.input_type == {
+        "SampleAttributeCreate": SampleAttributeCreate,
+        "SampleAttributeUpdate": SampleAttributeUpdate,
+    }
 
 
 async def test_generate_interface_object(

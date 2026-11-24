@@ -196,10 +196,7 @@ async def ip_dataset_01(
     yield ip_dataset_01_load
 
     all_diff_roots = await diff_repository.get_roots_metadata()
-    root_uuids_to_delete = []
-    for diff_root in all_diff_roots:
-        if start_time <= diff_root.from_time:
-            root_uuids_to_delete.append(diff_root.uuid)
+    root_uuids_to_delete = [diff_root.uuid for diff_root in all_diff_roots if start_time <= diff_root.from_time]
     await diff_repository.delete_diff_roots(diff_root_uuids=root_uuids_to_delete)
 
     query = await DeleteAfterTimeQuery.init(db=db, timestamp=start_time)

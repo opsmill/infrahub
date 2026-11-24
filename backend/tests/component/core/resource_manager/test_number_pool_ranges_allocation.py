@@ -105,7 +105,7 @@ async def test_the_heavier_range_is_drained_first_in_ascending_order(
         branch=default_branch,
     )
     assert utilization["count"] == 2
-    assert utilization["utilization"] == 50.0
+    assert utilization["utilization"] == pytest.approx(50.0)
     assert [
         (edge["node"]["display_label"], edge["node"]["weight"], edge["node"]["utilization"])
         for edge in utilization["edges"]
@@ -137,7 +137,7 @@ async def test_the_pool_is_full_only_once_every_range_is_drained(
         at=Timestamp(),
         branch=default_branch,
     )
-    assert utilization["utilization"] == 100.0
+    assert utilization["utilization"] == pytest.approx(100.0)
 
 
 @pytest.mark.parametrize("weight", [None, 5], ids=["no-weight", "equal-weight"])
@@ -180,7 +180,7 @@ async def test_excluded_values_outside_every_range_leave_the_size_unchanged(
     utilization = await resolve_number_pool_utilization(
         db=db, domains=schema_domains(db=db, branch=default_branch), pool=pool, at=Timestamp(), branch=default_branch
     )
-    assert utilization["utilization"] == 1 / 197 * 100
+    assert utilization["utilization"] == pytest.approx(1 / 197 * 100)
 
 
 async def test_excluded_values_inside_a_range_are_skipped_and_subtracted(
@@ -198,8 +198,8 @@ async def test_excluded_values_inside_a_range_are_skipped_and_subtracted(
     utilization = await resolve_number_pool_utilization(
         db=db, domains=schema_domains(db=db, branch=default_branch), pool=pool, at=Timestamp(), branch=default_branch
     )
-    assert utilization["utilization"] == 5 / 17 * 100
-    assert utilization["edges"][0]["node"]["utilization"] == 5 / 17 * 100
+    assert utilization["utilization"] == pytest.approx(5 / 17 * 100)
+    assert utilization["edges"][0]["node"]["utilization"] == pytest.approx(5 / 17 * 100)
 
 
 async def test_min_and_max_values_clip_the_ranges(
@@ -222,7 +222,7 @@ async def test_min_and_max_values_clip_the_ranges(
     utilization = await resolve_number_pool_utilization(
         db=db, domains=schema_domains(db=db, branch=default_branch), pool=pool, at=Timestamp(), branch=default_branch
     )
-    assert utilization["utilization"] == 100.0
+    assert utilization["utilization"] == pytest.approx(100.0)
     assert [(edge["node"]["display_label"], edge["node"]["utilization"]) for edge in utilization["edges"]] == [
         ("10 - 20", 100.0),
         ("60 - 80", 0.0),
@@ -264,7 +264,7 @@ async def test_a_pool_whose_only_range_is_clipped_to_nothing_reports_zero(
     )
 
     assert (utilization["count"], utilization["utilization"]) == (1, 0.0)
-    assert utilization["edges"][0]["node"]["utilization"] == 0.0
+    assert utilization["edges"][0]["node"]["utilization"] == pytest.approx(0.0)
     with pytest.raises(PoolExhaustedError):
         await _next_number(db=db, branch=default_branch, pool=pool, kind=schema.kind)
 

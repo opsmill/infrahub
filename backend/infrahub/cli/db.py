@@ -1397,7 +1397,7 @@ async def load_export(db: InfrahubDatabase, export_dir: Path, query_limit: int =
             for k, v in edge_row.items():
                 if k == "edge_type" or not v:
                     continue
-                if k in ["start_node_id", "end_node_id"]:
+                if k in {"start_node_id", "end_node_id"}:
                     edge_dict[k] = v
                 else:
                     edge_properties[k] = v
