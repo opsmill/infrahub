@@ -4,13 +4,14 @@ description: See Infrahub in action through the sandbox, interactive labs, video
 ---
 import VideoPlayer from '../../src/components/VideoPlayer';
 import ReferenceLink from "../../src/components/Card";
+import SandboxCards from '@site/docs-sandboxes/_explore-cards.mdx';
 
 To see Infrahub in action, you have several options. Depending on your available time and preferred learning style, you can choose from the following — ranging from the quickest to the most in-depth experience:
 
-- **[Infrahub sandbox](#infrahub-sandbox)** - A public instance of Infrahub that you can explore right now.
+- **[Infrahub Sandboxes](#infrahub-sandboxes)** - Public instances of Infrahub, one for each demo, that you can explore right now.
 - **[Getting started lab](#getting-started-lab)** - Interactive lab that covers the basic concepts of Infrahub.
 - **[Videos](#videos)** - A series of short videos that provide an overview of Infrahub and its capabilities.
-- **[Infrahub demos](#infrahub-demos)** - Full-blown demos that showcase Infrahub's capabilities in specific business scenarios.
+- **[Infrahub demos](#infrahub-demos)** - Infrahub projects for specific kinds of networks, which you run on your own machine and, for some, open as a sandbox.
 - **[Meeting OpsMill](#meeting-opsmill)** - Book a session with OpsMill to discuss your use case.
 
 :::note
@@ -19,11 +20,11 @@ If you are looking to build your own Infrahub instance, head to the [Quick Start
 
 :::
 
-## Infrahub sandbox
+## Infrahub Sandboxes
 
-The Infrahub Sandbox is a publicly hosted version of Infrahub, pre-loaded with sample data and examples. It's a great way to explore and get a first look at the Infrahub UI.
+Hosted Infrahub demos that you open in your browser, with nothing to install.
 
-<ReferenceLink title="Infrahub Sandbox" url="https://sandbox.infrahub.app/login" openInNewTab />
+<SandboxCards />
 
 ## Getting started lab
 
@@ -57,54 +58,94 @@ A recording of a livestream that covers what the Infrahub schema actually is, wh
 
 ## Infrahub demos
 
-Below is the current list of available demos developed and maintained by OpsMill and the community:
+Each demo is an Infrahub project for one kind of network: a schema, example data and Generators, with documentation that walks through the workflow. Run a demo on your own machine from its GitHub repository to change it, or open its sandbox, where there is one, to try it in your browser. OpsMill and the community develop and maintain these demos.
 
-- **Demo DC**
+### AI Data Center
 
-Demo DC is an end-to-end reference implementation you can actually learn from. This demo includes:
+A reference design for large data center fabrics, such as AI data centers, where every fabric, pod and rack is built from the same design. Infrahub generates the switches, cabling, IP addresses and configurations from how many switches each level has and which switch model fills each role.
 
-- Schema-driven modelling — spine-leaf fabrics, VxLAN/EVPN overlays, POPs, security zones, load balancers
-- Design-driven automation — create a topology design, watch Generators spawn all the devices, interfaces, IPs, BGP peers (the otters do the work)
-- Branch-based workflows — proposed changes with diffs, validation checks, artifact regeneration before merge
-- Firewall policy abstracted from vendor implementations
-- Multi-vendor configuration generation — Arista, Juniper, Cisco, SONiC templates included
-- Containerlab integration — deploy to a virtual lab and actually test your configurations
-- Service Catalog — simplified provisioning for when clicking buttons is preferable to YAML
+The demo includes:
 
-<ReferenceLink title="Demo DC" url="$(base_url)demo-dc" openInNewTab />
+- A five-stage Clos fabric in three levels: the fabric with its super spine switches, pods with spine switches, and racks with leaf switches
+- Four Generators: three that build the fabric, its pods and its racks in turn, and one that adds EVPN/VXLAN overlay services for each tenant
+- Configurations for Cisco, Arista, Dell and Juniper switches, rendered from the same design
+- Four example fabrics, one for each vendor
 
-- **Demo OTN**
+[AI Data Center reference design documentation]($(base_url)infrahub-solution-ai-dc/solution-ai-dc/overview) · [AI Data Center sandbox]($(base_url)sandboxes/demo-ai-dc)
 
-Demo OTN is an optical transport reference implementation that models a European research core down to the fiber span and the wavelength. This demo includes:
+### Data Center
 
-- Schema-driven optical modelling: conduits, fiber spans, optical multiplex sections, ROADMs, amplifiers, transponders, mux/demux, regenerators, the DWDM frequency grid and the CWDM wavelength plan
-- Provisioning from intent: Generators pick the route and the optical mode, allocate a grid position, and build the carriers, ports and client mappings behind a single service object
-- Link budget computed from the modelled plant: loss, OSNR, dispersion and latency over the ordered chain of spans and amplifiers, with Checks that fail a service that does not close
-- Impact analysis: name a fiber section and get the wavelengths, terabits, services and customers behind it, plus the conduits each span shares
-- Capacity planning that accounts for quantisation: free spectrum as blocks, and how many of the 96 anchors will actually take another carrier per mode
-- Diversity validation read off the conduits rather than the sections, so two services sharing a duct are not reported as diverse
-- Artifact-rendered network and ODU maps, generated per branch from the model
+A spine-leaf data center modeled in Infrahub, for teams that want every new data center built from the same standard designs. Request a data center from a design and a location, and Infrahub generates its devices, cabling, IP addresses and configurations for you to review before the change is merged.
 
-<ReferenceLink title="Demo OTN" url="$(base_url)demo-otn" openInNewTab />
+The demo includes:
 
-- **Demo Service Catalog**
+- A schema for spine-leaf fabrics, VXLAN/EVPN overlays, points of presence, security zones and load balancers
+- Topology designs, from which a Generator creates the devices, interfaces, IP addresses and BGP sessions
+- Changes made on a branch and reviewed in a Proposed Change, with the diff, validation checks and regenerated artifacts, before they are merged
+- Firewall policies modeled independently of each vendor's configuration syntax
+- Configuration templates for Arista, Juniper, Cisco and SONiC
+- Deployment of the generated configurations to a virtual lab with Containerlab
+- A service catalog: a web form for requesting a new data center
 
-The Service Catalog demo demonstrates how Infrahub can be used to manage and deploy services within an ISP environment. It walks through the process of creating a service catalog using Infrahub and Streamlit. From modeling services in the schema, codifying them in Generator, to making these capabilities accessible across the organization via a Streamlit app. This demo provides a comprehensive, end-to-end overview of the workflow.
+[Data Center demo documentation]($(base_url)demo-dc) · [Data Center sandbox]($(base_url)sandboxes/demo-dc)
 
-<ReferenceLink title="Demo Service Catalog" url="$(base_url)demo-service-catalog" openInNewTab />
+### Service Provider
 
-- **Demo SP**
+A multi-vendor MPLS backbone and the customer services that run over it, for service providers that provision each L3VPN or SD-WAN service from a single request. Infrahub generates the VRF, interfaces, IP addresses, BGP sessions and router configurations for each service.
 
-Demo SP is a service-provider reference implementation that shows how Infrahub manages a multi-vendor MPLS backbone and provisions customer-facing services end to end. This demo includes:
+The demo includes:
 
-- Schema-driven service modelling — `ServiceL3Vpn` and `ServiceSdwan` with uniqueness constraints, parent/child relationships, vendor and topology enums, and lifecycle status
-- Generator-driven provisioning — materialize VRFs, route targets, PE-CE interfaces, IP allocation from resource pools, and eBGP sessions from a single user-facing object
-- Per-vendor configuration artifacts — render the same intent into Arista EOS, Cisco IOS-XR, Juniper Junos, Nokia SR OS, Cisco Viptela, and Versa VOS configurations
-- Branch-based workflows — catalog form to feature branch to Generator to artifact regeneration to proposed change with validation checks before merge
-- Streamlit Service Catalog — self-service L3VPN and SD-WAN provisioning
-- Containerlab integration — boot the rendered MPLS backbone in a virtual lab for hands-on testing
+- A schema for L3VPN and SD-WAN services, with uniqueness constraints, parent and child relationships, vendor and topology choices, and a lifecycle status
+- Generators that create the VRF, route targets, PE-CE interfaces, IP addresses from resource pools and eBGP sessions from one service object
+- Configurations rendered from the same service for Arista EOS, Cisco IOS-XR, Juniper Junos, Nokia SR OS, Cisco Viptela and Versa VOS
+- A request workflow: the service catalog form creates a branch, the Generator runs, Infrahub regenerates the artifacts, and a Proposed Change with validation checks is opened for review before the change is merged
+- A service catalog: a web application for requesting L3VPN and SD-WAN services
+- Deployment of the backbone to a virtual lab with Containerlab
 
-<ReferenceLink title="Demo SP" url="$(base_url)infrahub-demo-sp" openInNewTab />
+[Service Provider demo documentation]($(base_url)infrahub-demo-sp) · [Service Provider sandbox]($(base_url)sandboxes/demo-sp)
+
+### Arista AVD
+
+A reference design for Arista data center fabrics that runs Arista AVD inside Infrahub, for teams that use AVD and want a source of truth, a web interface and branch-based review around it. Infrahub generates the switches, cabling, IP addresses and BGP settings from the fabric design, and PyAVD generates the EOS configurations and documentation from that data.
+
+The demo includes:
+
+- A schema for fabrics, pods, racks and devices, IP prefixes and addresses, EVPN VRFs, VLANs and switched virtual interfaces, and MLAG domains
+- Generators that create the super spine, spine and leaf switches, allocate loopback, interconnect and management addresses, BGP ASNs and node IDs, cable the devices, and then build the PyAVD input and structured configuration of each device
+- EOS configurations, Markdown documentation for each device and fabric, and a cabling plan, rendered as artifacts
+- A service portal for adding a network segment, a server or an EVPN tenant, each opened as a Proposed Change for review
+- Access to the fabric data through the Infrahub web interface, the GraphQL API and the MCP server
+- Deployment of the configurations through an Ansible runner or CloudVision
+
+[Arista AVD reference design documentation]($(base_url)arista-avd) · [Arista AVD sandbox]($(base_url)sandboxes/demo-arista-avd)
+
+### Optical transport (OTN)
+
+A European research-network optical core modeled down to the fiber span and the wavelength, for transport engineers who need to know what runs over a fiber, what a fiber cut takes down and where the next wavelength fits.
+
+The demo includes:
+
+- A schema for the optical plant and the spectrum: conduits, fiber spans, optical multiplex sections, ROADMs, amplifiers, transponders, mux/demux, regenerators, the DWDM frequency grid and the CWDM wavelength plan
+- Provisioning from one service object: Generators choose the route and the optical mode, allocate a position on the grid, and create the carriers, ports and client mappings
+- A link budget calculated from the modeled plant, with loss, OSNR, dispersion and latency over the spans and amplifiers, and Checks that fail a service whose link budget is not met
+- Impact analysis: for a fiber section, the wavelengths, capacity, services and customers that use it, and the conduits each span shares
+- Capacity planning: free spectrum shown as blocks, and how many of the 96 grid anchors can take another carrier in each optical mode
+- Diversity validation based on shared conduits, so two services that run through the same duct are not reported as diverse
+- Network and ODU maps rendered as artifacts on each branch
+
+[Optical transport demo documentation]($(base_url)demo-otn)
+
+### Service Catalog
+
+A fictional internet service provider that delivers dedicated internet access through a service catalog, so that the service delivery team requests services through a web form without involving network architects in each request.
+
+The demo includes:
+
+- The service modeled in the schema, and a Generator that builds each service from its request
+- A web application, built with Streamlit, where the service delivery team requests a service
+- A [blog post](https://opsmill.com/blog/how-to-turn-your-source-of-truth-into-a-service-factory/) about the business case
+
+[Service Catalog demo documentation]($(base_url)demo-service-catalog)
 
 ## Meeting OpsMill
 
