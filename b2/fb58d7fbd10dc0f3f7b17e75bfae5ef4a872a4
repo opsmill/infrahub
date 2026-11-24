@@ -22,6 +22,7 @@ backend/infrahub/api/schema.py
   s_05196466af1985::t_b358d2a5834ffd 55-56,551
   s_05196466af1985::t_0f3223dc584886 270-271,277-284,290,292-293
   s_05196466af1985::t_9829745824c09d 3,255,258-260
+  s_759d6ad8a10936::t_27ab947474abd4 256-257,261-269,272-276,285-289,291,486-487,493,495,573-574,580-581
 backend/infrahub/core/schema/submitted_ids/repository.py
   s_05196466af1985::t_f1cb0bfd8a69f0 25
   s_05196466af1985::t_e916625cc5b498 1-24
@@ -47,6 +48,7 @@ backend/tests/component/core/schema_manager/test_schema_element_ids_query.py
   s_05196466af1985::t_e916625cc5b498 3-5,9-10,12-15,19,22,25-33,36,38,41-65,67-72,75-80,82-93,95-119,121
   s_05196466af1985::t_9448fe04359ba0 11,66,73-74,94,120
   s_05196466af1985::t_e7ab60105a9a76 18
+  s_759d6ad8a10936::t_d34d6ef8d84fd2 1-2,6-8,16-17,20-21,23-24,34-35,37,39-40,81
 backend/tests/integration/schema_lifecycle/test_schema_load_submitted_ids.py
   s_05196466af1985::t_884c6afffdf54d 95,124-128,185
   s_05196466af1985::t_1253eeb0207677 6-7,13,16,30-54,57-58,65,69,82-90,93-94,96-99,103,106-119,122-123,129,131-133,136-138,140-143,147,151,153-155,158-159,161,163-168,170-180,182-183,187-197,199,202-216,219-225,230,234,236-237,240-241,243,245-246,249-253,255-256,258-264,266-267,270-275
@@ -78,6 +80,14 @@ changelog/+schema-load-submitted-ids.fixed.md
       "agent_id": {
         "tool": "claude",
         "id": "124d0d26-f7c5-4a25-b789-a162eac7a3fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    },
+    "s_759d6ad8a10936": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b6b11bd-cdbf-4a27-a3e5-47e600fa2588",
         "model": "claude-opus-5-5"
       },
       "human_author": "Aaron McCarty <aaron@opsmill.com>"
