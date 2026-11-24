@@ -312,6 +312,34 @@ async def test_create_schema_change_stores_the_core_schema_update_source(
     assert records[created.schema_change_id].properties["source"] == "core_schema_update"
 
 
+async def test_records_of_a_new_schema_change_are_created_at_the_timestamp_of_its_application(
+    db: InfrahubDatabase, empty_database: None
+) -> None:
+    repository = build_schema_change_repository(db=db)
+    at = Timestamp("2026-03-01T09:30:00.000000Z")
+
+    created = await repository.create_schema_change(
+        branch=BRANCH_NAME,
+        operations=build_seeded_operations(nbr_operations=2),
+        at=at,
+        user_id=SYSTEM_USER_ID,
+        source=SchemaChangeSource.USER,
+    )
+
+    records = await read_branch_schema_change_records(db=db, branch=BRANCH_NAME)
+    assert len(records) == 4
+    assert {
+        (uuid, key): record.properties[key]
+        for uuid, record in records.items()
+        for key in ("created_at", "updated_at")
+        if key in record.properties
+    } == {
+        **{(uuid, "created_at"): "2026-03-01T09:30:00.000000Z" for uuid in records},
+        (created.schema_change_id, "updated_at"): "2026-03-01T09:30:00.000000Z",
+        (created.application_id, "updated_at"): "2026-03-01T09:30:00.000000Z",
+    }
+
+
 async def test_operation_values_keep_their_json_type_apart_from_a_value_not_set(
     db: InfrahubDatabase, empty_database: None
 ) -> None:

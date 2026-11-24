@@ -204,8 +204,10 @@ no migration. The migration records report
 progress and are best effort.
 
 1. `SchemaChangeRecorder.start` creates the schema change and one application, both `running`, with
-   the operations, at the timestamp the coordinator then uses for every write. When it fails, the
-   load fails before it changes anything.
+   the operations, at the timestamp the coordinator then uses for every write. The records take that
+   timestamp as their `created_at`, so an applied schema change has `created_at` equal to `applied_at`,
+   and the caller takes it inside the schema lock, so `created_at` keeps the order of the versions.
+   When it fails, the load fails before it changes anything.
 2. The coordinator receives the application ID and puts it in `SchemaApplyMigrationData`. The flow
    `core/migrations/schema/tasks.py::schema_apply_migrations` builds a `MigrationRecorder` with
    `build_migration_recorder`, writing through a database session of its own. The positions sort the

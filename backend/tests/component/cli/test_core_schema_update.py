@@ -272,6 +272,7 @@ class TestCoreSchemaUpdate:
             "summary": "builtintag_branch_update_and_1_more",
         }
         assert by_status["failed"].properties.get("version") is None
+        assert applied.properties["created_at"] == applied.properties["applied_at"]
         assert [edge for edge in applied.edges if edge[0] == SchemaChangeEdgeType.SCHEMA_CHANGE_HAS_PARENT.value] == [
             (SchemaChangeEdgeType.SCHEMA_CHANGE_HAS_PARENT.value, older_database.user_change_id)
         ]

@@ -471,11 +471,13 @@ class SchemaChangeRepository:
     ) -> CreatedSchemaChange:
         """Create a running schema change with its operations, and its running application at `at`.
 
+        Every record is created at `at`, so a schema change is never applied before it was created.
+
         Raises:
             ValueError: When `operations` is empty.
 
         """
-        created_at = Timestamp().to_string()
+        created_at = at.to_string()
         schema_change = SchemaChange(
             uuid=str(UUIDT()),
             branch=branch,
