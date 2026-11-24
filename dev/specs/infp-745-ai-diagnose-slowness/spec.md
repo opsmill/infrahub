@@ -482,7 +482,9 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
   user's yes (D8 test).
 - **SC-007**: Every log line that the log audit lists is fixed before the release, or, for a stream
   that Infrahub does not write, stopped or named in the docs (FR-022a), or, for a line that FR-023
-  keeps, named in the docs.
+  keeps, named in the docs. The lines of the Python SDK (`infrahub_sdk/retry.py::prepare_retry` and
+  the HTTP 429 lines of `infrahub_sdk/rate_limit.py`, row 7 of the audit) are fixed outside INFP-745,
+  in [IFC-3658](https://opsmill.atlassian.net/browse/IFC-3658), and are not a release condition of 1.13.
 - **SC-008**: After release, OpsMill support counts the slowness cases that arrive with a report from
   the skill, over the first two releases after 1.13. The measure needs no telemetry, because nothing
   leaves the operator's network (FR-008). No target is set: the first count is the baseline. Who

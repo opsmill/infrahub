@@ -184,14 +184,14 @@ email address, no response of the Grafana MCP server for that time window contai
 - [ ] T050 [P] [US3] Remove the query string from the URL in `WebhookLogFormatter.outgoing_request` and `WebhookLogFormatter.delivery_succeeded` in `backend/infrahub/webhook/log_formatter.py` (depends on T046)
 - [ ] T051 [P] [US3] Remove the query string from the URL in the log lines and exception messages of `HttpxAdapter._request` in `backend/infrahub/services/adapters/http/httpx.py` (depends on T047)
 - [ ] T052 [P] [US3] Add an optional `params` argument to the `get` method of the HTTP adapter interface in `backend/infrahub/services/adapters/http/`, to `HttpxAdapter.get` and `HttpxAdapter._request`, and to the test adapters that implement the interface; today `get` accepts only `url` and `headers`. Then send the email address with `params` in `get_groups_from_provider` in `backend/infrahub/auth/auth.py`. The email address is still in the query string of the request, so T051 keeps it out of the log lines and exception messages (depends on T048, T051)
-- [ ] T053 [US3] For each row that T042 confirms, add a failing unit test next to the module and fix the line where it is written; record the fix in `log-audit.md` (FR-023). When the line is in the Python SDK, such as `prepare_retry`, do not change `python_sdk/`: record the row in `log-audit.md` and report it to Daniel, because the fix needs a change in `opsmill/infrahub-sdk-python`, an SDK release and an update of the `python_sdk` submodule, and that is a fourth repository for this work (depends on T042)
+- [ ] T053 [US3] For each row that T042 confirms, add a failing unit test next to the module and fix the line where it is written; record the fix in `log-audit.md` (FR-023). When the line is in the Python SDK, such as `prepare_retry`, do not change `python_sdk/`: record the row in `log-audit.md` and report it to Daniel, because the fix needs a change in `opsmill/infrahub-sdk-python`, an SDK release and an update of the `python_sdk` submodule. That fix is outside INFP-745, in [IFC-3658](https://opsmill.atlassian.net/browse/IFC-3658) (depends on T042)
 - [ ] T054 [US3] For each value found in a stream that Infrahub does not write, add an Alloy `drop` rule to `development/alloy/config.alloy`, or mark the stream for the docs (FR-026); record which one in `log-audit.md` (FR-022a) (depends on T043, T044)
 - [ ] T055 [US3] Add the same `drop` rules to the Alloy configuration of `infrahub-helm: charts/infrahub-observability` (depends on T045, T054)
 - [ ] T056 [P] [US3] Add the changelog fragment `changelog/+log-query-string.security.md` for the URL query strings and the email address removed from logs, with the `creating-changelog-entries` skill (depends on T050 to T053)
 
 ### Validation of User Story 3
 
-- [ ] T057 [US3] Run [quickstart.md](quickstart.md) check 9, and check that each confirmed row of `log-audit.md` has a fix with a passing test, a `drop` rule, or a docs entry (SC-004, SC-007) (depends on T053, T054, T055)
+- [ ] T057 [US3] Run [quickstart.md](quickstart.md) check 9, and check that each confirmed row of `log-audit.md` has a fix with a passing test, a `drop` rule, or a docs entry (SC-004, SC-007); the SDK lines of row 7 are fixed in [IFC-3658](https://opsmill.atlassian.net/browse/IFC-3658) and are not checked here (depends on T053, T054, T055)
 
 **Checkpoint**: No token, user name or email address that Infrahub writes reaches the AI assistant,
 apart from the streams that the docs name.
@@ -230,7 +230,7 @@ apart from the streams that the docs name.
   wait for the recorded responses.
 - **User Story 3 (Phase 5)**: independent of stories 1 and 2, except T043, which reads the Grafana MCP
   server's own logs (T015). The log fixes (T046 to T052) can start at once. A confirmed finding in
-  the Python SDK is not fixed here (T053).
+  the Python SDK is not fixed here, but in [IFC-3658](https://opsmill.atlassian.net/browse/IFC-3658) (T053).
 - **Polish (Phase 6)**: T058 needs stories 1 and 3; T059 needs the published skill. The security
   review has two parts: Compose after T015 (T063), Helm after T024 (T070).
 

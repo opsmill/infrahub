@@ -372,7 +372,7 @@ the user name (commit `5a22997549`). Spans are masked (`backend/infrahub/masking
 | `auth/auth.py::validate_auth_response`, `safe_get_response_body` | The token or user info endpoint URL, and the error body, at ERROR | An identity provider that returns HTTP 400 and 401 |
 | Repository location with credentials (`https://user:token@host`), in `exceptions.py::RepositoryInvalidBranchError`, `git/base.py::_raise_enriched_error_static`, `RepositoryError` from Git's error output | User name and token | Add a repository with such a location and read the flow run log. `git/writeback/credentials.py::scrub_credentials` already removes them for write-back errors. |
 | `webhook/tasks/process.py` payload lines (INFO truncated, DEBUG full) | Node attribute values, for example an account's email address | The payload of an account change event |
-| `infrahub_sdk/retry.py::prepare_retry`, `rate_limit.py` | The API URL with its query string, at WARNING or ERROR | Whether any SDK call puts a token in the query string |
+| `infrahub_sdk/retry.py::prepare_retry`, `rate_limit.py` | The API URL with its query string, at WARNING or ERROR | Whether any SDK call puts a token in the query string. A confirmed finding is fixed outside INFP-745, in [IFC-3658](https://opsmill.atlassian.net/browse/IFC-3658) |
 
 **Out of scope, with the reason.**
 
