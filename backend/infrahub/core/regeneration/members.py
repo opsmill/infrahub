@@ -6,6 +6,7 @@ from infrahub_sdk.exceptions import NodeNotFoundError
 
 if TYPE_CHECKING:
     import logging
+    from collections.abc import Collection
 
     from infrahub_sdk.node import InfrahubNode
 
@@ -39,7 +40,7 @@ def map_subscriber_ids_by_member(
 def should_render_artifact(
     artifact_id: str | None,
     regenerate_all_members: bool,
-    impacted_artifacts: list[str],
+    impacted_artifacts: Collection[str],
 ) -> bool:
     """Returns a boolean to indicate if an artifact should be generated or not.
 
@@ -56,7 +57,7 @@ def should_render_artifact(
     return artifact_id in impacted_artifacts
 
 
-def run_generator(instance_id: str | None, regenerate_all_members: bool, impacted_instances: list[str]) -> bool:
+def run_generator(instance_id: str | None, regenerate_all_members: bool, impacted_instances: Collection[str]) -> bool:
     """Returns a boolean to indicate if a generator instance needs to be executed.
 
     Will return true if:

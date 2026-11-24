@@ -106,6 +106,7 @@ uv run towncrier create -c "Migrated the frontend build to pnpm workspaces" +pnp
   objects" promises a speedup for every such update; if the fix engages only when the update omits the
   relationship fields, say so. The same goes for guarantees ("never serves", "also deletes"): qualify
   or drop any claim the code does not enforce.
+- **Calling a populated instance a "node".** A fragment follows *Infrahub Terminology* in `docs/AGENTS.md`.
 - **Wrong tense or multiple sentences.** One past-tense sentence.
 - **Duplicating an existing fragment.** On a feature branch spanning multiple PRs, list the fragments directory first — numbered (`NNNN.type.md`) and `+`-prefixed fragments all render into the changelog. If a fragment already describes the same user-visible change, extend or reconcile it instead of adding an overlapping one.
 

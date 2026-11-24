@@ -438,7 +438,7 @@ When a NodeSchema's `name`, `namespace`, or `inherit_from` changes, labels must 
 
 **Result:** Multiple Node vertices with same UUID exist, but only one is active per branch/time.
 
-**Important:** All UUID-based queries must account for duplicate-UUID nodes by filtering for the active one.
+**Important:** A query that reads one branch filters for the active vertex. A query that reads several branches at once finds both vertices active, because a branch created before the migration still reads the old one, so when it aggregates per node it groups by `uuid`, not by the vertex variable.
 
 ## Finding Active Nodes on Default/Global Branch
 

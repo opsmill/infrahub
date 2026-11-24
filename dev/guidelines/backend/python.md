@@ -122,8 +122,9 @@ from infrahub.core import registry
 from infrahub.core.registry import registry
 ```
 
-Fix the import where the checker flags it rather than sweeping existing call sites, and prefer not
-importing the registry into a new component at all — see
+Do not use `from x import Y as Y` solely to silence an unused-import warning. Keep intentional public re-exports and declare them explicitly with `__all__`; otherwise delete the import when its last internal user goes.
+
+Fix the import where the checker flags it, not across existing call sites, and avoid importing the registry into a new component — see
 [Accessing schema](../../knowledge/backend/query-pattern.md#accessing-schema-inject-schemamanager-else-dbschema-never-registry).
 
 ## Data Structures
@@ -240,8 +241,9 @@ Prefer `dict.get(key, default)` over an `in` check or `try/except KeyError` for 
 key (without a second argument `get()` returns `None`); use `setdefault()` when the default is a
 mutable object you build up.
 
-Zero is a value, not an absence. Test an optional numeric with `is not None` — a truthiness check
-silently treats a legitimate `0` as unset:
+Zero and empty values are values, not absence. Test an optional with `is None` / `is not None` — a
+truthiness check treats a legitimate `0`, `""` or `[]` as unset, so an empty list in stored data is
+accepted as "not provided" instead of being rejected:
 
 ```python
 # ❌ Bad - offset=0 is dropped, so the first page renders a different query text
@@ -266,8 +268,8 @@ async def read_artifact(self, storage_id: str, checksum: str | None) -> bytes: .
 async def read_stored_object(self, storage_id: str) -> bytes: ...                   # look up the recorded checksum
 ```
 
-When zero deliberately means "no bound" in the caller contract, keep that reading — and pin it with
-a test, so the next pass at the line fails fast instead of shipping the inversion.
+When zero or empty deliberately means "no bound" in the caller contract, keep that reading and pin it
+with a test.
 
 ## Configuration Settings
 
@@ -364,6 +366,40 @@ async def create_branch(db: InfrahubDatabase, name: str, description: str | None
 
 Database reads and writes go through the `Query` class pattern — the lifecycle, Cypher
 conventions and result dataclasses are in [Query Pattern](../../knowledge/backend/query-pattern.md).
+
+### Several queries of the same shape: one query, then parallel, a loop last
+
+When the same query has to run for several inputs, choose in this order:
+
+1. **One query for all inputs.** Pass the inputs as one list parameter and let Cypher iterate over it (`UNWIND $ids`, `WHERE n.uuid IN $ids`, or one `CALL` subquery per input). Every query awaited on its own is a round trip to the database. Page the list when it has no upper bound.
+2. **Parallel, when independent queries cannot be merged and `db.is_transaction` is false.** Give each query its own session, because a session cannot serve two coroutines at once. Bound concurrent database work: sessions borrow connections from the pool as needed, rather than when created.
+3. **A query awaited inside a `for` loop, as the last resort.** It is right when a query needs the result of the one before it, or when the queries belong to one transaction: a transaction has one connection, and a new session does not read what the transaction has not committed.
+
+```python
+# ✅ Best - one query for all inputs
+query = await ItemsQuery.init(db=db, item_ids=item_ids)
+await query.execute(db=db)
+
+# ✅ Independent queries that cannot be merged
+if db.is_transaction:
+    results = []
+    for item_id in item_ids:
+        query = await ItemQuery.init(db=db, item_id=item_id)
+        await query.execute(db=db)
+        results.append(query.get_item())
+else:
+    semaphore = asyncio.Semaphore(MAX_PARALLEL_READS)
+
+    async def read(item_id: str) -> ItemResult:
+        async with semaphore, db.start_session(read_only=True) as session:
+            query = await ItemQuery.init(db=session, item_id=item_id)
+            await query.execute(db=session)
+            return query.get_item()
+
+    results = await asyncio.gather(*(read(item_id=item_id) for item_id in item_ids))
+```
+
+Check what an `await` in a loop does before changing it: an `async` function that only builds query text sends nothing to the database.
 
 ## Methods stay on the instance
 

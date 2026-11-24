@@ -27,6 +27,14 @@ if TYPE_CHECKING:
 
 DUPLICATE_TAG_NAME = "orange"
 
+RUN_CHECKS_MUTATION = """
+mutation($id: String!) {
+    CoreProposedChangeRunCheck(data: { id: $id, check_type: ALL }) {
+        ok
+    }
+}
+"""
+
 BRANCH_MERGE_MUTATION = """
 mutation($branch: String!) {
     BranchMerge(data: { name: $branch }) {
@@ -138,6 +146,29 @@ class TestProposedChangeUniquenessMerge(TestInfrahubApp):
         assert schema_validators[0].conclusion.value.value == ValidatorConclusion.FAILURE.value
 
         # main never ends up with two "orange" tags.
+        assert await _count_main_tags(db=db, branch=default_branch, name=DUPLICATE_TAG_NAME) == 1
+
+    async def test_second_merge_is_accepted_after_its_duplicate_is_deleted_and_checks_run_again(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        duplicate_tag_branches: tuple[str, str],
+        client: InfrahubClient,
+    ) -> None:
+        """Deleting the duplicate leaves the branch with no changes, and running the checks clears the refused merge."""
+        _, branch_two = duplicate_tag_branches
+        pc_two = await client.get(kind=SdkCoreProposedChange, name__value="merge-orange-two")
+        tag_two = await client.get(kind=InfrahubKind.TAG, name__value=DUPLICATE_TAG_NAME, branch=branch_two)
+        await tag_two.delete()
+
+        await client.execute_graphql(query=RUN_CHECKS_MUTATION, variables={"id": pc_two.id})
+        await _wait_for_validators_success(db=db, proposed_change_id=pc_two.id)
+
+        pc_two.state.value = ProposedChangeState.MERGED.value
+        await pc_two.save()
+
+        merged = await client.get(kind=SdkCoreProposedChange, id=pc_two.id)
+        assert merged.state.value == ProposedChangeState.MERGED.value
         assert await _count_main_tags(db=db, branch=default_branch, name=DUPLICATE_TAG_NAME) == 1
 
 

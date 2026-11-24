@@ -13,7 +13,7 @@ allowBuilds:
 # Single source of truth for cross-workspace versions. Reference from package.json
 # with `"<dep>": "catalog:"`. Add a dep here only if it's used by more than one workspace member.
 catalog:
-  "@tailwindcss/vite": ^4.3.4
+  "@tailwindcss/vite": ^4.3.5
   "@types/node": ^26.6.6
   "@types/react": ^19.3.0
   "@types/react-dom": ^19.3.0
@@ -23,9 +23,9 @@ catalog:
   react: ^19.3.1
   react-aria-components: ^1.22.1
   react-dom: ^19.3.1
-  tailwindcss: ^4.3.4
+  tailwindcss: ^4.3.5
   typescript: ^6.0.3
-  vite: ^8.3.6
+  vite: ^8.3.8
 
 overrides:
   playwright: 1.60.0

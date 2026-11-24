@@ -13,6 +13,7 @@ import type {
 } from "@/shared/components/form/type";
 import { getParentRelationship } from "@/shared/components/form/utils/getParentRelationship";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
+import { RelationshipManyInput } from "@/shared/components/inputs/relationship-many";
 import { RelationshipInput } from "@/shared/components/inputs/relationship-one";
 import { Badge } from "@/shared/components/ui/badge";
 import {
@@ -27,6 +28,7 @@ import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { useDefaultParent } from "@/entities/nodes/relationships/ui/queries/get-default-parent.query";
 import { resolveSchema } from "@/entities/schema/domain/rules/resolve-schema";
 import {
@@ -67,6 +69,10 @@ const toRelationshipInputValue = (
   return { ...value, display_label: value.display_label ?? "" };
 };
 
+const toRelationshipManyInputValue = (
+  fieldData: FormRelationshipValue | undefined
+): Array<NodeCore> | null => (Array.isArray(fieldData?.value) ? fieldData.value : null);
+
 export interface GenericRelationshipFieldProps extends DynamicRelationshipFieldProps {
   parentDisabled?: boolean;
 }
@@ -94,11 +100,12 @@ export const GenericRelationshipField = ({
     defaultSelectedGeneric as GenericOption | null
   );
 
-  const parentRelationship = selectedGeneric?.id && getParentRelationship(selectedGeneric.id);
+  const parentRelationship = selectedGeneric?.id ? getParentRelationship(selectedGeneric.id) : null;
   const commonParent = useCommonParentFilter(relationship, name);
   // When common_parent drives the filter from a sibling field, the manual "Parent" picker
   // is redundant — hide it and source the peer filter from the sibling value instead.
   const showManualParent = !commonParent.isActive && !!parentRelationship;
+  const isMany = relationship.cardinality === "many";
 
   const { data: defaultParent } = useDefaultParent({
     defaultValue,
@@ -180,6 +187,15 @@ export const GenericRelationshipField = ({
     setSelectedParent(defaultParent);
   }
 
+  // The single-node input builds this filter from its parent prop; the multi-node input takes it ready-made.
+  const manualParentFilterQuery =
+    parentRelationship && selectedParent?.id
+      ? { [`${parentRelationship.name}__ids`]: [selectedParent.id] }
+      : undefined;
+  const manyPeerFilterQuery = commonParent.isActive
+    ? commonParent.filterQuery
+    : manualParentFilterQuery;
+
   const form = useFormContext();
 
   // A user switching the kind invalidates any node picked under the previous kind, along with
@@ -207,6 +223,12 @@ export const GenericRelationshipField = ({
 
           const onChange = (newValue: Node | PoolValue | null) => {
             field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
+          };
+
+          const onNodesChange = (nodes: Array<NodeCore>) => {
+            field.onChange(
+              updateRelationshipFieldValue(nodes.length > 0 ? nodes : null, defaultValue)
+            );
           };
 
           const renderObjectValue = () => {
@@ -239,21 +261,34 @@ export const GenericRelationshipField = ({
                 />
                 <Col className="gap-2">
                   <FormInput>
-                    <RelationshipInput
-                      {...field}
-                      {...props}
-                      options={undefined}
-                      value={toRelationshipInputValue(fieldData)}
-                      onChange={onChange}
-                      peer={selectedGeneric.id}
-                      parent={
-                        commonParent.isActive
-                          ? commonParent.parent
-                          : { name: parentRelationship?.name, value: selectedParent?.id }
-                      }
-                      addNewInitialObject={commonParent.addNewInitialObject}
-                      disabled={props.disabled}
-                    />
+                    {isMany ? (
+                      <RelationshipManyInput
+                        {...field}
+                        peer={selectedGeneric.id}
+                        value={toRelationshipManyInputValue(fieldData)}
+                        onChange={onNodesChange}
+                        filterQuery={manyPeerFilterQuery}
+                        enforceFilterQueryOnIdSearch={commonParent.isActive}
+                        addNewInitialObject={commonParent.addNewInitialObject}
+                        disabled={props.disabled}
+                      />
+                    ) : (
+                      <RelationshipInput
+                        {...field}
+                        {...props}
+                        options={undefined}
+                        value={toRelationshipInputValue(fieldData)}
+                        onChange={onChange}
+                        peer={selectedGeneric.id}
+                        parent={
+                          commonParent.isActive
+                            ? commonParent.parent
+                            : { name: parentRelationship?.name, value: selectedParent?.id }
+                        }
+                        addNewInitialObject={commonParent.addNewInitialObject}
+                        disabled={props.disabled}
+                      />
+                    )}
                   </FormInput>
 
                   <FormMessage />
@@ -271,7 +306,8 @@ export const GenericRelationshipField = ({
               required={!!rules?.required}
               fieldData={fieldData}
               defaultValue={defaultValue}
-              pool={pool}
+              // A pool allocates a single peer, so it cannot satisfy a cardinality-many relationship.
+              pool={isMany ? undefined : pool}
               allocatableKinds={genericOptions.map((option) => ({
                 kind: option.id,
                 label: option.display_label,

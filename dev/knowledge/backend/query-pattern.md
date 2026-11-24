@@ -35,11 +35,15 @@ When a read must reflect what a branch itself defines (a branch that removed a k
 
 ### Initialization
 
+Build the text of a new query in `__init__` and create the query with its constructor:
+
 ```python
-query = await MyQuery.init(db=db, branch=branch, **kwargs)
+query = MyQuery(branch=branch, node_id=node_id)
 ```
 
-The `init()` classmethod calls `query_init()` for async initialization (schema lookups, etc.).
+Older queries build their text in `query_init()` and are created with `await MyQuery.init(db=db, branch=branch, **kwargs)`, which calls the constructor and then `query_init()`. Do not write `query_init()` in a new query: the base method raises `NotImplementedError`, so `init()` fails on a query that builds its text in `__init__`.
+
+Neither `__init__` nor `query_init()` sends a query to the database. When the text depends on a lookup, see [Queries Whose Shape Depends on a Lookup](query-shape-from-data.md).
 
 ### Building
 
@@ -78,7 +82,7 @@ for item in query.get_data():
 Useful for debugging:
 
 ```python
-query = await MyQuery.init(db=db, branch=branch, node_id="abc123")
+query = MyQuery(branch=branch, node_id="abc123")
 print(query.get_query())  # Preview generated Cypher
 print(query.get_query(var=True, inline=True))  # With variables substituted
 await query.execute(db=db)  # Execute when ready
@@ -121,7 +125,7 @@ Readability of the raw query outranks deduplication. Do not extract repeated Cyp
 
 The bar for a shared fragment constant is a substantial body with several consumers: a predicate of dozens of lines composed into three or four queries earns a named constant, while a few-line `MATCH` used twice is pasted into both call sites — especially when the copies are not quite identical anyway.
 
-A fragment that encodes a rule every consumer must apply the same way is shared even when the copies would be short, because two copies that drift apart give different answers to the same question. The branch window clauses and predicates are the case in point: which branches are live, each branch's window, and when an edge is visible or outranks another are rendered once by `core/query/branch_windows.py` and used by every query that answers across live branches (see [Answer across every live branch](#answer-across-every-live-branch-use-branch_windowspy)).
+A fragment that encodes a rule every consumer must apply the same way is shared even when the copies would be short, because two copies that drift apart give different answers to the same question. The branch window clauses and predicates are the case in point: which branches are live, each branch's window, and when an edge is visible or outranks another are rendered once by `backend/infrahub/core/query/branch_windows.py` and used by every query that answers across live branches (see [Answer across every live branch](#answer-across-every-live-branch-use-branch_windowspy)).
 
 ### Return Labels
 
@@ -196,8 +200,6 @@ class PagedNodeFieldsQuery(Query):
     def __init__(self, limit: int, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.limit = limit
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         self.params = {"page_offset": self.offset or 0, "page_limit": self.limit}
         self.add_to_query("""
         MATCH (n:Node)
@@ -250,7 +252,7 @@ WHERE r.status = "active"
 
 The ordering prefers the most specific, most recent, active edge; `LIMIT 1` elects the winner, and the outer `WHERE` excludes soft-deleted edges. Get `branch_filter` via `self.branch.get_query_filter_path(at=self.at)`; pass `variable_name="r_custom"` to bind the filter to a specific edge variable. `NodeGetByHFIDQuery` chains three such subqueries (`IS_PART_OF`, `HAS_ATTRIBUTE`, `HAS_VALUE`) to resolve the active attribute value; `NodeGetListByAttributeValueQuery` chains two (`HAS_VALUE`, then `HAS_ATTRIBUTE`).
 
-On a branch other than the default branch, rank every edge of the field, then compare the winner's target with the value you filter on. A branch that changes a value adds its own edge and leaves the default branch's edge to the old value open, so a subquery that only matches edges leading to the filter value elects that old edge on the branch. Keep the value-first form for a branch-agnostic read: its branch filter does not scope by branch, so ranking every edge would elect another branch's value. `ranks_latest_value` in `core/query/subquery.py` holds this condition.
+On a branch other than the default branch, rank every edge of the field, then compare the winner's target with the value you filter on. A branch that changes a value adds its own edge and leaves the default branch's edge to the old value open, so a subquery that only matches edges leading to the filter value elects that old edge on the branch. Keep the value-first form for a branch-agnostic read: its branch filter does not scope by branch, so ranking every edge would elect another branch's value. `ranks_latest_value` in `backend/infrahub/core/query/subquery.py` holds this condition.
 
 ```cypher
 // ❌ on a branch: ranks only the edges to the matched value vertex
@@ -306,11 +308,11 @@ A trap worth knowing when reasoning about what a branch "should" see: for a node
 Two earlier queries hold halves of this shape, and are the ones to read alongside a new instance:
 
 - `_check_duplicate_attributes` (`infrahub/database/validation.py`) - the per-branch election with the `branched_from` window and the `branch_level DESC, from DESC, status ASC / LIMIT 1` subquery. It derives its branch set from the graph instead of taking one as a parameter, and its default-branch arm uses a strict `from <`.
-- `DiffCountChanges` (`infrahub/core/query/diff.py`) - the grouped read over a `branch_names` list in one statement, and the Python-side backfill: `get_num_changes_by_branch` walks `self.branch_names` and fills `0` for every branch the statement returned no row for.
+- `DiffCountChanges` (`backend/infrahub/core/query/diff.py`) - the grouped read over a `branch_names` list in one statement, and the Python-side backfill: `get_num_changes_by_branch` walks `self.branch_names` and fills `0` for every branch the statement returned no row for.
 
 ### Answer across every live branch: use `branch_windows.py`
 
-When a query asks whether *any* live branch still holds something (an allocated value, a branch-agnostic field), build its branch windows with `core/query/branch_windows.py` instead of collecting the branches inline. The module holds the one definition of a live branch and its window, so every such query agrees on it, and its predicates return false, never NULL, for the default branch's window, so they stay correct inside `none()` and `NOT`.
+When a query asks whether *any* live branch still holds something (an allocated value, a branch-agnostic field), build its branch windows with `backend/infrahub/core/query/branch_windows.py` instead of collecting the branches inline. The module holds the one definition of a live branch and its window, so every such query agrees on it, and its predicates return false, never NULL, for the default branch's window, so they stay correct inside `none()` and `NOT`. Group the result per node by `uuid`, not by vertex: a kind migration leaves several vertices for one node (see [Schema Migration](database-schema.md#schema-migration-namenamespaceinheritance)).
 
 ```python
 # ✅ one shared window definition
@@ -319,7 +321,7 @@ visible = render_window_filter(edge="r")  # use inside any(window IN branch_wind
 # ❌ an inline MATCH (b:Branch) ... collect(...) that redefines which branches count
 ```
 
-Read `_build_allocated_values_in_windows_query` in `core/query/ipam.py` for a complete query built this way.
+Read `_build_allocated_values_in_windows_query` in `backend/infrahub/core/query/ipam.py` for a complete query built this way.
 
 ### Query performance
 
@@ -328,6 +330,10 @@ Read `_build_allocated_values_in_windows_query` in `core/query/ipam.py` for a co
 The `uuid` and `kind` indexes of a node vertex are declared on the `Node` label (`node_uuid`, `node_kind` in `backend/infrahub/core/graph/index.py`), not on its kind label. A `MATCH` anchored on a kind label alone — `MATCH (pool:%(kind)s { uuid: $pool_id })` — cannot use them and scans every vertex of that kind. Include the `Node` label too: `MATCH (pool:Node:%(kind)s { uuid: $pool_id })`, and check the plan with `EXPLAIN` when in doubt.
 
 Every attribute with the same value and the same `is_default` flag links to one shared value vertex (see [Database Schema — AttributeValue](database-schema.md#attributevalue--attributevalueindexed)). Once a query has bound the nodes it checks, match their attributes from those nodes. A `MATCH` that names an `AttributeValueIndexed` vertex with its value lets the planner start from an index seek on that vertex and expand every attribute in the database that holds the value, even when the node in the same pattern is already bound. The cost then grows with the number of nodes sharing the value, not with the nodes being checked. Only `AttributeValueIndexed` has an index on `value`: values of the `TextArea`, `JSON`, and `List` kinds have only the `AttributeValue` label and no index. `UniquenessValidationQuery` (`core/validators/uniqueness/query/validation.py`) starts only its first subquery from the value or the peer; later subqueries check the attribute or relationship from the nodes the first one found.
+
+When writing or modifying a query that selects vertices or edges by a property, follow [Database Indexes](database-indexes.md): check the existing indexes for each label or edge type and property, and declare only the missing indexes in the same change. Adding an index needs no migration. For selective reads across several labels, edge types, or properties, use separate hinted reads and verify their execution plans.
+
+A read that can start from every node of a kind or from the indexed vertex of a filter chooses between them with a count: see [Start a filtered read from the filter only when a count shows it reads less](query-shape-from-data.md#start-a-filtered-read-from-the-filter-only-when-a-count-shows-it-reads-less).
 
 ### Cypher Variable Shadowing (Neo4j 5+)
 
@@ -525,7 +531,7 @@ Specialized base classes for different domains:
 
 ### Design Decisions
 
-**Database Object in Initialization:** The `InfrahubDatabase` object is passed during initialization for:
+**Database Object in Initialization:** The `InfrahubDatabase` object is passed to `query_init()` for the two reasons below, not to run queries:
 
 1. **Schema access via database proxy:** Enables temporal queries using previous schema versions — see [Accessing schema: inject `SchemaManager`, else `db.schema`, never `registry`](#accessing-schema-inject-schemamanager-else-dbschema-never-registry).
 
@@ -553,6 +559,7 @@ Specialized base classes for different domains:
 ## See Also
 
 - [Database Schema](database-schema.md) - Neo4j vertex/edge structure and temporal branching rules
+- [Database Indexes](database-indexes.md) - When a query needs an index, how to add one, and the read shape that uses it
 - [Backend Architecture](architecture.md) - Overall backend structure
 - [Testing](testing.md) - Query testing patterns
 - [Python Coding Standards](../../guidelines/backend/python.md) - Dataclass conventions
