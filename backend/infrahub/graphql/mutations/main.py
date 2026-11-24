@@ -9,7 +9,7 @@ from infrahub_sdk.utils import extract_fields_first_node
 from opentelemetry import trace
 
 from infrahub import lock
-from infrahub.core.constants import InfrahubKind, MetadataOptions, MutationAction
+from infrahub.core.constants import PROFILES_RELATIONSHIP_NAME, InfrahubKind, MetadataOptions, MutationAction
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.file_processor import FileUploadProcessor
 from infrahub.core.manager import NodeManager
@@ -381,8 +381,9 @@ class InfrahubMutationMixin:
                 fields.remove(field_to_remove)
 
         # A node already holding values from a profile needs the applier either way, so which
-        # profiles it is linked to does not have to be read.
-        if obj.uses_profiles() or await get_profile_ids(db=db, obj=obj):
+        # profiles it is linked to does not have to be read. A request that changes the profiles
+        # needs it too, because a removed profile can have set only relationships.
+        if PROFILES_RELATIONSHIP_NAME in data or obj.uses_profiles() or await get_profile_ids(db=db, obj=obj):
             node_profiles_applier = NodeProfilesApplier(
                 db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch)
             )
@@ -598,7 +599,7 @@ class InfrahubMutation(InfrahubMutationMixin, Mutation):
 
 
 def _get_data_fields(data: InputObjectType) -> list[str]:
-    return [field for field in data.keys() if field not in ["id", "hfid"]]
+    return [field for field in data.keys() if field not in {"id", "hfid"}]
 
 
 async def build_graphql_response(info: GraphQLResolveInfo, db: InfrahubDatabase, obj: Node) -> dict:

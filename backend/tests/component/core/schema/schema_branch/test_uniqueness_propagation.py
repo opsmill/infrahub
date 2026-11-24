@@ -36,7 +36,7 @@ def _describe_hash_diff(before: SchemaBranch, after: SchemaBranch) -> str:
             + after.template_names
         )
     )
-    for name in all_names:  # noqa: PLR1702
+    for name in all_names:
         try:
             obj_before = before.get(name=name, duplicate=False)
             dump_before = obj_before.model_dump()
@@ -56,7 +56,7 @@ def _describe_hash_diff(before: SchemaBranch, after: SchemaBranch) -> str:
             v1, v2 = dump_before.get(key), dump_after.get(key)
             if v1 == v2:
                 continue
-            if key not in ("attributes", "relationships"):
+            if key not in {"attributes", "relationships"}:
                 lines.append(f"  {key}: {v1!r} -> {v2!r}")
                 continue
             items1 = {i["name"]: i for i in v1} if v1 else {}
@@ -70,9 +70,11 @@ def _describe_hash_diff(before: SchemaBranch, after: SchemaBranch) -> str:
                 elif i2 is None:
                     lines.append(f"  {key}.{iname}: REMOVED")
                 else:
-                    for fk in sorted(set(i1.keys()) | set(i2.keys())):
-                        if i1.get(fk) != i2.get(fk):
-                            lines.append(f"  {key}.{iname}.{fk}: {i1.get(fk)!r} -> {i2.get(fk)!r}")
+                    lines.extend(
+                        f"  {key}.{iname}.{fk}: {i1.get(fk)!r} -> {i2.get(fk)!r}"
+                        for fk in sorted(set(i1.keys()) | set(i2.keys()))
+                        if i1.get(fk) != i2.get(fk)
+                    )
     return "\n".join(lines) if lines else "(no per-schema diffs found)"
 
 

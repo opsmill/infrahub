@@ -39,7 +39,7 @@ def canonicalize_path(path: str) -> str:
         if normalized == previous:
             break
 
-    if normalized in ("", "."):
+    if normalized in {"", "."}:
         raise InvalidDependencyPathError(
             f"Path resolves to the repository root and is not a valid dependency: {path!r}"
         )

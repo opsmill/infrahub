@@ -386,13 +386,13 @@ class Branch(StandardNode):
             params[f"time{idx}"] = time_to_query
 
         for rel in rel_labels:
-            filters_per_rel = []
+            filters_per_rel: list[str] = []
             for idx in range(len(branches_times)):
-                filters_per_rel.append(
-                    f"({rel}.branch IN $branch{idx} AND {rel}.from <= $time{idx} AND {rel}.to IS NULL)"
-                )
-                filters_per_rel.append(
-                    f"({rel}.branch IN $branch{idx} AND {rel}.from <= $time{idx} AND {rel}.to > $time{idx})"
+                filters_per_rel.extend(
+                    (
+                        f"({rel}.branch IN $branch{idx} AND {rel}.from <= $time{idx} AND {rel}.to IS NULL)",
+                        f"({rel}.branch IN $branch{idx} AND {rel}.from <= $time{idx} AND {rel}.to > $time{idx})",
+                    )
                 )
 
             if not include_outside_parentheses:
@@ -437,16 +437,16 @@ class Branch(StandardNode):
             params[f"{pp}branch{idx}"] = list(branch_name)
             params[f"{pp}time{idx}"] = time_to_query
 
-        filters = []
+        filters: list[str] = []
         for idx in range(len(branches_times)):
-            filters.append(
-                f"({variable_name}.branch IN ${pp}branch{idx} "
-                f"AND {variable_name}.from <= ${pp}time{idx} AND {variable_name}.to IS NULL)"
-            )
-            filters.append(
-                f"({variable_name}.branch IN ${pp}branch{idx} "
-                f"AND {variable_name}.from <= ${pp}time{idx} "
-                f"AND {variable_name}.to > ${pp}time{idx})"
+            filters.extend(
+                (
+                    f"({variable_name}.branch IN ${pp}branch{idx} "
+                    f"AND {variable_name}.from <= ${pp}time{idx} AND {variable_name}.to IS NULL)",
+                    f"({variable_name}.branch IN ${pp}branch{idx} "
+                    f"AND {variable_name}.from <= ${pp}time{idx} "
+                    f"AND {variable_name}.to > ${pp}time{idx})",
+                )
             )
 
         filter_str = "(" + "\n OR ".join(filters) + ")"

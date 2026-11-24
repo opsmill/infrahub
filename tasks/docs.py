@@ -319,7 +319,7 @@ def _scalar_type_from_any_of(schema: dict) -> str | None:
     so callers reading ``schema["type"]`` see nothing. Only a single non-null option qualifies; unions
     of several scalar types and object references are left to the caller.
     """
-    types = [option["type"] for option in schema.get("anyOf", []) if option.get("type") not in (None, "null")]
+    types = [option["type"] for option in schema.get("anyOf", []) if option.get("type") not in {None, "null"}]
     if len(types) == 1:
         return types[0]
     return None

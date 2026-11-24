@@ -468,7 +468,7 @@ async def validate_rolled_back_updated_relationship_property(
         relationship_name=ctx.relationship_name,
         peer_id=ctx.peer_id,
     )
-    if ctx.property_name in ("source", "owner"):
+    if ctx.property_name in {"source", "owner"}:
         current = rel.source_id if ctx.property_name == "source" else rel.owner_id
         assert current == ctx.original_peer_id
     if ctx.property_name == "is_protected":
@@ -599,7 +599,7 @@ async def validate_all_applied_with_conflict_to_base(  # noqa: C901
             relationship_name=rp.relationship_name,
             peer_id=rp.peer_id,
         )
-        if rp.property_name in ("source", "owner"):
+        if rp.property_name in {"source", "owner"}:
             current = rel.source_id if rp.property_name == "source" else rel.owner_id
             assert current == base_val
         else:

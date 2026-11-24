@@ -1,1 +1,0 @@
-Upgraded `opentelemetry-api` to 1.45.2, with the matching OpenTelemetry exporter and instrumentation packages, to fix [GHSA-mf5v-w3w3-f6cg](https://github.com/advisories/GHSA-mf5v-w3w3-f6cg). The new version limits the length of the incoming `traceparent` header.

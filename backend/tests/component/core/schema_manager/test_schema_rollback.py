@@ -169,7 +169,7 @@ class TestSchemaUpdateAndRollback:
         # Step 6: Run rollback
         await GraphRollbacker(db=db).rollback(
             target_branch=default_branch,
-            at=schema_update_at,
+            ats=[schema_update_at],
             scope=RollbackScope.AT_TIMESTAMP,
         )
 

@@ -112,7 +112,7 @@ def grant_read_access(base_url: str, token: str, repo_name: str) -> None:
         json={"permission": "read"},
         timeout=5.0,
     )
-    assert resp.status_code in (200, 204), f"Granting read access failed ({resp.status_code}): {resp.text}"
+    assert resp.status_code in {200, 204}, f"Granting read access failed ({resp.status_code}): {resp.text}"
 
 
 def create_remote_ref(container: DockerContainer, repo_name: str, ref_name: str, based_on: str = "main") -> None:
@@ -164,7 +164,7 @@ def create_gogs_repo(
         json={"name": repo_name, "auto_init": True, "readme": "Default", "private": private},
         timeout=5.0,
     )
-    assert resp.status_code in (200, 201), f"Repo creation failed ({resp.status_code}): {resp.text}"
+    assert resp.status_code in {200, 201}, f"Repo creation failed ({resp.status_code}): {resp.text}"
 
     # Use git exec inside the container to:
     #   1. Add a minimal '.infrahub.yml' (required by Infrahub on sync)

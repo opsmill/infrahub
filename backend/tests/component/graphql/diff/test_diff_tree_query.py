@@ -351,7 +351,7 @@ async def test_diff_tree_one_attr_change(
     )
 
     enriched_conflict_map = enriched_diff.get_all_conflicts()
-    enriched_conflict = list(enriched_conflict_map.values())[0]
+    enriched_conflict = next(iter(enriched_conflict_map.values()))
     await diff_repository.update_conflict_by_id(
         conflict_id=enriched_conflict.uuid, selection=ConflictSelection.DIFF_BRANCH
     )

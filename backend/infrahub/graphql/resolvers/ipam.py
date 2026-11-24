@@ -243,7 +243,7 @@ def _ensure_display_label_fields(
     This is mostly for virtual nodes (InternalIPPrefixAvailable, InternalIPRangeAvailable) that are not stored in the
     database.
     """
-    if "display_label" not in node_fields or schema.kind not in [InfrahubKind.IPPREFIX, InfrahubKind.IPADDRESS]:
+    if "display_label" not in node_fields or schema.kind not in {InfrahubKind.IPPREFIX, InfrahubKind.IPADDRESS}:
         return
 
     schema_branch = db.schema.get_schema_branch(name=branch.name)
@@ -340,7 +340,7 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
         else info.return_type.graphene_type._meta.schema
     )
 
-    if not isinstance(schema, GenericSchema) or schema.kind not in [InfrahubKind.IPADDRESS, InfrahubKind.IPPREFIX]:
+    if not isinstance(schema, GenericSchema) or schema.kind not in {InfrahubKind.IPADDRESS, InfrahubKind.IPPREFIX}:
         raise ValidationError(f"{schema.kind} is not {InfrahubKind.IPADDRESS} or {InfrahubKind.IPPREFIX}")
 
     order_model = deserialize_order_input(input_data=order)
@@ -356,7 +356,7 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
     async with graphql_context.db.start_session(read_only=True) as db:
         response: dict[str, Any] = {"edges": []}
         filters = {
-            key: value for key, value in kwargs.items() if ("__" in key and value is not None) or key in ("ids", "hfid")
+            key: value for key, value in kwargs.items() if ("__" in key and value is not None) or key in {"ids", "hfid"}
         }
 
         edges = fields.get("edges", {})

@@ -134,7 +134,7 @@ def pytest_runtest_makereport(
     )
     if section is not None:
         report.sections.append(section)
-    return report  # noqa: B901 - a pytest wrapper hook yields, then returns the result it wrapped
+    return report
 
 
 @pytest.fixture(scope="module", autouse=True)

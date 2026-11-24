@@ -74,7 +74,7 @@ class NodeInheritanceHandler:
         for relationship in interface.relationships:
             if relationship.name in node.valid_local_names:
                 continue
-            if relationship.name in (PROFILES_RELATIONSHIP_NAME, OBJECT_TEMPLATE_RELATIONSHIP_NAME):
+            if relationship.name in {PROFILES_RELATIONSHIP_NAME, OBJECT_TEMPLATE_RELATIONSHIP_NAME}:
                 continue
 
             new_relationship = relationship.duplicate()
@@ -126,11 +126,10 @@ class NodeInheritanceHandler:
     ) -> None:
         if not node.uniqueness_constraints:
             return
-        updated_constraints = []
-        for constraint_paths in node.uniqueness_constraints:
-            updated_constraints.append(
-                self._get_updated_renamed_attrs_data(attr_data=constraint_paths, renamed_attrs=renamed_attrs)
-            )
+        updated_constraints = [
+            self._get_updated_renamed_attrs_data(attr_data=constraint_paths, renamed_attrs=renamed_attrs)
+            for constraint_paths in node.uniqueness_constraints
+        ]
         node.uniqueness_constraints = updated_constraints
 
     def _get_updated_renamed_attrs_data(self, attr_data: list[str], renamed_attrs: dict[str, str]) -> list[str]:

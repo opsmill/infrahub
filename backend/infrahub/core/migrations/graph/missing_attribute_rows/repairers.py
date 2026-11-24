@@ -74,7 +74,7 @@ class DefaultValueRowRepairer:
                 attribute_kind=rows.attribute.kind,
                 branch_support=rows.attribute.get_branch().value,
                 default_value=rows.attribute.default_value,
-                uuids=list(uuid_batch),
+                node_ids=list(uuid_batch),
             )
             await query.execute(db=self.db)
             created += query.num_of_results
@@ -145,7 +145,7 @@ class PoolBackedRowRepairer:
                     attribute_kind=rows.attribute.kind,
                     branch_support=rows.attribute.get_branch().value,
                     default_value=None,
-                    uuids=list(uuid_batch),
+                    node_ids=list(uuid_batch),
                 )
                 await query.execute(db=dbt)
 

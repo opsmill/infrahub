@@ -113,7 +113,8 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
 
         async def allocate_numbers(db: InfrahubDatabase) -> None:
             allocator = build_existing_node_number_allocator(db=db, branch=branch)
-            node_query = await NodeGetListQuery.init(db=db, schema=self.new_schema, branch=branch)
+            filters = {"ids": list(migration_input.node_ids)} if migration_input.node_ids is not None else None
+            node_query = await NodeGetListQuery.init(db=db, schema=self.new_schema, branch=branch, filters=filters)
             await node_query.execute(db=db)
             node_ids = node_query.get_node_ids()
 

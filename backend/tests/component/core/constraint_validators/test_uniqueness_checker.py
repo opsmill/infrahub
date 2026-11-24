@@ -133,9 +133,7 @@ class TestUniquenessChecker:
         cars_to_update = await NodeManager.get_many(
             db=db, ids=[car_accord_main.id, car_prius_main.id, car_volt_main.id, car_yaris_main.id], branch=branch
         )
-        color = 111111
-        for car in cars_to_update.values():
-            color += 1
+        for color, car in enumerate(cars_to_update.values(), start=111112):
             car.color.value = f"#{color}"
             await car.save(db=db)
         schema = registry.schema.get("TestCar", branch=branch)
@@ -237,9 +235,7 @@ class TestUniquenessChecker:
         default_branch: Branch,
     ) -> None:
         cars_to_update = await NodeManager.get_many(db=db, ids=[car_volt_main.id, car_yaris_main.id], branch=branch)
-        color = 111111
-        for car in cars_to_update.values():
-            color += 1
+        for color, car in enumerate(cars_to_update.values(), start=111112):
             car.color.value = f"#{color}"
             await car.save(db=db)
         car_to_update = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch)

@@ -7,14 +7,11 @@ from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
-from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.migrations import MIGRATION_MAP
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.migrations.shared import DerivedSchemaPair, MigrationInput
-from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.schema.derived_kinds import get_object_template_kind, get_profile_kind
-from infrahub.core.timestamp import Timestamp
 from infrahub.workers.dependencies import get_database
 from infrahub.workflows.utils import add_branch_tag
 
@@ -26,7 +23,9 @@ if TYPE_CHECKING:
 
     from prefect.logging.loggers import LoggingAdapter
 
+    from infrahub.core.branch import Branch
     from infrahub.core.models import SchemaUpdateMigrationInfo
+    from infrahub.core.path import SchemaPath
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.timestamp import Timestamp
@@ -191,7 +190,16 @@ async def schema_path_migrate(
     previous_node_schema: MainSchemaTypes | None = None,
     derived_schemas: list[DerivedSchemaPair] | None = None,
     user_id: str = SYSTEM_USER_ID,
+    node_ids: list[str] | None = None,
 ) -> SchemaMigrationPathResponseData:
+    """Run one schema migration on the nodes in `node_ids`, or on every node when it is `None`.
+
+    A caller passes `node_ids` wrapped in `quote()`, because the list grows with the data.
+
+    Raises:
+        ValueError: If no migration class is registered under `migration_name`.
+
+    """
     log = get_run_logger()
 
     async with database.start_session() as db:
@@ -201,8 +209,9 @@ async def schema_path_migrate(
         elif previous_node_schema:
             node_kind = previous_node_schema.kind
 
+        node_scope = f"on {len(node_ids)} nodes" if node_ids is not None else "on all nodes"
         log.info(
-            f"Migration for {node_kind} starting {schema_path.get_path()}",
+            f"Migration for {node_kind} starting {schema_path.get_path()} {node_scope}",
         )
         migration_class = MIGRATION_MAP.get(migration_name)
         if not migration_class:
@@ -215,7 +224,13 @@ async def schema_path_migrate(
             schema_path=schema_path,
         )
         execution_result = await migration.execute(
-            migration_input=MigrationInput(db=db, at=at, user_id=user_id), branch=branch
+            migration_input=MigrationInput(
+                db=db,
+                at=at,
+                user_id=user_id,
+                node_ids=frozenset(node_ids) if node_ids is not None else None,
+            ),
+            branch=branch,
         )
 
         log.info(f"Migration completed for {migration_name}")

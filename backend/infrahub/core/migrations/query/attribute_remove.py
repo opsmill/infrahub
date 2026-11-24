@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipStatus
 from infrahub.core.graph.schema import GraphAttributeRelationships
-from infrahub.core.query import Query
+from infrahub.core.migrations.query.selection import MigrationSelectionQuery
 from infrahub.core.query.agnostic_field_closure import CLOSE_UNRETAINED_AGNOSTIC_FIELDS
+from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class AttributeRemoveQuery(Query):
+class AttributeRemoveQuery(MigrationSelectionQuery):
     name = "attribute_remove"
     insert_return: bool = False
 
@@ -28,13 +29,54 @@ class AttributeRemoveQuery(Query):
     ) -> None:
         self.attribute_name = attribute_name
         self.node_kinds = node_kinds
+        self.selection_kinds: list[str] = []
         super().__init__(**kwargs)
+
+    def render_selection(self) -> str:
+        branch_filter, _ = self.branch.get_query_filter_path(at=self.at.to_string())
+        return """
+        // ------------
+        // Find all the active nodes
+        // ------------
+        %(node_match)s
+        CALL (node) {
+            MATCH (root:Root)<-[r:IS_PART_OF]-(node)
+            WHERE %(branch_filter)s
+            RETURN node as n1, r as r1
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH n1 as active_node, r1 as rb
+        WHERE rb.status = "active"
+        // ------------
+        // Find all the attributes that need to be updated
+        // ------------
+        CALL (active_node) {
+            MATCH (active_node)-[r:HAS_ATTRIBUTE]-(attr:Attribute { name: $attr_name })
+            WHERE %(branch_filter)s
+            RETURN active_node as n1, r as r1, attr as attr1
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH n1 as active_node, r1 as rb, attr1 as active_attr
+        WHERE rb.status = "active"
+        """ % {
+            "node_match": self.render_node_match(
+                "node",
+                self.selection_kinds,
+                conditions=[
+                    "size($kinds_to_ignore) = 0 OR NOT any(l IN labels(node) WHERE l IN $kinds_to_ignore)",
+                    "exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name }))",
+                ],
+            ),
+            "branch_filter": branch_filter,
+        }
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        kinds_to_ignore = []
+        kinds_to_ignore: list[str] = []
         profile_kinds_to_update = []
         template_kinds_to_update = []
 
@@ -52,8 +94,7 @@ class AttributeRemoveQuery(Query):
                     )
                     attr_schema = node_schema.get_attribute_or_none(name=self.attribute_name)
                     if attr_schema and not attr_schema.inherited:
-                        kinds_to_ignore.append(inheriting_schema_kind)
-                        kinds_to_ignore.append(f"Template{inheriting_schema_kind}")
+                        kinds_to_ignore.extend((inheriting_schema_kind, f"Template{inheriting_schema_kind}"))
                     else:
                         profile_kinds_to_update.append(f"Profile{inheriting_schema_kind}")
                         template_kinds_to_update.append(f"Template{inheriting_schema_kind}")
@@ -95,35 +136,13 @@ class AttributeRemoveQuery(Query):
         sub_queries = list(starmap(render_sub_query_per_rel_type, GraphAttributeRelationships.model_fields.items()))
         sub_query_all = "\nUNION\n".join(sub_queries)
 
-        node_kinds_str = "|".join(self.node_kinds + profile_kinds_to_update + template_kinds_to_update)
+        self.selection_kinds = self.node_kinds + profile_kinds_to_update + template_kinds_to_update
+        self.add_to_query(self.render_selection())
+        stamp_attr, stamp_params = stamp_vertex_metadata("active_attr", at=self.at, operation_ats=self.operation_ats)
+        self.params.update(stamp_params)
+        stamp_node, stamp_params = stamp_vertex_metadata("active_node", at=self.at, operation_ats=self.operation_ats)
+        self.params.update(stamp_params)
         query = """
-        // ------------
-        // Find all the active nodes
-        // ------------
-        MATCH (node:%(node_kinds)s)
-        WHERE (size($kinds_to_ignore) = 0 OR NOT any(l IN labels(node) WHERE l IN $kinds_to_ignore))
-        AND exists((node)-[:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name }))
-        CALL (node) {
-            MATCH (root:Root)<-[r:IS_PART_OF]-(node)
-            WHERE %(branch_filter)s
-            RETURN node as n1, r as r1
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH n1 as active_node, r1 as rb
-        WHERE rb.status = "active"
-        // ------------
-        // Find all the attributes that need to be updated
-        // ------------
-        CALL (active_node) {
-            MATCH (active_node)-[r:HAS_ATTRIBUTE]-(attr:Attribute { name: $attr_name })
-            WHERE %(branch_filter)s
-            RETURN active_node as n1, r as r1, attr as attr1
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH n1 as active_node, r1 as rb, attr1 as active_attr
-        WHERE rb.status = "active"
         WITH active_node, active_attr
         MATCH (active_attr)-[]-(peer)
         WITH DISTINCT active_node, active_attr, peer
@@ -150,24 +169,8 @@ class AttributeRemoveQuery(Query):
         CALL (active_attr, active_node) {
             WITH active_attr, active_node
             WHERE $set_metadata
-            SET active_attr.previous_updated_at = CASE
-                    WHEN active_attr.updated_at IS NULL OR active_attr.updated_at <> $at THEN active_attr.updated_at
-                    ELSE active_attr.previous_updated_at
-                END,
-                active_attr.previous_updated_by = CASE
-                    WHEN active_attr.updated_at IS NULL OR active_attr.updated_at <> $at THEN active_attr.updated_by
-                    ELSE active_attr.previous_updated_by
-                END
-            SET active_attr.updated_at = $at, active_attr.updated_by = $user_id
-            SET active_node.previous_updated_at = CASE
-                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $at THEN active_node.updated_at
-                    ELSE active_node.previous_updated_at
-                END,
-                active_node.previous_updated_by = CASE
-                    WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $at THEN active_node.updated_by
-                    ELSE active_node.previous_updated_by
-                END
-            SET active_node.updated_at = $at, active_node.updated_by = $user_id
+            %(stamp_attr)s
+            %(stamp_node)s
         }
         // ------------
         // Clean up branch-agnostic edges when they become unreachable
@@ -179,7 +182,8 @@ class AttributeRemoveQuery(Query):
         """ % {
             "branch_filter": branch_filter,
             "sub_query_all": sub_query_all,
-            "node_kinds": node_kinds_str,
             "close_unretained_agnostic_fields": CLOSE_UNRETAINED_AGNOSTIC_FIELDS,
+            "stamp_attr": stamp_attr,
+            "stamp_node": stamp_node,
         }
         self.add_to_query(query)

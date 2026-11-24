@@ -201,7 +201,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             info=info, data=data, branch=branch, database=graphql_context.db, node=obj
         )
 
-        if updated_state in (ProposedChangeState.CLOSED, ProposedChangeState.CANCELED):
+        if updated_state in {ProposedChangeState.CLOSED, ProposedChangeState.CANCELED}:
             component_registry = get_component_registry()
             diff_repository = await component_registry.get_component(
                 DiffRepository, db=graphql_context.db, branch=branch
@@ -365,8 +365,8 @@ class ProposedChangeReview(Mutation):
         """
         approved_by = await proposed_change.approved_by.get_peers(db=db)
         rejected_by = await proposed_change.rejected_by.get_peers(db=db)
-        approved_by_ids = [node.id for _, node in approved_by.items()]
-        rejected_by_ids = [node.id for _, node in rejected_by.items()]
+        approved_by_ids = [node.id for node in approved_by.values()]
+        rejected_by_ids = [node.id for node in rejected_by.values()]
         event: InfrahubEvent | None = None
         # Proposed changes are branch-agnostic; scope the review events to the default branch regardless of the branch the review mutation ran on.
         default_branch = await registry.get_branch(db=db, branch=registry.default_branch)

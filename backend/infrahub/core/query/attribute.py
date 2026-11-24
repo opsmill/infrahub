@@ -420,13 +420,13 @@ async def default_attribute_query_filter(
 
     query_filter.append(QueryRel(labels=[RELATIONSHIP_TO_NODE_LABEL]))
 
-    if name in ["any", "attribute"]:
+    if name in {"any", "attribute"}:
         query_filter.append(QueryNode(name="i", labels=["Attribute"]))
     else:
         query_filter.append(QueryNode(name="i", labels=["Attribute"], params={"name": f"${param_prefix}_name"}))
         query_params[f"{param_prefix}_name"] = name
 
-    if filter_name in ("value", "binary_address", "prefixlen", "isnull"):
+    if filter_name in {"value", "binary_address", "prefixlen", "isnull"}:
         query_filter.append(QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]))
 
         if filter_value is None:
@@ -480,9 +480,11 @@ async def default_attribute_query_filter(
             query_params[f"{param_prefix}_{filter_name}"] = filter_value
 
     elif filter_name in [v.value for v in FlagProperty] and filter_value is not None:
-        query_filter.append(QueryRel(labels=[filter_name.upper()]))
-        query_filter.append(
-            QueryNode(name="ap", labels=["Boolean"], params={"value": f"${param_prefix}_{filter_name}"})
+        query_filter.extend(
+            (
+                QueryRel(labels=[filter_name.upper()]),
+                QueryNode(name="ap", labels=["Boolean"], params={"value": f"${param_prefix}_{filter_name}"}),
+            )
         )
         query_params[f"{param_prefix}_{filter_name}"] = filter_value
 
