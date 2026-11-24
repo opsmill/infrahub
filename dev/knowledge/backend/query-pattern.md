@@ -225,9 +225,7 @@ Three details make this correct:
 
 #### A read without a limit runs once
 
-`Query.execute()` runs a READ query once. With neither `limit` nor `offset`, the query has no `SKIP`/`LIMIT` and returns every row, and the driver streams the rows in batches. Do not page an unbounded read in `database.query_size_limit` chunks: each page after the first runs the whole query again to skip the rows before it, so a read of N rows costs about N / page size runs of the query.
-
-Do not set `self.limit` only to size a read. `insert_limit` defaults to `True`, so the limit renders a literal `LIMIT`, and an exact-row-count limit with no `ORDER BY` drops an arbitrary row the moment the query matches one more than expected. Set `insert_limit = False` when the limit sizes the read rather than pages it.
+`Query.execute()` runs a READ query once. With neither `limit` nor `offset`, the query has no `SKIP`/`LIMIT` and returns every row, and the driver streams the rows in batches. Paging a read has a cost: each page after the first runs the whole query again to skip the rows before it, so a read of N rows costs about N / page size runs of the query. Page a read only to bound the work or the memory of one run, with the recipe above.
 
 `CountingInfrahubDatabase` in `backend/tests/helpers/db_query_counter.py` counts executions and rows by query name, so a test can assert how many queries a read issues.
 

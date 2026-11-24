@@ -9,7 +9,7 @@ Start with the [hardware requirements](./hardware-requirements.mdx): no setting 
 | Symptom | Setting | Default |
 |---|---|---|
 | Merges queue a burst of tasks while several branches are open | `INFRAHUB_DIFF_UPDATE_AFTER_MERGE` | `true` |
-| Queries over a large dataset make many database round trips | `INFRAHUB_DB_QUERY_SIZE_LIMIT` | `5000` |
+| Diff updates and branch deletions over a large dataset run many database queries | `INFRAHUB_DB_QUERY_SIZE_LIMIT` | `5000` |
 | The database is saturated under concurrent load | `INFRAHUB_DB_MAX_CONCURRENT_QUERIES` | `0` (unlimited) |
 | Graph traversal queries are truncated or time out | `INFRAHUB_DB_PATH_TRAVERSAL_QUERY_TIMEOUT`, `INFRAHUB_DB_REACHABLE_NODES_QUERY_TIMEOUT` | `30`, `75` |
 | Hierarchy queries traverse further than your model needs | `INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY` | `5` |
@@ -35,15 +35,22 @@ INFRAHUB_DIFF_UPDATE_AFTER_MERGE=false
 
 ## Query size on large datasets
 
-Queries that can return many records fetch them in pages of `INFRAHUB_DB_QUERY_SIZE_LIMIT` records, repeating with an increasing offset until a page comes back short. Over a large dataset, one logical query becomes many round trips to the database. Diff calculation and diff storage derive their own batch sizes from the same value.
+Some operations process records in batches, and `INFRAHUB_DB_QUERY_SIZE_LIMIT` sets the batch size or the value the batch size is derived from:
 
-Raise it when the database holds a large number of objects and the server and workers have memory to spare:
+- Diff calculation and diff storage
+- Deletion of the data of a branch
+- Changelog enrichment and the reads of stored display labels
+- Some database migrations during an upgrade
+
+Over a large dataset, each of these operations runs one query per batch. The setting has no effect on other read queries: each of them returns all of its records in one query.
+
+Raise it when these operations are slow on a large number of objects and the server and workers have memory to spare:
 
 ```bash title=".env"
 INFRAHUB_DB_QUERY_SIZE_LIMIT=10000
 ```
 
-**What you trade.** Each page is held in the process that issued the query, so peak memory per query grows with the value. Raise it in steps, and watch memory on both `infrahub-server` and the task workers before going further.
+**What you trade.** Each batch is held in the process that issued the query, so peak memory per batch grows with the value. Raise it in steps, and watch memory on both `infrahub-server` and the task workers before going further.
 
 ## Concurrent queries against the database
 

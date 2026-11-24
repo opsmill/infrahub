@@ -550,8 +550,7 @@ class Query:
             tmp_query_lines.append("ORDER BY " + ",".join(self.order_by))
 
         # Bound as parameters rather than literals, a zero offset included, so every page of a
-        # paginated query shares one text, and with it one cached plan. A zero limit is no bound,
-        # the same reading `execute()` gives it when choosing how to run.
+        # paginated query shares one text, and with it one cached plan. A zero limit is no bound.
         if offset is not None and self.insert_limit:
             params[PAGINATION_OFFSET_PARAM] = offset
             tmp_query_lines.append(f"SKIP ${PAGINATION_OFFSET_PARAM}")
