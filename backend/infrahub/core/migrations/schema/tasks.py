@@ -63,7 +63,7 @@ MAX_CONCURRENT_MIGRATION_GROUPS = 5
 
 
 class TaskSchemaPathMigrator:
-    """Apply one migration through the `schema-path-migrate` task."""
+    """Apply one migration as a Prefect task."""
 
     def __init__(self, database: InfrahubDatabase) -> None:
         self.database = database
