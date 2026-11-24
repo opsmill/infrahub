@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -27,34 +28,50 @@ if TYPE_CHECKING:
 
 # With this many people and cars on main, the planner reads whole labels for a query that gives it no index hint.
 MAIN_PERSON_COUNT = 300
-WHOLE_GRAPH_SCANS = ("AllNodesScan", "AllRelationshipsScan", "RelationshipTypeScan", "RelationshipTypesScan")
+WHOLE_GRAPH_SCANS = (
+    "AllNodesScan",
+    "AllRelationshipsScan",
+    "RelationshipTypeScan",
+    "RelationshipTypesScan",
+    "NodeIndexScan",
+    "RelationshipIndexScan",
+    "UnionNodeByLabelsScan",
+)
 GRAPH_LABELS = ("Node", "Attribute", "Relationship")
+SOURCE_BRANCH_SEEK = re.compile(r"RelationshipIndexSeek.*:(\w+)\(branch\)\]-.* WHERE branch = \$source_branch")
 
 
 @dataclass(frozen=True)
 class BulkMergeQueryCase:
     name: str
     query_class: type[Query]
-    exclusions: dict[str, Any] = field(default_factory=dict)
+    source_branch_reads: set[str]
+    exclusions: dict[str, list[str]] = field(default_factory=dict)
 
 
 CASES = [
     BulkMergeQueryCase(
-        name="node-existence", query_class=BulkMergeNodeExistenceQuery, exclusions={"excluded_node_uuids": []}
+        name="node-existence",
+        query_class=BulkMergeNodeExistenceQuery,
+        source_branch_reads={"IS_PART_OF", "HAS_ATTRIBUTE"},
+        exclusions={"excluded_node_uuids": []},
     ),
     BulkMergeQueryCase(
         name="relationship-edges",
         query_class=BulkMergeRelationshipEdgesQuery,
+        source_branch_reads={"IS_RELATED"},
         exclusions={"excluded_node_uuids": [], "excluded_relationship_paths": []},
     ),
     BulkMergeQueryCase(
         name="attribute-property-edges",
         query_class=BulkMergeAttributePropertyEdgesQuery,
+        source_branch_reads={"HAS_VALUE", "IS_PROTECTED", "HAS_OWNER", "HAS_SOURCE"},
         exclusions={"excluded_node_uuids": [], "excluded_attribute_property_paths": []},
     ),
     BulkMergeQueryCase(
         name="relationship-property-edges",
         query_class=BulkMergeRelationshipPropertyEdgesQuery,
+        source_branch_reads={"IS_PROTECTED", "HAS_OWNER", "HAS_SOURCE"},
         exclusions={
             "excluded_node_uuids": [],
             "excluded_relationship_paths": [],
@@ -102,3 +119,6 @@ class TestBulkMergeQueryPlans:
 
         # A read that starts from every vertex of a label or every edge of a type costs as much as the graph does.
         assert [operator for operator in plan_operators if _scans_the_graph(operator)] == []
+        assert {
+            match.group(1) for operator in plan_operators if (match := SOURCE_BRANCH_SEEK.search(operator))
+        } == case.source_branch_reads
