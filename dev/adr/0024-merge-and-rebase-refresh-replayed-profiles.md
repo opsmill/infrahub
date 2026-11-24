@@ -52,6 +52,8 @@ relationship. A rebase replays a profile from both branches only when both chang
 changed the schema of its kind. The check then uses the union of the attributes the two sides
 changed. The rebase keeps its refresh of the nodes whose profiles the branch changed.
 
+`dev/knowledge/backend/merge-recompute.md` describes the current design.
+
 ## Consequences
 
 ### Positive
