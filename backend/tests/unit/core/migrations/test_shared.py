@@ -222,6 +222,9 @@ class TestMigrationTransientErrorRetry:
         assert AlwaysDeadlockGraphQuery.calls == 1
 
 
+RENAMED_CAR_PREVIOUS_SCHEMA, RENAMED_CAR_NEW_SCHEMA = renamed_car_schema_branches()
+
+
 @dataclass(frozen=True, kw_only=True)
 class ChangedKindsCase:
     name: str
@@ -256,8 +259,8 @@ CHANGED_KINDS_CASES: list[ChangedKindsCase] = [
     ChangedKindsCase(
         name="renamed_kind_includes_its_previous_name",
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestingAuto", field_name="color"),
-        previous_schema=renamed_car_schema_branches()[0],
-        new_schema=renamed_car_schema_branches()[1],
+        previous_schema=RENAMED_CAR_PREVIOUS_SCHEMA,
+        new_schema=RENAMED_CAR_NEW_SCHEMA,
         expected=AUTO_KINDS | CAR_KINDS,
     ),
 ]

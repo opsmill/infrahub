@@ -72,7 +72,6 @@ PHYSICAL_DUPLEX_REMOVE = path_migration(
 PHYSICAL_SPEED_REMOVE = path_migration(
     migration_name="node.attribute.remove", schema_kind="TestingPhysicalInterface", field_name="speed"
 )
-LEFTOVER_TASK_TURNS = 5
 
 
 def _data(migrations: list[SchemaUpdateMigrationInfo]) -> SchemaApplyMigrationData:
@@ -227,7 +226,13 @@ async def test_errors_from_every_group_of_a_phase_are_returned() -> None:
     )
 
     assert sorted(errors) == ["car failed", "interface failed"]
-    assert [call.arguments["position"] for call in recorder.calls if call.method == MIGRATION_ENDED] == [0, 1]
+    assert [(call.method, call.arguments.get("position")) for call in recorder.calls] == [
+        (REGISTER, None),
+        (MIGRATION_STARTED, 0),
+        (MIGRATION_STARTED, 1),
+        (MIGRATION_ENDED, 0),
+        (MIGRATION_ENDED, 1),
+    ]
 
 
 async def test_an_exception_stops_the_run() -> None:
@@ -262,9 +267,8 @@ async def test_an_exception_waits_for_running_migrations_and_starts_no_new_one()
         await _runner(migrator=migrator, recorder=recorder).run(
             data=_data(migrations=[CAR_OWNER_REMOVE, PHYSICAL_DUPLEX_REMOVE, PHYSICAL_SPEED_REMOVE])
         )
-    for _ in range(LEFTOVER_TASK_TURNS):
-        await asyncio.sleep(0)
 
+    assert asyncio.all_tasks() == {asyncio.current_task()}
     assert migrator.events == [
         (START, "TestingCar", "owner"),
         (START, "TestingPhysicalInterface", "duplex"),
