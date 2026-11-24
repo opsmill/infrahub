@@ -13522,6 +13522,10 @@ type ProposedChangeRequestRunCheck {
 input ProposedChangeRequestRunCheckInput {
   check_type: CheckType
   id: String!
+  """
+  Retry only failed artifact targets. Requires check_type ARTIFACT and completed retry history.
+  """
+  retry_failed_only: Boolean = false
 }
 
 type ProposedChangeReview {

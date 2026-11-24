@@ -99,6 +99,22 @@ mutation RunCheck(
 }
 """
 
+RUN_CHECK_FAILED_ONLY = """
+mutation RunCheckFailedOnly(
+    $proposed_change: String!,
+    $check_type: CheckType,
+    $retry_failed_only: Boolean!
+  ) {
+  CoreProposedChangeRunCheck(data: {
+    id: $proposed_change,
+    check_type: $check_type,
+    retry_failed_only: $retry_failed_only
+  }) {
+    ok
+  }
+}
+"""
+
 UPDATE_PROPOSED_CHANGE = """
 mutation UpdateProposedChange(
     $proposed_change: String!,
@@ -405,6 +421,97 @@ async def test_duplicate_open_proposed_change_validation(
 
 
 class TestTriggerProposedChange(TestInfrahubApp):
+    async def test_failed_only_artifact_retry_is_forwarded_to_pipeline(
+        self,
+        db: InfrahubDatabase,
+        create_test_admin: Node,
+        service: InfrahubServices,
+    ) -> None:
+        source_branch = await create_branch(db=db, branch_name="trigger-failed-artifact-retry")
+        proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+        await proposed_change.new(
+            db=db, name="failed-artifact-retry", destination_branch="main", source_branch=source_branch.name
+        )
+        await proposed_change.save(db=db)
+        account_session = AccountSession(
+            authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
+        )
+
+        with patch(
+            "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
+        ) as submit_workflow:
+            result = await graphql_mutation(
+                query=RUN_CHECK_FAILED_ONLY,
+                db=db,
+                variables={
+                    "proposed_change": proposed_change.id,
+                    "check_type": "ARTIFACT",
+                    "retry_failed_only": True,
+                },
+                service=service,
+                account_session=account_session,
+            )
+
+        assert not result.errors
+        assert result.data == {"CoreProposedChangeRunCheck": {"ok": True}}
+        submit_workflow.assert_called_once()
+        request = submit_workflow.call_args.kwargs["parameters"]["model"]
+        assert submit_workflow.call_args.kwargs["workflow"] == REQUEST_PROPOSED_CHANGE_PIPELINE
+        assert request == RequestProposedChangePipeline(
+            pipeline_id=request.pipeline_id,
+            proposed_change=proposed_change.id,
+            source_branch=source_branch.name,
+            source_branch_sync_with_git=source_branch.sync_with_git,
+            destination_branch="main",
+            check_type=CheckType.ARTIFACT,
+            retry_failed_only=True,
+        )
+
+    async def test_failed_only_retry_rejects_other_categories_without_dispatch(
+        self,
+        db: InfrahubDatabase,
+        create_test_admin: Node,
+        service: InfrahubServices,
+    ) -> None:
+        source_branch = await create_branch(db=db, branch_name="trigger-invalid-failed-retry")
+        proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+        await proposed_change.new(
+            db=db, name="invalid-failed-retry", destination_branch="main", source_branch=source_branch.name
+        )
+        await proposed_change.save(db=db)
+        account_session = AccountSession(
+            authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
+        )
+
+        with patch(
+            "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
+        ) as submit_workflow:
+            for check_type in (None, "ALL", "DATA", "GENERATOR", "REPOSITORY", "SCHEMA", "TEST", "USER"):
+                result = await graphql_mutation(
+                    query=RUN_CHECK_FAILED_ONLY,
+                    db=db,
+                    variables={
+                        "proposed_change": proposed_change.id,
+                        "check_type": check_type,
+                        "retry_failed_only": True,
+                    },
+                    service=service,
+                    account_session=account_session,
+                )
+                assert result.errors
+                assert [error.message for error in result.errors] == ["retry_failed_only requires check_type ARTIFACT"]
+            submit_workflow.assert_not_called()
+
+        reloaded = await NodeManager.get_one(db=db, id=proposed_change.id, kind=InfrahubKind.PROPOSEDCHANGE)
+        assert reloaded is not None
+        assert reloaded.state.value.value == ProposedChangeState.OPEN.value
+        assert (
+            await NodeManager.query(
+                db=db, schema="CoreValidator", filters={"proposed_change__ids": [proposed_change.id]}
+            )
+            == []
+        )
+
     async def test_trigger_proposed_change(
         self,
         db: InfrahubDatabase,

@@ -1,6 +1,5 @@
 import asyncio
-from collections.abc import Coroutine
-from typing import Any
+from collections.abc import Awaitable, Sequence
 
 from infrahub_sdk.protocols import CoreValidator
 
@@ -13,7 +12,7 @@ from infrahub.validators.events import send_failed_validator, send_passed_valida
 
 
 async def run_checks_and_update_validator(
-    checks: list[Coroutine[Any, None, ValidatorConclusion]],
+    checks: Sequence[Awaitable[ValidatorConclusion]],
     validator: CoreValidator,
     context: InfrahubContext,
     event_service: InfrahubEventService,

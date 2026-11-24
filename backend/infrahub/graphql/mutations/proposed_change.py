@@ -230,6 +230,10 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
 class ProposedChangeRequestRunCheckInput(InputObjectType):
     id = String(required=True)
     check_type = GraphQLCheckType(required=False)
+    retry_failed_only = Boolean(
+        default_value=False,
+        description="Retry only failed artifact targets. Requires check_type ARTIFACT and completed retry history.",
+    )
 
 
 class ProposedChangeRequestRunCheck(Mutation):
@@ -248,6 +252,9 @@ class ProposedChangeRequestRunCheck(Mutation):
         graphql_context: GraphqlContext = info.context
 
         check_type = data.get("check_type") or CheckType.ALL
+        retry_failed_only = bool(data.get("retry_failed_only"))
+        if retry_failed_only and check_type != CheckType.ARTIFACT:
+            raise ValidationError("retry_failed_only requires check_type ARTIFACT")
 
         identifier = data.get("id", "")
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
@@ -265,6 +272,7 @@ class ProposedChangeRequestRunCheck(Mutation):
             source_branch_sync_with_git=source_branch.sync_with_git,
             destination_branch=destination_branch,
             check_type=check_type,
+            retry_failed_only=retry_failed_only,
         )
         if graphql_context.service:
             await graphql_context.service.workflow.submit_workflow(
