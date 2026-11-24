@@ -692,3 +692,27 @@ def test_unsupported_property_change_is_accepted_without_the_update_support_chec
     assert (candidate.validation.migrations, candidate.validation.constraints) == ([], [])
     device = candidate.schema.get(name=TestKind.DEVICE, duplicate=False)
     assert device.get_attribute(name="manufacturer").branch == BranchSupportType.AGNOSTIC
+
+
+def test_schema_files_merged_into_one_add_an_element_with_only_the_fields_its_file_states(
+    equivalence_base_schema: SchemaBranch,
+) -> None:
+    device = base_node_definition(TestKind.DEVICE)
+    device.attributes.append(AttributeSchema(name="color", kind="Text", optional=True))
+    unchanged_tag = SchemaRoot(nodes=[base_node_definition(TestKind.TAG)])
+
+    candidate = build_schema_candidate_builder().from_schema_root(
+        branch_schema=equivalence_base_schema,
+        schema_root=SchemaRoot(nodes=[device]).merge(schema=unchanged_tag),
+        default_branch_schema=equivalence_base_schema,
+    )
+
+    assert candidate.operations == [
+        SchemaOperation(
+            operation_type=SchemaOperationType.ELEMENT_ADD,
+            kind=TestKind.DEVICE,
+            section=SchemaOperationSection.ATTRIBUTES,
+            element_name="color",
+            value={"name": "color", "kind": "Text", "optional": True, "order_weight": 1000},
+        )
+    ]
