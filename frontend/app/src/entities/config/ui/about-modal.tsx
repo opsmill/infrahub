@@ -2,13 +2,13 @@ import { Button, Card, Modal } from "@infrahub/ui";
 import { XIcon } from "lucide-react";
 
 import { Separator } from "@/shared/components/aria/separator";
-import { CopyToClipboardButton } from "@/shared/components/buttons/copy-to-clipboard-button";
 import { Row } from "@/shared/components/container";
-import { Skeleton } from "@/shared/components/loading/skeleton";
+import { InfoRow } from "@/shared/components/display/info-row";
 import { InfrahubLogo } from "@/shared/components/ui/infrahub-logo";
 
 import { useConfig } from "@/entities/config/ui/config-provider";
 import { useGetAppInfo } from "@/entities/config/ui/queries/get-app-info.query";
+import { LicenseAboutRows } from "@/entities/license/ui/license-about-rows";
 
 interface AboutModalProps {
   isOpen: boolean;
@@ -43,35 +43,8 @@ export function AboutModal({ isOpen, onOpenChange }: AboutModalProps) {
         <InfoRow label="Edition" value={config.installation_type} />
         <Separator />
         <InfoRow label="Deployment ID" value={deploymentId} isLoading={isPending} />
+        <LicenseAboutRows license={data?.license} />
       </Card>
     </Modal>
-  );
-}
-
-function InfoRow({
-  label,
-  value,
-  isLoading,
-}: {
-  label: string;
-  value: string | null;
-  isLoading?: boolean;
-}) {
-  return (
-    <Row className="justify-between">
-      <span className="text-foreground-muted text-sm">{label}</span>
-      <Row>
-        {isLoading ? (
-          <Skeleton className="h-7 w-20" />
-        ) : (
-          <>
-            <span className="text-foreground text-sm">{value}</span>
-            {value && value !== "N/A" && (
-              <CopyToClipboardButton data={value} aria-label={`Copy ${label}`} />
-            )}
-          </>
-        )}
-      </Row>
-    </Row>
   );
 }
