@@ -32,10 +32,11 @@ from tests.helpers.schema_change import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator, Sequence
+    from collections.abc import Generator, Sequence
 
     from infrahub.core.branch import Branch
     from infrahub.core.migrations.query import MigrationBaseQuery
+    from infrahub.core.schema import NodeSchema
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from tests.adapters.lock.timeline import LockTimeline
@@ -72,34 +73,29 @@ async def _read_main_records(db: InfrahubDatabase) -> MainRecords:
     )
 
 
-async def _persist_core_schema(db: InfrahubDatabase, branch: Branch, adjust: Callable[[SchemaBranch], None]) -> None:
-    schema_branch = registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=branch.name)
-    schema_branch.load_schema(schema=SchemaRoot(**core_models))
-    schema_branch.load_schema(schema=SchemaRoot(**deprecated_models))
-    adjust(schema_branch)
-    schema_branch.process()
-    await registry.schema.load_schema_to_db(schema=schema_branch, branch=branch, db=db)
+@dataclass(frozen=True)
+class OlderDatabase:
+    """A database from an older release whose main already holds one schema change of a user."""
+
+    user_change_id: str
 
 
-def _remove_tag_description(schema_branch: SchemaBranch) -> None:
+def _make_tag_older(schema_branch: SchemaBranch) -> None:
+    # The tag kind has no description yet, and is stored branch agnostic, which the core models change to aware.
     tag = schema_branch.get(name=TAG_KIND)
     tag.attributes = [attribute for attribute in tag.attributes if attribute.name != ADDED_ATTRIBUTE]
-    schema_branch.set(name=TAG_KIND, schema=tag)
-
-
-def _make_tag_branch_agnostic(schema_branch: SchemaBranch) -> None:
-    tag = schema_branch.get(name=TAG_KIND)
     tag.branch = BranchSupportType.AGNOSTIC
     schema_branch.set(name=TAG_KIND, schema=tag)
 
 
-def _keep_schema(schema_branch: SchemaBranch) -> None:
-    del schema_branch
-
-
-async def _stored_tag_attribute_names(db: InfrahubDatabase, branch: Branch) -> set[str]:
+async def _stored_tag(db: InfrahubDatabase, branch: Branch) -> NodeSchema:
     stored = await registry.schema.load_schema_from_db(db=db, branch=branch)
-    return set(stored.get(name=TAG_KIND, duplicate=False).attribute_names)
+    return stored.get_node(name=TAG_KIND, duplicate=False)
+
+
+async def _assert_tag_is_as_before(db: InfrahubDatabase, branch: Branch) -> None:
+    tag = await _stored_tag(db=db, branch=branch)
+    assert (ADDED_ATTRIBUTE in tag.attribute_names, tag.branch) == (False, BranchSupportType.AGNOSTIC)
 
 
 class TagAttributeAddMigrationThatFails(NodeAttributeAddMigration):
@@ -132,10 +128,26 @@ class OperationBuilderThatFailsUnexpectedly(SchemaOperationBuilder):
         raise RuntimeError(UNEXPECTED_FAILURE)
 
 
-@pytest.fixture
-async def older_core_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
-    """The core schema of a database from an older release, where the tag kind has no description yet."""
-    await _persist_core_schema(db=db, branch=default_branch, adjust=_remove_tag_description)
+@pytest.fixture(scope="class")
+async def older_database(db: InfrahubDatabase, default_branch_scope_class: Branch) -> OlderDatabase:
+    schema_branch = registry.schema.register_schema(
+        schema=SchemaRoot(**internal_schema), branch=default_branch_scope_class.name
+    )
+    schema_branch.load_schema(schema=SchemaRoot(**core_models))
+    schema_branch.load_schema(schema=SchemaRoot(**deprecated_models))
+    _make_tag_older(schema_branch=schema_branch)
+    schema_branch.process()
+    await registry.schema.load_schema_to_db(schema=schema_branch, branch=default_branch_scope_class, db=db)
+
+    recorder = build_schema_change_recorder(db=db, default_branch_name=registry.default_branch)
+    user_change = await recorder.record_applied(
+        branch=default_branch_scope_class,
+        operations=build_seeded_operations(nbr_operations=1),
+        at=Timestamp(),
+        user_id=SYSTEM_USER_ID,
+        source=SchemaChangeSource.USER,
+    )
+    return OlderDatabase(user_change_id=user_change.schema_change_id)
 
 
 @pytest.fixture
@@ -170,97 +182,10 @@ def checkpointing_tag_attribute_add_migration(recording_lock_timeline: LockTimel
 
 
 class TestCoreSchemaUpdate:
-    async def test_core_schema_update_stores_one_applied_schema_change_on_main(
-        self, db: InfrahubDatabase, default_branch: Branch, older_core_schema: None
-    ) -> None:
-        await update_core_schema(db=db, candidate_builder=build_schema_candidate_builder(), initialize=False)
+    """Each step runs the core schema update on the database that the steps before it left."""
 
-        records = await _read_main_records(db=db)
-        [schema_change] = records.schema_changes
-        assert {
-            key: schema_change.properties.get(key) for key in ("source", "status", "version", "created_by", "summary")
-        } == {
-            "source": "core_schema_update",
-            "status": "applied",
-            "version": 1,
-            "created_by": SYSTEM_USER_ID,
-            "summary": "builtintag_description_add",
-        }
-        assert [
-            (record.properties["operation_type"], record.properties["kind"], record.properties["element_name"])
-            for record in records.operations
-        ] == [("element_add", TAG_KIND, ADDED_ATTRIBUTE)]
-        assert [record.properties["status"] for record in records.applications] == ["applied"]
-        assert [
-            (
-                record.properties["migration_name"],
-                record.properties["schema_kind"],
-                record.properties["field_name"],
-                record.properties["status"],
-            )
-            for record in records.migrations
-        ] == [("node.attribute.add", TAG_KIND, ADDED_ATTRIBUTE, "applied")]
-        assert ADDED_ATTRIBUTE in await _stored_tag_attribute_names(db=db, branch=default_branch)
-
-    async def test_up_to_date_core_schema_stores_no_schema_change(
-        self, db: InfrahubDatabase, default_branch: Branch
-    ) -> None:
-        await _persist_core_schema(db=db, branch=default_branch, adjust=_keep_schema)
-
-        await update_core_schema(db=db, candidate_builder=build_schema_candidate_builder(), initialize=False)
-
-        assert await count_schema_change_records(db=db) == 0
-
-    async def test_core_schema_change_follows_the_last_schema_change_of_main(
-        self, db: InfrahubDatabase, default_branch: Branch, older_core_schema: None
-    ) -> None:
-        recorder = build_schema_change_recorder(db=db, default_branch_name=registry.default_branch)
-        user_change = await recorder.record_applied(
-            branch=default_branch,
-            operations=build_seeded_operations(nbr_operations=1),
-            at=Timestamp(),
-            user_id=SYSTEM_USER_ID,
-            source=SchemaChangeSource.USER,
-        )
-
-        await update_core_schema(db=db, candidate_builder=build_schema_candidate_builder(), initialize=False)
-
-        records = await _read_main_records(db=db)
-        [core_change] = [
-            record for record in records.schema_changes if record.properties["source"] == "core_schema_update"
-        ]
-        assert core_change.properties["version"] == 2
-        assert (
-            SchemaChangeEdgeType.SCHEMA_CHANGE_HAS_PARENT.value,
-            user_change.schema_change_id,
-        ) in core_change.edges
-
-    async def test_unsupported_property_change_is_recorded_without_a_migration(
-        self, db: InfrahubDatabase, default_branch: Branch
-    ) -> None:
-        await _persist_core_schema(db=db, branch=default_branch, adjust=_make_tag_branch_agnostic)
-
-        await update_core_schema(db=db, candidate_builder=build_schema_candidate_builder(), initialize=False)
-
-        records = await _read_main_records(db=db)
-        [schema_change] = records.schema_changes
-        assert (schema_change.properties["status"], schema_change.properties["source"]) == (
-            "applied",
-            "core_schema_update",
-        )
-        assert [
-            (
-                record.properties["operation_type"],
-                record.properties["kind"],
-                record.properties["property_name"],
-                record.properties["value"],
-            )
-            for record in records.operations
-        ] == [("node_property", TAG_KIND, "branch", '"aware"')]
-        assert records.migrations == []
-
-    async def test_operations_that_do_not_rebuild_the_core_schema_refuse_the_update(
-        self, db: InfrahubDatabase, default_branch: Branch, older_core_schema: None
+    async def test_step01_operations_that_do_not_rebuild_the_core_schema_refuse_the_update(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, older_database: OlderDatabase
     ) -> None:
         candidate_builder = SchemaCandidateBuilder(
             operation_builder=SchemaOperationBuilder(), applier=SchemaChangeApplier(), comparer=DifferingKindComparer()
@@ -270,75 +195,15 @@ class TestCoreSchemaUpdate:
             await update_core_schema(db=db, candidate_builder=candidate_builder, initialize=False)
 
         assert exit_info.value.exit_code == 1
-        assert await count_schema_change_records(db=db) == 0
-        assert ADDED_ATTRIBUTE not in await _stored_tag_attribute_names(db=db, branch=default_branch)
-
-    async def test_failed_migration_leaves_a_failed_schema_change_and_the_schema_as_before(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        older_core_schema: None,
-        failing_tag_attribute_add_migration: None,
-    ) -> None:
-        with pytest.raises(typer.Exit) as exit_info:
-            await update_core_schema(db=db, candidate_builder=build_schema_candidate_builder(), initialize=False)
-
-        assert exit_info.value.exit_code == 1
         records = await _read_main_records(db=db)
-        [schema_change] = records.schema_changes
-        assert {key: schema_change.properties.get(key) for key in ("status", "version", "source")} == {
-            "status": "failed",
-            "version": None,
-            "source": "core_schema_update",
-        }
-        assert [(record.properties["status"], record.properties["error"]) for record in records.applications] == [
-            ("failed", MIGRATION_FAILURE)
-        ]
-        assert [record.properties["status"] for record in records.migrations] == ["failed"]
-        assert ADDED_ATTRIBUTE not in await _stored_tag_attribute_names(db=db, branch=default_branch)
+        assert [record.properties["uuid"] for record in records.schema_changes] == [older_database.user_change_id]
+        await _assert_tag_is_as_before(db=db, branch=default_branch_scope_class)
 
-    async def test_update_after_a_failed_one_gets_the_first_version(
-        self, db: InfrahubDatabase, default_branch: Branch, older_core_schema: None
-    ) -> None:
-        original_map = tasks_module.MIGRATION_MAP.copy()
-        tasks_module.MIGRATION_MAP["node.attribute.add"] = TagAttributeAddMigrationThatFails
-        try:
-            with pytest.raises(typer.Exit):
-                await update_core_schema(db=db, candidate_builder=build_schema_candidate_builder(), initialize=False)
-        finally:
-            tasks_module.MIGRATION_MAP.clear()
-            tasks_module.MIGRATION_MAP.update(original_map)
-
-        await update_core_schema(db=db, candidate_builder=build_schema_candidate_builder(), initialize=False)
-
-        records = await _read_main_records(db=db)
-        assert sorted(
-            (record.properties["status"], record.properties.get("version")) for record in records.schema_changes
-        ) == [("applied", 1), ("failed", None)]
-
-    async def test_core_schema_update_holds_the_global_schema_lock_while_its_migrations_run(
+    async def test_step02_unexpected_error_building_the_candidate_stops_the_update_and_logs_its_traceback(
         self,
         db: InfrahubDatabase,
-        default_branch: Branch,
-        older_core_schema: None,
-        recording_lock_timeline: LockTimeline,
-        checkpointing_tag_attribute_add_migration: list[int],
-    ) -> None:
-        await update_core_schema(db=db, candidate_builder=build_schema_candidate_builder(), initialize=False)
-
-        assert [
-            GLOBAL_SCHEMA_LOCK in recording_lock_timeline.held_at(seq=checkpoint)
-            for checkpoint in checkpointing_tag_attribute_add_migration
-        ] == [True]
-        assert [record.properties["status"] for record in (await _read_main_records(db=db)).schema_changes] == [
-            "applied"
-        ]
-
-    async def test_unexpected_error_building_the_candidate_stops_the_update_and_logs_its_traceback(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        older_core_schema: None,
+        default_branch_scope_class: Branch,
+        older_database: OlderDatabase,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         candidate_builder = SchemaCandidateBuilder(
@@ -353,5 +218,120 @@ class TestCoreSchemaUpdate:
         assert exit_info.value.exit_code == 1
         [failure] = find_logged_events(caplog, event=CANDIDATE_FAILURE_EVENT)
         assert failure["exc_info"]
-        assert await count_schema_change_records(db=db) == 0
-        assert ADDED_ATTRIBUTE not in await _stored_tag_attribute_names(db=db, branch=default_branch)
+        records = await _read_main_records(db=db)
+        assert [record.properties["uuid"] for record in records.schema_changes] == [older_database.user_change_id]
+        await _assert_tag_is_as_before(db=db, branch=default_branch_scope_class)
+
+    async def test_step03_failed_migration_leaves_a_failed_schema_change_and_the_schema_as_before(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        older_database: OlderDatabase,
+        failing_tag_attribute_add_migration: None,
+    ) -> None:
+        with pytest.raises(typer.Exit) as exit_info:
+            await update_core_schema(db=db, candidate_builder=build_schema_candidate_builder(), initialize=False)
+
+        assert exit_info.value.exit_code == 1
+        records = await _read_main_records(db=db)
+        [failed] = [
+            record for record in records.schema_changes if record.properties["uuid"] != older_database.user_change_id
+        ]
+        assert {key: failed.properties.get(key) for key in ("status", "version", "source")} == {
+            "status": "failed",
+            "version": None,
+            "source": "core_schema_update",
+        }
+        [application] = [record for record in records.applications if record.properties["status"] == "failed"]
+        assert application.properties["error"] == MIGRATION_FAILURE
+        assert [record.properties["status"] for record in records.migrations] == ["failed"]
+        await _assert_tag_is_as_before(db=db, branch=default_branch_scope_class)
+
+    async def test_step04_update_stores_the_next_applied_schema_change_of_main_under_the_global_schema_lock(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        older_database: OlderDatabase,
+        recording_lock_timeline: LockTimeline,
+        checkpointing_tag_attribute_add_migration: list[int],
+    ) -> None:
+        await update_core_schema(db=db, candidate_builder=build_schema_candidate_builder(), initialize=False)
+
+        records = await _read_main_records(db=db)
+        by_status = {
+            record.properties["status"]: record
+            for record in records.schema_changes
+            if record.properties["uuid"] != older_database.user_change_id
+        }
+        assert sorted(by_status) == ["applied", "failed"]
+        applied = by_status["applied"]
+        assert {key: applied.properties.get(key) for key in ("source", "version", "created_by", "summary")} == {
+            "source": "core_schema_update",
+            "version": 2,
+            "created_by": SYSTEM_USER_ID,
+            "summary": "builtintag_branch_update_and_1_more",
+        }
+        assert by_status["failed"].properties.get("version") is None
+        assert [edge for edge in applied.edges if edge[0] == SchemaChangeEdgeType.SCHEMA_CHANGE_HAS_PARENT.value] == [
+            (SchemaChangeEdgeType.SCHEMA_CHANGE_HAS_PARENT.value, older_database.user_change_id)
+        ]
+        applied_operation_ids = {
+            peer_id
+            for edge_type, peer_id in applied.edges
+            if edge_type == SchemaChangeEdgeType.SCHEMA_CHANGE_HAS_OPERATION.value
+        }
+        applied_operations = sorted(
+            (record for record in records.operations if record.properties["uuid"] in applied_operation_ids),
+            key=lambda record: int(str(record.properties["position"])),
+        )
+        assert [
+            (
+                record.properties["operation_type"],
+                record.properties["kind"],
+                record.properties.get("property_name"),
+                record.properties.get("element_name"),
+            )
+            for record in applied_operations
+        ] == [("node_property", TAG_KIND, "branch", None), ("element_add", TAG_KIND, None, ADDED_ATTRIBUTE)]
+        assert applied_operations[0].properties["value"] == '"aware"'
+        [applied_application_id] = [
+            peer_id
+            for edge_type, peer_id in applied.edges
+            if edge_type == SchemaChangeEdgeType.SCHEMA_CHANGE_HAS_APPLICATION.value
+        ]
+        [applied_application] = [
+            record for record in records.applications if record.properties["uuid"] == applied_application_id
+        ]
+        assert applied_application.properties["status"] == "applied"
+        applied_migrations = [
+            record
+            for record in records.migrations
+            if (SchemaChangeEdgeType.SCHEMA_APPLICATION_HAS_MIGRATION.value, record.properties["uuid"])
+            in applied_application.edges
+        ]
+        assert [
+            (
+                record.properties["migration_name"],
+                record.properties["schema_kind"],
+                record.properties["field_name"],
+                record.properties["status"],
+            )
+            for record in applied_migrations
+        ] == [("node.attribute.add", TAG_KIND, ADDED_ATTRIBUTE, "applied")], (
+            "the branch support of a kind has no migration, so only the added attribute gets one"
+        )
+        assert [
+            GLOBAL_SCHEMA_LOCK in recording_lock_timeline.held_at(seq=checkpoint)
+            for checkpoint in checkpointing_tag_attribute_add_migration
+        ] == [True]
+        tag = await _stored_tag(db=db, branch=default_branch_scope_class)
+        assert (ADDED_ATTRIBUTE in tag.attribute_names, tag.branch) == (True, BranchSupportType.AWARE)
+
+    async def test_step05_up_to_date_core_schema_stores_no_schema_change(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, older_database: OlderDatabase
+    ) -> None:
+        nbr_records = await count_schema_change_records(db=db)
+
+        await update_core_schema(db=db, candidate_builder=build_schema_candidate_builder(), initialize=False)
+
+        assert await count_schema_change_records(db=db) == nbr_records
