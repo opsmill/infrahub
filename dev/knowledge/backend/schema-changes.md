@@ -136,11 +136,12 @@ A schema load and a schema check call `from_schema_root` through
    then additions (see [The order of the migrations](#the-order-of-the-migrations)), but all the
    renames of a load run in one phase, so a chain or a swap of names in one load can reach the wrong
    attribute or node. The refusal also covers a name that a removal or a rename frees and an
-   addition takes, which the phase order applies correctly. The message tells the user to load the
-   changes in separate steps. Relationship names are not refused, and neither is a name that moves
-   between an attribute and a relationship: the data of a relationship is keyed by its identifier,
-   which a load cannot change (`UpdateSupport.NOT_SUPPORTED`), and a relationship rename has no data
-   migration. Chained and swapped relationship renames therefore load.
+   addition takes, although the phase order would apply such a load correctly. The message tells
+   the user to load the changes in separate steps. Relationship names are not refused, and neither
+   is a name that moves between an attribute and a relationship: the data of a relationship is
+   keyed by its identifier, which a load cannot change (`UpdateSupport.NOT_SUPPORTED`), and a
+   relationship rename has no data migration. Chained and swapped relationship renames therefore
+   load.
 5. The applier applies the operations to a copy of the branch schema and processes it. An element
    operation names its element by its name before the load. While a chain or a swap of renames
    runs, two elements of a kind can share a name; the applier then picks the element that no
