@@ -196,7 +196,7 @@ class TestConflict:
         return await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
 
     @pytest.mark.parametrize(
-        "conflict_selection,expected_value",
+        ("conflict_selection", "expected_value"),
         [(ConflictSelection.BASE_BRANCH, "John-main"), (ConflictSelection.DIFF_BRANCH, "John-branch")],
     )
     async def test_diff_and_merge_with_attribute_value_conflict(

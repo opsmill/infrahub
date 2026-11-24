@@ -185,7 +185,7 @@ def start_time() -> Timestamp:
     return Timestamp()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 async def ip_dataset_01(
     db: InfrahubDatabase,
     default_branch: Branch,

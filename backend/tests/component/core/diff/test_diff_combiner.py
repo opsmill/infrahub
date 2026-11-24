@@ -107,7 +107,7 @@ class TestDiffCombiner:
         return combined_diffs.diff_branch_diff
 
     @pytest.mark.parametrize(
-        "action_1,action_2",
+        ("action_1", "action_2"),
         [
             (DiffAction.ADDED, DiffAction.REMOVED),
             (DiffAction.REMOVED, DiffAction.ADDED),
@@ -130,7 +130,7 @@ class TestDiffCombiner:
         assert combined == self.expected_combined
 
     @pytest.mark.parametrize(
-        "action_1,action_2,expected_action",
+        ("action_1", "action_2", "expected_action"),
         [
             (DiffAction.ADDED, DiffAction.UPDATED, DiffAction.ADDED),
             (DiffAction.ADDED, DiffAction.UNCHANGED, DiffAction.ADDED),
@@ -744,7 +744,7 @@ class TestDiffCombiner:
         assert combined_node.conflict == later_conflict
 
     @pytest.mark.parametrize(
-        "early_values,later_values,selections",
+        ("early_values", "later_values", "selections"),
         [
             (("abc", "def"), ("abc", "def"), (None, None, None)),
             (

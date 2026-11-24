@@ -153,7 +153,7 @@ class TestDiffMerge(TestInfrahubApp):
 
         await verify_graph(db=db)
 
-    @pytest.mark.parametrize("delete_on_branch", (True, False))
+    @pytest.mark.parametrize("delete_on_branch", [True, False])
     async def test_node_delete_conflict(
         self,
         db: InfrahubDatabase,

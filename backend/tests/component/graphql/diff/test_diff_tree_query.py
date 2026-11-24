@@ -819,7 +819,7 @@ async def test_diff_tree_summary_no_changes(
 
 
 @pytest.mark.parametrize(
-    "filters,counters",
+    ("filters", "counters"),
     [
         pytest.param(
             {},
@@ -925,7 +925,7 @@ async def test_diff_summary_filters(
 
 
 @pytest.mark.parametrize(
-    "filters,labels",
+    ("filters", "labels"),
     [
         pytest.param({}, ["THING1", "thing2", "europe", "paris", "paris rack2", "paris-r1", "thing3"], id="no-filters"),
         pytest.param({"kind": {"includes": ["TestThing"]}}, ["THING1", "thing2", "thing3"], id="kind-includes"),

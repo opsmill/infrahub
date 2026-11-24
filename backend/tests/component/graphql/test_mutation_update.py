@@ -93,7 +93,7 @@ async def test_update_simple_object_with_ok_return(
 
 
 @pytest.mark.parametrize(
-    "graphql_enums_on,enum_value,response_value",
+    ("graphql_enums_on", "enum_value", "response_value"),
     [(True, "FLINTSTONE_FEET", "FLINTSTONE_FEET"), (False, '"flintstone-feet"', "flintstone-feet")],
 )
 async def test_update_simple_object_with_enum(

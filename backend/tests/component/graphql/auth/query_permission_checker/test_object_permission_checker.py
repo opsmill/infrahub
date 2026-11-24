@@ -598,7 +598,7 @@ class TestAccountManagerPermissions:
         assert resolution == CheckerResolution.NEXT_CHECKER
 
     @pytest.mark.parametrize(
-        "operation,must_raise",
+        ("operation", "must_raise"),
         [
             (MUTATION_ACCOUNT, True),
             (MUTATION_ACCOUNT_GROUP, True),
@@ -744,7 +744,7 @@ class TestPermissionManagerPermissions:
         assert resolution == CheckerResolution.NEXT_CHECKER
 
     @pytest.mark.parametrize(
-        "kind,relationship",
+        ("kind", "relationship"),
         [
             (InfrahubKind.ACCOUNTROLE, "permissions"),
             (InfrahubKind.BASEPERMISSION, "roles"),
@@ -806,7 +806,7 @@ class TestPermissionManagerPermissions:
         assert resolution == CheckerResolution.NEXT_CHECKER
 
     @pytest.mark.parametrize(
-        "operation,must_raise",
+        ("operation", "must_raise"),
         [
             (MUTATION_GLOBAL_PERMISSION, True),
             (MUTATION_OBJECT_PERMISSION, True),
@@ -860,7 +860,7 @@ class TestPermissionManagerPermissions:
                 )
 
     @pytest.mark.parametrize(
-        "kind,relationship",
+        ("kind", "relationship"),
         [
             (InfrahubKind.ACCOUNTROLE, "permissions"),
             (InfrahubKind.BASEPERMISSION, "roles"),
@@ -1006,7 +1006,7 @@ class TestRepositoryManagerPermissions:
         assert resolution == CheckerResolution.NEXT_CHECKER
 
     @pytest.mark.parametrize(
-        "operation,must_raise",
+        ("operation", "must_raise"),
         [
             (MUTATION_REPOSITORY, True),
             (MUTATION_READONLY_REPOSITORY, True),
