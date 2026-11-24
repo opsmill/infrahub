@@ -19,6 +19,8 @@ from infrahub.core.migrations.schema.tasks import MAX_CONCURRENT_MIGRATION_GROUP
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
+from infrahub.core.query.rollback import RollbackScope
+from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema import NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.definitions.core.template import core_object_template
@@ -34,6 +36,7 @@ from tests.adapters.migration_recorder import (
 )
 from tests.component.core.migrations.schema.second_run_helpers import register_candidate
 from tests.conftest import do_car_person_schema_unregistered, do_empty_database, do_reset_registry
+from tests.helpers.db_validation import assert_attribute_path_status, count_branch_edges_at
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -312,7 +315,6 @@ def _rename_and_change_schema() -> SchemaRoot:
             AttributeSchema(name="nickname", kind="Text", optional=True),
             AttributeSchema(name="vin", kind="Text", optional=True),
             AttributeSchema(name="plate", kind="Text", optional=True),
-            AttributeSchema(name="paint", kind="Text", optional=True, branch=BranchSupportType.AGNOSTIC),
             AttributeSchema(name="trim", kind="Text", optional=True),
         ]
     )
@@ -419,7 +421,6 @@ async def rename_data(
         "nickname": "speedy",
         "transmission": "manual",
         "vin": "vin-1",
-        "paint": "red",
         "trim": "sport",
     }
     car = await _create_node(
@@ -598,3 +599,104 @@ class TestSchemaLoadsThatRenameAndChange:
                 "TemplateTestPerson",
             ],
         )
+
+    async def test_an_attribute_renamed_and_made_unique_leaves_the_profiles_and_templates(
+        self, db: InfrahubDatabase, target_branch: Branch, rename_data: RenameData
+    ) -> None:
+        def rename_transmission_and_make_it_unique(car_schema: NodeSchema) -> None:
+            transmission = car_schema.get_attribute(name="transmission")
+            transmission.name = "gearbox"
+            transmission.unique = True
+
+        await _load_car_change(
+            db=db,
+            branch=target_branch,
+            change_car=rename_transmission_and_make_it_unique,
+            expected_migration_names=[
+                "attribute.name.update",
+                "attribute.unique.update",
+                "node.uniqueness_constraints.update",
+            ],
+        )
+
+        active = RelationshipStatus.ACTIVE.value
+        for node_label in ("ProfileTestCar", "TemplateTestCar"):
+            assert (
+                await _open_attribute_edge_statuses(
+                    db=db, node_label=node_label, attribute_name="gearbox", branch_name=target_branch.name
+                )
+                == {}
+            )
+        assert await _open_attribute_edge_statuses(
+            db=db, node_label="TestCar", attribute_name="gearbox", branch_name=target_branch.name
+        ) == {rename_data.car: ([active], [active])}
+        await verify_graph(db=db, kinds=["TestCar", "ProfileTestCar", "TemplateTestCar"])
+
+    async def test_an_attribute_renamed_into_a_uniqueness_constraint_leaves_the_profiles(
+        self, db: InfrahubDatabase, target_branch: Branch, rename_data: RenameData
+    ) -> None:
+        def rename_vin_into_a_constraint(car_schema: NodeSchema) -> None:
+            car_schema.get_attribute(name="vin").name = "serial"
+            car_schema.uniqueness_constraints.append(["serial__value", "name__value"])
+
+        await _load_car_change(
+            db=db,
+            branch=target_branch,
+            change_car=rename_vin_into_a_constraint,
+            expected_migration_names=["attribute.name.update", "node.uniqueness_constraints.update"],
+        )
+
+        active = RelationshipStatus.ACTIVE.value
+        assert (
+            await _open_attribute_edge_statuses(
+                db=db, node_label="ProfileTestCar", attribute_name="serial", branch_name=target_branch.name
+            )
+            == {}
+        )
+        for node_label, node_id in (
+            ("TemplateTestCar", rename_data.car_template),
+            ("TestCar", rename_data.car),
+        ):
+            assert await _open_attribute_edge_statuses(
+                db=db, node_label=node_label, attribute_name="serial", branch_name=target_branch.name
+            ) == {node_id: ([active], [active])}
+        await verify_graph(db=db, kinds=["TestCar", "ProfileTestCar", "TemplateTestCar"])
+
+    async def test_an_attribute_renamed_and_made_unique_is_restored_by_the_rollback(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, target_branch: Branch
+    ) -> None:
+        def rename_trim_and_make_it_unique(car_schema: NodeSchema) -> None:
+            trim = car_schema.get_attribute(name="trim")
+            trim.name = "trim_level"
+            trim.unique = True
+
+        at = await _load_car_change(
+            db=db,
+            branch=target_branch,
+            change_car=rename_trim_and_make_it_unique,
+            expected_migration_names=[
+                "attribute.name.update",
+                "attribute.unique.update",
+                "node.uniqueness_constraints.update",
+            ],
+        )
+
+        await GraphRollbacker(db=db).rollback(target_branch=target_branch, ats=[at], scope=RollbackScope.AT_TIMESTAMP)
+
+        for node_label in ("TestCar", "ProfileTestCar", "TemplateTestCar"):
+            # The values were created on the default branch before the user branch was created
+            await assert_attribute_path_status(
+                db=db,
+                node_label=node_label,
+                attr_name="trim",
+                branch_name=default_branch_scope_class.name,
+                expected_status=RelationshipStatus.ACTIVE.value,
+            )
+            assert (
+                await _open_attribute_edge_statuses(
+                    db=db, node_label=node_label, attribute_name="trim_level", branch_name=target_branch.name
+                )
+                == {}
+            )
+        assert await count_branch_edges_at(db=db, branch_name=target_branch.name, at=at.to_string()) == 0
+        await verify_graph(db=db, kinds=["TestCar", "ProfileTestCar", "TemplateTestCar"])

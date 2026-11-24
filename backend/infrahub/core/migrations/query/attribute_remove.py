@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from itertools import starmap
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipStatus
@@ -12,8 +11,6 @@ from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 
 if TYPE_CHECKING:
-    from pydantic.fields import FieldInfo
-
     from infrahub.database import InfrahubDatabase
 
 
@@ -118,23 +115,7 @@ class AttributeRemoveQuery(MigrationSelectionQuery):
         # Set metadata for vertex properties on default/global branch
         self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
 
-        def render_sub_query_per_rel_type(rel_type: str, rel_def: FieldInfo) -> str:
-            subquery = [
-                "WITH peer_node, rb, active_attr",
-                f'WHERE type(rb) = "{rel_type}"',
-            ]
-            if rel_def.default.direction.value == "outbound":
-                subquery.append(f"CREATE (active_attr)-[:{rel_type} $rel_props ]->(peer_node)")
-            elif rel_def.default.direction.value == "inbound":
-                subquery.append(f"CREATE (active_attr)<-[:{rel_type} $rel_props ]-(peer_node)")
-            else:
-                subquery.append(f"CREATE (active_attr)-[:{rel_type} $rel_props ]-(peer_node)")
-
-            subquery.append("RETURN peer_node as p2")
-            return "\n".join(subquery)
-
-        sub_queries = list(starmap(render_sub_query_per_rel_type, GraphAttributeRelationships.model_fields.items()))
-        sub_query_all = "\nUNION\n".join(sub_queries)
+        self.params["attribute_edge_types"] = list(GraphAttributeRelationships.model_fields)
 
         self.selection_kinds = self.node_kinds + profile_kinds_to_update + template_kinds_to_update
         self.add_to_query(self.render_selection())
@@ -154,11 +135,20 @@ class AttributeRemoveQuery(MigrationSelectionQuery):
             LIMIT 1
         }
         WITH active_node, a1 as active_attr, r1 as rb, p1 as peer_node
-        WHERE rb.status = "active"
-        CALL (peer_node, rb, active_attr) {
-            %(sub_query_all)s
+        WHERE rb.status = "active" AND type(rb) IN $attribute_edge_types
+        WITH active_node, active_attr, rb, peer_node, rb.branch = $branch_name AND rb.from = $at AS created_by_this_load
+        // An edge an earlier migration of this load created gets no deleted edge, because a deleted edge
+        // from the same time as the closed edge would be a second path between the same vertices.
+        CALL (peer_node, rb, active_attr, created_by_this_load) {
+            WITH peer_node, rb, active_attr, created_by_this_load
+            WHERE NOT created_by_this_load AND startNode(rb) = peer_node
+            CREATE (active_attr)<-[:$(type(rb)) $rel_props ]-(peer_node)
         }
-        WITH p2 as peer_node, rb, active_node, active_attr
+        CALL (peer_node, rb, active_attr, created_by_this_load) {
+            WITH peer_node, rb, active_attr, created_by_this_load
+            WHERE NOT created_by_this_load AND endNode(rb) = peer_node
+            CREATE (active_attr)-[:$(type(rb)) $rel_props ]->(peer_node)
+        }
         FOREACH (i in CASE WHEN rb.branch = $branch_name THEN [1] ELSE [] END |
             SET rb.to = $at, rb.to_user_id = $user_id
         )
@@ -181,7 +171,6 @@ class AttributeRemoveQuery(MigrationSelectionQuery):
         RETURN DISTINCT active_attr
         """ % {
             "branch_filter": branch_filter,
-            "sub_query_all": sub_query_all,
             "close_unretained_agnostic_fields": CLOSE_UNRETAINED_AGNOSTIC_FIELDS,
             "stamp_attr": stamp_attr,
             "stamp_node": stamp_node,
