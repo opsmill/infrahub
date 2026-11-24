@@ -196,7 +196,8 @@ class PostMergeDispatcher:
                 branch_name=self.default_branch.name,
                 schema_branch=schema_branch,
                 changelogs=node_events,
-                context=event_context,
+                # A follow-up of the merge, so it runs in its own lane like the rebase one.
+                context=context.model_copy(update={"priority": WorkflowPriority.LOW}).to_event_context(),
             )
 
     async def _submit_workflow(

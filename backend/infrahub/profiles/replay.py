@@ -64,19 +64,37 @@ def find_replayed_profiles(
     return list(profiles.values())
 
 
-async def select_nodes_to_refresh(
-    db: InfrahubDatabase, branch_name: str, profile_id: str, node_ids: list[str], attribute_names: list[str]
-) -> list[str]:
-    """Return the nodes of ``node_ids`` that do not hold, from the profile, its value of each named attribute."""
-    fields: dict[str, Any] = dict.fromkeys(attribute_names)
-    profile = await NodeManager.get_one(db=db, id=profile_id, branch=branch_name, fields=fields, raise_on_error=True)
-    values = {name: profile.get_attribute(name=name).value for name in attribute_names}
-    nodes = await NodeManager.get_many(
-        db=db, ids=node_ids, branch=branch_name, fields=fields, include_metadata=MetadataOptions.SOURCE
-    )
-    return [
-        node_id for node_id in node_ids if not _holds(node=nodes.get(node_id), profile_id=profile_id, values=values)
-    ]
+class ProfileValueSelector:
+    """Select the nodes linked to a profile that do not hold, from the profile, its value of some attributes."""
+
+    def __init__(self, db: InfrahubDatabase) -> None:
+        self.db = db
+
+    async def read_profile_values(
+        self, branch_name: str, profile_id: str, attribute_names: list[str]
+    ) -> dict[str, Any] | None:
+        """Return the value of each named attribute of the profile, or None when the profile does not exist."""
+        profile = await NodeManager.get_one(
+            db=self.db, id=profile_id, branch=branch_name, fields=dict.fromkeys(attribute_names)
+        )
+        if profile is None:
+            return None
+        return {name: profile.get_attribute(name=name).value for name in attribute_names}
+
+    async def select_nodes_to_refresh(
+        self, branch_name: str, profile_id: str, node_ids: list[str], values: dict[str, Any]
+    ) -> list[str]:
+        """Return the nodes of ``node_ids`` that do not hold, from the profile, each of ``values``."""
+        nodes = await NodeManager.get_many(
+            db=self.db,
+            ids=node_ids,
+            branch=branch_name,
+            fields=dict.fromkeys(values),
+            include_metadata=MetadataOptions.SOURCE,
+        )
+        return [
+            node_id for node_id in node_ids if not _holds(node=nodes.get(node_id), profile_id=profile_id, values=values)
+        ]
 
 
 def _holds(node: Node | None, profile_id: str, values: dict[str, Any]) -> bool:
@@ -117,6 +135,6 @@ class ProfileReplayRefresher:
                         "profile_kind": profile.profile_kind,
                         "profile_id": profile.profile_id,
                         "context": context,
-                        "held_attribute_names": profile.attribute_names,
+                        "attribute_names": profile.attribute_names,
                     },
                 )

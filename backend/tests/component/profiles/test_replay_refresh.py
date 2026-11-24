@@ -17,9 +17,10 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
-from infrahub.profiles.replay import select_nodes_to_refresh
+from infrahub.profiles.replay import ProfileValueSelector
 from infrahub.workers.dependencies import build_cache, build_component, build_database, build_event_service
 from infrahub.workflows.catalogue import PROFILE_REFRESH_MULTIPLE, PROFILE_REFRESH_PROCESS
+from infrahub.workflows.constants import WorkflowPriority
 from tests.adapters.cache import MemoryCache
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.workflow import WorkflowRecorder
@@ -106,9 +107,23 @@ def _context(default_branch: Branch) -> InfrahubContext:
 
 def _replayed_profile_calls(workflow: WorkflowRecorder) -> list[dict[str, object]]:
     return [
-        {key: call["parameters"][key] for key in ("branch_name", "profile_kind", "profile_id", "held_attribute_names")}
+        {key: call["parameters"][key] for key in ("branch_name", "profile_kind", "profile_id", "attribute_names")}
+        | {"priority": call["parameters"]["context"].priority}
         for call in workflow.get_submit_calls_for(PROFILE_REFRESH_PROCESS)
     ]
+
+
+async def _select_nodes_to_refresh(
+    db: InfrahubDatabase, branch_name: str, profile_id: str, node_ids: list[str], attribute_names: list[str]
+) -> list[str]:
+    selector = ProfileValueSelector(db=db)
+    values = await selector.read_profile_values(
+        branch_name=branch_name, profile_id=profile_id, attribute_names=attribute_names
+    )
+    assert values is not None
+    return await selector.select_nodes_to_refresh(
+        branch_name=branch_name, profile_id=profile_id, node_ids=node_ids, values=values
+    )
 
 
 async def test_select_nodes_to_refresh_keeps_the_nodes_without_the_value_from_the_profile(
@@ -134,7 +149,7 @@ async def test_select_nodes_to_refresh_keeps_the_nodes_without_the_value_from_th
     await user_set.new(db=db, name="user-set", role="role-2", profiles=[profile.id])
     await user_set.save(db=db)
 
-    node_ids = await select_nodes_to_refresh(
+    node_ids = await _select_nodes_to_refresh(
         db=db,
         branch_name=default_branch.name,
         profile_id=profile.id,
@@ -175,10 +190,11 @@ async def test_merge_submits_the_refresh_of_the_profile_for_the_nodes_without_it
             "branch_name": default_branch.name,
             "profile_kind": f"Profile{SERVER_KIND}",
             "profile_id": dataset.profile_id,
-            "held_attribute_names": ["role"],
+            "attribute_names": ["role"],
+            "priority": WorkflowPriority.LOW,
         }
     ]
-    assert await select_nodes_to_refresh(
+    assert await _select_nodes_to_refresh(
         db=db,
         branch_name=default_branch.name,
         profile_id=dataset.profile_id,
@@ -215,10 +231,11 @@ async def test_rebase_submits_the_refresh_of_the_profile_for_the_nodes_without_i
             "branch_name": dataset.branch.name,
             "profile_kind": f"Profile{SERVER_KIND}",
             "profile_id": dataset.profile_id,
-            "held_attribute_names": ["role"],
+            "attribute_names": ["role"],
+            "priority": WorkflowPriority.LOW,
         }
     ]
-    assert await select_nodes_to_refresh(
+    assert await _select_nodes_to_refresh(
         db=db,
         branch_name=dataset.branch.name,
         profile_id=dataset.profile_id,
