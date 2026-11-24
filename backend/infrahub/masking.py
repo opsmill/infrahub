@@ -61,14 +61,17 @@ def replace_url_secrets_in_text(text: str) -> str:
 
 
 def replace_url_secrets_in_nested(value: Any) -> Any:
-    """Return a copy of `value` with `replace_url_secrets_in_text` applied to every string in its mappings and lists.
+    """Return a copy of `value` with `replace_url_secrets_in_text` applied to every string in it, keys included.
 
     A copy is returned, because the caller may still use the value it passed in.
     """
     if isinstance(value, str):
         return replace_url_secrets_in_text(text=value)
     if isinstance(value, Mapping):
-        return {key: replace_url_secrets_in_nested(value=item) for key, item in value.items()}
+        return {
+            replace_url_secrets_in_nested(value=key): replace_url_secrets_in_nested(value=item)
+            for key, item in value.items()
+        }
     if isinstance(value, list | tuple):
         return type(value)(replace_url_secrets_in_nested(value=item) for item in value)
     return value

@@ -362,6 +362,15 @@ def test_replace_url_secrets_in_nested_walks_mappings_lists_and_tuples() -> None
     }
 
 
+def test_replace_url_secrets_in_nested_masks_urls_in_mapping_keys() -> None:
+    # A JSON attribute of a node can use a URL as a key.
+    value = {"links": {"https://u:p@a.test/x?token=secret-value": "primary", 7: "http://b.test/y?k=v"}}
+
+    assert replace_url_secrets_in_nested(value=value) == {
+        "links": {"https://a.test/x?[MASKED]": "primary", 7: "http://b.test/y?[MASKED]"}
+    }
+
+
 def test_replace_url_secrets_in_nested_leaves_its_input_unchanged() -> None:
     value = {"url": "http://a.test/x?t=1", "items": ["http://b.test/y?t=2"]}
 
