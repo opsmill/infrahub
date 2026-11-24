@@ -4,6 +4,7 @@ import React from "react";
 
 import { RefreshButton } from "@/shared/components/buttons/refresh-button";
 import { Col, Row } from "@/shared/components/container";
+import { NodeId } from "@/shared/components/display/node-id";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
@@ -15,7 +16,6 @@ import {
 } from "@/entities/resource-manager/domain/model/pool";
 import { useAllocationScopeFields } from "@/entities/resource-manager/ui/hooks/use-allocation-scope-fields";
 import { NumberPoolActionsMenu } from "@/entities/resource-manager/ui/number-pool/details/number-pool-actions-menu";
-import { PoolId } from "@/entities/resource-manager/ui/pool/pool-id";
 import {
   SchemaReference,
   schemaLinkStyle,
@@ -101,8 +101,8 @@ export function NumberPoolHeader({ pool, schema, permission }: NumberPoolHeaderP
     <header className="px-3 py-2 text-sm">
       <Row className="mb-4 items-start">
         <Col className="min-w-0 grow gap-0">
-          <Row className="min-w-0 gap-1">
-            <h1 className="min-w-0 truncate font-bold text-xl" title={pool.name.value}>
+          <Row className="gap-1">
+            <h1 className="truncate font-bold text-xl" title={pool.name.value}>
               {pool.name.value}
             </h1>
             <NodeMetadataPopover objectKind={NUMBER_POOL_KIND} objectId={pool.id} />
@@ -113,7 +113,7 @@ export function NumberPoolHeader({ pool, schema, permission }: NumberPoolHeaderP
           )}
         </Col>
 
-        <PoolId id={pool.id} className="h-8" />
+        <NodeId id={pool.id} className="h-8" />
         <RefreshButton queryKeys={REFRESHED_QUERY_KEYS} />
         <NumberPoolActionsMenu pool={pool} schema={schema} permission={permission} />
       </Row>

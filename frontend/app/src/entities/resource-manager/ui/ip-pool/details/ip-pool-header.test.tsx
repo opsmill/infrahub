@@ -4,17 +4,17 @@ import { queryClient } from "@/shared/api/rest/client";
 
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { IpPoolData } from "@/entities/resource-manager/domain/model/ip-pool";
+import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 import { render } from "../../../../../../tests/components/render";
 import { generateBranch } from "../../../../../../tests/fake/branch";
-import { generateIpPrefixPoolData } from "../../../../../../tests/fake/ip-pool";
+import {
+  generateIpAddressPoolData,
+  generateIpPrefixPoolData,
+} from "../../../../../../tests/fake/ip-pool";
 import { generatePermission } from "../../../../../../tests/fake/permission";
 import { generateNodeSchema } from "../../../../../../tests/fake/schema";
 import { IpPoolHeader, IpPoolHeaderSkeleton } from "./ip-pool-header";
-
-vi.mock("@/entities/resource-manager/ui/ip-pool/details/ip-pool-actions-menu", () => ({
-  IpPoolActionsMenu: () => <button type="button">Actions</button>,
-}));
 
 const prefixPoolSchema = generateNodeSchema({
   kind: "CoreIPPrefixPool",
@@ -23,8 +23,8 @@ const prefixPoolSchema = generateNodeSchema({
   label: "IP Prefix Pool",
 });
 
-const renderHeader = (data: IpPoolData) =>
-  render(<IpPoolHeader pool={data} schema={prefixPoolSchema} permission={generatePermission()} />);
+const renderHeader = (data: IpPoolData, schema: ModelSchema = prefixPoolSchema) =>
+  render(<IpPoolHeader pool={data} schema={schema} permission={generatePermission()} />);
 
 describe("IpPoolHeader", () => {
   afterEach(() => {
@@ -121,6 +121,34 @@ describe("IpPoolHeader", () => {
       .toMatchTextContent(
         /IP Prefix Pool in namespace default\s*·\s*Prefix kind defaults to IpamIPPrefix\s*·\s*Prefix length defaults to \/31\s*·\s*Member type defaults to Address/
       );
+  });
+  it("links the actions menu to the prefix pool schema", async () => {
+    // GIVEN
+    const pool = generateIpPrefixPoolData();
+    const component = await renderHeader(pool);
+
+    // WHEN
+    await component.getByRole("button", { name: "Actions" }).click();
+
+    // THEN
+    await expect
+      .element(component.getByRole("menuitem", { name: "View schema" }))
+      .toHaveAttribute("href", expect.stringContaining("kind=CoreIPPrefixPool"));
+  });
+
+  it("links the actions menu to the address pool schema for an address pool", async () => {
+    // GIVEN
+    const pool = generateIpAddressPoolData();
+    const schema = generateNodeSchema({ kind: "CoreIPAddressPool", documentation: null });
+    const component = await renderHeader(pool, schema);
+
+    // WHEN
+    await component.getByRole("button", { name: "Actions" }).click();
+
+    // THEN
+    await expect
+      .element(component.getByRole("menuitem", { name: "View schema" }))
+      .toHaveAttribute("href", expect.stringContaining("kind=CoreIPAddressPool"));
   });
 });
 

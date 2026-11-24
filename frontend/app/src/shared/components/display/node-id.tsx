@@ -2,12 +2,12 @@ import { CopyToClipboardButton } from "@/shared/components/buttons/copy-to-clipb
 import { Row } from "@/shared/components/container";
 import { classNames } from "@/shared/utils/common";
 
-export interface PoolIdProps {
+export interface NodeIdProps {
   id: string;
   className?: string;
 }
 
-export function PoolId({ id, className }: PoolIdProps) {
+export function NodeId({ id, className }: NodeIdProps) {
   return (
     <Row className={classNames("min-w-0 gap-1 text-sm", className)}>
       <span className="shrink-0">ID</span>

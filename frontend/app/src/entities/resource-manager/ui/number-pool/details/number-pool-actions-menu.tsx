@@ -6,6 +6,7 @@ import type { NumberPoolData } from "@/entities/resource-manager/domain/model/nu
 import {
   NUMBER_POOL_KIND,
   NUMBER_POOL_TYPE_SCHEMA,
+  RESOURCE_GENERIC_KIND,
 } from "@/entities/resource-manager/domain/model/pool";
 import { PoolActionsMenu } from "@/entities/resource-manager/ui/pool/pool-actions-menu";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
@@ -32,7 +33,7 @@ export function NumberPoolActionsMenu({ pool, schema, permission }: NumberPoolAc
       schema={schema}
       updateDecision={isSchemaManaged ? schemaLock : permission.update}
       deleteDecision={isSchemaManaged ? schemaLock : permission.delete}
-      onDeleted={() => navigate(getObjectDetailsUrl(NUMBER_POOL_KIND))}
+      onDeleted={() => navigate(getObjectDetailsUrl(RESOURCE_GENERIC_KIND))}
     />
   );
 }
