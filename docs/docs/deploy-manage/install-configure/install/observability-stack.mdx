@@ -50,7 +50,7 @@ On Enterprise, it combines with other parameters such as a sizing preset:
 curl "https://infrahub.opsmill.io/enterprise?size=small&observability=true" > docker-compose.yml
 ```
 
-Once running, Grafana is available at [http://localhost:3500](http://localhost:3500) with the default credentials `admin` / `admin`.
+Once running, Grafana is available at [http://localhost:3500](http://localhost:3500) with the default credentials `admin` / `admin`. To set other credentials, add `INFRAHUB_GRAFANA_ADMIN_USER` and `INFRAHUB_GRAFANA_ADMIN_PASSWORD` to a `.env` file next to the compose file before the first start.
 
 ### Request tracing
 
@@ -238,6 +238,7 @@ infrahub-observability:
 | `alloy.cadvisor.enabled` | `true` | Scrape per-container metrics from the kubelet cAdvisor endpoint. Disable where cluster policy forbids `nodes/proxy` access |
 | `tempo.tempo.metricsGenerator.enabled` | `false` | Generate request metrics from spans. Requires `tempo.tempo.metricsGenerator.remoteWriteUrl` |
 | `prefectExporter.enabled` | `true` | Deploy the Prefect metrics exporter |
+| `grafanaMcp.enabled` | `false` | Deploy the Grafana MCP server, see [Connect an AI assistant](#connect-an-ai-assistant) |
 | `global.infrahubReleaseName`, `global.infrahubNamespace` | `infrahub`, release namespace | Standalone only (top-level, never nested): point the release at a separately named or located Infrahub. Auto-resolved when bundled |
 
 For the complete list of values, see the chart's `values.yaml`.
@@ -257,6 +258,172 @@ kubectl get pods -n infrahub
 You should see an Alloy pod on each node (deployed as a DaemonSet), single-instance Loki, Tempo, Prometheus, and Grafana pods, a node exporter on each node, and the Prefect exporter. The Prefect exporter only becomes healthy once it can reach the Infrahub task manager, so deploy it alongside an Infrahub release. Once Grafana is reachable, open it and confirm that the Infrahub dashboards render and that the Prometheus and Loki data sources connect successfully.
 
 To upgrade the stack later, see [Upgrade the observability stack](../../maintain-upgrade/upgrade/observability-stack).
+
+## Connect an AI assistant
+
+The stack can run a Grafana MCP server, which gives an AI assistant such as Claude Code read access to the stack's Grafana: the metrics in Prometheus, the traces in Tempo, the logs in Loki and the dashboards. When Infrahub is slow, the assistant can then query the same data you would open in Grafana and point to the component that takes the time. With the Infrahub skill `infrahub-diagnosing-performance` installed, the assistant follows Infrahub's own order of checks and names the metric query, trace or log line behind each finding.
+
+The server is off by default. Each person connects with one URL and one token that you share with them.
+
+### Turn on the Grafana MCP server
+
+Choose a token, a long random value, and keep it secret: anyone with the token can read all the telemetry of the stack.
+
+<Tabs groupId="deployment" queryString>
+<TabItem value="compose" label="Docker Compose" default>
+
+Add the profile and the token to the `.env` file next to the compose file, then start the stack again:
+
+```bash
+COMPOSE_PROFILES=grafana-mcp
+INFRAHUB_GRAFANA_MCP_TOKEN=<token>
+```
+
+```bash
+docker compose -p infrahub up -d
+```
+
+The profile adds two services. `infrahub-grafana-mcp-init` runs at each start and stops: it logs in to Grafana as the admin user, creates the service account `infrahub-grafana-mcp` with the Viewer role if it does not exist, and stores a token for it. `infrahub-grafana-mcp` starts after it and serves the assistants on port 8100 of `127.0.0.1`.
+
+</TabItem>
+<TabItem value="helm" label="Kubernetes with Helm">
+
+Store the token in a Secret, then turn the server on in the values of the observability stack (nested under `infrahub-observability:` when the stack is bundled with Infrahub):
+
+```bash
+kubectl create secret generic grafana-mcp-token --from-literal=token=<token> -n infrahub
+```
+
+```yaml
+grafanaMcp:
+  enabled: true
+  serverToken:
+    existingSecret: grafana-mcp-token
+```
+
+Apply the change with `helm upgrade`. After each install and upgrade, a Job logs in to Grafana as the admin user, creates the service account `infrahub-grafana-mcp` with the Viewer role if it does not exist, and stores its token in a Secret. The server runs as the Deployment `<release>-infrahub-observability-grafana-mcp`, with a `ClusterIP` Service on port 8000.
+
+</TabItem>
+</Tabs>
+
+#### Change the Grafana admin password
+
+The service account step logs in with the Grafana admin user each time it runs, so the server depends on that account. Change the default `admin` / `admin` before you turn the server on:
+
+- **Docker Compose:** set `INFRAHUB_GRAFANA_ADMIN_USER` and `INFRAHUB_GRAFANA_ADMIN_PASSWORD` in the `.env` file. Grafana and the service account step both read these two settings. Grafana applies them when it creates its database, at the first start. If you change the password later in Grafana, change the setting too, or the step stops with `Grafana refused the admin login`.
+- **Helm:** set `grafana.admin.existingSecret` to a Secret you manage, as described in [Services and access](#services-and-access). The Job reads the same Secret. To give the Job another Secret, set `grafanaMcp.grafana.adminSecret`.
+
+### Connect your assistant
+
+The server listens on `http://localhost:8100/mcp`. In Kubernetes, forward its Service to that port first:
+
+```bash
+kubectl port-forward svc/<release>-infrahub-observability-grafana-mcp 8100:8000 -n infrahub
+```
+
+Then add the server to your assistant with the token in an `Authorization` header. For Claude Code:
+
+```bash
+claude mcp add --transport http grafana http://localhost:8100/mcp --header "Authorization: Bearer <token>"
+```
+
+The server uses the Streamable HTTP transport of MCP. For another assistant, use the same URL and header, and see its MCP documentation for where the entry goes.
+
+### Reach the server from another computer
+
+By default the server answers only on the computer or cluster where the stack runs. To use it from a laptop, choose one of these:
+
+- **An SSH tunnel** to the Docker host, for example `ssh -L 8100:127.0.0.1:8100 <docker-host>`. Nothing changes in the stack.
+- **`kubectl port-forward`** in Kubernetes, as shown above. Nothing changes in the stack.
+- **A reverse proxy with TLS** in front of the server, for example the ingress controller of the cluster. Add the host name and port that the proxy sends to the allowed hosts.
+- **Open the server to a network with TLS.** The server then serves HTTPS with your certificate.
+
+The server checks the `Host` header of each request against a list of allowed hosts, and refuses a request from any other host name. The default list is `localhost:8100,127.0.0.1:8100`.
+
+<Tabs groupId="deployment" queryString>
+<TabItem value="compose" label="Docker Compose" default>
+
+To open the server to a network, set these four settings together in the `.env` file:
+
+```bash
+INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS=0.0.0.0
+INFRAHUB_GRAFANA_MCP_TLS_CERT_FILE=/etc/infrahub/grafana-mcp/tls.crt
+INFRAHUB_GRAFANA_MCP_TLS_KEY_FILE=/etc/infrahub/grafana-mcp/tls.key
+INFRAHUB_GRAFANA_MCP_ALLOWED_HOSTS=grafana-mcp.example.com:8100
+```
+
+The two file settings are paths on the Docker host. The server runs as user `1000`, so that user must be able to read the key file. Without both files, the server refuses to start on an address outside `127.0.0.0/8` and `::1`. Each person then connects to `https://grafana-mcp.example.com:8100/mcp`.
+
+</TabItem>
+<TabItem value="helm" label="Kubernetes with Helm">
+
+To open the server to a network, give it a `kubernetes.io/tls` Secret, for example one that cert-manager manages, and add the host name to the allowed hosts:
+
+```yaml
+grafanaMcp:
+  service:
+    type: LoadBalancer
+  tls:
+    existingSecret: grafana-mcp-tls
+  allowedHosts: "grafana-mcp.example.com:8000"
+```
+
+Without `tls.existingSecret`, the install fails when `service.type` is `LoadBalancer` or `NodePort`.
+
+</TabItem>
+</Tabs>
+
+When your own certificate authority signed the certificate, each person's computer must trust that authority, or the assistant cannot connect.
+
+### Change the token or the certificate
+
+The server reads the token and the certificate when it starts. After you change either one, restart the server:
+
+<Tabs groupId="deployment" queryString>
+<TabItem value="compose" label="Docker Compose" default>
+
+```bash
+docker compose -p infrahub up -d --force-recreate infrahub-grafana-mcp
+```
+
+</TabItem>
+<TabItem value="helm" label="Kubernetes with Helm">
+
+```bash
+kubectl rollout restart deployment/<release>-infrahub-observability-grafana-mcp -n infrahub
+```
+
+`helm upgrade` does not restart the server when only the token or the certificate changes.
+
+</TabItem>
+</Tabs>
+
+Then send the new token to each person who connects. The token of the Grafana service account is separate: the service account step replaces it on its own when Grafana refuses it.
+
+### When the server does not start
+
+In Docker Compose, the server stops at once, with one of these messages in its log, when its settings are not valid together:
+
+| Message | Fix |
+|---|---|
+| `INFRAHUB_GRAFANA_MCP_TOKEN is not set` | Set the token in the `.env` file |
+| `Set both INFRAHUB_GRAFANA_MCP_TLS_CERT_FILE and INFRAHUB_GRAFANA_MCP_TLS_KEY_FILE, or neither` | Set the missing file, or remove the one you set |
+| `INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS is <address>, which is open to a network` | Set the two TLS files, or set the address back to `127.0.0.1` |
+| `Grafana refused the admin login` (in `infrahub-grafana-mcp-init`) | Set the admin user and password that Grafana uses, as described in [Change the Grafana admin password](#change-the-grafana-admin-password) |
+
+In Kubernetes, `helm install` and `helm upgrade` fail before anything is created when `grafanaMcp.serverToken` has no value and no `existingSecret`, or when the Service is open to a network without TLS. The service account Job writes the same `Grafana refused the admin login` message.
+
+### What the assistant can read, and where it goes
+
+The server only reads. In this stack it has no tool that creates or changes dashboards, folders, annotations, incidents, alert rules or data sources, and it has no tool that calls a host outside your network. The service account it uses has the Viewer role.
+
+Everything that the server returns to the assistant goes to the provider of the AI model that the assistant uses. Before you share the token, check what the telemetry of your instance contains:
+
+- **Traces:** Infrahub masks tokens, passwords, user names, email addresses, client IP addresses and URL query strings, and keeps database queries, query names and URL paths readable. See [Values that spans never contain](#values-that-spans-never-contain).
+- **Logs:** Infrahub does not mask log lines. Two lines that Infrahub writes on purpose contain data from your instance:
+  - Each webhook delivery writes, at the `INFO` level, the first 2048 characters of the event payload: the values of the object that changed, for example the name of an account. In every URL inside that payload, Infrahub removes the user and password and replaces the query string and the fragment with `[MASKED]`.
+  - The same lines name the webhook URL with its path. Slack, Discord and Microsoft Teams put the secret of an incoming webhook in the path, so that secret is in the log.
+- **Other pods in Kubernetes:** the Alloy of the chart collects the logs of every pod in the Infrahub namespace. Keep workloads whose logs you do not want to share out of that namespace.
 
 ## Trace sampling
 
@@ -329,4 +496,4 @@ Before a span leaves the API server or a task worker, Infrahub replaces these at
 - Attributes whose name contains `token`, `password`, `secret`, `email`, `user_name` or `username`
 - The `account_name` attribute
 
-Database queries and query names stay readable. Log lines are not masked.
+Database queries and query names stay readable. Log lines are not masked; for the log lines that contain data from your instance, see [What the assistant can read, and where it goes](#what-the-assistant-can-read-and-where-it-goes).
