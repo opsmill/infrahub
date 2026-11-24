@@ -1,5 +1,4 @@
 import hashlib
-from typing import Any
 
 import pytest
 
@@ -16,6 +15,7 @@ from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.database import DatabaseType, InfrahubDatabase
 from infrahub.database.neo4j import IndexManagerNeo4j
+from tests.helpers.query_plan import explain_plan_operators
 
 NODE_VALUE_KEYS_QUERY = """
 MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(attr:Attribute)-[:HAS_VALUE]->(av:AttributeValue)
@@ -145,10 +145,14 @@ async def test_migration_084_keys_values_left_labelled_by_an_interrupted_run(
     assert not validation_result.errors
 
 
-def _vertex_reads(plan: dict[str, Any]) -> list[str]:
-    operator = plan["operatorType"].removesuffix("@neo4j")
-    reads = [f"{operator} {plan['args']['Details']}"] if operator.endswith(("Scan", "Seek")) else []
-    return reads + [read for child in plan.get("children", []) for read in _vertex_reads(child)]
+def _vertex_reads(plan_operators: list[str]) -> list[str]:
+    reads = []
+    for operator in plan_operators:
+        operator_type, _, details = operator.partition(": ")
+        operator_type = operator_type.removesuffix("@neo4j")
+        if operator_type.endswith(("Scan", "Seek")):
+            reads.append(f"{operator_type} {details}")
+    return reads
 
 
 async def test_migration_084_batch_read_scans_only_the_labelled_values(
@@ -159,9 +163,6 @@ async def test_migration_084_batch_read_scans_only_the_labelled_values(
         pytest.skip("The migration only manages Neo4j indexes")
 
     query = await AttributeValuesPendingKeyQuery.init(db=db, limit=UPDATE_BATCH_SIZE)
-    rendered = query.render()
-    _, metadata = await db.execute_query_with_metadata(
-        query="EXPLAIN\n" + rendered.text, params=rendered.params, name="explain_pending_values"
-    )
+    plan_operators = await explain_plan_operators(db=db, query=query)
 
-    assert _vertex_reads(metadata["plan"]) == ["NodeByLabelScan av:AttributeValueKeyPending"]
+    assert _vertex_reads(plan_operators) == ["NodeByLabelScan av:AttributeValueKeyPending"]

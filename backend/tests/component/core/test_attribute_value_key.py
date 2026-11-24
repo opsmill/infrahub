@@ -1,4 +1,5 @@
 import re
+from dataclasses import dataclass
 from typing import Any
 
 from infrahub.core import registry
@@ -21,6 +22,7 @@ from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
+from tests.helpers.query_plan import explain_plan_operators
 
 VALUE_VERTICES_QUERY = """
 MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(:Attribute {name: $attr_name})-[r:HAS_VALUE]->(av:AttributeValue)
@@ -156,19 +158,30 @@ VALUE_READ = re.compile(r":(AttributeValue\b\S*)")
 KEY_SEEK = "NodeIndexSeek AttributeValue(value_key)"
 
 
-def _value_reads(plan: dict[str, Any]) -> list[str]:
-    operator = plan.get("operatorType", "").removesuffix("@neo4j")
-    match = VALUE_READ.search(plan.get("args", {}).get("Details", ""))
-    reads = [f"{operator} {match.group(1)}"] if match and operator.endswith(("Scan", "Seek")) else []
-    return reads + [read for child in plan.get("children", []) for read in _value_reads(child)]
+def _value_reads(plan_operators: list[str], read_suffix: str) -> list[str]:
+    reads = []
+    for operator in plan_operators:
+        operator_type, _, details = operator.partition(": ")
+        operator_type = operator_type.removesuffix("@neo4j")
+        if operator_type.endswith(read_suffix) and (match := VALUE_READ.search(details)):
+            reads.append(f"{operator_type} {match.group(1)}")
+    return reads
 
 
-async def _planned_value_reads(db: InfrahubDatabase, query: Query) -> list[str]:
-    rendered = query.render()
-    _, metadata = await db.execute_query_with_metadata(
-        query="EXPLAIN\n" + rendered.text, params=rendered.params, name="explain_value_key"
+@dataclass
+class _PlannedValueReads:
+    # A scan of every vertex or of every attribute value costs as much as the database holds, whatever the write.
+    full_scans: list[str]
+    seeks: list[str]
+
+
+async def _planned_value_reads(db: InfrahubDatabase, query: Query) -> _PlannedValueReads:
+    plan_operators = await explain_plan_operators(db=db, query=query)
+    every_vertex = [operator for operator in plan_operators if operator.startswith("AllNodesScan")]
+    return _PlannedValueReads(
+        full_scans=every_vertex + _value_reads(plan_operators=plan_operators, read_suffix="Scan"),
+        seeks=_value_reads(plan_operators=plan_operators, read_suffix="Seek"),
     )
-    return _value_reads(metadata["plan"])
 
 
 async def test_large_value_lookups_seek_the_key_index(
@@ -208,8 +221,11 @@ async def test_large_value_lookups_seek_the_key_index(
         migration_query=AttributeKindUpdateMigrationQuery, migration_input=MigrationInput(db=db), branch=default_branch
     )
 
-    assert await _planned_value_reads(db=db, query=create_query) == [KEY_SEEK]
-    assert await _planned_value_reads(db=db, query=update_query) == [KEY_SEEK]
-    assert await _planned_value_reads(db=db, query=add_query) == [KEY_SEEK]
+    one_seek = _PlannedValueReads(full_scans=[], seeks=[KEY_SEEK])
+    assert await _planned_value_reads(db=db, query=create_query) == one_seek
+    assert await _planned_value_reads(db=db, query=update_query) == one_seek
+    assert await _planned_value_reads(db=db, query=add_query) == one_seek
     # One lookup creates the missing values, the second links each attribute to its value.
-    assert await _planned_value_reads(db=db, query=kind_query) == [KEY_SEEK, KEY_SEEK]
+    assert await _planned_value_reads(db=db, query=kind_query) == _PlannedValueReads(
+        full_scans=[], seeks=[KEY_SEEK, KEY_SEEK]
+    )
