@@ -272,7 +272,7 @@ Choose a token, a long random value, and keep it secret: anyone with the token c
 <Tabs groupId="deployment" queryString>
 <TabItem value="compose" label="Docker Compose" default>
 
-Add the profile and the token to the `.env` file next to the compose file, then start the stack again:
+Add these two settings to the `.env` file next to the compose file, then start the stack again:
 
 ```bash
 COMPOSE_PROFILES=grafana-mcp
@@ -283,7 +283,7 @@ INFRAHUB_GRAFANA_MCP_TOKEN=<token>
 docker compose -p infrahub up -d
 ```
 
-The profile adds two services. `infrahub-grafana-mcp-init` runs at each start and stops: it logs in to Grafana as the admin user, creates the service account `infrahub-grafana-mcp` with the Viewer role if it does not exist, and stores a token for it. `infrahub-grafana-mcp` starts after it and serves the assistants on port 8100 of `127.0.0.1`.
+`COMPOSE_PROFILES=grafana-mcp` turns on two services. `infrahub-grafana-mcp-init` runs at each start and stops: it logs in to Grafana as the admin user, creates the service account `infrahub-grafana-mcp` with the Viewer role if it does not exist, and stores a token for it. `infrahub-grafana-mcp` starts after it and serves the assistants on port 8100 of `127.0.0.1`.
 
 </TabItem>
 <TabItem value="helm" label="Kubernetes with Helm">
