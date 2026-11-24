@@ -400,9 +400,12 @@ answers with its version and the skill can name it.
 
 ## R10. Approvals and owners outside this repository
 
-| Item | Needed from | Status on 2026-11-04 |
+| Item | Needed from | Status on 2026-11-19 |
 |------|-------------|----------------------|
-| New container images in Compose and Helm: `grafana/mcp-grafana:2.0.2` and the init image (R5) | Engineering approval for new dependencies (root `AGENTS.md`, "Ask First") | Not asked |
+| New container image in Compose and Helm: `grafana/mcp-grafana:2.0.2` | Engineering approval for new dependencies (root `AGENTS.md`, "Ask First") | Chosen by D10 of the [design document](https://app.notion.com/p/opsmill/Diagnose-a-slow-Infrahub-instance-3f2228b8302581a08eeaf9fc23a7f2de), whose status is "Approved" |
+| The image of the init script (R5) | Engineering approval for new dependencies | Not needed: the init script uses the Grafana image of the stack, so it adds no new image |
+| The one-time container (Compose) and the hook Job (Helm) that create the Grafana service account | Fatih Acar, engineering reviewer of the design document | Accepted on 2026-11-05 (comment on Appendix C, C5, of the design document) |
+| Changes C2, C3 and C4 of Appendix C of the design document | Its engineering and architect reviewers | Not reviewed |
 | Hosting the skill in `infrahub-skills` | Solution Engineering and Architecture team | Not asked |
 | Security review of the container | Fatih Acar (decided by Daniel on 2026-11-04) | Not done, date not set |
 | Whether `infrahub.opsmill.io` keeps `profiles` (R1) | Owner of the service | Not asked |

@@ -33,10 +33,11 @@ Docs: a section in `observability-stack.mdx`, the Build with AI pages and the FA
 **Language/Version**: YAML (Compose, Helm templates), POSIX `sh` (entrypoint check and init script),
 Python 3.14 (backend log fixes, the standalone converter and its unit tests), Markdown (skill, docs).
 
-**Primary Dependencies**: `grafana/mcp-grafana:2.0.2` (new image); an image with `curl` for the init
-script (new image or new use of an image, R5); Grafana 11.4.0 (Compose) and 11.1.5 (Helm, chart
-`grafana` 8.5.0), unchanged. The new images need the engineering approval for new dependencies (R10).
-Each new image is pinned by tag and by digest, because a tag can be moved.
+**Primary Dependencies**: `grafana/mcp-grafana:2.0.2` (new image); Grafana 11.4.0 (Compose) and
+11.1.5 (Helm, chart `grafana` 8.5.0), unchanged. The init script uses the Grafana image of the stack
+(R5), so it adds no new image. The design document chose the `mcp-grafana` container (D10, status
+"Approved"), so no image needs the engineering approval for new dependencies (R10).
+The new image is pinned by tag and by digest, because a tag can be moved.
 
 **Storage**: A named Compose volume and a Kubernetes Secret for the Grafana service account token. No
 database change.
@@ -90,9 +91,9 @@ log fixes, 4 docs pages, 1 `AGENTS.md` rule. In `infrahub-helm`: about 6 templat
 | III. Type Safety & Explicit Contracts | Pass | Log fixes keep type hints. The settings, values and report format are in [contracts/](contracts/) before implementation. |
 | IV. Test Discipline | Pass with one exception | Unit tests for the Compose files and the log fixes; evals for the skill. No pytest-playwright test: the feature has no web interface page. See Complexity Tracking. |
 | V. Query Performance & Efficiency | Pass | No Cypher query. |
-| VI. Security & Input Boundaries | Pass, pending two approvals | The server requires a token with no default (FR-003 to FR-005); in 1.13 no write tool is kept, with a Viewer service account (FR-010, R4); no usage statistics. The new images need the dependency approval, and the container needs a security review (R10). Neither is given yet; both are release conditions in the spec. |
+| VI. Security & Input Boundaries | Pass, pending one approval | The server requires a token with no default (FR-003 to FR-005); in 1.13 no write tool is kept, with a Viewer service account (FR-010, R4); no usage statistics. The new image is chosen by D10 of the approved design document. The container needs a security review (R10), which is not done yet and is a release condition in the spec. |
 | VII. Simplicity & Maintainability | Pass | Reuses the Compose profile and one-time container patterns of the stack, and the hook Job pattern of `infrahub-helm`. No new backend abstraction: each log line is fixed where it is written. |
-| Ask First (root `AGENTS.md`) | Pending | New dependencies: `grafana/mcp-grafana` and the init image. The approval is asked before the Compose change is merged. |
+| Ask First (root `AGENTS.md`) | Pass | New dependency: `grafana/mcp-grafana`, chosen by D10 of the approved design document. The init script uses the Grafana image of the stack (R5), so it adds no new image and needs no approval. |
 
 Re-check after Phase 1 design: no change. The contracts add no API to Infrahub.
 

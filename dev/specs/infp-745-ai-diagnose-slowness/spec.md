@@ -58,7 +58,12 @@ by OpsMill staff.
 
 - Whether the Solution Engineering and Architecture team, which owns `infrahub-skills`, agrees to host
   the skill. Not asked yet.
-- Whether the installation can create the Grafana service account and its token. Not verified.
+- Whether the installation can create the Grafana service account and its token. The approach, a
+  one-time container in Compose and a hook Job in Helm, is accepted by Fatih Acar (comment of
+  2026-11-05 on Appendix C of the design document). Not verified on a running stack.
+- Whether the engineering and architect reviewers of the design document accept its changes C2
+  (scope of the audit), C3 (no write tools in 1.13) and C4 (loopback address and TLS). Appendix C
+  marks them "Not reviewed".
 - Whether the Grafana MCP server container passes a security review. Not done. Fatih Acar does it
   (clarification of 2026-11-04); the date is not set.
 - The skill name `infrahub-diagnosing-performance` is a first draft.
@@ -316,7 +321,9 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
 - **FR-009**: The installation MUST create the Grafana service account and its token that the
   container uses to reach Grafana, so that the operator sets only the token that AI assistants send.
   Grafana cannot create a service account from a provisioning file, so a one-time step calls the
-  Grafana API: a job in Helm and a one-time container in Compose. Not verified yet (D10, section 6).
+  Grafana API: a job in Helm and a one-time container in Compose. The approach is accepted by Fatih
+  Acar (comment of 2026-11-05 on Appendix C of the design document). Not verified on a running stack
+  (D10, section 6).
 - **FR-010**: In 1.13, the server MUST keep no write tool and MUST NOT keep the tool that calls any
   Grafana API route. The Grafana service account MUST have the Viewer role (clarification of
   2026-11-04; this replaces "write tools enabled" in D10). In the later release of story 4, the server
@@ -490,8 +497,10 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
 - The Grafana Cloud hosted MCP server is out of scope: it works only with Grafana Cloud.
 - An OpsMill MCP server for metrics, traces and logs is out of scope: it repeats the Grafana MCP
   server (D8).
-- The Grafana MCP server is a new container image in Compose and Helm. It needs the engineering
-  approval for new dependencies, which is not given yet.
+- The Grafana MCP server is a new container image in Compose and Helm. The design document, whose
+  status is "Approved", chose this container (D10). The service account script uses the Grafana
+  image of the stack, so it adds no new image and needs no engineering approval for new
+  dependencies.
 - The audit (FR-022) covers the containers of the Compose project and the pods of the Helm chart. An
   operator's own Grafana can hold other data, which the operator is responsible for.
 
@@ -505,7 +514,8 @@ The card's goals make the release in 1.13 depend on four items, closed in the fi
 - The security review of the Grafana MCP server container, by Fatih Acar (date not set). In 1.13,
   anyone with the token can read all telemetry, and cannot change Grafana (FR-010). The later release
   of story 4 needs a new review of the write tools.
-- The creation of the Grafana service account and its token at installation (FR-009).
+- The creation of the Grafana service account and its token at installation (FR-009). The approach
+  is accepted; the check on a running stack is not done.
 
 ## Sources
 
