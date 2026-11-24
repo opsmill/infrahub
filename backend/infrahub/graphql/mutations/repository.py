@@ -108,7 +108,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             services=graphql_context.active_service,
             context=graphql_context.get_context(),
         ).post_create(
-            obj=obj,  # type: ignore
+            obj=obj,  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
             branch=branch,
             db=db,
         )

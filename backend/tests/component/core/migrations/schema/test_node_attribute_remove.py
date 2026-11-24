@@ -26,6 +26,7 @@ from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
 from tests.component.core.migrations.schema.metadata_helpers import (
+    EdgeFingerprint,
     VertexMetadata,
     branch_edge_fingerprint,
     branch_metadata_fingerprint,
@@ -231,7 +232,7 @@ class _AttributeRemoval:
     user_id: str
     node_before: VertexMetadata
     attr_before: VertexMetadata
-    pre_migration_fingerprint: list[tuple]
+    pre_migration_fingerprint: list[EdgeFingerprint]
     pre_migration_metadata: list[tuple]
 
 
@@ -360,7 +361,7 @@ class TestAttributeRemoveMetadata:
         async def _run_rollback() -> None:
             await GraphRollbacker(db=db).rollback(
                 target_branch=removal.branch,
-                at=removal.migration_time,
+                ats=[removal.migration_time],
                 scope=RollbackScope.SINCE_TIMESTAMP,
             )
 

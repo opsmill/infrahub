@@ -145,12 +145,12 @@ async def generate_node_mutation_events(
     trace.get_current_span().set_attribute("changelog.group_event_count", len(group_events))
 
     specific_events: list[InfrahubEvent] = []
-    if (kind := node.get_kind()) in [
+    if (kind := node.get_kind()) in {
         InfrahubKind.CHANGETHREAD,
         InfrahubKind.OBJECTTHREAD,
         InfrahubKind.ARTIFACTTHREAD,
         InfrahubKind.FILETHREAD,
-    ]:
+    }:
         proposed_change = await cast("CoreThread", node).change.get_peer(db=db)
         if proposed_change:
             action_to_event_map = {

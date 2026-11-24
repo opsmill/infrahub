@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections import Counter
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 from infrahub.core.constants import RelationshipDirection
@@ -8,14 +9,21 @@ from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
+    from collections.abc import Hashable
+
     from infrahub.database import InfrahubDatabase
 
 
-def _hash_property(value: Any) -> int:
-    """Hash a vertex or edge property, which the graph may store as a list."""
+def _hashable(value: Any) -> Hashable:
+    """Return a vertex or edge property in a hashable form, as the graph may store it as a list."""
     if isinstance(value, list):
-        return hash(tuple(value))
-    return hash(value)
+        return tuple(_hashable(item) for item in value)
+    return value
+
+
+def _content_key(properties: dict[str, Any]) -> frozenset[tuple[str, str, Hashable]]:
+    """Key the properties by name, type and value, so swapped values and 1 versus True stay distinct."""
+    return frozenset((name, type(value).__name__, _hashable(value)) for name, value in properties.items())
 
 
 @dataclass
@@ -25,11 +33,7 @@ class DbNode:
     properties: dict[str, Any]
 
     def __hash__(self) -> int:
-        cumulative_hash = hash(frozenset(self.labels))
-        for k, v in self.properties.items():
-            cumulative_hash += hash(k)
-            cumulative_hash += _hash_property(v)
-        return hash(cumulative_hash)
+        return hash((frozenset(self.labels), _content_key(self.properties)))
 
 
 @dataclass
@@ -41,18 +45,16 @@ class DbEdge:
     properties: dict[str, Any]
 
     def __hash__(self) -> int:
-        labels_hash = hash(self.edge_type)
-        cumulative_hash = 0
-        for k, v in self.properties.items():
-            cumulative_hash += hash(k)
-            cumulative_hash += _hash_property(v)
-        return hash(f"{labels_hash}:{cumulative_hash}")
+        return hash((self.edge_type, _content_key(self.properties)))
 
 
 @dataclass
 class DbSnapshot:
     node_map: dict[int, DbNode]
     edge_map: dict[int, DbEdge]
+    node_counts: Counter[int] = field(default_factory=Counter)
+    """Vertices with identical content share one key in the map, so their number is kept here."""
+    edge_counts: Counter[int] = field(default_factory=Counter)
 
     def __hash__(self) -> int:
         summed_node_hash = sum(self.node_map.keys())
@@ -68,16 +70,19 @@ class DbSnapshotter:
         node_query = """MATCH (n) RETURN n"""
         results = await self.db.execute_query(query=node_query)
         node_map = {}
+        node_counts: Counter[int] = Counter()
         node_hashes_by_db_id: dict[str, int] = {}
         for result in results:
             n = result.get("n")
             db_node = DbNode(db_id=n.element_id, labels=n.labels, properties=dict(n.items()))
             node_hash = hash(db_node)
             node_map[node_hash] = db_node
+            node_counts[node_hash] += 1
             node_hashes_by_db_id[db_node.db_id] = node_hash
         edge_query = """MATCH (a)-[e]->(b) RETURN a, e, b"""
         results = await self.db.execute_query(query=edge_query)
         edge_map = {}
+        edge_counts: Counter[int] = Counter()
         for result in results:
             from_n = result.get("a")
             from_n_db_id = from_n.element_id
@@ -94,9 +99,10 @@ class DbSnapshotter:
                 properties=(dict(edge.items())),
             )
             edge_only_hash = hash(db_edge)
-            full_edge_hash = hash(f"{from_n_hash}:{edge_only_hash}:{to_n_hash}")
+            full_edge_hash = hash((from_n_hash, edge_only_hash, to_n_hash))
             edge_map[full_edge_hash] = db_edge
-        return DbSnapshot(node_map=node_map, edge_map=edge_map)
+            edge_counts[full_edge_hash] += 1
+        return DbSnapshot(node_map=node_map, edge_map=edge_map, node_counts=node_counts, edge_counts=edge_counts)
 
 
 PropertyTypes = Literal[

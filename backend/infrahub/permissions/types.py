@@ -57,7 +57,7 @@ def get_global_permission_for_kind(schema: MainSchemaTypes) -> GlobalPermissions
 def define_object_permission_from_branch(
     schema: MainSchemaTypes, action: PermissionAction, branch_name: str
 ) -> ObjectPermission:
-    if branch_name in (GLOBAL_BRANCH_NAME, registry.default_branch):
+    if branch_name in {GLOBAL_BRANCH_NAME, registry.default_branch}:
         decision = PermissionDecision.ALLOW_DEFAULT
     else:
         decision = PermissionDecision.ALLOW_OTHER

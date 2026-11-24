@@ -155,7 +155,7 @@ class TestDiffDeleteParentRelSchema(TestInfrahubApp):
 
         # Modify VirtualInterface and delete the cluster
         vi_updated = await NodeManager.get_one(db=db, id=vi.id, branch=diff_branch)
-        vi_updated.name.value = "eth0-updated"  # type: ignore[union-attr]
+        vi_updated.name.value = "eth0-updated"
         await vi_updated.save(db=db)
 
         cluster_deleted = await NodeManager.get_one(db=db, id=cluster.id, branch=diff_branch)

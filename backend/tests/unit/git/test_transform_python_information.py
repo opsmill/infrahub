@@ -78,7 +78,7 @@ def _make_existing_transform(
             "__typename": "NestedEdgedCoreRepository",
         },
     }
-    return InfrahubNode(client=client, schema=TRANSFORM_PYTHON_SCHEMA, data=data)  # type: ignore[return-value, ty:invalid-return-type]
+    return InfrahubNode(client=client, schema=TRANSFORM_PYTHON_SCHEMA, data=data)  # ty: ignore[invalid-return-type]
 
 
 def _make_local_transform(

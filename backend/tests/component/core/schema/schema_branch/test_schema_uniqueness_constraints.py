@@ -5,7 +5,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 
 
 @pytest.mark.parametrize(
-    "schema_root,expected_error",
+    ("schema_root", "expected_error"),
     [
         pytest.param(
             SchemaRoot(

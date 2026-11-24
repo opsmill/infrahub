@@ -15,7 +15,7 @@ from infrahub.permissions.types import define_object_permission_from_branch
 
 
 @pytest.mark.parametrize(
-    "kinds,permission",
+    ("kinds", "permission"),
     [
         (
             [InfrahubKind.ACCOUNT, InfrahubKind.ACCOUNTGROUP, InfrahubKind.ACCOUNTROLE],

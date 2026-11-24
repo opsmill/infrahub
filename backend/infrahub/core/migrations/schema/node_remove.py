@@ -4,6 +4,7 @@ from collections.abc import Sequence  # noqa: TC003  needed for pydantic
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipStatus
+from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 
 from ..query import MigrationQuery
 from ..shared import SchemaMigration
@@ -46,6 +47,27 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery):
             "set_metadata": self.branch.is_default or self.branch.is_global,
         }
 
+    def render_selection(self) -> str:
+        branch_filter, _ = self.branch.get_query_filter_path(at=self.at.to_string())
+        return """
+    // ----------------------------------------------------------
+    // Find all active nodes of the kind being removed
+    // ----------------------------------------------------------
+    %(node_match)s
+    CALL (node) {
+        MATCH (root:Root)<-[r:IS_PART_OF]-(node)
+        WHERE %(branch_filter)s
+        RETURN r AS root_edge
+        ORDER BY r.branch_level DESC, r.from DESC
+        LIMIT 1
+    }
+    WITH node AS active_node, root_edge
+    WHERE root_edge.status = "active"
+    """ % {
+            "node_match": self.render_node_match("node", [self.migration.previous_schema.kind]),
+            "branch_filter": branch_filter,
+        }
+
     def get_nbr_migrations_executed(self) -> int:
         return self.stats.get_counter(name="nodes_created")
 
@@ -78,21 +100,13 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
+        stamp_peer_node, stamp_params = stamp_vertex_metadata(
+            "peer_node", at=self.at, operation_ats=self.operation_ats, at_param="current_time"
+        )
+        self.params.update(stamp_params)
         query = (
             """
-    // ----------------------------------------------------------
-    // Find all active nodes of the kind being removed
-    // ----------------------------------------------------------
-    MATCH (node:%(node_kind)s)
-    CALL (node) {
-        MATCH (root:Root)<-[r:IS_PART_OF]-(node)
-        WHERE %(branch_filter)s
-        RETURN r AS root_edge
-        ORDER BY r.branch_level DESC, r.from DESC
-        LIMIT 1
-    }
-    WITH node AS active_node, root_edge
-    WHERE root_edge.status = "active"
+    %(selection)s
 
     // ----------------------------------------------------------
     // For each inbound edge to active_node, find the latest active edge on the branch
@@ -115,15 +129,7 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     CALL (peer_node) {
         WITH peer_node
         WHERE $set_metadata
-        SET peer_node.previous_updated_at = CASE
-                WHEN peer_node.updated_at IS NULL OR peer_node.updated_at <> $current_time THEN peer_node.updated_at
-                ELSE peer_node.previous_updated_at
-            END,
-            peer_node.previous_updated_by = CASE
-                WHEN peer_node.updated_at IS NULL OR peer_node.updated_at <> $current_time THEN peer_node.updated_by
-                ELSE peer_node.previous_updated_by
-            END
-        SET peer_node.updated_at = $current_time, peer_node.updated_by = $user_id
+        %(stamp_peer_node)s
     }
 
     WITH active_node, rel_inbound, peer_node,
@@ -193,7 +199,8 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     """
         ) % {
             "branch_filter": branch_filter,
-            "node_kind": self.migration.previous_schema.kind,
+            "selection": self.render_selection(),
+            "stamp_peer_node": stamp_peer_node,
         }
         self.add_to_query(query)
 
@@ -223,21 +230,17 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
+        stamp_active_node, stamp_params = stamp_vertex_metadata(
+            "active_node", at=self.at, operation_ats=self.operation_ats, at_param="current_time"
+        )
+        self.params.update(stamp_params)
+        stamp_peer_node, stamp_params = stamp_vertex_metadata(
+            "peer_node", at=self.at, operation_ats=self.operation_ats, at_param="current_time"
+        )
+        self.params.update(stamp_params)
         query = (
             """
-    // ----------------------------------------------------------
-    // Find all active nodes of the kind being removed
-    // ----------------------------------------------------------
-    MATCH (node:%(node_kind)s)
-    CALL (node) {
-        MATCH (root:Root)<-[r:IS_PART_OF]-(node)
-        WHERE %(branch_filter)s
-        RETURN r AS root_edge
-        ORDER BY r.branch_level DESC, r.from DESC
-        LIMIT 1
-    }
-    WITH node AS active_node, root_edge
-    WHERE root_edge.status = "active"
+    %(selection)s
 
     // ----------------------------------------------------------
     // Set updated metadata on the Node vertex on default/global branch
@@ -245,15 +248,7 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     CALL (active_node) {
         WITH active_node
         WHERE $set_metadata
-        SET active_node.previous_updated_at = CASE
-                WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_at
-                ELSE active_node.previous_updated_at
-            END,
-            active_node.previous_updated_by = CASE
-                WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_by
-                ELSE active_node.previous_updated_by
-            END
-        SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
+        %(stamp_active_node)s
     }
 
     // ----------------------------------------------------------
@@ -278,15 +273,7 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     CALL (peer_node) {
         WITH peer_node
         WHERE $set_metadata AND (peer_node:Attribute OR peer_node:Relationship)
-        SET peer_node.previous_updated_at = CASE
-                WHEN peer_node.updated_at IS NULL OR peer_node.updated_at <> $current_time THEN peer_node.updated_at
-                ELSE peer_node.previous_updated_at
-            END,
-            peer_node.previous_updated_by = CASE
-                WHEN peer_node.updated_at IS NULL OR peer_node.updated_at <> $current_time THEN peer_node.updated_by
-                ELSE peer_node.previous_updated_by
-            END
-        SET peer_node.updated_at = $current_time, peer_node.updated_by = $user_id
+        %(stamp_peer_node)s
     }
 
     WITH active_node, rel_outbound, peer_node,
@@ -353,7 +340,9 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     """
         ) % {
             "branch_filter": branch_filter,
-            "node_kind": self.migration.previous_schema.kind,
+            "selection": self.render_selection(),
+            "stamp_active_node": stamp_active_node,
+            "stamp_peer_node": stamp_peer_node,
         }
         self.add_to_query(query)
 
@@ -364,4 +353,4 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
 
 class NodeRemoveMigration(SchemaMigration):
     name: str = "node.remove"
-    queries: Sequence[type[MigrationQuery]] = [NodeRemoveMigrationQueryIn, NodeRemoveMigrationQueryOut]  # type: ignore[assignment]
+    queries: Sequence[type[MigrationQuery]] = [NodeRemoveMigrationQueryIn, NodeRemoveMigrationQueryOut]

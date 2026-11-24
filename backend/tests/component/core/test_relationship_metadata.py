@@ -151,8 +151,8 @@ class TestRelationshipMetadata:
         updated_tags_rels = await person.tags.get(db=db)
         assert len(updated_tags_rels) == 2
         # Find the black and red tag relationships
-        updated_black_tag_rel = [r for r in updated_tags_rels if r.get_peer_id() == self.black_tag_id][0]
-        updated_red_tag_rel = [r for r in updated_tags_rels if r.get_peer_id() == self.red_tag_id][0]
+        updated_black_tag_rel = next(r for r in updated_tags_rels if r.get_peer_id() == self.black_tag_id)
+        updated_red_tag_rel = next(r for r in updated_tags_rels if r.get_peer_id() == self.red_tag_id)
         # validate black tag updates
         self._validate_rel_metadata(
             updated_black_tag_rel,

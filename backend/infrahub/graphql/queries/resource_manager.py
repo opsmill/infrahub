@@ -84,11 +84,11 @@ class PoolAllocatedEdge(ObjectType):
 
 
 def _validate_pool_type(pool_id: str, pool: Node | None = None) -> Node:
-    if not pool or pool.get_kind() not in [
+    if not pool or pool.get_kind() not in {
         InfrahubKind.IPADDRESSPOOL,
         InfrahubKind.IPPREFIXPOOL,
         InfrahubKind.NUMBERPOOL,
-    ]:
+    }:
         raise NodeNotFoundError(node_type="ResourcePool", identifier=pool_id)
     return pool
 
@@ -131,7 +131,7 @@ class PoolAllocated(ObjectType):
                 case InfrahubKind.IPADDRESSPOOL:
                     allocated_kinds.append(InfrahubKind.IPADDRESS)
 
-            resources = await pool.resources.get_peers(db=db)  # type: ignore[attr-defined,union-attr]
+            resources = await pool.resources.get_peers(db=db)  # type: ignore[attr-defined]
             if resource_id not in resources:
                 raise ValidationError(
                     input_value=f"The selected pool_id={pool_id} doesn't contain the requested resource_id={resource_id}"
@@ -157,18 +157,17 @@ class PoolAllocated(ObjectType):
 
                 node_fields = edges.get("node", {})
 
-                nodes: list[dict[str, dict[str, str | None]]] = []
-                for item in query.get_data():
-                    nodes.append(
-                        {
-                            "node": {
-                                "id": item.child_uuid,
-                                "kind": item.child_kind,
-                                "branch": graphql_context.branch.name,
-                                "display_label": item.ip_value,
-                            }
+                nodes: list[dict[str, dict[str, str | None]]] = [
+                    {
+                        "node": {
+                            "id": item.child_uuid,
+                            "kind": item.child_kind,
+                            "branch": graphql_context.branch.name,
+                            "display_label": item.ip_value,
                         }
-                    )
+                    }
+                    for item in query.get_data()
+                ]
 
                 if "identifier" in node_fields:
                     allocated_ids = [node["node"]["id"] for node in nodes]
@@ -231,7 +230,7 @@ class PoolUtilization(ObjectType):
             resources_map: dict[str, Node] = {}
 
             with contextlib.suppress(SchemaNotFoundError):
-                resources_map = await pool.resources.get_peers(db=db, branch_agnostic=True)  # type: ignore[attr-defined,union-attr]
+                resources_map = await pool.resources.get_peers(db=db, branch_agnostic=True)  # type: ignore[attr-defined]
 
             default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
             resources = list(resources_map.values())

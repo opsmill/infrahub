@@ -195,7 +195,7 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
         )
         assert len(persons) == 1
         john = persons[0]
-        assert john.firstname.value == "John"  # type: ignore[attr-defined]
+        assert john.firstname.value == "John"
         assert not hasattr(john, "height")
 
     async def test_step03_check(

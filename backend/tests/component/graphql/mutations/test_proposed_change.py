@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 from unittest.mock import ANY, call, patch
 from uuid import uuid4
@@ -7,6 +8,7 @@ from fast_depends import Provider
 from infrahub_sdk import InfrahubClient
 from prefect.client.orchestration import get_client
 
+from infrahub import lock
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.components import ComponentType
@@ -24,10 +26,12 @@ from infrahub.core.constants import (
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.node.lock_utils import build_object_lock_name
 from infrahub.core.protocols import CoreProposedChange, CoreRepository
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.lock import InfrahubLockRegistry
 from infrahub.permissions import AssignedPermissions, PermissionBackend
 from infrahub.proposed_change.constants import ProposedChangeState
 from infrahub.proposed_change.models import RequestProposedChangePipeline
@@ -309,6 +313,61 @@ async def test_cannot_approve_own_created_proposed_change(
     )
     assert approve_proposed_change.errors
     assert "You cannot review your own proposed changes" in str(approve_proposed_change.errors)
+
+
+async def test_review_holds_the_lock_of_the_proposed_change_without_redis(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(lock, "registry", InfrahubLockRegistry(local_only=True))
+    registry.permission_backends = [DummyReviewProposedChangeAllow()]
+    source_branch = Branch(name=str(uuid4().hex))
+    await source_branch.save(db=db)
+
+    account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await account.new(db=db, name="user", password="password")
+    await account.save(db=db)
+
+    gql_params = await prepare_graphql_params(
+        db=db,
+        branch=default_branch,
+        account_session=AccountSession(authenticated=False, account_id=account.get_id(), auth_type=AuthType.NONE),
+    )
+    open_proposed_change = await graphql(
+        schema=gql_params.schema,
+        source=CREATE_PROPOSED_CHANGE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={
+            "source": source_branch.name,
+            "destination": "main",
+            "name": "sample proposed change",
+            "state": "open",
+        },
+    )
+    assert not open_proposed_change.errors
+    proposed_change_id = open_proposed_change.data["CoreProposedChangeCreate"]["object"]["id"]
+
+    review_lock = lock.registry.get(name=build_object_lock_name(proposed_change_id))
+    review = asyncio.create_task(
+        graphql(
+            schema=gql_params.schema,
+            source=PROPOSED_CHANGE_REVIEW,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"proposed_change_id": proposed_change_id, "decision": "APPROVE"},
+        )
+    )
+    held_during_review = False
+    while not review.done():
+        held_during_review = held_during_review or await review_lock.locked()
+        await asyncio.sleep(0)
+
+    assert held_during_review
+    assert not await review_lock.locked()
+    assert "You cannot review your own proposed changes" in str(review.result().errors)
 
 
 async def test_duplicate_open_proposed_change_validation(

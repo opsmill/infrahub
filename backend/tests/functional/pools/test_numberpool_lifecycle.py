@@ -16,6 +16,7 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.graphql.registry import registry as graphql_registry
+from infrahub.pools.number_pool_locker import NumberPoolLock
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
@@ -94,6 +95,7 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         snps = SchemaNumberPoolSynchronizer(
             db=db,
             scope_reader=ScopedNumberPoolReader(db=db),
+            pool_locker=NumberPoolLock(db=db),
             schema_manager=registry.schema,
             upserter=upserter,
             range_store_factory=NumberPoolRepository,
@@ -271,13 +273,13 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         await incident10.save()
 
         # Ensure the calculated allocation is correct for both pools
-        number_pool = [pool for pool in pools_after if pool.node_attribute.value == "number"][0]
+        number_pool = next(pool for pool in pools_after if pool.node_attribute.value == "number")
         number_allocation = await client.execute_graphql(
             query=number_pool_allocation_query.render(), variables={"pool_id": number_pool.id}
         )
         assert number_allocation["InfrahubResourcePoolAllocated"]["count"] == 6
 
-        new_number_pool = [pool for pool in pools_after if pool.node_attribute.value == "new_number"][0]
+        new_number_pool = next(pool for pool in pools_after if pool.node_attribute.value == "new_number")
         new_number_allocation = await client.execute_graphql(
             query=number_pool_allocation_query.render(), variables={"pool_id": new_number_pool.id}
         )

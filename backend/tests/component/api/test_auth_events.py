@@ -26,15 +26,17 @@ async def test_password_login_emits_logged_in_event(
         if isinstance(event, AccountLoggedInEvent):
             captured.append(event)
 
-    with patch(
-        "infrahub.services.adapters.event.InfrahubEventService.send",
-        new=AsyncMock(side_effect=capture),
+    with (
+        patch(
+            "infrahub.services.adapters.event.InfrahubEventService.send",
+            new=AsyncMock(side_effect=capture),
+        ),
+        client,
     ):
-        with client:
-            response = client.post(
-                "/api/auth/login",
-                json={"username": "First Account", "password": "FirstPassword123"},
-            )
+        response = client.post(
+            "/api/auth/login",
+            json={"username": "First Account", "password": "FirstPassword123"},
+        )
 
     assert response.status_code == 200
 
@@ -68,15 +70,17 @@ async def test_logout_emits_logged_out_event(
     assert login_response.status_code == 200
     access_token = login_response.json()["access_token"]
 
-    with patch(
-        "infrahub.services.adapters.event.InfrahubEventService.send",
-        new=AsyncMock(side_effect=capture),
+    with (
+        patch(
+            "infrahub.services.adapters.event.InfrahubEventService.send",
+            new=AsyncMock(side_effect=capture),
+        ),
+        client,
     ):
-        with client:
-            logout_response = client.post(
-                "/api/auth/logout",
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
+        logout_response = client.post(
+            "/api/auth/logout",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
 
     assert logout_response.status_code == 200
 

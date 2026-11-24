@@ -1,0 +1,1 @@
+Fixed the events of objects that use Profiles: the creation event lists every field set at creation, and the events include the relationships that a Profile sets or removes and, for `RelationshipAdd` or `RelationshipRemove` on `profiles`, the values that the Profile changed, recorded as changed by the requesting user.

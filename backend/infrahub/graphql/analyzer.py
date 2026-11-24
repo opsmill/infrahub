@@ -281,17 +281,17 @@ class GraphQLQueryNode:
                     mutate_actions=self.mutate_actions,
                 )
             )
-            for used_by in self.infrahub_node_models:
-                models.append(
-                    GraphQLQueryModel(
-                        model=used_by,
-                        root=self.at_root,
-                        arguments=self.arguments,
-                        attributes=self.infrahub_attributes,
-                        relationships=self.infrahub_relationships,
-                        mutate_actions=self.mutate_actions,
-                    )
+            models.extend(
+                GraphQLQueryModel(
+                    model=used_by,
+                    root=self.at_root,
+                    arguments=self.arguments,
+                    attributes=self.infrahub_attributes,
+                    relationships=self.infrahub_relationships,
+                    mutate_actions=self.mutate_actions,
                 )
+                for used_by in self.infrahub_node_models
+            )
 
         for child in self.children:
             models.extend(child.get_models())

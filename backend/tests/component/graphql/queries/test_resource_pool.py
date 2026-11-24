@@ -948,11 +948,11 @@ async def test_number_pool_utilization(
 
     # The pool reports its totals, and the one range it holds reports its own underneath
     assert utilization.data["InfrahubResourcePoolUtilization"]["count"] == 1
-    assert utilization.data["InfrahubResourcePoolUtilization"]["utilization"] == 30.0
+    assert utilization.data["InfrahubResourcePoolUtilization"]["utilization"] == pytest.approx(30.0)
     range_edge = utilization.data["InfrahubResourcePoolUtilization"]["edges"][0]["node"]
     assert range_edge["id"] == range_id
     assert range_edge["kind"] == InfrahubKind.NUMBERPOOLRANGE
-    assert range_edge["utilization"] == 30.0
+    assert range_edge["utilization"] == pytest.approx(30.0)
 
     allocation = await graphql(
         schema=gql_params.schema,

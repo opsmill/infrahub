@@ -6,12 +6,12 @@ import { Link } from "react-router";
 import { queryClient } from "@/shared/api/rest/client";
 import { Col, Row } from "@/shared/components/container";
 import { Icon } from "@/shared/components/display/icon";
-import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { Badge } from "@/shared/components/ui/badge";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
+import { GROUP_GENERIC } from "@/entities/groups/domain/model/group";
 import { GroupsManager } from "@/entities/groups/ui/groups-manager";
 import type {
   NodeCore,
@@ -21,6 +21,7 @@ import type {
   NodeRelationshipOneWithMetadata,
 } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
+import { FieldMetadataPopover } from "@/entities/nodes/object/ui/metadata/field-metadata-popover";
 import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-paginated";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
@@ -131,12 +132,7 @@ function ProfilesList({ objectData, objectSchema, permission }: ProfilesListProp
                   {getNodeLabel(edge.node)}
                 </Badge>
               </Link>
-              <MetaDetailsTooltip
-                updatedAt={edge.properties.updated_at}
-                source={edge.properties.source}
-                owner={edge.properties.owner}
-                isProtected={edge.properties.is_protected}
-              />
+              <FieldMetadataPopover metadata={edge.properties} />
             </div>
           ))}
         </div>
@@ -222,12 +218,7 @@ function GroupsList({ objectData, objectSchema, permission }: GroupsListProps) {
                     {getNodeLabel(edge.node)}
                   </Badge>
                 </Link>
-                <MetaDetailsTooltip
-                  updatedAt={edge.properties.updated_at}
-                  source={edge.properties.source}
-                  owner={edge.properties.owner}
-                  isProtected={edge.properties.is_protected}
-                />
+                <FieldMetadataPopover metadata={edge.properties} />
               </div>
             );
           })}
@@ -278,7 +269,7 @@ export function ObjectProfilesGroupsCard({
 }: ObjectProfilesGroupsCardProps) {
   const schemaSupportsProfiles =
     "generate_profile" in objectSchema && objectSchema.generate_profile;
-  const showGroups = !isOfKind("CoreGroup", objectSchema);
+  const showGroups = !isOfKind(GROUP_GENERIC, objectSchema);
 
   // Check if object already has assigned profiles
   const objectProfileEdges = getRelationshipManyEdges(objectData, "profiles");

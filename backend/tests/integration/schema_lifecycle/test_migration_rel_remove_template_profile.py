@@ -129,7 +129,7 @@ class TestSchemaLifecycleRelRemoveDefaultBranchTemplateProfile(TestSchemaLifecyc
         """TestingTag with persons and categories marked as absent."""
         schema = copy.deepcopy(schema_tag_base)
         for rel in schema["relationships"]:
-            if rel["name"] in ("persons", "categories"):
+            if rel["name"] in {"persons", "categories"}:
                 rel["state"] = "absent"
         return schema
 
@@ -249,20 +249,20 @@ class TestSchemaLifecycleRelRemoveDefaultBranchTemplateProfile(TestSchemaLifecyc
 
         # Verify Tag instance has persons and categories
         red = await registry.manager.get_one(db=db, id=initial_dataset["red"], branch=self.branch1)
-        persons = await red.persons.get_peers(db=db)  # type: ignore[attr-defined]
+        persons = await red.persons.get_peers(db=db)
         assert len(persons) == 1
-        categories = await red.categories.get_peers(db=db)  # type: ignore[attr-defined]
+        categories = await red.categories.get_peers(db=db)
         assert len(categories) == 1
 
         # Verify Template instance linked to sub-template (via categories)
         tag_template = await registry.manager.get_one(db=db, id=initial_dataset["tag_template"], branch=self.branch1)
-        category_peers = await tag_template.categories.get_peers(db=db)  # type: ignore[attr-defined]
+        category_peers = await tag_template.categories.get_peers(db=db)
         assert len(category_peers) == 1
         category_ids = {peer.id for peer in category_peers.values()}
         assert initial_dataset["template_category"] in category_ids
 
         # Verify Template instance linked to regular node (via related_nodes)
-        related = await tag_template.related_nodes.get_peers(db=db)  # type: ignore[attr-defined]
+        related = await tag_template.related_nodes.get_peers(db=db)
         assert len(related) == 1
         related_ids = {peer.id for peer in related.values()}
         assert initial_dataset["tag_from_template"] in related_ids
@@ -271,13 +271,13 @@ class TestSchemaLifecycleRelRemoveDefaultBranchTemplateProfile(TestSchemaLifecyc
         tag_from_template = await registry.manager.get_one(
             db=db, id=initial_dataset["tag_from_template"], branch=self.branch1
         )
-        obj_template = await tag_from_template.object_template.get_peer(db=db)  # type: ignore[attr-defined]
+        obj_template = await tag_from_template.object_template.get_peer(db=db)
         assert obj_template is not None
         assert obj_template.id == initial_dataset["tag_template"]
 
         # Verify Profile instance has persons
         tag_profile = await registry.manager.get_one(db=db, id=initial_dataset["tag_profile"], branch=self.branch1)
-        persons = await tag_profile.persons.get_peers(db=db)  # type: ignore[attr-defined]
+        persons = await tag_profile.persons.get_peers(db=db)
         assert len(persons) == 1
 
     async def test_step02_remove_rels_on_main(
@@ -350,7 +350,7 @@ class TestSchemaLifecycleRelRemoveDefaultBranchTemplateProfile(TestSchemaLifecyc
             red.get_relationship("persons")
         with pytest.raises(ValueError, match="categories"):
             red.get_relationship("categories")
-        cars = await red.cars.get_peers(db=db)  # type: ignore[attr-defined]
+        cars = await red.cars.get_peers(db=db)
         assert len(cars) == 1
 
         # Node created from template: still accessible
@@ -368,7 +368,7 @@ class TestSchemaLifecycleRelRemoveDefaultBranchTemplateProfile(TestSchemaLifecyc
         assert tag_template is not None
         with pytest.raises(ValueError, match="categories"):
             tag_template.get_relationship("categories")
-        related = await tag_template.related_nodes.get_peers(db=db)  # type: ignore[attr-defined]
+        related = await tag_template.related_nodes.get_peers(db=db)
         assert len(related) == 1
         related_ids = {peer.id for peer in related.values()}
         assert initial_dataset["tag_from_template"] in related_ids

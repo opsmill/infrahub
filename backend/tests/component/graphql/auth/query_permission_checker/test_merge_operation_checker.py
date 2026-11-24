@@ -75,7 +75,7 @@ class TestMergeBranchPermission:
             assert is_supported == user.authenticated
 
     @pytest.mark.parametrize(
-        "operation_name,checker_resolution",
+        ("operation_name", "checker_resolution"),
         [("BranchMerge", CheckerResolution.TERMINATE), ("BuiltinTagCreate", CheckerResolution.NEXT_CHECKER)],
     )
     async def test_account_with_permission(
@@ -117,7 +117,7 @@ class TestMergeBranchPermission:
         assert resolution == checker_resolution
 
     @pytest.mark.parametrize(
-        "operation_name,checker_resolution",
+        ("operation_name", "checker_resolution"),
         [("BranchMerge", None), ("BuiltinTagCreate", CheckerResolution.NEXT_CHECKER)],
     )
     async def test_account_without_permission(

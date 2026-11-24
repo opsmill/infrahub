@@ -98,7 +98,7 @@ WITH value_id_pairs + created_value_id_pairs AS value_id_pairs
 
         self.add_to_query(diy_index_query)
 
-        if self.branch.name in [registry.default_branch, GLOBAL_BRANCH_NAME]:
+        if self.branch.name in {registry.default_branch, GLOBAL_BRANCH_NAME}:
             update_value_query = """
 // ------------
 // Find the Nodes and Attributes we need to update
@@ -461,7 +461,7 @@ class Migration044(MigrationRequiringRebase):
                     continue
 
                 node_schema = schema_branch.get_node(name=node_schema_name, duplicate=False)
-                if node_schema.branch not in (BranchSupportType.AWARE, BranchSupportType.LOCAL):
+                if node_schema.branch not in {BranchSupportType.AWARE, BranchSupportType.LOCAL}:
                     continue
                 try:
                     default_node_schema = main_schema_branch.get_node(name=node_schema_name, duplicate=False)

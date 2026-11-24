@@ -70,20 +70,19 @@ CALL (diff_roots) {
         self.add_to_query(query)
 
     def _build_diff_root_params(self, enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata) -> dict[str, Any]:
-        diff_root_list: list[dict[str, Any]] = []
-        for enriched_diff in (enriched_diffs.base_branch_diff, enriched_diffs.diff_branch_diff):
-            diff_root_list.append(
-                {
-                    "base_branch": enriched_diff.base_branch_name,
-                    "diff_branch": enriched_diff.diff_branch_name,
-                    "from_time": enriched_diff.from_time.to_string(),
-                    "to_time": enriched_diff.to_time.to_string(),
-                    "uuid": enriched_diff.uuid,
-                    "tracking_id": enriched_diff.tracking_id.serialize() if enriched_diff.tracking_id else None,
-                    "proposed_change_id": enriched_diff.proposed_change_id,
-                    "is_frozen": enriched_diff.is_frozen,
-                }
-            )
+        diff_root_list: list[dict[str, Any]] = [
+            {
+                "base_branch": enriched_diff.base_branch_name,
+                "diff_branch": enriched_diff.diff_branch_name,
+                "from_time": enriched_diff.from_time.to_string(),
+                "to_time": enriched_diff.to_time.to_string(),
+                "uuid": enriched_diff.uuid,
+                "tracking_id": enriched_diff.tracking_id.serialize() if enriched_diff.tracking_id else None,
+                "proposed_change_id": enriched_diff.proposed_change_id,
+                "is_frozen": enriched_diff.is_frozen,
+            }
+            for enriched_diff in (enriched_diffs.base_branch_diff, enriched_diffs.diff_branch_diff)
+        ]
         return {"diff_root_list": diff_root_list}
 
 
@@ -528,14 +527,13 @@ CALL (has_property_conflict, diff_relationship_property, node_relationship_prope
         }
 
     def _build_node_batch_params(self) -> dict[str, list[dict[str, Any]]]:
-        node_details: list[dict[str, Any]] = []
-        for node_create_request in self.node_create_batch:
-            node_details.append(
-                {
-                    "root_uuid": node_create_request.root_uuid,
-                    "node_map": self._build_diff_node_params(enriched_node=node_create_request.node),
-                }
-            )
+        node_details: list[dict[str, Any]] = [
+            {
+                "root_uuid": node_create_request.root_uuid,
+                "node_map": self._build_diff_node_params(enriched_node=node_create_request.node),
+            }
+            for node_create_request in self.node_create_batch
+        ]
         return {"node_details_list": node_details}
 
 

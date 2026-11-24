@@ -6,7 +6,9 @@ from pydantic import BaseModel
 
 from infrahub.core.constants import BranchSupportType, RelationshipStatus
 from infrahub.core.graph.schema import GraphNodeRelationships, GraphRelDirection
-from infrahub.core.query import Query, QueryType
+from infrahub.core.migrations.query.selection import MigrationSelectionQuery
+from infrahub.core.query import QueryType
+from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -20,7 +22,7 @@ class SchemaNodeInfo(BaseModel):
     kind: str
 
 
-class NodeDuplicateQuery(Query):
+class NodeDuplicateQuery(MigrationSelectionQuery):
     """Duplicates a Node to use a new kind or inheritance.
 
     Creates a copy of each affected Node and sets the new kind/inheritance.
@@ -54,7 +56,7 @@ class NodeDuplicateQuery(Query):
     def render_match(self) -> str:
         return """
         // Find all the active nodes
-        MATCH (node:%(previous_kinds)s)
+        %(node_match)s
         WITH DISTINCT node, $kind_map[node.kind] AS target
         // ----------------
         // Filter out nodes that have already been migrated
@@ -65,7 +67,25 @@ class NodeDuplicateQuery(Query):
             AND size(labels(node)) = size(target.new_all_labels)
             AND all(node_label IN labels(node) WHERE node_label IN target.new_all_labels)
         )
-        """ % {"previous_kinds": self.previous_kinds}
+        """ % {"node_match": self.render_node_match("node", list(self.kind_updates_map))}
+
+    def render_selection(self) -> str:
+        branch_filter, _ = self.branch.get_query_filter_path(at=self.at.to_string())
+        return (
+            self.render_match()
+            + """
+        CALL (node) {
+            MATCH (root:Root)<-[r:IS_PART_OF]-(node)
+            WHERE %(branch_filter)s
+            RETURN node as active_node, r.status = "active" AS is_active
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH target, active_node, is_active
+        WHERE is_active = TRUE
+        """
+            % {"branch_filter": branch_filter}
+        )
 
     @staticmethod
     def _render_sub_query_per_rel_type(rel_name: str, rel_type: str, rel_dir: GraphRelDirection) -> str:
@@ -73,32 +93,40 @@ class NodeDuplicateQuery(Query):
             f"WITH peer_node, {rel_name}, active_node, new_node",
             f'WHERE type({rel_name}) = "{rel_type}"',
         ]
-        if rel_dir in [GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER]:
-            subquery.append(f"""
+        if rel_dir in {GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER}:
+            subquery.extend(
+                (
+                    f"""
                 CREATE (new_node)-[new_active_edge:{rel_type} $rel_props_new ]->(peer_node)
                 SET new_active_edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
                 SET new_active_edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
                 SET new_active_edge.hierarchy = COALESCE({rel_name}.hierarchy, NULL)
-                """)
-            subquery.append(f"""
+                """,
+                    f"""
                 CREATE (active_node)-[deleted_edge:{rel_type} $rel_props_prev ]->(peer_node)
                 SET deleted_edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
                 SET deleted_edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
                 SET deleted_edge.hierarchy = COALESCE({rel_name}.hierarchy, NULL)
-                """)
-        elif rel_dir in [GraphRelDirection.INBOUND, GraphRelDirection.EITHER]:
-            subquery.append(f"""
+                """,
+                )
+            )
+        elif rel_dir in {GraphRelDirection.INBOUND, GraphRelDirection.EITHER}:
+            subquery.extend(
+                (
+                    f"""
                 CREATE (new_node)<-[new_active_edge:{rel_type} $rel_props_new ]-(peer_node)
                 SET new_active_edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
                 SET new_active_edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
                 SET new_active_edge.hierarchy = COALESCE({rel_name}.hierarchy, NULL)
-                """)
-            subquery.append(f"""
+                """,
+                    f"""
                 CREATE (active_node)<-[deleted_edge:{rel_type} $rel_props_prev ]-(peer_node)
                 SET deleted_edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
                 SET deleted_edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
                 SET deleted_edge.hierarchy = COALESCE({rel_name}.hierarchy, NULL)
-                """)
+                """,
+                )
+            )
         return "\n".join(subquery)
 
     @classmethod
@@ -108,7 +136,7 @@ class NodeDuplicateQuery(Query):
         sub_queries_out = [
             cls._render_sub_query_per_rel_type(rel_name=rel_name, rel_type=rel_type, rel_dir=GraphRelDirection.OUTBOUND)
             for rel_type, field_info in GraphNodeRelationships.model_fields.items()
-            if field_info.default.direction in (GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER)
+            if field_info.default.direction in {GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER}
         ]
         sub_query_out = "\nUNION\n".join(sub_queries_out)
         return sub_query_out, sub_query_out_args
@@ -120,7 +148,7 @@ class NodeDuplicateQuery(Query):
         sub_queries_in = [
             cls._render_sub_query_per_rel_type(rel_name=rel_name, rel_type=rel_type, rel_dir=GraphRelDirection.INBOUND)
             for rel_type, field_info in GraphNodeRelationships.model_fields.items()
-            if field_info.default.direction in (GraphRelDirection.INBOUND, GraphRelDirection.EITHER)
+            if field_info.default.direction in {GraphRelDirection.INBOUND, GraphRelDirection.EITHER}
         ]
         sub_query_in = "\nUNION\n".join(sub_queries_in)
         return sub_query_in, sub_query_in_args
@@ -165,18 +193,13 @@ class NodeDuplicateQuery(Query):
         sub_query_out, sub_query_out_args = self._render_sub_query_out()
         sub_query_in, sub_query_in_args = self._render_sub_query_in()
 
-        self.add_to_query(self.render_match())
+        self.add_to_query(self.render_selection())
 
+        stamp_node, stamp_params = stamp_vertex_metadata(
+            "active_node", at=self.at, operation_ats=self.operation_ats, at_param="current_time"
+        )
+        self.params.update(stamp_params)
         query = """
-        CALL (node) {
-            MATCH (root:Root)<-[r:IS_PART_OF]-(node)
-            WHERE %(branch_filter)s
-            RETURN node as active_node, r.status = "active" AS is_active
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH target, active_node, is_active
-        WHERE is_active = TRUE
         CREATE (new_node:Node:$(target.new_labels) {
             uuid: active_node.uuid, kind: target.new_kind, namespace: target.new_namespace, branch_support: target.new_branch_support
         })
@@ -188,15 +211,7 @@ class NodeDuplicateQuery(Query):
             WITH active_node, new_node
             // set updated_by/at if we're on the default/global branch
             WHERE $set_metadata
-            SET active_node.previous_updated_at = CASE
-                WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_at
-                ELSE active_node.previous_updated_at
-            END,
-            active_node.previous_updated_by = CASE
-                WHEN active_node.updated_at IS NULL OR active_node.updated_at <> $current_time THEN active_node.updated_by
-                ELSE active_node.previous_updated_by
-            END
-            SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
+            %(stamp_node)s
             // new_node is created here, so it has no prior metadata to snapshot for rollback
             SET new_node.updated_at = $current_time, new_node.updated_by = $user_id
         }
@@ -251,5 +266,6 @@ class NodeDuplicateQuery(Query):
             "sub_query_in": sub_query_in,
             "sub_query_out_args": sub_query_out_args,
             "sub_query_in_args": sub_query_in_args,
+            "stamp_node": stamp_node,
         }
         self.add_to_query(query)

@@ -351,7 +351,7 @@ async def test_base_delete_with_added_branch_relationship(
 
 
 @pytest.mark.parametrize(
-    "base_action,diff_action,selection,expect_deleted",
+    ("base_action", "diff_action", "selection", "expect_deleted"),
     [
         # DELETE on base + UPDATE on diff: selecting BASE_BRANCH keeps the node deleted
         ("delete", "update", ConflictSelection.BASE_BRANCH, True),

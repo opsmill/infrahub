@@ -48,7 +48,7 @@ class TestIpamMergeReconcile(TestIpamReconcileBase):
         assert success is True
 
         updated_address = await NodeManager.get_one(db=db, id=new_address_1.id)
-        parent_rels = await updated_address.ip_prefix.get_relationships(db=db)  # type: ignore[union-attr]
+        parent_rels = await updated_address.ip_prefix.get_relationships(db=db)
         assert len(parent_rels) == 1
         assert parent_rels[0].peer_id == initial_dataset["net140"].id
 
@@ -74,16 +74,16 @@ class TestIpamMergeReconcile(TestIpamReconcileBase):
         deleted_prefix = await NodeManager.get_one(db=db, id=deleted_prefix_branch.id)
         assert deleted_prefix is None
         new_prefix_branch = await NodeManager.get_one(db=db, id=new_prefix.id)
-        parent_rels = await new_prefix_branch.parent.get_relationships(db=db)  # type: ignore[union-attr]
+        parent_rels = await new_prefix_branch.parent.get_relationships(db=db)
         assert len(parent_rels) == 1
         assert parent_rels[0].peer_id == initial_dataset["net146"].id
-        children_rels = await new_prefix_branch.children.get_relationships(db=db)  # type: ignore[union-attr]
+        children_rels = await new_prefix_branch.children.get_relationships(db=db)
         assert len(children_rels) == 3
         assert {child.peer_id for child in children_rels} == {
             initial_dataset["net142"].id,
             initial_dataset["net144"].id,
             initial_dataset["net145"].id,
         }
-        address_rels = await new_prefix_branch.ip_addresses.get_relationships(db=db)  # type: ignore[union-attr]
+        address_rels = await new_prefix_branch.ip_addresses.get_relationships(db=db)
         assert len(address_rels) == 2
         assert {ar.peer_id for ar in address_rels} == {new_address_1.id, initial_dataset["address10"].id}

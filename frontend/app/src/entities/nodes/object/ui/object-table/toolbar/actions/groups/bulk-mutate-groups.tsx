@@ -1,5 +1,6 @@
 import React from "react";
 
+import { GROUP_GENERIC } from "@/entities/groups/domain/model/group";
 import {
   ProcessingGroupsPanel,
   type ProcessingGroupsPanelProps,
@@ -39,7 +40,7 @@ export function BulkMutateGroups({
     <div className="flex">
       <RelationshipComboboxList
         autoFocus
-        peer="CoreGroup"
+        peer={GROUP_GENERIC}
         onSelect={(group) => {
           setSelectedGroups((prev) => [...prev, group]);
         }}

@@ -48,7 +48,7 @@ async def set_git_global_setting(setting_name: str, *values: str, replace_all: b
 async def unset_git_global_setting(setting_name: str) -> None:
     """Remove one key from the global git configuration; a key that is already absent is not an error."""
     returncode, stderr = await _run_git_config_global("--unset-all", setting_name)
-    if returncode not in (0, GIT_CONFIG_KEY_NOT_FOUND):
+    if returncode not in {0, GIT_CONFIG_KEY_NOT_FOUND}:
         log.error(f"Failed to unset git {setting_name}: {stderr or 'unknown error'}")
 
 
