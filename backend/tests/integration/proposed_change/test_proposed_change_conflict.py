@@ -173,7 +173,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         )
         peers = await proposed_change.validations.get_peers(db=db, peer_type=CoreValidator)
         assert peers
-        data_integrity = [validator for validator in peers.values() if validator.label.value == "Data Integrity"][0]
+        data_integrity = next(validator for validator in peers.values() if validator.label.value == "Data Integrity")
         assert data_integrity.conclusion.value.value == ValidatorConclusion.FAILURE.value
 
         data_checks = await client.filters(kind=CoreDataCheck, validator__ids=data_integrity.id)
@@ -256,26 +256,26 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
         peers = await proposed_change.validations.get_peers(db=db, peer_type=CoreValidator)
         assert peers
 
-        data_integrity = [validator for validator in peers.values() if validator.label.value == "Data Integrity"][0]
+        data_integrity = next(validator for validator in peers.values() if validator.label.value == "Data Integrity")
         assert data_integrity.conclusion.value.value == ValidatorConclusion.SUCCESS.value
-        ownership_artifacts = [
+        ownership_artifacts = next(
             validator for validator in peers.values() if validator.label.value == "Artifact Validator: Ownership report"
-        ][0]
+        )
         assert ownership_artifacts.conclusion.value.value == ValidatorConclusion.SUCCESS.value
-        converted_owner_artifacts = [
+        converted_owner_artifacts = next(
             validator for validator in peers.values() if validator.label.value == "Artifact Validator: converted-owner"
-        ][0]
+        )
         assert converted_owner_artifacts.conclusion.value.value == ValidatorConclusion.SUCCESS.value
-        description_check = [
+        description_check = next(
             validator for validator in peers.values() if validator.label.value == "Check: car_description_check"
-        ][0]
+        )
         assert description_check.conclusion.value.value == ValidatorConclusion.SUCCESS.value
-        age_check = [validator for validator in peers.values() if validator.label.value == "Check: owner_age_check"][0]
+        age_check = next(validator for validator in peers.values() if validator.label.value == "Check: owner_age_check")
         assert age_check.conclusion.value.value == ValidatorConclusion.SUCCESS.value
 
-        repository_merge_conflict = [
+        repository_merge_conflict = next(
             validator for validator in peers.values() if validator.label.value == "Repository Validator: dealership-car"
-        ][0]
+        )
         assert repository_merge_conflict.conclusion.value.value == ValidatorConclusion.SUCCESS.value
 
         # -------------------------------------------------

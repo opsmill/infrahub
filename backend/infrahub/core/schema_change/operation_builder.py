@@ -8,6 +8,7 @@ from pydantic_core import to_jsonable_python
 from infrahub.core.constants import HashableModelState
 from infrahub.core.models import HashableModel, HashableModelDiff
 from infrahub.core.schema import GenericSchema, NodeSchema
+from infrahub.core.schema.basenode_schema import SCHEMA_PATH_PROPERTIES
 from infrahub.core.schema_change.constants import (
     SCHEMA_ELEMENT_NAME_PROPERTY,
     SCHEMA_KIND_NAME_PROPERTIES,
@@ -140,7 +141,6 @@ class SchemaOperationBuilder:
         for kind_operations in sorted(changed_kinds, key=lambda item: item.kind_before):
             operations.extend(kind_operations.ordered())
 
-        # A new kind can take the name that a renamed kind gives up, so kinds are added after the renames.
         added_kinds = [kind for kind in diff.added if kind in unprocessed and stated_kinds[kind].definitions]
         operations.extend(
             self._node_add(kind=kind, node=unprocessed[kind])
@@ -267,7 +267,11 @@ class SchemaOperationBuilder:
         result = _ChangedKindOperations(kind_before=kind_before)
 
         for property_name, property_diff in sorted(kind_diff.changed.items()):
-            if property_name in SECTION_NAMES or property_name in SCHEMA_KIND_NAME_PROPERTIES:
+            if (
+                property_name in SECTION_NAMES
+                or property_name in SCHEMA_KIND_NAME_PROPERTIES
+                or property_name in SCHEMA_PATH_PROPERTIES
+            ):
                 continue
             for path in self._property_paths(property_name=property_name, property_diff=property_diff):
                 if not any(self._states_property(holder=item, path=path) for item in stated_kind.definitions):
@@ -288,6 +292,16 @@ class SchemaOperationBuilder:
                     )
                 )
 
+        result.node_properties.extend(
+            self._path_property_operations(
+                kind_before=kind_before,
+                branch_node=branch_node,
+                unprocessed_node=unprocessed_node,
+                stated_kind=stated_kind,
+            )
+        )
+        result.node_properties.sort(key=lambda operation: operation.property_name or "")
+
         if stated_kind.definitions:
             result.kind_renames.extend(self._kind_renames(branch_node=branch_node, unprocessed_node=unprocessed_node))
 
@@ -306,6 +320,39 @@ class SchemaOperationBuilder:
         result.element_properties.sort(key=self._element_sort_key)
         result.element_renames.sort(key=self._element_sort_key)
         return result
+
+    def _path_property_operations(
+        self,
+        kind_before: str,
+        branch_node: MainSchemaTypes,
+        unprocessed_node: MainSchemaTypes,
+        stated_kind: _StatedKind,
+    ) -> list[SchemaOperation]:
+        """Return an operation for each path property that the file states, unless renaming the branch value gives it.
+
+        Applying the operations renames the paths of a path property that no operation sets, so the file needs an
+        operation even for a value equal to the branch value when the renames would change that value.
+        """
+        renamed_node = branch_node.duplicate()
+        renamed_node.handle_field_renames_and_deletes(other=unprocessed_node)
+        operations: list[SchemaOperation] = []
+        for property_name in SCHEMA_PATH_PROPERTIES:
+            if not any(self._states_property(holder=item, path=property_name) for item in stated_kind.definitions):
+                continue
+            value = self._json_value(holder=unprocessed_node, path=property_name)
+            previous_value = self._json_value(holder=branch_node, path=property_name)
+            if value == previous_value and value == self._json_value(holder=renamed_node, path=property_name):
+                continue
+            operations.append(
+                SchemaOperation(
+                    operation_type=SchemaOperationType.NODE_PROPERTY,
+                    kind=kind_before,
+                    property_name=property_name,
+                    value=value,
+                    previous_value=previous_value,
+                )
+            )
+        return operations
 
     def _element_sort_key(self, operation: SchemaOperation) -> tuple[int, str, str]:
         section_position = SECTION_ORDER.index(operation.section) if operation.section is not None else -1
@@ -374,8 +421,10 @@ class SchemaOperationBuilder:
             )
 
         for element_name, element_diff in section_diff.changed.items():
-            element = find_element(node=unprocessed_node, section=section, name=element_name)
             file_elements = stated_kind.find_elements(section=section, name=element_name)
+            element = self._stated_element(
+                node=unprocessed_node, section=section, name=element_name, file_elements=file_elements
+            )
             if (
                 element is None
                 or element_name in removed_overrides
@@ -413,6 +462,21 @@ class SchemaOperationBuilder:
                     else:
                         result.element_properties.append(operation)
 
+    def _stated_element(
+        self,
+        node: MainSchemaTypes,
+        section: SchemaOperationSection,
+        name: str,
+        file_elements: list[AttributeSchema | RelationshipSchema],
+    ) -> AttributeSchema | RelationshipSchema | None:
+        # Before processing, a node can hold an element inherited from a generic beside its own element of the same name.
+        for file_element in file_elements:
+            if file_element.id is not None and (
+                element := find_element_by_id(node=node, section=section, element_id=file_element.id)
+            ):
+                return element
+        return find_element(node=node, section=section, name=name)
+
     def _property_paths(self, property_name: str, property_diff: HashableModelDiff | None) -> list[str]:
         """Return the dotted path of each changed leaf property, keeping a nested model whole when its fields differ."""
         if property_diff is None or property_diff.added or property_diff.removed or not property_diff.changed:
@@ -446,12 +510,12 @@ class SchemaOperationBuilder:
         self, path: str, new_holder: object, previous_holder: object
     ) -> tuple[JsonValue, JsonValue] | None:
         """Return the new and the previous value of a property as JSON values, or `None` when they are equal."""
-        value: JsonValue = to_jsonable_python(
-            read_property(holder=new_holder, property_name=path), serialize_as_any=True
-        )
-        previous_value: JsonValue = to_jsonable_python(
-            read_property(holder=previous_holder, property_name=path), serialize_as_any=True
-        )
+        value = self._json_value(holder=new_holder, path=path)
+        previous_value = self._json_value(holder=previous_holder, path=path)
         if value == previous_value:
             return None
         return value, previous_value
+
+    def _json_value(self, holder: object, path: str) -> JsonValue:
+        value: JsonValue = to_jsonable_python(read_property(holder=holder, property_name=path), serialize_as_any=True)
+        return value

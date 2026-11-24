@@ -174,8 +174,8 @@ async def test_node_mutation_to_group_event(
     assert isinstance(members_removed[1], GroupMemberRemovedEvent)
     assert person_deleted.node_id == person_id
     removal_events: list[GroupMemberRemovedEvent] = [members_removed[0], members_removed[1]]
-    child_group_event = [event for event in removal_events if event.node_id == child_group_1.id][0]
-    orphan_group_event = [event for event in removal_events if event.node_id == orphan_group_1.id][0]
+    child_group_event = next(event for event in removal_events if event.node_id == child_group_1.id)
+    orphan_group_event = next(event for event in removal_events if event.node_id == orphan_group_1.id)
     assert len(child_group_event.members) == 1
     assert EventNode(id=person_id, kind="TestPerson") in child_group_event.members
     assert len(child_group_event.ancestors) == 2

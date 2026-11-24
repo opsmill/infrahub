@@ -80,12 +80,12 @@ class AttributeLengthChecker(ConstraintCheckerInterface):
         return "attribute.length.update"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
-        return request.constraint_name in (
+        return request.constraint_name in {
             "attribute.min_length.update",
             "attribute.max_length.update",
             ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MIN_LENGTH_UPDATE.value,
             ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MAX_LENGTH_UPDATE.value,
-        )
+        }
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         grouped_data_paths_list: list[GroupedDataPaths] = []

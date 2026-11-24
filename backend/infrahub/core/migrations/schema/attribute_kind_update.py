@@ -4,10 +4,10 @@ from collections.abc import Sequence  # noqa: TC003  needed for pydantic
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from infrahub.core.migrations.schema.phases import MigrationPhase
+from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 from infrahub.types import is_large_attribute_type
 
 from ..query import AttributeMigrationQuery, MigrationBaseQuery
-from ..query.selection import MigrationSelectionQuery
 from ..shared import AttributeSchemaMigration, MigrationInput, MigrationResult
 
 if TYPE_CHECKING:
@@ -130,17 +130,13 @@ CALL (has_value_e) {
 CALL (attr, n) {
     WITH attr, n
     WHERE $set_metadata
-    SET attr.previous_updated_at = CASE WHEN attr.updated_at IS NULL OR attr.updated_at <> $at THEN attr.updated_at ELSE attr.previous_updated_at END,
-        attr.previous_updated_by = CASE WHEN attr.updated_at IS NULL OR attr.updated_at <> $at THEN attr.updated_by ELSE attr.previous_updated_by END
-    SET attr.updated_at = $at, attr.updated_by = $user_id
-    SET n.previous_updated_at = CASE WHEN n.updated_at IS NULL OR n.updated_at <> $at THEN n.updated_at ELSE n.previous_updated_at END,
-        n.previous_updated_by = CASE WHEN n.updated_at IS NULL OR n.updated_at <> $at THEN n.updated_by ELSE n.previous_updated_by END
-    SET n.updated_at = $at, n.updated_by = $user_id
+    %(stamp_attr)s
+    %(stamp_n)s
 }
 """
 
 
-class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery, MigrationSelectionQuery):
+class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
     name = "migration_attribute_kind"
     insert_return = False
     selected_node = "n"
@@ -148,8 +144,12 @@ class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery, MigrationSelect
     def render_selection(self) -> str:
         branch_filter, _ = self.branch.get_query_filter_path(at=self.at)
         kind = self.migration.previous_schema.kind
+        schema_kinds = [kind, f"Profile{kind}", f"Template{kind}"]
+        # The index hint of the node scope applies only to a MATCH that holds the node alone.
+        node_match = self.render_node_match("n", schema_kinds)
+        node_attribute_match = f"{node_match}\nMATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute)"
         return """
-MATCH (n:%(schema_kinds)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)
+%(node_attribute_match)s
 WHERE attr.name = $attr_name
 WITH DISTINCT n, attr
 
@@ -179,7 +179,7 @@ CALL (n, attr) {
     WHERE is_active AND is_indexed <> $needs_index
     RETURN has_value_e, av
 }
-""" % {"schema_kinds": f"{kind}|Profile{kind}|Template{kind}", "branch_filter": branch_filter}
+""" % {"node_attribute_match": node_attribute_match, "branch_filter": branch_filter}
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         _, branch_params = self.branch.get_query_filter_path(at=self.at)
@@ -196,7 +196,15 @@ CALL (n, attr) {
         self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
 
         template = TOWARD_INDEXED_QUERY if needs_index else TOWARD_LARGE_QUERY
-        self.add_to_query(template % {"selection": self.render_selection(), "edge_updates": EDGE_UPDATES_QUERY})
+        stamp_attr, stamp_params = stamp_vertex_metadata("attr", at=self.at, operation_ats=self.operation_ats)
+        self.params.update(stamp_params)
+        stamp_n, stamp_params = stamp_vertex_metadata("n", at=self.at, operation_ats=self.operation_ats)
+        self.params.update(stamp_params)
+        edge_updates = EDGE_UPDATES_QUERY % {
+            "stamp_attr": stamp_attr,
+            "stamp_n": stamp_n,
+        }
+        self.add_to_query(template % {"selection": self.render_selection(), "edge_updates": edge_updates})
 
 
 class AttributeKindUpdateMigration(AttributeSchemaMigration):

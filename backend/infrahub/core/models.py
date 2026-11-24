@@ -212,7 +212,7 @@ class SchemaUpdateValidationResult(BaseModel):
             #     pass
 
             for node_field_name, node_field_diff in schema_diff.changed.items():
-                if node_field_diff and node_field_name in ["attributes", "relationships"]:
+                if node_field_diff and node_field_name in {"attributes", "relationships"}:
                     self._process_attrs_rels(
                         schema=schema_node, node_field_name=node_field_name, node_field_diff=node_field_diff
                     )
@@ -445,12 +445,10 @@ class HashableModel(BaseModel):
     def _get_signature_field(cls, value: Any) -> list[bytes]:
         hashes: list[bytes] = []
         if isinstance(value, list):
-            for item in sorted(value):
-                hashes.append(cls._get_hash_value(item))
+            hashes.extend(cls._get_hash_value(item) for item in sorted(value))
         elif isinstance(value, dict):
             for key, content in frozenset(sorted(value.items())):
-                hashes.append(cls._get_hash_value(key))
-                hashes.append(cls._get_hash_value(content))
+                hashes.extend((cls._get_hash_value(key), cls._get_hash_value(content)))
         else:
             hashes.append(cls._get_hash_value(value))
 

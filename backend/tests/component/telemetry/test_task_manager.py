@@ -147,10 +147,9 @@ async def seeded_activity(prefect_client: PrefectClient) -> dict[str, int]:
     out_of_window = window_start - timedelta(minutes=1)
     events: list[Event] = []
     for event_name, count in _ACTIVITY_IN_WINDOW_COUNTS.items():
-        for index in range(count):
-            events.append(
-                _named_event(event_name, in_window, f"{event_name}.{suffix}.in.{index}"),
-            )
+        events.extend(
+            _named_event(event_name, in_window, f"{event_name}.{suffix}.in.{index}") for index in range(count)
+        )
         events.append(_named_event(event_name, out_of_window, f"{event_name}.{suffix}.out"))
     await _post_events(prefect_client, events)
     return dict(_ACTIVITY_IN_WINDOW_COUNTS)

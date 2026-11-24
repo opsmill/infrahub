@@ -209,7 +209,7 @@ async def test_materializing_a_component_costs_a_constant_number_of_queries(
         counts[nbr_interfaces] = sum(counting_db.query_counts.values())
 
     per_component = (counts[3] - counts[1]) / 2
-    assert per_component == (counts[5] - counts[3]) / 2, f"the cost per component is not constant: {counts}"
+    assert counts[3] - counts[1] == counts[5] - counts[3], f"the cost per component is not constant: {counts}"
     assert per_component <= 2, f"materializing a component costs {per_component} queries: {counts}"
 
 
@@ -256,7 +256,7 @@ async def test_creating_from_a_nested_template_reads_no_peer_at_either_depth(
     # 3, those same 2 plus the count constraint on its mandatory parent. Reading the second level
     # costs nothing per interface: a level of subtemplates is read once, not once per parent.
     per_interface = (counts[3] - counts[1]) / 2
-    assert per_interface == (counts[5] - counts[3]) / 2, f"the cost per nested interface is not constant: {counts}"
+    assert counts[3] - counts[1] == counts[5] - counts[3], f"the cost per nested interface is not constant: {counts}"
     assert per_interface <= 5, f"an interface and the SFP under it cost {per_interface} queries: {counts}"
 
 
@@ -346,6 +346,6 @@ async def test_a_peer_a_component_carries_is_not_read_back_for_every_component(
     assert set(node_reads.values()) == {3}, f"the tag was read once per component: {node_reads}"
     assert set(attribute_reads.values()) == {3}, f"the tag's attributes were read again: {attribute_reads}"
     per_component = (counts[3] - counts[1]) / 2
-    assert per_component == (counts[5] - counts[3]) / 2 == 2, (
+    assert counts[3] - counts[1] == counts[5] - counts[3] == 4, (
         f"a component carrying a peer costs {per_component} queries rather than a check and a write: {counts}"
     )

@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
+from infrahub.exceptions import SchemaChangeRecordNotFoundError
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -29,9 +31,9 @@ class SchemaChangeRecordStore(Protocol):
         parent_id: str | None,
         applied_at: Timestamp,
         user_id: str,
-    ) -> None: ...
+    ) -> bool: ...
 
-    async def mark_failed(self, *, schema_change_id: str, application_id: str, error: str, user_id: str) -> None: ...
+    async def mark_failed(self, *, schema_change_id: str, application_id: str, error: str, user_id: str) -> bool: ...
 
     async def mark_failed_if_running(
         self, *, schema_change_id: str, application_id: str, error: str, user_id: str
@@ -76,9 +78,14 @@ class SchemaChangeRecorder:
         )
 
     async def complete(self, *, recording: SchemaChangeRecording, branch: Branch, user_id: str) -> None:
-        """Set the schema change and its application to applied, with the next version of the branch and its parent."""
+        """Set the schema change and its application to applied, with the next version of the branch and its parent.
+
+        Raises:
+            SchemaChangeRecordNotFoundError: When the schema change, its application or the parent is no longer stored.
+
+        """
         version = await self.version_resolver.resolve_next(branch=branch)
-        await self.repository.mark_applied(
+        applied = await self.repository.mark_applied(
             schema_change_id=recording.schema_change_id,
             application_id=recording.application_id,
             version=version.version,
@@ -86,14 +93,20 @@ class SchemaChangeRecorder:
             applied_at=recording.at,
             user_id=user_id,
         )
+        if not applied:
+            raise SchemaChangeRecordNotFoundError(schema_change_id=recording.schema_change_id)
 
-    async def fail(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> None:
+    async def fail(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> bool:
         """Set the schema change and its application to failed with the error, without a version.
 
         An applied migration record becomes rolled back, a waiting one cancelled, and a running one failed with the
         error added to its errors; a failed one stays failed.
+
+        Returns:
+            Whether the schema change was set to failed; False when its records are no longer stored.
+
         """
-        await self.repository.mark_failed(
+        return await self.repository.mark_failed(
             schema_change_id=recording.schema_change_id,
             application_id=recording.application_id,
             error=error,
@@ -124,6 +137,7 @@ class SchemaChangeRecorder:
 
         Raises:
             ValueError: When `operations` is empty; nothing is stored.
+            SchemaChangeRecordNotFoundError: When the created records are deleted before they are set to applied.
 
         """
         recording = await self.start(branch=branch, operations=operations, at=at, user_id=user_id)

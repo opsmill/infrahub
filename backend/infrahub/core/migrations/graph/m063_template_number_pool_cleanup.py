@@ -81,7 +81,7 @@ class Migration063(MigrationRequiringRebase):
 
         # Migration contract: failures become MigrationResult errors; the runner reports them and halts
         except Exception as exc:  # noqa: BLE001
-            error_msg = str(exc) or f"{type(exc).__name__}: {repr(exc)}"
+            error_msg = str(exc) or f"{type(exc).__name__}: {exc!r}"
             return MigrationResult(errors=[error_msg])
 
         return MigrationResult()

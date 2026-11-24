@@ -48,21 +48,21 @@ def test_empty_tracker_reads_as_unstressed() -> None:
     assert tracker.window_min() is None
     assert tracker.window_median() is None
     assert tracker.sample_count() == 0
-    assert tracker.stress_ratio_median() == 1.0
+    assert tracker.stress_ratio_median() == pytest.approx(1.0)
 
 
 def test_floor_is_absolute_running_minimum() -> None:
     tracker = ReferenceQueryLoadTracker(observers=[], window_seconds=WINDOW, clock=FakeClock())
 
     tracker.record(0.010)
-    assert tracker.floor() == 0.010
+    assert tracker.floor() == pytest.approx(0.010)
 
     tracker.record(0.005)
-    assert tracker.floor() == 0.005
+    assert tracker.floor() == pytest.approx(0.005)
 
     # A slower observation never raises the floor.
     tracker.record(0.020)
-    assert tracker.floor() == 0.005
+    assert tracker.floor() == pytest.approx(0.005)
 
 
 def test_window_evicts_samples_older_than_the_window() -> None:
@@ -76,10 +76,10 @@ def test_window_evicts_samples_older_than_the_window() -> None:
     tracker.record(0.030)  # t=35, horizon=5 → the t=0 sample falls out of the window
 
     assert tracker.sample_count() == 2
-    assert tracker.window_min() == 0.020
+    assert tracker.window_min() == pytest.approx(0.020)
     assert tracker.window_median() == pytest.approx((0.020 + 0.030) / 2)
     # The floor still remembers the evicted best observation.
-    assert tracker.floor() == 0.010
+    assert tracker.floor() == pytest.approx(0.010)
 
 
 def test_window_min_recovers_when_the_minimum_sample_is_evicted() -> None:
@@ -91,12 +91,12 @@ def test_window_min_recovers_when_the_minimum_sample_is_evicted() -> None:
     tracker.record(0.008)  # t=5
     clock.advance(5)
     tracker.record(0.004)  # t=10
-    assert tracker.window_min() == 0.002
+    assert tracker.window_min() == pytest.approx(0.002)
 
     clock.advance(26)
     tracker.record(0.006)  # t=36, horizon=6 → the t=0 minimum leaves the window
-    assert tracker.window_min() == 0.004
-    assert tracker.floor() == 0.002
+    assert tracker.window_min() == pytest.approx(0.004)
+    assert tracker.floor() == pytest.approx(0.002)
 
 
 def test_reads_expire_stale_window_after_idle_without_recording() -> None:
@@ -120,7 +120,7 @@ def test_reads_expire_stale_window_after_idle_without_recording() -> None:
     assert tracker.window_median() is None
     assert tracker.stress_ratio_median() == UNSTRESSED_RATIO
     # The floor is absolute and survives the window emptying.
-    assert tracker.floor() == 0.001
+    assert tracker.floor() == pytest.approx(0.001)
 
 
 def test_stress_ratio_reflects_window_relative_to_floor() -> None:
@@ -128,13 +128,13 @@ def test_stress_ratio_reflects_window_relative_to_floor() -> None:
     tracker = ReferenceQueryLoadTracker(observers=[], window_seconds=WINDOW, clock=clock)
 
     tracker.record(0.001)  # t=0, sets the floor
-    assert tracker.stress_ratio_median() == 1.0
+    assert tracker.stress_ratio_median() == pytest.approx(1.0)
 
     clock.advance(WINDOW + 1)
     tracker.record(0.010)  # the floor sample is now out of the window
     tracker.record(0.030)
     # Floor stays 0.001; the window min is 0.010 and the median is 0.020.
-    assert tracker.window_min() == 0.010
+    assert tracker.window_min() == pytest.approx(0.010)
     assert tracker.stress_ratio_median() == pytest.approx(20.0)
 
 
@@ -148,8 +148,8 @@ def test_window_median_ignores_outliers() -> None:
         tracker.record(0.002)
     tracker.record(0.500)  # a single large outlier
 
-    assert tracker.window_min() == 0.002
-    assert tracker.window_median() == 0.002  # a mean would be pulled up to ~0.052
+    assert tracker.window_min() == pytest.approx(0.002)
+    assert tracker.window_median() == pytest.approx(0.002)  # a mean would be pulled up to ~0.052
 
 
 def test_sub_resolution_observations_are_clamped_to_the_floor() -> None:
@@ -169,7 +169,7 @@ def test_zero_baseline_then_load_still_moves_the_ratio() -> None:
     tracker = ReferenceQueryLoadTracker(observers=[], window_seconds=WINDOW, clock=clock)
 
     tracker.record(0.0)  # healthy, sub-resolution → clamped to the resolution floor
-    assert tracker.stress_ratio_median() == 1.0
+    assert tracker.stress_ratio_median() == pytest.approx(1.0)
 
     clock.advance(WINDOW + 1)  # age the baseline sample out of the window
     for _ in range(5):
@@ -177,7 +177,7 @@ def test_zero_baseline_then_load_still_moves_the_ratio() -> None:
 
     # Floor stays at the resolution; the window is entirely 20 ms, so the ratio climbs.
     assert tracker.floor() == MIN_OBSERVATION_SECONDS
-    assert tracker.window_min() == 0.020
+    assert tracker.window_min() == pytest.approx(0.020)
     assert tracker.stress_ratio_median() == pytest.approx(0.020 / MIN_OBSERVATION_SECONDS)
 
 
@@ -206,7 +206,7 @@ def test_failing_observer_does_not_fail_the_recording() -> None:
     # query that fed the observation, and must not skip the sinks behind it.
     tracker.record(0.004)
 
-    assert tracker.floor() == 0.004
+    assert tracker.floor() == pytest.approx(0.004)
     assert survivor.observations == [
         {"floor": 0.004, "window_min": 0.004, "stress_ratio_median": 1.0},
     ]

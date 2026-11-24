@@ -24,7 +24,7 @@ def _make_context(branch_name: str) -> InfrahubContext:
     )
 
 
-def _filter_calls(mock_workflow: MagicMock, workflow: WorkflowDefinition) -> list[call]:  # type: ignore
+def _filter_calls(mock_workflow: MagicMock, workflow: WorkflowDefinition) -> list[call]:  # ty: ignore[invalid-type-form]
     return [c for c in mock_workflow.submit_workflow.call_args_list if c.kwargs.get("workflow") == workflow]
 
 

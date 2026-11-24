@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import pytest
 
 from infrahub.core.constants import HashableModelState
-from infrahub.core.schema import AttributeSchema, DropdownChoice, NodeSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, DropdownChoice, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.schema_change.applier import SchemaChangeApplier
 from infrahub.core.schema_change.candidate import SchemaCandidateBuilder
@@ -23,12 +23,14 @@ from infrahub.exceptions import (
 )
 from tests.constants import TestKind
 from tests.unit.core.schema_change.helpers import (
+    BASE_NAMESPACE,
     TAG_STATUS_ATTRIBUTE,
     ApplierCall,
     FixedOperationsBuilder,
     RecordingSchemaChangeApplier,
     SchemaLoadResult,
     assert_same_load_result,
+    base_generic_definition,
     base_node_definition,
     build_base_schema_root,
     build_direct_load_result,
@@ -36,6 +38,8 @@ from tests.unit.core.schema_change.helpers import (
 )
 
 UNKNOWN_KIND_ID = "0e7b5c2a-91d4-4f6e-b3a8-5d2c7f10e946"
+INTERFACE_ENABLED_ATTRIBUTE = "enabled"
+PHYSICAL_INTERFACE_TYPE_ATTRIBUTE = "phys_type"
 TAG_STATUS_CHOICES_BEFORE: list[dict[str, str]] = [
     {"name": "active", "color": "#2e7d32"},
     {"name": "reserved", "color": "#f9a825"},
@@ -392,6 +396,55 @@ def _swap_kind_names(schema: SchemaBranch) -> SchemaRoot:
     return SchemaRoot(nodes=[tag, sfp])
 
 
+def _new_tag_kind() -> NodeSchema:
+    return NodeSchema(
+        name="Tag",
+        namespace=BASE_NAMESPACE,
+        label="Tag",
+        attributes=[AttributeSchema(name="code", kind="Text", unique=True)],
+    )
+
+
+def _rename_kind_and_add_a_kind_under_its_name_after_it(schema: SchemaBranch) -> SchemaRoot:
+    tag = _stated_node(schema, TestKind.TAG)
+    tag.name = "Label"
+    return SchemaRoot(nodes=[tag, _new_tag_kind()])
+
+
+def _rename_kind_and_add_a_kind_under_its_name_before_it(schema: SchemaBranch) -> SchemaRoot:
+    tag = _stated_node(schema, TestKind.TAG)
+    tag.name = "Label"
+    return SchemaRoot(nodes=[_new_tag_kind(), tag])
+
+
+def _stated_generic(schema: SchemaBranch, kind: str) -> GenericSchema:
+    """Return a base generic as a schema file states it, with the IDs that the branch schema holds for it and its fields."""
+    stored = schema.get(name=kind, duplicate=False)
+    generic = base_generic_definition(kind)
+    generic.id = stored.id
+    for attribute in generic.attributes:
+        attribute.id = stored.get_attribute(name=attribute.name).id
+    for relationship in generic.relationships:
+        relationship.id = stored.get_relationship(name=relationship.name).id
+    return generic
+
+
+def _rename_generic_attribute_and_inheriting_node_attribute_onto_it(schema: SchemaBranch) -> SchemaRoot:
+    interface = _stated_generic(schema, TestKind.INTERFACE)
+    interface.get_attribute(name=INTERFACE_ENABLED_ATTRIBUTE).name = "admin_enabled"
+    physical_interface = _stated_node(schema, TestKind.PHYSICAL_INTERFACE)
+    physical_interface.get_attribute(name=PHYSICAL_INTERFACE_TYPE_ATTRIBUTE).name = INTERFACE_ENABLED_ATTRIBUTE
+    return SchemaRoot(generics=[interface], nodes=[physical_interface])
+
+
+def _rename_inheriting_node_attribute_and_generic_attribute_onto_it(schema: SchemaBranch) -> SchemaRoot:
+    physical_interface = _stated_node(schema, TestKind.PHYSICAL_INTERFACE)
+    physical_interface.get_attribute(name=PHYSICAL_INTERFACE_TYPE_ATTRIBUTE).name = "port_type"
+    interface = _stated_generic(schema, TestKind.INTERFACE)
+    interface.get_attribute(name=INTERFACE_ENABLED_ATTRIBUTE).name = PHYSICAL_INTERFACE_TYPE_ATTRIBUTE
+    return SchemaRoot(generics=[interface], nodes=[physical_interface])
+
+
 @dataclass(frozen=True)
 class ReusedNameCase:
     name: str
@@ -404,6 +457,13 @@ def _reused_field_name_message(field_type: str, name: str, kind: str) -> str:
         f"The schema load frees the {field_type} name '{name}' of the kind {kind} and gives it to another "
         f"{field_type}, which Infrahub cannot apply in one load. Load the changes in separate steps, so that no load "
         "both frees and reuses a name."
+    )
+
+
+def _reused_kind_message(kind: str) -> str:
+    return (
+        f"The schema load frees the kind {kind} and gives it to another kind, which Infrahub cannot apply in one "
+        "load. Load the changes in separate steps, so that no load both frees and reuses a kind."
     )
 
 
@@ -431,9 +491,30 @@ REUSED_NAME_CASES = [
     ReusedNameCase(
         name="swapped_kind_names",
         schema_file=_swap_kind_names,
-        expected_message=(
-            f"The schema load frees the kind {TestKind.SFP} and gives it to another kind, which Infrahub cannot apply "
-            "in one load. Load the changes in separate steps, so that no load both frees and reuses a kind."
+        expected_message=_reused_kind_message(TestKind.SFP),
+    ),
+    ReusedNameCase(
+        name="kind_renamed_and_a_new_kind_added_under_its_name_after_it",
+        schema_file=_rename_kind_and_add_a_kind_under_its_name_after_it,
+        expected_message=_reused_kind_message(TestKind.TAG),
+    ),
+    ReusedNameCase(
+        name="kind_renamed_and_a_new_kind_added_under_its_name_before_it",
+        schema_file=_rename_kind_and_add_a_kind_under_its_name_before_it,
+        expected_message=_reused_kind_message(TestKind.TAG),
+    ),
+    ReusedNameCase(
+        name="generic_attribute_renamed_and_an_inheriting_node_attribute_renamed_onto_its_name",
+        schema_file=_rename_generic_attribute_and_inheriting_node_attribute_onto_it,
+        expected_message=_reused_field_name_message(
+            "attribute", INTERFACE_ENABLED_ATTRIBUTE, TestKind.PHYSICAL_INTERFACE
+        ),
+    ),
+    ReusedNameCase(
+        name="inheriting_node_attribute_renamed_and_a_generic_attribute_renamed_onto_its_name",
+        schema_file=_rename_inheriting_node_attribute_and_generic_attribute_onto_it,
+        expected_message=_reused_field_name_message(
+            "attribute", PHYSICAL_INTERFACE_TYPE_ATTRIBUTE, TestKind.PHYSICAL_INTERFACE
         ),
     ),
 ]

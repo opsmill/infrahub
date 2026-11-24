@@ -586,9 +586,9 @@ contract is in [contracts/schema-change-history.graphql](contracts/schema-change
   `graphql/queries/branch.py::infrahub_branch_resolver` does. The `Preference` queries that the
   task names are not paginated; `InfrahubBranch` is the paginated query over `StandardNode`
   records.
-- Order: the schema changes by the time they were created, the most recent first. Loads and
-  mutations create and apply their schema changes under the schema lock, so on one branch this is
-  also the order of the versions.
+- Order: the schema changes by the time they were created, the most recent first. Each API server
+  sets the creation time from its own clock, so with several API servers whose clocks differ, a
+  schema change can be listed below one with a lower version.
 - The resolver reads a page only when the request selects `edges`; the page read also returns
   `count`. When the request selects `count` without `edges`, the resolver only counts. It opens
   its own read-only database session.

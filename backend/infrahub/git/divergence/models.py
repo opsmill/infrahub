@@ -31,15 +31,15 @@ class RefDivergence:
     classification: RefClassification
 
     def __post_init__(self) -> None:
-        if self.imported_commit is None and self.classification not in (
+        if self.imported_commit is None and self.classification not in {
             RefClassification.UNCHANGED,
             RefClassification.FAST_FORWARD,
-        ):
+        }:
             raise ValueError(f"A branch with no imported commit cannot be {self.classification}")
-        if self.remote_head is None and self.classification not in (
+        if self.remote_head is None and self.classification not in {
             RefClassification.REMOTE_ABSENT,
             RefClassification.UNCHANGED,
-        ):
+        }:
             raise ValueError(f"A branch with no remote head cannot be {self.classification}")
         if self.remote_head is not None and self.classification is RefClassification.REMOTE_ABSENT:
             raise ValueError(f"A branch whose remote head reads {self.remote_head} is not remote-absent")
@@ -60,7 +60,7 @@ class RefDivergence:
     @property
     def discarded_commit(self) -> str | None:
         """The imported commit when the remote history no longer contains it, None when it still does."""
-        if self.classification in (RefClassification.REWRITE, RefClassification.RETARGET):
+        if self.classification in {RefClassification.REWRITE, RefClassification.RETARGET}:
             return self.imported_commit
         return None
 

@@ -913,7 +913,7 @@ class TestDiffCoordinator:
         parent_rel = rels_by_name["parent"]
         assert parent_rel.cardinality is RelationshipCardinality.ONE
         assert len(parent_rel.relationships) == 1
-        parent_element = list(parent_rel.relationships)[0]
+        parent_element = next(iter(parent_rel.relationships))
         assert parent_element.peer_id == region2.id
 
         # R2 must be present as ADDED

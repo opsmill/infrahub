@@ -110,35 +110,50 @@ A schema load and a schema check call `from_schema_root` through
 1. When the file gives a kind of the branch schema an ID that the branch schema does not hold, it
    raises `SchemaNotFoundError` before any operation is built. Laying that file over the branch
    schema would replace the kind whole, which no operation states.
-2. `SchemaOperationBuilder` lays the merged file over a copy of the branch schema, processes it,
+2. When the file renames a kind and states a kind without an ID under the old name of that kind,
+   it raises `SchemaNameReusedError` (HTTP 422) before any operation is built. Laying the file over
+   the branch schema (`SchemaBranch.load_schema`) and saving the schema
+   (`SchemaManager.update_schema_to_db`, which saves added kinds before changed kinds) both find a
+   kind without an ID by its name. Depending on the order of the two kinds in the file, the new kind
+   is merged into the renamed kind and lost, or it overwrites the stored row of the renamed kind.
+3. `SchemaOperationBuilder` lays the merged file over a copy of the branch schema, processes it,
    diffs it against the branch schema, and keeps each path of that diff that the file states as an
    operation. That processed copy is the direct-load schema. A renamed kind gives one
    `node_rename` operation that sets its name and namespace together, so the kind never passes
    through a kind between the two. The operations of removed kinds come first, then those of
-   changed kinds, then the `node_add` operations, so a new kind can take the kind that a renamed
-   kind gives up. Within a kind, the renames of attributes and relationships come before the
-   additions, so an added element can take a name that a rename frees.
-3. When the operations free an attribute name of a kind, or a kind, and give it to another owner
+   changed kinds, then the `node_add` operations. Within a kind, the renames of attributes and
+   relationships come before the additions, so an added relationship can take a name that a rename
+   frees. A changed element is matched to the file's element by ID first, because before
+   processing a node can hold an element inherited from a generic beside its own element of the
+   same name.
+4. When the operations free an attribute name of a kind, or a kind, and give it to another owner
    in the same load, the builder raises `SchemaNameReusedError` (HTTP 422) before any operation is
-   applied. A name is freed by a rename or a removal, and taken by a rename or an add; a new kind
-   (`node_add`) may take a freed kind. The data migrations of attribute renames, adds and removals
-   find attributes by name, and those of kind renames find nodes by the label of the kind. The
-   phases run removals, then renames, then additions (see
-   [The order of the migrations](#the-order-of-the-migrations)), but all the renames of a load run
-   in one phase, so a chain or a swap of names in one load can reach the wrong attribute or node.
-   The refusal also covers a name that a removal or a rename frees and an addition takes, which the
-   phase order applies correctly.
-   The message tells the user to load the changes in separate steps. Relationship names are not
-   refused: the data of a relationship is keyed by its identifier, which a load cannot change
-   (`UpdateSupport.NOT_SUPPORTED`), and a relationship rename has no data migration. Chained and
-   swapped relationship renames therefore load.
-4. The applier applies the operations to a copy of the branch schema and processes it. An element
+   applied. A name is freed by a rename or a removal, and taken by a rename or an add. An attribute
+   name that a generic frees or takes counts for every kind that inherits from the generic
+   (`used_by`), because the data migration of the generic's attribute changes the nodes of those
+   kinds. The data migrations of attribute renames, adds and removals find attributes by name, and
+   those of kind renames find nodes by the label of the kind. The phases run removals, then renames,
+   then additions (see [The order of the migrations](#the-order-of-the-migrations)), but all the
+   renames of a load run in one phase, so a chain or a swap of names in one load can reach the wrong
+   attribute or node. The refusal also covers a name that a removal or a rename frees and an
+   addition takes, which the phase order applies correctly. The message tells the user to load the
+   changes in separate steps. Relationship names are not refused, and neither is a name that moves
+   between an attribute and a relationship: the data of a relationship is keyed by its identifier,
+   which a load cannot change (`UpdateSupport.NOT_SUPPORTED`), and a relationship rename has no data
+   migration. Chained and swapped relationship renames therefore load.
+5. The applier applies the operations to a copy of the branch schema and processes it. An element
    operation names its element by its name before the load. While a chain or a swap of renames
    runs, two elements of a kind can share a name; the applier then picks the element that no
    earlier operation renamed, tracking renamed elements by ID. After the last operation, a rename
    that leaves two elements of a kind with the same name raises
-   `SchemaOperationTargetExistsError`.
-5. `SchemaCandidateComparer` compares the applied schema with the direct-load schema, kind by kind,
+   `SchemaOperationTargetExistsError`. `FieldNameChanges` then rewrites the path properties of
+   each kind (`SCHEMA_PATH_PROPERTIES`: `uniqueness_constraints`, `human_friendly_id`,
+   `display_labels`, `order_by` and `default_filter`) to the names after the load, except the ones
+   that a `node_property` operation set. A value that an operation set already uses the names
+   after the load, as the direct load keeps a value that the file states over the rewritten one.
+   So the builder makes a `node_property` operation for each path property that the file states,
+   unless the branch value, both as it is and rewritten, equals the file's value.
+6. `SchemaCandidateComparer` compares the applied schema with the direct-load schema, kind by kind,
    without the IDs of the kinds and of their attributes and relationships: saving a schema gives a
    new kind or element a database ID whatever ID the file set, and the operations hold no ID.
 
@@ -196,8 +211,10 @@ progress and are best effort.
    the parent and marks both records `applied`, with `applied_at` equal to the application's `at`.
    When it raises, the coordinator rolls the update back as it does for a failed migration, and the
    load fails. When the schema change, its application or the parent is no longer stored, for example
-   because the branch was deleted during the load, `mark_applied` raises
-   `SchemaChangeRecordNotFoundError` (HTTP 422).
+   because the branch was deleted during the load, `mark_applied` returns false and `complete`
+   raises `SchemaChangeRecordNotFoundError` (HTTP 422). The three status writes of the repository
+   (`mark_applied`, `mark_failed` and `mark_failed_if_running`) each return whether they changed the
+   records, and the recorder or the runner decides what a false result means.
 4. When the update raises an `Exception`, the coordinator has already rolled back. The runner calls
    `fail` with the text of the error and raises the same exception again.
 5. When the load is cancelled (`asyncio.CancelledError`) after `start` returned, the runner calls `fail_if_running` with
@@ -210,7 +227,9 @@ progress and are best effort.
 
 A failure of `fail` itself is logged when it is one of `RECORD_WRITE_ERRORS`
 (`core/schema_change/record_errors.py`: a `DatabaseError`, a `QueryError`, a `QueryTimeoutError` or
-a `neo4j` `Neo4jError`), and the error of the load is raised.
+a `neo4j` `Neo4jError`), and the error of the load is raised. When the records were deleted during
+the load, for example with the branch, `fail` returns false and the runner logs a warning without a
+stack trace, because there is no record left to mark.
 
 When the diff is not empty but the candidate has no operation, the runner calls the coordinator
 with `application_id=None`, stores no schema change and logs a warning naming the branch. This

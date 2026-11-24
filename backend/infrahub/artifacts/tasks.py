@@ -52,7 +52,7 @@ async def create(model: CheckArtifactCreate) -> ValidatorConclusion:
         await artifact.save()
         severity = "critical"
         conclusion = ValidatorConclusion.FAILURE
-        check_message += f": {str(exc)}"
+        check_message += f": {exc!s}"
 
     check = None
     check_name = f"{model.artifact_name}: {model.target_name}"

@@ -17,7 +17,7 @@ from infrahub.core.schema_change.factory import build_schema_change_history_read
 from infrahub.core.schema_change.operations import SchemaOperation
 from infrahub.core.schema_change.repository import AppliedSchemaChangeVersion
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import QueryError, SchemaChangeRecordNotFoundError
+from infrahub.exceptions import QueryError
 from tests.helpers.schema_change import (
     BranchHistorySeed,
     MigrationSeed,
@@ -120,7 +120,7 @@ async def test_create_schema_change_stores_operations_in_order_and_links_the_rec
         branch=BRANCH_NAME, operations=operations, at=at, user_id=SYSTEM_USER_ID
     )
     await repository.create_migration_records(application_id=created.application_id, migrations=[attribute_migration()])
-    await repository.mark_applied(
+    applied = await repository.mark_applied(
         schema_change_id=created.schema_change_id,
         application_id=created.application_id,
         version=2,
@@ -128,6 +128,8 @@ async def test_create_schema_change_stores_operations_in_order_and_links_the_rec
         applied_at=at,
         user_id=SYSTEM_USER_ID,
     )
+
+    assert applied is True
 
     reader = build_schema_change_history_reader(db=db)
     pages = await reader.list_operations(schema_change_ids=[created.schema_change_id], limit=10, offset=0)
@@ -452,12 +454,14 @@ async def test_mark_failed_closes_each_migration_record_by_its_status(
     )
     schema_change = history.schema_changes[0]
 
-    await build_schema_change_repository(db=db).mark_failed(
+    marked = await build_schema_change_repository(db=db).mark_failed(
         schema_change_id=schema_change.id,
         application_id=schema_change.application_id,
         error=FAILURE_ERROR,
         user_id=SYSTEM_USER_ID,
     )
+
+    assert marked is True
 
     applications = await read_applications_with_migrations(db=db, schema_change_ids=[schema_change.id])
     [application] = applications[schema_change.id]
@@ -470,7 +474,7 @@ async def test_mark_failed_closes_each_migration_record_by_its_status(
     ]
 
 
-async def test_mark_applied_of_a_schema_change_deleted_with_its_branch_raises_and_stores_nothing(
+async def test_mark_applied_of_a_schema_change_deleted_with_its_branch_returns_false_and_stores_nothing(
     db: InfrahubDatabase, empty_database: None
 ) -> None:
     repository = build_schema_change_repository(db=db)
@@ -481,19 +485,39 @@ async def test_mark_applied_of_a_schema_change_deleted_with_its_branch_raises_an
     assert await count_schema_change_records(db=db, uuids=[created.schema_change_id, created.application_id]) == 2
     await repository.delete_branch_schema_changes(branch=OTHER_BRANCH_NAME, batch_size=10)
 
-    with pytest.raises(
-        SchemaChangeRecordNotFoundError,
-        match=rf"^The schema change {created.schema_change_id}, its application or its parent was deleted before",
-    ):
-        await repository.mark_applied(
-            schema_change_id=created.schema_change_id,
-            application_id=created.application_id,
-            version=1,
-            parent_id=None,
-            applied_at=at,
-            user_id=SYSTEM_USER_ID,
-        )
+    applied = await repository.mark_applied(
+        schema_change_id=created.schema_change_id,
+        application_id=created.application_id,
+        version=1,
+        parent_id=None,
+        applied_at=at,
+        user_id=SYSTEM_USER_ID,
+    )
 
+    assert applied is False
+    assert await count_schema_change_records(db=db) == 0
+
+
+async def test_mark_failed_of_a_schema_change_deleted_with_its_branch_returns_false_and_stores_nothing(
+    db: InfrahubDatabase, empty_database: None
+) -> None:
+    repository = build_schema_change_repository(db=db)
+    created = await repository.create_schema_change(
+        branch=OTHER_BRANCH_NAME,
+        operations=build_seeded_operations(nbr_operations=1),
+        at=Timestamp(),
+        user_id=SYSTEM_USER_ID,
+    )
+    await repository.delete_branch_schema_changes(branch=OTHER_BRANCH_NAME, batch_size=10)
+
+    marked = await repository.mark_failed(
+        schema_change_id=created.schema_change_id,
+        application_id=created.application_id,
+        error=FAILURE_ERROR,
+        user_id=SYSTEM_USER_ID,
+    )
+
+    assert marked is False
     assert await count_schema_change_records(db=db) == 0
 
 

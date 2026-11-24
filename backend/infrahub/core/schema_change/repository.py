@@ -17,7 +17,6 @@ from infrahub.core.schema_change.models import SchemaChange, SchemaChangeApplica
 from infrahub.core.schema_change.operations import build_schema_change_summary
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import retry_db_transaction
-from infrahub.exceptions import SchemaChangeRecordNotFoundError
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -194,19 +193,23 @@ class SchemaChangeMarkAppliedQuery(Query):
         self.add_to_query("RETURN schema_change.uuid AS schema_change_id")
         self.return_labels = ["schema_change_id"]
 
+    def get_data(self) -> bool:
+        """Return whether the schema change was set to applied."""
+        return self.get_result() is not None
+
 
 class SchemaChangeMarkFailedQuery(Query):
     """Set a schema change and its application to failed, and with `close_migration_records` close its migration records.
 
     A closed applied migration record becomes rolled back, a waiting one cancelled, and a running one failed with the
     error added to its errors; a failed one stays failed. With `only_if_running`, a schema change that is not running is
-    left as it is and the query returns no row.
+    left as it is and the query returns no row. A schema change or an application that is not stored gives no row either.
     """
 
     name = "schema-change-mark-failed"
     type = QueryType.WRITE
     insert_return = False
-    raise_error_if_empty = True
+    raise_error_if_empty = False
 
     def __init__(
         self,
@@ -221,8 +224,6 @@ class SchemaChangeMarkFailedQuery(Query):
         super().__init__(**kwargs)
         self.only_if_running = only_if_running
         self.close_migration_records = close_migration_records
-        # A schema change that is no longer running gives no row, which is an answer and not an error.
-        self.raise_error_if_empty = not only_if_running
         self.params["running_schema_change_status"] = SchemaChangeStatus.RUNNING.value
         self.params["schema_change_id"] = schema_change_id
         self.params["application_id"] = application_id
@@ -516,11 +517,12 @@ class SchemaChangeRepository:
         parent_id: str | None,
         applied_at: Timestamp,
         user_id: str,
-    ) -> None:
+    ) -> bool:
         """Set a schema change and its application to applied, and link the schema change to its parent.
 
-        Raises:
-            SchemaChangeRecordNotFoundError: When the schema change, its application or the parent is not stored.
+        Returns:
+            Whether the schema change was set to applied; False when it, its application or the parent is not stored,
+            for example because its branch was deleted during the load.
 
         """
         query = await SchemaChangeMarkAppliedQuery.init(
@@ -534,17 +536,17 @@ class SchemaChangeRepository:
             user_id=user_id,
         )
         await self._write(query=query)
-        if not query.results:
-            raise SchemaChangeRecordNotFoundError(schema_change_id=schema_change_id)
+        return query.get_data()
 
-    async def mark_failed(self, *, schema_change_id: str, application_id: str, error: str, user_id: str) -> None:
+    async def mark_failed(self, *, schema_change_id: str, application_id: str, error: str, user_id: str) -> bool:
         """Set a schema change and its application to failed, and close its migration records.
 
         An applied migration record becomes rolled back, a waiting one cancelled, and a running one failed with the
         error added to its errors; a failed one stays failed.
 
-        Raises:
-            QueryError: When the schema change or its application is not stored.
+        Returns:
+            Whether the schema change was set to failed; False when it or its application is not stored, for example
+            because its branch was deleted during the load.
 
         """
         query = await SchemaChangeMarkFailedQuery.init(
@@ -558,6 +560,7 @@ class SchemaChangeRepository:
             user_id=user_id,
         )
         await self._write(query=query)
+        return query.get_data()
 
     async def mark_failed_if_running(
         self, *, schema_change_id: str, application_id: str, error: str, user_id: str

@@ -84,11 +84,11 @@ class PoolAllocatedEdge(ObjectType):
 
 
 def _validate_pool_type(pool_id: str, pool: Node | None = None) -> Node:
-    if not pool or pool.get_kind() not in [
+    if not pool or pool.get_kind() not in {
         InfrahubKind.IPADDRESSPOOL,
         InfrahubKind.IPPREFIXPOOL,
         InfrahubKind.NUMBERPOOL,
-    ]:
+    }:
         raise NodeNotFoundError(node_type="ResourcePool", identifier=pool_id)
     return pool
 
@@ -157,18 +157,17 @@ class PoolAllocated(ObjectType):
 
                 node_fields = edges.get("node", {})
 
-                nodes: list[dict[str, dict[str, str | None]]] = []
-                for item in query.get_data():
-                    nodes.append(
-                        {
-                            "node": {
-                                "id": item.child_uuid,
-                                "kind": item.child_kind,
-                                "branch": graphql_context.branch.name,
-                                "display_label": item.ip_value,
-                            }
+                nodes: list[dict[str, dict[str, str | None]]] = [
+                    {
+                        "node": {
+                            "id": item.child_uuid,
+                            "kind": item.child_kind,
+                            "branch": graphql_context.branch.name,
+                            "display_label": item.ip_value,
                         }
-                    )
+                    }
+                    for item in query.get_data()
+                ]
 
                 if "identifier" in node_fields:
                     allocated_ids = [node["node"]["id"] for node in nodes]

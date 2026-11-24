@@ -145,7 +145,7 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
         return "node.hierarchy.update"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
-        return request.constraint_name in ("node.parent.update", "node.children.update")
+        return request.constraint_name in {"node.parent.update", "node.children.update"}
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         grouped_data_paths_list: list[GroupedDataPaths] = []

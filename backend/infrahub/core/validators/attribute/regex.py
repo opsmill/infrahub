@@ -80,7 +80,7 @@ class AttributeRegexChecker(ConstraintCheckerInterface):
         return "attribute.regex.update"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
-        return request.constraint_name in (self.name, ConstraintIdentifier.ATTRIBUTE_PARAMETERS_REGEX_UPDATE.value)
+        return request.constraint_name in {self.name, ConstraintIdentifier.ATTRIBUTE_PARAMETERS_REGEX_UPDATE.value}
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         grouped_data_paths_list: list[GroupedDataPaths] = []

@@ -412,7 +412,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
     ) -> dict[str, Any]:
         schema_dict = schema_generic_with_weight_updates.copy()
         for attr in schema_dict["attributes"]:
-            if attr["name"] in ("generic_attr_text", "generic_required_attr"):
+            if attr["name"] in {"generic_attr_text", "generic_required_attr"}:
                 attr["state"] = HashableModelState.ABSENT.value
         for rel in schema_dict["relationships"]:
             if rel["name"] == "things":
@@ -439,7 +439,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
     ) -> dict[str, Any]:
         schema_dict = schema_generic_with_weight_updates.copy()
         schema_dict["attributes"] = [
-            a for a in schema_dict["attributes"] if a["name"] not in ("generic_attr_text", "generic_required_attr")
+            a for a in schema_dict["attributes"] if a["name"] not in {"generic_attr_text", "generic_required_attr"}
         ]
         schema_dict["relationships"] = [r for r in schema_dict["relationships"] if r["name"] != "things"]
         return schema_dict
@@ -1759,7 +1759,7 @@ WHERE is_active = TRUE
 RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
         """ % {"branch_filter": branch_filter}
         results = await db.execute_query(query=query, params=params)
-        errors = []
+        errors: list[str] = []
 
         schema_by_kind = {schema.kind: schema for schema in inheriting_schemas}
         for result in results:
@@ -1771,22 +1771,22 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
                 name for name in node_schema.local_relationship_names if name not in VIRTUAL_RELATIONSHIP_NAMES
             }
             expected_local_attrs = set(node_schema.local_attribute_names)
-            for extra_generic_rel in db_relationship_names - expected_local_rels:
-                errors.append(
-                    f"Node schema '{node_kind}' has a relationship to generic-only relationship '{extra_generic_rel}'"
-                )
-            for extra_generic_attr in db_attribute_names - expected_local_attrs:
-                errors.append(
-                    f"Node schema '{node_kind}' has a relationship to generic-only attribute '{extra_generic_attr}'"
-                )
-            for missing_local_rel in expected_local_rels - db_relationship_names:
-                errors.append(
-                    f"Node schema '{node_kind}' is missing a relationship to local relationship '{missing_local_rel}'"
-                )
-            for missing_local_attr in expected_local_attrs - db_attribute_names:
-                errors.append(
-                    f"Node schema '{node_kind}' is missing a relationship to local attribute '{missing_local_attr}'"
-                )
+            errors.extend(
+                f"Node schema '{node_kind}' has a relationship to generic-only relationship '{extra_generic_rel}'"
+                for extra_generic_rel in db_relationship_names - expected_local_rels
+            )
+            errors.extend(
+                f"Node schema '{node_kind}' has a relationship to generic-only attribute '{extra_generic_attr}'"
+                for extra_generic_attr in db_attribute_names - expected_local_attrs
+            )
+            errors.extend(
+                f"Node schema '{node_kind}' is missing a relationship to local relationship '{missing_local_rel}'"
+                for missing_local_rel in expected_local_rels - db_relationship_names
+            )
+            errors.extend(
+                f"Node schema '{node_kind}' is missing a relationship to local attribute '{missing_local_attr}'"
+                for missing_local_attr in expected_local_attrs - db_attribute_names
+            )
         return errors
 
 

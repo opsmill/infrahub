@@ -67,7 +67,7 @@ async def load_infrastructure_schema(db: InfrahubDatabase) -> None:
     for file_name in base_dir.iterdir():
         file_path = base_dir / file_name
 
-        if file_path.suffix in (".yml", ".yaml"):
+        if file_path.suffix in {".yml", ".yaml"}:
             schema_txt = file_path.read_text(encoding="utf-8")
             loaded_schema = yaml.safe_load(schema_txt)
             tmp_schema.load_schema(schema=SchemaRoot(**loaded_schema))

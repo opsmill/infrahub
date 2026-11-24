@@ -73,7 +73,7 @@ def str_to_bool(value: str) -> bool:
     if isinstance(value, bool):
         return value
 
-    if isinstance(value, int) and value in [0, 1]:
+    if isinstance(value, int) and value in {0, 1}:
         return bool(value)
 
     if not isinstance(value, str):

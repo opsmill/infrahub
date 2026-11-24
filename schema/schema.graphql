@@ -27035,7 +27035,7 @@ type Query {
   """
   InfrahubResourcePoolUtilization(pool_id: String!): PoolUtilization!
   """
-  Retrieve the schema changes of the branch of the request, the most recently created first. On one branch, this is also the order of their versions.
+  Retrieve the schema changes of the branch of the request, the most recently created first.
   """
   InfrahubSchemaChange(
     """Number of schema changes to return. Default 10, maximum 50, minimum 1."""

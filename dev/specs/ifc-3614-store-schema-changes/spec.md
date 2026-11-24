@@ -184,9 +184,9 @@ the branch schema and data are as they were before the load.
    **Then** they view each migration with its status and errors: a migration that finished
    before the failure is `rolled_back`, one that was running is `failed` with the error of the
    load, and one that never started is `cancelled`.
-3. **Given** that failed load, **When** the schema owner queries the history, **Then** the applied
-   schema changes are listed by version, and the failed schema change is listed by the time it was
-   created.
+3. **Given** that failed load, **When** the schema owner queries the history, **Then** the schema
+   changes are listed by the time they were created, the most recent first, so the failed schema
+   change is listed among the applied ones at the time it was created.
 4. **Given** a failed schema change on a branch, **When** the schema owner loads a corrected file
    that succeeds, **Then** the new schema change gets the next version, and its parent is the last
    applied schema change, not the failed one.
@@ -249,8 +249,10 @@ branch. Count the records of that branch and of main before and after.
   the element by the name it had before the load, and holds the new name as the value.
 - **An attribute name or a kind freed and reused in one load**, such as two attributes that swap
   names, a chain of attribute renames, or an attribute renamed while a new attribute takes its old
-  name: the load is refused with HTTP 422 and nothing is stored (FR-017). The user loads the
-  changes in separate steps. The same changes to relationship names load.
+  name, a generic and a node that inherits from it that free and reuse an attribute name, or a new
+  kind that takes the name of a renamed kind: the load is refused with HTTP 422 and nothing is
+  stored (FR-017). The user loads the changes in separate steps. The same changes to relationship
+  names load, and so does a name that moves between an attribute and a relationship.
 - **A list field that a load replaces whole**, such as `human_friendly_id` or `inherit_from`: one
   operation holds the whole new list and the whole list before the change.
 - **`state: absent`** on a node, attribute or relationship is recorded as a removal.
@@ -260,7 +262,7 @@ branch. Count the records of that branch and of main before and after.
 - **Two branches created from the same version of main** can each hold a schema change with the
   same version. A version is unique only within one branch.
 - **A version above 99999**: the name becomes longer than five digits. Pages are ordered by
-  version, not by name, so the order stays correct.
+  creation time, not by name, so the order stays correct.
 - **A branch created before this feature is deployed**, or main with no stored schema change:
   main's version is 0, so the branch's first schema change has the version 1.
 - **A write of the schema change or its application that fails**: the load fails. When the write
@@ -346,11 +348,12 @@ branch. Count the records of that branch and of main before and after.
 - **FR-017**: A schema load and a schema check MUST be refused with HTTP 422, before any operation
   is applied, when the load frees a name and gives it to another owner (decision 13):
   - an attribute name of a kind, freed by a rename or a removal and taken by a rename or an add;
-  - a kind, freed by a rename or a removal and taken by a rename.
+    an attribute name that a generic frees or takes counts for every kind that inherits from it;
+  - a kind, freed by a rename or a removal and taken by a rename or by a new kind.
 
-  A new kind MAY take a kind that a renamed kind frees, and a relationship MAY take a relationship
-  name that another relationship of the kind frees. The message MUST tell the user to load the
-  changes in separate steps.
+  A relationship MAY take a relationship name that another relationship of the kind frees, and an
+  attribute and a relationship MAY take a name that the other frees. The message MUST tell the
+  user to load the changes in separate steps.
 
 #### One applier
 
@@ -390,11 +393,13 @@ branch. Count the records of that branch and of main before and after.
   - adding a node;
   - relationship changes;
   - kind renames, namespace changes and `inherit_from` changes;
-  - a kind rename with a new kind under the old kind;
   - a kind renamed in its name and its namespace, whose new name in the old namespace is an
     existing kind;
   - chained and swapped relationship renames, and a relationship renamed while a new relationship
     takes its old name;
+  - chained and swapped relationship renames, and a name that moves between an attribute and a
+    relationship, with a stated `order_by` that uses the names after the load, and a swap with the
+    `order_by` stated as before the load;
   - removing a generic;
   - dropdown choices;
   - `state: absent`, node extensions, and list fields that a load replaces whole, such as
@@ -486,8 +491,9 @@ branch. Count the records of that branch and of main before and after.
   The query MUST NOT return the format version of a schema change or the internal result counter
   of a migration record, which the database keeps.
 - **FR-071**: The query MUST return the schema changes of a branch with the most recently created
-  first. On one branch this is also the order of the versions, and a failed schema change, which
-  has no version, sits at the time it was created. A status filter that is an empty list MUST
+  first, so a failed schema change, which has no version, sits at the time it was created. The
+  creation time comes from the clock of the API server that ran the load, so with several API
+  servers whose clocks differ, the order can differ from the order of the versions. A status filter that is an empty list MUST
   return no schema change.
 - **FR-072**: The query MUST return the total number of schema changes that match, and a page MUST
   hold at most the number of schema changes the client asked for. A request for more than the
@@ -677,11 +683,17 @@ review.
     Decided in review on 2026-11-19. Today's load accepts it, but its data migrations cannot apply
     it correctly: the migrations that rename, add and remove attributes find them by name and run
     at the same time, and those that rename kinds find nodes by the label of the kind. Supporting
-    these loads is left to a separate task. A new kind may take a freed kind, because it has no
-    nodes during the load. Relationship names are not refused: the data of a relationship is keyed
-    by its identifier, which a load cannot change, and a relationship rename has no data
-    migration. The applier applies chained and swapped relationship renames, and a relationship
-    renamed while a new relationship takes its old name.
+    these loads is left to a separate task. The rule covers:
+    - an attribute name that a generic frees or takes, for every kind that inherits from the
+      generic, because the migration of the generic's attribute changes the nodes of those kinds;
+    - a new kind that takes the name of a renamed kind, because the load and the save of the schema
+      find a kind without an ID by its name, so the new kind is lost or overwrites the renamed kind,
+      depending on the order in the file.
+
+    Relationship names are not refused, and neither is a name that moves between an attribute and a
+    relationship: the data of a relationship is keyed by its identifier, which a load cannot change,
+    and a relationship rename has no data migration. The applier applies chained and swapped
+    relationship renames, and a relationship renamed while a new relationship takes its old name.
 
 ## Sources
 

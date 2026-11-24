@@ -986,7 +986,7 @@ async def git_branch_delete(
         try:
             await repo.delete_remote_branch(branch_name=branch)
         except Exception as exc:
-            log.exception(f"Failed to delete Git branch '{branch}' from repository '{repository_name}' - {str(exc)}")
+            log.exception(f"Failed to delete Git branch '{branch}' from repository '{repository_name}' - {exc!s}")
             return
 
         message_bus = await get_message_bus()

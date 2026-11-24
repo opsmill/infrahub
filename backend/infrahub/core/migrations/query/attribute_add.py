@@ -6,6 +6,7 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME, NULL_VALUE, BranchSuppor
 from infrahub.core.graph.schema import GraphAttributeValueIndexedNode, GraphAttributeValueNode
 from infrahub.core.migrations.query.selection import MigrationSelectionQuery
 from infrahub.core.query import QueryType
+from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 from infrahub.types import is_large_attribute_type
 
 if TYPE_CHECKING:
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
 class AttributeAddQuery(MigrationSelectionQuery):
     """Create missing attribute rows on the nodes of the given kinds.
 
-    ``uuids`` optionally restricts the write to specific nodes.
+    ``node_ids`` optionally restricts the write to specific nodes.
 
     Created edges live on the query's branch, except when ``branch_support`` is
     agnostic: those rows belong to the global branch, visible from every branch.
@@ -34,7 +35,6 @@ class AttributeAddQuery(MigrationSelectionQuery):
         attribute_kind: str,
         branch_support: str,
         default_value: Any | None = None,
-        uuids: list[str] | None = None,
         **kwargs: Any,
     ) -> None:
         self.node_kinds = node_kinds
@@ -42,15 +42,13 @@ class AttributeAddQuery(MigrationSelectionQuery):
         self.attribute_kind = attribute_kind
         self.branch_support = branch_support
         self.default_value = default_value
-        self.uuids = uuids
         super().__init__(**kwargs)
 
     def render_selection(self, carry: Sequence[str] = ()) -> str:
         """Return the selection, passing the variables named in `carry` through its ``WITH`` clause."""
         branch_filter, _ = self.branch.get_query_filter_path(at=self.at.to_string())
         return """
-        MATCH (n:%(node_kinds_str)s)
-        WHERE $node_uuids IS NULL OR n.uuid IN $node_uuids
+        %(node_match)s
         CALL (n) {
             MATCH (:Root)<-[r:IS_PART_OF]-(n)
             WHERE %(branch_filter)s
@@ -66,7 +64,7 @@ class AttributeAddQuery(MigrationSelectionQuery):
         WITH n, is_part_of_e, has_attr_e%(carry)s
         WHERE is_part_of_e.status = "active" AND (has_attr_e IS NULL OR has_attr_e.status = "deleted")
         """ % {
-            "node_kinds_str": "|".join(self.node_kinds),
+            "node_match": self.render_node_match("n", self.node_kinds),
             "branch_filter": branch_filter,
             "carry": "".join(f", {variable}" for variable in carry),
         }
@@ -78,7 +76,6 @@ class AttributeAddQuery(MigrationSelectionQuery):
         write_time = self.at.to_string()
 
         self.params["node_kinds"] = self.node_kinds
-        self.params["node_uuids"] = self.uuids
         self.params["attr_name"] = self.attribute_name
         self.params["branch_support"] = self.branch_support
         self.params["current_time"] = write_time
@@ -126,6 +123,10 @@ class AttributeAddQuery(MigrationSelectionQuery):
             LIMIT 1
             """ % {"attr_value_label": attr_value_label}
 
+        stamp_node, stamp_params = stamp_vertex_metadata(
+            "n", at=self.at, operation_ats=self.operation_ats, at_param="current_time"
+        )
+        self.params.update(stamp_params)
         query = """
         %(match_query)s
         MERGE (is_protected_value:Boolean { value: $is_protected_default })
@@ -165,20 +166,13 @@ class AttributeAddQuery(MigrationSelectionQuery):
             // The Attribute vertex is created here, so it has no prior metadata to snapshot for rollback
             // -----------------
             SET a.created_at = $current_time, a.created_by = $user_id, a.updated_at = $current_time, a.updated_by = $user_id
-            SET n.previous_updated_at = CASE
-                    WHEN n.updated_at IS NULL OR n.updated_at <> $current_time THEN n.updated_at
-                    ELSE n.previous_updated_at
-                END,
-                n.previous_updated_by = CASE
-                    WHEN n.updated_at IS NULL OR n.updated_at <> $current_time THEN n.updated_by
-                    ELSE n.previous_updated_by
-                END
-            SET n.updated_at = $current_time, n.updated_by = $user_id
+            %(stamp_node)s
         }
         """ % {
             "match_query": match_query,
             "selection": self.render_selection(carry=("av", "is_protected_value")),
             "uuid_generation": db.render_uuid_generation(node_label="a", node_attr="uuid"),
+            "stamp_node": stamp_node,
         }
 
         self.add_to_query(query)

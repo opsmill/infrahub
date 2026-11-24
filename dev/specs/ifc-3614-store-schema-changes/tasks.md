@@ -75,8 +75,8 @@ suite the first task.
       - `SchemaChangeStatus`: `staged`, `running`, `applied`, `failed`;
       - `SchemaChangeApplicationStatus`: `running`, `applied`, `failed`, `rolled_back`, `skipped`;
       - `SchemaChangeMigrationStatus`: `waiting`, `running`, `applied`, `failed`, `rolled_back`;
-      - `SchemaOperationType`: `node_add`, `node_remove`, `node_property`, `element_add`,
-        `element_remove`, `element_property`;
+      - `SchemaOperationType`: `node_add`, `node_remove`, `node_rename`, `node_property`,
+        `element_add`, `element_remove`, `element_property`;
       - `SchemaOperationNodeType`: `node`, `generic`;
       - `SchemaOperationSection`: `attributes`, `relationships`;
       - the operation format version, `1`;
@@ -575,9 +575,8 @@ a GraphQL query returns the history of a branch in pages.
         change;
       - the highest version among main's schema changes whose `applied_at` is at or before a
         timestamp, with its ID;
-      - a page of the schema changes of a branch, ordered by status `applied` first, then
-        `version`, then `created_at`, then element ID, with an optional status filter, and its
-        count. Page inside the query body before reading the parent, and set `self.limit`, as
+      - a page of the schema changes of a branch, ordered by `created_at`, the most recent first,
+        then by ID, with an optional status filter, and its count. Page inside the query body before reading the parent, and set `self.limit`, as
         `dev/knowledge/backend/query-pattern.md` says for a query that pages itself;
       - the operations of a set of schema changes, a page for each one, with the count for each;
       - the applications of a set of schema changes, with their migration records in the order

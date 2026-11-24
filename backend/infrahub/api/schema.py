@@ -403,7 +403,7 @@ async def load_schema(
         )
     )
 
-    if branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch):
+    if branch.name in {GLOBAL_BRANCH_NAME, registry.default_branch}:
         permission_manager.raise_for_permission(
             permission=GlobalPermission(
                 action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_DEFAULT.value

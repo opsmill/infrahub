@@ -73,7 +73,7 @@ class SchemaChangeApplier:
 - While a chain or a swap of renames runs, two elements of a kind can share a name. An operation
   then finds the element that no earlier operation renamed; renamed elements are tracked by ID.
 - Given the same target and the same operations, it returns a schema with the same hash each time.
-- The six operation types are a closed set. The applier selects the handling of an operation with
+- The seven operation types are a closed set. The applier selects the handling of an operation with
   an exhaustive `match` on `SchemaOperationType` that ends with `typing.assert_never`, so a type
   added with a later format version fails the type check until the applier handles it.
 
@@ -129,9 +129,11 @@ class SchemaCandidateBuilder:
 ```
 
 - `from_schema_root`: raises `SchemaNotFoundError` when the file gives a kind of the branch
-  schema an ID that the branch schema does not hold, before it builds any operation. It then
-  builds the operations, and raises `SchemaNameReusedError` (HTTP 422) when they free an attribute
-  name or a kind and give it to another owner (spec, FR-017) before it applies any. It then applies them to `branch_schema` with the applier, and compares the result
+  schema an ID that the branch schema does not hold, and `SchemaNameReusedError` (HTTP 422) when
+  the file renames a kind and states a kind without an ID under its old name, before it builds any
+  operation. It then builds the operations, and raises `SchemaNameReusedError` when they free an
+  attribute name, including one that a generic frees or takes for the kinds that inherit from it,
+  or a kind, and give it to another owner (spec, FR-017) before it applies any. It then applies them to `branch_schema` with the applier, and compares the result
   with `direct_load_schema` with the comparer. It raises `SchemaOperationsRebuildError` (HTTP 422)
   when the applier raises `SchemaOperationTargetNotFoundError`,
   `SchemaOperationTargetExistsError` or a `ValueError`, or when the comparer returns kinds; the
@@ -193,9 +195,9 @@ class SchemaChangeRepository:
         parent_id: str | None,
         applied_at: Timestamp,
         user_id: str,
-    ) -> None: ...
+    ) -> bool: ...
 
-    async def mark_failed(self, *, schema_change_id: str, application_id: str, error: str, user_id: str) -> None: ...
+    async def mark_failed(self, *, schema_change_id: str, application_id: str, error: str, user_id: str) -> bool: ...
 
     async def create_migration_records(
         self, *, application_id: str, migrations: Sequence[SchemaUpdateMigrationInfo]
@@ -234,11 +236,15 @@ class SchemaChangeRepository:
   with its index as `position`, and one application with the status `running`, the branch and
   `at`.
 - `mark_applied` sets the schema change and the application to `applied`, and stores the version,
-  `applied_at` and the `SCHEMA_CHANGE_HAS_PARENT` edge when `parent_id` is set.
+  `applied_at` and the `SCHEMA_CHANGE_HAS_PARENT` edge when `parent_id` is set. It returns whether
+  it changed them, which is false when the schema change, its application or the parent is no
+  longer stored.
 - `mark_failed` sets both to `failed`, stores the error on the application, and closes the
   migration records of the application in the same statement: an `applied` record becomes
   `rolled_back`, a `waiting` one `cancelled`, and a `running` one `failed` with the error added to
-  its errors; a `failed` one keeps its status.
+  its errors; a `failed` one keeps its status. It returns whether it changed them, which is false
+  when the schema change or its application is no longer stored, for example because the branch
+  was deleted during the load.
 - `mark_failed_if_running` sets the schema change and the application to `failed` with the error
   only while the schema change is `running`, and returns whether it changed them. It leaves the
   migration records as they are, because it is called for a cancelled load, whose migrations keep
@@ -384,7 +390,7 @@ class SchemaChangeRecorder:
 
     async def complete(self, *, recording: SchemaChangeRecording, branch: Branch, user_id: str) -> None: ...
 
-    async def fail(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> None: ...
+    async def fail(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> bool: ...
 
     async def record_applied(
         self, *, branch: Branch, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
@@ -422,7 +428,9 @@ class SchemaChangeRecorder:
 - `at` is the timestamp of the graph writes. `complete` and `record_applied` store it as the
   schema change's `applied_at`.
 - The recorder catches no error of the repository: a failed write of `complete` or `fail` reaches
-  the caller.
+  the caller. When `mark_applied` returns false, `complete` raises
+  `SchemaChangeRecordNotFoundError` (HTTP 422); `fail` and `fail_if_running` return the result of
+  the repository.
 
 ## `SchemaChangeApplicationRunner`
 
@@ -436,7 +444,7 @@ class ApplicationRecorder(Protocol):
 
     async def complete(self, *, recording: SchemaChangeRecording, branch: Branch, user_id: str) -> None: ...
 
-    async def fail(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> None: ...
+    async def fail(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> bool: ...
 
 
 class SchemaUpdateExecutor(Protocol):
@@ -512,7 +520,10 @@ class SchemaChangeApplicationRunner:
   `neo4j` `Neo4jError` (`RECORD_WRITE_ERRORS`), the event
   `Could not record the failure of a schema change` is logged with `schema_change_id` and
   `application_id`, and the original exception is still raised. Any other exception that `recorder.fail` raises reaches the caller in place of the
-  original one.
+  original one. When `recorder.fail` returns false, the records were deleted during the load, and
+  the runner logs the warning
+  `The records of the schema change were deleted before its failure could be recorded`, without a
+  stack trace.
 
 ## `MigrationRecorder`
 
