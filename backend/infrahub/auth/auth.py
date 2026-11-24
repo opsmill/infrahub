@@ -786,8 +786,14 @@ def validate_auth_response(response: httpx.Response, provider_type: str = "authe
             base_msg = "Authentication provider is experiencing server issues. Please try again later or contact your administrator."
 
     # Print proper log and raise gateway error
+    # The body is not logged: a provider can put a client ID or a user name in `error_description`.
+    # The `error` field of RFC 6749 is a short code, such as `invalid_grant`, so it is logged.
+    error_code = response_body.get("error") if isinstance(response_body, dict) else None
     log.error(
-        log_message, url=url_without_secrets(str(response.url)), status_code=response.status_code, body=response_body
+        log_message,
+        url=url_without_secrets(str(response.url)),
+        status_code=response.status_code,
+        error=error_code if isinstance(error_code, str) else None,
     )
     error_msg = extract_auth_error_message(response_body, base_msg)
     raise GatewayError(message=error_msg)

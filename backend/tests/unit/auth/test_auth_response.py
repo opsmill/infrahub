@@ -31,9 +31,31 @@ def test_refused_request_is_logged_without_the_query_string_of_the_url() -> None
             "log_level": "error",
             "url": URL,
             "status_code": 401,
-            "body": {"error": "invalid_token"},
+            "error": "invalid_token",
         }
     ]
+
+
+@pytest.mark.parametrize(
+    ("content", "expected_error"),
+    [
+        pytest.param(
+            b'{"error": "invalid_client", "error_description": "Client otto-client-id for otto@example.com is disabled"}',
+            "invalid_client",
+            id="json_with_error_description",
+        ),
+        pytest.param(b"Account otto@example.com is locked", None, id="plain_text"),
+        pytest.param(b'{"error": {"user": "otto@example.com"}}', None, id="error_that_is_not_a_string"),
+    ],
+)
+def test_refused_request_logs_the_error_code_but_not_the_body(content: bytes, expected_error: str | None) -> None:
+    response = _response(status_code=400, content=content)
+
+    with capture_logs() as records, pytest.raises(GatewayError):
+        validate_auth_response(response=response, provider_type="OIDC")
+
+    assert [record["error"] for record in records] == [expected_error]
+    assert "otto" not in str(records)
 
 
 def test_empty_response_is_logged_without_the_query_string_of_the_url() -> None:
