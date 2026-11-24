@@ -23,7 +23,7 @@ import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-u
 import type { IpPoolResource } from "@/entities/resource-manager/domain/model/ip-pool";
 import { IP_ADDRESS_POOL, type IpPoolKind } from "@/entities/resource-manager/domain/model/pool";
 import { KindLabel } from "@/entities/resource-manager/ui/pool/kind-label";
-import { PoolLoadMoreError } from "@/entities/resource-manager/ui/pool/pool-load-more-error";
+import { PoolAllocationsError } from "@/entities/resource-manager/ui/pool/pool-allocations-error";
 import { useGetIpPoolAllocations } from "@/entities/resource-manager/ui/queries/get-ip-pool-allocations.query";
 
 const ROW_HEIGHT = 36;
@@ -82,6 +82,9 @@ export function IpPoolAllocationsTable({
     hasNextPage,
     isFetchingNextPage,
     isFetchNextPageError,
+    isRefetchError,
+    isRefetching,
+    refetch,
   } = useGetIpPoolAllocations({ poolId, resourceId: resource.id });
 
   if (error && !data) return <ErrorScreen message={error.message} />;
@@ -215,10 +218,17 @@ export function IpPoolAllocationsTable({
         </Table>
       </Virtualizer>
       {isFetchNextPageError && (
-        <PoolLoadMoreError
-          itemsLabel={noun}
+        <PoolAllocationsError
+          message={`More ${noun} could not be loaded.`}
           isRetrying={isFetchingNextPage}
           onRetry={loadNextPage}
+        />
+      )}
+      {isRefetchError && (
+        <PoolAllocationsError
+          message={`The ${noun} could not be refreshed.`}
+          isRetrying={isRefetching}
+          onRetry={() => refetch()}
         />
       )}
     </Col>

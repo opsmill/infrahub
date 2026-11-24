@@ -23,7 +23,9 @@ const getWeightsById = async ({
 }: Omit<GetIpPoolUtilizationParams, "poolId"> & { resources: ResourceRef[] }) => {
   // the server sorts by weight only when every resource prefix kind has one
   const everyKindIsWeighted = resources.every(({ kind }) => weightedKinds.includes(kind));
-  if (resources.length === 0 || !everyKindIsWeighted) return new Map<string, number | null>();
+  if (resources.length === 0 || !everyKindIsWeighted) {
+    return { weightsById: new Map<string, number | null>(), areWeightsUnavailable: false };
+  }
 
   // weights only order and label the list, so a failure must not hide the usage that loaded
   try {
@@ -33,13 +35,14 @@ const getWeightsById = async ({
       atDate,
     });
 
-    return new Map(
+    const weightsById = new Map(
       (data?.CoreWeightedPoolResource.edges ?? []).flatMap((edge) =>
         edge?.node?.id ? [[edge.node.id, edge.node.allocation_weight?.value ?? null] as const] : []
       )
     );
+    return { weightsById, areWeightsUnavailable: false };
   } catch {
-    return new Map<string, number | null>();
+    return { weightsById: new Map<string, number | null>(), areWeightsUnavailable: true };
   }
 };
 
@@ -54,7 +57,7 @@ export const getIpPoolUtilization = async ({
   const node = data?.InfrahubResourcePoolUtilization;
   if (!node) throw new Error("IP pool utilization not found");
 
-  const weightsById = await getWeightsById({
+  const { weightsById, areWeightsUnavailable } = await getWeightsById({
     resources: node.edges.map(({ node: resource }) => resource),
     weightedKinds,
     branchName,
@@ -62,5 +65,9 @@ export const getIpPoolUtilization = async ({
   });
   const { usage, resources } = mapToIpPoolUtilization(node, weightsById);
 
-  return { usage, resources: sortIpPoolResourcesByFillOrder(resources) };
+  return {
+    usage,
+    resources: sortIpPoolResourcesByFillOrder(resources),
+    areWeightsUnavailable,
+  };
 };

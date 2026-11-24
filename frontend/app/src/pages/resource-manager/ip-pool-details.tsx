@@ -58,7 +58,7 @@ function IpPoolBody({ pool }: IpPoolBodyProps) {
 
   if (error && !utilization) return <ErrorScreen message={error.message} />;
 
-  const { usage, resources } = utilization;
+  const { usage, resources, areWeightsUnavailable } = utilization;
   const selectedResourceId = resourceId ?? resources[0]?.id ?? null;
 
   return (
@@ -69,6 +69,7 @@ function IpPoolBody({ pool }: IpPoolBodyProps) {
           poolKind={pool.__typename}
           usage={usage}
           resources={resources}
+          areWeightsUnavailable={areWeightsUnavailable}
           selectedResourceId={selectedResourceId}
         />
       </Col>

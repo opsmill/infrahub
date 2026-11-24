@@ -71,6 +71,7 @@ describe("getIpPoolUtilization", () => {
         ["r-b", 10],
       ]
     );
+    expect(utilization.areWeightsUnavailable).toBe(false);
   });
 
   it("orders by prefix without asking for weights when one resource prefix kind has no weight", async () => {
@@ -104,7 +105,7 @@ describe("getIpPoolUtilization", () => {
     );
   });
 
-  it("shows the resource prefixes without weights when the weights cannot be read", async () => {
+  it("reports the weights as unavailable when they cannot be read", async () => {
     // GIVEN
     vi.mocked(getIpPoolUtilizationFromApi).mockResolvedValue({
       data: utilizationData,
@@ -125,5 +126,6 @@ describe("getIpPoolUtilization", () => {
         ["r-b", null],
       ]
     );
+    expect(utilization.areWeightsUnavailable).toBe(true);
   });
 });

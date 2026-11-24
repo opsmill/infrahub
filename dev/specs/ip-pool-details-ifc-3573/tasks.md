@@ -42,7 +42,7 @@ Paths are under `frontend/app/` unless they start with `tests/`, `docs/` or `cha
 
 - [x] T018 `src/pages/resource-manager/ip-pool-details.tsx` + test (first resource selected, resource from the path, utilization error keeps the header, no resources).
 - [x] T019 `resource-pool-details.tsx` routes by kind; delete `resource-pool-details-body.tsx`, `resource-allocation-details.tsx`, `$RM/ui/resource-selector.tsx`, `$RM/ui/ResourcePoolUtilization.tsx`, `get-pool-utilization.*`, `get-resource-allocated.*`, `src/shared/components/form/object-edit-slide-over-trigger.tsx`, `roundNumber` in `src/shared/utils/number.ts`; `router.tsx` keeps `resources/:resourceId` as a path-only child; `.betterer.results` entry removed.
-- [x] T020 `breadcrumb-resource-manager.tsx` reads `useGetIpPoolUtilization(poolId)`, which shares the page's request through the query cache, and `getIpPoolResourceUrl`, and keeps the loaded resource prefixes when a refresh fails; + test.
+- [x] T020 `breadcrumb-resource-manager.tsx` reads `useGetIpPoolUtilization(poolId, { refetchOnMount: false })`, which reuses the page's cached usage instead of requesting it again, and `getIpPoolResourceUrl`, and keeps the loaded resource prefixes when a refresh fails; + test.
 - [x] T021 Gates: `cd frontend && pnpm exec biome ci .`; `cd frontend/app && pnpm knip && pnpm exec betterer ci && pnpm test`.
 
 ## Phase 5: Design-jam review (phases 3-4 of the design-jam skill)
@@ -60,6 +60,6 @@ Paths are under `frontend/app/` unless they start with `tests/`, `docs/` or `cha
 ## Phase 7: Review rounds
 
 - [x] T027 Show the whole pool's usage above the resource prefixes, link the selected resource prefix to its IPAM page, and start the usage request alongside the pool request.
-- [x] T028 Keep loaded allocations and offer a Retry button when the next page fails, in the IP pool and number pool tables (`$RM/ui/pool/pool-load-more-error.tsx`).
+- [x] T028 Keep loaded allocations and offer a Retry button when the next page or a refresh fails, in the IP pool and number pool tables (`$RM/ui/pool/pool-allocations-error.tsx`).
 - [x] T029 Show the pool type and the schema extension fields in the header (`get-ip-pool-extra-fields.ts`, `ip-pool-extra-fields.tsx`), and the ID column in the allocations table.
 - [x] T030 Tutorial: the pool page lists the allocations of the viewed branch, while an allocation made on a branch stays reserved on every branch.

@@ -35,6 +35,7 @@ export interface IpPoolResourcesCardProps {
   poolKind: IpPoolKind;
   usage: IpPoolResourceUsage;
   resources: IpPoolResource[];
+  areWeightsUnavailable?: boolean;
   selectedResourceId: string | null;
 }
 
@@ -43,6 +44,7 @@ export function IpPoolResourcesCard({
   poolKind,
   usage,
   resources,
+  areWeightsUnavailable = false,
   selectedResourceId,
 }: IpPoolResourcesCardProps) {
   if (resources.length === 0) return <NoResourcesCard poolKind={poolKind} />;
@@ -64,6 +66,12 @@ export function IpPoolResourcesCard({
         </Row>
         <IpPoolUsageBar usage={usage} />
       </section>
+      {areWeightsUnavailable && (
+        <p role="status" className="mx-1 px-2.5 pb-1 text-foreground-muted text-xs">
+          The weights could not be loaded, so the list is sorted by prefix, not in the order the
+          pool fills them.
+        </p>
+      )}
       <ListBox
         aria-label="Resource prefixes"
         selectionMode="single"

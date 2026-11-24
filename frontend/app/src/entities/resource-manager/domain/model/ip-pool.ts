@@ -54,6 +54,7 @@ export interface IpPoolResource extends NodeCore {
 export interface IpPoolUtilization {
   usage: IpPoolResourceUsage;
   resources: IpPoolResource[];
+  areWeightsUnavailable: boolean;
 }
 
 export interface IpPoolAllocation extends NodeCore {

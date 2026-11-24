@@ -35,7 +35,7 @@ import {
 import { useNumberPoolAllocationFilters } from "@/entities/resource-manager/ui/hooks/use-number-pool-allocation-filters";
 import { NumberPoolAllocationFiltersBar } from "@/entities/resource-manager/ui/number-pool/details/number-pool-allocation-filters-bar";
 import { KindLabel } from "@/entities/resource-manager/ui/pool/kind-label";
-import { PoolLoadMoreError } from "@/entities/resource-manager/ui/pool/pool-load-more-error";
+import { PoolAllocationsError } from "@/entities/resource-manager/ui/pool/pool-allocations-error";
 import { useGetNumberPoolAllocationCount } from "@/entities/resource-manager/ui/queries/get-number-pool-allocation-count.query";
 import { useGetNumberPoolAllocations } from "@/entities/resource-manager/ui/queries/get-number-pool-allocations.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -120,6 +120,9 @@ export function NumberPoolAllocationsTable({
     hasNextPage,
     isFetchingNextPage,
     isFetchNextPageError,
+    isRefetchError,
+    isRefetching,
+    refetch,
   } = useGetNumberPoolAllocations({ poolId, rangeId: selectedRange?.id, division, filters });
   const { data: count } = useGetNumberPoolAllocationCount({
     poolId,
@@ -287,10 +290,17 @@ export function NumberPoolAllocationsTable({
         </Table>
       </Virtualizer>
       {isFetchNextPageError && (
-        <PoolLoadMoreError
-          itemsLabel="allocations"
+        <PoolAllocationsError
+          message={"More allocations could not be loaded."}
           isRetrying={isFetchingNextPage}
           onRetry={loadNextPage}
+        />
+      )}
+      {isRefetchError && (
+        <PoolAllocationsError
+          message={"The allocations could not be refreshed."}
+          isRetrying={isRefetching}
+          onRetry={() => refetch()}
         />
       )}
     </Col>

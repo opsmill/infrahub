@@ -52,7 +52,10 @@ function ResourceSelector({
   resourceId: string;
   resourcePoolId: string;
 }) {
-  const { data, isPending, error } = useGetIpPoolUtilization(resourcePoolId);
+  // selecting a resource prefix must reuse the cached usage rather than request it again
+  const { data, isPending, error } = useGetIpPoolUtilization(resourcePoolId, {
+    refetchOnMount: false,
+  });
 
   if (isPending) {
     return <BreadcrumbItemLoading />;

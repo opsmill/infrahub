@@ -19,7 +19,14 @@ export function getIpPoolUtilizationQueryOptions(params: GetIpPoolUtilizationPar
   });
 }
 
-export function useGetIpPoolUtilization(poolId: string) {
+export interface UseGetIpPoolUtilizationOptions {
+  refetchOnMount?: boolean;
+}
+
+export function useGetIpPoolUtilization(
+  poolId: string,
+  { refetchOnMount }: UseGetIpPoolUtilizationOptions = {}
+) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
   const nodeSchemas = useAtomValue(nodeSchemasAtom);
@@ -31,5 +38,6 @@ export function useGetIpPoolUtilization(poolId: string) {
       branchName: currentBranch.name,
       atDate: timeMachineDate,
     }),
+    refetchOnMount,
   });
 }

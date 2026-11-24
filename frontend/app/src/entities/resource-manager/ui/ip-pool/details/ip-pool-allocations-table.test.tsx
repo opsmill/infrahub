@@ -263,6 +263,70 @@ describe("IpPoolAllocationsTable", () => {
     expect(fetchNextPage).toHaveBeenCalledExactlyOnceWith({ cancelRefetch: false });
   });
 
+  it("keeps the loaded rows and offers a retry when a refresh fails", async () => {
+    // GIVEN
+    const refetch = vi.fn();
+    vi.mocked(useGetIpPoolAllocations).mockReturnValue({
+      data: {
+        pages: [
+          { count: 1, allocations: [generateIpPoolAllocation({ display_label: "10.10.0.0/31" })] },
+        ],
+        pageParams: [0],
+      },
+      error: new Error("Network error"),
+      isPending: false,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      isFetchNextPageError: false,
+      isRefetchError: true,
+      isRefetching: false,
+      refetch,
+    } as unknown as ReturnType<typeof useGetIpPoolAllocations>);
+
+    // WHEN
+    const component = await renderTable();
+    await component.getByRole("button", { name: "Retry" }).click();
+
+    // THEN
+    await expect.element(component.getByRole("row", { name: /^10\.10\.0\.0\/31/ })).toBeVisible();
+    await expect
+      .element(component.getByRole("alert"))
+      .toHaveTextContent("The prefixes could not be refreshed.Retry");
+    expect(refetch).toHaveBeenCalledOnce();
+  });
+
+  it("shows the rows of every loaded page once", async () => {
+    // GIVEN
+    const [first, second, third] = generateIpPoolAllocations(3);
+    vi.mocked(useGetIpPoolAllocations).mockReturnValue({
+      data: {
+        pages: [
+          { count: 3, allocations: [first, second] },
+          { count: 3, allocations: [third] },
+        ],
+        pageParams: [0, 2],
+      },
+      error: null,
+      isPending: false,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+    } as unknown as ReturnType<typeof useGetIpPoolAllocations>);
+
+    // WHEN
+    const component = await renderTable();
+
+    // THEN
+    const grid = component.getByRole("grid", { name: "Allocated prefixes" });
+    await expect.element(grid.getByRole("row", { name: /^10\.10\.0\.4\/31/ })).toBeVisible();
+    const labels = grid
+      .getByRole("row")
+      .elements()
+      .slice(1)
+      .map((row) => row.textContent?.match(/^[\d.]+\/\d+/)?.[0]);
+    expect(labels).toEqual(["10.10.0.0/31", "10.10.0.2/31", "10.10.0.4/31"]);
+  });
+
   it("loads the next rows when the user scrolls to the end", async () => {
     // GIVEN
     const fetchNextPage = vi.fn();

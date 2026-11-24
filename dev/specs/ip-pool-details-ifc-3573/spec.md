@@ -116,7 +116,7 @@ The engineer opens the Actions menu in the header. It offers Copy ID, Copy HFID,
 - The pool node loads but the utilization query fails: the header stays and the body shows the error.
 - Viewing the pool at a past date or on a branch: the pool node, the utilization and the allocations are all read on that branch and at that date.
 - The page is open while the engineer edits the pool: after saving, the header and the resource prefix list refresh.
-- A refresh fails after the page loaded: the header, the resource prefixes, the allocations and the breadcrumb already loaded stay.
+- A refresh fails after the page loaded: the header, the resource prefixes, the allocations and the breadcrumb already loaded stay. Below the allocations, a message says they could not be refreshed and offers a Retry button.
 
 ## Requirements *(mandatory)*
 
@@ -142,7 +142,7 @@ The engineer opens the Actions menu in the header. It offers Copy ID, Copy HFID,
 - **FR-018**: Edit MUST open the existing IP prefix pool form or IP address pool form, and saving MUST refresh the page.
 - **FR-019**: The page MUST read the pool, the utilization and the allocations on the branch and at the date the engineer is viewing.
 - **FR-020**: The breadcrumb's resource selector MUST keep working with the new page, and MUST read the pool usage itself so that it does not depend on the page having loaded it.
-- **FR-021**: The number pool page MUST not change, except that its allocations table MUST keep the rows already loaded when a refresh fails, and MUST keep them, stop requesting more rows and offer a Retry button when loading more rows fails.
+- **FR-021**: The number pool page MUST not change, except that its allocations table MUST keep the rows already loaded when a refresh fails and offer a Retry button, and MUST keep them, stop requesting more rows and offer a Retry button when loading more rows fails.
 
 ### Key Entities
 
@@ -163,7 +163,7 @@ The engineer opens the Actions menu in the header. It offers Copy ID, Copy HFID,
 ## Assumptions
 
 - The backend does not change. The resource prefix order and the allocation weight are computed in the frontend from data the backend already returns.
-- The allocation weight is read through the weighted pool resource generic when every resource prefix kind inherits it. When that read fails, the list shows no weight instead of an error. The utilization query's `weight` field is the size of the prefix and is not shown.
+- The allocation weight is read through the weighted pool resource generic when every resource prefix kind inherits it. When that read fails, the list shows no weight and the card says that the weights could not be loaded, so the list is sorted by prefix instead of fill order. The utilization query's `weight` field is the size of the prefix and is not shown.
 - The usage split on the bar is the default-branch share and the extra share on the viewing branch, which is what the utilization query returns. On the default branch, the second segment is empty.
 - The allocated table has no Branch column, because the backend returns the viewing branch for every row.
 - The table lists every prefix or address inside the resource prefix that is visible on the viewing branch, including ones created by hand, because that is what the allocations query returns. An entry the pool did not reserve has no identifier.

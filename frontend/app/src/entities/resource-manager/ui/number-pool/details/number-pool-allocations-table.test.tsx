@@ -255,6 +255,34 @@ describe("NumberPoolAllocationsTable", () => {
     expect(fetchNextPage).toHaveBeenCalledExactlyOnceWith({ cancelRefetch: false });
   });
 
+  it("keeps the loaded rows and offers a retry when a refresh fails", async () => {
+    // GIVEN
+    const refetch = vi.fn();
+    mockAllocations({ allocations: [generateNumberPoolAllocation({ value: 7 })] });
+    vi.mocked(useGetNumberPoolAllocations).mockReturnValue({
+      data: { pages: [[generateNumberPoolAllocation({ value: 7 })]], pageParams: [0] },
+      error: new Error("Network error"),
+      isPending: false,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      isFetchNextPageError: false,
+      isRefetchError: true,
+      isRefetching: false,
+      refetch,
+    } as unknown as ReturnType<typeof useGetNumberPoolAllocations>);
+
+    // WHEN
+    const component = await renderTable();
+    await component.getByRole("button", { name: "Retry" }).click();
+
+    // THEN
+    await expect.element(component.getByRole("row", { name: /^7/ })).toBeVisible();
+    await expect
+      .element(component.getByRole("alert"))
+      .toHaveTextContent("The allocations could not be refreshed.Retry");
+    expect(refetch).toHaveBeenCalledOnce();
+  });
+
   it("marks a number a user provided", async () => {
     // GIVEN
     mockAllocations({ allocations: [generateNumberPoolAllocation({ provenance: "PROVIDED" })] });

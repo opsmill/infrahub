@@ -20,7 +20,7 @@ export const mapToIpPoolResourceUsage = (figures: UsageFigures): IpPoolResourceU
 export const mapToIpPoolUtilization = (
   node: IpPoolUtilizationNode,
   weightsById: ReadonlyMap<string, number | null>
-): IpPoolUtilization => ({
+): Omit<IpPoolUtilization, "areWeightsUnavailable"> => ({
   usage: mapToIpPoolResourceUsage(node),
   resources: node.edges.map(
     ({ node: resource }): IpPoolResource => ({

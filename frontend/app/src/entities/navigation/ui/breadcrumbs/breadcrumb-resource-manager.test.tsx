@@ -66,7 +66,7 @@ describe("BreadcrumbResourceManager", () => {
     await expect
       .element(component.getByRole("link", { name: secondResource?.display_label }))
       .toHaveAttribute("href", `/resource-manager/pool-id/resources/${secondResource?.id}`);
-    expect(useGetIpPoolUtilization).toHaveBeenCalledWith("pool-id");
+    expect(useGetIpPoolUtilization).toHaveBeenCalledWith("pool-id", { refetchOnMount: false });
   });
 
   it("keeps the resource prefix link when a refresh fails", async () => {
@@ -86,6 +86,6 @@ describe("BreadcrumbResourceManager", () => {
     // THEN
     await expect
       .element(component.getByRole("link", { name: secondResource?.display_label }))
-      .toBeVisible();
+      .toHaveAttribute("href", `/resource-manager/pool-id/resources/${secondResource?.id}`);
   });
 });

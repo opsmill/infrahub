@@ -72,6 +72,7 @@ export const generateIpPoolUtilization = (
     utilizationDefaultBranch: 25,
     utilizationBranches: 5,
   }),
+  areWeightsUnavailable: false,
   resources: [
     generateIpPoolResource(),
     generateIpPoolResource({

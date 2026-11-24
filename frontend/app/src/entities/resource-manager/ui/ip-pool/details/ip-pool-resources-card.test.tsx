@@ -74,6 +74,21 @@ describe("IpPoolResourcesCard", () => {
       .toHaveTextContent("All resource prefixes2 resource prefixes30%");
   });
 
+  it("says the list is sorted by prefix when the weights could not be loaded", async () => {
+    // GIVEN
+    const props = { areWeightsUnavailable: true };
+
+    // WHEN
+    const component = await renderCard(props);
+
+    // THEN
+    await expect
+      .element(component.getByRole("status"))
+      .toHaveTextContent(
+        "The weights could not be loaded, so the list is sorted by prefix, not in the order the pool fills them."
+      );
+  });
+
   it("shows no weight when the resource prefixes have none", async () => {
     // GIVEN
     const unweightedResources = resources.map((resource) =>
