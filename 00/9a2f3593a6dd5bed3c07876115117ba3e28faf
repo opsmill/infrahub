@@ -1,0 +1,26 @@
+dev/specs/ifc-3614-store-schema-changes/contracts/internal-interfaces.md
+  s_e3124b241e516d::t_419a0cabcd6721 76
+dev/specs/ifc-3614-store-schema-changes/spec.md
+  s_e3124b241e516d::t_419a0cabcd6721 187-189,265
+dev/specs/ifc-3614-store-schema-changes/quickstart.md
+  s_e3124b241e516d::t_419a0cabcd6721 56-57
+dev/specs/ifc-3614-store-schema-changes/tasks.md
+  s_e3124b241e516d::t_419a0cabcd6721 578-579
+  s_e3124b241e516d::t_9e99fc1c1f09db 78-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "009a2f3593a6dd5bed3c07876115117ba3e28faf",
+  "prompts": {},
+  "sessions": {
+    "s_e3124b241e516d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8dc6f626-32ca-4abd-abf6-b94c48167543",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

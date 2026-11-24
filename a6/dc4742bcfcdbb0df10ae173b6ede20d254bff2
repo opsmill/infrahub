@@ -1,0 +1,653 @@
+backend/infrahub/core/validators/attribute/length.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 83,88
+backend/tests/component/graphql/profiles/test_mutation_relationship.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 12-19,22,46-47,56-64,76-107,117,125-136,169-194,449-743
+backend/infrahub/core/schema_change/repository.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 196-199,206,212,520,523-525,539,541,547-549,563
+backend/infrahub/core/query/vertex_metadata.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 3,5-6,8-24,26,28,32,35,37-38
+backend/infrahub/graphql/auth/query_permission_checker/default_branch_checker.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 42,45
+backend/infrahub/core/schema/node_inheritance_handler.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 77,129-132
+backend/infrahub/core/validators/attribute/min_max.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 97,101
+backend/infrahub/graphql/resolvers/resolver.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 240
+backend/tests/functional/ipam/test_ipam_utilization.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 362-364,440-441,520-522,601-603
+backend/infrahub/git/tasks.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 989
+backend/tests/component/core/profiles/test_node_create_with_profiles.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 131
+backend/tests/component/core/migrations/schema/test_node_remove.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 28,273,407
+changelog/+generic-profile-related-nodes-removal.fixed.md
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1
+backend/infrahub/core/schema_change/recorder.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 6-7,34,36,81-86,88,96-97,99,104-107,109,140
+schema/schema.graphql
+  s_29ee9c595a6e47::t_8cbbcce39b6297 27038
+backend/infrahub/artifacts/tasks.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 55
+backend/infrahub/git/repository.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 392
+backend/infrahub/core/node/__init__.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 411,691-697
+backend/infrahub/core/migrations/query/selection.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 3,8-9,17,22-55
+  s_29ee9c595a6e47::t_0e8e4d1ab87d72 56
+backend/infrahub/core/query/__init__.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 5,500,517,704
+backend/infrahub/menu/models.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 190
+backend/tests/component/core/test_node_get_list_query.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 874
+backend/infrahub/graphql/manager.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 232,240,484,572,1153
+frontend/app/src/entities/nodes/object/ui/object-details/object-profiles-groups-card.tsx
+  s_29ee9c595a6e47::t_8cbbcce39b6297 14,272
+backend/infrahub/core/node/create.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 88-94,211,216,226,230,345,377,392,413,425,636-643,648,656,659,664,673,700-701,713,776-777,819,824-826,853
+backend/infrahub/core/validators/attribute/kind.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 71
+backend/tests/component/core/diff/diff_calculator/test_nodes.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 72,147,191,612
+backend/infrahub/core/migrations/query/delete_element_in_schema.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 76,90
+backend/infrahub/core/migrations/schema/node_remove.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 8,19,59,69-72,106-109,135,206,236-243,254,279,347-348
+backend/tests/unit/config/test_config.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 92-93,113
+frontend/app/src/entities/groups/ui/object-groups-list.tsx
+  s_29ee9c595a6e47::t_8cbbcce39b6297 13,60-65
+backend/tests/component/git/conftest.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 85,813,883,925,958,993,1074,1112,1160
+backend/infrahub/events/generator.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 148,153
+dev/specs/ifc-3614-store-schema-changes/quickstart.md
+  s_29ee9c595a6e47::t_8cbbcce39b6297 56-57
+backend/tests/component/core/resource_manager/test_number_pool_ranges_allocation.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 108,140,183,201-202,225,267
+backend/infrahub/cli/context.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 18
+backend/tests/component/core/diff/merge/_setup.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 291,382,400
+changelog/+multi-select-escape.fixed.md
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1
+backend/infrahub/core/migrations/query/attribute_remove.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 10,32,41,63-73,79,97,139,141-144,172-173,186-187
+tasks/docs.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 322
+backend/tests/component/core/changelog/test_models.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 325-326
+frontend/app/src/entities/nodes/object/ui/object-details/action-buttons/add-relationship-form.tsx
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1-70
+backend/infrahub/core/schema/schema_branch.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1974,2132,2475,2745,2748,2989,2994,2999,3014,3171,3177
+dev/specs/ifc-3614-store-schema-changes/contracts/schema-change-history.graphql
+  s_29ee9c595a6e47::t_8cbbcce39b6297 7,94
+backend/infrahub/core/merge/failure_recoverer.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 280
+backend/tests/component/core/migrations/graph/m083_heal_missing_number_pool_rows/test_number_pool.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 105-111,113-114
+backend/infrahub/profiles/node_applier.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 151,199-206,273-274,324-325,328
+backend/infrahub/core/validators/uniqueness/query/validation.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 508-511
+backend/tests/integration/diff/test_diff_update.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 329
+backend/infrahub/core/schema_change/operation_builder.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 11,270-274,295-304,324-356,425-427,465-479,513-514,518-521
+changelog/+ifc-3264-required-profile-relationship.fixed.md
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1
+backend/tests/component/core/migrations/graph/test_023.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 149
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_29ee9c595a6e47::t_8cbbcce39b6297 26484
+frontend/app/src/entities/nodes/object/ui/object-table/toolbar/actions/groups/bulk-mutate-groups.tsx
+  s_29ee9c595a6e47::t_8cbbcce39b6297 3,43
+backend/infrahub/core/initialization.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 188
+backend/infrahub/git/divergence/models.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 34,37,39,42,63
+backend/tests/__init__.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 6-7
+backend/tests/component/core/constraint_validators/test_determiner.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 190-191
+backend/infrahub/core/migrations/query/node_duplicate.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 11,59,70,96-99,104-105,110-116,121-122,127-129,139,151,198-201,214,269
+backend/infrahub/core/models.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 215,448,451
+backend/infrahub/graphql/loaders/peers.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 82
+backend/tests/component/core/migrations/test_runner.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 53,59
+backend/tests/component/core/schema/schema_branch/test_uniqueness_propagation.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 39,59,73-77
+backend/infrahub/api/auth.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 65,119
+backend/tests/component/core/migrations/schema/test_agnostic_field_removal.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 522
+backend/tests/component/graphql/mutations/test_group_event_collection.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 177-178
+backend/infrahub/permissions/resolver.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 83-85,126,143
+backend/infrahub/graphql/app.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 404,553
+backend/infrahub/core/diff/enricher/cardinality_one.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 53,55
+backend/infrahub/core/changelog/relationship_getter.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 121,134,161
+backend/infrahub/core/schema/definitions/internal.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 325
+backend/infrahub/core/changelog/models.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 65,102,157
+backend/tests/component/graphql/queries/test_event.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 559,561-562,564
+backend/tests/integration/git/test_git_repository.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 51
+backend/infrahub/core/validators/uniqueness/checker.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 213-222,224-225
+backend/infrahub/core/account.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 150-154,156-157,279-285,287-288,378-382,384-385,484-490,492-493
+backend/infrahub/graphql/queries/resource_manager.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 87,91,160-166,168-170
+utilities/proposed_change_faker.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 48
+backend/infrahub/core/diff/query_parser.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 91-95,163,165,172,295,297,338,357,361,526
+backend/tests/component/core/profiles/test_create_with_profiles_changelog.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1-79
+backend/tests/component/api/test_admission_middleware.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 515-516,703
+backend/tests/component/core/schema_manager/test_schema_rollback.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 175
+backend/infrahub/core/branch/models.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 389,391-395,440,442-449
+backend/infrahub/core/query/node.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 307-308,322,2282
+frontend/app/src/entities/nodes/object/ui/object-table/toolbar/actions/groups/toolbar-remove-from-groups-action.tsx
+  s_29ee9c595a6e47::t_8cbbcce39b6297 7,46
+backend/tests/component/core/diff/test_refresh_diff.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 27
+backend/infrahub/core/diff/query/save.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 73-85,530-536
+frontend/app/src/entities/nodes/object/ui/object-details/action-buttons/add-relationship-form.test.tsx
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1-209
+backend/tests/test_data/dataset03.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 16-17,126,171-172,194,211,247,267,291,294-295,298,300,302,304,319,378-379,383,450
+backend/infrahub/core/migrations/graph/m044_backfill_hfid_display_label_in_db.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 101,464
+backend/tests/component/graphql/test_mutation_update.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 505-506
+backend/tests/component/core/migrations/schema/test_node_kind_update_generated_kinds.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 86
+dev/specs/ifc-3614-store-schema-changes/contracts/internal-interfaces.md
+  s_29ee9c595a6e47::t_8cbbcce39b6297 76,132-136,198,200,239-241,245-247,393,431-433,447,523-526
+backend/infrahub/git/base.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1069-1075
+backend/tests/unit/webhook/test_capture.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1-2,21
+backend/infrahub/core/diff/conflicts_extractor.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 220
+backend/infrahub/core/migrations/schema/node_attribute_add.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 118-119
+backend/infrahub/graphql/loaders/node.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 62
+backend/tests/component/api/test_50_internals.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 182
+backend/tests/component/core/diff/diff_calculator/test_kind_migration.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1034-1035,1044-1045,1078-1079
+backend/infrahub/core/query/attribute.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 423,429,483-487
+backend/infrahub/core/migrations/query/attribute_rename.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 10,38,43-50,181-184,225,234-237
+backend/infrahub/pools/attribute_pool_applier.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 671
+backend/tests/component/core/diff/test_coordinator.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 916
+backend/tests/component/templates/test_template_reads.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 212,259,349
+backend/tests/functional/pools/test_numberpool_lifecycle.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 276,282
+changelog/+ifc-3264-profile-values-in-events.fixed.md
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1
+backend/tests/component/core/migrations/schema/test_migration_selection_count.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 342
+backend/tests/component/core/profiles/test_node_applier.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 269,1083-1119
+frontend/app/src/entities/nodes/object/ui/filters/active-object-filter-tags.tsx
+  s_29ee9c595a6e47::t_8cbbcce39b6297 3,55,61
+backend/infrahub/api/oidc.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 261
+backend/infrahub/exceptions.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 598-601
+dev/specs/ifc-3614-store-schema-changes/spec.md
+  s_29ee9c595a6e47::t_8cbbcce39b6297 187-189,252-255,265,351-352,354-356,400-402,494-496,686-696
+frontend/app/src/entities/nodes/object/ui/object-details/action-buttons/relationships-buttons.tsx
+  s_29ee9c595a6e47::t_8cbbcce39b6297 9,11-12,23,30-33,37-38,42-43,47,64-65,69-74
+  s_29ee9c595a6e47::t_918ed423111e81 75
+tests/e2e/groups/test_groups.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 68-69,74
+backend/infrahub/core/migrations/graph/m070_normalize_mac_address_values_to_colon.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 227
+backend/infrahub/proposed_change/constants.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 48,51
+backend/infrahub/core/schema_change/field_name_changes.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1-63
+backend/tests/unit/api/admission/test_retry_policy.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 3-4,82,95,125
+backend/tests/unit/database/test_load_signal_metrics.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 3-4,16-18,29-30,32
+backend/infrahub/core/diff/model/diff.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 170,210
+backend/tests/component/core/ipam/conftest.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 199
+docs/docs/learn/tutorials/groups.mdx
+  s_29ee9c595a6e47::t_8cbbcce39b6297 77-80
+backend/infrahub/core/migrations/query/relationship_duplicate.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 52-57,59-64,77,91
+backend/infrahub/core/relationship/model.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 177,179,272
+frontend/app/src/entities/nodes/object/ui/object-details/action-buttons/select-peer-form.tsx
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1-86
+backend/infrahub/graphql/mutations/proposed_change.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 204
+backend/infrahub/api/dependencies.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 126
+backend/infrahub/proposed_change/action_checker.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 165-170,172-173
+backend/tests/component/core/migrations/schema/test_node_attribute_add.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 55,142,292,397
+backend/infrahub/graphql/utils.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 40,42,45
+backend/tests/integration/schema_lifecycle/test_migration_rel_remove_template_profile.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 132
+backend/tests/unit/test_trace.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 351,355,374
+backend/infrahub/graphql/queries/schema_change.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 84
+backend/infrahub/git/fingerprint/composer.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 169-175
+backend/infrahub/proposed_change/tasks.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 644,1014,1293,1309,1325,1339,1346,1361,1582-1588,1590-1591
+backend/infrahub/graphql/queries/search.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 169
+backend/tests/integration_docker/test_artifact_composition.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 46
+backend/tests/unit/core/schema_change/test_field_name_changes.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1-51
+frontend/app/src/entities/groups/ui/add-group-members-form.test.tsx
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1-131
+frontend/app/src/entities/nodes/object/ui/object-details/action-buttons/select-peer-form.test.tsx
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1-137
+backend/infrahub/core/validators/schema_branch/display_label_validator.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 149,180
+frontend/app/src/entities/repository/ui/repository-objects-tab.tsx
+  s_29ee9c595a6e47::t_8cbbcce39b6297 6,23
+backend/infrahub/core/diff/conflicts_enricher.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 150
+backend/infrahub/core/rollback.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 14-15,24,32-33,51,54-55,57-59,64-66
+backend/tests/component/core/migrations/schema/selection_dataset.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 280,359,365,375-376,378-379
+backend/tests/component/core/migrations/schema/test_node_relationship_remove.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 35,193,306
+backend/tests/component/core/test_relationship_metadata.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 154-155
+backend/tests/integration/git/utils.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 36,47
+backend/infrahub/graphql/permissions.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 17-20
+backend/tests/unit/config/test_trace_settings.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 23
+backend/infrahub/core/migrations/graph/m047_backfill_or_null_display_label.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 174
+backend/tests/component/core/migrations/schema/metadata_helpers.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 9,106-117,132-138
+backend/infrahub/core/validators/schema_branch/hierarchical_nodes_restricted_words_validator.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 34
+backend/tests/component/core/schema_manager/test_manager_schema.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 3520-3534,4665
+backend/infrahub/core/migrations/graph/m031_check_number_attributes.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 57
+backend/tests/component/core/migrations/schema/test_migration_node_scope.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1-900
+backend/infrahub/core/query/rollback.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 10-11,20-21,24-26,39-41,51-56,60-64,69,72,95,101,107,113-114,141,147,153,159-160
+backend/tests/integration/git/conftest.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 115,167
+backend/tests/component/core/test_branch_diff.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 902,1058-1059
+backend/infrahub/core/node/base.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 27
+backend/infrahub/core/validators/relationship/count.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 156,160
+frontend/app/src/entities/nodes/object/ui/object-details/action-buttons/relationships-buttons.test.tsx
+  s_29ee9c595a6e47::t_8cbbcce39b6297 7,16-19,30,49,52-53,63-64,66-67
+backend/infrahub/graphql/auth/query_permission_checker/object_permission_checker.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 35,96,100,192,196
+backend/tests/unit/task_manager/flow_run/test_service.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 5,202
+backend/infrahub/core/migrations/graph/m063_template_number_pool_cleanup.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 84
+backend/infrahub/core/migrations/graph/m066_consolidate_duplicate_number_pools.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 87
+backend/tests/component/core/diff/repository/test_diff_repository.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 969,971,1009,1011
+backend/infrahub/api/query.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 188
+backend/infrahub/core/migrations/graph/m064_template_ip_pool_relationship_cleanup.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 100
+dev/knowledge/frontend/shared-components.md
+  s_29ee9c595a6e47::t_8cbbcce39b6297 69
+backend/tests/unit/core/schema_change/test_application_runner.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 36,40,49,242-268,317-335
+  s_29ee9c595a6e47::t_31c9314f2644dd 336-338
+backend/infrahub/core/attribute.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 693
+backend/tests/component/core/diff/merge/_conflict_setup.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 147,180
+backend/infrahub/cli/db_commands/check_inheritance.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 164
+dev/specs/ifc-3614-store-schema-changes/research.md
+  s_29ee9c595a6e47::t_8cbbcce39b6297 589-591
+backend/infrahub/core/relationship/constraints/profiles_removal.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 11,28,31,33,41,48,90,111-113,146-170,180,210-212,215-256,266-267
+  s_29ee9c595a6e47::t_b2ca4b7a37d1a0 268
+backend/infrahub/core/validators/attribute/number_pool.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 87,91
+backend/infrahub/core/migrations/query/__init__.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 5-7,13
+backend/infrahub/graphql/analyzer.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 284-291,293-294
+backend/infrahub/graphql/mutations/convert_object_type.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 86
+backend/infrahub/graphql/mutations/relationship.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 29,151,158-164,166-167,301,311,376,381,412,422,479,735-738,743-757,784-789,792,797-812,846,851,854-855,864
+backend/infrahub/patch/plan_reader.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 42-44,49-51,56-58,63-65,70-72,77-79
+backend/infrahub/core/migrations/schema/attribute_kind_update.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 7,133-134,139,147-150,152,182,199-207
+backend/infrahub/events/node_action.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 31,100
+backend/tests/component/core/resource_manager/test_number_pool.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 403-404,468
+backend/tests/component/graphql/queries/test_ipam.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 704
+backend/tests/integration/conftest.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 70
+backend/tests/integration/schema_lifecycle/test_schema_validator_common_parent_rel.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 97,149-152,193-196
+backend/tests/unit/core/schema_change/test_recorder.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 14,96-115,147-151,153-155,157,196
+backend/tests/component/core/diff/merge/_validators.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 471,602
+backend/infrahub/telemetry/database.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 30-33,35-36
+backend/tests/component/core/diff/diff_calculator/test_base_updates.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 526,807,820,841,866,895,909,936,992,1006,1033,1058
+backend/tests/integration/schema_lifecycle/test_migration_attribute_kind.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 68-73,75-76
+dev/knowledge/backend/schema-changes.md
+  s_29ee9c595a6e47::t_8cbbcce39b6297 113-119,124-129,131-133,144,149-156,214-217,230-232
+  s_29ee9c595a6e47::t_bed0938453c497 134-143
+tasks/release.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 128,133,140,184,188,200,409,414,421,426
+backend/tests/component/core/migrations/schema/test_attribute_kind_update.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 23,399,521
+tasks/container_ops.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 5,12,25-31,82,160,162,171,196,199,230,236,239-240,262,312-325,345,359,382,410,423,434
+backend/infrahub/core/validators/node/hierarchy.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 148
+backend/infrahub/core/migrations/graph/m062_recompute_permission_display_labels.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 456,476
+backend/infrahub/core/migrations/query/attribute_add.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 9,21,51,67,126-129,169,175
+backend/tests/component/graphql/test_manager.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 12,18-30
+backend/infrahub/display_labels/models.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 218-220
+backend/infrahub/templates/node_applier.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 146
+backend/infrahub/core/query/diff.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 98,100-102,108-110,117-118,1029,1031-1033,1040-1041,1047-1048
+backend/infrahub/permissions/types.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 60
+backend/infrahub/core/migrations/graph/m059_fix_hfid_display_label_nulls.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 108-112,114-115
+backend/infrahub/hfid/models.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 220-222
+backend/tests/unit/config/test_ldap_settings.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 154
+backend/tests/component/core/migrations/schema/test_attribute_name_update.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 31,278,414
+backend/infrahub/core/schema/update_coordinator.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 354
+backend/infrahub/api/artifact.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 92
+backend/infrahub/core/schema/basenode_schema.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 28,41-49,403,708-713,716-717,724,739,745,751,757,782
+backend/infrahub/core/schema/relationship_schema.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 135
+backend/infrahub/core/migrations/query/update_attribute_values.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 47
+backend/infrahub/core/schema_change/candidate.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 70-72,79,83,142-156,158-159,176-177,181-182,189-191,201-205
+  s_29ee9c595a6e47::t_e05f331d98e863 206
+backend/infrahub/core/validators/attribute/regex.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 83
+backend/infrahub/core/schema/node_schema.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 116
+backend/infrahub/git/global_config.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 51
+backend/tests/component/core/schema/schema_branch/test_process_idempotency.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 186,206,220-224
+backend/tests/component/graphql/test_graphql_read_retry.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 241-245
+backend/infrahub/core/graph/constraints.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 260-264,266-267,287-290
+backend/infrahub/core/query/resource_manager.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 506,684-689,760-761,1625-1630,1699-1700,1748-1749,1765,1791-1792,1799
+backend/tests/integration/schema_lifecycle/test_generic_migrations.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 415,442,1762,1774-1789
+backend/tests/unit/core/schema_change/test_candidate.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 8,26,33,41-42,399-447,463-469,494-517
+frontend/app/src/entities/groups/domain/model/group.ts
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1-3
+backend/infrahub/graphql/queries/relationship.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 58-66,68-70
+backend/infrahub/core/schema/attribute_schema.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 142
+backend/infrahub/graphql/resolvers/ipam.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 246,343,359
+backend/tests/component/core/test_rollback.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 9,12-13,15,18,20,22,26,33-34,141,382,392,407,417,453,494,520,584,633,676,690-948
+backend/tests/unit/database/test_load_signal.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 51,58,61,65,79,82,94,98-99,123,131,137,151-152,172,180,209
+dev/knowledge/backend/mutations.md
+  s_29ee9c595a6e47::t_8cbbcce39b6297 35-36,120,154-157,162-166
+  s_29ee9c595a6e47::t_742984b19f540c 167
+changelog/+group-members-multi-select.changed.md
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1
+backend/tests/fixtures/project_02/checks/check_spine_interface_status.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 19
+backend/infrahub/api/oauth2.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 207
+backend/infrahub/graphql/mutations/repository.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 111
+backend/infrahub/core/query/node_get_list_filters.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 49,75,147,151
+backend/tests/component/graphql/queries/test_resource_pool.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 951,955
+backend/tests/unit/api/admission/test_observers.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 3-4,23,41,45
+backend/tests/component/core/test_relationship_query.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 360,572,673
+backend/tests/component/core/migrations/schema/test_node_attribute_remove.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 29,235,364
+backend/infrahub/core/migrations/schema/tasks.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 142,144-151,161,163,176-182
+backend/infrahub/cli/db.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1400
+backend/infrahub/core/node/standard.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 86
+backend/infrahub/core/utils.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 266
+backend/tests/component/api/test_trace_sample_ratio.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 262
+backend/infrahub/database/__init__.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 426,432
+backend/tests/component/graphql/test_mutation_create_object_template.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 198
+changelog/+schema-load-reused-names.changed.md
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1
+frontend/app/src/shared/components/form/fields/relationships/generic-relationship.field.tsx
+  s_29ee9c595a6e47::t_8cbbcce39b6297 16,31,72-75,103,108,190-198,228-233,264-291,309-310
+backend/tests/component/core/schema_change/test_repository.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 20,123,132-133,457,464-465,477,488-518,520
+dev/knowledge/backend/merge-failure-recovery.md
+  s_29ee9c595a6e47::t_8cbbcce39b6297 29-47,67-77,88-115,131-139,158
+backend/infrahub/core/diff/branch_differ.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 148,170-178,180-181
+backend/infrahub/core/migrations/query/path_details.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 126
+backend/tests/component/core/migrations/schema/test_node_kind_update.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 37,312,489
+backend/tests/integration/diff/test_diff_merge.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 142
+frontend/app/src/entities/repository/ui/repository-objects-manager.tsx
+  s_29ee9c595a6e47::t_8cbbcce39b6297 6,20,41
+backend/infrahub/core/migrations/graph/m071_recompute_hfid_for_ip_attributes.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 182
+backend/tests/integration_docker/test_propose_change_repository.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 58
+frontend/app/.betterer.results
+  s_29ee9c595a6e47::t_8cbbcce39b6297 112-113
+backend/infrahub/core/migrations/shared.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 3,117-118,217-218,240
+backend/infrahub/groups/parsers.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 36-50
+frontend/app/src/shared/components/form/fields/relationships/generic-relationship.field.test.tsx
+  s_29ee9c595a6e47::t_8cbbcce39b6297 2,628-689
+  s_29ee9c595a6e47::t_e691350f2c6d55 690
+dev/guides/backend/creating-migrations.md
+  s_29ee9c595a6e47::t_8cbbcce39b6297 35-37
+backend/tests/component/telemetry/test_task_manager.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 150-152
+backend/infrahub/core/migrations/schema/node_relationship_remove.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 11,45,75,116-123,154-155,197,208-215,220-222,324,326
+models/infrastructure_edge.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1139-1144,1146-1153,1211-1212,1462-1465,1606,1608,1623-1624,1640,1945-1946,2066,2075
+backend/tests/component/graphql/diff/test_diff_tree_query.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 354
+backend/infrahub/core/changelog/relationship_mapper.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 86
+backend/infrahub/core/query/subquery.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 69,290-296,324
+backend/infrahub/core/schema_change/application_runner.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 35,191,198-201
+  s_29ee9c595a6e47::t_45f2adb3ddb8a2 202-204
+backend/tests/unit/core/schema_change/equivalence_cases_relationships.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 126-235,237-278
+backend/infrahub/events/group_action.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 31
+backend/infrahub/events/models.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 147-154
+frontend/app/src/shared/components/inputs/relationship-many.tsx
+  s_29ee9c595a6e47::t_8cbbcce39b6297 91-94
+tasks/shared.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 34
+backend/infrahub/computed_attribute/models.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 77,380-382
+backend/infrahub/api/schema.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 406
+backend/tests/unit/core/schema_change/helpers.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 4,558-559,568,572,594,604,607,611,653,665,772-773,776,779,804,810,827,832-856
+  s_29ee9c595a6e47::t_a1fbd67eaa488d 857-858
+docs/docs/groups/add-members.mdx
+  s_29ee9c595a6e47::t_8cbbcce39b6297 51-56
+backend/tests/component/core/ipam/test_ipam_utilization.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 23,29,36
+frontend/app/src/entities/groups/ui/add-group-members-form.tsx
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1-74
+backend/infrahub/graphql/mutations/graphql_query.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 55
+backend/tests/component/core/changelog/test_diff.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 112-116,122-123
+changelog/+ifc-3264-update-removes-profile-peers.fixed.md
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1
+backend/infrahub/core/validators/determiner.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 113,145,152,155,238,241
+backend/infrahub/core/migrations/runner.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 22
+backend/infrahub/permissions/globals.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 23
+backend/infrahub/core/schema/__init__.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 111-115,123-132
+utilities/infrahub_load_tester.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 113
+backend/infrahub/api/transformation.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 45,113
+backend/infrahub/core/diff/merger/merger.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 248
+backend/tests/integration/proposed_change/test_proposed_change_conflict.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 176,259,261,263,265,267,269,271,273,276,278
+backend/infrahub/core/migrations/graph/m043_create_hfid_display_label_in_db.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 134,136
+backend/tests/component/profiles/test_refresh.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 14,22,87-101,125-129,215-222,280-317
+backend/infrahub/graph_traversal/_cypher.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 573-577,756-763,845,1076-1082
+backend/tests/component/core/merge/test_recovery_rollback.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 29,152,188,217,238,264,274,311,334
+backend/infrahub/core/schema_change/applier.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 12,50,61,72,88-90,110,121,133,193,222
+backend/infrahub/git/closure_builder/canonicalizer.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 42
+backend/tests/component/core/resource_manager/test_number_pool_scope_profiles.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 70-71,82,93,106
+backend/tests/unit/core/migrations/query/test_selection.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1-13
+frontend/app/src/entities/nodes/object/ui/object-table/toolbar/actions/groups/toolbar-add-to-groups-action.tsx
+  s_29ee9c595a6e47::t_8cbbcce39b6297 7,47
+tasks/utils.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 76
+backend/tests/unit/core/diff/test_query_parser.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 1-47
+backend/infrahub/core/graphql_query/node_id_query.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 49-53
+backend/tests/functional/graphql/test_api.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 66,68-69,71,113,115-116,118,127,129-130,132
+models/examples/security/infrastructure_security.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 3,6,9,22,28,39,82-83,135-138,140-151,155,167,235,309
+backend/infrahub/core/registry.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 229
+backend/tests/component/graphql/profiles/test_mutation_update.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 9-10,13,29-30,35-36,45-83,89-94,104-141,297-387,457-626
+backend/infrahub/core/migrations/graph/missing_attribute_rows/repairers.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 77,148
+backend/tests/test_data/dataset01.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 143,153
+dev/specs/ifc-3614-store-schema-changes/tasks.md
+  s_29ee9c595a6e47::t_8cbbcce39b6297 78-79,578-579
+backend/infrahub/graphql/mutations/main.py
+  s_29ee9c595a6e47::t_8cbbcce39b6297 12,384-386,602
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a6dc4742bcfcdbb0df10ae173b6ede20d254bff2",
+  "prompts": {},
+  "sessions": {
+    "s_29ee9c595a6e47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6739bd57-3231-493b-9d6f-e3d752abed62",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
