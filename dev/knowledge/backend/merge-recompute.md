@@ -96,9 +96,9 @@ The four families' per-node triggers and the profile refresh automation match on
 
 ## Profile refresh after a merge or a rebase
 
-**Location:** `profiles/replay.py` (`ProfileReplayRefresher`, `select_nodes_to_refresh`), called by `PostMergeDispatcher.dispatch_events` and by the rebase flow after the coalesced pass
+**Location:** `profiles/replay.py` (`ProfileReplayRefresher`, `ProfileValueSelector`), called by `PostMergeDispatcher.dispatch_events` and by the rebase flow after the coalesced pass
 
-The merge and the rebase refresh the profiles they replay, because the profile refresh automation ignores their events. For each replayed profile whose refresh fields changed, `ProfileReplayRefresher` submits one `profile-refresh-process` run on the target branch, with the changed attributes as `held_attribute_names`. The run pages the linked nodes and templates as for a live change, and leaves out each node that holds, for every one of these attributes, the current value of the profile with the profile as its source. A change to the priority or to a relationship passes no attributes, so every linked node is refreshed. [ADR 0017](../../adr/0017-coalesced-merge-rebase-recompute.md#amendment-the-merge-and-the-rebase-refresh-the-profiles-they-replay-2026-10-28) records why the check reads the stored source and not the diff.
+The merge and the rebase refresh the profiles they replay, because the profile refresh automation ignores their events. For each replayed profile whose refresh fields changed, `ProfileReplayRefresher` submits one `profile-refresh-process` run on the target branch, with the changed attributes as `attribute_names`. The run pages the linked nodes and templates as for a live change, and leaves out each node that holds, for every one of these attributes, the current value of the profile with the profile as its source. A change to the priority or to a relationship passes no attributes, so every linked node is refreshed. [ADR 0024](../../adr/0024-merge-and-rebase-refresh-replayed-profiles.md) records why the check reads the stored source and not the diff.
 
 ## The bulk writer
 
@@ -146,7 +146,7 @@ An empty write set dispatches nothing, which is the normal stop: an acyclic depe
 | `core/recompute/bulk_write.py` | `BulkRecomputeWriter`, `AttributeValueWrite`, `WrittenNode`, `send_node_updated_event` |
 | `core/recompute/dispatch.py` | `BulkRecomputeDispatcher`, `build_bulk_recompute_dispatcher` (bulk write, then chain on a coalesced pass), `build_recompute_chain` |
 | `profiles/refresh.py` | `NodeProfilesRefresher`: applies the profiles of a chunk in transactions, then chains the readers of the writes |
-| `profiles/replay.py` | `ProfileReplayRefresher`: after a merge or a rebase, submits the refresh of the replayed profiles; `select_nodes_to_refresh` leaves out the nodes that hold the value from the profile |
+| `profiles/replay.py` | `ProfileReplayRefresher`: after a merge or a rebase, submits the refresh of the replayed profiles; `ProfileValueSelector` leaves out the nodes that hold the value from the profile |
 | `core/merge/post_merge.py` | Merge: stamp `merge` origin, build and submit on the destination branch |
 | `core/branch/tasks.py` | Rebase: stamp `rebase` origin, build and submit on the user branch |
 | `events/constants.py` | `NodeMutationOrigin`, `NODE_ORIGIN_LABEL` |
