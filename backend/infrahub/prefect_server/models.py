@@ -1,7 +1,12 @@
+from datetime import timedelta
+
 from prefect.server.events.filters import EventFilter, EventNameFilter, EventOrder
 from prefect.server.events.schemas.events import ReceivedEvent
 from prefect.server.utilities.schemas import PrefectBaseModel
 from pydantic import BaseModel, Field
+
+MINIMUM_DEFAULT_RANGE = timedelta(days=180)
+"""Prefect's own default range, which a query that sets no start reads at least."""
 
 
 class InfrahubEventFilter(EventFilter):
@@ -19,7 +24,7 @@ class InfrahubEventFilter(EventFilter):
 
 class InfrahubEventPage(PrefectBaseModel):
     events: list[ReceivedEvent] = Field(..., description="The Events matching the query")
-    total: int = Field(..., description="The total number of matching Events")
+    total: int | None = Field(default=None, description="The total number of matching Events, when requested")
 
 
 class InfrahubDatabaseVersion(PrefectBaseModel):
@@ -31,3 +36,16 @@ class InfrahubEventfilterInput(BaseModel):
     limit: int = Field(default=50)
     filter: InfrahubEventFilter = Field(default_factory=InfrahubEventFilter.default)
     offset: int | None = Field(default=None)
+    include_total: bool = Field(
+        default=True,
+        description="When false, skip the unbounded count query and report a null total; the paged events are unaffected",
+    )
+
+
+def default_range(event_retention: timedelta) -> timedelta:
+    """Return how far back from its end a query that sets no start reads: the event retention, and at least 180 days.
+
+    The process that deletes old events can run with other settings than the process that serves the query, so the
+    range does not depend on whether this process would delete them.
+    """
+    return max(event_retention, MINIMUM_DEFAULT_RANGE)

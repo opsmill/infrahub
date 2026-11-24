@@ -151,6 +151,6 @@ async def test_no_event_type_filter_excludes_account_events_for_non_admin(
     assert result.errors is None
     assert result.data
 
-    event_filter = mock_query.call_args.kwargs["event_filter"]
+    (event_filter,) = mock_query.call_args.kwargs["event_filters"]
     assert event_filter.event is not None
     assert event_filter.event.exclude_prefix == [ACCOUNT_EVENT_PREFIX]
