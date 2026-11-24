@@ -10,7 +10,7 @@ from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.migrations import MIGRATION_MAP
 from infrahub.core.migrations.schema.runner import SchemaMigrationRunner
 from infrahub.core.migrations.schema.scheduler import MigrationScheduler
-from infrahub.core.migrations.shared import DerivedSchemaPair, MigrationInput
+from infrahub.core.migrations.shared import DerivedSchemaPair, MigrationInput, SchemaMigration
 from infrahub.core.schema.derived_kinds import get_object_template_kind, get_profile_kind
 from infrahub.core.schema_change.factory import build_migration_recorder
 from infrahub.workers.dependencies import get_database
@@ -76,15 +76,14 @@ class TaskSchemaPathMigrator:
         if data.new_schema.has(name=migration.path.schema_kind):
             new_node_schema = data.new_schema.get(name=migration.path.schema_kind)
 
-        if new_node_schema and new_node_schema.id:
-            previous_node_schema = data.previous_schema.get_by_id(id=new_node_schema.id)
-        else:
-            previous_node_schema = data.previous_schema.get(name=migration.path.schema_kind)
-
-        if not previous_node_schema:
+        previous_node_schema = SchemaMigration.get_previous_node_schema(
+            schema_path=migration.path, previous_schema=data.previous_schema, new_schema=data.new_schema
+        )
+        if previous_node_schema is None:
             raise ValueError(
                 f"Unable to find the previous version of the schema for {migration.path.schema_kind}, in order to run the migration."
             )
+        previous_node_schema = previous_node_schema.duplicate()
 
         return await schema_path_migrate(
             branch=data.branch,
