@@ -32,7 +32,7 @@ class ApplicationRecorder(Protocol):
 
     async def complete(self, *, recording: SchemaChangeRecording, branch: Branch, user_id: str) -> None: ...
 
-    async def fail(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> None: ...
+    async def fail(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> bool: ...
 
     async def fail_if_running(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> bool: ...
 
@@ -188,10 +188,17 @@ class SchemaChangeApplicationRunner:
 
     async def _record_failure(self, *, recording: SchemaChangeRecording, error: str, user_id: str) -> None:
         try:
-            await self.recorder.fail(recording=recording, error=error, user_id=user_id)
+            recorded = await self.recorder.fail(recording=recording, error=error, user_id=user_id)
         except RECORD_WRITE_ERRORS:
             log.exception(
                 "Could not record the failure of a schema change",
+                schema_change_id=recording.schema_change_id,
+                application_id=recording.application_id,
+            )
+            return
+        if not recorded:
+            log.warning(
+                "The records of the schema change were deleted before its failure could be recorded",
                 schema_change_id=recording.schema_change_id,
                 application_id=recording.application_id,
             )

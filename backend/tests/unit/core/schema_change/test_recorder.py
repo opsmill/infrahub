@@ -11,7 +11,7 @@ from infrahub.core.schema_change.recorder import SchemaChangeRecorder, SchemaCha
 from infrahub.core.schema_change.repository import AppliedSchemaChangeVersion, CreatedSchemaChange
 from infrahub.core.schema_change.version_resolver import SchemaChangeVersionResolver
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import DatabaseError
+from infrahub.exceptions import DatabaseError, SchemaChangeRecordNotFoundError
 from tests.helpers.schema_change import build_seeded_operations
 from tests.unit.core.schema_change.helpers import (
     CREATE_SCHEMA_CHANGE,
@@ -93,6 +93,26 @@ async def test_complete_marks_the_schema_change_applied_with_the_next_version_of
     ]
 
 
+async def test_complete_raises_when_the_records_of_the_schema_change_were_deleted() -> None:
+    repository = RecordingSchemaChangeRepository(stored=False)
+
+    with pytest.raises(
+        SchemaChangeRecordNotFoundError,
+        match=(
+            rf"^The schema change {SCHEMA_CHANGE_ID}, its application or its parent was deleted before the schema "
+            r"update completed, so the update was rolled back\. Deleting the branch deletes its schema changes\.$"
+        ),
+    ):
+        await _build_recorder(repository=repository).complete(
+            recording=RECORDING, branch=Branch(name=MAIN), user_id=SYSTEM_USER_ID
+        )
+
+    assert repository.calls == [
+        SchemaChangeRepositoryCall(method=GET_HIGHEST_APPLIED_VERSION, arguments={"branch": MAIN}),
+        _mark_applied_call(version=1, parent_id=None),
+    ]
+
+
 async def test_record_applied_creates_the_schema_change_then_marks_it_applied() -> None:
     repository = RecordingSchemaChangeRepository(created=[CREATED])
     operations = build_seeded_operations(nbr_operations=1)
@@ -124,11 +144,17 @@ async def test_start_and_record_applied_refuse_an_empty_list_of_operations_and_s
     assert repository.calls == []
 
 
-async def test_fail_marks_the_schema_change_failed_with_the_error() -> None:
-    repository = RecordingSchemaChangeRepository()
+@pytest.mark.parametrize("stored", [pytest.param(True, id="stored"), pytest.param(False, id="deleted")])
+async def test_fail_marks_the_schema_change_failed_with_the_error_and_returns_whether_it_was_stored(
+    stored: bool,
+) -> None:
+    repository = RecordingSchemaChangeRepository(stored=stored)
 
-    await _build_recorder(repository=repository).fail(recording=RECORDING, error=FAILURE_ERROR, user_id=SYSTEM_USER_ID)
+    marked = await _build_recorder(repository=repository).fail(
+        recording=RECORDING, error=FAILURE_ERROR, user_id=SYSTEM_USER_ID
+    )
 
+    assert marked is stored
     assert repository.calls == [
         SchemaChangeRepositoryCall(
             method=MARK_FAILED,
@@ -167,7 +193,7 @@ async def test_fail_if_running_returns_whether_the_repository_marked_the_schema_
 @dataclass(frozen=True)
 class FailedWriteCase:
     name: str
-    write: Callable[[SchemaChangeRecorder], Awaitable[None]]
+    write: Callable[[SchemaChangeRecorder], Awaitable[object]]
     expected_methods: list[str]
 
 

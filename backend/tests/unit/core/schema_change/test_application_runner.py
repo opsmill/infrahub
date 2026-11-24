@@ -46,6 +46,7 @@ from tests.unit.core.schema_change.helpers import (
 USER_ID = "4d0c7e2a-6b19-4f3e-8a52-c1d9e7f30b64"
 UPDATED_HASH = "f3a1c92e7b4d5068"
 RECORD_FAILURE_EVENT = "Could not record the failure of a schema change"
+RECORDS_DELETED_EVENT = "The records of the schema change were deleted before its failure could be recorded"
 NO_OPERATION_EVENT = "Applying a schema change that has no operation, without recording it"
 CANCELLED_AFTER_RUNNING_EVENT = (
     "The schema load was cancelled after its schema change stopped running, so its status is kept"
@@ -236,6 +237,33 @@ async def test_run_raises_the_error_of_the_executor_and_logs_when_recording_the_
     )
     assert len(failures) == 1
     assert failures[0]["exc_info"]
+
+
+async def test_run_raises_the_error_of_the_executor_and_warns_without_a_traceback_when_the_records_were_deleted(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    calls: list[SchemaApplicationCall] = []
+    error = MigrationError(message=MIGRATION_FAILURE)
+    runner = SchemaChangeApplicationRunner(
+        recorder=RecordingApplicationRecorder(calls=calls, stored=False),
+        executor=FailingSchemaUpdateExecutor(calls=calls, error=error),
+    )
+    run_input = _build_run_input()
+
+    with caplog.at_level(logging.WARNING, logger="infrahub"), pytest.raises(MigrationError) as exc_info:
+        await _run(runner=runner, run_input=run_input)
+
+    assert exc_info.value is error
+    assert [call.method for call in calls] == [RECORDER_START, EXECUTOR_EXECUTE, RECORDER_FAIL]
+    assert find_logged_events(caplog, event=RECORD_FAILURE_EVENT) == []
+    warnings = find_logged_events(
+        caplog,
+        event=RECORDS_DELETED_EVENT,
+        schema_change_id=RECORDED_SCHEMA_CHANGE_ID,
+        application_id=RECORDED_APPLICATION_ID,
+    )
+    assert len(warnings) == 1
+    assert "exc_info" not in warnings[0]
 
 
 async def test_run_records_the_failure_and_raises_when_recording_the_application_fails_in_the_final_step() -> None:

@@ -208,8 +208,10 @@ progress and are best effort.
    the parent and marks both records `applied`, with `applied_at` equal to the application's `at`.
    When it raises, the coordinator rolls the update back as it does for a failed migration, and the
    load fails. When the schema change, its application or the parent is no longer stored, for example
-   because the branch was deleted during the load, `mark_applied` raises
-   `SchemaChangeRecordNotFoundError` (HTTP 422).
+   because the branch was deleted during the load, `mark_applied` returns false and `complete`
+   raises `SchemaChangeRecordNotFoundError` (HTTP 422). The three status writes of the repository
+   (`mark_applied`, `mark_failed` and `mark_failed_if_running`) each return whether they changed the
+   records, and the recorder or the runner decides what a false result means.
 4. When the update raises an `Exception`, the coordinator has already rolled back. The runner calls
    `fail` with the text of the error and raises the same exception again.
 5. When the load is cancelled (`asyncio.CancelledError`) after `start` returned, the runner calls `fail_if_running` with
@@ -222,7 +224,9 @@ progress and are best effort.
 
 A failure of `fail` itself is logged when it is one of `RECORD_WRITE_ERRORS`
 (`core/schema_change/record_errors.py`: a `DatabaseError`, a `QueryError`, a `QueryTimeoutError` or
-a `neo4j` `Neo4jError`), and the error of the load is raised.
+a `neo4j` `Neo4jError`), and the error of the load is raised. When the records were deleted during
+the load, for example with the branch, `fail` returns false and the runner logs a warning without a
+stack trace, because there is no record left to mark.
 
 When the diff is not empty but the candidate has no operation, the runner calls the coordinator
 with `application_id=None`, stores no schema change and logs a warning naming the branch. This
