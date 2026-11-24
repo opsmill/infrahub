@@ -1,0 +1,21 @@
+frontend/app/src/entities/nodes/object/ui/queries/get-display-label.query.ts
+  s_d39781b4d6a4c3::t_8645c9c8ba05f3 51-52,87-93
+frontend/app/src/entities/nodes/object/ui/node-label.test.tsx
+  s_d39781b4d6a4c3::t_24479652086c9b 164-166,168,177-228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c59f66f1450498736d581c0f19b5a4a57284b99f",
+  "prompts": {},
+  "sessions": {
+    "s_d39781b4d6a4c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87386907-69dd-4d37-9a17-8c0b6c8a25aa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
