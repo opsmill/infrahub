@@ -542,7 +542,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         branch = self.get_branch_based_on_support_type()
 
         # ---------- Update the Value ----------
-        # The key derives from the value, and a value stored before the key was introduced has none.
+        # The upgrade keys the stored values only on Neo4j, so on Memgraph a value stored before it has no key.
         stored_content = {key: value for key, value in current_attr_data.content.items() if key != "value_key"}
         new_content = {key: value for key, value in self.to_db().items() if key != "value_key"}
         if stored_content != new_content:

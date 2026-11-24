@@ -130,10 +130,11 @@ async def test_create_links_one_value_when_equal_keyed_values_are_duplicated(
     assert fetched.get_attribute(name="mytextarea").value == "duplicated"
 
 
-async def test_saving_an_unchanged_value_stored_without_key_keeps_it(
+async def test_saving_an_unchanged_value_stored_before_a_memgraph_upgrade_keeps_it(
     db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
 ) -> None:
     node = await _create(db=db, schema=all_attribute_types_schema, mytextarea="stored before keys")
+    # The upgrade keys the stored values only on Neo4j, so this state exists only on Memgraph.
     await db.execute_query(
         query="""
         MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(:Attribute {name: "mytextarea"})-[:HAS_VALUE]->(av)
