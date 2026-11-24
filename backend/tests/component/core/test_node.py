@@ -219,7 +219,7 @@ async def test_node_default_value(db: InfrahubDatabase, default_branch: Branch) 
 
 
 @pytest.mark.parametrize(
-    "display_label,expected",
+    ("display_label", "expected"),
     [
         ("firstname__value", "John"),
         ("{{ firstname__value }} {{ age__value }}", "John 99"),

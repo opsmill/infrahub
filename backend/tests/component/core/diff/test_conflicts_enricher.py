@@ -622,7 +622,7 @@ class TestConflictsEnricher:
                     assert rel_element.conflict is None
 
     @pytest.mark.parametrize(
-        "base_action,branch_action",
+        ("base_action", "branch_action"),
         [(DiffAction.UNCHANGED, DiffAction.ADDED), (DiffAction.REMOVED, DiffAction.UNCHANGED)],
     )
     async def test_unchanged_cardinality_one_clears_conflicts(
@@ -818,7 +818,7 @@ class TestConflictsEnricher:
                         assert element_prop.conflict is None
 
     @pytest.mark.parametrize(
-        "base_action,branch_action",
+        ("base_action", "branch_action"),
         [(DiffAction.UNCHANGED, DiffAction.UPDATED), (DiffAction.ADDED, DiffAction.UNCHANGED)],
     )
     async def test_unchanged_node_clears_conflict(

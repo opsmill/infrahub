@@ -13,7 +13,7 @@ from infrahub.core.validators.relationship.count import RelationshipCountChecker
 from infrahub.database import InfrahubDatabase
 
 
-@pytest.mark.parametrize("min_count,max_count", [(None, None), (None, 10), (1, None), (1, 10)])
+@pytest.mark.parametrize(("min_count", "max_count"), [(None, None), (None, 10), (1, None), (1, 10)])
 async def test_query_success(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -124,7 +124,7 @@ async def test_query_success_cardinality_many(
 
 
 @pytest.mark.parametrize(
-    "min_count,max_count",
+    ("min_count", "max_count"),
     [
         (None, 2),
         (4, 10),

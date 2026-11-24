@@ -331,7 +331,7 @@ async def test_mac_address_normalizes_value(
 
 
 @pytest.mark.parametrize(
-    "input_value,normalized_value",
+    ("input_value", "normalized_value"),
     [
         ("192.0.2.10", "192.0.2.10/32"),
         ("192.0.2.10/32", "192.0.2.10/32"),
@@ -354,7 +354,7 @@ async def test_iphost_normalizes_value(
 
 
 @pytest.mark.parametrize(
-    "input_value,normalized_value",
+    ("input_value", "normalized_value"),
     [
         ("192.0.2.0/24", "192.0.2.0/24"),
         ("2001:db8::/32", "2001:db8::/32"),
@@ -1585,7 +1585,9 @@ async def test_attribute_size(
     await obj.save(db=db)
 
 
-@pytest.mark.parametrize("updated_status,expected_is_default", [(None, True), ("online", True), ("offline", False)])
+@pytest.mark.parametrize(
+    ("updated_status", "expected_is_default"), [(None, True), ("online", True), ("offline", False)]
+)
 async def test_enum_with_default_preserves_is_default(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -1623,7 +1625,7 @@ async def test_enum_with_default_preserves_is_default(
 
 
 @pytest.mark.parametrize(
-    "regex_value,input_value,error",
+    ("regex_value", "input_value", "error"),
     [
         pytest.param(
             "^box_",
@@ -1667,7 +1669,7 @@ def test_attribute_list_invalid_regex(
 
 
 @pytest.mark.parametrize(
-    "regex_value,input_value",
+    ("regex_value", "input_value"),
     [
         pytest.param(
             "^box_",

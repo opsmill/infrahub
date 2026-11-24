@@ -185,7 +185,7 @@ class TestDiffReadQuery(TestInfrahub):
         }
 
     @pytest.mark.parametrize(
-        "filters,counters",
+        ("filters", "counters"),
         [
             pytest.param(
                 {},

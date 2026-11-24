@@ -329,7 +329,7 @@ async def test_create_object_and_assign_prefix_from_pool(
 
 
 @pytest.mark.parametrize(
-    "query,field,name",
+    ("query", "field", "name"),
     [
         pytest.param(CREATE_PREFIX_FROM_POOL, "prefix", "site-bad-pool", id="prefix"),
         pytest.param(CREATE_ADDRESS_FROM_POOL, "address", "server-bad-pool", id="address"),
