@@ -139,7 +139,8 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame, prUrl
     )
   );
 
-  const [open, setOpen] = useState(true);
+  // A link or an embedding page can start with the panel closed; the state then stays in the URL.
+  const [open, setOpen] = useState(() => params.get(q("panel")) !== "closed");
   const [knobsOpen, setKnobsOpen] = useState(false);
   const [armed, setArmed] = useState(false);
   const [saved, setSaved] = useState("");
@@ -353,8 +354,10 @@ export function DesignHistory({ slug, variants, knobs: shared = [], frame, prUrl
       const v = values[k.key];
       next.set(q(`k.${k.key}`), typeof v === "boolean" ? (v ? "1" : "0") : String(v));
     }
+    if (open) next.delete(q("panel"));
+    else next.set(q("panel"), "closed");
     window.history.replaceState(null, "", `?${next.toString()}`);
-  }, [variant.id, current.rev, other, values, knobs, allKnobs]);
+  }, [variant.id, current.rev, other, values, knobs, allKnobs, open]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

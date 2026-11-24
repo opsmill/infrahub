@@ -487,6 +487,29 @@ Each one says what happened and offers the next action when one exists:
   buttons hid it (fixed in collapsible-sections rev 7). The investigation requires `MANAGE_SCHEMA`, plus
   `EDIT_DEFAULT_BRANCH` on main.
 
+## Schema viewer: the schema page's list and details (rev 10, round 25)
+
+- **The same list as the schema page**: kinds grouped by namespace, with the search field
+  and Collapse all. Each kind shows its icon, the namespace badge and the label, Node or
+  Generic, and its description, as on /schema. The kind name (for example `InfraDevice`)
+  is added under the label, because the Schema changes list and the migrations name
+  kinds, not labels.
+- **The same details card**: the namespace and Node badges with the ID, the icon, label
+  and description, then the Properties, Attributes and Relationships tabs. The
+  attributes and relationships use the schema page's own components.
+- **Changes on the list**: in Staged, each changed kind has the number of its operations,
+  or Removed or Added; a namespace shows how many kinds it lists. Changed kinds only
+  stays on by default.
+- **Changes in the details**: each tab shows how many fields change. A changed field is
+  outlined and open, and shows the value before, struck, then the value after. An added
+  field is outlined in green, a removed one in red and closed. A tab with changes opens
+  first.
+- **Inherited fields**: a kind lists the fields of the generic it inherits from, marked
+  "Inherited from", so a change to `InfraInterface` shows on `InfraInterfaceL2`. The list
+  counts only the kind's own operations; the details card names both.
+- **The rows stay as tall as on the schema page** (about 90 pixels). A compact row, with
+  the label and the kind only, fits twice as many kinds; not built, offered to the owner.
+
 ## The list stays in view in the proposed change (rev 9, round 24)
 
 In the proposed change the whole tab scrolls, so the details header stayed at the top while

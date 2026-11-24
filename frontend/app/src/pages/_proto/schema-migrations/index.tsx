@@ -23,6 +23,7 @@ import {
   STAGED_STATES,
   type StagedStatus,
 } from "./directions/collapsible-sections-rev-09";
+import { CollapsibleSectionsRev10 } from "./directions/collapsible-sections-rev-10";
 
 /** The same knobs in every structure, so a screen and a state compare across them. */
 const stateKnobs = (scenes: readonly string[]): Knob[] => [
@@ -265,6 +266,25 @@ const VARIANTS: Variant[] = [
         date: "2026-11-19",
         render: (k, setKnob) => (
           <CollapsibleSectionsRev09
+            scene={k.view as Scene}
+            stagedStatus={k.staged as StagedStatus}
+            toggleStyle="two levels"
+            impactState={k.impact as ImpactState}
+            dataState={k.state as DataState}
+            listWidth={k.listWidth as number}
+            directLoad={k.directLoad as boolean}
+            sectionDefault={k.sectionDefault as SectionDefault}
+            headerOptions={headerOptions(k)}
+            setScene={(scene) => setKnob("view", scene)}
+          />
+        ),
+      },
+      {
+        rev: 10,
+        note: "Schema viewer: the same list and details as the schema page, grouped by namespace, each kind with its icon, namespace, label, kind and description; the details card has the Properties, Attributes and Relationships tabs, with the staged changes outlined",
+        date: "2026-11-24",
+        render: (k, setKnob) => (
+          <CollapsibleSectionsRev10
             scene={k.view as Scene}
             stagedStatus={k.staged as StagedStatus}
             toggleStyle="two levels"
