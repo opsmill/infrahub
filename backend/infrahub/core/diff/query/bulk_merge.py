@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
@@ -17,6 +18,37 @@ if TYPE_CHECKING:
     )
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
+
+
+PROPERTY_EDGE_TYPES = (
+    DatabaseEdgeType.HAS_VALUE,
+    DatabaseEdgeType.IS_PROTECTED,
+    DatabaseEdgeType.HAS_OWNER,
+    DatabaseEdgeType.HAS_SOURCE,
+)
+
+
+def _source_branch_property_edges(field_label: str) -> str:
+    """Return a subquery that returns `field`, `src` and `child` for each open property edge of the source branch.
+
+    Reading each edge type through its `branch` index limits the read to the edges of the source branch, which a
+    single pattern over the four types cannot do.
+
+    Args:
+        field_label: The label of the vertex the property edges start from, `Attribute` or `Relationship`.
+
+    """
+    edge_reads = [
+        f"""
+    MATCH (field:{field_label})-[src:{edge_type.value}]->(child)
+    USING INDEX SEEK src:{edge_type.value}(branch)
+    WHERE src.branch = $source_branch
+    AND src.to IS NULL
+    RETURN field, src, child
+"""
+        for edge_type in PROPERTY_EDGE_TYPES
+    ]
+    return "CALL () {%s}" % "    UNION ALL".join(edge_reads)
 
 
 class BulkMergeNodeExistenceQuery(Query):
@@ -62,6 +94,7 @@ class BulkMergeNodeExistenceQuery(Query):
 // Phase 1: Merge IS_PART_OF edges (node existence)
 // ==============================
 MATCH (n:Node)-[src:IS_PART_OF]->(root:Root)
+USING INDEX SEEK src:IS_PART_OF(branch)
 WHERE src.branch = $source_branch
 AND src.to IS NULL
 AND NOT n.uuid IN $excluded_node_uuids
@@ -179,7 +212,9 @@ CALL (n, tgt_n, src) {
 // phase 2 still runs when phase 1 produced zero matches
 // ==============================
 WITH count(*) AS _phase_separator
-MATCH (n:Node)-[src:HAS_ATTRIBUTE]->(a:Attribute)
+// A HAS_ATTRIBUTE edge always starts at a Node vertex; naming the label makes the planner scan every Node to check it
+MATCH (n)-[src:HAS_ATTRIBUTE]->(a:Attribute)
+USING INDEX SEEK src:HAS_ATTRIBUTE(branch)
 WHERE src.branch = $source_branch
 AND src.to IS NULL
 AND NOT n.uuid IN $excluded_node_uuids
@@ -322,6 +357,7 @@ class BulkMergeRelationshipEdgesQuery(Query):
 // existed there) and the status=active filter drops further processing
 // ==============================
 MATCH (n:Node)-[src:IS_RELATED {branch: $source_branch}]-(rel:Relationship)
+USING INDEX SEEK src:IS_RELATED(branch)
 WHERE src.to IS NULL
 AND rel.branch_support = "aware"
 AND NOT n.uuid IN $excluded_node_uuids
@@ -723,12 +759,12 @@ class BulkMergeAttributePropertyEdgesQuery(Query):
 // ==============================
 // Attribute property edges: (Node)-[:HAS_ATTRIBUTE]->(Attribute)-[src]->(child)
 // ==============================
-MATCH (n:Node)-[:HAS_ATTRIBUTE]-(field:Attribute)-[src:HAS_VALUE|IS_PROTECTED|HAS_OWNER|HAS_SOURCE]->(child)
-WHERE src.branch = $source_branch
-AND src.to IS NULL
-AND NOT n.uuid IN $excluded_node_uuids
+%(property_edges)s
+WITH field, src, child
+WHERE field.branch_support = "aware"
+MATCH (n:Node)-[:HAS_ATTRIBUTE]-(field)
+WHERE NOT n.uuid IN $excluded_node_uuids
 AND NOT [n.uuid, field.name, type(src)] IN $excluded_attribute_property_paths
-AND field.branch_support = "aware"
 WITH DISTINCT n, field, src, child,
     type(src) AS edge_type,
     src.status AS prop_status,
@@ -791,7 +827,7 @@ CALL (field, src, child, edge_type, prop_from_user_id) {
         new_e.to = NULL,
         new_e.to_user_id = NULL
 }
-        """
+        """ % {"property_edges": _source_branch_property_edges(field_label="Attribute")}
         self.add_to_query(query=query)
 
 
@@ -854,11 +890,11 @@ class BulkMergeRelationshipPropertyEdgesQuery(Query):
 // ==============================
 // Relationship property edges: (Node)-[:IS_RELATED]-(Relationship)-[src]->(child)
 // ==============================
-MATCH (n:Node)-[:IS_RELATED]-(field:Relationship)-[src:HAS_VALUE|IS_PROTECTED|HAS_OWNER|HAS_SOURCE]->(child)
-WHERE src.branch = $source_branch
-AND src.to IS NULL
-AND NOT n.uuid IN $excluded_node_uuids
-AND field.branch_support = "aware"
+%(property_edges)s
+WITH field, src, child
+WHERE field.branch_support = "aware"
+MATCH (n:Node)-[:IS_RELATED]-(field)
+WHERE NOT n.uuid IN $excluded_node_uuids
 // -------------------------
 // Skip Relationship vertices to is exclude. Symmetric so both n-side and peer-side rows are filtered.
 // -------------------------
@@ -962,5 +998,5 @@ CALL (field, src, child, edge_type, prop_from_user_id) {
         new_e.to = NULL,
         new_e.to_user_id = NULL
 }
-        """
+        """ % {"property_edges": _source_branch_property_edges(field_label="Relationship")}
         self.add_to_query(query=query)
