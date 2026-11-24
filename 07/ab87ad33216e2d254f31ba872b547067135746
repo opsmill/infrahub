@@ -1,0 +1,37 @@
+backend/tests/component/cli/test_core_schema_update.py
+  s_6bc119ebacf23a::t_a333f62329fc08 1-300
+dev/knowledge/backend/schema-changes.md
+  s_6bc119ebacf23a::t_cc5251423ac94c 243-256
+backend/infrahub/core/schema/update_coordinator.py
+  s_6bc119ebacf23a::t_1031d7ffcfcebe 61,71,77,101,123,145-146
+backend/tests/unit/core/schema_change/helpers.py
+  s_6bc119ebacf23a::t_fb11ac21c4b885 904,959,1000
+backend/infrahub/cli/db.py
+  s_6bc119ebacf23a::t_213dcddfe322b7 108
+  s_6bc119ebacf23a::t_13a308ba7bfed9 1027-1035
+  s_6bc119ebacf23a::t_f8936ab76b234a 23,64-65,74-79,707-708,710-712,1036-1039,1042-1044,1057-1063,1065-1085,1087-1089,1091-1094,1096-1121,1124-1140
+  s_6bc119ebacf23a::t_be520223db6a2c 31
+backend/infrahub/cli/upgrade.py
+  s_6bc119ebacf23a::t_ef5db0fd49e352 22
+  s_6bc119ebacf23a::t_03dca1191200ba 183,186
+backend/tests/unit/cli/test_core_schema_root.py
+  s_6bc119ebacf23a::t_deb2255b0660f3 1-18
+backend/infrahub/core/schema_change/application_runner.py
+  s_6bc119ebacf23a::t_292ee730e62b98 56,87,158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "07ab87ad33216e2d254f31ba872b547067135746",
+  "prompts": {},
+  "sessions": {
+    "s_6bc119ebacf23a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "941de9ea-8387-4c4d-8c1e-5cfcc3b27b3f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
