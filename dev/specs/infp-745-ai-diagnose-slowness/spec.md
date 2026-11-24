@@ -60,7 +60,11 @@ by OpsMill staff.
   the skill. Not asked yet.
 - Whether the installation can create the Grafana service account and its token. The approach, a
   one-time container in Compose and a hook Job in Helm, is accepted by Fatih Acar (comment of
-  2026-11-05 on Appendix C of the design document). Not verified on a running stack.
+  2026-11-05 on Appendix C of the design document). Checked on a running stack in Compose
+  ([#11657](https://github.com/opsmill/infrahub/pull/11657), by hand and with a component test on
+  Grafana 11.1.5 and 11.4.0) and in Helm
+  ([infrahub-helm #131](https://github.com/opsmill/infrahub-helm/pull/131), in a vcluster). Both pull
+  requests are not merged yet.
 - Whether the engineering and architect reviewers of the design document accept its changes C2
   (scope of the audit), C3 (no write tools in 1.13) and C4 (loopback address and TLS). Appendix C
   marks them "Not reviewed".
@@ -322,8 +326,9 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
   container uses to reach Grafana, so that the operator sets only the token that AI assistants send.
   Grafana cannot create a service account from a provisioning file, so a one-time step calls the
   Grafana API: a job in Helm and a one-time container in Compose. The approach is accepted by Fatih
-  Acar (comment of 2026-11-05 on Appendix C of the design document). Not verified on a running stack
-  (D10, section 6).
+  Acar (comment of 2026-11-05 on Appendix C of the design document), and checked on a running stack
+  in Compose ([#11657](https://github.com/opsmill/infrahub/pull/11657)) and in Helm
+  ([infrahub-helm #131](https://github.com/opsmill/infrahub-helm/pull/131)) (D10, section 6).
 - **FR-010**: In 1.13, the server MUST keep no write tool and MUST NOT keep the tool that calls any
   Grafana API route. The Grafana service account MUST have the Viewer role (clarification of
   2026-11-04; this replaces "write tools enabled" in D10). In the later release of story 4, the server
@@ -515,7 +520,8 @@ The card's goals make the release in 1.13 depend on four items, closed in the fi
   anyone with the token can read all telemetry, and cannot change Grafana (FR-010). The later release
   of story 4 needs a new review of the write tools.
 - The creation of the Grafana service account and its token at installation (FR-009). The approach
-  is accepted; the check on a running stack is not done.
+  is accepted and checked on a running stack in Compose and in Helm; the two pull requests are not
+  merged yet.
 
 ## Sources
 
