@@ -84,13 +84,14 @@ class SchemaMigrationRunner:
             self.log.info(
                 f"Preparing migration for {positioned.migration.migration_name!r} ({positioned.migration.routing_key})"
             )
-            await self.recorder.migration_started(position=positioned.position)
             try:
+                await self.recorder.migration_started(position=positioned.position)
                 result = await self.migrator.migrate(migration=positioned.migration, data=data)
-            except Exception:
+                await self.recorder.migration_ended(position=positioned.position, result=result)
+            except BaseException:
+                # a cancellation or an error from the recorder stops the other groups too
                 stop.set()
                 raise
-            await self.recorder.migration_ended(position=positioned.position, result=result)
             if result.errors:
                 stop.set()
                 return result.errors

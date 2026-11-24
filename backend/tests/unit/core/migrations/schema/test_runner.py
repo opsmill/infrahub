@@ -16,6 +16,7 @@ from tests.adapters.migration_recorder import (
     MIGRATION_ENDED,
     MIGRATION_STARTED,
     REGISTER,
+    FailingMigrationRecorder,
     MigrationRecorderCall,
     RecordingMigrationRecorder,
 )
@@ -289,6 +290,23 @@ async def test_an_error_starts_no_new_migration_in_other_groups() -> None:
     )
 
     assert errors == ["boom"]
+    assert migrator.events == [
+        (START, "TestingCar", "owner"),
+        (START, "TestingPhysicalInterface", "duplex"),
+        (END, "TestingCar", "owner"),
+        (END, "TestingPhysicalInterface", "duplex"),
+    ]
+
+
+async def test_a_recorder_exception_starts_no_new_migration_in_other_groups() -> None:
+    migrator = RecordingMigrator(errors_by_field={})
+
+    with pytest.raises(RuntimeError, match=r"^record write failed: 0$"):
+        await _runner(migrator=migrator, recorder=FailingMigrationRecorder(failing_positions={0})).run(
+            data=_data(migrations=[CAR_OWNER_REMOVE, PHYSICAL_DUPLEX_REMOVE, PHYSICAL_SPEED_REMOVE])
+        )
+
+    assert asyncio.all_tasks() == {asyncio.current_task()}
     assert migrator.events == [
         (START, "TestingCar", "owner"),
         (START, "TestingPhysicalInterface", "duplex"),

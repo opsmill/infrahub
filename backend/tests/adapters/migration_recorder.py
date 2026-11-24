@@ -39,3 +39,17 @@ class RecordingMigrationRecorder(MigrationRecorder):
         self.calls.append(
             MigrationRecorderCall(method=MIGRATION_ENDED, arguments={"position": position, "result": result})
         )
+
+
+class FailingMigrationRecorder(RecordingMigrationRecorder):
+    """Raise when the end of a migration at one of the given positions is recorded, as a record write that loses its connection does."""
+
+    def __init__(self, failing_positions: set[int]) -> None:
+        super().__init__()
+        self.failing_positions = failing_positions
+
+    @override
+    async def migration_ended(self, *, position: int, result: SchemaMigrationPathResponseData) -> None:
+        await super().migration_ended(position=position, result=result)
+        if position in self.failing_positions:
+            raise RuntimeError(f"record write failed: {position}")
