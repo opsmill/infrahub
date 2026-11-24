@@ -6,13 +6,14 @@ rolled back to their original state.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Generator, Sequence
+from typing import TYPE_CHECKING, Any, ClassVar, Generator, Sequence
 
 import pytest
 
 import infrahub.core.migrations.schema.tasks as tasks_module
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.schema.phases import MigrationPhase
 from infrahub.core.migrations.shared import MigrationInput, MigrationResult, SchemaMigration
 from infrahub.core.node import Node
 
@@ -36,6 +37,7 @@ if TYPE_CHECKING:
 class BrokenMigration(SchemaMigration):
     """A migration class that always fails."""
 
+    phase: ClassVar[MigrationPhase] = MigrationPhase.ATTRIBUTE_RENAME
     name: str = "broken_migration"
     queries: list = []  # Required field, but we won't use it since we override execute
 

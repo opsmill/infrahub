@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Sequence  # noqa: TC003  needed for pydantic
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
+from infrahub.core.migrations.schema.phases import MigrationPhase
 from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 from infrahub.types import is_large_attribute_type
 
@@ -207,6 +208,7 @@ CALL (n, attr) {
 
 
 class AttributeKindUpdateMigration(AttributeSchemaMigration):
+    phase: ClassVar[MigrationPhase] = MigrationPhase.ATTRIBUTE_KIND_UPDATE
     name: str = "attribute.kind.update"
     queries: Sequence[type[AttributeMigrationQuery]] = [AttributeKindUpdateMigrationQuery]
 

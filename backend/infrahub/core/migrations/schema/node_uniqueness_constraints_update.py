@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Sequence  # noqa: TC003  needed for pydantic
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from infrahub.core.constants import SchemaPathType
+from infrahub.core.migrations.schema.phases import MigrationPhase
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
@@ -21,6 +22,7 @@ if TYPE_CHECKING:
 
 
 class NodeUniquenessConstraintsUpdateMigration(SchemaMigration):
+    phase: ClassVar[MigrationPhase] = MigrationPhase.PROPERTY_UPDATE
     name: str = ConstraintIdentifier.NODE_UNIQUENESS_CONSTRAINTS_UPDATE.value
     queries: Sequence[type[MigrationBaseQuery]] = []
 

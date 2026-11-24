@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 from collections.abc import Sequence  # noqa: TC003  needed for pydantic
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipStatus
+from infrahub.core.migrations.schema.phases import MigrationPhase
 from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 
 from ..query import MigrationQuery
 from ..shared import SchemaMigration
 
 if TYPE_CHECKING:
+    from infrahub.core.path import SchemaPath
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 
@@ -352,5 +355,24 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
 
 
 class NodeRemoveMigration(SchemaMigration):
+    phase: ClassVar[MigrationPhase] = MigrationPhase.NODE_REMOVE
     name: str = "node.remove"
     queries: Sequence[type[MigrationQuery]] = [NodeRemoveMigrationQueryIn, NodeRemoveMigrationQueryOut]
+
+    @classmethod
+    def get_changed_kinds(
+        cls, schema_path: SchemaPath, previous_schema: SchemaBranch, new_schema: SchemaBranch
+    ) -> frozenset[str]:
+        """Add the kinds of the peers, because the removal closes the Relationship vertices it shares with them."""
+        changed_kinds = super().get_changed_kinds(
+            schema_path=schema_path, previous_schema=previous_schema, new_schema=new_schema
+        )
+        if not previous_schema.has(name=schema_path.schema_kind):
+            return changed_kinds
+        removed_schema = previous_schema.get(name=schema_path.schema_kind, duplicate=False)
+        return changed_kinds.union(
+            *(
+                previous_schema.get_dependent_kinds(name=relationship.peer)
+                for relationship in removed_schema.relationships
+            )
+        )
