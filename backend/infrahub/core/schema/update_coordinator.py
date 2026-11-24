@@ -58,6 +58,7 @@ class SchemaUpdateCoordinator:
         rollbacker: GraphRollbacker,
         workflow: InfrahubWorkflow | None = None,
         logger: logging.Logger | logging.LoggerAdapter[logging.Logger] | None = None,
+        migration_executor: MigrationExecutor = MigrationExecutor.WORKFLOW,
     ) -> None:
         """Initialize the coordinator.
 
@@ -67,11 +68,13 @@ class SchemaUpdateCoordinator:
             rollbacker: Reverses database writes when a schema update fails
             workflow: Workflow service for executing migrations (required for the WORKFLOW executor)
             logger: Logger to use (defaults to module logger)
+            migration_executor: How to execute migrations when a call to `execute` does not say
 
         """
         self.db = db
         self.schema_manager = schema_manager
         self.rollbacker = rollbacker
+        self.migration_executor = migration_executor
         self.workflow = workflow
         self.log = logger or _default_log
 
@@ -95,7 +98,7 @@ class SchemaUpdateCoordinator:
         candidate_schema: SchemaBranch,
         at: Timestamp,
         context: InfrahubContext | None = None,
-        migration_executor: MigrationExecutor = MigrationExecutor.WORKFLOW,
+        migration_executor: MigrationExecutor | None = None,
         diff: SchemaDiff | None = None,
         migrations: list[SchemaUpdateMigrationInfo] | None = None,
         limit: list[str] | None = None,
@@ -117,7 +120,7 @@ class SchemaUpdateCoordinator:
             candidate_schema: New schema to apply
             at: Timestamp for all operations (enables atomic rollback)
             context: Infrahub context (required for the WORKFLOW executor)
-            migration_executor: How to execute migrations (DIRECT or WORKFLOW)
+            migration_executor: How to execute migrations (DIRECT or WORKFLOW); None uses the executor of the coordinator
             diff: Schema diff for update_schema_branch (optional, for incremental updates)
             migrations: List of migrations to run
             limit: Limit schema update to specific items
@@ -139,6 +142,8 @@ class SchemaUpdateCoordinator:
             Exception: Original exception if migrations fail via exception, or the exception of `final_step`
 
         """
+        if migration_executor is None:
+            migration_executor = self.migration_executor
         if (
             migrations
             and migration_executor is MigrationExecutor.WORKFLOW

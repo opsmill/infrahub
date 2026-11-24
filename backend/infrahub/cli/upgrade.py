@@ -19,6 +19,7 @@ from infrahub.core.initialization import (
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.shared import get_migration_console, suppress_internal_logs
 from infrahub.core.protocols import CoreAccount, CoreObjectPermission
+from infrahub.core.schema_change.factory import build_schema_candidate_builder
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import DatabaseError
 from infrahub.lock import initialize_lock
@@ -179,10 +180,10 @@ async def _upgrade_execute(
 
     console.log("[bold]Step 3/6: Core schema[/bold]")
     if verbose:
-        await update_core_schema(db=db, initialize=False)
+        await update_core_schema(db=db, candidate_builder=build_schema_candidate_builder(), initialize=False)
     else:
         with suppress_internal_logs():
-            await update_core_schema(db=db, initialize=False)
+            await update_core_schema(db=db, candidate_builder=build_schema_candidate_builder(), initialize=False)
 
     console.log("[bold]Step 4/6: Internal objects[/bold]")
     await upgrade_menu(db=db)

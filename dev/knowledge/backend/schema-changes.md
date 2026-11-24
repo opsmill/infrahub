@@ -244,8 +244,20 @@ with `application_id=None`, stores no schema change and logs a warning naming th
 happens when `process()` calculates a value that differs from the stored schema, for example after
 an upgrade changed `process()`: the file changed nothing, but the saved schema changes.
 
-A merge, a rebase and the core schema update in `cli/db.py` pass `application_id=None`, so their
-migrations use `NoRecordMigrationRecorder` and they store no schema change.
+A merge and a rebase pass `application_id=None`, so their migrations use `NoRecordMigrationRecorder`
+and they store no schema change.
+
+The core schema update of `infrahub upgrade` and `infrahub db update-core-schema`
+(`cli/db.py::update_core_schema`) records like a load, inside the global schema lock. It merges the
+internal schema, the core models and the deprecated models into one schema file
+(`build_core_schema_root`) and builds its candidate with `from_schema_root` and
+`enforce_update_support=False`, so a change to a property that has no migration (`UpdateSupport.NOT_SUPPORTED`)
+is saved without an error, a migration or a constraint check. The runner applies it with a
+coordinator built for the `DIRECT` executor, with no context and the system user, and stores a
+schema change on the default branch with the source `core_schema_update`. When the operations do not
+rebuild the merged files, or any other error of `from_schema_root`, the upgrade stops with exit code
+1 before any write, as it does for a failed validation; running it again gives the same error, because
+the cause is in the core schema files or in the operation builder, not in the data.
 
 A dropdown or enum mutation calls `SchemaChangeRecorder.record_applied` inside its database
 transaction, before `update_schema_branch`, because `update_schema_branch` replaces the schema in
