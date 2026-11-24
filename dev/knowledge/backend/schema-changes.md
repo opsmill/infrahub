@@ -254,10 +254,13 @@ and `core/migrations/schema/runner.py::SchemaMigrationRunner` runs them:
   `core/migrations/schema/phases.py::MigrationPhase` defines them: kind updates, node removals,
   attribute and relationship removals, attribute renames, attribute kind changes, attribute
   additions, property updates. Removals run before additions, so a removal and an addition of the
-  same attribute name cannot race. A property update (`optional`, `read_only`, `unique`, the
-  uniqueness constraints) adds or removes the attribute on profile and template nodes when the
-  change decides whether they hold it. It runs after the renames and the kind changes, because it
-  finds the attribute by its new name and adds it with its new kind.
+  same attribute name cannot race. An attribute property update (`optional`, `read_only`,
+  `unique`) adds or removes the attribute on profile nodes when the change decides whether they
+  hold it, and on template nodes when `support_templates` changes in the same load. A uniqueness
+  constraints update does the same on profile nodes only. A load that renames an attribute and
+  changes its kind, `optional`, `read_only` or `unique` in the same load fails with
+  `Unable to find the attribute`, because those migrations look up the new name in the schema before
+  the load.
 - Kind updates run one at a time, because two duplications of overlapping vertices can each create
   a replacement vertex.
 - In the other phases, migrations whose changed kinds overlap, directly or through another
@@ -267,6 +270,11 @@ and `core/migrations/schema/runner.py::SchemaMigrationRunner` runs them:
   that inherit from it, and their profile and template kinds. A relationship removal adds its peer,
   and a node removal adds the peers of its relationships, because both sides share the Relationship
   vertices.
+- The changed kinds leave out two kinds of vertices that groups can write at the same time. Shared
+  `AttributeValue` vertices: a migration creates them or moves `HAS_VALUE` edges between them but
+  never changes their properties, so two groups that create the same value leave two equal vertices,
+  as two concurrent node writes can (nothing enforces one vertex per value). And the vertices of the
+  migration's own attribute alone, such as the number pool that an attribute addition creates.
 - When a migration reports an error or raises, the other groups of the phase start no new
   migration, the runner waits for the migrations already running, and no later phase runs.
 

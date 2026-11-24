@@ -14,4 +14,4 @@ class MigrationPhase(InfrahubStringEnum):
     ATTRIBUTE_KIND_UPDATE = "attribute_kind_update"
     ATTRIBUTE_ADD = "attribute_add"
     PROPERTY_UPDATE = "property_update"
-    """Adds or removes an attribute on profile and template nodes after renames and kind changes, which give it its new name and kind."""
+    """Adds or removes an attribute on the profile and template nodes whose support of it the change decides."""
