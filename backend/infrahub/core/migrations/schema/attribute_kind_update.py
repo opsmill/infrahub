@@ -47,9 +47,22 @@ class IndexedAttributeValuesQuery(Query):
         }
 
 
+def _get_node_kinds(kind: str) -> list[str]:
+    return [kind, f"Profile{kind}", f"Template{kind}"]
+
+
 class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
+    """Link each attribute whose kind changed to a value stored the way its new kind stores values.
+
+    `value_keys` maps each value converted to a large kind, as a string, to its key, and is empty otherwise.
+    """
+
     name = "migration_attribute_kind"
     insert_return = False
+
+    def __init__(self, value_keys: dict[str, str], **kwargs: Any) -> None:
+        self.value_keys = value_keys
+        super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
@@ -77,12 +90,7 @@ class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
     WHERE "AttributeValueIndexed" IN labels(new_av) = $needs_index
     LIMIT 1"""
         else:
-            # Cypher cannot compute the hash, so the keys of the values to convert are computed here.
-            values_query = await IndexedAttributeValuesQuery.init(
-                db=db, branch=self.branch, node_kinds=self._node_kinds(), attribute_name=self.params["attr_name"]
-            )
-            await values_query.execute(db=db)
-            self.params["value_keys"] = values_query.get_value_keys()
+            self.params["value_keys"] = self.value_keys
             # Indexed values never carry a key, so merging on the key cannot reuse one of them.
             create_value_query = """
     MERGE (:AttributeValue {
@@ -207,21 +215,49 @@ CALL (attr, n) {
     SET n.updated_at = $at, n.updated_by = $user_id
 }
         """ % {
-            "schema_kinds": "|".join(self._node_kinds()),
+            "schema_kinds": "|".join(_get_node_kinds(self.migration.previous_schema.kind)),
             "branch_filter": branch_filter,
             "create_value_query": create_value_query,
             "get_value_query": get_value_query,
         }
         self.add_to_query(query)
 
-    def _node_kinds(self) -> list[str]:
-        kind = self.migration.previous_schema.kind
-        return [kind, f"Profile{kind}", f"Template{kind}"]
-
 
 class AttributeKindUpdateMigration(AttributeSchemaMigration):
     name: str = "attribute.kind.update"
     queries: Sequence[type[AttributeMigrationQuery]] = [AttributeKindUpdateMigrationQuery]  # type: ignore[assignment]
+
+    async def build_query(
+        self,
+        migration_query: type[MigrationBaseQuery],
+        migration_input: MigrationInput,
+        branch: Branch,
+    ) -> MigrationBaseQuery:
+        if not issubclass(migration_query, AttributeKindUpdateMigrationQuery):
+            return await super().build_query(
+                migration_query=migration_query, migration_input=migration_input, branch=branch
+            )
+
+        value_keys: dict[str, str] = {}
+        if is_large_attribute_type(self.new_attribute_schema.kind):
+            # Cypher cannot compute the hash, so the keys of the values to convert are computed before the query.
+            values_query = await IndexedAttributeValuesQuery.init(
+                db=migration_input.db,
+                branch=branch,
+                node_kinds=_get_node_kinds(self.previous_schema.kind),
+                attribute_name=self.previous_attribute_schema.name,
+            )
+            await values_query.execute(db=migration_input.db)
+            value_keys = values_query.get_value_keys()
+
+        return await migration_query.init(
+            db=migration_input.db,
+            branch=branch,
+            at=migration_input.at,
+            migration=self,
+            user_id=migration_input.user_id,
+            value_keys=value_keys,
+        )
 
     async def execute(
         self,

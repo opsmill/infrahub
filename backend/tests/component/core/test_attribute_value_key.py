@@ -11,6 +11,7 @@ from infrahub.core.migrations.schema.attribute_kind_update import (
     AttributeKindUpdateMigration,
     AttributeKindUpdateMigrationQuery,
 )
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.query import Query
@@ -202,7 +203,9 @@ async def test_large_value_lookups_seek_the_key_index(
             path_type=SchemaPathType.ATTRIBUTE, schema_kind=all_attribute_types_schema.kind, field_name="mystring"
         ),
     )
-    kind_query = await AttributeKindUpdateMigrationQuery.init(db=db, branch=default_branch, migration=migration)
+    kind_query = await migration.build_query(
+        migration_query=AttributeKindUpdateMigrationQuery, migration_input=MigrationInput(db=db), branch=default_branch
+    )
 
     assert await _planned_value_reads(db=db, query=create_query) == [KEY_SEEK]
     assert await _planned_value_reads(db=db, query=update_query) == [KEY_SEEK]

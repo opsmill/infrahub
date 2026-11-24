@@ -119,11 +119,15 @@ async def test_query_indexed_to_not_indexed(db: InfrahubDatabase, default_branch
         new_node_schema=new_car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="description"),
     )
-    query = await AttributeKindUpdateMigrationQuery.init(db=db, branch=default_branch, migration=migration)
+    query = await migration.build_query(
+        migration_query=AttributeKindUpdateMigrationQuery, migration_input=MigrationInput(db=db), branch=default_branch
+    )
     await query.execute(db=db)
 
     # Re-execute the query once to ensure that it won't change anything
-    query = await AttributeKindUpdateMigrationQuery.init(db=db, branch=default_branch, migration=migration)
+    query = await migration.build_query(
+        migration_query=AttributeKindUpdateMigrationQuery, migration_input=MigrationInput(db=db), branch=default_branch
+    )
     await query.execute(db=db)
 
     # check that a non-indexed "A nice car" AttributeValue vertex was created
@@ -163,7 +167,9 @@ async def test_query_indexed_to_not_indexed_with_duplicated_target_value(
         new_node_schema=new_car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="description"),
     )
-    query = await AttributeKindUpdateMigrationQuery.init(db=db, branch=default_branch, migration=migration)
+    query = await migration.build_query(
+        migration_query=AttributeKindUpdateMigrationQuery, migration_input=MigrationInput(db=db), branch=default_branch
+    )
     await query.execute(db=db)
 
     await verify_graph(db=db)
