@@ -261,7 +261,7 @@ class NodeRelationshipRemoveMigration(RelationshipSchemaMigration):
         migration short-circuits and runs no query.
         """
         previous_relationship = self.previous_relationship_schema
-        node_kind = self.previous_schema.kind
+        node_kind = self.new_schema.kind
         identifier = previous_relationship.get_identifier()
 
         # Kinds that still declare the identifier in the (post-update) schema keep the relationship data

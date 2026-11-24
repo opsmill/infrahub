@@ -64,6 +64,18 @@ def suppress_internal_logs() -> Iterator[None]:
             logger.setLevel(level)
 
 
+def find_previous_attribute_schema(
+    previous_schema: MainSchemaTypes, attribute: AttributeSchema
+) -> AttributeSchema | None:
+    """Return the previous version of an attribute, found by ID first, so that an attribute renamed in the same load is found."""
+    attribute_id = attribute.id or attribute.source_attribute_id
+    if attribute_id:
+        for previous_attribute in previous_schema.attributes:
+            if attribute_id in {previous_attribute.id, previous_attribute.source_attribute_id}:
+                return previous_attribute
+    return previous_schema.get_attribute_or_none(name=attribute.name)
+
+
 class MigrationResult(BaseModel):
     errors: list[str] = Field(default_factory=list)
     nbr_migrations_executed: int = 0
@@ -284,6 +296,11 @@ class AttributeSchemaMigration(SchemaMigration):
         if not self.schema_path.field_name:
             raise ValueError("field_name is not defined")
         return self.previous_schema.get_attribute(name=self.schema_path.field_name)
+
+    @property
+    def previous_version_of_new_attribute_schema(self) -> AttributeSchema | None:
+        """Return the previous version of the attribute in the path, found by ID so that a rename in the same load is found."""
+        return find_previous_attribute_schema(previous_schema=self.previous_schema, attribute=self.new_attribute_schema)
 
 
 class RelationshipSchemaMigration(SchemaMigration):

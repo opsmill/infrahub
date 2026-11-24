@@ -11,7 +11,13 @@ from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.validators.enum import ConstraintIdentifier
 
 from ..query import MigrationBaseQuery  # noqa: TC001
-from ..shared import AttributeSchemaMigration, MigrationInput, MigrationResult, SchemaMigration
+from ..shared import (
+    AttributeSchemaMigration,
+    MigrationInput,
+    MigrationResult,
+    SchemaMigration,
+    find_previous_attribute_schema,
+)
 from .attribute_supports_generated_schema import (
     ProfilesAttributeAddMigrationQuery,
     ProfilesAttributeRemoveMigrationQuery,
@@ -38,7 +44,7 @@ class NodeUniquenessConstraintsUpdateMigration(SchemaMigration):
             return result
 
         for attr in self.new_schema.attributes:
-            prev_attr = self.previous_schema.get_attribute_or_none(name=attr.name) or attr
+            prev_attr = find_previous_attribute_schema(previous_schema=self.previous_schema, attribute=attr) or attr
             previous_supports_profiles = self.previous_schema.check_if_attr_supports_profiles(
                 attribute_schema=prev_attr
             )

@@ -122,14 +122,15 @@ class AttributeSupportsGeneratedSchemaMigration(AttributeSchemaMigration):
         queries: Sequence[type[MigrationBaseQuery]] | None = None,  # noqa: ARG002
     ) -> MigrationResult:
         # the attribute is new, so there cannot be existing profiles/templates to update
-        if self.previous_attribute_schema.id is None:
+        previous_attribute_schema = self.previous_version_of_new_attribute_schema
+        if previous_attribute_schema is None or previous_attribute_schema.id is None:
             return MigrationResult()
 
         all_queries: list[type[AttributeMigrationQuery]] = []
 
         # Check profile support changes
         previous_profile_support_condition = self.previous_schema.check_if_attr_supports_profiles(
-            attribute_schema=self.previous_attribute_schema
+            attribute_schema=previous_attribute_schema
         )
         new_profile_support_condition = self.new_schema.check_if_attr_supports_profiles(
             attribute_schema=self.new_attribute_schema
@@ -154,7 +155,7 @@ class AttributeSupportsGeneratedSchemaMigration(AttributeSchemaMigration):
         if (
             isinstance(self.new_schema, NodeSchema)
             and (self.new_schema.generate_template or is_sub_template)
-            and self.previous_attribute_schema.support_templates != self.new_attribute_schema.support_templates
+            and previous_attribute_schema.support_templates != self.new_attribute_schema.support_templates
         ):
             if self.new_attribute_schema.support_templates:
                 all_queries.append(TemplatesAttributeAddMigrationQuery)

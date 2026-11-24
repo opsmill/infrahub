@@ -32,7 +32,7 @@ class AttributeNameUpdateMigrationQuery01(AttributeMigrationQuery, AttributeRena
 
         previous_attr = AttributeInfo(
             name=prev_attr_schema.name,
-            node_kind=migration.previous_schema.kind,
+            node_kind=migration.new_schema.kind,
             branch_support=prev_attr_schema.get_branch().value,
         )
 
