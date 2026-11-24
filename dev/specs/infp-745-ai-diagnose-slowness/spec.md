@@ -301,7 +301,7 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
   that the server serves HTTPS and the token is encrypted between the AI assistant and the server.
   TLS is off by default. When only one of the two is set, the container MUST NOT start, and MUST log
   an error that names both settings (clarification of 2026-11-04). In Compose, when the listen
-  address is not a loopback address (`127.0.0.0/8` or `::1`) and the two TLS settings are not set,
+  address is not a loopback address (`127.0.0.0/8`, `::1` or `[::1]`) and the two TLS settings are not set,
   the container MUST NOT start, and MUST log an error that names the listen address and the two TLS
   settings, so that the token is never sent unencrypted over a network (clarification of
   2026-11-05).
@@ -310,7 +310,9 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
   (D10).
 - **FR-008**: The container MUST turn off the usage statistics that the server sends to Grafana Labs
   by default. Nothing leaves the operator's network without their choice (D10, decided on
-  2026-10-14).
+  2026-10-14). The container MUST NOT keep the tools that call hosts outside the operator's network.
+  In `mcp-grafana` 2.0.2, the documentation tools (`search_docs`, `get_doc`) and the plugin tool
+  (`search_plugin_information`) call grafana.com (found on a running server on 2026-11-19).
 - **FR-009**: The installation MUST create the Grafana service account and its token that the
   container uses to reach Grafana, so that the operator sets only the token that AI assistants send.
   Grafana cannot create a service account from a provisioning file, so a one-time step calls the
@@ -380,7 +382,18 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
   MUST name it (FR-026). The audit records which of the two applies.
 - **FR-023**: Each log line that the audit lists MUST be fixed where the line is written. Infrahub does
   not mask log lines ([INFP-742 spec](../infp-742-find-slow-component/spec.md), FR-013, clarification
-  of 2026-10-19).
+  of 2026-10-19). Two lines that Infrahub writes are kept as they are, and the docs MUST name them
+  (FR-026):
+  - the INFO line of a webhook delivery, which writes the first 2048 characters of the payload, with
+    the values of the node that changed (decision of Daniel on 2026-11-19, `log-audit.md` row 6). In
+    every URL inside the logged payload, Infrahub removes the user and password and replaces the
+    query string and the fragment with `[MASKED]` (row 6a, 2026-11-23);
+  - a secret in the path of a webhook URL, where Slack, Discord and Microsoft Teams put the secret of
+    an incoming webhook. Infrahub cannot tell which part of a path is a secret (`log-audit.md` row
+    3b).
+
+  A setting that turns the payload off in the logs, off by default, is an idea for a later release,
+  not for 1.13.
 - **FR-024**: The masking of spans delivered by INFP-742 (its FR-012 and FR-013a) MUST hold for what
   the Grafana MCP server returns: a test MUST show that a span that carried a token and a user name
   reaches the AI assistant masked (D9 test).
@@ -407,7 +420,7 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
 - **FR-026**: The docs MUST say which data reaches the AI model provider: Infrahub masks tokens, user
   names, email addresses, client IP addresses and URL query strings in spans, and keeps Cypher text,
   URL paths and query names readable (D9). They MUST also name each log stream that the audit lists
-  under FR-022a.
+  under FR-022a, and each line that FR-023 keeps.
 - **FR-027**: The Build with AI pages ([`index.mdx`](../../../docs/docs/overview/build-with-ai/index.mdx):
   "Where to start" table and MCP table; [`setup.mdx`](../../../docs/docs/overview/build-with-ai/setup.mdx):
   prerequisites; [`working-with-ai.mdx`](../../../docs/docs/overview/build-with-ai/working-with-ai.mdx))
@@ -448,7 +461,7 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
 - **SC-004**: After a single sign-on login and requests that carry a token, a user name and an email
   address, 0 of these values appear in the traces, in any log stream in Loki and in the metric labels
   that the Grafana MCP server returns for that time window, apart from the streams that the docs name
-  under FR-022a (D9 test).
+  under FR-022a and the lines that FR-023 keeps (D9 test).
 - **SC-005**: During a diagnosis, the Grafana MCP server container opens 0 connections to hosts outside
   the operator's network.
 - **SC-006**: In 1.13, asked for a view that the shipped dashboards do not have, the skill describes
@@ -456,7 +469,8 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
   a dashboard and offers to contribute it, and 0 issues or pull requests are created without the
   user's yes (D8 test).
 - **SC-007**: Every log line that the log audit lists is fixed before the release, or, for a stream
-  that Infrahub does not write, stopped or named in the docs (FR-022a).
+  that Infrahub does not write, stopped or named in the docs (FR-022a), or, for a line that FR-023
+  keeps, named in the docs.
 - **SC-008**: After release, OpsMill support counts the slowness cases that arrive with a report from
   the skill, over the first two releases after 1.13. The measure needs no telemetry, because nothing
   leaves the operator's network (FR-008). No target is set: the first count is the baseline. Who

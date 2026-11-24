@@ -93,7 +93,10 @@ known.
 | Grafana address | `GRAFANA_URL` | `http://infrahub-grafana:3000` |
 | Grafana token | `GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE`, read again on every call | The file written by the init container (R5) |
 | HTTPS for the users (FR-006a) | `--server.tls-cert-file` and `--server.tls-key-file`, both or neither. With one only, the server refuses to start: "incomplete TLS configuration". With both, `effectiveTLSEnabled` turns TLS on for `streamable-http` and `sse`, and the server uses Go's `ListenAndServeTLS`. Only command-line flags were found; no environment variable form. | Passed by the entrypoint when `INFRAHUB_GRAFANA_MCP_TLS_CERT_FILE` and `INFRAHUB_GRAFANA_MCP_TLS_KEY_FILE` are set. Not set by default. |
-| Health check | `/healthz`, outside the token check | Used by the Helm probes, on a side listener (`--healthz-address`) because a probe sends the pod IP as `Host`. Not verified. |
+| Health check | `/healthz`, outside the token check | Used by the Helm probes, on the side listener `--healthz-address :8081`, because a probe sends the pod IP as `Host`. Checked in the vcluster e2e test without TLS, and by hand with a TLS Secret: the side listener serves plain HTTP also when the main port serves HTTPS ([infrahub-helm #131](https://github.com/opsmill/infrahub-helm/pull/131)). |
+| No tools that call grafana.com (FR-008) | `--disable-docs --disable-plugin`. Without them, `search_docs`, `get_doc` and `search_plugin_information` are marked `openWorldHint: true`, and `search_docs` returned live results from grafana.com (running server, 2026-11-19). | Both set (R4) |
+| Instructions sent to the clients | `--instructions-append` | `In this stack the Grafana MCP server only reads: it has no tool that creates or changes dashboards, folders, annotations, incidents, alert rules or data sources.` The server's own text says that it can create dashboards and incidents. |
+| User of the container | The image runs as `1000:999` | Compose sets `user: "1000:999"`, because the init service gives the token file to that user. Helm sets `runAsUser: 1000`, `runAsGroup: 999` and `fsGroup: 999`. |
 
 The design document named the variable `GRAFANA_MCP_ALLOWED_HOSTS`. That name does not exist in
 `mcp-grafana`, so the stack defines its own variable, `INFRAHUB_GRAFANA_MCP_ALLOWED_HOSTS`, and passes
@@ -125,10 +128,12 @@ Grafana.
 
 Source: `cmd/mcp-grafana/main.go` at tag `v2.0.2`. Read, not run.
 
+Checked by hand in a vcluster with a self-signed certificate
+([infrahub-helm #131](https://github.com/opsmill/infrahub-helm/pull/131)): the server serves HTTPS,
+and `/healthz` on the side listener stays plain HTTP, so the Helm probes use the HTTP scheme.
+
 Not verified:
 
-- the server running with a certificate;
-- whether `/healthz` on the side listener also uses TLS, which changes the Helm probe scheme;
 - how Claude Code and other MCP clients handle a self-signed certificate;
 - whether the server reads a renewed certificate without a restart. Go's `ListenAndServeTLS` reads
   the files once at start, so a restart is probably needed (spec Edge Cases).
@@ -146,7 +151,8 @@ Alternatives considered:
 **Refusing a network address without TLS** (clarification of 2026-11-05). Compose passes
 `INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS` into the environment of `infrahub-grafana-mcp`, with the same
 default `127.0.0.1` as the port mapping, so both read one value. The entrypoint exits with code 1
-when the address is not in `127.0.0.0/8` and is not `::1`, and the two TLS settings are not set.
+when the address is not in `127.0.0.0/8` and is not `::1` or `[::1]` (Compose needs the brackets in a
+port mapping), and the two TLS settings are not set.
 Consequence: an operator whose reverse proxy runs on another host cannot reach the server over plain
 HTTP; that proxy must connect with HTTPS, or the proxy must run on the Docker host. In Helm, the chart
 applies the same rule with `fail` to a `LoadBalancer` or `NodePort` Service (critique E3).
@@ -171,11 +177,14 @@ rules and silences, but cannot create data sources or install plugins, which nee
 
 **Decision** (Daniel, 2026-11-04; spec FR-010), in two steps:
 
-- **1.13:** no write tools. `--disable-write --disable-api`, and the Grafana service account has the
-  Viewer role. Story 4 (building dashboards) is moved to a later release.
+- **1.13:** no write tools. `--disable-write --disable-api --disable-docs --disable-plugin`, and the
+  Grafana service account has the Viewer role. Story 4 (building dashboards) is moved to a later
+  release. With these options, the server has 57 tools, none open-world, all read-only (checked on a
+  running server on 2026-11-19).
 - **Later release of story 4:** keep only the write tools that the skill uses:
-  `--disable-write --enable-write-tools=<dashboard, folder and annotation tools> --disable-api`, and
-  the Editor role.
+  `--disable-write --enable-write-tools=<dashboard, folder and annotation tools> --disable-api
+  --disable-docs --disable-plugin`, and the Editor role. `--disable-docs --disable-plugin` stay,
+  because the documentation and plugin tools call grafana.com (R3, spec FR-008).
 
 **Rationale.** D8 needs write tools only so that the skill can build and change dashboards and add
 annotations. The diagnosis itself only reads. D10 turns on all write tools, and its "Costs us" item
@@ -202,11 +211,16 @@ written.
   - `POST /api/serviceaccounts` (`name`, `role`);
   - `POST /api/serviceaccounts/<id>/tokens` (`name`). It returns the token once; it cannot be read
     again;
-  - `DELETE /api/serviceaccounts/<id>/tokens/<tokenId>`.
+  - `DELETE /api/serviceaccounts/<id>/tokens/<tokenId>`;
+  - `PATCH /api/serviceaccounts/<id>` (`role`);
+  - `GET /api/user` with the service account token, to check that the token still works.
 - A duplicate name returns HTTP 400 (`ErrAlreadyExists`, `ErrTokenAlreadyExists`).
 - Grafana is `grafana/grafana:11.4.0` in Compose and 11.1.5 in Helm (chart `grafana` 8.5.0). Both
-  have the API. The calls were not run on 11.1.5.
-- The Compose Grafana uses fixed admin credentials, `admin` and `admin`, and has no health check.
+  have the API. The calls were run on 11.1.5 and 11.4.0 (component test of
+  [#11657](https://github.com/opsmill/infrahub/pull/11657)).
+- The Compose Grafana reads its admin login from `INFRAHUB_GRAFANA_ADMIN_USER` and
+  `INFRAHUB_GRAFANA_ADMIN_PASSWORD` (default `admin` for both), not from fixed values, and has no
+  health check.
 - The Compose stack already has a one-time container, `infrahub-tempo-init`, that another service
   waits for with `depends_on: condition: service_completed_successfully`.
 - The Helm charts in `infrahub-helm` already use hook Jobs, for example
@@ -214,18 +228,25 @@ written.
 
 **Decision.** One script, run once at each start or upgrade:
 
-1. Wait until `GET /api/health` answers, for at most 5 minutes.
-2. If the token file (Compose) or Secret (Helm) exists and `GET /api/user` with that token answers
-   HTTP 200, stop.
-3. Find the service account `infrahub-grafana-mcp`, or create it with the Viewer role (Editor from the
+1. Wait until `GET /api/health` answers HTTP 200, for at most 5 minutes.
+2. Find the service account `infrahub-grafana-mcp`, or create it with the Viewer role (Editor from the
    release of story 4; R4).
-4. Delete its token named `infrahub-grafana-mcp` if it exists, create a new one, and store it.
+3. Give it the Viewer role if it has another one, also when its token still works.
+4. Check the stored token with `GET /api/user`. HTTP 200 stops the script. HTTP 401 or 403 means that
+   the token is replaced. Any other answer stops the script with an error, so that a temporary error
+   never replaces a token that may still work.
+5. Delete the tokens named `infrahub-grafana-mcp`, create a new one, and write it through a `.new`
+   file and `mv`.
+
+Consequence: the script logs in as the Grafana admin at every start, not only when the token is
+replaced.
 
 - Compose: a one-time service `infrahub-grafana-mcp-init` in the `grafana-mcp` profile. It writes the
   token to a named volume that the MCP service mounts read-only. The MCP service waits for it with
   `service_completed_successfully`.
-- Helm: a `post-install,post-upgrade` hook Job with a ServiceAccount and a Role that can create and
-  update one Secret. The MCP Deployment mounts the Secret as a file.
+- Helm: a `post-install,post-upgrade` hook Job with a ServiceAccount and a Role. The Role allows
+  `create` on Secrets, because Kubernetes cannot limit `create` to one name, and `get` and `update`
+  on the one token Secret. The MCP Deployment mounts the Secret as a file.
 
 The script reads the Grafana admin user and password from variables, so that an operator who changed
 the admin password sets it once (Compose: `INFRAHUB_GRAFANA_ADMIN_USER` and
@@ -241,9 +262,11 @@ server.
   problem to remove.
 - A Grafana provisioning file: Grafana cannot create a service account from one.
 
-**Not verified.** The image for the init script. It needs `curl` and a JSON parser. The candidates
-are `curlimages/curl` (no JSON parser; the script reads `id` and `key` with `sed`) and the Grafana
-image itself. Both are new images or new uses of an image, so they need the dependency approval in R10.
+**Image of the init script** (decided during implementation). The script uses the Grafana image of
+the stack, which has `curl`, `sed` and `grep`, and no `jq`; the script reads `id`, `role` and `key`
+with `sed`. Compose uses `grafana/grafana:11.4.0`, the image of the `infrahub-grafana` service, so the
+stack pulls no new image; a unit test checks that the two tags are equal. Helm uses
+`grafana/grafana:11.1.5` for the hook Job. The `mcp-grafana` image has no `curl`.
 
 ## R6. Where the skill lives and how it is tested
 

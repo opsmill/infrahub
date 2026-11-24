@@ -81,4 +81,4 @@ Recorded in `log-audit.md` (FR-022).
 | Level and default | The log level, and whether the line is written with the default settings. |
 | Destination | Loki, the Prefect server, or both. |
 | Status | Confirmed, possible (with the runtime check), or clean. |
-| Fix | What the change does, and the pull request that makes it (FR-023). For a stream that Infrahub does not write: the Alloy `drop` rule, or the docs entry (FR-022a). |
+| Fix | What the change does, and the pull request that makes it (FR-023). For a stream that Infrahub does not write: the Alloy `drop` rule, or the docs entry (FR-022a). Or the decision that keeps the line, with its docs entry (FR-023). |
