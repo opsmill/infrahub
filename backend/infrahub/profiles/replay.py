@@ -84,7 +84,7 @@ class ProfileValueSelector:
     async def select_nodes_to_refresh(
         self, branch_name: str, profile_id: str, node_ids: list[str], values: dict[str, Any]
     ) -> list[str]:
-        """Return the nodes of ``node_ids`` that do not hold, from the profile, each of ``values``."""
+        """Return the nodes of ``node_ids`` that do not hold, from the profile as their only one, each of ``values``."""
         nodes = await NodeManager.get_many(
             db=self.db,
             ids=node_ids,
@@ -92,14 +92,32 @@ class ProfileValueSelector:
             fields=dict.fromkeys(values),
             include_metadata=MetadataOptions.SOURCE,
         )
+        await NodeManager.prefetch_relationships(
+            db=self.db, nodes=nodes.values(), names={"profiles"}, branch=branch_name
+        )
+        profile_ids = {
+            node_id: [
+                rel.peer_id
+                for rel in await node.get_relationship(name="profiles").get_relationships(db=self.db)
+                if rel.peer_id
+            ]
+            for node_id, node in nodes.items()
+        }
         return [
-            node_id for node_id in node_ids if not _holds(node=nodes.get(node_id), profile_id=profile_id, values=values)
+            node_id
+            for node_id in node_ids
+            if not _holds(
+                node=nodes.get(node_id), profile_ids=profile_ids.get(node_id, []), profile_id=profile_id, values=values
+            )
         ]
 
 
-def _holds(node: Node | None, profile_id: str, values: dict[str, Any]) -> bool:
-    # The source tells which profile won, so an equal value from another profile still needs the refresh.
-    return node is not None and all(
+def _holds(node: Node | None, profile_ids: list[str], profile_id: str, values: dict[str, Any]) -> bool:
+    # Another profile of the node can win an attribute, even when the value and its source did not change.
+    if node is None or profile_ids != [profile_id]:
+        return False
+    # The source tells which profile won, so an equal value from another source still needs the refresh.
+    return all(
         node.get_attribute(name=name).source_id == profile_id and node.get_attribute(name=name).value == value
         for name, value in values.items()
     )

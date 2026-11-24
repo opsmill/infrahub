@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import AsyncExitStack
 from typing import Any
 
 from prefect import flow
@@ -141,16 +142,19 @@ async def profile_refresh_process(
 
     database = await get_database()
     workflow = get_workflow()
-    async with database.start_session(read_only=True) as db:
-        selector = ProfileValueSelector(db=db)
-        values: dict[str, Any] | None = None
+    async with AsyncExitStack() as stack:
+        selector: ProfileValueSelector | None = None
+        values: dict[str, Any] = {}
         if attribute_names:
-            values = await selector.read_profile_values(
+            # A read-only session can go to a replica without the merge, where a stale node and profile would look held.
+            selector = ProfileValueSelector(db=await stack.enter_async_context(database.start_session()))
+            profile_values = await selector.read_profile_values(
                 branch_name=branch_name, profile_id=profile_id, attribute_names=attribute_names
             )
-            if values is None:
+            if profile_values is None:
                 log.info(f"Profile {profile_id} does not exist, so no linked node needs its refresh")
                 return
+            values = profile_values
 
         for peer_kind in peer_kinds:
             node_query = ProfileNodeIDQuery(kind=peer_kind, profile_id=profile_id)
@@ -160,7 +164,7 @@ async def profile_refresh_process(
                 client=client, branch_name=branch_name, page_size=node_query.page_size
             ):
                 node_ids = page_ids
-                if values is not None:
+                if selector is not None:
                     node_ids = await selector.select_nodes_to_refresh(
                         branch_name=branch_name, profile_id=profile_id, node_ids=page_ids, values=values
                     )

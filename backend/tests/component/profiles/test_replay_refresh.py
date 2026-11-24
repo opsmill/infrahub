@@ -4,12 +4,17 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+import pytest
+
 from infrahub import lock
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core.branch.tasks import merge_branch, rebase_branch
+from infrahub.core.constants import MetadataOptions
 from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.model.path import ConflictSelection
+from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -242,3 +247,106 @@ async def test_rebase_submits_the_refresh_of_the_profile_for_the_nodes_without_i
         node_ids=[*dataset.refreshed_ids, dataset.added_id],
         attribute_names=["role"],
     ) == [dataset.added_id]
+
+
+@dataclass(frozen=True)
+class ConflictDataset:
+    branch: Branch
+    profile_id: str
+    server_id: str
+    """A server whose role the branch took from the profile, while the default branch linked a winning profile."""
+
+
+async def _seed_conflict(db: InfrahubDatabase, default_branch: Branch, branch_name: str) -> ConflictDataset:
+    """Both branches set the role of a server from a profile, and the conflict on the role is resolved for the branch."""
+    await load_schema(db=db, schema=SchemaRoot(nodes=[SERVER]), branch_name=default_branch.name, update_db=True)
+    profile = await Node.init(db=db, schema=f"Profile{SERVER_KIND}", branch=default_branch)
+    await profile.new(db=db, profile_name="server-profile", profile_priority=1000)
+    await profile.save(db=db)
+    winning_profile = await Node.init(db=db, schema=f"Profile{SERVER_KIND}", branch=default_branch)
+    await winning_profile.new(db=db, profile_name="winning-profile", profile_priority=10, role="role-5")
+    await winning_profile.save(db=db)
+    server = await _create_server(db=db, branch=default_branch, name="server", profile_id=profile.id)
+    branch = await create_branch(branch_name=branch_name, db=db)
+
+    branch_profile = await NodeManager.get_one(db=db, id=profile.id, branch=branch, raise_on_error=True)
+    branch_profile.get_attribute(name="role").value = "role-2"
+    await branch_profile.save(db=db)
+    await _apply_profiles(db=db, branch=branch, node_id=server.id)
+
+    main_server = await NodeManager.get_one(db=db, id=server.id, branch=default_branch, raise_on_error=True)
+    await main_server.get_relationship(name="profiles").update(db=db, data=[profile.id, winning_profile.id])
+    await main_server.save(db=db)
+    await _apply_profiles(db=db, branch=default_branch, node_id=server.id)
+
+    component_registry = get_component_registry()
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+    branch_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+    conflict_paths = []
+    async for conflict_path, conflict in diff_repository.get_all_conflicts_for_diff(
+        diff_branch_name=branch.name, diff_id=branch_diff.uuid
+    ):
+        conflict_paths.append(conflict_path)
+        await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=ConflictSelection.DIFF_BRANCH)
+    assert sorted(conflict_paths) == [
+        f"data/{server.id}/role/property/HAS_SOURCE",
+        f"data/{server.id}/role/value",
+    ]
+    return ConflictDataset(branch=branch, profile_id=profile.id, server_id=server.id)
+
+
+@pytest.mark.parametrize("operation", ["merge", "rebase"])
+async def test_profile_replay_refreshes_a_node_that_kept_the_branch_side_of_a_profile_value_conflict(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    dependency_provider: Provider,
+    operation: str,
+) -> None:
+    """The kept value comes from the replayed profile, but another profile of the node wins it after the merge."""
+    lock.initialize_lock(local_only=True)
+    dataset = await _seed_conflict(db=db, default_branch=default_branch, branch_name=f"profile-conflict-{operation}")
+    target_branch = default_branch if operation == "merge" else dataset.branch
+    workflow = WorkflowRecorder()
+    events = MemoryInfrahubEvent()
+    cache = MemoryCache()
+    component = await build_worker_component(db=db, cache=cache)
+
+    with (
+        override_dependency(build_database, lambda singleton=True: db, dependency_provider=dependency_provider),  # noqa: ARG005
+        override_dependency(build_event_service, lambda: events, dependency_provider=dependency_provider),
+        override_workflow(workflow, dependency_provider=dependency_provider),
+        override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider),
+        override_dependency(build_component, lambda: component, dependency_provider=dependency_provider),
+    ):
+        if operation == "merge":
+            await merge_branch(branch=dataset.branch.name, context=_context(default_branch=default_branch))
+        else:
+            await rebase_branch(
+                branch=dataset.branch.name, context=_context(default_branch=default_branch), send_events=True
+            )
+
+    server = await NodeManager.get_one(
+        db=db, id=dataset.server_id, branch=target_branch.name, include_metadata=MetadataOptions.SOURCE
+    )
+    assert server is not None
+    assert (server.get_attribute(name="role").value, server.get_attribute(name="role").source_id) == (
+        "role-2",
+        dataset.profile_id,
+    )
+    refreshed_ids = [
+        node_id
+        for call in workflow.get_submit_calls_for(PROFILE_REFRESH_MULTIPLE)
+        for node_id in call["parameters"]["node_ids"]
+    ]
+    for call in workflow.get_submit_calls_for(PROFILE_REFRESH_PROCESS):
+        assert call["parameters"]["attribute_names"] == ["role"]
+        refreshed_ids += await _select_nodes_to_refresh(
+            db=db,
+            branch_name=target_branch.name,
+            profile_id=call["parameters"]["profile_id"],
+            node_ids=[dataset.server_id],
+            attribute_names=["role"],
+        )
+    assert refreshed_ids == [dataset.server_id]

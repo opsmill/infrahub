@@ -90,7 +90,7 @@ Every node mutation event carries an `origin` label (`infrahub.node.origin`), on
 | `rebase` | the rebase flow | A change replayed onto the rebased branch. |
 | `recompute` | the bulk writer on a coalesced pass, and the profile refresh (`NodeProfilesRefresher`) | A derived-value recompute write, or a profile value written by a profile refresh. |
 
-The four families' per-node triggers and the profile refresh automation match only `live`, so `merge`, `rebase`, and `recompute` events do not start their per-node flows. This is what lets the coalesced pass and the replay refresh of the profiles be the single dispatchers for a merge or a rebase without double-processing. Other consumers (user action rules, webhooks) keep receiving every event whatever the origin.
+The four families' per-node triggers and the profile refresh automation match only `live`, so `merge`, `rebase`, and `recompute` events do not start their per-node flows. This is what lets the coalesced pass and the profile refresh after a merge or a rebase be the single dispatchers for a merge or a rebase without double-processing. Other consumers (user action rules, webhooks) keep receiving every event whatever the origin.
 
 **Location:** `events/constants.py` (`NodeMutationOrigin`, `NODE_ORIGIN_LABEL`); the `live`-only match is set in each family's trigger builder (`computed_attribute/models.py`, `display_labels/models.py`, `hfid/models.py`) and in the profile refresh trigger (`profiles/models.py`).
 
@@ -98,7 +98,7 @@ The four families' per-node triggers and the profile refresh automation match on
 
 **Location:** `profiles/replay.py` (`ProfileReplayRefresher`, `ProfileValueSelector`), called by `PostMergeDispatcher.dispatch_events` and by the rebase flow after the coalesced pass
 
-The merge and the rebase refresh the profiles they replay, because the profile refresh automation ignores their events. For each replayed profile whose refresh fields changed, `ProfileReplayRefresher` submits one `profile-refresh-process` run on the target branch, with the changed attributes as `attribute_names`. The run pages the linked nodes and templates as for a live change, and leaves out each node that holds, for every one of these attributes, the current value of the profile with the profile as its source. A change to the priority or to a relationship passes no attributes, so every linked node is refreshed. [ADR 0024](../../adr/0024-merge-and-rebase-refresh-replayed-profiles.md) records why the check reads the stored source and not the diff.
+The merge and the rebase refresh the profiles they replay, because the profile refresh automation ignores their events. For each replayed profile whose refresh fields changed, `ProfileReplayRefresher` submits one `profile-refresh-process` run on the target branch, with the changed attributes as `attribute_names`. The run pages the linked nodes and templates as for a live change, and leaves out each node that has this profile as its only profile and holds, for every one of these attributes, the current value of the profile with the profile as its source. A node with another profile is always refreshed, because the stored source does not show that the other profile now wins an attribute, for example after a conflict resolved for the branch. A change to the priority or to a relationship passes no attributes, so every linked node is refreshed. [ADR 0024](../../adr/0024-merge-and-rebase-refresh-replayed-profiles.md) records why the check reads the stored source and not the diff.
 
 ## The bulk writer
 
@@ -132,7 +132,7 @@ An empty write set dispatches nothing, which is the normal stop: an acyclic depe
 | Whole-kind backfill: a Jinja2, display-label or HFID template change, or `InfrahubRecomputeComputedAttribute` without `node_ids` | coalesced pass per chunk of node ids, `coalesced=True` | `recompute` | `RecomputeChainSubmitter` |
 | A recompute write feeding a reader | chained coalesced pass, `coalesced=True` | `recompute` | `RecomputeChainSubmitter`, depth-bounded |
 | Profile refresh of a chunk of nodes and templates | `NodeProfilesRefresher` applies the profiles in the database | `recompute` | `RecomputeChainSubmitter`, with the fields the profiles changed, relationships included |
-| Merge or rebase of a profile change | `ProfileReplayRefresher` submits `profile-refresh-process`, which leaves out the linked nodes that hold the value from the profile | `recompute` | the profile refresh row above |
+| Merge or rebase of a profile change | `ProfileReplayRefresher` submits `profile-refresh-process`, which leaves out the linked nodes that hold the value from the profile as their only profile | `recompute` | the profile refresh row above |
 
 ## Key Files
 
@@ -146,7 +146,7 @@ An empty write set dispatches nothing, which is the normal stop: an acyclic depe
 | `core/recompute/bulk_write.py` | `BulkRecomputeWriter`, `AttributeValueWrite`, `WrittenNode`, `send_node_updated_event` |
 | `core/recompute/dispatch.py` | `BulkRecomputeDispatcher`, `build_bulk_recompute_dispatcher` (bulk write, then chain on a coalesced pass), `build_recompute_chain` |
 | `profiles/refresh.py` | `NodeProfilesRefresher`: applies the profiles of a chunk in transactions, then chains the readers of the writes |
-| `profiles/replay.py` | `ProfileReplayRefresher`: after a merge or a rebase, submits the refresh of the replayed profiles; `ProfileValueSelector` leaves out the nodes that hold the value from the profile |
+| `profiles/replay.py` | `ProfileReplayRefresher`: after a merge or a rebase, submits the refresh of the replayed profiles; `ProfileValueSelector` leaves out the nodes that hold the value from the profile as their only profile |
 | `core/merge/post_merge.py` | Merge: stamp `merge` origin, build and submit on the destination branch |
 | `core/branch/tasks.py` | Rebase: stamp `rebase` origin, build and submit on the user branch |
 | `events/constants.py` | `NodeMutationOrigin`, `NODE_ORIGIN_LABEL` |

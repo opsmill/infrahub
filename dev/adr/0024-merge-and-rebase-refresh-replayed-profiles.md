@@ -24,6 +24,8 @@ A refresh is still needed for:
 - nodes whose other profiles changed on the destination;
 - branch refreshes still pending or failed when the merge ran;
 - attribute conflicts resolved in favour of the destination;
+- attribute conflicts resolved in favour of the branch, when another profile of the node wins the
+  attribute after the merge;
 - on a rebase, the same cases with the default branch as the other side, for the changes that the
   rebase replays.
 
@@ -33,14 +35,16 @@ The profile refresh automation matches only `live` events, as the per-node trigg
 coalesced families do. After the coalesced pass, the merge post-process and the rebase flow submit
 one `profile-refresh-process` run for each replayed profile whose refresh fields changed, on the
 target branch. The run reads the ids of the linked nodes and templates page by page, as for a live
-change, and leaves out a node only when, for each attribute the profile changed, the node holds the
-current value of the profile and the profile is the source of that value.
+change, and leaves out a node only when the profile is the only profile of the node and, for each
+attribute the profile changed, the node holds the current value of the profile and the profile is
+the source of that value.
 
-The check reads the stored state after the merge or the rebase, not the diff. A destination change
-that moves the winning profile of a node moves the source of its value, even when the value stays
-the same, so the check refreshes that node. A branch refresh that did not run leaves the old value,
-and a node created or linked on the destination has the value of that side or none, so the check
-refreshes them too.
+The check reads the stored state after the merge or the rebase, not the diff. A branch refresh that
+did not run leaves the old value, and a node created or linked on the destination has the value of
+that side or none, so the check refreshes them. The stored source does not show that another
+profile of the node now wins the attribute. A conflict resolved for the branch keeps the value and
+the source of the branch, and two changes on the two sides can each leave the source as it is. So
+the check also refreshes every node that has another profile.
 
 A change that the check cannot judge from the changed attributes refreshes every linked node: a
 change to the priority, which can move the winning profile of any attribute, and a change to a
@@ -54,14 +58,14 @@ changed. The rebase keeps its refresh of the nodes whose profiles the branch cha
 
 - A merge of a branch that refreshed every linked node submits no refresh for them. The cost moves
   from a refresh flow per chunk of nodes to one read of the changed attributes, with their source,
-  for each page of linked nodes, in the `profile-refresh-process` run.
-- The merge and the rebase flows only submit one run per replayed profile. The reads run outside
-  the merge lock, and a failed run shows as a failed flow run.
+  and one read of the profiles of the nodes, for each page of linked nodes, in the
+  `profile-refresh-process` run.
 
 ### Negative
 
-- Each page of linked nodes costs one more read in the run, also when no node of the page holds the
+- Each page of linked nodes costs two more reads in the run, also when no node of the page holds the
   value.
+- A node with more than one profile is always refreshed, as before this decision.
 
 ### Neutral
 
@@ -78,6 +82,5 @@ equal in a changelog. Both cases would leave a wrong value.
 
 ### Keep the automation for `merge` and `rebase` events, with the check
 
-Rejected. ADR 0016 makes the post-process the single dispatcher of a merge or a rebase replay. The
-post-process holds every replayed changelog, so it decides once which attributes the check can use,
-including for a profile replayed from both branches.
+Rejected. The post-process holds every replayed changelog, so it decides once which attributes the
+check can use, including for a profile replayed from both branches.
