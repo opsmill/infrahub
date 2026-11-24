@@ -104,6 +104,21 @@ The demo includes:
 
 [Service Provider demo documentation]($(base_url)infrahub-demo-sp) · [Service Provider sandbox]($(base_url)sandboxes/demo-sp)
 
+### Arista AVD
+
+A reference design for Arista data center fabrics that runs Arista AVD inside Infrahub, for teams that use AVD and want a source of truth, a web interface and branch-based review around it. Infrahub generates the switches, cabling, IP addresses and BGP settings from the fabric design, and PyAVD generates the EOS configurations and documentation from that data.
+
+The demo includes:
+
+- A schema for fabrics, pods, racks and devices, IP prefixes and addresses, EVPN VRFs, VLANs and switched virtual interfaces, and MLAG domains
+- Generators that create the super spine, spine and leaf switches, allocate loopback, interconnect and management addresses, BGP ASNs and node IDs, cable the devices, and then build the PyAVD input and structured configuration of each device
+- EOS configurations, Markdown documentation for each device and fabric, and a cabling plan, rendered as artifacts
+- A service portal for adding a network segment, a server or an EVPN tenant, each opened as a Proposed Change for review
+- Access to the fabric data through the Infrahub web interface, the GraphQL API and the MCP server
+- Deployment of the configurations through an Ansible runner or CloudVision
+
+[Arista AVD reference design documentation]($(base_url)arista-avd) · [Arista AVD sandbox]($(base_url)sandboxes/demo-arista-avd)
+
 ### Optical transport (OTN)
 
 A European research-network optical core modeled down to the fiber span and the wavelength, for transport engineers who need to know what runs over a fiber, what a fiber cut takes down and where the next wavelength fits.
