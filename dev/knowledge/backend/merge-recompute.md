@@ -148,6 +148,7 @@ An empty write set dispatches nothing, which is the normal stop: an acyclic depe
 | `core/recompute/bulk_write.py` | `BulkRecomputeWriter`, `AttributeValueWrite`, `WrittenNode`, `send_node_updated_event` |
 | `core/recompute/dispatch.py` | `BulkRecomputeDispatcher`, `build_bulk_recompute_dispatcher` (bulk write, then chain on a coalesced pass), `build_recompute_chain` |
 | `profiles/refresh.py` | `NodeProfilesRefresher`: applies the profiles of a chunk in transactions, then chains the readers of the writes |
+| `profiles/processor.py` | `ProfileRefreshProcessor`: pages the nodes and templates linked to a profile and submits the refresh of the nodes the filter selects, for `profile-refresh-process` |
 | `profiles/replay.py` | `ProfileReplayRefresher`: after a merge or a rebase, submits the refresh of the replayed profiles; `ProfileValueSelector` leaves out the nodes that hold the value from the profile as their only profile |
 | `core/merge/post_merge.py` | Merge: stamp `merge` origin, build and submit on the destination branch |
 | `core/branch/tasks.py` | Rebase: stamp `rebase` origin, build and submit on the user branch |

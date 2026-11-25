@@ -14,11 +14,10 @@ from infrahub.workers.dependencies import get_client, get_component, get_databas
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_profile_refresh
-from .graphql_queries import ProfileNodeIDQuery
 from .node_applier import NodeProfilesApplier
+from .processor import ProfileRefreshProcessor
 from .refresh import NodeProfilesRefresher
 from .replay import DatabaseProfileValueReader, NodeRefreshFilter, ProfileValueSelector, RefreshAllNodes
-from .submission import submit_profile_refresh
 
 REFRESH_PROFILES_MUTATION = """
 mutation RefreshProfiles(
@@ -151,25 +150,5 @@ async def profile_refresh_process(
                 return
             node_filter = value_filter
 
-        for peer_kind in peer_kinds:
-            node_query = ProfileNodeIDQuery(kind=peer_kind, profile_id=profile_id)
-            submitted = 0
-            held = 0
-            async for page_ids in node_query.fetch_all_paginated(
-                client=client, branch_name=branch_name, page_size=node_query.page_size
-            ):
-                node_ids = await node_filter.select(page_ids)
-                if node_ids:
-                    await submit_profile_refresh(
-                        workflow=workflow,
-                        branch_name=branch_name,
-                        node_ids=node_ids,
-                        context=context,
-                        profile_id=profile_id,
-                    )
-                submitted += len(node_ids)
-                held += len(page_ids) - len(node_ids)
-            log.info(
-                f"Submitted the profile refresh of {submitted} {peer_kind} node(s) for profile {profile_id},"
-                f" {held} already held its values"
-            )
+        processor = ProfileRefreshProcessor(client=client, workflow=workflow, node_filter=node_filter, logger=log)
+        await processor.run(branch_name=branch_name, profile_id=profile_id, peer_kinds=peer_kinds, context=context)
