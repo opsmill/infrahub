@@ -1,0 +1,25 @@
+backend/infrahub/core/validators/node/hierarchy.py
+  s_4fa415708315a7::t_f6e60ce7976dc7 182-201,273,275-277,280-288,290
+  s_4fa415708315a7::t_a8faaad28ad0b0 231,234,270-272,274,278-279,289,291-294
+backend/tests/component/core/constraint_validators/test_node_hierarchy_update.py
+  s_4fa415708315a7::t_6e93c28be53205 1-2,710-782
+backend/tests/unit/core/validators/node/test_hierarchy.py
+  s_4fa415708315a7::t_1593cd9d6d561e 1,182-255
+  s_4fa415708315a7::t_52a43b64a8eb69 3-5,16-19,177-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "022dd62665d325184a71690ba7e44062ba3eb584",
+  "prompts": {},
+  "sessions": {
+    "s_4fa415708315a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03e5d1ed-c4d3-4710-b21f-22b15f31d216",
+        "model": "unknown"
+      },
+      "human_author": null
+    }
+  }
+}
