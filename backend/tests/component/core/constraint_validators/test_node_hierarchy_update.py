@@ -456,6 +456,53 @@ async def test_validator_parents_success(
     assert len(data_paths) == 0
 
 
+async def test_validator_parents_emptied_failure(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small: dict[str, Node]
+) -> None:
+    """Emptying the parent of a kind is refused while its nodes still have a parent."""
+    hldsas = hierarchical_location_data_simple_and_small
+    site_schema = registry.schema.get(name="LocationSite")
+    site_schema.parent = ""
+
+    request = SchemaConstraintValidatorRequest(
+        branch=default_branch,
+        constraint_name="node.parent.update",
+        node_schema=site_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="parent"),
+        schema_branch=registry.schema.get_schema_branch(name=default_branch.name),
+    )
+
+    grouped_data_paths = await NodeHierarchyChecker(db=db, branch=default_branch).check(request)
+
+    assert len(grouped_data_paths) == 1
+    assert {(dp.node_id, dp.peer_id) for dp in grouped_data_paths[0].get_all_data_paths()} == {
+        (hldsas["s1r1"].id, hldsas["r1"].id),
+        (hldsas["s2r1"].id, hldsas["r1"].id),
+        (hldsas["s1r2"].id, hldsas["r2"].id),
+        (hldsas["s2r2"].id, hldsas["r2"].id),
+    }
+
+
+async def test_validator_parents_emptied_success(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple: SchemaRoot
+) -> None:
+    """Emptying the parent of a kind is accepted when none of its nodes has a parent."""
+    site_schema = registry.schema.get(name="LocationSite")
+    site_schema.parent = ""
+
+    request = SchemaConstraintValidatorRequest(
+        branch=default_branch,
+        constraint_name="node.parent.update",
+        node_schema=site_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="parent"),
+        schema_branch=registry.schema.get_schema_branch(name=default_branch.name),
+    )
+
+    grouped_data_paths = await NodeHierarchyChecker(db=db, branch=default_branch).check(request)
+
+    assert [paths.get_all_data_paths() for paths in grouped_data_paths] == [[]]
+
+
 async def test_validator_children_failure(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small: dict[str, Node]
 ) -> None:

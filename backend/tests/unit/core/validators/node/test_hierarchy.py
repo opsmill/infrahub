@@ -63,6 +63,25 @@ DIRECTION_CASES = [
         constraint_name="node.hierarchy.update",
         expected=[HierarchyDirection(side=HierarchySide.CHILDREN, peer_kind="LocationRack")],
     ),
+    DirectionCase(
+        name="empty-peer-kind-is-checked-as-no-allowed-peer",
+        hierarchy=HIERARCHY,
+        parent="",
+        children="",
+        constraint_name="node.hierarchy.update",
+        expected=[
+            HierarchyDirection(side=HierarchySide.PARENT, peer_kind=""),
+            HierarchyDirection(side=HierarchySide.CHILDREN, peer_kind=""),
+        ],
+    ),
+    DirectionCase(
+        name="kind-outside-a-hierarchy-checks-no-side",
+        hierarchy=None,
+        parent="",
+        children="",
+        constraint_name="node.hierarchy.update",
+        expected=[],
+    ),
 ]
 
 

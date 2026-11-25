@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from infrahub_sdk.schema import GenericSchemaAPI as SDKGenericSchema
@@ -530,7 +530,7 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         db: InfrahubDatabase,
         default_branch: Branch,
     ) -> None:
-        schema_dict = {
+        schema_dict: dict[str, Any] = {
             "version": "1.0",
             "generics": [
                 {
@@ -561,11 +561,26 @@ class TestLoadSchemaAPI(TestInfrahubApp):
                     "parent": "TestContinent",
                     "children": "TestContinent",
                 },
+                {
+                    "name": "Shelf",
+                    "namespace": "Test",
+                    "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+                },
             ],
         }
+        expected_after_empty_string = {
+            "default_filter": None,
+            "description": None,
+            "label": "Country",
+            "menu_placement": None,
+            "documentation": None,
+            "parent": "",
+            "children": "",
+        }
+        assert expected_after_empty_string.keys() == OPTIONAL_TEXT_FIELDS.keys()
 
-        country_schema_node = schema_dict["nodes"][1]
-        assert country_schema_node["name"] == "Country"  # type: ignore
+        country_schema_node: dict[str, Any] = schema_dict["nodes"][1]
+        assert country_schema_node["name"] == "Country"
         for field_name in OPTIONAL_TEXT_FIELDS:
             assert field_name in country_schema_node
 
@@ -583,26 +598,23 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         assert schema.parent == "TestContinent"
         assert schema.children == "TestContinent"
 
-        country_schema_node["default_filter"] = ""  # type: ignore
-        country_schema_node["description"] = ""  # type: ignore
-        country_schema_node["label"] = ""  # type: ignore
-        country_schema_node["menu_placement"] = ""  # type: ignore
-        country_schema_node["documentation"] = ""  # type: ignore
-        country_schema_node["parent"] = ""  # type: ignore
-        country_schema_node["children"] = ""  # type: ignore
+        for field_name in OPTIONAL_TEXT_FIELDS:
+            country_schema_node[field_name] = ""
+        # A kind outside a hierarchy accepts an empty parent, which restricts nothing.
+        schema_dict["nodes"][2]["parent"] = ""
 
         creation = await client.schema.load(schemas=[schema_dict])
         assert creation.schema_updated
+        assert not creation.errors
 
         schema = await client.schema.get(kind="TestCountry", refresh=True)
         assert isinstance(schema, NodeSchemaAPI)
-        assert schema.default_filter is None
-        assert schema.description is None
-        assert schema.label == "Country"
-        assert schema.menu_placement is None
-        assert schema.documentation is None
-        assert schema.parent == "TestLocation"
-        assert schema.children == "TestLocation"
+        assert {field_name: getattr(schema, field_name) for field_name in OPTIONAL_TEXT_FIELDS} == (
+            expected_after_empty_string
+        )
+        shelf_schema = await client.schema.get(kind="TestShelf", refresh=True)
+        assert isinstance(shelf_schema, NodeSchemaAPI)
+        assert (shelf_schema.hierarchy, shelf_schema.parent) == (None, "")
 
     async def test_schema_load_accepts_read_level_field_and_warns(
         self,

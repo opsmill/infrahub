@@ -52,8 +52,8 @@ OPTIONAL_TEXT_FIELDS: dict[str, EmptyTextUpdate] = {
     "label": EmptyTextUpdate.CLEARS,
     "menu_placement": EmptyTextUpdate.CLEARS,
     "documentation": EmptyTextUpdate.CLEARS,
-    "parent": EmptyTextUpdate.CLEARS,
-    "children": EmptyTextUpdate.CLEARS,
+    "parent": EmptyTextUpdate.IS_A_VALUE,
+    "children": EmptyTextUpdate.IS_A_VALUE,
 }
 
 

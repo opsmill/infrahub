@@ -45,8 +45,8 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
             to_children, to_parent = "<", ""
         else:
             to_children, to_parent = "", ">"
-        if not self.allowed_peer_kinds or not self.allowed_hierarchy_kinds:
-            raise RuntimeError(f"No peer or hierarchy kind to check for '{self.node_schema.kind}'")
+        if not self.allowed_hierarchy_kinds:
+            raise RuntimeError(f"No hierarchy kind to check for '{self.node_schema.kind}'")
 
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
@@ -153,10 +153,13 @@ class HierarchyDirection:
 
 def get_directions_to_check(node_schema: NodeSchema, constraint_name: str) -> list[HierarchyDirection]:
     """Return the sides of a kind whose stored edges a hierarchy constraint has to check against the candidate."""
+    # An empty parent or children on a kind outside a hierarchy restricts nothing.
+    if not node_schema.hierarchy:
+        return []
     directions: list[HierarchyDirection] = []
-    if node_schema.parent and constraint_name in PARENT_CONSTRAINT_NAMES:
+    if node_schema.parent is not None and constraint_name in PARENT_CONSTRAINT_NAMES:
         directions.append(HierarchyDirection(side=HierarchySide.PARENT, peer_kind=node_schema.parent))
-    if node_schema.children and constraint_name in CHILDREN_CONSTRAINT_NAMES:
+    if node_schema.children is not None and constraint_name in CHILDREN_CONSTRAINT_NAMES:
         directions.append(HierarchyDirection(side=HierarchySide.CHILDREN, peer_kind=node_schema.children))
     return directions
 
@@ -211,6 +214,12 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
             raise RuntimeError(f"No 'hierarchy' defined for {node_schema.kind}")
         return get_kinds_with_previous_names(db=self.db, request=request, kinds=[node_schema.hierarchy])
 
+    def _get_allowed_peer_kinds(self, request: SchemaConstraintValidatorRequest, peer_kind: str) -> list[str]:
+        # An empty peer kind allows no peer, so every stored edge on that side is reported.
+        if not peer_kind:
+            return []
+        return get_kinds_with_previous_names(db=self.db, request=request, kinds=[peer_kind])
+
     async def _check_direction(
         self,
         request: SchemaConstraintValidatorRequest,
@@ -226,9 +235,7 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
                 branch=self.branch,
                 node_schema=node_schema,
                 schema_path=request.schema_path,
-                allowed_peer_kinds=get_kinds_with_previous_names(
-                    db=self.db, request=request, kinds=[direction.peer_kind]
-                ),
+                allowed_peer_kinds=self._get_allowed_peer_kinds(request=request, peer_kind=direction.peer_kind),
                 allowed_hierarchy_kinds=allowed_hierarchy_kinds,
                 side=direction.side,
             )
