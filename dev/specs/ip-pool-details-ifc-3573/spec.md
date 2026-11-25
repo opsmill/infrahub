@@ -83,7 +83,7 @@ The engineer selects a resource prefix. The main area shows a table of what it h
 
 **Acceptance Scenarios**:
 
-1. **Given** a pool with resource prefixes, **When** the engineer opens the pool without naming a resource prefix in the link, **Then** the first resource prefix in list order is selected and its allocations are shown.
+1. **Given** a pool with resource prefixes, **When** the engineer opens the pool without naming a resource prefix in the link, **Then** no resource prefix is selected, and the main area reads "Select a resource prefix" and "See all IP prefixes allocated from it." ("IP addresses" for an address pool).
 2. **Given** the selected resource prefix holds 130 allocations, **When** the engineer scrolls to the end of the table, **Then** the next rows load, until all 130 are shown, and the table header shows the count 130.
 3. **Given** an allocation that a Generator reserved with the identifier `par1-spine-01__par1-leaf-003__underlay`, **When** the engineer reads its row, **Then** the Identifier column shows that identifier; an allocation without an identifier shows "-".
 4. **Given** a row, **When** the engineer selects the prefix or address, **Then** its IPAM details page opens on the branch the engineer is viewing.
@@ -132,7 +132,7 @@ The engineer opens the Actions menu in the header. It offers Copy ID, Copy HFID,
 - **FR-008**: When every resource prefix kind in the pool inherits the weighted pool resource generic, the resource prefix list MUST show "Weight N" for each resource prefix whose weight is set. When one kind has none, the list MUST show no weight, because the backend then ignores weights.
 - **FR-009**: The resource prefix list MUST be ordered by allocation weight, highest first, with a missing weight counting as 0, which is the order in which the backend fills resource prefixes. Resource prefixes with the same weight MUST be ordered by prefix: IP version, then address, then prefix length. This tie order is the page's choice, not the backend's. A resource prefix whose label is not a prefix MUST come after every prefix.
 - **FR-010**: Selecting a resource prefix MUST change the page link so that it names the resource prefix, and opening such a link MUST select that resource prefix.
-- **FR-011**: When the link names no resource prefix, the first resource prefix in list order MUST be selected.
+- **FR-011**: When the link names no resource prefix, no resource prefix MUST be selected, and the main area MUST ask the engineer to select one, because the backend lists allocations only for one resource prefix at a time.
 - **FR-012**: The allocated table MUST show the columns Prefix (Address on an IP address pool), Identifier, Kind and ID, and MUST load more rows as the engineer scrolls to the end. When loading more rows fails, the table MUST keep the rows already loaded, stop requesting more rows and offer a Retry button.
 - **FR-013**: The allocated table header MUST show the number of allocations and the selected resource prefix, which MUST link to the resource prefix's IPAM details page.
 - **FR-014**: Each prefix or address in the table MUST link to its IPAM details page on the branch the engineer is viewing.

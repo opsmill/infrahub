@@ -36,7 +36,7 @@ const initialPath = window.location.pathname;
 
 const pool = generateIpPrefixPoolData();
 const utilization = generateIpPoolUtilization();
-const [firstResource, secondResource] = utilization.resources;
+const [, secondResource] = utilization.resources;
 const prefixPoolSchema = generateNodeSchema({
   kind: "CoreIPPrefixPool",
   name: "IPPrefixPool",
@@ -137,7 +137,7 @@ describe("IpPoolDetailsPage", () => {
     await expect.element(component.getByText("IP pool not found")).toBeVisible();
   });
 
-  it("selects the first resource prefix when the address names none", async () => {
+  it("selects no resource prefix when the address names none", async () => {
     // GIVEN
     mockPool();
     mockUtilization(utilization);
@@ -151,8 +151,8 @@ describe("IpPoolDetailsPage", () => {
       .toBeVisible();
     await expect
       .element(component.getByRole("option", { name: /^10\.10\.0\.0\/22/ }))
-      .toHaveAttribute("aria-selected", "true");
-    await expect.element(component.getByText(`Allocations of ${firstResource?.id}`)).toBeVisible();
+      .toHaveAttribute("aria-selected", "false");
+    await expect.element(component.getByText("Allocations of", { exact: true })).toBeVisible();
   });
 
   it("selects the resource prefix named in the address", async () => {

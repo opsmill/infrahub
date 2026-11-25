@@ -112,8 +112,12 @@ class TestIpPoolDetails:
 
         resources = admin_page.get_by_role("listbox", name="Resource prefixes")
         await expect(resources.get_by_role("option")).to_have_count(1)
-        await expect(resources.get_by_role("option", name=EXTERNAL_PREFIX)).to_have_attribute("aria-selected", "true")
         await expect(resources).not_to_contain_text("Weight")
+        await expect(admin_page.get_by_role("heading", level=2, name="Select a resource prefix")).to_be_visible()
+        await expect(admin_page.get_by_text("See all IP prefixes allocated from it.")).to_be_visible()
+
+        await resources.get_by_role("option", name=EXTERNAL_PREFIX).click()
+        await expect(resources.get_by_role("option", name=EXTERNAL_PREFIX)).to_have_attribute("aria-selected", "true")
 
         title = allocations_title(admin_page, "Allocated prefixes")
         await expect(title).to_have_text(allocation_count(allocated_count, "Allocated prefixes"))
@@ -142,6 +146,8 @@ class TestIpPoolDetails:
         await expect(header.get_by_role("definition")).to_have_text(["default", "IpamIPAddress", "/32"])
 
         resources = admin_page.get_by_role("listbox", name="Resource prefixes")
+        await expect(admin_page.get_by_text("See all IP addresses allocated from it.")).to_be_visible()
+        await resources.get_by_role("option", name=LOOPBACKS_PREFIX).click()
         await expect(resources.get_by_role("option", name=LOOPBACKS_PREFIX)).to_have_attribute("aria-selected", "true")
 
         await expect(allocations_title(admin_page, "Allocated addresses")).to_contain_text(f"in {LOOPBACKS_PREFIX}")
@@ -166,6 +172,7 @@ class TestIpPoolDetails:
         header = pool_header(admin_page)
         await expect(header.get_by_role("definition")).to_contain_text(["/16", "Prefix"])
 
+        await admin_page.get_by_role("listbox", name="Resource prefixes").get_by_role("option").first.click()
         grid = allocations_grid(admin_page, "Allocated prefixes")
         for prefix in ("10.0.0.0/16", "10.1.0.0/16", "10.2.0.0/16"):
             row = grid.get_by_role("row").filter(has=admin_page.get_by_role("link", name=prefix, exact=True))
@@ -190,7 +197,8 @@ class TestIpPoolDetails:
         )
         await admin_page.get_by_role("link", name="View the pool").click()
         await expect(admin_page).to_have_url(re.compile(rf"/resource-manager/{pool_id}$"))
-        await expect(resources.get_by_role("option", name=EXTERNAL_PREFIX)).to_have_attribute("aria-selected", "true")
+        await expect(resources.get_by_role("option", name=EXTERNAL_PREFIX)).to_have_attribute("aria-selected", "false")
+        await expect(admin_page.get_by_role("heading", level=2, name="Select a resource prefix")).to_be_visible()
 
     async def test_resource_prefix_without_allocation(self, admin_page: Page, empty_pool_id: str) -> None:
         await admin_page.goto(f"/resource-manager/{empty_pool_id}")
@@ -200,6 +208,7 @@ class TestIpPoolDetails:
 
         resources = admin_page.get_by_role("listbox", name="Resource prefixes")
         await expect(resources.get_by_role("option", name=EMPTY_PREFIX)).to_contain_text("0%")
+        await resources.get_by_role("option", name=EMPTY_PREFIX).click()
         await expect(allocations_title(admin_page, "Allocated prefixes")).to_have_text(
             allocation_count(0, "Allocated prefixes")
         )
@@ -219,7 +228,7 @@ class TestIpPoolDetails:
         pool = await infrahub_client.get(kind="CoreIPPrefixPool", id=pool_id)
         await infrahub_client.allocate_next_ip_prefix(resource_pool=pool, identifier=identifier, branch=branch)
 
-        await admin_page.goto(f"/resource-manager/{pool_id}?branch={branch}")
+        await admin_page.goto(f"/resource-manager/{pool_id}/resources/{resource_id}?branch={branch}")
         await expect(allocations_title(admin_page, "Allocated prefixes")).to_have_text(
             allocation_count(main_count + 1, "Allocated prefixes")
         )
@@ -228,7 +237,7 @@ class TestIpPoolDetails:
         branch_row = grid.get_by_role("row").filter(has_text=identifier)
         await expect(branch_row.get_by_role("link", name=EXTERNAL_SLASH_29)).to_be_visible()
 
-        await admin_page.goto(f"/resource-manager/{pool_id}")
+        await admin_page.goto(f"/resource-manager/{pool_id}/resources/{resource_id}")
         await expect(allocations_title(admin_page, "Allocated prefixes")).to_have_text(
             allocation_count(main_count, "Allocated prefixes")
         )
@@ -249,7 +258,7 @@ class TestIpPoolDetails:
         pool = await infrahub_client.get(kind="CoreIPAddressPool", id=pool_id)
         await infrahub_client.allocate_next_ip_address(resource_pool=pool, identifier=identifier, branch=branch)
 
-        await admin_page.goto(f"/resource-manager/{pool_id}?branch={branch}")
+        await admin_page.goto(f"/resource-manager/{pool_id}/resources/{resource_id}?branch={branch}")
         await expect(allocations_title(admin_page, "Allocated addresses")).to_have_text(
             allocation_count(main_count + 1, "Allocated addresses")
         )
@@ -258,7 +267,7 @@ class TestIpPoolDetails:
         branch_row = grid.get_by_role("row").filter(has_text=identifier)
         await expect(branch_row.get_by_role("link", name=LOOPBACK_SLASH_32)).to_be_visible()
 
-        await admin_page.goto(f"/resource-manager/{pool_id}")
+        await admin_page.goto(f"/resource-manager/{pool_id}/resources/{resource_id}")
         await expect(allocations_title(admin_page, "Allocated addresses")).to_have_text(
             allocation_count(main_count, "Allocated addresses")
         )
