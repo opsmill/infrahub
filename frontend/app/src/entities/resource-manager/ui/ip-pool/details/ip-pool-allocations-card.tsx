@@ -49,23 +49,27 @@ export function IpPoolAllocationsCard({
 
   const resource = resources.find(({ id }) => id === selectedResourceId);
 
-  return (
-    <Card className="max-h-full grow overflow-hidden">
-      {resource ? (
-        <IpPoolAllocationsTable
-          key={resource.id}
-          poolId={poolId}
-          poolKind={poolKind}
-          resource={resource}
-        />
-      ) : (
+  if (!resource) {
+    return (
+      <Card className="grow">
         <PoolItemNotFound
           title="Resource prefix not found"
           description="The link points to a resource prefix this pool does not have. It may have been removed from the pool, or it may belong to another pool."
           href={getIpPoolResourceUrl(poolId)}
           linkLabel="View the pool"
         />
-      )}
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="max-h-full grow overflow-hidden">
+      <IpPoolAllocationsTable
+        key={resource.id}
+        poolId={poolId}
+        poolKind={poolKind}
+        resource={resource}
+      />
     </Card>
   );
 }
