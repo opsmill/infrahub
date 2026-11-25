@@ -7,10 +7,10 @@ from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph.m084_hide_replaced_branch_attribute_owners import Migration084
-from infrahub.core.migrations.graph.m085_close_repository_owner_edges import (
+from infrahub.core.migrations.graph.m085_hide_replaced_branch_attribute_owners import Migration085
+from infrahub.core.migrations.graph.m086_close_repository_owner_edges import (
     HideGlobalRepositoryOwnersQuery,
-    Migration085,
+    Migration086,
 )
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
@@ -105,10 +105,10 @@ async def test_repository_owners_are_closed_and_readable_before_the_upgrade(
 
     console = Console(width=1000, log_time=False, log_path=False)
     with console.capture() as capture:
-        result = await Migration085().execute(migration_input=MigrationInput(db=db, console=console))
+        result = await Migration086().execute(migration_input=MigrationInput(db=db, console=console))
     edges_after = await _owner_edges(db=db)
     with console.capture() as second_capture:
-        second_result = await Migration085().execute(migration_input=MigrationInput(db=db, console=console))
+        second_result = await Migration086().execute(migration_input=MigrationInput(db=db, console=console))
 
     assert result.errors == []
     assert second_result.errors == []
@@ -213,9 +213,9 @@ async def test_branch_made_before_the_upgrade_reads_no_repository_owner_after_th
         "closed-on-default-branch": {repository.id},
     }
 
-    result = await Migration085().execute(migration_input=MigrationInput(db=db))
+    result = await Migration086().execute(migration_input=MigrationInput(db=db))
     edges_after = await _owner_edges(db=db)
-    second_result = await Migration085().execute(migration_input=MigrationInput(db=db))
+    second_result = await Migration086().execute(migration_input=MigrationInput(db=db))
 
     assert result.errors == []
     assert second_result.errors == []
@@ -261,7 +261,7 @@ async def test_branch_that_replaced_an_account_owner_with_a_repository_reads_no_
     assert await _color_owner_ids(db=db, branch=branch, node_id=car.id) == {account.id, repository.id}
 
     # The upgrade runs the migrations in their order.
-    for migration in (Migration084(), Migration085()):
+    for migration in (Migration085(), Migration086()):
         result = await migration.execute(migration_input=MigrationInput(db=db))
         assert result.errors == []
 
@@ -354,9 +354,9 @@ async def test_branch_made_before_the_upgrade_reads_no_global_repository_owner_a
         "replaced-before-upgrade": {groups["owner-group"], repository.id},
     }
 
-    result = await Migration085().execute(migration_input=MigrationInput(db=db))
+    result = await Migration086().execute(migration_input=MigrationInput(db=db))
     edges_after = await _owner_edges(db=db)
-    second_result = await Migration085().execute(migration_input=MigrationInput(db=db))
+    second_result = await Migration086().execute(migration_input=MigrationInput(db=db))
 
     assert result.errors == []
     assert second_result.errors == []
@@ -397,7 +397,7 @@ async def test_repository_owners_and_closed_edges_are_printed_when_a_later_query
     monkeypatch.setattr(HideGlobalRepositoryOwnersQuery, "execute", fail)
     console = Console(width=1000, log_time=False, log_path=False)
     with console.capture() as capture:
-        result = await Migration085().execute(migration_input=MigrationInput(db=db, console=console))
+        result = await Migration086().execute(migration_input=MigrationInput(db=db, console=console))
 
     assert result.errors == ["hide query failed"]
     # The close commits before the failure, so the list of owners and the counts of the closed edges must be printed.
@@ -429,7 +429,7 @@ async def test_merged_branch_gets_no_deleted_edge(
     branch.status = BranchStatus.MERGED
     await branch.save(db=db)
 
-    result = await Migration085().execute(migration_input=MigrationInput(db=db))
+    result = await Migration086().execute(migration_input=MigrationInput(db=db))
 
     assert result.errors == []
     assert [edge for edge in await _owner_edges(db=db) if edge["status"] == "deleted"] == []

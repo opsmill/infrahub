@@ -4,7 +4,7 @@ from infrahub.cli.db_commands.ownership_report import ownership_report
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch, get_root_node
-from infrahub.core.migrations.graph.m085_close_repository_owner_edges import Migration085
+from infrahub.core.migrations.graph.m086_close_repository_owner_edges import Migration086
 from infrahub.core.migrations.query.node_duplicate import NodeDuplicateQuery, SchemaNodeInfo
 from infrahub.core.node import Node
 from infrahub.core.ownership.report import (
@@ -113,7 +113,7 @@ async def test_report_of_a_database_without_any_case_is_empty(
 async def test_command_prints_each_section_with_its_rows(
     db: InfrahubDatabase, repository: Node, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    await _set_graph_version(db=db, graph_version=Migration085.init().minimum_version)
+    await _set_graph_version(db=db, graph_version=Migration086.init().minimum_version)
 
     await ownership_report(db=db)
 
@@ -143,7 +143,7 @@ async def test_command_after_the_upgrade_warns_that_the_first_section_is_empty(
     car_person_schema: None,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    await _set_graph_version(db=db, graph_version=Migration085.init().number)
+    await _set_graph_version(db=db, graph_version=Migration086.init().number)
 
     await ownership_report(db=db)
 

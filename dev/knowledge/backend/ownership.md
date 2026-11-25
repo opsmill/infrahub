@@ -34,7 +34,7 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
 | `HAS_OWNER` or `HAS_NO_OWNER`, and `HAS_OWNER_SOURCE` | a copy from an object template. The state reads as `INHERIT`, the origin is `TEMPLATE` |
 
 - Every `HAS_NO_OWNER` edge ends at the one `NoOwner` vertex (`uuid: "no-owner"`). The creation of the `Root`
-  vertex (`create_root_node`) and the graph migration `m086` create it. The write query also has a `MERGE` for a
+  vertex (`create_root_node`) and the graph migration `m087` create it. The write query also has a `MERGE` for a
   database without it. The delete of a branch, the rebase of a branch and a rollback (`GraphRollbacker`) delete each
   vertex that keeps no edge, but not this vertex.
   `verify_graph` reports a graph that has no such vertex or more than one (`GraphCheck.NO_OWNER_VERTEX`).
@@ -270,7 +270,7 @@ the holders that are not attributes are in `core/ownership/fields.py` (see [Diff
   latest on the queried branch. The kind migration copies the owner edges and the source edges of the node to the
   new vertex, so for these holders the query keeps the row of the vertex whose `IS_PART_OF` edge is the latest on
   the queried branch. So the diff gives one node for each UUID. The query skips the `HAS_OWNER` edges to a
-  repository: from the upgrade (`m085`), the reads hide a repository owner, so these edges give no change on any
+  repository: from the upgrade (`m086`), the reads hide a repository owner, so these edges give no change on any
   branch.
 - `OwnershipDiffer` (`core/diff/ownership_differ.py`) takes the field name of a set or of a node holder from the
   schema of the diff branch. For a change of the base branch, it uses the schema of the base branch when the schema
@@ -336,13 +336,13 @@ the holders that are not attributes are in `core/ownership/fields.py` (see [Diff
 
 | Migration | What it does |
 |---|---|
-| `m084` | Adds a `deleted` edge for each attribute owner of the default branch that a branch replaced, also when the default branch closed the owner edge after the start of the branch. The `deleted` edge starts at the first edge of the branch to another owner, so a read at a time between two owner writes of the branch gives one owner |
-| `m085` | Closes the `HAS_OWNER` edges from attributes to repositories, on every branch. A branch still reads an edge of the default branch that was open at the start of the branch, so the migration adds a `deleted` edge for it on the branch, at the time of the upgrade. For such an edge of the global branch, the `deleted` edge goes on the global branch, as a write of owners on the global branch does. It deletes nothing, and prints the number of closed edges for each repository |
-| `m086` | Creates the `NoOwner` vertex |
+| `m085` | Adds a `deleted` edge for each attribute owner of the default branch that a branch replaced, also when the default branch closed the owner edge after the start of the branch. The `deleted` edge starts at the first edge of the branch to another owner, so a read at a time between two owner writes of the branch gives one owner |
+| `m086` | Closes the `HAS_OWNER` edges from attributes to repositories, on every branch. A branch still reads an edge of the default branch that was open at the start of the branch, so the migration adds a `deleted` edge for it on the branch, at the time of the upgrade. For such an edge of the global branch, the `deleted` edge goes on the global branch, as a write of owners on the global branch does. It deletes nothing, and prints the number of closed edges for each repository |
+| `m087` | Creates the `NoOwner` vertex |
 
 `infrahub db ownership-report` (`core/ownership/report.py`) reads only vertices and edges that the release before
-holds, so it runs before the upgrade. When the graph version of the database is the number of `m085` or later, the
-command first prints a warning: `m085` closed the owner edges from attributes to repositories, so the first section is
+holds, so it runs before the upgrade. When the graph version of the database is the number of `m086` or later, the
+command first prints a warning: `m086` closed the owner edges from attributes to repositories, so the first section is
 empty. Each row counts the attributes of one branch, so an attribute with an owner edge on two branches counts twice
 in the total of its section. The report does not compare the branch of the `HAS_ATTRIBUTE` edge with the branch of
 the owner edge. After a kind change on a branch, the new vertex shares the attribute vertex, so the report also lists
@@ -355,19 +355,19 @@ the owner edges of the default branch under the new kind.
 - Outside a transaction, a pool allocation for the peer of a link with an owner stays when the owner kind check
   then refuses the owner. The update resolves the peers of a relationship before the check, to compare each link
   with the database.
-- The upgrade ends only the attribute owners that are repositories (`m085`). An attribute owner of another kind that
+- The upgrade ends only the attribute owners that are repositories (`m086`). An attribute owner of another kind that
   is not an account or an account group stays readable. `infrahub db ownership-report` lists them, by kind, before
   the upgrade.
 - Two transactions that write the same nodes in a different order deadlock, on every branch, because each one
   locks the nodes in its own order (see "Order of the nodes"). Only the cascade of `NodeManager.delete`, the profile
   refresh and the IPAM reconciler sort their nodes.
-- The graph migration `m084` skips an attribute whose owner a branch wrote and then cleared before the upgrade.
+- The graph migration `m085` skips an attribute whose owner a branch wrote and then cleared before the upgrade.
   The release before closed the edge of the branch at the clear, and added its own `deleted` edge for the owner of
   the default branch at that time. So a read on the branch at a time between the write and the clear gives two
   owners. It also skips an attribute whose branch wrote another owner and then the owner of the default branch
   again, because the branch has an open edge to that owner. A read on the branch at a time between the two writes
   gives both owners. A read at the current time gives one owner.
-- `m084` skips a repository that a branch replaced, because `m085` hides the repository on that branch. `m085`
+- `m085` skips a repository that a branch replaced, because `m086` hides the repository on that branch. `m086`
   adds its `deleted` edge at the time of the upgrade, so a read on the branch at a time between the branch write and
   the upgrade gives both the new owner and the repository. The release before gave the new owner only. A read at
   the current time, the diff and the merge are not affected.
@@ -380,7 +380,7 @@ the owner edges of the default branch under the new kind.
   A read at a time between the two gives the new node without owners.
 - A branch made before the upgrade can read two owners on a branch-agnostic attribute when the release before
   changed its owner on the global branch after the start of the branch. That release gave the old global edge a
-  `to` time and no `deleted` edge. `m084` reads only the owner edges of a branch, and `m085` only the edges to
+  `to` time and no `deleted` edge. `m085` reads only the owner edges of a branch, and `m086` only the edges to
   repositories.
 - The clear of the source of a branch-agnostic attribute (`AttributeClearNodePropertyQuery`) gives the global edge
   a `to` time and no `deleted` edge. So a branch made before the clear still reads the old source. The release
@@ -438,7 +438,7 @@ the owner edges of the default branch under the new kind.
   a rebase, the merge also reverts a later value change of the default branch.
 - A branch that changed the owner of an attribute and then renamed the attribute before the upgrade has two open
   owner edges of the branch on the new attribute vertex, because the rename of the release before copies the latest
-  edge to each owner. `m084` hides only an owner of a parent branch, so after the upgrade the branch reads both
+  edge to each owner. `m085` hides only an owner of a parent branch, so after the upgrade the branch reads both
   owners, and a merge copies both. The release before reads one of the two.
 
 ## Key Files

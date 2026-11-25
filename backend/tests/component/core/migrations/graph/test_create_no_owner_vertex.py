@@ -1,6 +1,6 @@
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import first_time_initialization
-from infrahub.core.migrations.graph.m086_create_no_owner_vertex import Migration086
+from infrahub.core.migrations.graph.m087_create_no_owner_vertex import Migration087
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.ownership.constants import NO_OWNER_VERTEX_UUID
 from infrahub.database import InfrahubDatabase
@@ -19,8 +19,8 @@ async def test_upgrade_creates_one_no_owner_vertex(db: InfrahubDatabase, default
     await db.execute_query(query="MATCH (n:NoOwner) DELETE n")
     assert await _no_owner_uuids(db=db) == []
 
-    result = await Migration086().execute(migration_input=MigrationInput(db=db))
-    second_result = await Migration086().execute(migration_input=MigrationInput(db=db))
+    result = await Migration087().execute(migration_input=MigrationInput(db=db))
+    second_result = await Migration087().execute(migration_input=MigrationInput(db=db))
 
     assert result.errors == []
     assert second_result.errors == []

@@ -5,7 +5,7 @@ from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph.m084_hide_replaced_branch_attribute_owners import Migration084
+from infrahub.core.migrations.graph.m085_hide_replaced_branch_attribute_owners import Migration085
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -96,9 +96,9 @@ async def test_default_branch_owner_closed_after_the_branch_start_is_hidden_on_t
     )
     assert await _active_owner_ids(db=db, branch=branch, node_id=car.id) == {main_owner.id, branch_owner.id}
 
-    result = await Migration084().execute(migration_input=MigrationInput(db=db))
+    result = await Migration085().execute(migration_input=MigrationInput(db=db))
     deleted_edges = await _deleted_edges(db=db)
-    second_result = await Migration084().execute(migration_input=MigrationInput(db=db))
+    second_result = await Migration085().execute(migration_input=MigrationInput(db=db))
 
     assert result.errors == []
     assert second_result.errors == []
@@ -122,7 +122,7 @@ async def test_default_branch_owner_closed_before_the_branch_start_gets_no_delet
     branch = await create_branch(db=db, branch_name="branch1")
     await _add_owner_edge(db=db, branch=branch, node_id=car.id, owner_id=branch_owner.id)
 
-    result = await Migration084().execute(migration_input=MigrationInput(db=db))
+    result = await Migration085().execute(migration_input=MigrationInput(db=db))
 
     assert result.errors == []
     assert await _deleted_edges(db=db) == []
@@ -143,7 +143,7 @@ async def test_owner_that_the_branch_wrote_first_and_then_replaced_is_hidden(
     await _add_owner_edge(db=db, branch=branch, node_id=car.id, owner_id=main_owner.id, to=Timestamp())
     await _add_owner_edge(db=db, branch=branch, node_id=car.id, owner_id=branch_owner.id)
 
-    result = await Migration084().execute(migration_input=MigrationInput(db=db))
+    result = await Migration085().execute(migration_input=MigrationInput(db=db))
 
     assert result.errors == []
     assert await _active_owner_ids(db=db, branch=branch, node_id=car.id) == {branch_owner.id}
@@ -172,7 +172,7 @@ async def test_repository_that_the_branch_replaced_gets_no_deleted_edge(
     branch = await create_branch(db=db, branch_name="branch1")
     await _add_owner_edge(db=db, branch=branch, node_id=car.id, owner_id=branch_owner.id)
 
-    result = await Migration084().execute(migration_input=MigrationInput(db=db))
+    result = await Migration085().execute(migration_input=MigrationInput(db=db))
 
     assert result.errors == []
     assert await _deleted_edges(db=db) == []
@@ -204,9 +204,9 @@ async def test_default_branch_owner_is_hidden_from_the_first_of_two_branch_owner
         first_owner.id,
     }
 
-    result = await Migration084().execute(migration_input=MigrationInput(db=db))
+    result = await Migration085().execute(migration_input=MigrationInput(db=db))
     deleted_edges = await _deleted_edges(db=db)
-    second_result = await Migration084().execute(migration_input=MigrationInput(db=db))
+    second_result = await Migration085().execute(migration_input=MigrationInput(db=db))
 
     assert result.errors == []
     assert second_result.errors == []
@@ -249,7 +249,7 @@ async def test_default_branch_owner_added_after_the_branch_start_is_hidden_and_t
     await _add_owner_edge(db=db, branch=default_branch, node_id=car.id, owner_id=later_owner.id)
     assert await _active_owner_ids(db=db, branch=branch, node_id=car.id) == {main_owner.id, branch_owner.id}
 
-    result = await Migration084().execute(migration_input=MigrationInput(db=db))
+    result = await Migration085().execute(migration_input=MigrationInput(db=db))
 
     assert result.errors == []
     assert sorted((edge["owner_id"], edge["branch"]) for edge in await _deleted_edges(db=db)) == sorted(
@@ -281,7 +281,7 @@ async def test_merged_branch_gets_no_deleted_edge(
     branch.status = BranchStatus.MERGED
     await branch.save(db=db)
 
-    result = await Migration084().execute(migration_input=MigrationInput(db=db))
+    result = await Migration085().execute(migration_input=MigrationInput(db=db))
 
     assert result.errors == []
     assert await _deleted_edges(db=db) == []

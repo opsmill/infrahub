@@ -11,12 +11,12 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class Migration086(GraphMigration):
+class Migration087(GraphMigration):
     """Create the `NoOwner` vertex before any write, so that two writes at the same time cannot each create one."""
 
-    name: str = "086_create_no_owner_vertex"
+    name: str = "087_create_no_owner_vertex"
     description: str = "Create the vertex that marks a node, an attribute or a relationship as having no owner"
-    minimum_version: int = 85
+    minimum_version: int = 86
     queries: Sequence[type[Query]] = [NoOwnerVertexCreateQuery]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002

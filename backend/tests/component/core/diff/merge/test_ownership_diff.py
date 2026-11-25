@@ -11,7 +11,7 @@ from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.conflicts_extractor import DiffConflictsExtractor
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph.m085_close_repository_owner_edges import Migration085
+from infrahub.core.migrations.graph.m086_close_repository_owner_edges import Migration086
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.ownership.models import (
@@ -291,7 +291,7 @@ async def test_repository_owner_that_the_upgrade_closes_gives_no_change_in_the_d
         db=db, query=ADD_ATTRIBUTE_OWNER, branch=default_branch, node_id=car_accord_main.id, owner_id=repository.id
     )
     branch = await create_branch(db=db, branch_name="before-upgrade")
-    result = await Migration085().execute(migration_input=MigrationInput(db=db))
+    result = await Migration086().execute(migration_input=MigrationInput(db=db))
     assert result.errors == []
     assert await _repository_owner_edges(db=db, node_id=car_accord_main.id, owner_id=repository.id) == [
         (branch.name, "deleted", True),
@@ -313,7 +313,7 @@ async def test_repository_owner_that_the_upgrade_closes_gives_no_conflict_with_a
         db=db, query=ADD_ATTRIBUTE_OWNER, branch=default_branch, node_id=car_accord_main.id, owner_id=repository.id
     )
     branch = await create_branch(db=db, branch_name="before-upgrade")
-    result = await Migration085().execute(migration_input=MigrationInput(db=db))
+    result = await Migration086().execute(migration_input=MigrationInput(db=db))
     assert result.errors == []
     assert await _repository_owner_edges(db=db, node_id=car_accord_main.id, owner_id=repository.id) == [
         (branch.name, "deleted", True),

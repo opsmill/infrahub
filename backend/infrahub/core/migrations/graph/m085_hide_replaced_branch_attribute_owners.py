@@ -28,7 +28,7 @@ class HideReplacedBranchAttributeOwnersQuery(Query):
     hide, because each `deleted` edge is an open edge of the branch to the replaced owner.
     """
 
-    name = "migration_084_hide_replaced_branch_attribute_owners"
+    name = "migration_085_hide_replaced_branch_attribute_owners"
     type = QueryType.WRITE
     insert_return = False
     insert_limit = False
@@ -67,10 +67,10 @@ CALL (a, replaced_owner, branch, branch_level, hidden_at) {
         self.add_to_query(query)
 
 
-class Migration084(ArbitraryMigration):
-    name: str = "084_hide_replaced_branch_attribute_owners"
+class Migration085(ArbitraryMigration):
+    name: str = "085_hide_replaced_branch_attribute_owners"
     description: str = "Hide the attribute owners that a branch replaced before attributes had several owners"
-    minimum_version: int = 83
+    minimum_version: int = 84
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()

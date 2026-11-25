@@ -140,7 +140,7 @@ The Technical Context of the plan has no open "NEEDS CLARIFICATION" item. The op
 
 ## R-10: Upgrade
 
-- Decision: three graph migrations (`m084` to `m086`), and `GRAPH_VERSION = 86` in `core/graph/__init__.py`. Steps 1 and 2 below are `m085` and `m084`: the hide step runs first. `m086` creates the `NoOwner` vertex. The first start of a new database creates it too.
+- Decision: three graph migrations (`m085` to `m087`), and `GRAPH_VERSION = 87` in `core/graph/__init__.py`. Steps 1 and 2 below are `m086` and `m085`: the hide step runs first. `m087` creates the `NoOwner` vertex. The first start of a new database creates it too.
   1. Close the `HAS_OWNER` edges from attributes to repositories. Delete nothing, so a query at an earlier time still returns them (FR-036). Owners on links stay.
   2. Hide the attribute owner of the default branch that a branch replaced before the upgrade (FR-037). The prototype has this step (`m084_hide_replaced_branch_attribute_owners`).
 - An attribute that has an owner today is already in the own state, so its state needs no migration.

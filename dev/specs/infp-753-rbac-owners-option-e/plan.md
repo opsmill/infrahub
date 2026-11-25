@@ -246,7 +246,7 @@ What this split costs:
 - All owner types arrive together. Node owners cannot be released before field owners or node sources.
 - Pull request 1 is the largest pull request, because it holds three layers.
 - Pull request 1 has changes that users notice before the API exists:
-  - The save of an attribute or of a link refuses an owner that is not an account or an account group. The graph migration `m085` ends the ownership of attributes by repositories on every branch, and deletes nothing.
+  - The save of an attribute or of a link refuses an owner that is not an account or an account group. The graph migration `m086` ends the ownership of attributes by repositories on every branch, and deletes nothing.
   - The diff gives the owner of an attribute as a JSON list of the sorted owner IDs, for example `["<id>"]`. Before, the diff gave the owner ID alone.
   - A rebase stops on a conflict of an owner list or a source list until both branches hold the same list.
   - The new command `infrahub db ownership-report`.

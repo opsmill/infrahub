@@ -347,7 +347,7 @@ description: "Task list for owner and source metadata, Community side, storage o
 - [ ] T148 [P] Write the user documentation for owners, sources, the deprecations of `owner` and `is_protected`, the upgrade report and the group tree setting in docs/docs/, and run `uv run invoke docs.generate`
 - [ ] T149 [P] Add one Towncrier fragment for each user-visible change in changelog/ (owners and sources added, `owner` and `is_protected` deprecated, the new setting, and the changes of pull request 1 below), with the `creating-changelog-entries` skill
   - The save of an attribute or of a link refuses an owner that is not an account or an account group.
-  - The graph migration `m085` ends the ownership of attributes by repositories, on every branch. It deletes nothing.
+  - The graph migration `m086` ends the ownership of attributes by repositories, on every branch. It deletes nothing.
   - The new command `infrahub db ownership-report`.
   - A rebase stops on a conflict of an owner list or a source list until both branches hold the same list.
 - [ ] T150 Regenerate schema/schema.graphql, schema/openapi.json, the backend generated files and the frontend GraphQL types, and run `uv run invoke docs.validate`
@@ -417,7 +417,7 @@ The pull requests follow the layers, not the phases. Each pull request holds one
   - Object files: T139 to T143
 - **User documentation, one pull request after the 3 others**: T148
 - **Every pull request**: T149, T150, T151
-  - T149: the Towncrier fragments are consolidated. They come in one step when all pull requests are in the feature branch, not in each pull request (decided on 2026-11-17). For pull request 1, the fragments name the refusal of an owner that is not an account or an account group, the graph migration `m085`, the command `infrahub db ownership-report`, and the stop of a rebase on a conflict of owners or sources.
+  - T149: the Towncrier fragments are consolidated. They come in one step when all pull requests are in the feature branch, not in each pull request (decided on 2026-11-17). For pull request 1, the fragments name the refusal of an owner that is not an account or an account group, the graph migration `m086`, the command `infrahub db ownership-report`, and the stop of a rebase on a conflict of owners or sources.
   - T150: the generated files that the pull request changes.
   - T151: format and lint in each pull request. The E2E tests and the scenarios of quickstart.md run when the API exists.
 

@@ -21,7 +21,7 @@ class CloseRepositoryOwnerEdgesQuery(Query):
     edge.
     """
 
-    name = "migration_085_close_repository_owner_edges"
+    name = "migration_086_close_repository_owner_edges"
     type = QueryType.WRITE
     insert_return = False
     insert_limit = False
@@ -63,7 +63,7 @@ class HideRepositoryOwnersOnBranchesQuery(Query):
     explicit transaction. A second run finds each `deleted` edge and adds none.
     """
 
-    name = "migration_085_hide_repository_owners_on_branches"
+    name = "migration_086_hide_repository_owners_on_branches"
     type = QueryType.WRITE
     insert_return = False
     insert_limit = False
@@ -104,7 +104,7 @@ class HideGlobalRepositoryOwnersQuery(Query):
     adds none.
     """
 
-    name = "migration_085_hide_global_repository_owners"
+    name = "migration_086_hide_global_repository_owners"
     type = QueryType.WRITE
     insert_return = False
     insert_limit = False
@@ -135,10 +135,10 @@ CALL (a, repository) {
         self.add_to_query(query)
 
 
-class Migration085(ArbitraryMigration):
-    name: str = "085_close_repository_owner_edges"
+class Migration086(ArbitraryMigration):
+    name: str = "086_close_repository_owner_edges"
     description: str = "Close the owner edges from attributes to repositories, which are no longer owners"
-    minimum_version: int = 84
+    minimum_version: int = 85
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
