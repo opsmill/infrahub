@@ -202,6 +202,27 @@ async def test_validator(
     )
 
 
+async def test_validator_checks_only_the_listed_nodes(
+    db: InfrahubDatabase, default_branch: Branch, car_camry_main: Node, car_prius_main: Node
+) -> None:
+    car_schema = registry.schema.get(name="TestCar", branch=default_branch)
+    car_schema.get_attribute(name="color").enum = ["#123123"]
+
+    request = SchemaConstraintValidatorRequest(
+        branch=default_branch,
+        constraint_name="attribute.enum.update",
+        node_schema=car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="color"),
+        schema_branch=SchemaBranch(cache={}, name="test"),
+        node_uuids=[car_prius_main.id],
+    )
+
+    grouped_data_paths = await AttributeEnumChecker(db=db, branch=default_branch).check(request)
+
+    # both cars hold a color outside the enum, but only the listed one is checked
+    assert [path.node_id for paths in grouped_data_paths for path in paths.get_all_data_paths()] == [car_prius_main.id]
+
+
 @dataclass(frozen=True)
 class ViewCase:
     name: str

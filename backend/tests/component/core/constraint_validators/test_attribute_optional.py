@@ -184,6 +184,34 @@ async def test_validator(db: InfrahubDatabase, branch: Branch, person_john_main:
     assert data_paths[0].branch == branch.name
 
 
+async def test_validator_checks_only_the_listed_nodes(
+    db: InfrahubDatabase, branch: Branch, person_john_main: Node
+) -> None:
+    alfred = await Node.init(db=db, schema="TestPerson", branch=branch)
+    await alfred.new(db=db, name="ALFRED")
+    await alfred.save(db=db)
+    bruce = await Node.init(db=db, schema="TestPerson", branch=branch)
+    await bruce.new(db=db, name="BRUCE")
+    await bruce.save(db=db)
+
+    person_schema = registry.schema.get(name="TestPerson", branch=branch)
+    person_schema.get_attribute(name="height").optional = False
+
+    request = SchemaConstraintValidatorRequest(
+        branch=branch,
+        constraint_name="attribute.optional.update",
+        node_schema=person_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="height"),
+        schema_branch=SchemaBranch(cache={}, name="test"),
+        node_uuids=[bruce.id],
+    )
+
+    grouped_data_paths = await AttributeOptionalChecker(db=db, branch=branch).check(request)
+
+    # neither person has a height, but only the listed one is checked
+    assert [path.node_id for paths in grouped_data_paths for path in paths.get_all_data_paths()] == [bruce.id]
+
+
 @dataclass(frozen=True)
 class ViewCase:
     name: str

@@ -87,17 +87,27 @@ Rules:
 `frontend/app/src/entities/authentication/ui/queries/login-with-ldap.mutation.ts`:
 
 ```ts
-import { mutationOptions, useMutation } from "@tanstack/react-query";
+import { mutationOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { loginWithLdap } from "@/entities/authentication/domain/login-with-ldap";
+import { clearSessionCache } from "@/entities/authentication/ui/queries/clear-session-cache";
 
 export function loginWithLdapMutationOptions() {
   return mutationOptions({ mutationKey: ["login-with-ldap"], mutationFn: loginWithLdap });
 }
 
 export function useLoginWithLdap() {
-  return useMutation(loginWithLdapMutationOptions());
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...loginWithLdapMutationOptions(),
+    onSuccess: () => {
+      clearSessionCache(queryClient);
+    },
+  });
 }
 ```
+
+Call `clearSessionCache` in `onSuccess`, not `queryClient.clear()`. It removes the previous session's cached data but keeps the config query, which the app reads from above the router; `clear()` removes that query too, so later config changes, such as a saved instance label, appear only after a page reload.
 
 ## 3. Build the render component
 

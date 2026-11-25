@@ -1015,38 +1015,51 @@ AND (
         self.return_labels = ["collect(DISTINCT p.uuid) AS node_uuids"]
 
 
+def _window_edge_reads(pattern: str, edge_types: tuple[DatabaseEdgeType, ...], tail: str) -> str:
+    """Return one read per edge type through its `from` index, then its `to` index, joined with `UNION ALL`.
+
+    Args:
+        pattern: The pattern of each read, which names the edge `diff_rel` and holds `%(edge_type)s` for its type.
+        edge_types: The edge types to read.
+        tail: The text that continues the `WHERE` clause of each read and returns its rows.
+
+    """
+    edge_reads: list[str] = []
+    for edge_type in edge_types:
+        match = pattern % {"edge_type": edge_type.value}
+        edge_reads.extend(
+            (
+                f"""
+    MATCH {match}
+    USING INDEX SEEK diff_rel:{edge_type.value}(from)
+    WHERE diff_rel.from >= $from_time AND diff_rel.from < $to_time
+    AND (diff_rel.to IS NULL OR diff_rel.to > $to_time)
+    {tail}
+            """,
+                f"""
+    MATCH {match}
+    USING INDEX SEEK diff_rel:{edge_type.value}(to)
+    WHERE diff_rel.to >= $from_time AND diff_rel.to < $to_time
+    {tail}
+            """,
+            )
+        )
+    return "UNION ALL".join(edge_reads)
+
+
 class DiffFieldNodesQuery(DiffChangedNodesQuery):
     name = "diff_field_nodes"
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params.update(self.get_params())
-        changed_node = """
-    AND q.branch_support = $branch_aware
-    AND ($node_kinds IS NULL OR p.kind IN $node_kinds)
-    RETURN DISTINCT p.uuid AS node_uuid
-        """
         # without the hints the planner can read every node of the graph instead of the edges in the window
-        edge_reads: list[str] = []
-        for edge_type in (DatabaseEdgeType.HAS_ATTRIBUTE, DatabaseEdgeType.IS_RELATED):
-            edge_reads.extend(
-                (
-                    """
-    MATCH (p:Node)-[diff_rel:%(edge_type)s {branch: $branch_name}]-(q)
-    USING INDEX SEEK diff_rel:%(edge_type)s(from)
-    WHERE diff_rel.from >= $from_time AND diff_rel.from < $to_time
-    AND (diff_rel.to IS NULL OR diff_rel.to > $to_time)
-    %(changed_node)s
-                """
-                    % {"edge_type": edge_type.value, "changed_node": changed_node},
-                    """
-    MATCH (p:Node)-[diff_rel:%(edge_type)s {branch: $branch_name}]-(q)
-    USING INDEX SEEK diff_rel:%(edge_type)s(to)
-    WHERE diff_rel.to >= $from_time AND diff_rel.to < $to_time
-    %(changed_node)s
-                """
-                    % {"edge_type": edge_type.value, "changed_node": changed_node},
-                )
-            )
+        edge_reads = _window_edge_reads(
+            pattern="(p:Node)-[diff_rel:%(edge_type)s {branch: $branch_name}]-(q)",
+            edge_types=(DatabaseEdgeType.HAS_ATTRIBUTE, DatabaseEdgeType.IS_RELATED),
+            tail="""AND q.branch_support = $branch_aware
+    AND ($node_kinds IS NULL OR p.kind IN $node_kinds)
+    RETURN DISTINCT p.uuid AS node_uuid""",
+        )
         query = """
 // -------------------------------------
 // Identify nodes with an attribute/relationship added/removed on branch
@@ -1054,7 +1067,7 @@ class DiffFieldNodesQuery(DiffChangedNodesQuery):
 CALL () {
     %(edge_reads)s
 }
-        """ % {"edge_reads": "UNION ALL".join(edge_reads)}
+        """ % {"edge_reads": edge_reads}
         self.add_to_query(query)
         self.return_labels = ["collect(DISTINCT node_uuid) AS node_uuids"]
 
@@ -1064,19 +1077,30 @@ class DiffPropertyNodesQuery(DiffChangedNodesQuery):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params.update(self.get_params())
+        # without the hints the planner reads every attribute and relationship of the graph instead of the edges in
+        # the window
+        edge_reads = _window_edge_reads(
+            pattern="(p:Attribute|Relationship)-[diff_rel:%(edge_type)s {branch: $branch_name}]->()",
+            edge_types=(
+                DatabaseEdgeType.IS_PROTECTED,
+                DatabaseEdgeType.HAS_SOURCE,
+                DatabaseEdgeType.HAS_OWNER,
+                DatabaseEdgeType.HAS_VALUE,
+            ),
+            tail="""AND p.branch_support = $branch_aware
+    RETURN DISTINCT p""",
+        )
         query = """
 // -------------------------------------
 // Identify nodes with a property added/removed on branch
 // -------------------------------------
-MATCH (n:Node)-[:HAS_ATTRIBUTE|IS_RELATED]-(p:Attribute|Relationship)
-    -[diff_rel:IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE {branch: $branch_name}]->()
-WHERE p.branch_support = $branch_aware
-AND ($node_kinds IS NULL OR n.kind IN $node_kinds)
-AND (
-    ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
-    OR ($from_time <= diff_rel.to < $to_time)
-)
-        """
+CALL () {
+    %(edge_reads)s
+}
+WITH DISTINCT p
+MATCH (n:Node)-[:HAS_ATTRIBUTE|IS_RELATED]-(p)
+WHERE $node_kinds IS NULL OR n.kind IN $node_kinds
+        """ % {"edge_reads": edge_reads}
         self.add_to_query(query)
         self.return_labels = ["collect(DISTINCT n.uuid) AS node_uuids"]
 

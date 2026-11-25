@@ -19,7 +19,10 @@ from infrahub.core.constants import (
 )
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.schema.attribute_kind_update import AttributeKindUpdateMigration
+from infrahub.core.migrations.schema.attribute_kind_update import (
+    AttributeKindUpdateMigration,
+    AttributeKindUpdateMigrationQuery,
+)
 from infrahub.core.migrations.schema.attribute_name_update import AttributeNameUpdateMigration
 from infrahub.core.migrations.schema.attribute_supports_generated_schema import (
     AttributeSupportsGeneratedSchemaMigration,
@@ -33,6 +36,7 @@ from infrahub.core.migrations.schema.node_relationship_remove import (
 )
 from infrahub.core.migrations.schema.node_remove import NodeRemoveMigration
 from infrahub.core.migrations.schema.tasks import get_derived_schema_pairs
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
@@ -323,6 +327,17 @@ def build_relationship_remove_params(
     if query_params is None:
         raise ValueError(f"no relationship data to close for {relationship_name}")
     return migration, query_params
+
+
+async def build_attribute_kind_update_kwargs(
+    db: InfrahubDatabase, branch: Branch, migration: AttributeSchemaMigration
+) -> dict[str, Any]:
+    """Return the arguments of the kind update query, with the keys of the values to convert read as the migration reads them."""
+    query = await migration.build_query(
+        migration_query=AttributeKindUpdateMigrationQuery, migration_input=MigrationInput(db=db), branch=branch
+    )
+    assert isinstance(query, AttributeKindUpdateMigrationQuery)
+    return {"migration": migration, "value_keys": query.value_keys}
 
 
 # ---------------------------------------------------------------------------

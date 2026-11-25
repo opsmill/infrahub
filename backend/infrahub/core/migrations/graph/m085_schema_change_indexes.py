@@ -23,12 +23,12 @@ SCHEMA_CHANGE_INDEXES_TO_ADD: list[IndexItem] = [
 ]
 
 
-class Migration084(ArbitraryMigration):
+class Migration085(ArbitraryMigration):
     """Index schema changes by uuid and branch and applications by uuid, the records that every query starts from."""
 
-    name: str = "084_schema_change_indexes"
+    name: str = "085_schema_change_indexes"
     description: str = "Index the schema changes by uuid and branch, and their applications by uuid"
-    minimum_version: int = 83
+    minimum_version: int = 84
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         db = migration_input.db

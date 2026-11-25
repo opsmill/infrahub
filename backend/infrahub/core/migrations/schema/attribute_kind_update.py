@@ -3,7 +3,9 @@ from __future__ import annotations
 from collections.abc import Sequence  # noqa: TC003  needed for pydantic
 from typing import TYPE_CHECKING, Any, ClassVar
 
+from infrahub.core.graph.schema import get_attribute_value_key
 from infrahub.core.migrations.schema.phases import MigrationPhase
+from infrahub.core.query import Query, QueryType
 from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 from infrahub.types import is_large_attribute_type
 
@@ -13,6 +15,42 @@ from ..shared import AttributeSchemaMigration, MigrationInput, MigrationResult
 if TYPE_CHECKING:
     from infrahub.core.branch.models import Branch
     from infrahub.database import InfrahubDatabase
+
+# The string a stored value is looked up by in the map of keys, built the same way on both sides of the query.
+VALUE_LOOKUP = "CASE WHEN %(value)s IS :: STRING THEN %(value)s ELSE toString(%(value)s) END"
+
+
+class IndexedAttributeValuesQuery(Query):
+    """Read the distinct indexed values an attribute of the given kinds has on any branch or at any time."""
+
+    name = "migration_attribute_kind_indexed_values"
+    type = QueryType.READ
+
+    def __init__(self, node_kinds: list[str], attribute_name: str, **kwargs: Any) -> None:
+        self.node_kinds = node_kinds
+        self.attribute_name = attribute_name
+        # A stable order keeps the pages of the read from skipping or repeating a value.
+        super().__init__(order_by=["lookup"], **kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["attr_name"] = self.attribute_name
+        query = """
+        MATCH (:%(node_kinds)s)-[:HAS_ATTRIBUTE]->(:Attribute {name: $attr_name})-[:HAS_VALUE]->(av:AttributeValueIndexed)
+        WITH DISTINCT av.value AS value
+        WITH value, %(lookup)s AS lookup
+        """ % {"node_kinds": "|".join(self.node_kinds), "lookup": VALUE_LOOKUP % {"value": "value"}}
+        self.add_to_query(query)
+        self.return_labels = ["value", "lookup"]
+
+    def get_value_keys(self) -> dict[str, str]:
+        return {
+            result.get_as_type("lookup", return_type=str): get_attribute_value_key(result.get("value"))
+            for result in self.get_results()
+        }
+
+
+def _get_node_kinds(kind: str) -> list[str]:
+    return [kind, f"Profile{kind}", f"Template{kind}"]
 
 
 TOWARD_INDEXED_QUERY = """
@@ -42,39 +80,25 @@ WITH update.n AS n, update.attr AS attr, update.has_value_e AS has_value_e, upda
 """
 
 TOWARD_LARGE_QUERY = """
-// ------------
-// the values in play come from their own pass over the selection so that only the grouping holds the attributes in memory
-// ------------
-CALL () {
-    %(selection)s
-    RETURN collect(DISTINCT av.value) AS values_in_play
-}
+%(selection)s
 
 // ------------
-// only AttributeValueIndexed has an index on value, so the other value vertices are scanned once for the values in play
-// and joined to the attributes by grouping on the value
+// group the attributes by value so that each value is looked up and created once
 // ------------
-CALL (values_in_play) {
-    %(selection)s
-    RETURN av.is_default AS av_is_default, av.value AS av_value,
-        {n: n, attr: attr, has_value_e: has_value_e, av: av} AS update, NULL AS existing_av
-    UNION ALL
-    WITH values_in_play
-    WHERE size(values_in_play) > 0
-    MATCH (existing_av:AttributeValue)
-    WHERE NOT existing_av:AttributeValueIndexed AND existing_av.value IN values_in_play
-    RETURN existing_av.is_default AS av_is_default, existing_av.value AS av_value,
-        NULL AS update, existing_av
+WITH av.is_default AS av_is_default, av.value AS av_value,
+    collect({n: n, attr: attr, has_value_e: has_value_e, av: av}) AS updates
+
+// ------------
+// indexed values never carry a key, so merging on the key cannot reuse one of them,
+// and LIMIT 1 links each attribute to one value when concurrent writes left equal values
+// ------------
+CALL (av_is_default, av_value) {
+    MERGE (new_av:AttributeValue {
+        is_default: av_is_default, value: av_value, value_key: $value_keys[%(lookup)s]
+    })
+    RETURN new_av
+    LIMIT 1
 }
-WITH av_is_default, av_value, collect(update) AS updates, head(collect(existing_av)) AS existing_av
-WHERE size(updates) > 0
-CALL (av_is_default, av_value, existing_av) {
-    WITH av_is_default, av_value, existing_av
-    WHERE existing_av IS NULL
-    CREATE (created_av:AttributeValue {is_default: av_is_default, value: av_value})
-    RETURN collect(created_av) AS created_avs
-}
-WITH updates, coalesce(existing_av, head(created_avs)) AS new_av
 UNWIND updates AS update
 WITH update.n AS n, update.attr AS attr, update.has_value_e AS has_value_e, update.av AS av, new_av
 
@@ -137,14 +161,22 @@ CALL (attr, n) {
 
 
 class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
+    """Link each attribute whose kind changed to a value stored the way its new kind stores values.
+
+    `value_keys` maps each value converted to a large kind, as a string, to its key, and is empty otherwise.
+    """
+
     name = "migration_attribute_kind"
     insert_return = False
     selected_node = "n"
 
+    def __init__(self, value_keys: dict[str, str], **kwargs: Any) -> None:
+        self.value_keys = value_keys
+        super().__init__(**kwargs)
+
     def render_selection(self) -> str:
         branch_filter, _ = self.branch.get_query_filter_path(at=self.at)
-        kind = self.migration.previous_schema.kind
-        schema_kinds = [kind, f"Profile{kind}", f"Template{kind}"]
+        schema_kinds = _get_node_kinds(self.migration.previous_schema.kind)
         # The index hint of the node scope applies only to a MATCH that holds the node alone.
         node_match = self.render_node_match("n", schema_kinds)
         node_attribute_match = f"{node_match}\nMATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute)"
@@ -195,7 +227,11 @@ CALL (n, attr) {
         # Set metadata for vertex properties on default/global branch
         self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
 
-        template = TOWARD_INDEXED_QUERY if needs_index else TOWARD_LARGE_QUERY
+        if needs_index:
+            template = TOWARD_INDEXED_QUERY
+        else:
+            template = TOWARD_LARGE_QUERY
+            self.params["value_keys"] = self.value_keys
         stamp_attr, stamp_params = stamp_vertex_metadata("attr", at=self.at, operation_ats=self.operation_ats)
         self.params.update(stamp_params)
         stamp_n, stamp_params = stamp_vertex_metadata("n", at=self.at, operation_ats=self.operation_ats)
@@ -204,13 +240,54 @@ CALL (n, attr) {
             "stamp_attr": stamp_attr,
             "stamp_n": stamp_n,
         }
-        self.add_to_query(template % {"selection": self.render_selection(), "edge_updates": edge_updates})
+        self.add_to_query(
+            template
+            % {
+                "selection": self.render_selection(),
+                "edge_updates": edge_updates,
+                "lookup": VALUE_LOOKUP % {"value": "av_value"},
+            }
+        )
 
 
 class AttributeKindUpdateMigration(AttributeSchemaMigration):
     phase: ClassVar[MigrationPhase] = MigrationPhase.ATTRIBUTE_KIND_UPDATE
     name: str = "attribute.kind.update"
     queries: Sequence[type[AttributeMigrationQuery]] = [AttributeKindUpdateMigrationQuery]
+
+    async def build_query(
+        self,
+        migration_query: type[MigrationBaseQuery],
+        migration_input: MigrationInput,
+        branch: Branch,
+    ) -> MigrationBaseQuery:
+        if not issubclass(migration_query, AttributeKindUpdateMigrationQuery):
+            return await super().build_query(
+                migration_query=migration_query, migration_input=migration_input, branch=branch
+            )
+
+        value_keys: dict[str, str] = {}
+        if is_large_attribute_type(self.new_attribute_schema.kind):
+            # Cypher cannot compute the hash, so the keys of the values to convert are computed before the query.
+            values_query = await IndexedAttributeValuesQuery.init(
+                db=migration_input.db,
+                branch=branch,
+                node_kinds=_get_node_kinds(self.previous_schema.kind),
+                attribute_name=self.previous_attribute_schema.name,
+            )
+            await values_query.execute(db=migration_input.db)
+            value_keys = values_query.get_value_keys()
+
+        return await migration_query.init(
+            db=migration_input.db,
+            branch=branch,
+            at=migration_input.at,
+            migration=self,
+            user_id=migration_input.user_id,
+            operation_ats=migration_input.operation_ats,
+            node_ids=migration_input.node_ids,
+            value_keys=value_keys,
+        )
 
     async def execute(
         self,
