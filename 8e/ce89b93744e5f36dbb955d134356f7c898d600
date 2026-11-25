@@ -1,0 +1,19 @@
+frontend/app/src/shared/api/graphql/generated/graphql-env.d.ts
+  s_6bc119ebacf23a::t_1977583b56d3f4 774,1243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8ece89b93744e5f36dbb955d134356f7c898d600",
+  "prompts": {},
+  "sessions": {
+    "s_6bc119ebacf23a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "941de9ea-8387-4c4d-8c1e-5cfcc3b27b3f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
