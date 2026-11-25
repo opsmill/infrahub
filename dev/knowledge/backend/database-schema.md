@@ -381,7 +381,8 @@ The two are not exclusive. Which a writer does depends on the writer:
   - `NodeDeleteQuery` for the node's `IS_PART_OF` edge
   - `AttributeDeleteQuery` for the `HAS_ATTRIBUTE`, `HAS_VALUE`, `IS_PROTECTED`, `HAS_SOURCE` and `HAS_OWNER` edges of an attribute
   - `RelationshipDeleteAllQuery` for the `IS_RELATED`, `IS_PROTECTED`, `HAS_SOURCE` and `HAS_OWNER` edges of a relationship
-  - the node removal and attribute removal migrations (`node_remove.py`, `attribute_remove.py`)
+  - the node removal migration (`node_remove.py`)
+  - the attribute removal migrations: the node attribute removal and the profile and template attribute removal, which share `AttributeRemoveQuery`
   - the node kind update, for the edges of the old node vertex (`NodeDuplicateQuery`)
 - **Close the edge of the writer's own branch, and add a `deleted` edge only over an edge of another branch**:
   - the attribute rename migration, except for `IS_RESERVED` edges, which stay global
@@ -389,9 +390,15 @@ The two are not exclusive. Which a writer does depends on the writer:
   - the relationship removal migration
   - `AttributeClearNodePropertyQuery`, which removes the source or owner of an attribute
 
-Some queries read the `deleted` `IS_PART_OF` edge to skip a deleted node: `NodeDeleteQuery`, `NodeUpdateMetadataQuery`, the relationship queries that match a peer or a source node, `bulk_merge_node_existence` and the node count in `path_details.py`.
+Some queries read the `deleted` `IS_PART_OF` edge to skip or find a deleted node:
 
-In a schema load, a migration that removes data does not add a `deleted` edge over an edge on the migrating branch that starts at the load's timestamp. An earlier migration of the same load created that edge, and a `deleted` edge from the same time as the closed edge would give two paths with the same start time between the same vertices. Node removal and attribute removal apply this rule; attribute removal applies it to the five attribute edge types only. Every other edge gets a `deleted` edge as before.
+- `NodeDeleteQuery` and `NodeUpdateMetadataQuery` skip a node that has one on their branch
+- the relationship queries that match a source node or a node property peer skip a node that has one
+- `BulkMergeNodeExistenceQuery` skips a node that has both an active and a `deleted` `IS_PART_OF` edge on the source branch
+- the node count in `path_details.py` skips a node that has one
+- `NodesToCheckForGlobalEdgesQuery` selects the nodes that have one on the branch within a time window, to check their branch-agnostic edges
+
+Node removal and attribute removal do not add a `deleted` edge over an edge on the migrating branch that starts at the load's timestamp. An earlier migration of the same load created that edge, and a `deleted` edge from the same time as the closed edge would give two paths with the same start time between the same vertices. Attribute removal, including its profile and template variants, applies this rule only to the five attribute edge types and leaves every other edge of the attribute vertex untouched. Node removal gives every other edge a `deleted` edge. The node kind update has no such exception.
 
 A `status="deleted"` edge is terminal: it always keeps `to: NULL`, never receives a `to` timestamp, and is never re-opened. `to` is only ever set to close a `status="active"` edge.
 
