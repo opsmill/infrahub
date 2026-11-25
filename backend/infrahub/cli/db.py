@@ -20,7 +20,7 @@ from prefect.testing.utilities import prefect_test_harness
 from rich.console import Console
 from rich.table import Table
 
-from infrahub import config, lock
+from infrahub import config
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
@@ -72,7 +72,7 @@ from infrahub.database.memgraph import IndexManagerMemgraph
 from infrahub.database.neo4j import IndexManagerNeo4j
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import ValidationError
-from infrahub.lock import GLOBAL_SCHEMA_LOCK, LOCK_PREFIX, initialize_lock
+from infrahub.lock import initialize_lock
 
 from .constants import APPLIED_BADGE, ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
 from .db_commands.check_inheritance import check_inheritance
@@ -707,8 +707,6 @@ async def update_core_schema_cmd(
     context: CliContext = ctx.obj
     dbdriver = await context.init_db(retry=1)
 
-    initialize_lock()
-
     with prefect_test_harness():
         await update_core_schema(
             db=dbdriver, candidate_builder=build_schema_candidate_builder(), initialize=True, debug=debug
@@ -1086,80 +1084,75 @@ async def update_core_schema(
 
     default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
 
-    get_migration_console().log(
-        f"Waiting for the global schema lock ({LOCK_PREFIX}.{GLOBAL_SCHEMA_LOCK}). If the update stays here, another "
-        "process holds the lock: stop it, or delete the key from the cache if that process no longer runs."
+    # ----------------------------------------------------------
+    # Load Current Schema from the database
+    # ----------------------------------------------------------
+    schema_default_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+    registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
+    branch_schema = registry.schema.get_schema_branch(name=registry.default_branch)
+
+    candidate = build_core_schema_candidate(branch_schema=branch_schema, candidate_builder=candidate_builder)
+    if candidate is None:
+        raise typer.Exit(1)
+
+    result = candidate.validation
+    if not result.diff.all:
+        get_migration_console().log("Core Schema Up to date, nothing to update")
+        return
+
+    get_migration_console().log("Core Schema has diff, will need to be updated")
+    if debug:
+        result.diff.print()
+
+    # ----------------------------------------------------------
+    # Validate if the new schema is valid with the content of the database
+    # ----------------------------------------------------------
+    validate_migration_data = SchemaValidateMigrationData(
+        branch=default_branch,
+        schema_branch=candidate.schema,
+        constraints=result.constraints,
+        is_isolated=True,
     )
-    async with lock.registry.global_schema_lock():
-        # ----------------------------------------------------------
-        # Load Current Schema from the database
-        # ----------------------------------------------------------
-        schema_default_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
-        registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
-        branch_schema = registry.schema.get_schema_branch(name=registry.default_branch)
+    responses = await schema_validate_migrations(message=validate_migration_data)
+    error_messages = [violation.message for response in responses for violation in response.violations]
+    if error_messages:
+        get_migration_console().log(f"{ERROR_BADGE} | Unable to update the schema, due to failed validations")
+        for message in error_messages:
+            get_migration_console().log(message)
+        raise typer.Exit(1)
 
-        candidate = build_core_schema_candidate(branch_schema=branch_schema, candidate_builder=candidate_builder)
-        if candidate is None:
-            raise typer.Exit(1)
+    # ----------------------------------------------------------
+    # Update the schema and run migrations
+    # ----------------------------------------------------------
+    origin_schema = branch_schema.duplicate()
 
-        result = candidate.validation
-        if not result.diff.all:
-            get_migration_console().log("Core Schema Up to date, nothing to update")
-            return
+    # Update the internal schema
+    schema_default_branch.load_schema(schema=SchemaRoot(**internal_schema))
+    schema_default_branch.process()
+    registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
 
-        get_migration_console().log("Core Schema has diff, will need to be updated")
-        if debug:
-            result.diff.print()
+    coordinator = SchemaUpdateCoordinator(
+        db=db,
+        schema_manager=registry.schema,
+        rollbacker=GraphRollbacker(db=db),
+    )
+    runner = build_schema_change_application_runner(
+        db=db, executor=coordinator, default_branch_name=registry.default_branch
+    )
 
-        # ----------------------------------------------------------
-        # Validate if the new schema is valid with the content of the database
-        # ----------------------------------------------------------
-        validate_migration_data = SchemaValidateMigrationData(
+    try:
+        await runner.run(
             branch=default_branch,
-            schema_branch=candidate.schema,
-            constraints=result.constraints,
-            is_isolated=True,
+            origin_schema=origin_schema,
+            candidate=candidate,
+            at=Timestamp(),
+            user_id=SYSTEM_USER_ID,
+            source=SchemaChangeSource.CORE_SCHEMA_UPDATE,
+            migrations_run=DirectMigrations(),
         )
-        responses = await schema_validate_migrations(message=validate_migration_data)
-        error_messages = [violation.message for response in responses for violation in response.violations]
-        if error_messages:
-            get_migration_console().log(f"{ERROR_BADGE} | Unable to update the schema, due to failed validations")
-            for message in error_messages:
-                get_migration_console().log(message)
-            raise typer.Exit(1)
-
-        # ----------------------------------------------------------
-        # Update the schema and run migrations
-        # ----------------------------------------------------------
-        origin_schema = branch_schema.duplicate()
-
-        # Update the internal schema
-        schema_default_branch.load_schema(schema=SchemaRoot(**internal_schema))
-        schema_default_branch.process()
-        registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
-
-        coordinator = SchemaUpdateCoordinator(
-            db=db,
-            schema_manager=registry.schema,
-            rollbacker=GraphRollbacker(db=db),
-        )
-        runner = build_schema_change_application_runner(
-            db=db, executor=coordinator, default_branch_name=registry.default_branch
-        )
-
-        try:
-            await runner.run(
-                branch=default_branch,
-                origin_schema=origin_schema,
-                candidate=candidate,
-                at=Timestamp(),
-                user_id=SYSTEM_USER_ID,
-                source=SchemaChangeSource.CORE_SCHEMA_UPDATE,
-                migrations_run=DirectMigrations(),
-            )
-        except Exception as exc:
-            get_migration_console().log(f"{ERROR_BADGE} | Schema update failed: {exc}")
-            raise typer.Exit(1) from exc
+    except Exception as exc:
+        get_migration_console().log(f"{ERROR_BADGE} | Schema update failed: {exc}")
+        raise typer.Exit(1) from exc
 
     message = f"{SUCCESS_BADGE} | Core Schema updated successfully"
 

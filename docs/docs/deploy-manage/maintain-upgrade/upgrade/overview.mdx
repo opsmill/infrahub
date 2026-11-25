@@ -64,7 +64,6 @@ Step 2/6: Internal schema
 Internal schema initialized
 
 Step 3/6: Core schema
-Waiting for the global schema lock (lock.global.schema). If the update stays here, another process holds the lock: stop it, or delete the key from the cache if that process no longer runs.
 Core Schema has diff, will need to be updated
 Core Schema updated successfully
 
@@ -84,8 +83,6 @@ Upgrade complete SUCCESS
 ```
 
 Lines such as `Cleaning up …`, `Recomputing HFID/display_label …`, `Normalized N HFID value(s) …`, and `Rewrote … → …` are migration progress messages, not errors. They tell you which data the current migration is about to touch and are expected output.
-
-Step 3/6 waits for the global schema lock, which a schema load also takes. If the upgrade stays on the `Waiting for the global schema lock` line, a process that stopped while it held the lock left its key in the cache. Stop any Infrahub process that is still running, or delete the `lock.global.schema` key from the cache.
 
 When the core schema update cannot be applied, Step 3/6 prints `Unable to update the schema` with the error and its traceback, and the upgrade stops before it changes the core schema. `infrahub upgrade --check` prints the same error.
 

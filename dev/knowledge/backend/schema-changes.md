@@ -208,7 +208,7 @@ progress and are best effort.
 1. `SchemaChangeRecorder.start` creates the schema change and one application, both `running`, with
    the operations, at the timestamp the coordinator then uses for every write. The records take that
    timestamp as their `created_at`, so an applied schema change has `created_at` equal to `applied_at`,
-   and the caller takes it inside the schema lock, so `created_at` keeps the order of the versions.
+   and a load takes it inside the schema lock, so `created_at` keeps the order of the versions.
    When it fails, the load fails before it changes anything.
 2. The coordinator receives the application ID and puts it in `SchemaApplyMigrationData`. The flow
    `core/migrations/schema/tasks.py::schema_apply_migrations` builds a `MigrationRecorder` with
@@ -252,7 +252,9 @@ A merge and a rebase pass `application_id=None`, so their migrations use `NoReco
 and they store no schema change.
 
 The core schema update of `infrahub upgrade` and `infrahub db update-core-schema`
-(`cli/db.py::update_core_schema`) records like a load, inside the global schema lock. It merges the
+(`cli/db.py::update_core_schema`) records like a load, but takes no lock: an upgrade runs while no
+server or task worker runs, so nothing else writes the next version of the default branch, and
+`infrahub db update-core-schema` does not need the cache. It merges the
 internal schema, the core models and the deprecated models into one schema file
 (`build_core_schema_root`) and builds its candidate with `from_schema_root` and
 `enforce_update_support=False`, so a change to a property that has no migration (`UpdateSupport.NOT_SUPPORTED`)
@@ -264,9 +266,7 @@ migration console, which `infrahub upgrade` shows without `--verbose`, and stops
 exit code 1 before any write, as a failed validation does; running it again gives the same error,
 because the cause is in the core schema files or in the operation builder, not in the data.
 `build_core_schema_candidate` builds the candidate and prints these errors for both the update and
-`infrahub upgrade --check`, so the check reports the same error. Before it takes the lock, the update
-prints that it is waiting for `lock.global.schema`, because a key left by a process that stopped
-while holding it makes the update wait with no other output.
+`infrahub upgrade --check`, so the check reports the same error.
 
 `SchemaChangeApplicationRunner.run` takes how the migrations run as one value
 (`core/schema/update_coordinator.py`): `WorkflowMigrations`, which holds the request context that

@@ -7,6 +7,7 @@ import pytest
 import typer
 
 import infrahub.core.migrations.schema.tasks as tasks_module
+from infrahub import lock
 from infrahub.cli.db import CoreSchemaStatus, check_core_schema_diff, update_core_schema
 from infrahub.core import registry
 from infrahub.core.constants import SYSTEM_USER_ID, BranchSupportType
@@ -21,7 +22,7 @@ from infrahub.core.schema_change.enums import SchemaChangeEdgeType, SchemaChange
 from infrahub.core.schema_change.factory import build_schema_candidate_builder, build_schema_change_recorder
 from infrahub.core.schema_change.operation_builder import SchemaOperationBuilder, SchemaOperationBuildResult
 from infrahub.core.timestamp import Timestamp
-from infrahub.lock import GLOBAL_SCHEMA_LOCK
+from infrahub.lock import UninitializedLockRegistry
 from tests.helpers.schema_change import (
     StoredSchemaChangeRecord,
     build_seeded_operations,
@@ -37,19 +38,16 @@ if TYPE_CHECKING:
     from infrahub.core.schema import NodeSchema
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
-    from tests.adapters.lock.timeline import LockTimeline
 
 TAG_KIND = "BuiltinTag"
 ADDED_ATTRIBUTE = "description"
 MIGRATION_FAILURE = "The description of the tags could not be added"
-MIGRATION_CHECKPOINT = "core schema migration"
 UNEXPECTED_FAILURE = "The operation builder failed in a way it does not document"
 MISMATCH_REPORT = (
     "Unable to update the schema: The schema change cannot be built accurately, so the request was not completed. "
     "This is an error in Infrahub, not in the schema file: the operations built from the file do not rebuild its "
     "schema for the kinds BuiltinTag."
 )
-LOCK_WAIT_REPORT = "Waiting for the global schema lock"
 
 
 @dataclass(frozen=True)
@@ -168,25 +166,12 @@ def failing_tag_attribute_add_migration() -> Generator[None]:
 
 
 @pytest.fixture
-def checkpointing_tag_attribute_add_migration(recording_lock_timeline: LockTimeline) -> Generator[list[int]]:
-    """Record a checkpoint on the lock timeline each time the migration that adds an attribute runs."""
-    checkpoints: list[int] = []
-
-    class CheckpointingAttributeAddMigration(NodeAttributeAddMigration):
-        async def execute(
-            self,
-            migration_input: MigrationInput,
-            branch: Branch,
-            queries: Sequence[type[MigrationBaseQuery]] | None = None,
-        ) -> MigrationResult:
-            checkpoints.append(recording_lock_timeline.checkpoint(label=MIGRATION_CHECKPOINT))
-            return await super().execute(migration_input=migration_input, branch=branch, queries=queries)
-
-    original_map = tasks_module.MIGRATION_MAP.copy()
-    tasks_module.MIGRATION_MAP["node.attribute.add"] = CheckpointingAttributeAddMigration
-    yield checkpoints
-    tasks_module.MIGRATION_MAP.clear()
-    tasks_module.MIGRATION_MAP.update(original_map)
+def uninitialized_lock_registry() -> Generator[None]:
+    """Replace the lock registry with one that raises on any lock, as in a process that never initialized it."""
+    original = lock.registry
+    lock.registry = UninitializedLockRegistry()
+    yield
+    lock.registry = original
 
 
 class TestCoreSchemaUpdate:
@@ -276,18 +261,14 @@ class TestCoreSchemaUpdate:
         assert status == CoreSchemaStatus.UPDATE_REQUIRED
         assert "Unable to update the schema" not in _console_text(capsys)
 
-    async def test_step05_update_stores_the_next_applied_schema_change_of_main_under_the_global_schema_lock(
+    async def test_step05_update_stores_the_next_applied_schema_change_of_main_without_taking_a_lock(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
         older_database: OlderDatabase,
-        recording_lock_timeline: LockTimeline,
-        checkpointing_tag_attribute_add_migration: list[int],
-        capsys: pytest.CaptureFixture[str],
+        uninitialized_lock_registry: None,
     ) -> None:
         await update_core_schema(db=db, candidate_builder=build_schema_candidate_builder(), initialize=False)
-
-        assert LOCK_WAIT_REPORT in _console_text(capsys)
 
         records = await _read_main_records(db=db)
         by_status = {
@@ -353,10 +334,6 @@ class TestCoreSchemaUpdate:
         ] == [("node.attribute.add", TAG_KIND, ADDED_ATTRIBUTE, "applied")], (
             "the branch support of a kind has no migration, so only the added attribute gets one"
         )
-        assert [
-            GLOBAL_SCHEMA_LOCK in recording_lock_timeline.held_at(seq=checkpoint)
-            for checkpoint in checkpointing_tag_attribute_add_migration
-        ] == [True]
         tag = await _stored_tag(db=db, branch=default_branch_scope_class)
         assert (ADDED_ATTRIBUTE in tag.attribute_names, tag.branch) == (True, BranchSupportType.AWARE)
 
