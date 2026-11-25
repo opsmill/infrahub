@@ -1,0 +1,24 @@
+backend/infrahub/core/validators/enum.py
+  s_4fa415708315a7::t_3c5a2a831b6ffc 16-19
+backend/infrahub/core/validators/__init__.py
+  s_4fa415708315a7::t_3c5a2a831b6ffc 53-56
+backend/infrahub/core/validators/node/hierarchy.py
+  s_4fa415708315a7::t_3c5a2a831b6ffc 138-145,165
+  s_4fa415708315a7::t_164aa660313a74 10,169-172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8c9c4bc097b75fbc64703535cf0931cb544cfb90",
+  "prompts": {},
+  "sessions": {
+    "s_4fa415708315a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03e5d1ed-c4d3-4710-b21f-22b15f31d216",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
