@@ -64,7 +64,8 @@ class SchemaUpdateExecutor(Protocol):
     ) -> str: ...
 
 
-def _error_text(exc: Exception) -> str:
+def error_text(exc: Exception) -> str:
+    """Return the text of an error to show to a user, or the name of its class when it has no text."""
     # An Infrahub error can hold its text in `message` alone, which leaves `str()` empty.
     if isinstance(exc, Error) and exc.message:
         return exc.message
@@ -146,7 +147,7 @@ class SchemaChangeApplicationRunner:
             await asyncio.shield(self._record_cancellation(recording=recording, user_id=user_id))
             raise
         except Exception as exc:
-            await self._record_failure(recording=recording, error=_error_text(exc), user_id=user_id)
+            await self._record_failure(recording=recording, error=error_text(exc), user_id=user_id)
             raise
 
     async def _execute(

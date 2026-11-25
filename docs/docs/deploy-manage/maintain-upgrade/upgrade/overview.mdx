@@ -84,7 +84,7 @@ Upgrade complete SUCCESS
 
 Lines such as `Cleaning up …`, `Recomputing HFID/display_label …`, `Normalized N HFID value(s) …`, and `Rewrote … → …` are migration progress messages, not errors. They tell you which data the current migration is about to touch and are expected output.
 
-When the core schema update cannot be applied, Step 3/6 prints `Unable to update the schema` with the error and its traceback, and the upgrade stops before it changes the core schema. `infrahub upgrade --check` prints the same error.
+When the core schema update cannot be applied, Step 3/6 prints `Unable to update the schema` and stops before it changes the core schema. The line is followed by the traceback when the update cannot be built from the core schema files, or by the failed validations. `infrahub upgrade --check` prints the same error. When a data migration of the update fails, Step 3/6 prints `Schema update failed` with the error, and the core schema is rolled back.
 
 ### What `--verbose` does
 

@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 TAG_KIND = "BuiltinTag"
 ADDED_ATTRIBUTE = "description"
 MIGRATION_FAILURE = "The description of the tags could not be added"
-UNEXPECTED_FAILURE = "The operation builder failed in a way it does not document"
+UNEXPECTED_FAILURE = "The operation builder failed [type=unexpected] in a way it does not document [/note]"
 MISMATCH_REPORT = (
     "Unable to update the schema: The schema change cannot be built accurately, so the request was not completed. "
     "This is an error in Infrahub, not in the schema file: the operations built from the file do not rebuild its "
@@ -234,11 +234,13 @@ class TestCoreSchemaUpdate:
         default_branch_scope_class: Branch,
         older_database: OlderDatabase,
         failing_tag_attribute_add_migration: None,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         with pytest.raises(typer.Exit) as exit_info:
             await update_core_schema(db=db, candidate_builder=build_schema_candidate_builder(), initialize=False)
 
         assert exit_info.value.exit_code == 1
+        assert f"Schema update failed: {MIGRATION_FAILURE}" in _console_text(capsys)
         records = await _read_main_records(db=db)
         [failed] = [
             record for record in records.schema_changes if record.properties["uuid"] != older_database.user_change_id
@@ -276,6 +278,7 @@ class TestCoreSchemaUpdate:
             for record in records.schema_changes
             if record.properties["uuid"] != older_database.user_change_id
         }
+        assert len(records.schema_changes) == 3
         assert sorted(by_status) == ["applied", "failed"]
         applied = by_status["applied"]
         assert {key: applied.properties.get(key) for key in ("source", "version", "created_by", "summary")} == {

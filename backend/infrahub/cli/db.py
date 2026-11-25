@@ -18,6 +18,7 @@ import ujson
 from infrahub_sdk.async_typer import AsyncTyper
 from prefect.testing.utilities import prefect_test_harness
 from rich.console import Console
+from rich.markup import escape
 from rich.table import Table
 
 from infrahub import config
@@ -61,6 +62,7 @@ from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.update_coordinator import DirectMigrations, SchemaUpdateCoordinator
+from infrahub.core.schema_change.application_runner import error_text
 from infrahub.core.schema_change.enums import SchemaChangeSource
 from infrahub.core.schema_change.factory import build_schema_candidate_builder, build_schema_change_application_runner
 from infrahub.core.timestamp import Timestamp
@@ -1051,14 +1053,14 @@ def build_core_schema_candidate(
             enforce_update_support=False,
         )
     except Exception as exc:  # noqa: BLE001
-        console.log(f"{ERROR_BADGE} | Unable to update the schema: {exc}")
+        console.log(f"{ERROR_BADGE} | Unable to update the schema: {escape(error_text(exc))}")
         console.print_exception()
         return None
 
     if candidate.validation.errors:
         console.log(f"{ERROR_BADGE} | Unable to update the schema, due to failed validations")
         for error in candidate.validation.errors:
-            console.log(error.to_string())
+            console.log(escape(error.to_string()))
         return None
     return candidate
 
@@ -1151,7 +1153,7 @@ async def update_core_schema(
             migrations_run=DirectMigrations(),
         )
     except Exception as exc:
-        get_migration_console().log(f"{ERROR_BADGE} | Schema update failed: {exc}")
+        get_migration_console().log(f"{ERROR_BADGE} | Schema update failed: {escape(error_text(exc))}")
         raise typer.Exit(1) from exc
 
     message = f"{SUCCESS_BADGE} | Core Schema updated successfully"
