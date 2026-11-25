@@ -646,6 +646,28 @@ class TestSchemaLoadsThatRenameAndChange:
                 db=db, node_label=node_label, attribute_name="serial", branch_name=target_branch.name
             ) == {node_id: ([active], [active])}
 
+    async def test_a_kind_removed_while_the_kind_of_its_peer_is_renamed_leaves_the_peer(
+        self, db: InfrahubDatabase, target_branch: Branch, rename_data: RenameData
+    ) -> None:
+        def rename_mechanic_kind_and_remove_garage(candidate: SchemaBranch) -> None:
+            mechanic_schema = candidate.get_node(name="TestMechanic")
+            candidate.delete(name="TestMechanic")
+            candidate.delete(name="TestGarage")
+            mechanic_schema.name = "Technician"
+            mechanic_schema.relationships = [rel for rel in mechanic_schema.relationships if rel.name != "garages"]
+            candidate.set(name="TestTechnician", schema=mechanic_schema)
+
+        await _load_change(
+            db=db,
+            branch=target_branch,
+            change_schema=rename_mechanic_kind_and_remove_garage,
+            expected_migration_names=["node.name.update", "node.relationship.remove", "node.remove"],
+        )
+
+        technicians = await NodeManager.query(db=db, branch=target_branch, schema="TestTechnician")
+        assert [technician.id for technician in technicians] == [rename_data.mechanic]
+        await verify_graph(db=db, kinds=["TestTechnician", "TestGarage"])
+
     async def test_an_attribute_renamed_and_made_unique_is_restored_by_the_rollback(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, target_branch: Branch, rename_data: RenameData
     ) -> None:
