@@ -19,6 +19,7 @@ from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.schema_change.factory import build_schema_change_repository
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
@@ -315,7 +316,7 @@ async def test_branch_delete_method_is_refused(db: InfrahubDatabase, default_bra
 
 async def test_branch_deleter_refuses_default_and_global_branches(db: InfrahubDatabase, default_branch: Branch) -> None:
     """The guards that used to live on Branch.delete still apply on the deleter."""
-    deleter = BranchDataDeleter(db=db, batch_size=5)
+    deleter = BranchDataDeleter(db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db))
 
     with pytest.raises(ValidationError, match=r"Unable to delete .* it is the default branch\."):
         await deleter.delete(branch=default_branch)
@@ -337,7 +338,7 @@ async def test_branch_deleter_reports_who_removed_the_branch(
     await person.new(name="Bobby", height=175, db=db)
     await person.save(db=db)
 
-    deleter = BranchDataDeleter(db=db, batch_size=5)
+    deleter = BranchDataDeleter(db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db))
 
     first = await deleter.delete(branch=branch)
     assert first.branch_deleted is True
@@ -370,7 +371,9 @@ async def test_delete_branch(
 
     # A batch size well below the number of edges on the branch, so the batching loop has to run
     # more than once to finish.
-    await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch)
+    await BranchDataDeleter(db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)).delete(
+        branch=branch
+    )
     post_delete = await db.execute_query(query=relationship_query, params=params)
 
     assert branch.id == found.id
@@ -418,7 +421,9 @@ async def test_delete_branch_with_agnostic_attrs_and_rels(
     rel_uuid = agnostic_rel.id
 
     # Delete the branch
-    await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch)
+    await BranchDataDeleter(db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)).delete(
+        branch=branch
+    )
 
     # Verify the branch is deleted
     with pytest.raises(BranchNotFoundError):
@@ -481,7 +486,9 @@ async def test_delete_branch_after_merge_preserves_node(
     assert device_on_main.get_attribute("serial_number").value == "SN-67890"
 
     # Delete the branch
-    await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch)
+    await BranchDataDeleter(db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)).delete(
+        branch=branch
+    )
 
     # Verify the branch is deleted
     with pytest.raises(BranchNotFoundError):

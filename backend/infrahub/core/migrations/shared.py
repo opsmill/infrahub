@@ -5,18 +5,20 @@ import logging
 from collections.abc import Sequence  # noqa: TC003  needed for pydantic
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, ClassVar, Self
 
 from pydantic import BaseModel, ConfigDict, Field
 from rich.console import Console
 
 from infrahub.core import registry
 from infrahub.core.constants import SYSTEM_USER_ID
+from infrahub.core.migrations.schema.phases import MigrationPhase  # noqa: TC001
 from infrahub.core.path import SchemaPath  # noqa: TC001
 from infrahub.core.query import Query  # noqa: TC001
 from infrahub.core.schema import MainSchemaTypes  # noqa: TC001
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import is_retriable_db_error, retry_db_transaction
+from infrahub.exceptions import SchemaNotFoundError
 
 from .query import MigrationBaseQuery  # noqa: TC001
 
@@ -25,6 +27,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.schema import AttributeSchema, RelationshipSchema
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 MIGRATION_LOG_TIME_FORMAT = "[%Y-%m-%d %H:%M:%S]"
@@ -135,6 +138,7 @@ class DerivedSchemaPair(BaseModel):
 
 class SchemaMigration(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
+    phase: ClassVar[MigrationPhase]
     name: str = Field(..., description="Name of the migration")
     queries: Sequence[type[MigrationBaseQuery]] = Field(
         ..., description="List of queries to execute for this migration"
@@ -147,6 +151,37 @@ class SchemaMigration(BaseModel):
         description="Profile/Template schemas generated from the node",
     )
     schema_path: SchemaPath
+
+    @classmethod
+    def get_changed_kinds(
+        cls, schema_path: SchemaPath, previous_schema: SchemaBranch, new_schema: SchemaBranch
+    ) -> frozenset[str]:
+        """Return the kinds whose vertices the migration of this schema path can change."""
+        changed_kinds = previous_schema.get_dependent_kinds(
+            name=schema_path.schema_kind
+        ) | new_schema.get_dependent_kinds(name=schema_path.schema_kind)
+        previous_node_schema = cls.get_previous_node_schema(
+            schema_path=schema_path, previous_schema=previous_schema, new_schema=new_schema
+        )
+        if previous_node_schema is None:
+            return changed_kinds
+        return changed_kinds | previous_schema.get_dependent_kinds(name=previous_node_schema.kind)
+
+    @staticmethod
+    def get_previous_node_schema(
+        schema_path: SchemaPath, previous_schema: SchemaBranch, new_schema: SchemaBranch
+    ) -> MainSchemaTypes | None:
+        """Return the previous schema of the path kind, found by ID so that a kind renamed in the same load is found."""
+        if new_schema.has(name=schema_path.schema_kind):
+            new_node_schema = new_schema.get(name=schema_path.schema_kind, duplicate=False)
+            if new_node_schema.id:
+                try:
+                    return previous_schema.get_by_id(id=new_node_schema.id, duplicate=False)
+                except SchemaNotFoundError:
+                    pass
+        if previous_schema.has(name=schema_path.schema_kind):
+            return previous_schema.get(name=schema_path.schema_kind, duplicate=False)
+        return None
 
     async def execute_pre_queries(
         self,

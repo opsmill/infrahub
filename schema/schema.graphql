@@ -9286,6 +9286,170 @@ type InfrahubRepositoryBranchStatusType {
   edges: [InfrahubRepositoryBranchStatusEdge!]!
 }
 
+"""One time a schema change was applied to a branch."""
+type InfrahubSchemaChangeApplication {
+  """Timestamp of the graph writes of this application."""
+  at: DateTime!
+  """Branch the schema change was applied to."""
+  branch: String!
+  created_at: DateTime!
+  """Set when the status is FAILED."""
+  error: String
+  id: ID!
+  migrations(
+    """
+    Number of migration records to return. Default 50, maximum 500, minimum 1.
+    """
+    limit: Int
+    """Number of migration records to skip. Minimum 0."""
+    offset: Int
+  ): InfrahubSchemaChangeMigrations!
+  status: SchemaChangeApplicationStatus!
+  updated_at: DateTime!
+}
+
+type InfrahubSchemaChangeApplicationEdge {
+  node: InfrahubSchemaChangeApplication!
+}
+
+"""One page of the applications of a schema change, in the order of `at`."""
+type InfrahubSchemaChangeApplications {
+  """Number of applications of the schema change."""
+  count: Int!
+  edges: [InfrahubSchemaChangeApplicationEdge!]!
+}
+
+type InfrahubSchemaChangeEdge {
+  node: InfrahubSchemaChangeNode!
+}
+
+"""
+One migration that an application of a schema change runs on the data of its branch.
+"""
+type InfrahubSchemaChangeMigration {
+  errors: [String!]!
+  field_name: String
+  id: ID!
+  """For example "node.attribute.add"."""
+  migration_name: String!
+  """
+  Text form of the schema path, for example "schema/DcimCloudDevice/serial".
+  """
+  path: String!
+  path_type: SchemaPathType!
+  """Order in the list of migrations of the application, from 0."""
+  position: Int!
+  property_name: String
+  schema_kind: String!
+  status: SchemaChangeMigrationStatus!
+  """Time of the last status change."""
+  updated_at: DateTime!
+}
+
+type InfrahubSchemaChangeMigrationEdge {
+  node: InfrahubSchemaChangeMigration!
+}
+
+"""
+One page of the migration records of an application of a schema change, in the order of `position`.
+"""
+type InfrahubSchemaChangeMigrations {
+  """Number of migration records of the application."""
+  count: Int!
+  edges: [InfrahubSchemaChangeMigrationEdge!]!
+}
+
+"""One change to the schema of a branch, made of one or more operations."""
+type InfrahubSchemaChangeNode {
+  applications(
+    """Number of applications to return. Default 10, maximum 50, minimum 1."""
+    limit: Int
+    """Number of applications to skip. Minimum 0."""
+    offset: Int
+  ): InfrahubSchemaChangeApplications!
+  """
+  Timestamp at which the schema was written to the branch. Null unless the status is APPLIED.
+  """
+  applied_at: DateTime
+  branch: String!
+  created_at: DateTime!
+  id: ID!
+  """
+  "<version, five digits>_<summary>", or the summary when there is no version.
+  """
+  name: String!
+  operations(
+    """Number of operations to return. Default 50, maximum 500, minimum 1."""
+    limit: Int
+    """Number of operations to skip. Minimum 0."""
+    offset: Int
+  ): InfrahubSchemaChangeOperations!
+  """
+  The applied schema change that this one follows. Null for the first schema change of main, for a branch's first schema change when main has none, and for a schema change without a version.
+  """
+  parent: InfrahubSchemaChangeParent
+  status: SchemaChangeStatus!
+  summary: String!
+  """Time of the last change of the record."""
+  updated_at: DateTime!
+  """Null unless the status is APPLIED."""
+  version: Int
+}
+
+"""
+One operation of a schema change; the operations apply in the order of `position`.
+"""
+type InfrahubSchemaChangeOperation {
+  """
+  Name of the attribute or relationship. Set for the three ELEMENT types; for a rename, the name before the operation.
+  """
+  element_name: String
+  kind: String!
+  """Set for NODE_ADD."""
+  node_type: SchemaOperationNodeType
+  operation_type: SchemaOperationType!
+  """Order in which the operation applies, from 0."""
+  position: Int!
+  """Value before the change. Set for the two PROPERTY types."""
+  previous_value: GenericScalar
+  """
+  Name of the property, dotted when nested. Set for the two PROPERTY types.
+  """
+  property_name: String
+  """Set for the three ELEMENT types."""
+  section: SchemaOperationSection
+  """
+  New value for a PROPERTY type, full definition for an ADD type. An added attribute or relationship also holds the order_weight that processing gave it when the file sets none.
+  """
+  value: GenericScalar
+}
+
+type InfrahubSchemaChangeOperationEdge {
+  node: InfrahubSchemaChangeOperation!
+}
+
+"""One page of the operations of a schema change."""
+type InfrahubSchemaChangeOperations {
+  """Number of operations of the schema change."""
+  count: Int!
+  edges: [InfrahubSchemaChangeOperationEdge!]!
+}
+
+"""The applied schema change that a schema change follows."""
+type InfrahubSchemaChangeParent {
+  branch: String!
+  id: ID!
+  name: String!
+  version: Int!
+}
+
+"""One page of the schema changes of a branch."""
+type InfrahubSchemaChanges {
+  """Number of schema changes that match, on all pages."""
+  count: Int!
+  edges: [InfrahubSchemaChangeEdge!]!
+}
+
 """
 Write preferences for one writable scope, USER or GLOBAL.
 
@@ -26870,6 +27034,19 @@ type Query {
   Utilization of one resource pool and of each of its resources. For a number pool, the figures cover the whole pool and ignore its allocation scope; read InfrahubNumberPoolUtilization and InfrahubNumberPoolDivisions instead.
   """
   InfrahubResourcePoolUtilization(pool_id: String!): PoolUtilization!
+  """
+  Retrieve the schema changes of the branch of the request, the most recently created first.
+  """
+  InfrahubSchemaChange(
+    """Number of schema changes to return. Default 10, maximum 50, minimum 1."""
+    limit: Int
+    """Number of schema changes to skip. Minimum 0."""
+    offset: Int
+    """
+    Return only the schema changes with one of these statuses. An empty list returns no schema change.
+    """
+    status: [SchemaChangeStatus!]
+  ): InfrahubSchemaChanges!
   InfrahubSearchAnywhere(case_sensitive: Boolean, limit: Int, partial_match: Boolean, q: String!): NodeEdges!
   """Retrieve the status of all infrahub workers."""
   InfrahubStatus: Status!
@@ -28100,6 +28277,35 @@ input ResolveDiffConflictInput {
   selected_branch: ConflictSelection
 }
 
+"""Status of one application of a schema change to a branch."""
+enum SchemaChangeApplicationStatus {
+  APPLIED
+  FAILED
+  ROLLED_BACK
+  RUNNING
+  SKIPPED
+}
+
+"""
+Status of one migration that an application of a schema change runs on the data of its branch.
+"""
+enum SchemaChangeMigrationStatus {
+  APPLIED
+  CANCELLED
+  FAILED
+  ROLLED_BACK
+  RUNNING
+  WAITING
+}
+
+"""Status of a schema change of a branch."""
+enum SchemaChangeStatus {
+  APPLIED
+  FAILED
+  RUNNING
+  STAGED
+}
+
 type SchemaDropdownAdd {
   object: DropdownFields
   ok: Boolean
@@ -28136,6 +28342,40 @@ input SchemaEnumInput {
 
 type SchemaEnumRemove {
   ok: Boolean
+}
+
+"""Whether a kind that a schema operation adds is a node or a generic."""
+enum SchemaOperationNodeType {
+  GENERIC
+  NODE
+}
+
+"""
+Whether the element of a schema operation is an attribute or a relationship.
+"""
+enum SchemaOperationSection {
+  ATTRIBUTES
+  RELATIONSHIPS
+}
+
+"""
+Type of a schema operation: add, remove or change a property of a kind, or of an attribute or relationship.
+"""
+enum SchemaOperationType {
+  ELEMENT_ADD
+  ELEMENT_PROPERTY
+  ELEMENT_REMOVE
+  NODE_ADD
+  NODE_PROPERTY
+  NODE_REMOVE
+  NODE_RENAME
+}
+
+"""Whether a schema path names a kind, an attribute or a relationship."""
+enum SchemaPathType {
+  ATTRIBUTE
+  NODE
+  RELATIONSHIP
 }
 
 type StandardEvent implements EventNodeInterface {

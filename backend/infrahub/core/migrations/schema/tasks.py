@@ -2,27 +2,23 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub_sdk.batch import InfrahubBatch
 from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.migrations import MIGRATION_MAP
-from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
-from infrahub.core.migrations.shared import DerivedSchemaPair, MigrationInput
+from infrahub.core.migrations.schema.runner import SchemaMigrationRunner
+from infrahub.core.migrations.schema.scheduler import MigrationScheduler
+from infrahub.core.migrations.shared import DerivedSchemaPair, MigrationInput, SchemaMigration
 from infrahub.core.schema.derived_kinds import get_object_template_kind, get_profile_kind
+from infrahub.core.schema_change.factory import build_migration_recorder
 from infrahub.workers.dependencies import get_database
 from infrahub.workflows.utils import add_branch_tag
 
 from .models import SchemaApplyMigrationData, SchemaMigrationPathResponseData
 
 if TYPE_CHECKING:
-    import logging
-    from collections.abc import Sequence
-
-    from prefect.logging.loggers import LoggingAdapter
-
     from infrahub.core.branch import Branch
     from infrahub.core.models import SchemaUpdateMigrationInfo
     from infrahub.core.path import SchemaPath
@@ -63,85 +59,48 @@ def get_derived_schema_pairs(
     return [pair for pair in pairs if pair is not None]
 
 
-def split_migrations_by_phase(
-    migrations: Sequence[SchemaUpdateMigrationInfo],
-) -> tuple[list[SchemaUpdateMigrationInfo], list[SchemaUpdateMigrationInfo]]:
-    """Split migrations into (kind-update migrations, everything else), preserving relative order.
-
-    Kind-update migrations duplicate node vertices with a new label set. Every other migration
-    must only see the duplicated vertices, so the first group has to complete before the second
-    group starts.
-    """
-    kind_update_names = {
-        migration_name
-        for migration_name, migration_class in MIGRATION_MAP.items()
-        if migration_class is NodeKindUpdateMigration
-    }
-    kind_update_migrations: list[SchemaUpdateMigrationInfo] = []
-    other_migrations: list[SchemaUpdateMigrationInfo] = []
-    for migration in migrations:
-        if migration.migration_name in kind_update_names:
-            kind_update_migrations.append(migration)
-        else:
-            other_migrations.append(migration)
-    return kind_update_migrations, other_migrations
+MAX_CONCURRENT_MIGRATION_GROUPS = 5
 
 
-async def _apply_migration_batch(
-    message: SchemaApplyMigrationData,
-    migrations: Sequence[SchemaUpdateMigrationInfo],
-    log: logging.Logger | LoggingAdapter,
-    max_concurrent_execution: int | None = None,
-) -> list[str]:
-    if max_concurrent_execution:
-        batch = InfrahubBatch(max_concurrent_execution=max_concurrent_execution)
-    else:
-        batch = InfrahubBatch()
-    error_messages: list[str] = []
+class TaskSchemaPathMigrator:
+    """Apply one migration as a Prefect task."""
 
-    if not migrations:
-        return error_messages
+    def __init__(self, database: InfrahubDatabase) -> None:
+        self.database = database
 
-    for migration in migrations:
-        log.info(f"Preparing migration for {migration.migration_name!r} ({migration.routing_key})")
-
+    async def migrate(
+        self, migration: SchemaUpdateMigrationInfo, data: SchemaApplyMigrationData
+    ) -> SchemaMigrationPathResponseData:
         new_node_schema: MainSchemaTypes | None = None
 
-        if message.new_schema.has(name=migration.path.schema_kind):
-            new_node_schema = message.new_schema.get(name=migration.path.schema_kind)
+        if data.new_schema.has(name=migration.path.schema_kind):
+            new_node_schema = data.new_schema.get(name=migration.path.schema_kind)
 
-        if new_node_schema and new_node_schema.id:
-            previous_node_schema = message.previous_schema.get_by_id(id=new_node_schema.id)
-        else:
-            previous_node_schema = message.previous_schema.get(name=migration.path.schema_kind)
-
-        if not previous_node_schema:
+        previous_node_schema = SchemaMigration.get_previous_node_schema(
+            schema_path=migration.path, previous_schema=data.previous_schema, new_schema=data.new_schema
+        )
+        if previous_node_schema is None:
             raise ValueError(
                 f"Unable to find the previous version of the schema for {migration.path.schema_kind}, in order to run the migration."
             )
+        previous_node_schema = previous_node_schema.duplicate()
 
-        batch.add(
-            task=schema_path_migrate,
-            branch=message.branch,
+        return await schema_path_migrate(
+            branch=data.branch,
             migration_name=migration.migration_name,
             new_node_schema=new_node_schema,
             previous_node_schema=previous_node_schema,
             derived_schemas=get_derived_schema_pairs(
-                previous_schema_branch=message.previous_schema,
-                new_schema_branch=message.new_schema,
+                previous_schema_branch=data.previous_schema,
+                new_schema_branch=data.new_schema,
                 previous_node_schema=previous_node_schema,
                 new_node_schema=new_node_schema,
             ),
             schema_path=migration.path,
-            database=await get_database(),
-            user_id=message.user_id,
-            at=message.at,
+            database=self.database,
+            user_id=data.user_id,
+            at=data.at,
         )
-
-    async for _, result in batch.execute():
-        error_messages.extend(result.errors)
-
-    return error_messages
 
 
 @flow(name="schema_apply_migrations", flow_run_name="Apply schema migrations", persist_result=True)
@@ -149,28 +108,17 @@ async def schema_apply_migrations(message: SchemaApplyMigrationData) -> list[str
     await add_branch_tag(branch_name=message.branch.name)
     log = get_run_logger()
 
-    error_messages: list[str] = []
+    database = await get_database()
 
-    if not message.migrations:
-        return error_messages
-
-    kind_update_migrations, other_migrations = split_migrations_by_phase(migrations=message.migrations)
-
-    # kind-update migrations duplicate node vertices and re-point their edges; two concurrent
-    # duplications over overlapping vertices can each create a replacement vertex, so they must
-    # run one at a time
-    error_messages.extend(
-        await _apply_migration_batch(
-            message=message, migrations=kind_update_migrations, log=log, max_concurrent_execution=1
+    async with database.start_session() as db:
+        runner = SchemaMigrationRunner(
+            scheduler=MigrationScheduler(migration_classes=MIGRATION_MAP),
+            migrator=TaskSchemaPathMigrator(database=database),
+            recorder=build_migration_recorder(db=db, application_id=message.application_id),
+            max_concurrent_groups=MAX_CONCURRENT_MIGRATION_GROUPS,
+            log=log,
         )
-    )
-    if error_messages:
-        log.warning("Kind-update migrations reported errors, skipping the remaining migrations")
-        return error_messages
-
-    error_messages.extend(await _apply_migration_batch(message=message, migrations=other_migrations, log=log))
-
-    return error_messages
+        return await runner.run(data=message)
 
 
 @task(

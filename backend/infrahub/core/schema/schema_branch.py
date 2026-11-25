@@ -63,6 +63,7 @@ from infrahub.core.schema.attribute_parameters import (
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.schema.derived_kinds import get_object_template_kind, get_profile_kind
+from infrahub.core.schema.schema_element import SchemaElementType, StoredSchemaElement
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.core.validators.schema_branch.display_label_validator import DisplayLabelValidator
 from infrahub.core.validators.schema_branch.hierarchical_nodes_restricted_words_validator import (
@@ -539,6 +540,26 @@ class SchemaBranch:
             message=f"Unable to find the schema with the id {id!r} in the registry",
         )
 
+    def get_schema_element_ids(self) -> dict[str, StoredSchemaElement]:
+        """Map the stored ID of every node, generic and non-inherited attribute or relationship to what it is."""
+        element_ids: dict[str, StoredSchemaElement] = {}
+        for schemas, element_type in ((self.nodes, SchemaElementType.NODE), (self.generics, SchemaElementType.GENERIC)):
+            for kind in schemas:
+                schema = self.get(name=kind, duplicate=False)
+                if schema.id is not None:
+                    element_ids[schema.id] = StoredSchemaElement(element_type=element_type, kind=kind)
+                for attribute in schema.local_attributes:
+                    if attribute.id is not None:
+                        element_ids[attribute.id] = StoredSchemaElement(
+                            element_type=SchemaElementType.ATTRIBUTE, kind=kind, field_name=attribute.name
+                        )
+                for relationship in schema.local_relationships:
+                    if relationship.id is not None:
+                        element_ids[relationship.id] = StoredSchemaElement(
+                            element_type=SchemaElementType.RELATIONSHIP, kind=kind, field_name=relationship.name
+                        )
+        return element_ids
+
     def get_by_any_id(self, id: str) -> MainSchemaTypes:
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
@@ -571,6 +592,24 @@ class SchemaBranch:
             return True
         except SchemaNotFoundError:
             return False
+
+    def get_dependent_kinds(self, name: str) -> frozenset[str]:
+        """Return the kinds whose vertices hold the data of a kind: the kind, the kinds that inherit from it, and their profile and template kinds."""
+        if not self.has(name=name):
+            return frozenset()
+        schema = self.get(name=name, duplicate=False)
+        node_kinds = [name]
+        if isinstance(schema, GenericSchema):
+            node_kinds.extend(schema.used_by)
+        return frozenset(
+            kind
+            for node_kind in node_kinds
+            for kind in (
+                node_kind,
+                get_profile_kind(node_kind=node_kind),
+                get_object_template_kind(node_kind=node_kind),
+            )
+        )
 
     def get_all(self, include_internal: bool = False, duplicate: bool = True) -> dict[str, MainSchemaTypes]:
         """Retrieve everything in a single dictionary."""

@@ -322,7 +322,7 @@ async def test_generate_filters(
 
 
 @pytest.mark.parametrize(
-    "schema_changed_at_null,schema_hash_null", [(False, False), (True, False), (False, True), (True, True)]
+    ("schema_changed_at_null", "schema_hash_null"), [(False, False), (True, False), (False, True), (True, True)]
 )
 async def test_branch_caching_hit(
     db: InfrahubDatabase,

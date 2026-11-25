@@ -16,6 +16,28 @@ from infrahub_sdk.testing.schemas.car_person import (
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
+SCHEMA_CHANGES_QUERY = """
+query {
+  InfrahubSchemaChange {
+    edges {
+      node {
+        summary
+        status
+        applications {
+          count
+          edges {
+            node {
+              status
+              migrations { count edges { node { migration_name schema_kind status } } }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+"""
+
 pytestmark = pytest.mark.shard_b
 
 
@@ -90,6 +112,48 @@ class TestSchemaMigrations(TestInfrahubDockerClient, SchemaCarPerson):
         assert delete_interface.schema_updated
         # Validate that the schema is in sync after removing the interface
         assert await self.schema_in_sync(client=client, branch=device_branch.name)
+
+        schema_changes = await client.execute_graphql(query=SCHEMA_CHANGES_QUERY, branch_name=device_branch.name)
+        assert schema_changes["InfrahubSchemaChange"]["edges"] == [
+            {
+                "node": {
+                    "summary": "networkinterface_remove",
+                    "status": "APPLIED",
+                    "applications": {
+                        "count": 1,
+                        "edges": [
+                            {
+                                "node": {
+                                    "status": "APPLIED",
+                                    "migrations": {
+                                        "count": 1,
+                                        "edges": [
+                                            {
+                                                "node": {
+                                                    "migration_name": "node.remove",
+                                                    "schema_kind": "NetworkInterface",
+                                                    "status": "APPLIED",
+                                                }
+                                            }
+                                        ],
+                                    },
+                                }
+                            }
+                        ],
+                    },
+                }
+            },
+            {
+                "node": {
+                    "summary": "networkdevice_add_and_1_more",
+                    "status": "APPLIED",
+                    "applications": {
+                        "count": 1,
+                        "edges": [{"node": {"status": "APPLIED", "migrations": {"count": 0, "edges": []}}}],
+                    },
+                }
+            },
+        ]
 
     @staticmethod
     async def schema_in_sync(client: InfrahubClient, branch: str | None, wait_for_seconds: int = 30) -> bool:

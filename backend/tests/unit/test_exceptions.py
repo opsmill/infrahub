@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 
 import pytest
 
+from infrahub.core.schema_change.enums import SchemaOperationSection, SchemaOperationType
 from infrahub.core.validators.model import SchemaViolation
 from infrahub.exceptions import (
     CommitNotFoundError,
@@ -26,7 +27,12 @@ from infrahub.exceptions import (
     RepositoryNotSynchronizedError,
     RepositoryPushRejectedError,
     RPCError,
+    SchemaChangeRecordNotFoundError,
+    SchemaNameReusedError,
     SchemaNotFoundError,
+    SchemaOperationsRebuildError,
+    SchemaOperationTargetExistsError,
+    SchemaOperationTargetNotFoundError,
     ValidationError,
 )
 from infrahub.git.models import PushRejectionReason
@@ -111,6 +117,34 @@ ERROR_PICKLE_CASES = [
             message="Unable to push the branch main to the remote for repository repo-1: [remote rejected]",
         ),
     ),
+    ErrorPickleCase(
+        name="schema_operation_target_not_found",
+        error=SchemaOperationTargetNotFoundError(
+            position=2,
+            operation_type=SchemaOperationType.ELEMENT_PROPERTY,
+            kind="DcimGenericDevice",
+            section=SchemaOperationSection.ATTRIBUTES,
+            element_name="serial",
+        ),
+    ),
+    ErrorPickleCase(
+        name="schema_operation_target_exists",
+        error=SchemaOperationTargetExistsError(
+            position=1,
+            operation_type=SchemaOperationType.ELEMENT_ADD,
+            kind="DcimGenericDevice",
+            section=SchemaOperationSection.RELATIONSHIPS,
+            element_name="site",
+        ),
+    ),
+    ErrorPickleCase(
+        name="schema_operations_rebuild",
+        error=SchemaOperationsRebuildError(kinds=["DcimGenericDevice", "LocationSite"]),
+    ),
+    ErrorPickleCase(
+        name="schema_name_reused",
+        error=SchemaNameReusedError(kind="DcimGenericDevice", section=SchemaOperationSection.ATTRIBUTES, name="serial"),
+    ),
 ]
 
 
@@ -143,6 +177,116 @@ def test_pickle_preserves_slot_state() -> None:
 
     assert isinstance(restored, SlottedError)
     assert restored.detail == "slot-value"
+
+
+@dataclass
+class SchemaOperationTargetNotFoundMessageCase:
+    name: str
+    error: SchemaOperationTargetNotFoundError
+    expected: str
+
+
+SCHEMA_OPERATION_TARGET_NOT_FOUND_MESSAGE_CASES: list[SchemaOperationTargetNotFoundMessageCase] = [
+    SchemaOperationTargetNotFoundMessageCase(
+        name="missing_kind",
+        error=SchemaOperationTargetNotFoundError(
+            position=0, operation_type=SchemaOperationType.NODE_PROPERTY, kind="DcimGenericDevice"
+        ),
+        expected="Schema operation 0 (node_property) names the kind DcimGenericDevice, which the schema does not have.",
+    ),
+    SchemaOperationTargetNotFoundMessageCase(
+        name="missing_attribute",
+        error=SchemaOperationTargetNotFoundError(
+            position=3,
+            operation_type=SchemaOperationType.ELEMENT_REMOVE,
+            kind="DcimGenericDevice",
+            section=SchemaOperationSection.ATTRIBUTES,
+            element_name="serial",
+        ),
+        expected=(
+            "Schema operation 3 (element_remove) names 'serial' in the attributes of the kind DcimGenericDevice, "
+            "which the schema does not have."
+        ),
+    ),
+    SchemaOperationTargetNotFoundMessageCase(
+        name="missing_relationship",
+        error=SchemaOperationTargetNotFoundError(
+            position=1,
+            operation_type=SchemaOperationType.ELEMENT_PROPERTY,
+            kind="DcimGenericDevice",
+            section=SchemaOperationSection.RELATIONSHIPS,
+            element_name="site",
+        ),
+        expected=(
+            "Schema operation 1 (element_property) names 'site' in the relationships of the kind DcimGenericDevice, "
+            "which the schema does not have."
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "case",
+    [pytest.param(case, id=case.name) for case in SCHEMA_OPERATION_TARGET_NOT_FOUND_MESSAGE_CASES],
+)
+def test_schema_operation_target_not_found_names_the_operation_and_the_target(
+    case: SchemaOperationTargetNotFoundMessageCase,
+) -> None:
+    assert case.error.message == case.expected
+    assert str(case.error) == case.expected
+
+
+@dataclass
+class SchemaOperationTargetExistsMessageCase:
+    name: str
+    error: SchemaOperationTargetExistsError
+    expected: str
+
+
+SCHEMA_OPERATION_TARGET_EXISTS_MESSAGE_CASES: list[SchemaOperationTargetExistsMessageCase] = [
+    SchemaOperationTargetExistsMessageCase(
+        name="existing_kind",
+        error=SchemaOperationTargetExistsError(
+            position=0, operation_type=SchemaOperationType.NODE_ADD, kind="DcimGenericDevice"
+        ),
+        expected="Schema operation 0 (node_add) adds the kind DcimGenericDevice, which the schema already has.",
+    ),
+    SchemaOperationTargetExistsMessageCase(
+        name="existing_attribute",
+        error=SchemaOperationTargetExistsError(
+            position=2,
+            operation_type=SchemaOperationType.ELEMENT_ADD,
+            kind="DcimGenericDevice",
+            section=SchemaOperationSection.ATTRIBUTES,
+            element_name="serial",
+        ),
+        expected=(
+            "Schema operation 2 (element_add) adds 'serial' to the attributes of the kind DcimGenericDevice, "
+            "which the schema already has."
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "case",
+    [pytest.param(case, id=case.name) for case in SCHEMA_OPERATION_TARGET_EXISTS_MESSAGE_CASES],
+)
+def test_schema_operation_target_exists_names_the_operation_and_the_target(
+    case: SchemaOperationTargetExistsMessageCase,
+) -> None:
+    assert str(case.error) == case.expected
+
+
+def test_schema_operations_rebuild_error_has_a_status_that_clients_do_not_retry_and_names_the_kinds() -> None:
+    error = SchemaOperationsRebuildError(kinds=["DcimGenericDevice", "LocationSite"])
+
+    assert error.HTTP_CODE == 422
+    assert str(error) == (
+        "The schema change cannot be built accurately, so the request was not completed. This is an error in Infrahub, "
+        "not in the schema file: the operations built from the file do not rebuild its schema for the kinds "
+        "DcimGenericDevice, LocationSite."
+    )
 
 
 @dataclass
@@ -342,3 +486,13 @@ def test_merge_refusal_drops_its_traceback_record(case: MergeRefusalCase) -> Non
 
     assert suppression_filter.filter(_flow_run_record(refusal)) is False
     assert suppression_filter.filter(_flow_run_record(_round_trip(refusal))) is False
+
+
+def test_schema_change_record_not_found_has_a_status_that_clients_do_not_retry_and_names_the_schema_change() -> None:
+    error = SchemaChangeRecordNotFoundError(schema_change_id="2f1c9a64-8d3e-4b7a-9c51-0e6d4f3a8b21")
+
+    assert error.HTTP_CODE == 422
+    assert str(error) == (
+        "The schema change 2f1c9a64-8d3e-4b7a-9c51-0e6d4f3a8b21, its application or its parent was deleted before the "
+        "schema update completed, so the update was rolled back. Deleting the branch deletes its schema changes."
+    )

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, ClassVar
 
 import pytest
@@ -12,12 +13,22 @@ from infrahub.core.migrations.query import MigrationQuery
 from infrahub.core.migrations.shared import GraphMigration, MigrationInput, SchemaMigration
 from infrahub.core.path import SchemaPath
 from infrahub.core.query import Query, QueryType
+from tests.unit.core.migrations.schema.helpers import (
+    AUTO_KINDS,
+    CAR_KINDS,
+    INTERFACE_KINDS,
+    full_schema_branch,
+    interface_used_by,
+    renamed_car_schema_branches,
+    schema_branch,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Sequence
 
     from infrahub.core.branch import Branch
     from infrahub.core.migrations.query import MigrationBaseQuery
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 
@@ -209,3 +220,56 @@ class TestMigrationTransientErrorRetry:
         assert not result.success
         assert result.errors == ["deadlock detected"]
         assert AlwaysDeadlockGraphQuery.calls == 1
+
+
+RENAMED_CAR_PREVIOUS_SCHEMA, RENAMED_CAR_NEW_SCHEMA = renamed_car_schema_branches()
+
+
+@dataclass(frozen=True, kw_only=True)
+class ChangedKindsCase:
+    name: str
+    schema_path: SchemaPath
+    previous_schema: SchemaBranch
+    new_schema: SchemaBranch
+    expected: frozenset[str]
+
+
+CHANGED_KINDS_CASES: list[ChangedKindsCase] = [
+    ChangedKindsCase(
+        name="node_attribute",
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestingCar", field_name="color"),
+        previous_schema=full_schema_branch(),
+        new_schema=full_schema_branch(),
+        expected=CAR_KINDS,
+    ),
+    ChangedKindsCase(
+        name="generic_attribute",
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestingInterface", field_name="serial"),
+        previous_schema=full_schema_branch(),
+        new_schema=full_schema_branch(),
+        expected=INTERFACE_KINDS,
+    ),
+    ChangedKindsCase(
+        name="generic_used_by_from_both_schemas",
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestingInterface", field_name="serial"),
+        previous_schema=schema_branch(interface_used_by(used_by=["TestingPhysicalInterface"])),
+        new_schema=schema_branch(interface_used_by(used_by=["TestingVirtualInterface"])),
+        expected=INTERFACE_KINDS,
+    ),
+    ChangedKindsCase(
+        name="renamed_kind_includes_its_previous_name",
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestingAuto", field_name="color"),
+        previous_schema=RENAMED_CAR_PREVIOUS_SCHEMA,
+        new_schema=RENAMED_CAR_NEW_SCHEMA,
+        expected=AUTO_KINDS | CAR_KINDS,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in CHANGED_KINDS_CASES])
+def test_changed_kinds_are_the_dependent_kinds_in_both_schemas(case: ChangedKindsCase) -> None:
+    changed_kinds = SchemaMigration.get_changed_kinds(
+        schema_path=case.schema_path, previous_schema=case.previous_schema, new_schema=case.new_schema
+    )
+
+    assert changed_kinds == case.expected

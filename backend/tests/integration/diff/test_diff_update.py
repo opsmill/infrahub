@@ -15,6 +15,7 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema_change.factory import build_schema_change_repository
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
 from infrahub.dependencies.registry import get_component_registry
@@ -216,7 +217,9 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff = await self.get_branch_diff(db=db, branch=deleted_branch)
         assert len(diff.nodes) == 1
 
-        await BranchDataDeleter(db=db, batch_size=5).delete(branch=deleted_branch)
+        await BranchDataDeleter(
+            db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)
+        ).delete(branch=deleted_branch)
         return diff
 
     @staticmethod

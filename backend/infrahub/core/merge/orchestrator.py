@@ -182,9 +182,9 @@ class BranchMergeOrchestrator:
                     migration_executor=MigrationExecutor.WORKFLOW,
                     migrations=migrations,
                     update_db=False,
-                    update_registry=True,
                     user_id=user_id,
                     manage_rollback=False,
+                    application_id=None,
                 )
 
             # Compute the IPAM reconciliation details while the diff is still live. Submission is

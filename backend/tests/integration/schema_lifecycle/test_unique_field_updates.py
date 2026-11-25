@@ -639,7 +639,13 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
                 },
                 "removed": {},
             },
-            "warnings": [],
+            "warnings": [
+                {
+                    "type": "deprecation",
+                    "message": "the element marked absent is not on this branch, it is skipped",
+                    "kinds": [{"kind": PERSON_KIND, "field": "real_name"}],
+                }
+            ],
         }
 
     async def test_step06_load_remove_unique_attr_from_generic(

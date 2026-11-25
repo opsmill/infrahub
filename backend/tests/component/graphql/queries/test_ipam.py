@@ -109,7 +109,7 @@ async def ip_dataset_02(
 
 
 @pytest.mark.parametrize(
-    "prefix,prefix_length,response",
+    ("prefix", "prefix_length", "response"),
     [
         ("net146", 16, "10.0.0.0/16"),
         ("net146", 24, "10.0.0.0/24"),
@@ -153,7 +153,7 @@ async def test_ipprefix_nextavailable(
 
 
 @pytest.mark.parametrize(
-    "prefix,prefix_length,response",
+    ("prefix", "prefix_length", "response"),
     [
         ("net1", 30, "10.200.30.2/30"),
         ("net1", None, "10.200.30.2/27"),
@@ -529,7 +529,7 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         }
 
     @pytest.mark.parametrize(
-        "prefix,result",
+        ("prefix", "result"),
         [
             ("net_all_free", [("InternalIPRangeAvailable", "6 IP addresses available")]),
             (
@@ -639,7 +639,7 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         ]
 
     @pytest.mark.parametrize(
-        "limit,kinds",
+        ("limit", "kinds"),
         [
             (0, ["IpamIPAddress"]),
             (0, ["IpamIPAddress", "TestIPAddress"]),
@@ -741,7 +741,7 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         assert response.errors[0].message == "NotAnIPAddress is not a node inheriting from BuiltinIPAddress"
 
     @pytest.mark.parametrize(
-        "limit,offset,result",
+        ("limit", "offset", "result"),
         [
             (
                 1,
@@ -852,7 +852,7 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         ]
 
     @pytest.mark.parametrize(
-        "prefix,result",
+        ("prefix", "result"),
         [
             (
                 "net_empty",
@@ -1000,7 +1000,7 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         ]
 
     @pytest.mark.parametrize(
-        "limit,offset,result",
+        ("limit", "offset", "result"),
         [
             (
                 4,

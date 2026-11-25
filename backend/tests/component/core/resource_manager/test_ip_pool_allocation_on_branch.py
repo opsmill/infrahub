@@ -11,6 +11,7 @@ from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.initialization import create_branch
+from infrahub.core.schema_change.factory import build_schema_change_repository
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import PoolExhaustedError, ResourceNotFoundError
@@ -76,7 +77,9 @@ class TestIPPoolAllocationOnBranch:
         namespace = await create_namespace(db=db, branch=branch)
         resource = await create_prefix(db=db, branch=branch, namespace=namespace, value=case.resource)
         pool = await create_pool(db=db, branch=branch, case=case, namespace=namespace, resources=[resource])
-        await BranchDataDeleter(db=db, batch_size=100).delete(branch=branch)
+        await BranchDataDeleter(
+            db=db, batch_size=100, schema_change_records=build_schema_change_repository(db=db)
+        ).delete(branch=branch)
 
         pool_on_main = await pool_on(db=db, pool=pool, branch=default_branch)
         expected = (
