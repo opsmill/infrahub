@@ -507,7 +507,6 @@ class TestSchemaLoadsThatRenameAndChange:
             assert await _active_value_labels(db=db, node_id=node_id, attribute_name="alias", branch=target_branch) == [
                 ["AttributeValue"]
             ]
-        await verify_graph(db=db, kinds=["TestCar", "ProfileTestCar", "TemplateTestCar"])
 
     async def test_an_attribute_renamed_out_of_a_uniqueness_constraint_is_added_to_the_profiles(
         self, db: InfrahubDatabase, target_branch: Branch, rename_data: RenameData
@@ -532,7 +531,6 @@ class TestSchemaLoadsThatRenameAndChange:
             assert await _open_attribute_edge_statuses(
                 db=db, node_label=node_label, attribute_name="registration", branch_name=target_branch.name
             ) == {node_id: ([active], [active])}
-        await verify_graph(db=db, kinds=["TestCar", "ProfileTestCar", "TemplateTestCar"])
 
     async def test_an_attribute_renamed_with_a_new_kind_while_its_node_kind_is_renamed_keeps_its_values(
         self, db: InfrahubDatabase, target_branch: Branch, rename_data: RenameData
@@ -561,7 +559,6 @@ class TestSchemaLoadsThatRenameAndChange:
             assert await _active_value_labels(db=db, node_id=node_id, attribute_name="load", branch=target_branch) == [
                 ["AttributeValue"]
             ]
-        await verify_graph(db=db, kinds=["TestLorry", "ProfileTestLorry", "TemplateTestLorry"])
 
     async def test_a_relationship_removed_while_its_node_kind_is_renamed_leaves_the_node(
         self, db: InfrahubDatabase, target_branch: Branch, rename_data: RenameData
@@ -588,17 +585,6 @@ class TestSchemaLoadsThatRenameAndChange:
         assert await _open_relationship_edge_statuses(
             db=db, node_id=rename_data.trailer, identifier=identifier, branch=target_branch
         ) == [RelationshipStatus.DELETED.value]
-        await verify_graph(
-            db=db,
-            kinds=[
-                "TestCaravan",
-                "TestPerson",
-                "ProfileTestCaravan",
-                "ProfileTestPerson",
-                "TemplateTestCaravan",
-                "TemplateTestPerson",
-            ],
-        )
 
     async def test_an_attribute_renamed_and_made_unique_leaves_the_profiles_and_templates(
         self, db: InfrahubDatabase, target_branch: Branch, rename_data: RenameData
@@ -630,7 +616,6 @@ class TestSchemaLoadsThatRenameAndChange:
         assert await _open_attribute_edge_statuses(
             db=db, node_label="TestCar", attribute_name="gearbox", branch_name=target_branch.name
         ) == {rename_data.car: ([active], [active])}
-        await verify_graph(db=db, kinds=["TestCar", "ProfileTestCar", "TemplateTestCar"])
 
     async def test_an_attribute_renamed_into_a_uniqueness_constraint_leaves_the_profiles(
         self, db: InfrahubDatabase, target_branch: Branch, rename_data: RenameData
@@ -660,7 +645,6 @@ class TestSchemaLoadsThatRenameAndChange:
             assert await _open_attribute_edge_statuses(
                 db=db, node_label=node_label, attribute_name="serial", branch_name=target_branch.name
             ) == {node_id: ([active], [active])}
-        await verify_graph(db=db, kinds=["TestCar", "ProfileTestCar", "TemplateTestCar"])
 
     async def test_an_attribute_renamed_and_made_unique_is_restored_by_the_rollback(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, target_branch: Branch, rename_data: RenameData
@@ -700,4 +684,26 @@ class TestSchemaLoadsThatRenameAndChange:
                 == {}
             )
         assert await count_branch_edges_at(db=db, branch_name=target_branch.name, at=at.to_string()) == 0
-        await verify_graph(db=db, kinds=["TestCar", "ProfileTestCar", "TemplateTestCar"])
+        await verify_graph(
+            db=db,
+            kinds=[
+                "TestCar",
+                "ProfileTestCar",
+                "TemplateTestCar",
+                "TestPerson",
+                "ProfileTestPerson",
+                "TemplateTestPerson",
+                "TestLorry",
+                "ProfileTestLorry",
+                "TemplateTestLorry",
+                "TestCaravan",
+                "ProfileTestCaravan",
+                "TemplateTestCaravan",
+                "TestTechnician",
+                "ProfileTestTechnician",
+                "TemplateTestTechnician",
+                "TestGarage",
+                "ProfileTestGarage",
+                "TemplateTestGarage",
+            ],
+        )
