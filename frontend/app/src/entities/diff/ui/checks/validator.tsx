@@ -1,5 +1,4 @@
 import { Popover, PopoverTrigger, Tooltip } from "@infrahub/ui";
-import { useState } from "react";
 
 import { InfoButton } from "@/shared/components/buttons/info-button";
 import Accordion from "@/shared/components/display/accordion";
@@ -75,11 +74,9 @@ const getValidatorState = (state?: string, conclusion?: string) => {
 };
 
 export const Validator = ({ validator }: tValidatorProps) => {
-  const [failedFirst, setFailedFirst] = useState(true);
   const { id, display_label, started_at, completed_at, conclusion, state } = validator;
-
-  const artifactDefinition =
-    validator.__typename === ARTIFACT_VALIDATOR_KIND ? validator.definition?.node : null;
+  const isArtifactValidator = validator.__typename === ARTIFACT_VALIDATOR_KIND;
+  const artifactDefinition = isArtifactValidator ? validator.definition?.node : null;
 
   const columns = [
     {
@@ -160,14 +157,7 @@ export const Validator = ({ validator }: tValidatorProps) => {
 
   return (
     <Accordion title={title} className="rounded-md bg-content p-2" data-testid="validator">
-      <ValidatorDetails
-        id={id}
-        artifactSort={
-          validator.__typename === ARTIFACT_VALIDATOR_KIND
-            ? { failedFirst, onChange: setFailedFirst }
-            : undefined
-        }
-      />
+      <ValidatorDetails id={id} isArtifactValidator={isArtifactValidator} />
     </Accordion>
   );
 };

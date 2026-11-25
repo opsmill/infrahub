@@ -139,7 +139,7 @@ async def artifact_checks(
         yield ProposedChangeChecks(proposed_change_id=proposed_change.id, first=groups[0], second=groups[1])
 
 
-async def test_failed_first_spans_pages_and_only_resets_its_definition(
+async def test_failed_checks_come_first_across_independent_definition_pages(
     admin_page: Page, artifact_checks: ProposedChangeChecks
 ) -> None:
     await admin_page.goto(f"/proposed-changes/{artifact_checks.proposed_change_id}/checks")
@@ -150,13 +150,11 @@ async def test_failed_first_spans_pages_and_only_resets_its_definition(
     await expect(titles).to_have_text(expected_titles)
     await first.get_by_text(artifact_checks.first.title, exact=True).click()
     await second.get_by_text(artifact_checks.second.title, exact=True).click()
+    await expect(admin_page.get_by_role("checkbox", name="Failed first")).to_have_count(0)
 
     first_names = first.get_by_text(re.compile(r"^Check A \d{2}$"))
     second_names = second.get_by_text(re.compile(r"^Check B \d{2}$"))
-    first_sort = first.get_by_role("checkbox", name="Failed first")
-    second_sort = second.get_by_role("checkbox", name="Failed first")
-    await expect(first_sort).to_be_checked()
-    await expect(second_sort).to_be_checked()
+    # Both failures have the highest UUIDs, beyond the first page in ordinary UUID order.
     await expect(first_names).to_have_text(list(artifact_checks.first.failed_first_names[:10]))
     await expect(second_names).to_have_text(list(artifact_checks.second.failed_first_names[:10]))
 
@@ -166,18 +164,13 @@ async def test_failed_first_spans_pages_and_only_resets_its_definition(
     await first.get_by_role("button", name="Next page", exact=True).click()
     await expect(first_names).to_have_text(list(artifact_checks.first.failed_first_names[10:]))
 
-    # Toggling on page two returns only this definition to page one, in ordinary UUID order.
-    await first.get_by_text("Failed first", exact=True).click()
-    await expect(first_sort).not_to_be_checked()
-    await expect(first_names).to_have_text(list(artifact_checks.first.names_by_id[:10]))
-    await expect(second_names).to_have_text(list(artifact_checks.second.failed_first_names[10:]))
-    await expect(second_sort).to_be_checked()
-    await first.get_by_role("button", name="Next page", exact=True).click()
-    await expect(first_names).to_have_text(list(artifact_checks.first.names_by_id[10:]))
-
-    # These two failures normally live on page two, but enabling the sort brings both to the first page.
-    await first.get_by_text("Failed first", exact=True).click()
-    await expect(first_sort).to_be_checked()
+    await first.get_by_role("button", name="Previous page", exact=True).click()
     await expect(first_names).to_have_text(list(artifact_checks.first.failed_first_names[:10]))
     await expect(second_names).to_have_text(list(artifact_checks.second.failed_first_names[10:]))
+
+    await first.get_by_role("combobox").click()
+    await admin_page.get_by_role("option", name="20", exact=True).click()
+    await expect(first_names).to_have_text(list(artifact_checks.first.failed_first_names))
+    await expect(second_names).to_have_text(list(artifact_checks.second.failed_first_names[10:]))
+    await expect(second.get_by_role("combobox")).to_have_text("10")
     await expect(titles).to_have_text(expected_titles)
