@@ -1,0 +1,21 @@
+backend/infrahub/core/schema/basenode_schema.py
+  s_4fa415708315a7::t_ddd968f7247b2f 775
+  s_4fa415708315a7::t_a70efc726e5d31 42-57,776-777
+  s_4fa415708315a7::t_fed687e991d056 41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7ca6d12b268a0e9e70c73342ea10a980e080bcc1",
+  "prompts": {},
+  "sessions": {
+    "s_4fa415708315a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03e5d1ed-c4d3-4710-b21f-22b15f31d216",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
