@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 
 from infrahub.core.constants import HierarchySide
-from infrahub.core.schema import NodeSchema, RelationshipSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.node.hierarchy import (
     HierarchyDirection,
@@ -214,8 +214,18 @@ def _relationship(name: str, peer: str, inherited: bool = False) -> Relationship
     return RelationshipSchema(name=name, peer=peer, cardinality="one", optional=True, inherited=inherited)
 
 
-def _site(hierarchy: str | None = None, relationships: list[RelationshipSchema] | None = None) -> NodeSchema:
-    return NodeSchema(name="Site", namespace="Location", hierarchy=hierarchy, relationships=relationships or [])
+def _site(
+    hierarchy: str | None = None,
+    attributes: list[AttributeSchema] | None = None,
+    relationships: list[RelationshipSchema] | None = None,
+) -> NodeSchema:
+    return NodeSchema(
+        name="Site",
+        namespace="Location",
+        hierarchy=hierarchy,
+        attributes=attributes or [],
+        relationships=relationships or [],
+    )
 
 
 @dataclass
@@ -281,6 +291,28 @@ CONFLICT_CASES = [
         name="kind-not-joining-a-hierarchy",
         current=_site(relationships=[_relationship(name="parent", peer="OrganizationTenant")]),
         candidate=_site(),
+        expected=[],
+    ),
+    ConflictCase(
+        name="reserved-attribute-name",
+        current=_site(),
+        candidate=_site(hierarchy=HIERARCHY, attributes=[AttributeSchema(name="ancestors", kind="Text")]),
+        expected=[HierarchyFieldConflict(field_name="ancestors", value="Text")],
+    ),
+    ConflictCase(
+        name="reserved-relationship-name",
+        current=_site(),
+        candidate=_site(
+            hierarchy=HIERARCHY, relationships=[_relationship(name="descendants", peer="OrganizationTenant")]
+        ),
+        expected=[HierarchyFieldConflict(field_name="descendants", value="OrganizationTenant")],
+    ),
+    ConflictCase(
+        name="inherited-reserved-attribute-name",
+        current=_site(),
+        candidate=_site(
+            hierarchy=HIERARCHY, attributes=[AttributeSchema(name="ancestors", kind="Text", inherited=True)]
+        ),
         expected=[],
     ),
 ]

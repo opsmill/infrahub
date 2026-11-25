@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants import HashableModelState, HierarchySide, PathType
+from infrahub.core.constants import RESERVED_ATTR_REL_HIERARCHICAL_NAMES, HashableModelState, HierarchySide, PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import GenericSchema, NodeSchema
 
@@ -193,11 +193,22 @@ def get_hierarchy_field_conflicts(current: NodeSchema | None, candidate: NodeSch
     """
     if current is None or current.hierarchy or not candidate.hierarchy:
         return []
-    return [
+    conflicts = [
         HierarchyFieldConflict(field_name=relationship.name, value=relationship.peer)
         for relationship in current.relationships
         if relationship.name in HierarchySide and not relationship.inherited
     ]
+    conflicts += [
+        HierarchyFieldConflict(field_name=attribute.name, value=attribute.kind)
+        for attribute in candidate.attributes
+        if attribute.name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES and not attribute.inherited
+    ]
+    conflicts += [
+        HierarchyFieldConflict(field_name=relationship.name, value=relationship.peer)
+        for relationship in candidate.relationships
+        if relationship.name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES and not relationship.inherited
+    ]
+    return conflicts
 
 
 class NodeHierarchyChecker(ConstraintCheckerInterface):
