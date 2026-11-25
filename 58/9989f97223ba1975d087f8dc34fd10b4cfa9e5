@@ -1,0 +1,30 @@
+backend/tests/unit/core/validators/node/test_hierarchy.py
+  s_4fa415708315a7::t_4b205d81bebe4e 66-84
+backend/infrahub/core/schema/basenode_schema.py
+  s_4fa415708315a7::t_f7f92a715c761a 55-56
+backend/infrahub/core/validators/node/hierarchy.py
+  s_4fa415708315a7::t_f7f92a715c761a 48-49,217-222,238
+  s_4fa415708315a7::t_71e106f22f2b28 156-158,160,162
+backend/tests/component/core/constraint_validators/test_node_hierarchy_update.py
+  s_4fa415708315a7::t_b32e54b2a74f12 459-505
+backend/tests/functional/api/test_load_schema.py
+  s_4fa415708315a7::t_d6fc20c0f8b9c1 3,533,564-568,571-580,582-583,601-604,608,612-617
+backend/tests/unit/core/schema/schema_update_validation/test_hierarchy.py
+  s_4fa415708315a7::t_b32e54b2a74f12 1-2,48-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "589989f97223ba1975d087f8dc34fd10b4cfa9e5",
+  "prompts": {},
+  "sessions": {
+    "s_4fa415708315a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03e5d1ed-c4d3-4710-b21f-22b15f31d216",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
