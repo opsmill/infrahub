@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import ANY, call, patch
 from uuid import uuid4
@@ -39,6 +40,7 @@ from infrahub.workflows.catalogue import REQUEST_PROPOSED_CHANGE_PIPELINE
 from infrahub.workflows.initialization import setup_deployments, setup_worker_pools
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder, BusSimulator
+from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.git import LocalRemote, install_remote_helper
 from tests.helpers.graphql import graphql, graphql_mutation
@@ -114,6 +116,39 @@ mutation RunCheckFailedOnly(
   }
 }
 """
+
+RUN_SCOPED_CHECK = """
+mutation RunScopedCheck(
+    $proposed_change: String!,
+    $check_type: CheckType,
+    $retry_failed_only: Boolean,
+    $validator_id: String,
+    $check_ids: [String!]
+  ) {
+  CoreProposedChangeRunCheck(data: {
+    id: $proposed_change,
+    check_type: $check_type,
+    retry_failed_only: $retry_failed_only,
+    validator_id: $validator_id,
+    check_ids: $check_ids
+  }) {
+    ok
+  }
+}
+"""
+
+
+@dataclass(frozen=True)
+class ArtifactCheckScope:
+    proposed_change_id: str
+    source_branch: Branch
+    validator_id: str
+    check_ids: list[str]
+    other_validator_id: str
+    other_check_id: str
+    schema_validator_id: str
+    standard_check_id: str
+
 
 UPDATE_PROPOSED_CHANGE = """
 mutation UpdateProposedChange(
@@ -421,6 +456,214 @@ async def test_duplicate_open_proposed_change_validation(
 
 
 class TestTriggerProposedChange(TestInfrahubApp):
+    @pytest.fixture(scope="class")
+    async def artifact_check_scope(
+        self, db: InfrahubDatabase, register_core_schema: SchemaBranch
+    ) -> ArtifactCheckScope:
+        source_branch = await create_branch(db=db, branch_name="trigger-scoped-artifact-retry")
+        proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+        await proposed_change.new(
+            db=db, name="scoped-artifact-retry", destination_branch="main", source_branch=source_branch.name
+        )
+        await proposed_change.save(db=db)
+        other_proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+        await other_proposed_change.new(
+            db=db, name="other-scoped-artifact-retry", destination_branch="main", source_branch=source_branch.name
+        )
+        await other_proposed_change.save(db=db)
+        repository = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
+        await repository.new(db=db, name="scoped-artifact-retry", location="https://github.com/test/artifacts.git")
+        await repository.save(db=db)
+        group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+        await group.new(db=db, name="scoped-artifact-targets")
+        await group.save(db=db)
+        query = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
+        await query.new(db=db, name="ScopedArtifactQuery", query="query { CoreRepository { edges { node { id } } } }")
+        await query.save(db=db)
+        transformation = await Node.init(db=db, schema=InfrahubKind.TRANSFORMJINJA2)
+        await transformation.new(
+            db=db, name="scoped-artifact-transform", query=query, repository=repository, template_path="template.j2"
+        )
+        await transformation.save(db=db)
+        definition = await Node.init(db=db, schema=InfrahubKind.ARTIFACTDEFINITION)
+        await definition.new(
+            db=db,
+            name="scoped-artifact-definition",
+            artifact_name="configuration",
+            content_type="text/plain",
+            parameters={"value": {}},
+            targets=group,
+            transformation=transformation,
+        )
+        await definition.save(db=db)
+        validator = await Node.init(db=db, schema=InfrahubKind.ARTIFACTVALIDATOR)
+        await validator.new(db=db, proposed_change=proposed_change, definition=definition)
+        await validator.save(db=db)
+        other_validator = await Node.init(db=db, schema=InfrahubKind.ARTIFACTVALIDATOR)
+        await other_validator.new(db=db, proposed_change=other_proposed_change, definition=definition)
+        await other_validator.save(db=db)
+        schema_validator = await Node.init(db=db, schema=InfrahubKind.SCHEMAVALIDATOR)
+        await schema_validator.new(db=db, proposed_change=proposed_change)
+        await schema_validator.save(db=db)
+        check_ids = []
+        for index in range(2):
+            check = await Node.init(db=db, schema=InfrahubKind.ARTIFACTCHECK)
+            await check.new(
+                db=db, name=f"artifact-{index}", origin=repository.id, kind="ArtifactDefinition", validator=validator
+            )
+            await check.save(db=db)
+            check_ids.append(check.id)
+        other_check = await Node.init(db=db, schema=InfrahubKind.ARTIFACTCHECK)
+        await other_check.new(db=db, origin=repository.id, kind="ArtifactDefinition", validator=other_validator)
+        await other_check.save(db=db)
+        standard_check = await Node.init(db=db, schema=InfrahubKind.STANDARDCHECK)
+        await standard_check.new(db=db, origin=repository.id, kind="ArtifactDefinition", validator=validator)
+        await standard_check.save(db=db)
+        return ArtifactCheckScope(
+            proposed_change_id=proposed_change.id,
+            source_branch=source_branch,
+            validator_id=validator.id,
+            check_ids=check_ids,
+            other_validator_id=other_validator.id,
+            other_check_id=other_check.id,
+            schema_validator_id=schema_validator.id,
+            standard_check_id=standard_check.id,
+        )
+
+    async def test_scoped_artifact_checks_forward_the_scope_in_either_mode(
+        self, db: InfrahubDatabase, create_test_admin: Node, artifact_check_scope: ArtifactCheckScope
+    ) -> None:
+        scope = artifact_check_scope
+        recorder = WorkflowRecorder()
+        service = await InfrahubServices.new(database=db, workflow=recorder)
+        account_session = AccountSession(
+            authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
+        )
+        for retry_failed_only in (False, True):
+            for check_ids in (None, scope.check_ids + scope.check_ids):
+                recorder.reset()
+                result = await graphql_mutation(
+                    query=RUN_SCOPED_CHECK,
+                    db=db,
+                    variables={
+                        "proposed_change": scope.proposed_change_id,
+                        "check_type": "ARTIFACT",
+                        "retry_failed_only": retry_failed_only,
+                        "validator_id": scope.validator_id,
+                        "check_ids": check_ids,
+                    },
+                    service=service,
+                    account_session=account_session,
+                )
+                assert not result.errors
+                assert result.data == {"CoreProposedChangeRunCheck": {"ok": True}}
+                assert len(recorder.submit_calls) == 1
+                submitted = recorder.submit_calls[0]
+                request = submitted["parameters"]["model"]
+                assert submitted["workflow"] == REQUEST_PROPOSED_CHANGE_PIPELINE
+                assert request == RequestProposedChangePipeline(
+                    pipeline_id=request.pipeline_id,
+                    proposed_change=scope.proposed_change_id,
+                    source_branch=scope.source_branch.name,
+                    source_branch_sync_with_git=scope.source_branch.sync_with_git,
+                    destination_branch="main",
+                    check_type=CheckType.ARTIFACT,
+                    retry_failed_only=retry_failed_only,
+                    validator_id=scope.validator_id,
+                    check_ids=scope.check_ids if check_ids is not None else None,
+                )
+
+    async def test_invalid_artifact_scope_rejects_without_dispatch(
+        self, db: InfrahubDatabase, create_test_admin: Node, artifact_check_scope: ArtifactCheckScope
+    ) -> None:
+        scope = artifact_check_scope
+        recorder = WorkflowRecorder()
+        service = await InfrahubServices.new(database=db, workflow=recorder)
+        account_session = AccountSession(
+            authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
+        )
+        invalid_scopes = [
+            ({"validator_id": ""}, "validator_id must not be blank"),
+            ({"validator_id": "  "}, "validator_id must not be blank"),
+            ({"check_ids": scope.check_ids}, "check_ids requires validator_id"),
+            (
+                {"validator_id": scope.validator_id, "check_ids": []},
+                "check_ids must not be empty or contain blank IDs",
+            ),
+            (
+                {"validator_id": scope.validator_id, "check_ids": [scope.check_ids[0], " "]},
+                "check_ids must not be empty or contain blank IDs",
+            ),
+        ]
+        for check_type in (None, "ALL", "DATA", "GENERATOR", "REPOSITORY", "SCHEMA", "TEST", "USER"):
+            invalid_scopes.extend(
+                [
+                    (
+                        {"validator_id": scope.validator_id, "check_type": check_type},
+                        "validator_id and check_ids require check_type ARTIFACT",
+                    ),
+                    (
+                        {"check_ids": scope.check_ids, "check_type": check_type},
+                        "validator_id and check_ids require check_type ARTIFACT",
+                    ),
+                ]
+            )
+        for selectors, message in invalid_scopes:
+            result = await graphql_mutation(
+                query=RUN_SCOPED_CHECK,
+                db=db,
+                variables={"proposed_change": scope.proposed_change_id, "check_type": "ARTIFACT", **selectors},
+                service=service,
+                account_session=account_session,
+            )
+            assert result.errors
+            assert [error.message for error in result.errors] == [message]
+        assert recorder.submit_calls == []
+
+    async def test_artifact_scope_rejects_other_validators_and_checks_without_dispatch(
+        self, db: InfrahubDatabase, create_test_admin: Node, artifact_check_scope: ArtifactCheckScope
+    ) -> None:
+        scope = artifact_check_scope
+        recorder = WorkflowRecorder()
+        service = await InfrahubServices.new(database=db, workflow=recorder)
+        account_session = AccountSession(
+            authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
+        )
+        for validator_id in (str(uuid4()), scope.other_validator_id, scope.schema_validator_id):
+            result = await graphql_mutation(
+                query=RUN_SCOPED_CHECK,
+                db=db,
+                variables={
+                    "proposed_change": scope.proposed_change_id,
+                    "check_type": "ARTIFACT",
+                    "validator_id": validator_id,
+                },
+                service=service,
+                account_session=account_session,
+            )
+            assert result.errors
+            assert [error.message for error in result.errors] == [
+                "validator_id must identify an artifact validator belonging to this proposed change"
+            ]
+        for check_id in (str(uuid4()), scope.other_check_id, scope.standard_check_id):
+            result = await graphql_mutation(
+                query=RUN_SCOPED_CHECK,
+                db=db,
+                variables={
+                    "proposed_change": scope.proposed_change_id,
+                    "check_type": "ARTIFACT",
+                    "validator_id": scope.validator_id,
+                    "check_ids": [scope.check_ids[0], check_id],
+                },
+                service=service,
+                account_session=account_session,
+            )
+            assert result.errors
+            assert [error.message for error in result.errors] == [
+                "check_ids must identify artifact checks belonging to the selected validator"
+            ]
+        assert recorder.submit_calls == []
+
     async def test_failed_only_artifact_retry_is_forwarded_to_pipeline(
         self,
         db: InfrahubDatabase,

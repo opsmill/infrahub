@@ -57,6 +57,8 @@ class RequestArtifactDefinitionCheck(BaseModel):
     source_branch_sync_with_git: bool = Field(..., description="Indicates if the source branch should sync with git")
     destination_branch: str = Field(..., description="The target branch")
     retry_failed_only: bool = False
+    validator_id: str | None = None
+    check_ids: list[str] | None = None
 
 
 class RunGeneratorAsCheckModel(BaseModel):
@@ -106,9 +108,13 @@ class RequestProposedChangePipeline(BaseModel):
         default_factory=uuid.uuid4, description="The unique ID of the execution of this pipeline"
     )
     retry_failed_only: bool = False
+    validator_id: str | None = None
+    check_ids: list[str] | None = None
 
 
 class RequestProposedChangeRefreshArtifacts(BaseProposedChangeWithDiffMessage):
     """Sent trigger the refresh of artifacts that are impacted by the proposed change."""
 
     retry_failed_only: bool = False
+    validator_id: str | None = None
+    check_ids: list[str] | None = None

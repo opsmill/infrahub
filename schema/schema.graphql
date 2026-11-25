@@ -13545,12 +13545,20 @@ type ProposedChangeRequestRunCheck {
 }
 
 input ProposedChangeRequestRunCheckInput {
+  """
+  Limit artifact checks to these existing checks. Requires validator_id and completed retry history.
+  """
+  check_ids: [String!]
   check_type: CheckType
   id: String!
   """
   Retry only failed artifact targets. Requires check_type ARTIFACT and completed retry history.
   """
   retry_failed_only: Boolean = false
+  """
+  Limit artifact checks to this proposed change's artifact validator. Requires check_type ARTIFACT.
+  """
+  validator_id: String
 }
 
 type ProposedChangeReview {
