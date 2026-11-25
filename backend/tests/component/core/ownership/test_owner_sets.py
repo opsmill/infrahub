@@ -562,8 +562,8 @@ async def test_owner_update_that_waits_for_the_node_lock_replaces_the_owner_writ
     assert await read_owners(db=db, branch=default_branch, node_id=person.id, holder=holder) == tuple(group_ids[1:])
 
 
-@pytest.mark.parametrize("change", ["value", "relationship"])
-async def test_update_that_waits_behind_a_node_delete_fails_and_leaves_a_valid_graph(
+@pytest.mark.parametrize("change", ["value", "relationship", "delete"])
+async def test_write_that_waits_behind_a_node_delete_fails_and_leaves_a_valid_graph(
     db: InfrahubDatabase, default_branch: Branch, person: Node, change: str
 ) -> None:
     other_person = await Node.init(db=db, schema="TestPerson")
@@ -587,6 +587,9 @@ async def test_update_that_waits_behind_a_node_delete_fails_and_leaves_a_valid_g
         await asyncio.wait_for(node_is_locked.wait(), timeout=SECONDS_TO_WAIT)
         async with db.start_session() as session_db, session_db.start_transaction() as dbt:
             node = await NodeManager.get_one(db=dbt, branch=default_branch, id=person.id, raise_on_error=True)
+            if change == "delete":
+                await node.delete(db=dbt)
+                return
             if change == "value":
                 node.name.value = "John Doe"
             else:
