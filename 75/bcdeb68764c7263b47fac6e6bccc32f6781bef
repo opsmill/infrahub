@@ -1,0 +1,27 @@
+docs/docs/deploy-manage/maintain-upgrade/upgrade/overview.mdx
+  s_6bc119ebacf23a::t_2047a2964b3f9c 87
+backend/tests/component/cli/test_core_schema_update.py
+  s_6bc119ebacf23a::t_00062f7573b418 45,237,243,281
+backend/infrahub/cli/db.py
+  s_6bc119ebacf23a::t_b681f909f5f6e7 65,1056,1156
+  s_6bc119ebacf23a::t_e2e5d47cea2b3f 21,1063
+backend/infrahub/core/schema_change/application_runner.py
+  s_6bc119ebacf23a::t_b681f909f5f6e7 67,150
+  s_6bc119ebacf23a::t_2047a2964b3f9c 68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "75bcdeb68764c7263b47fac6e6bccc32f6781bef",
+  "prompts": {},
+  "sessions": {
+    "s_6bc119ebacf23a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "941de9ea-8387-4c4d-8c1e-5cfcc3b27b3f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
