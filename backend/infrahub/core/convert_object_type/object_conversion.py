@@ -172,7 +172,7 @@ async def _converted_owner_states(
     owner_states = {
         holder: state
         for holder, state in holders.items()
-        if holder.kind not in (HolderKind.ATTRIBUTE, HolderKind.FIELD_SET)
+        if holder.kind not in {HolderKind.ATTRIBUTE, HolderKind.FIELD_SET}
     }
     for field_name, field_input in mapping.items():
         if field_input.source_field is None:

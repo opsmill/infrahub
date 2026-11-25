@@ -713,7 +713,7 @@ def _removal_params() -> list[Any]:
     ]
     for holder in S6_HOLDERS:
         for test_case in REMOVAL_TEST_CASES:
-            if () in (test_case.start, test_case.after) and not holder.no_owner:
+            if () in {test_case.start, test_case.after} and not holder.no_owner:
                 continue
             if test_case.name == "owner_removed" and holder.single:
                 continue

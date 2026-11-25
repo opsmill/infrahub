@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.initialization import create_branch, initialize_registry
@@ -26,6 +26,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from tests.helpers.agnostic_edges import create_gadget, create_widget
 from tests.helpers.number_pool import add_pool_range, create_range_only_pool
+from tests.helpers.ownership import add_node
 from tests.helpers.schema import TICKET, load_schema
 from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA, BEACON_KIND
 
@@ -360,6 +361,7 @@ async def test_count_matches_for_owner_source_and_pool_reservation_edges(
     timeline = Timeline()
     pool = await create_range_only_pool(db=db)
     await add_pool_range(db=db, pool=pool, start=1, end=10)
+    owner_group = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="count-changes-owners")
     timeline.mark()
     branch = await create_branch(db=db, branch_name="count-changes-lineage")
     timeline.mark()
@@ -376,7 +378,7 @@ async def test_count_matches_for_owner_source_and_pool_reservation_edges(
     timeline.mark()
 
     ticket.title.source = reference
-    ticket.title.owner = reference
+    ticket.title.owner = owner_group
     await ticket.save(db=db)
     timeline.mark()
     ticket.title.clear_source()

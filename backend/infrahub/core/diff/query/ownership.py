@@ -41,7 +41,7 @@ def holder_edge_patterns() -> Iterator[tuple[HolderKind, str, DatabaseEdgeType]]
 def template_mark_patterns() -> Iterator[tuple[HolderKind, str]]:
     """Yield each kind of holder that can hold the mark of a copy from an object template, with the path to its vertex."""
     for holder_kind, pattern in HOLDER_PATTERNS.items():
-        if holder_kind not in (HolderKind.TARGET_SET, HolderKind.SOURCES):
+        if holder_kind not in {HolderKind.TARGET_SET, HolderKind.SOURCES}:
             yield holder_kind, pattern
 
 

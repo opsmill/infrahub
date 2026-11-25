@@ -619,7 +619,7 @@ async def test_template_changed_on_a_branch_gives_its_new_owners_to_the_nodes_cr
         (node.uuid, attribute.name): attribute.get_property(property_type=DatabaseEdgeType.HAS_OWNER)
         for node in diff.nodes
         for attribute in node.attributes
-        if attribute.name in (OWNERS_FIELD, TARGET_OWNERS_FIELD)
+        if attribute.name in {OWNERS_FIELD, TARGET_OWNERS_FIELD}
     }
     assert {key: (change.previous_value, change.new_value, change.action) for key, change in changes.items()} == {
         (template.id, TARGET_OWNERS_FIELD): (

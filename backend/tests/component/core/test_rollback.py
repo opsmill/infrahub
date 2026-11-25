@@ -111,7 +111,7 @@ async def test_rollback_keeps_the_no_owner_vertex_when_it_deletes_its_only_edge(
     await set_owners(db=db, branch=default_branch, node_id=person.id, owner_ids=(), at=at)
     assert await count_branch_edges_at(db=db, branch_name=default_branch.name, at=at.to_string()) > 0
 
-    await GraphRollbacker(db=db).rollback(target_branch=default_branch, at=at, scope=RollbackScope.AT_TIMESTAMP)
+    await GraphRollbacker(db=db).rollback(target_branch=default_branch, ats=[at], scope=RollbackScope.AT_TIMESTAMP)
 
     assert await count_branch_edges_at(db=db, branch_name=default_branch.name, at=at.to_string()) == 0
     assert await _count_vertices_with_uuid(db=db, uuid=NO_OWNER_VERTEX_UUID) == 1

@@ -447,6 +447,8 @@ class OwnerStateWriteQuery(Query):
             return "WITH n, n AS h"
         if self.holder.kind == HolderKind.ATTRIBUTE:
             self.params["attribute"] = self.holder.attribute
+            stamp, stamp_params = stamp_vertex_metadata(variable="h", at=self.at, operation_ats=self.operation_ats)
+            self.params.update(stamp_params)
             return """
 CALL (n) {
     MATCH (n)-[r:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute})
@@ -463,7 +465,7 @@ CALL (h) {
     WHERE $branch_level = 1
     %(stamp)s
 }
-""" % {"branch_filter": branch_filter, "stamp": stamp_vertex_metadata(variable="h")}
+""" % {"branch_filter": branch_filter, "stamp": stamp}
         key = {
             "attribute": self.holder.attribute,
             "identifier": self.holder.identifier,

@@ -6,6 +6,7 @@ from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.constants import DiffAction
 from infrahub.core.initialization import create_branch
 from infrahub.core.ownership.queries import NoOwnerVertexCreateQuery
+from infrahub.core.schema_change.factory import build_schema_change_repository
 from tests.helpers.ownership import (
     OwnerDataset,
     read_owners,
@@ -115,6 +116,8 @@ async def test_branch_delete_keeps_the_no_owner_vertex_when_the_branch_held_its_
     branch = await create_branch(db=db, branch_name="no-owner-deleted")
     await set_owners(db=db, branch=branch, node_id=dataset.ids["tenant-a"], owner_ids=())
 
-    await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch)
+    await BranchDataDeleter(db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)).delete(
+        branch=branch
+    )
 
     assert await _count_no_owner_vertices(db=db) == 1
