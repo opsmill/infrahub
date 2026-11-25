@@ -4,7 +4,7 @@ import {
   generateAttributeSchema,
   generateNodeSchema,
   generateRelationshipSchema,
-} from "../../../../../tests/fake/schema";
+} from "../../../../../../tests/fake/schema";
 import { getIpPoolExtraFields } from "./get-ip-pool-extra-fields";
 
 describe("getIpPoolExtraFields", () => {

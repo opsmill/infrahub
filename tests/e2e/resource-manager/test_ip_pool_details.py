@@ -105,10 +105,10 @@ class TestIpPoolDetails:
 
         header = pool_header(admin_page)
         await expect(header.get_by_role("heading", level=1, name=EXTERNAL_POOL)).to_be_visible()
-        await expect(header).to_contain_text("in namespace default")
-        await expect(header).to_contain_text("Prefix kind defaults to IpamIPPrefix")
-        await expect(header).to_contain_text("Prefix length defaults to /29")
-        await expect(header).to_contain_text("Member type defaults to Address")
+        await expect(header.get_by_role("term")).to_have_text(
+            ["Namespace", "Default prefix kind", "Default prefix length", "Default member type"]
+        )
+        await expect(header.get_by_role("definition")).to_have_text(["default", "IpamIPPrefix", "/29", "Address"])
 
         resources = admin_page.get_by_role("listbox", name="Resource prefixes")
         await expect(resources.get_by_role("option")).to_have_count(1)
@@ -136,9 +136,10 @@ class TestIpPoolDetails:
 
         header = pool_header(admin_page)
         await expect(header.get_by_role("heading", level=1, name=LOOPBACKS_POOL)).to_be_visible()
-        await expect(header).to_contain_text("in namespace default")
-        await expect(header).to_contain_text("Address kind defaults to IpamIPAddress")
-        await expect(header).to_contain_text("Prefix length defaults to /32")
+        await expect(header.get_by_role("term")).to_have_text(
+            ["Namespace", "Default address kind", "Default prefix length"]
+        )
+        await expect(header.get_by_role("definition")).to_have_text(["default", "IpamIPAddress", "/32"])
 
         resources = admin_page.get_by_role("listbox", name="Resource prefixes")
         await expect(resources.get_by_role("option", name=LOOPBACKS_PREFIX)).to_have_attribute("aria-selected", "true")
@@ -157,19 +158,18 @@ class TestIpPoolDetails:
         await edge_row.get_by_role("link", name=loopback, exact=True).click()
         await expect(admin_page).to_have_url(re.compile(r"/ipam/IpamIPAddress/"))
 
-    async def test_allocations_without_identifier_show_none(
+    async def test_allocations_without_identifier_show_a_dash(
         self, admin_page: Page, data_ipam_pools: IpamPoolsHandle, data_sites: SitesHandle
     ) -> None:
         await admin_page.goto(f"/resource-manager/{data_ipam_pools.pools[INTERNAL_POOL]}")
 
         header = pool_header(admin_page)
-        await expect(header).to_contain_text("Prefix length defaults to /16")
-        await expect(header).to_contain_text("Member type defaults to Prefix")
+        await expect(header.get_by_role("definition")).to_contain_text(["/16", "Prefix"])
 
         grid = allocations_grid(admin_page, "Allocated prefixes")
         for prefix in ("10.0.0.0/16", "10.1.0.0/16", "10.2.0.0/16"):
             row = grid.get_by_role("row").filter(has=admin_page.get_by_role("link", name=prefix, exact=True))
-            await expect(row).to_contain_text("None")
+            await expect(row.get_by_role("gridcell").first).to_have_text("-")
             await expect(row).to_contain_text("IP Prefix")
 
     async def test_link_with_a_resource_prefix(
@@ -196,9 +196,7 @@ class TestIpPoolDetails:
         await admin_page.goto(f"/resource-manager/{empty_pool_id}")
 
         header = pool_header(admin_page)
-        await expect(header).to_contain_text("Prefix kind defaults to IpamIPPrefix")
-        await expect(header).to_contain_text("Prefix length defaults to /29")
-        await expect(header).to_contain_text("Member type defaults to Prefix")
+        await expect(header.get_by_role("definition")).to_contain_text(["IpamIPPrefix", "/29", "Prefix"])
 
         resources = admin_page.get_by_role("listbox", name="Resource prefixes")
         await expect(resources.get_by_role("option", name=EMPTY_PREFIX)).to_contain_text("0%")

@@ -23,7 +23,7 @@ Three plans were compared (minimal change, refactor-friendly, test-first). The s
 4. **Allocations: one infinite query, count from the first page.** `InfrahubResourcePoolAllocated` returns `count` with every page, so there is no separate count query. Page size 100, like the number pool.
 5. **Shared pieces in `entities/resource-manager/ui/pool/`.** `PoolId`, `SchemaReference`, `UtilizationTooltipMessage`, `KindLabel`, `formatUsagePercent` and `PoolItemNotFound` move verbatim from the number pool files, and `PoolAllocationsError` is new; `PoolActionsMenu` takes the common menu with `poolKind` and the update and delete decisions, and `NumberPoolActionsMenu` keeps the schema-lock rule and renders it. The usage bar, the list card, the table and the not-found state stay per pool kind: their inputs differ.
 6. **Selection in the path.** `getIpPoolResourceUrl(poolId, resourceId?)` builds `/resource-manager/{poolId}/resources/{resourceId}`; `ListBoxItem href` navigates. Without a resource id the page selects the first resource prefix in list order without redirecting.
-7. **Member type without a value reads "Member type has no default".** The backend has no fallback at allocation time.
+7. **Member type without a value reads "-".** The backend has no fallback at allocation time.
 8. **No Branch column.** The backend returns the requested branch on every row. The old page always requested the default branch, so its column showed the default branch name on every row; with branch-aware requests the column would only repeat the branch selector.
 9. **Delete the old page files.** `resource-pool-details-body.tsx`, `resource-allocation-details.tsx`, `resource-selector.tsx`, `ResourcePoolUtilization.tsx`, `get-pool-utilization.*`, `get-resource-allocated.*`, `shared/components/form/object-edit-slide-over-trigger.tsx`, `roundNumber` in `shared/utils/number.ts` and the `utilization`/`allocated` query keys go; `knip` confirms nothing dangles.
 10. **Schema extension fields in the header.** `getIpPoolExtraFields` keeps the pool schema's attributes and single relationships that the page does not already show; the header reads them with `useGetObject` only when there is at least one.
@@ -56,14 +56,15 @@ frontend/app/src/entities/resource-manager/
 ├── api/ip-pool-utilization.mappers.ts (+test)
 ├── api/get-ip-pool-allocations-from-api.ts (renamed from get-resource-allocated-from-api.ts, + context), ip-pool-allocation.mappers.ts (+test)
 ├── domain/model/ip-pool.ts
-├── domain/rules/get-ip-pool-default-entries.ts, sort-ip-pool-resources-by-fill-order.ts, get-weighted-prefix-kinds.ts, get-ip-pool-extra-fields.ts (+tests)
+├── domain/rules/sort-ip-pool-resources-by-fill-order.ts, get-weighted-prefix-kinds.ts (+tests)
 ├── domain/use-cases/get-ip-pool.ts, get-ip-pool-utilization.ts, get-ip-pool-allocations.ts (+tests)
 ├── ui/queries/get-ip-pool.query.ts, get-ip-pool-utilization.query.ts, get-ip-pool-allocations.query.ts, resource-manager.query-keys.ts
 ├── ui/routing/ip-pool-urls.ts (+test)
-├── ui/pool/pool-id.tsx, schema-reference.tsx, utilization-tooltip-message.tsx, kind-label.tsx, pool-actions-menu.tsx,
+├── ui/pool/schema-reference.tsx, utilization-tooltip-message.tsx, kind-label.tsx, pool-actions-menu.tsx,
 │   format-usage-percent.ts (+test), pool-item-not-found.tsx, pool-allocations-error.tsx
-└── ui/ip-pool/details/ip-pool-header.tsx, ip-pool-defaults-line.tsx, ip-pool-actions-menu.tsx, ip-pool-usage-bar.tsx,
-    ip-pool-resources-card.tsx, ip-pool-allocations-card.tsx, ip-pool-allocations-table.tsx, ip-pool-extra-fields.tsx (+tests)
+└── ui/ip-pool/details/ip-pool-header.tsx, ip-pool-field.tsx, ip-pool-default-fields.tsx, ip-pool-extra-fields.tsx,
+    get-ip-pool-extra-fields.ts, ip-pool-usage-bar.tsx, ip-pool-resources-card.tsx, ip-pool-allocations-card.tsx,
+    ip-pool-allocations-table.tsx (+tests)
 frontend/app/src/pages/resource-manager/ip-pool-details.tsx (+test), resource-pool-details.tsx
 frontend/app/src/entities/ipam/ip-namespaces/ui/routing/ipam-urls.ts (+test)
 frontend/app/src/entities/navigation/ui/breadcrumbs/breadcrumb-resource-manager.tsx (+test)

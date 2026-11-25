@@ -5,7 +5,7 @@ import type {
   RelationshipSchema,
 } from "@/entities/schema/domain/model/schema";
 
-const FIELDS_SHOWN_BY_THE_PAGE = new Set([
+const FIELDS_VISIBLE_ELSEWHERE_IN_THE_PAGE = new Set([
   "name",
   "description",
   "ip_namespace",
@@ -21,11 +21,13 @@ export interface IpPoolExtraFields {
 }
 
 export const getIpPoolExtraFields = (schema: ModelSchema): IpPoolExtraFields => ({
-  attributes: (schema.attributes ?? []).filter(({ name }) => !FIELDS_SHOWN_BY_THE_PAGE.has(name)),
+  attributes: (schema.attributes ?? []).filter(
+    ({ name }) => !FIELDS_VISIBLE_ELSEWHERE_IN_THE_PAGE.has(name)
+  ),
   relationships: (schema.relationships ?? []).filter(
     (relationship) =>
       relationship.cardinality === "one" &&
       isRelationshipVisibleInSummary(relationship) &&
-      !FIELDS_SHOWN_BY_THE_PAGE.has(relationship.name)
+      !FIELDS_VISIBLE_ELSEWHERE_IN_THE_PAGE.has(relationship.name)
   ),
 });

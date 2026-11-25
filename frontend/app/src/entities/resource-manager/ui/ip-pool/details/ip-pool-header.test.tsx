@@ -108,7 +108,7 @@ describe("IpPoolHeader", () => {
     await expect.element(component.getByRole("button", { name: "Actions" })).toBeVisible();
   });
 
-  it("states the namespace and the defaults under the title", async () => {
+  it("shows the namespace and the defaults under the title", async () => {
     // GIVEN
     const pool = generateIpPrefixPoolData();
 
@@ -119,9 +119,10 @@ describe("IpPoolHeader", () => {
     await expect
       .element(component.getByRole("banner"))
       .toMatchTextContent(
-        /IP Prefix Pool in namespace default\s*·\s*Prefix kind defaults to IpamIPPrefix\s*·\s*Prefix length defaults to \/31\s*·\s*Member type defaults to Address/
+        /Namespace\s*default\s*Default prefix kind\s*IpamIPPrefix\s*Default prefix length\s*\/31\s*Default member type\s*Address/
       );
   });
+
   it("links the actions menu to the prefix pool schema", async () => {
     // GIVEN
     const pool = generateIpPrefixPoolData();

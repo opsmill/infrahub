@@ -187,7 +187,7 @@ export function IpPoolAllocationsTable({
                   </Cell>
                   <Cell className={cellStyle}>
                     {allocation.identifier === null ? (
-                      <span className="text-foreground-muted">None</span>
+                      <span className="text-foreground-muted">-</span>
                     ) : (
                       <span className="truncate font-mono text-xs" title={allocation.identifier}>
                         {allocation.identifier}

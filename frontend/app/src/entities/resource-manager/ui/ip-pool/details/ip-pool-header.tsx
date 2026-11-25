@@ -14,8 +14,8 @@ import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-u
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { IpPoolData } from "@/entities/resource-manager/domain/model/ip-pool";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/domain/model/pool";
-import { IpPoolDefaultsLine } from "@/entities/resource-manager/ui/ip-pool/details/ip-pool-defaults-line";
-import { IpPoolExtraFieldsLine } from "@/entities/resource-manager/ui/ip-pool/details/ip-pool-extra-fields";
+import { IpPoolDefaultFields } from "@/entities/resource-manager/ui/ip-pool/details/ip-pool-default-fields";
+import { IpPoolExtraFieldsList } from "@/entities/resource-manager/ui/ip-pool/details/ip-pool-extra-fields";
 import { PoolActionsMenu } from "@/entities/resource-manager/ui/pool/pool-actions-menu";
 import { resourceManagerQueryKeys } from "@/entities/resource-manager/ui/queries/resource-manager.query-keys";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
@@ -29,15 +29,15 @@ export interface IpPoolHeaderProps {
 export function IpPoolHeader({ pool, schema, permission }: IpPoolHeaderProps) {
   const { currentBranch } = useCurrentBranch();
   const atDate = useAtomValue(datetimeAtom);
+  const navigate = useNavigate();
   const refreshedQueryKeys = [
     resourceManagerQueryKeys.all,
     objectQueryKeys.lists({ objectKind: pool.__typename, branchName: currentBranch.name, atDate }),
   ];
-  const navigate = useNavigate();
 
   return (
-    <header className="px-3 py-2 text-sm">
-      <Row className="mb-4 items-start">
+    <header className="px-3 pt-2 pb-4 text-sm">
+      <Row className="mb-3 items-start">
         <Col className="min-w-0 grow gap-0">
           <Row className="gap-1">
             <h1 className="truncate font-bold text-xl" title={pool.name.value}>
@@ -62,17 +62,22 @@ export function IpPoolHeader({ pool, schema, permission }: IpPoolHeaderProps) {
         />
       </Row>
 
-      <IpPoolDefaultsLine pool={pool} poolLabel={schema.label ?? schema.kind!} />
-      <IpPoolExtraFieldsLine poolId={pool.id} schema={schema} />
+      <Row className="no-scrollbar -m-0.5 flex-wrap gap-x-8 gap-y-3 overflow-auto p-0.5">
+        <IpPoolDefaultFields pool={pool} />
+        <IpPoolExtraFieldsList poolId={pool.id} schema={schema} />
+      </Row>
     </header>
   );
 }
 
 export function IpPoolHeaderSkeleton() {
   return (
-    <Row role="status" aria-label="Loading IP pool" className="gap-4 px-3 py-2">
-      <Skeleton className="h-7 w-72" />
-      <Skeleton className="ml-auto h-8 w-24" />
-    </Row>
+    <div role="status" aria-label="Loading IP pool" className="px-3 pt-2 pb-4">
+      <Row className="mb-3 gap-4">
+        <Skeleton className="h-7 w-72" />
+        <Skeleton className="ml-auto h-8 w-24" />
+      </Row>
+      <Skeleton className="h-10 w-96" />
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { Link } from "@/shared/components/ui/link";
+import { sortByOrderWeight } from "@/shared/utils/common";
 
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import type {
@@ -13,30 +14,22 @@ import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-u
 import {
   getIpPoolExtraFields,
   type IpPoolExtraFields,
-} from "@/entities/resource-manager/domain/rules/get-ip-pool-extra-fields";
+} from "@/entities/resource-manager/ui/ip-pool/details/get-ip-pool-extra-fields";
+import {
+  IpPoolField,
+  IpPoolFieldList,
+  UNSET_FIELD_VALUE,
+} from "@/entities/resource-manager/ui/ip-pool/details/ip-pool-field";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
+import { isRelationshipSchema } from "@/entities/schema/domain/rules/is-relationship-schema";
 
-interface ExtraFieldProps {
-  label: string;
-  children: React.ReactNode;
-}
-
-function ExtraField({ label, children }: ExtraFieldProps) {
-  return (
-    <div className="flex min-w-0 items-baseline gap-1.5">
-      <dt className="shrink-0 text-foreground-muted">{label}</dt>
-      <dd className="min-w-0 truncate text-foreground">{children}</dd>
-    </div>
-  );
-}
-
-interface ExtraFieldsListProps {
+interface ExtraFieldValuesProps {
   poolId: string;
   schema: ModelSchema;
   fields: IpPoolExtraFields;
 }
 
-function ExtraFieldsList({ poolId, schema, fields }: ExtraFieldsListProps) {
+function ExtraFieldValues({ poolId, schema, fields }: ExtraFieldValuesProps) {
   const { data: pool, isPending } = useGetObject({
     objectSchema: schema,
     objectId: poolId,
@@ -44,27 +37,26 @@ function ExtraFieldsList({ poolId, schema, fields }: ExtraFieldsListProps) {
     getRelationshipsVisible: () => fields.relationships,
   });
 
-  if (isPending) return <Skeleton className="mt-2 h-5 w-64" />;
-
-  // the extra fields add context, so a failed read leaves the header as it is
+  if (isPending) return <Skeleton className="h-10 w-32" />;
   if (!pool) return null;
 
+  const orderedFields = sortByOrderWeight([...fields.attributes, ...fields.relationships]);
+
   return (
-    <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-      {fields.attributes.map((attribute) => (
-        <ExtraField key={attribute.name} label={attribute.label || attribute.name}>
-          <ObjectAttributeValue
-            attributeSchema={attribute}
-            attributeData={pool[attribute.name] as NodeAttributeWithMetadata}
-          />
-        </ExtraField>
+    <IpPoolFieldList>
+      {orderedFields.map((field) => (
+        <IpPoolField key={field.name} label={field.label || field.name}>
+          {isRelationshipSchema(field) ? (
+            <RelationshipValue pool={pool} name={field.name} />
+          ) : (
+            <ObjectAttributeValue
+              attributeSchema={field}
+              attributeData={pool[field.name] as NodeAttributeWithMetadata}
+            />
+          )}
+        </IpPoolField>
       ))}
-      {fields.relationships.map((relationship) => (
-        <ExtraField key={relationship.name} label={relationship.label || relationship.name}>
-          <RelationshipValue pool={pool} name={relationship.name} />
-        </ExtraField>
-      ))}
-    </dl>
+    </IpPoolFieldList>
   );
 }
 
@@ -77,24 +69,30 @@ function RelationshipValue({ pool, name }: RelationshipValueProps) {
   const relationship = pool[name];
   const peer = isNodeRelationshipOne(relationship) ? relationship.node : null;
 
-  if (!peer) return "-";
+  if (!peer) return UNSET_FIELD_VALUE;
+
+  const label = getNodeLabel(peer);
 
   return (
-    <Link to={getObjectDetailsUrl(peer.__typename, peer.id)} className="font-medium">
-      {getNodeLabel(peer)}
+    <Link
+      to={getObjectDetailsUrl(peer.__typename, peer.id)}
+      title={label}
+      className="text-foreground"
+    >
+      {label}
     </Link>
   );
 }
 
-export interface IpPoolExtraFieldsLineProps {
+export interface IpPoolExtraFieldsListProps {
   poolId: string;
   schema: ModelSchema;
 }
 
-export function IpPoolExtraFieldsLine({ poolId, schema }: IpPoolExtraFieldsLineProps) {
+export function IpPoolExtraFieldsList({ poolId, schema }: IpPoolExtraFieldsListProps) {
   const fields = getIpPoolExtraFields(schema);
 
   if (fields.attributes.length === 0 && fields.relationships.length === 0) return null;
 
-  return <ExtraFieldsList poolId={poolId} schema={schema} fields={fields} />;
+  return <ExtraFieldValues poolId={poolId} schema={schema} fields={fields} />;
 }

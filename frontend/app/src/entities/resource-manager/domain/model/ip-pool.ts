@@ -66,14 +66,3 @@ export interface IpPoolAllocationsPage {
   count: number;
   allocations: IpPoolAllocation[];
 }
-
-export type IpPoolDefaultValue =
-  | { type: "kind"; kind: string }
-  | { type: "prefix-length"; length: number }
-  | { type: "member-type"; memberType: IpPoolMemberType };
-
-export interface IpPoolDefaultEntry {
-  label: string;
-  value: IpPoolDefaultValue | null;
-  fallbackPhrase: string;
-}

@@ -162,7 +162,7 @@ describe("IpPoolAllocationsTable", () => {
     await expect.element(component.getByRole("grid").getByText("IpamIPPrefix")).toBeVisible();
   });
 
-  it("says None for a prefix the pool did not reserve", async () => {
+  it("shows a dash for a prefix the pool did not reserve", async () => {
     // GIVEN
     mockAllocations({ allocations: [generateIpPoolAllocation({ identifier: null })] });
 
@@ -170,7 +170,7 @@ describe("IpPoolAllocationsTable", () => {
     const component = await renderTable();
 
     // THEN
-    await expect.element(component.getByRole("grid").getByText("None")).toBeVisible();
+    await expect.element(component.getByRole("grid").getByText("-", { exact: true })).toBeVisible();
   });
 
   it("says when the resource prefix holds no prefix", async () => {

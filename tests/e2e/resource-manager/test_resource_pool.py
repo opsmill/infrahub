@@ -62,10 +62,10 @@ class TestResourceManager:
         header = admin_page.locator("header").filter(has=admin_page.get_by_role("heading", level=1))
         await expect(header.get_by_role("heading", level=1, name="test prefix pool")).to_be_visible()
         # the create form pre-fills the prefix type; the member type comes from the schema default
-        await expect(header).to_contain_text("in namespace default")
-        await expect(header).to_contain_text("Prefix kind defaults to IpamIPPrefix")
-        await expect(header).to_contain_text("Prefix length has no default")
-        await expect(header).to_contain_text("Member type defaults to Prefix")
+        await expect(header.get_by_role("term")).to_have_text(
+            ["Namespace", "Default prefix kind", "Default prefix length", "Default member type"]
+        )
+        await expect(header.get_by_role("definition")).to_have_text(["default", "IpamIPPrefix", "-", "Prefix"])
         assert "/resource-manager/" in admin_page.url
 
         resources = admin_page.get_by_role("listbox", name="Resource prefixes")
