@@ -1,0 +1,1 @@
+Creating a node or updating its text area, JSON or list attributes is now faster in large databases: the value is found through an index instead of reading every attribute value. The upgrade sets the index on the values already stored.

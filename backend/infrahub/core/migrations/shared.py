@@ -161,6 +161,21 @@ class SchemaMigration(BaseModel):
     ) -> MigrationResult:
         return result
 
+    async def build_query(
+        self,
+        migration_query: type[MigrationBaseQuery],
+        migration_input: MigrationInput,
+        branch: Branch,
+    ) -> MigrationBaseQuery:
+        """Build one query of the migration; a migration whose query text depends on a read runs that read here."""
+        return await migration_query.init(
+            db=migration_input.db,
+            branch=branch,
+            at=migration_input.at,
+            migration=self,
+            user_id=migration_input.user_id,
+        )
+
     async def execute_queries(
         self,
         migration_input: MigrationInput,
@@ -170,12 +185,8 @@ class SchemaMigration(BaseModel):
     ) -> MigrationResult:
         for migration_query in queries:
             try:
-                query = await migration_query.init(
-                    db=migration_input.db,
-                    branch=branch,
-                    at=migration_input.at,
-                    migration=self,
-                    user_id=migration_input.user_id,
+                query = await self.build_query(
+                    migration_query=migration_query, migration_input=migration_input, branch=branch
                 )
                 await query.execute(db=migration_input.db)
                 result.nbr_migrations_executed += query.get_nbr_migrations_executed()
