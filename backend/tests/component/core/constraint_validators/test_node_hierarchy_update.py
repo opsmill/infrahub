@@ -2,7 +2,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import PathType, SchemaPathType
+from infrahub.core.constants import HierarchySide, PathType, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -75,7 +75,7 @@ async def test_query_children_success(
         branch=default_branch,
         node_schema=site_schema,
         schema_path=schema_path,
-        check_children=True,
+        side=HierarchySide.CHILDREN,
         allowed_peer_kinds=["LocationRack"],
         allowed_hierarchy_kinds=["LocationGeneric"],
     )
@@ -98,7 +98,7 @@ async def test_query_parent_success(
         branch=default_branch,
         node_schema=site_schema,
         schema_path=schema_path,
-        check_parent=True,
+        side=HierarchySide.PARENT,
         allowed_peer_kinds=["LocationRegion"],
         allowed_hierarchy_kinds=["LocationGeneric"],
     )
@@ -124,7 +124,7 @@ async def test_query_children_failure(
         branch=default_branch,
         node_schema=site_schema,
         schema_path=schema_path,
-        check_children=True,
+        side=HierarchySide.CHILDREN,
         allowed_peer_kinds=["LocationRegion"],
         allowed_hierarchy_kinds=["LocationGeneric"],
     )
@@ -194,7 +194,7 @@ async def test_query_parent_failure(
         branch=default_branch,
         node_schema=site_schema,
         schema_path=schema_path,
-        check_parent=True,
+        side=HierarchySide.PARENT,
         allowed_peer_kinds=["LocationRack"],
         allowed_hierarchy_kinds=["LocationGeneric"],
     )
@@ -271,7 +271,7 @@ async def test_query_update_on_branch_failure(
         branch=branch,
         node_schema=site_schema,
         schema_path=schema_path,
-        check_children=True,
+        side=HierarchySide.CHILDREN,
         allowed_peer_kinds=["LocationRegion"],
         allowed_hierarchy_kinds=["LocationGeneric"],
     )
@@ -359,7 +359,7 @@ async def test_query_delete_on_branch_failure(
         branch=branch,
         node_schema=site_schema,
         schema_path=schema_path,
-        check_children=True,
+        side=HierarchySide.CHILDREN,
         allowed_peer_kinds=["LocationRegion"],
         allowed_hierarchy_kinds=["LocationGeneric"],
     )

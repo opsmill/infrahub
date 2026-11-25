@@ -1,5 +1,7 @@
 from enum import Enum, Flag, IntEnum, auto
 
+from infrahub.utils import InfrahubStringEnum
+
 PARENT_CHILD_IDENTIFIER = "parent__child"
 RESOURCE_POOL_REL_SUFFIX = "_from_resource_pool"
 SCHEMA_ATTRIBUTE_PATH_MAX_SEGMENTS = 2
@@ -7,6 +9,11 @@ SCHEMA_RELATIONSHIP_PATH_MAX_SEGMENTS = SCHEMA_ATTRIBUTE_PATH_MAX_SEGMENTS + 1
 
 HFID_ATTRIBUTE_NAME = "human_friendly_id"
 DISPLAY_LABEL_ATTRIBUTE_NAME = "display_label"
+
+
+class HierarchySide(InfrahubStringEnum):
+    PARENT = "parent"
+    CHILDREN = "children"
 
 
 class FlagProperty(Enum):

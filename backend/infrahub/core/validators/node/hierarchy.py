@@ -3,10 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants import PathType
+from infrahub.core.constants import HierarchySide, PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import NodeSchema
-from infrahub.utils import InfrahubStringEnum
 
 from ..interface import ConstraintCheckerInterface
 from ..renamed_kinds import get_kinds_with_previous_names
@@ -32,22 +31,18 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
         self,
         allowed_peer_kinds: list[str],
         allowed_hierarchy_kinds: list[str],
-        check_children: bool = False,
-        check_parent: bool = False,
+        side: HierarchySide,
         **kwargs: Any,
     ) -> None:
         self.allowed_peer_kinds = allowed_peer_kinds
         self.allowed_hierarchy_kinds = allowed_hierarchy_kinds
-        self.check_children = check_children
-        self.check_parent = check_parent
+        self.side = side
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        if self.check_children and self.check_parent:
-            raise RuntimeError("Cannot check children and parent at same time")
-        if self.check_children:
+        if self.side is HierarchySide.CHILDREN:
             to_children, to_parent = "<", ""
-        elif self.check_parent:
+        else:
             to_children, to_parent = "", ">"
         if not self.allowed_peer_kinds or not self.allowed_hierarchy_kinds:
             raise RuntimeError(f"No peer or hierarchy kind to check for '{self.node_schema.kind}'")
@@ -130,7 +125,7 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
                     branch=str(result.get("branch_name")),
                     path_type=PathType.NODE,
                     node_id=str(result.get("start_node.uuid")),
-                    field_name="children" if self.check_children else "parent",
+                    field_name=self.side.value,
                     peer_id=str(result.get("current_peer.uuid")),
                     kind=self.node_schema.kind,
                 )
@@ -143,14 +138,9 @@ PARENT_CONSTRAINT_NAMES = ("node.parent.update", "node.hierarchy.update")
 CHILDREN_CONSTRAINT_NAMES = ("node.children.update", "node.hierarchy.update")
 
 
-class _HierarchySide(InfrahubStringEnum):
-    PARENT = "parent"
-    CHILDREN = "children"
-
-
 @dataclass(frozen=True)
 class _HierarchyDirection:
-    side: _HierarchySide
+    side: HierarchySide
     peer_kind: str
 
 
@@ -201,9 +191,9 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
     def _get_directions_to_check(node_schema: NodeSchema, constraint_name: str) -> list[_HierarchyDirection]:
         directions: list[_HierarchyDirection] = []
         if node_schema.parent and constraint_name in PARENT_CONSTRAINT_NAMES:
-            directions.append(_HierarchyDirection(side=_HierarchySide.PARENT, peer_kind=node_schema.parent))
+            directions.append(_HierarchyDirection(side=HierarchySide.PARENT, peer_kind=node_schema.parent))
         if node_schema.children and constraint_name in CHILDREN_CONSTRAINT_NAMES:
-            directions.append(_HierarchyDirection(side=_HierarchySide.CHILDREN, peer_kind=node_schema.children))
+            directions.append(_HierarchyDirection(side=HierarchySide.CHILDREN, peer_kind=node_schema.children))
         return directions
 
     def _get_allowed_hierarchy_kinds(
@@ -232,8 +222,7 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
                     db=self.db, request=request, kinds=[direction.peer_kind]
                 ),
                 allowed_hierarchy_kinds=allowed_hierarchy_kinds,
-                check_children=direction.side is _HierarchySide.CHILDREN,
-                check_parent=direction.side is _HierarchySide.PARENT,
+                side=direction.side,
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())
