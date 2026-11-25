@@ -34,7 +34,7 @@ stays open until then.
 `backend/infrahub/graphql/loaders/`). No new dependency.
 
 **Storage**: Neo4j. Four new vertex labels and four new edge types, outside the branch-aware graph
-model. Three range indexes, added by the graph migration `m084_schema_change_indexes`
+model. Three range indexes, added by the graph migration `m085_schema_change_indexes`
 ([research.md](research.md), R3).
 
 **Testing**: pytest 9. Unit tests without a database for the builder, the applier and the
@@ -136,7 +136,7 @@ backend/infrahub/
 │   ├── graph/
 │   │   └── index.py                      # changed: three indexes on the records
 │   ├── migrations/graph/
-│   │   └── m084_schema_change_indexes.py # new: adds the three indexes to an existing database
+│   │   └── m085_schema_change_indexes.py # new: adds the three indexes to an existing database
 │   ├── schema/
 │   │   └── update_coordinator.py         # changed: passes the application ID, runs a final step; one signature for execute
 │   ├── migrations/schema/

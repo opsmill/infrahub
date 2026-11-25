@@ -125,6 +125,8 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_INITIAL_AGENT_PASSWORD:
   INFRAHUB_INITIAL_AGENT_TOKEN:
   INFRAHUB_INITIAL_DEFAULT_BRANCH: ${INFRAHUB_INITIAL_DEFAULT_BRANCH:-main}
+  INFRAHUB_INSTANCE_COLOR:
+  INFRAHUB_INSTANCE_LABEL:
   INFRAHUB_INTERNAL_ADDRESS:
   INFRAHUB_LDAP_ATTRIBUTE_DISABLED: ${INFRAHUB_LDAP_ATTRIBUTE_DISABLED:-userAccountControl}
   INFRAHUB_LDAP_ATTRIBUTE_DISABLED_BITMASK: ${INFRAHUB_LDAP_ATTRIBUTE_DISABLED_BITMASK:-2}
@@ -289,7 +291,7 @@ services:
       - 6362:6362
 
   task-manager:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.12.2}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.12.3}"
     command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
     restart: unless-stopped
     depends_on:
@@ -322,7 +324,7 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.12.2}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.12.3}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -368,7 +370,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.12.2}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.12.3}"
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:

@@ -1019,7 +1019,7 @@ tasks that name it.
       `core/schema_change/history_reader.py`.
 - [X] T069 [US2] Three range indexes, `SchemaChange(uuid)`, `SchemaChange(branch)` and
       `SchemaChangeApplication(uuid)`, in `core/graph/index.py`, and the graph migration
-      `m084_schema_change_indexes` that adds them ([research.md](research.md), R3).
+      `m085_schema_change_indexes` that adds them ([research.md](research.md), R3).
 - [X] T070 [US2] `applications` of a schema change and `migrations` of an application are paged
       connections with `limit`, `offset` and `count`, read by loaders keyed by page. The types no
       longer expose `format_version` and `nbr_migrations_executed`. Regenerate

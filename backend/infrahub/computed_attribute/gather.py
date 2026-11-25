@@ -7,6 +7,7 @@ from prefect import task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
+from infrahub import log as infrahub_log
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreTransformPython as CoreTransformPythonNode
 from infrahub.core.registry import registry
@@ -30,15 +31,10 @@ if TYPE_CHECKING:
     from infrahub.git.models import RepositoryData
 
 
-@task(
-    name="gather-python-transform-attributes",
-    task_run_name="Gather Python transform attributes for {branch_name}",
-    cache_policy=NONE,
-)
 async def gather_python_transform_attributes(
     db: InfrahubDatabase, branch_name: str, repositories: dict[str, RepositoryData] | None = None
 ) -> list[PythonTransformComputedAttribute]:
-    log = get_run_logger()
+    log = infrahub_log.get_run_logger()
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
     branch = registry.get_branch_from_registry(branch=branch_name)
 
@@ -78,7 +74,7 @@ async def gather_python_transform_attributes(
     for transform_key in transform_keys:
         if transform_key not in resolved_keys:
             log.warning(
-                msg=f"The transform {transform_key} is assigned to a computed attribute but the transform could not be found in the database."
+                msg=f"The transform {transform_key} is assigned to a computed attribute but the transform could not be found on branch {branch_name}."
             )
     repositories = repositories or await get_repositories_commit_per_branch(db=db)
     graphql_params = await prepare_graphql_params(db=db, branch=branch)

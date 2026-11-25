@@ -100,8 +100,8 @@ linked by their own edge types.
 ## R3. Three indexes, added by a graph migration
 
 **Decision**: three range indexes in `core/graph/index.py`, chosen from the properties that the
-queries start from. The graph migration `core/migrations/graph/m084_schema_change_indexes.py` adds
-them to an existing database, and `GRAPH_VERSION` is 84.
+queries start from. The graph migration `core/migrations/graph/m085_schema_change_indexes.py` adds
+them to an existing database, and `GRAPH_VERSION` is 85.
 
 | Index | Queries that start from it |
 | --- | --- |

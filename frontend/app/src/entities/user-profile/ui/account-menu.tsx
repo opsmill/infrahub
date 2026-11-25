@@ -33,6 +33,7 @@ import {
 } from "@/shared/config/config";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import { clearSessionCache } from "@/entities/authentication/ui/queries/clear-session-cache";
 import { useLogoutMutation } from "@/entities/authentication/ui/queries/logout.mutation";
 import { AboutModal } from "@/entities/config/ui/about-modal";
 import { AppInfo } from "@/entities/config/ui/app-info";
@@ -170,7 +171,7 @@ const AuthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void }
       // otherwise a transient error could leave the user with a stale token
       // and another user's cached data still visible.
       setToken(null);
-      queryClient.clear();
+      clearSessionCache(queryClient);
     }
   };
 

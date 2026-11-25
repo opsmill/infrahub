@@ -53,6 +53,8 @@ def get_attribute_path_from_string(
 
 
 class UniquenessChecker(ConstraintCheckerInterface):
+    reads_listed_nodes = True
+
     def __init__(
         self,
         db: InfrahubDatabase,

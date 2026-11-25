@@ -86,14 +86,17 @@ Stores attribute metadata. Label: `Attribute`.
 
 ### AttributeValue / AttributeValueIndexed
 
-Stores attribute values. Labels always include `AttributeValue`. Labels include `AttributeValueIndexed` if the value is indexed.
+Stores attribute values. Labels always include `AttributeValue`. Labels include `AttributeValueIndexed` if the value is indexed. An interrupted run of migration 084 can leave the temporary label `AttributeValueKeyPending` on values that have no `value_key`, and the next run of the migration removes it.
 
 | Property | Type | Description |
 |----------|------|-------------|
 | `value` | any | The attribute value (`"NULL"` for null) |
 | `is_default` | boolean | Whether this is a default value |
+| `value_key` | string? | Only on values of large kinds, without `AttributeValueIndexed`: the MD5 hex digest of the serialized value |
 
 **Sharing via `MERGE`**: `AttributeValue` nodes are de-duplicated on `value` + `is_default`. Any two attributes with identical serialized values reference the same node. Migrations that modify values must create new nodes and transfer `HAS_VALUE` edges rather than updating in place, or they risk corrupting unrelated attributes.
+
+**Finding an existing value**: an indexed value is found through the RANGE index on `AttributeValueIndexed(value)`. Values of large kinds (TextArea, JSON, List) can exceed the size of an index entry, so they are found through the RANGE index on `AttributeValue(value_key)`, a hash computed in Python, with a single `MERGE` on `value_key`, `value` and `is_default`. A lookup on `value` alone, or one that excludes `AttributeValueIndexed` without the key, reads every `AttributeValue` vertex. Cypher cannot compute the hash, so a query that creates such a value from stored data gets the keys from Python first. Concurrent writes can leave two equal values, and a `MERGE` then returns both, so a query that links an attribute to the value it found keeps one row with `LIMIT 1`.
 
 ### Boolean
 

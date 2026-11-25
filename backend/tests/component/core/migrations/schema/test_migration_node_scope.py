@@ -132,7 +132,11 @@ def _attribute_rename(db: InfrahubDatabase, branch: Branch) -> PreparedMigration
 def _attribute_kind_update(db: InfrahubDatabase, branch: Branch) -> PreparedMigration:
     migration = build_attribute_migration(AttributeKindUpdateMigration, branch, WIDGET_KIND, "color", kind="TextArea")
     return PreparedMigration(
-        migration=migration, queries=[AttributeKindUpdateMigrationQuery], init_kwargs={"migration": migration}
+        migration=migration,
+        queries=[AttributeKindUpdateMigrationQuery],
+        # The test builds the query here only to count, and the count does not read the keys of the values.
+        init_kwargs={"migration": migration, "value_keys": {}},
+        run_through_execute=True,
     )
 
 

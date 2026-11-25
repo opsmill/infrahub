@@ -6,6 +6,7 @@ from infrahub_sdk.batch import InfrahubBatch
 from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
+from prefect.utilities.annotations import quote
 
 from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.core.path import SchemaPath  # noqa: TC001
@@ -46,7 +47,7 @@ async def schema_validate_migrations(message: SchemaValidateMigrationData) -> li
             node_schema=schema,
             schema_path=constraint.path,
             schema_branch=message.schema_branch,
-            node_uuids=constraint.node_uuids,
+            node_uuids=quote(constraint.node_uuids),
             is_isolated=message.is_isolated,
             database=await get_database(),
         )
