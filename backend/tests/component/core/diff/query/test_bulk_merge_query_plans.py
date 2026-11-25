@@ -100,11 +100,13 @@ class TestBulkMergeQueryPlans:
             car = await Node.init(db=db, schema="TestCar", branch=default_branch_scope_class)
             await car.new(db=db, name=f"car-{index}", nbr_seats=4, is_electric=False, owner=person)
             await car.save(db=db)
+        # Statistics sampled before the branch exists see a single `branch` value, so the planner expects a seek on the
+        # source branch to return every edge of its type, as on a database not resampled since the branch was created.
+        await refresh_planner_statistics(db=db)
         branch = await create_branch(db=db, branch_name="plan-source")
         person = await Node.init(db=db, schema="TestPerson", branch=branch)
         await person.new(db=db, name="person-on-branch", height=1)
         await person.save(db=db)
-        await refresh_planner_statistics(db=db)
         return branch
 
     @pytest.mark.parametrize("case", CASES, ids=lambda case: case.name)
