@@ -13,7 +13,7 @@ import pytest
 from helpers import generate_random_branch_name, get_data_table_row
 from playwright.async_api import expect
 
-pytestmark = pytest.mark.shard_branches_repo
+pytestmark = pytest.mark.shard_sites_a
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
