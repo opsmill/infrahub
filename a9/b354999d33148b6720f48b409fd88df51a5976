@@ -1,0 +1,27 @@
+backend/infrahub/core/graph/__init__.py
+  s_c6b38432d696b9::t_d9dd5b1ac8ffa6 1
+dev/knowledge/backend/schema-changes.md
+  s_c6b38432d696b9::t_a8dc7dd8f63bbd 47-49
+dev/specs/ifc-3614-store-schema-changes/plan.md
+  s_c6b38432d696b9::t_95b71526f4bfcc 37,90
+dev/specs/ifc-3614-store-schema-changes/research.md
+  s_c6b38432d696b9::t_20c9390353c86f 100,103-104
+dev/specs/ifc-3614-store-schema-changes/tasks.md
+  s_c6b38432d696b9::t_d9ea8a0c3c2528 1021
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a9b354999d33148b6720f48b409fd88df51a5976",
+  "prompts": {},
+  "sessions": {
+    "s_c6b38432d696b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ffe8b51d-180f-401a-a13e-b2f72b39c403",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
