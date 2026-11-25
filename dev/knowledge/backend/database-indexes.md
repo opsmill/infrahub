@@ -48,7 +48,7 @@ RETURN sum(num_edges) AS num_edges
 - Name the label or the edge type in the pattern. A pattern that names none cannot use any index.
 - Write one `MATCH` per edge type and per property, joined with `UNION ALL`, and put `USING INDEX SEEK` on each. One `MATCH` over several types, or two properties joined with `OR`, leaves the choice to the planner: a seek is not guaranteed, and with `OR` a seek can be bounded on one side of the range only.
 - Hint the index of the predicate that keeps the fewest rows. An index on `branch` keeps nearly every edge when the branch is the default branch.
-- Leave out a label that the edge type already implies on the other end of a hinted edge, such as `:Node` on the start of `HAS_ATTRIBUTE`. To check the label, the planner can join the seek with a scan of every vertex of that label.
+- Leave out a label that the edge type already implies at either end of a hinted edge, such as `:Node` on the start of `HAS_ATTRIBUTE` or `:Attribute` on its end. To check the label, the planner can join the seek with a scan of every vertex of that label, which it chooses when it expects the seek to return many edges, as with statistics sampled before the branch existed.
 - Aggregate, or return `DISTINCT` rows, inside each read, and combine the results after the `UNION ALL`. Each read then returns a few rows instead of one row per edge.
 - When one edge can match two reads, exclude it from one of them. In the example, the read on `to` leaves out an edge that was opened and closed inside the window, because the read on `from` already counts it.
 
