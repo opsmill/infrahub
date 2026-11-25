@@ -206,8 +206,8 @@ class SchemaRoot(BaseModel):
         )
 
     def duplicate(self) -> SchemaRoot:
-        """Return a duplicate of the current schema."""
-        return SchemaRoot.model_validate(self.model_dump())
+        """Return a duplicate of the current schema, which states the same fields."""
+        return SchemaRoot.model_validate(self.model_dump(exclude_unset=True))
 
 
 internal_schema = internal.to_dict()

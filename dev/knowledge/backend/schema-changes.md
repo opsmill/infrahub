@@ -125,8 +125,9 @@ through `api/schema.py::build_candidate_from_schemas`:
    is merged into the renamed kind and lost, or it overwrites the stored row of the renamed kind.
 3. `SchemaOperationBuilder` lays the merged file over a copy of the branch schema, processes it,
    diffs it against the branch schema, and keeps each path of that diff that the file states as an
-   operation. A file states the fields its model has as set, so `SchemaRoot.merge` dumps the files with
-   `exclude_unset`: a field that no file states stays unset in the merged file and gives no operation.
+   operation. A file states the fields its model has as set, so `SchemaRoot.merge` and
+   `SchemaRoot.duplicate`, which the check of submitted IDs uses, dump the files with `exclude_unset`:
+   a field that no file states stays unset and gives no operation.
    That processed copy is the direct-load schema. A renamed kind gives one
    `node_rename` operation that sets its name and namespace together, so the kind never passes
    through a kind between the two. The operations of removed kinds come first, then those of

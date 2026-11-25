@@ -579,3 +579,32 @@ async def test_roots_without_ids_are_returned_unchanged(stored_branch_schema: Sc
     assert resolution.warnings == []
     assert resolution.errors == []
     assert lookup.calls == []
+
+
+async def test_copies_state_only_the_fields_the_submitted_schema_states(stored_branch_schema: SchemaBranch) -> None:
+    # Built from the payload of a load, which gives each attribute as a mapping.
+    submitted = [
+        SchemaRoot.model_validate(
+            {
+                "nodes": [
+                    {
+                        "id": "n2",
+                        "name": "Gadget",
+                        "namespace": "Testing",
+                        "attributes": [{"name": "color", "kind": "Text", "optional": True}],
+                    }
+                ]
+            }
+        )
+    ]
+    resolver = SubmittedSchemaIdResolver(lookup=InMemorySchemaElementIdLookup(existing_ids=set()))
+
+    resolution = await resolver.resolve(branch_schema=stored_branch_schema, schemas=submitted)
+
+    [gadget] = resolution.schemas[0].nodes
+    assert gadget.model_dump(exclude_unset=True) == {
+        "id": "n2",
+        "name": "Gadget",
+        "namespace": "Testing",
+        "attributes": [{"name": "color", "kind": "Text", "optional": True}],
+    }
