@@ -1,0 +1,23 @@
+backend/infrahub/core/schema/hierarchy_update.py
+  s_4fa415708315a7::t_7d45b6924d6596 1-58
+backend/infrahub/core/schema/schema_branch.py
+  s_4fa415708315a7::t_42d496c2018049 66,366-367
+backend/tests/unit/core/schema/schema_update_validation/test_hierarchy.py
+  s_4fa415708315a7::t_822f199defb82e 108-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "defba35d177e80743a83172f3ed75dd73a591812",
+  "prompts": {},
+  "sessions": {
+    "s_4fa415708315a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03e5d1ed-c4d3-4710-b21f-22b15f31d216",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
