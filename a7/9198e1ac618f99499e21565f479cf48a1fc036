@@ -1,0 +1,25 @@
+backend/tests/unit/core/schema/schema_update_validation/test_hierarchy.py
+  s_4fa415708315a7::t_8c0048022b7310 110,116-117,119-127
+  s_4fa415708315a7::t_822f199defb82e 108-109,111-115,118
+backend/infrahub/core/schema/hierarchy_update.py
+  s_4fa415708315a7::t_7d45b6924d6596 1-32,44-61,71-72
+  s_4fa415708315a7::t_8c0048022b7310 33-43,62-70
+backend/infrahub/core/schema/schema_branch.py
+  s_4fa415708315a7::t_42d496c2018049 66,366-367
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a79198e1ac618f99499e21565f479cf48a1fc036",
+  "prompts": {},
+  "sessions": {
+    "s_4fa415708315a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03e5d1ed-c4d3-4710-b21f-22b15f31d216",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
