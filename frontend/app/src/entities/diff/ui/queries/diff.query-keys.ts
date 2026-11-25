@@ -103,7 +103,6 @@ type ValidatorDetailsKeyParams = {
   validatorId: string;
   checksOffset?: number;
   checksLimit?: number;
-  checksFailedFirst?: boolean;
 };
 
 export const validatorDetailsKeys = {

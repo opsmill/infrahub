@@ -501,7 +501,7 @@ class GraphQLSchemaManager:
                 elif rel.cardinality == RelationshipCardinality.MANY:
                     peer_type = self.get_type(name=f"NestedPaginated{peer_schema.kind}")
 
-                    if node_schema.kind == InfrahubKind.ARTIFACTVALIDATOR and rel.name == "checks":
+                    if InfrahubKind.VALIDATOR in node_schema.get_labels() and rel.name == "checks":
                         peer_filters["failed_first"] = graphene.Boolean(
                             default_value=False,
                             description=(

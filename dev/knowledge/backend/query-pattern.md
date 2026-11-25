@@ -166,7 +166,7 @@ Pagination (`LIMIT`/`OFFSET`) is automatically appended based on constructor par
 
 Automatic pagination is only correct over a total order: give the query an `ORDER BY` on a unique key (add `elementId(n)` as a tiebreaker when the sort property is not unique). Neo4j does not guarantee disjoint pages otherwise, so chunked reads can skip or repeat rows.
 
-`CoreArtifactValidator.checks(failed_first: true)` puts failed results before other results before pagination, retaining UUID order within each group. The resolver passes an internal `OrderModel.priority` to the relationship query, which resolves the conclusion through the usual branch/time-aware attribute lookup. The argument is specific to artifact validators and cannot be combined with an explicit `order`; other relationship reads retain their existing ordering.
+`CoreValidator.checks(failed_first: true)` puts failed results before other results before pagination, retaining UUID order within each group. The resolver passes an internal `OrderModel.priority` to the relationship query, which resolves the conclusion through the usual branch/time-aware attribute lookup. The argument is available on the shared validator interface and every concrete validator type. It defaults to `false` and cannot be combined with an explicit `order`; other relationship reads retain their existing ordering.
 
 To write pagination directly in your query, set `insert_limit = False`:
 

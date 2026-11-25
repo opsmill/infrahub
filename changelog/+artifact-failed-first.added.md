@@ -1,1 +1,1 @@
-Failed artifact checks now appear before other results across all pages of each artifact definition in proposed changes.
+Failed checks now appear before other results across all pages of every validator in proposed changes, with independent pagination for each validator.

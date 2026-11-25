@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
+from graphql import parse, validate
 
 from infrahub.core.constants import NULL_VALUE, InfrahubKind
 from infrahub.core.migrations.query.node_duplicate import NodeDuplicateQuery, SchemaNodeInfo
@@ -37,19 +38,19 @@ ARTIFACT_CHECKS = (
 
 
 @dataclass(frozen=True)
-class ArtifactChecksDataset:
+class ValidatorChecksDataset:
     artifact_validator_id: str
     schema_validator_id: str
 
 
-class TestArtifactChecksOrder:
+class TestValidatorChecksOrder:
     @pytest.fixture(scope="class")
     async def dataset(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
         register_core_models_schema_scope_class: SchemaBranch,
-    ) -> ArtifactChecksDataset:
+    ) -> ValidatorChecksDataset:
         proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
         await proposed_change.new(
             db=db, name="artifact-order", source_branch="artifact-order", destination_branch="main"
@@ -150,24 +151,22 @@ class TestArtifactChecksOrder:
         await duplicate.execute(db=db)
         assert duplicate.stats.get_counter(name="nodes_created") == 1
         default_branch_scope_class.update_schema_hash()
-        return ArtifactChecksDataset(
+        return ValidatorChecksDataset(
             artifact_validator_id=artifact_validator.id,
             schema_validator_id=schema_validator.id,
         )
 
     async def test_failed_first_orders_all_checks_before_taking_each_page(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, dataset: ArtifactChecksDataset
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, dataset: ValidatorChecksDataset
     ) -> None:
         query = """
         query($id: ID!, $offset: Int!) {
             CoreValidator(ids: [$id]) {
                 edges {
                     node {
-                        ... on CoreArtifactValidator {
-                            checks(failed_first: true, offset: $offset, limit: 2) {
-                                count
-                                edges { node { name { value } } }
-                            }
+                        checks(failed_first: true, offset: $offset, limit: 2) {
+                            count
+                            edges { node { name { value } } }
                         }
                     }
                 }
@@ -195,7 +194,7 @@ class TestArtifactChecksOrder:
             assert [edge["node"]["name"]["value"] for edge in checks["edges"]] == expected_checks
 
     async def test_aliases_keep_failed_first_separate_from_default_and_disabled_ordering(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, dataset: ArtifactChecksDataset
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, dataset: ValidatorChecksDataset
     ) -> None:
         query = """
         query($id: ID!) {
@@ -250,52 +249,81 @@ class TestArtifactChecksOrder:
             "failedAgain": failed_first_names,
         }
 
-    async def test_other_validator_checks_keep_uuid_order_without_failed_first_argument(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, dataset: ArtifactChecksDataset
+    async def test_non_artifact_checks_support_failed_first_through_shared_and_concrete_queries(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, dataset: ValidatorChecksDataset
+    ) -> None:
+        for kind in ("CoreValidator", "CoreSchemaValidator"):
+            query = f"""
+            query($id: ID!) {{
+                {kind}(ids: [$id]) {{
+                    edges {{
+                        node {{
+                            failed: checks(failed_first: true, limit: 1) {{
+                                count
+                                edges {{ node {{ name {{ value }} }} }}
+                            }}
+                            next: checks(failed_first: true, limit: 1, offset: 1) {{
+                                count
+                                edges {{ node {{ name {{ value }} }} }}
+                            }}
+                            default: checks {{ edges {{ node {{ name {{ value }} }} }} }}
+                            disabled: checks(failed_first: false) {{ edges {{ node {{ name {{ value }} }} }} }}
+                        }}
+                    }}
+                }}
+            }}
+            """
+            gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+            result = await graphql(
+                schema=gql_params.schema,
+                source=query,
+                context_value=gql_params.context,
+                variable_values={"id": dataset.schema_validator_id},
+            )
+            assert result.errors is None
+            assert result.data is not None
+            validator = result.data[kind]["edges"][0]["node"]
+            assert validator["failed"]["count"] == 2
+            assert validator["next"]["count"] == 2
+            assert {
+                alias: [edge["node"]["name"]["value"] for edge in connection["edges"]]
+                for alias, connection in validator.items()
+            } == {
+                "failed": ["schema-failure"],
+                "next": ["schema-success"],
+                "default": ["schema-success", "schema-failure"],
+                "disabled": ["schema-success", "schema-failure"],
+            }
+
+    async def test_failed_first_is_available_on_every_validator_type(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, dataset: ValidatorChecksDataset
     ) -> None:
         query = """
-        query($id: ID!) {
-            CoreSchemaValidator(ids: [$id]) {
-                edges { node { checks { edges { node { name { value } } } } } }
+        query {
+            CoreValidator {
+                edges {
+                    node {
+                        checks(failed_first: true) { count }
+                        ... on CoreArtifactValidator { checks(failed_first: true) { count } }
+                        ... on CoreDataValidator { checks(failed_first: true) { count } }
+                        ... on CoreGeneratorValidator { checks(failed_first: true) { count } }
+                        ... on CoreRepositoryValidator { checks(failed_first: true) { count } }
+                        ... on CoreSchemaValidator { checks(failed_first: true) { count } }
+                        ... on CoreUserValidator { checks(failed_first: true) { count } }
+                    }
+                }
             }
         }
         """
         gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
-        result = await graphql(
-            schema=gql_params.schema,
-            source=query,
-            context_value=gql_params.context,
-            variable_values={"id": dataset.schema_validator_id},
-        )
-        assert result.errors is None
-        assert result.data is not None
-        checks = result.data["CoreSchemaValidator"]["edges"][0]["node"]["checks"]["edges"]
-        assert [edge["node"]["name"]["value"] for edge in checks] == ["schema-success", "schema-failure"]
-
-        for kind in ("CoreSchemaValidator", "CoreValidator"):
-            result = await graphql(
-                schema=gql_params.schema,
-                source=f"""
-                    query($id: ID!) {{
-                        {kind}(ids: [$id]) {{
-                            edges {{ node {{ checks(failed_first: true) {{ count }} }} }}
-                        }}
-                    }}
-                """,
-                context_value=gql_params.context,
-                variable_values={"id": dataset.schema_validator_id},
-            )
-            assert result.errors is not None
-            assert [error.message for error in result.errors] == [
-                f"Unknown argument 'failed_first' on field '{kind}.checks'."
-            ]
+        assert validate(schema=gql_params.schema, document_ast=parse(query)) == []
 
     async def test_failed_first_rejects_explicit_order_but_accepts_empty_order(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, dataset: ArtifactChecksDataset
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, dataset: ValidatorChecksDataset
     ) -> None:
         query = """
         query($id: ID!, $order: OrderInput) {
-            CoreArtifactValidator(ids: [$id]) {
+            CoreValidator(ids: [$id]) {
                 edges {
                     node {
                         checks(failed_first: true, order: $order, limit: 2) {
@@ -333,5 +361,5 @@ class TestArtifactChecksOrder:
             )
             assert result.errors is None
             assert result.data is not None
-            checks = result.data["CoreArtifactValidator"]["edges"][0]["node"]["checks"]["edges"]
+            checks = result.data["CoreValidator"]["edges"][0]["node"]["checks"]["edges"]
             assert [edge["node"]["name"]["value"] for edge in checks] == ["zulu-failure", "alpha-failure"]

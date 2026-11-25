@@ -2360,7 +2360,60 @@ input CoreDataCheckUpsertInput {
 
 """A check to validate the data integrity between two branches"""
 type CoreDataValidator implements CoreNode & CoreValidator {
-  checks(conclusion__is_protected: Boolean, conclusion__owner__id: ID, conclusion__source__id: ID, conclusion__value: String, conclusion__values: [String], created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, kind__is_protected: Boolean, kind__owner__id: ID, kind__source__id: ID, kind__value: String, kind__values: [String], label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, message__is_protected: Boolean, message__owner__id: ID, message__source__id: ID, message__value: String, message__values: [String], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, origin__is_protected: Boolean, origin__owner__id: ID, origin__source__id: ID, origin__value: String, origin__values: [String], severity__is_protected: Boolean, severity__owner__id: ID, severity__source__id: ID, severity__value: String, severity__values: [String]): NestedPaginatedCoreCheck!
+  checks(
+    conclusion__is_protected: Boolean
+    conclusion__owner__id: ID
+    conclusion__source__id: ID
+    conclusion__value: String
+    conclusion__values: [String]
+    created_at__is_protected: Boolean
+    created_at__owner__id: ID
+    created_at__source__id: ID
+    created_at__value: DateTime
+    created_at__values: [DateTime]
+    display_label__isnull: Boolean
+    display_label__value: String
+    display_label__values: [String]
+    """
+    Place failed checks first, preserving ID order within failed and other checks. Cannot be combined with an explicit order.
+    """
+    failed_first: Boolean = false
+    ids: [ID]
+    isnull: Boolean
+    kind__is_protected: Boolean
+    kind__owner__id: ID
+    kind__source__id: ID
+    kind__value: String
+    kind__values: [String]
+    label__is_protected: Boolean
+    label__owner__id: ID
+    label__source__id: ID
+    label__value: String
+    label__values: [String]
+    limit: Int
+    message__is_protected: Boolean
+    message__owner__id: ID
+    message__source__id: ID
+    message__value: String
+    message__values: [String]
+    name__is_protected: Boolean
+    name__owner__id: ID
+    name__source__id: ID
+    name__value: String
+    name__values: [String]
+    offset: Int
+    order: OrderInput
+    origin__is_protected: Boolean
+    origin__owner__id: ID
+    origin__source__id: ID
+    origin__value: String
+    origin__values: [String]
+    severity__is_protected: Boolean
+    severity__owner__id: ID
+    severity__source__id: ID
+    severity__value: String
+    severity__values: [String]
+  ): NestedPaginatedCoreCheck!
   """Timestamp when the validator finished"""
   completed_at: TextAttribute
   """Final outcome of the validation"""
@@ -3454,7 +3507,60 @@ input CoreGeneratorInstanceUpsertInput {
 
 """A validator related to generators"""
 type CoreGeneratorValidator implements CoreNode & CoreValidator {
-  checks(conclusion__is_protected: Boolean, conclusion__owner__id: ID, conclusion__source__id: ID, conclusion__value: String, conclusion__values: [String], created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, kind__is_protected: Boolean, kind__owner__id: ID, kind__source__id: ID, kind__value: String, kind__values: [String], label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, message__is_protected: Boolean, message__owner__id: ID, message__source__id: ID, message__value: String, message__values: [String], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, origin__is_protected: Boolean, origin__owner__id: ID, origin__source__id: ID, origin__value: String, origin__values: [String], severity__is_protected: Boolean, severity__owner__id: ID, severity__source__id: ID, severity__value: String, severity__values: [String]): NestedPaginatedCoreCheck!
+  checks(
+    conclusion__is_protected: Boolean
+    conclusion__owner__id: ID
+    conclusion__source__id: ID
+    conclusion__value: String
+    conclusion__values: [String]
+    created_at__is_protected: Boolean
+    created_at__owner__id: ID
+    created_at__source__id: ID
+    created_at__value: DateTime
+    created_at__values: [DateTime]
+    display_label__isnull: Boolean
+    display_label__value: String
+    display_label__values: [String]
+    """
+    Place failed checks first, preserving ID order within failed and other checks. Cannot be combined with an explicit order.
+    """
+    failed_first: Boolean = false
+    ids: [ID]
+    isnull: Boolean
+    kind__is_protected: Boolean
+    kind__owner__id: ID
+    kind__source__id: ID
+    kind__value: String
+    kind__values: [String]
+    label__is_protected: Boolean
+    label__owner__id: ID
+    label__source__id: ID
+    label__value: String
+    label__values: [String]
+    limit: Int
+    message__is_protected: Boolean
+    message__owner__id: ID
+    message__source__id: ID
+    message__value: String
+    message__values: [String]
+    name__is_protected: Boolean
+    name__owner__id: ID
+    name__source__id: ID
+    name__value: String
+    name__values: [String]
+    offset: Int
+    order: OrderInput
+    origin__is_protected: Boolean
+    origin__owner__id: ID
+    origin__source__id: ID
+    origin__value: String
+    origin__values: [String]
+    severity__is_protected: Boolean
+    severity__owner__id: ID
+    severity__source__id: ID
+    severity__value: String
+    severity__values: [String]
+  ): NestedPaginatedCoreCheck!
   """Timestamp when the validator finished"""
   completed_at: TextAttribute
   """Final outcome of the validation"""
@@ -6344,7 +6450,60 @@ input CoreRepositoryUpsertInput {
 
 """A Validator related to a specific repository"""
 type CoreRepositoryValidator implements CoreNode & CoreValidator {
-  checks(conclusion__is_protected: Boolean, conclusion__owner__id: ID, conclusion__source__id: ID, conclusion__value: String, conclusion__values: [String], created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, kind__is_protected: Boolean, kind__owner__id: ID, kind__source__id: ID, kind__value: String, kind__values: [String], label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, message__is_protected: Boolean, message__owner__id: ID, message__source__id: ID, message__value: String, message__values: [String], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, origin__is_protected: Boolean, origin__owner__id: ID, origin__source__id: ID, origin__value: String, origin__values: [String], severity__is_protected: Boolean, severity__owner__id: ID, severity__source__id: ID, severity__value: String, severity__values: [String]): NestedPaginatedCoreCheck!
+  checks(
+    conclusion__is_protected: Boolean
+    conclusion__owner__id: ID
+    conclusion__source__id: ID
+    conclusion__value: String
+    conclusion__values: [String]
+    created_at__is_protected: Boolean
+    created_at__owner__id: ID
+    created_at__source__id: ID
+    created_at__value: DateTime
+    created_at__values: [DateTime]
+    display_label__isnull: Boolean
+    display_label__value: String
+    display_label__values: [String]
+    """
+    Place failed checks first, preserving ID order within failed and other checks. Cannot be combined with an explicit order.
+    """
+    failed_first: Boolean = false
+    ids: [ID]
+    isnull: Boolean
+    kind__is_protected: Boolean
+    kind__owner__id: ID
+    kind__source__id: ID
+    kind__value: String
+    kind__values: [String]
+    label__is_protected: Boolean
+    label__owner__id: ID
+    label__source__id: ID
+    label__value: String
+    label__values: [String]
+    limit: Int
+    message__is_protected: Boolean
+    message__owner__id: ID
+    message__source__id: ID
+    message__value: String
+    message__values: [String]
+    name__is_protected: Boolean
+    name__owner__id: ID
+    name__source__id: ID
+    name__value: String
+    name__values: [String]
+    offset: Int
+    order: OrderInput
+    origin__is_protected: Boolean
+    origin__owner__id: ID
+    origin__source__id: ID
+    origin__value: String
+    origin__values: [String]
+    severity__is_protected: Boolean
+    severity__owner__id: ID
+    severity__source__id: ID
+    severity__value: String
+    severity__values: [String]
+  ): NestedPaginatedCoreCheck!
   """Timestamp when the validator finished"""
   completed_at: TextAttribute
   """Final outcome of the validation"""
@@ -6608,7 +6767,60 @@ input CoreSchemaCheckUpsertInput {
 
 """A validator related to the schema"""
 type CoreSchemaValidator implements CoreNode & CoreValidator {
-  checks(conclusion__is_protected: Boolean, conclusion__owner__id: ID, conclusion__source__id: ID, conclusion__value: String, conclusion__values: [String], created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, kind__is_protected: Boolean, kind__owner__id: ID, kind__source__id: ID, kind__value: String, kind__values: [String], label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, message__is_protected: Boolean, message__owner__id: ID, message__source__id: ID, message__value: String, message__values: [String], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, origin__is_protected: Boolean, origin__owner__id: ID, origin__source__id: ID, origin__value: String, origin__values: [String], severity__is_protected: Boolean, severity__owner__id: ID, severity__source__id: ID, severity__value: String, severity__values: [String]): NestedPaginatedCoreCheck!
+  checks(
+    conclusion__is_protected: Boolean
+    conclusion__owner__id: ID
+    conclusion__source__id: ID
+    conclusion__value: String
+    conclusion__values: [String]
+    created_at__is_protected: Boolean
+    created_at__owner__id: ID
+    created_at__source__id: ID
+    created_at__value: DateTime
+    created_at__values: [DateTime]
+    display_label__isnull: Boolean
+    display_label__value: String
+    display_label__values: [String]
+    """
+    Place failed checks first, preserving ID order within failed and other checks. Cannot be combined with an explicit order.
+    """
+    failed_first: Boolean = false
+    ids: [ID]
+    isnull: Boolean
+    kind__is_protected: Boolean
+    kind__owner__id: ID
+    kind__source__id: ID
+    kind__value: String
+    kind__values: [String]
+    label__is_protected: Boolean
+    label__owner__id: ID
+    label__source__id: ID
+    label__value: String
+    label__values: [String]
+    limit: Int
+    message__is_protected: Boolean
+    message__owner__id: ID
+    message__source__id: ID
+    message__value: String
+    message__values: [String]
+    name__is_protected: Boolean
+    name__owner__id: ID
+    name__source__id: ID
+    name__value: String
+    name__values: [String]
+    offset: Int
+    order: OrderInput
+    origin__is_protected: Boolean
+    origin__owner__id: ID
+    origin__source__id: ID
+    origin__value: String
+    origin__values: [String]
+    severity__is_protected: Boolean
+    severity__owner__id: ID
+    severity__source__id: ID
+    severity__value: String
+    severity__values: [String]
+  ): NestedPaginatedCoreCheck!
   """Timestamp when the validator finished"""
   completed_at: TextAttribute
   """Final outcome of the validation"""
@@ -7649,7 +7861,60 @@ input CoreTriggerRuleUpdateInput {
 """A Validator related to a user defined checks in a repository"""
 type CoreUserValidator implements CoreNode & CoreValidator {
   check_definition: NestedEdgedCoreCheckDefinition!
-  checks(conclusion__is_protected: Boolean, conclusion__owner__id: ID, conclusion__source__id: ID, conclusion__value: String, conclusion__values: [String], created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, kind__is_protected: Boolean, kind__owner__id: ID, kind__source__id: ID, kind__value: String, kind__values: [String], label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, message__is_protected: Boolean, message__owner__id: ID, message__source__id: ID, message__value: String, message__values: [String], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, origin__is_protected: Boolean, origin__owner__id: ID, origin__source__id: ID, origin__value: String, origin__values: [String], severity__is_protected: Boolean, severity__owner__id: ID, severity__source__id: ID, severity__value: String, severity__values: [String]): NestedPaginatedCoreCheck!
+  checks(
+    conclusion__is_protected: Boolean
+    conclusion__owner__id: ID
+    conclusion__source__id: ID
+    conclusion__value: String
+    conclusion__values: [String]
+    created_at__is_protected: Boolean
+    created_at__owner__id: ID
+    created_at__source__id: ID
+    created_at__value: DateTime
+    created_at__values: [DateTime]
+    display_label__isnull: Boolean
+    display_label__value: String
+    display_label__values: [String]
+    """
+    Place failed checks first, preserving ID order within failed and other checks. Cannot be combined with an explicit order.
+    """
+    failed_first: Boolean = false
+    ids: [ID]
+    isnull: Boolean
+    kind__is_protected: Boolean
+    kind__owner__id: ID
+    kind__source__id: ID
+    kind__value: String
+    kind__values: [String]
+    label__is_protected: Boolean
+    label__owner__id: ID
+    label__source__id: ID
+    label__value: String
+    label__values: [String]
+    limit: Int
+    message__is_protected: Boolean
+    message__owner__id: ID
+    message__source__id: ID
+    message__value: String
+    message__values: [String]
+    name__is_protected: Boolean
+    name__owner__id: ID
+    name__source__id: ID
+    name__value: String
+    name__values: [String]
+    offset: Int
+    order: OrderInput
+    origin__is_protected: Boolean
+    origin__owner__id: ID
+    origin__source__id: ID
+    origin__value: String
+    origin__values: [String]
+    severity__is_protected: Boolean
+    severity__owner__id: ID
+    severity__source__id: ID
+    severity__value: String
+    severity__values: [String]
+  ): NestedPaginatedCoreCheck!
   """Timestamp when the validator finished"""
   completed_at: TextAttribute
   """Final outcome of the validation"""
@@ -7754,7 +8019,60 @@ input CoreUserValidatorUpsertInput {
 
 """A validator that runs checks against a proposed change"""
 interface CoreValidator {
-  checks(conclusion__is_protected: Boolean, conclusion__owner__id: ID, conclusion__source__id: ID, conclusion__value: String, conclusion__values: [String], created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, kind__is_protected: Boolean, kind__owner__id: ID, kind__source__id: ID, kind__value: String, kind__values: [String], label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, message__is_protected: Boolean, message__owner__id: ID, message__source__id: ID, message__value: String, message__values: [String], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, origin__is_protected: Boolean, origin__owner__id: ID, origin__source__id: ID, origin__value: String, origin__values: [String], severity__is_protected: Boolean, severity__owner__id: ID, severity__source__id: ID, severity__value: String, severity__values: [String]): NestedPaginatedCoreCheck!
+  checks(
+    conclusion__is_protected: Boolean
+    conclusion__owner__id: ID
+    conclusion__source__id: ID
+    conclusion__value: String
+    conclusion__values: [String]
+    created_at__is_protected: Boolean
+    created_at__owner__id: ID
+    created_at__source__id: ID
+    created_at__value: DateTime
+    created_at__values: [DateTime]
+    display_label__isnull: Boolean
+    display_label__value: String
+    display_label__values: [String]
+    """
+    Place failed checks first, preserving ID order within failed and other checks. Cannot be combined with an explicit order.
+    """
+    failed_first: Boolean = false
+    ids: [ID]
+    isnull: Boolean
+    kind__is_protected: Boolean
+    kind__owner__id: ID
+    kind__source__id: ID
+    kind__value: String
+    kind__values: [String]
+    label__is_protected: Boolean
+    label__owner__id: ID
+    label__source__id: ID
+    label__value: String
+    label__values: [String]
+    limit: Int
+    message__is_protected: Boolean
+    message__owner__id: ID
+    message__source__id: ID
+    message__value: String
+    message__values: [String]
+    name__is_protected: Boolean
+    name__owner__id: ID
+    name__source__id: ID
+    name__value: String
+    name__values: [String]
+    offset: Int
+    order: OrderInput
+    origin__is_protected: Boolean
+    origin__owner__id: ID
+    origin__source__id: ID
+    origin__value: String
+    origin__values: [String]
+    severity__is_protected: Boolean
+    severity__owner__id: ID
+    severity__source__id: ID
+    severity__value: String
+    severity__values: [String]
+  ): NestedPaginatedCoreCheck!
   """Timestamp when the validator finished"""
   completed_at: TextAttribute
   """Final outcome of the validation"""

@@ -1,6 +1,16 @@
-import type { getArtifactValidatorDetailsFromApi } from "@/entities/diff/api/get-artifact-validator-details-from-api";
+import type { getValidatorDetailsFromApi } from "@/entities/diff/api/get-validator-details-from-api";
 import type { getCheckDetails } from "@/entities/diff/domain/use-cases/get-check-details";
 import type { getValidators } from "@/entities/diff/domain/use-cases/get-validators";
+
+type DataCheck = Extract<
+  NonNullable<Awaited<ReturnType<typeof getCheckDetails>>>,
+  { __typename: "CoreDataCheck" }
+>;
+
+type DataValidator = Extract<
+  Awaited<ReturnType<typeof getValidators>>[number],
+  { __typename: "CoreDataValidator" }
+>;
 
 type ArtifactCheck = Extract<
   NonNullable<Awaited<ReturnType<typeof getCheckDetails>>>,
@@ -53,7 +63,7 @@ export function generateArtifactValidator(
   };
 }
 
-export function generateArtifactValidatorDetails({
+export function generateValidatorDetails({
   validatorId,
   checkIds,
   count = checkIds.length,
@@ -61,10 +71,10 @@ export function generateArtifactValidatorDetails({
   validatorId: string;
   checkIds: string[];
   count?: number;
-}): Awaited<ReturnType<typeof getArtifactValidatorDetailsFromApi>> {
+}): Awaited<ReturnType<typeof getValidatorDetailsFromApi>> {
   return {
     data: {
-      CoreArtifactValidator: {
+      CoreValidator: {
         edges: [
           {
             node: {
@@ -75,5 +85,36 @@ export function generateArtifactValidatorDetails({
         ],
       },
     },
+  };
+}
+
+export function generateDataCheck(overrides: Partial<DataCheck> = {}): DataCheck {
+  return {
+    __typename: "CoreDataCheck",
+    id: "data-check",
+    display_label: "Data check",
+    name: { value: "Data check" },
+    message: null,
+    severity: { value: "info" },
+    conclusion: { value: "success" },
+    kind: { value: "DataIntegrity" },
+    origin: null,
+    created_at: null,
+    conflicts: null,
+    ...overrides,
+  };
+}
+
+export function generateDataValidator(overrides: Partial<DataValidator> = {}): DataValidator {
+  return {
+    __typename: "CoreDataValidator",
+    id: "data-validator",
+    display_label: "Data Integrity",
+    conclusion: { value: "failure" },
+    state: { value: "completed" },
+    started_at: { value: "2026-01-01T00:00:00Z" },
+    completed_at: { value: "2026-01-01T00:00:01Z" },
+    checks: { edges: [] },
+    ...overrides,
   };
 }

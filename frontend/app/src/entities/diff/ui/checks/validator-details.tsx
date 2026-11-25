@@ -10,11 +10,10 @@ import { Check } from "./check";
 
 type tValidatorDetails = {
   id: string;
-  isArtifactValidator?: boolean;
 };
 
-export const ValidatorDetails = ({ id, isArtifactValidator }: tValidatorDetails) => {
-  const paginationKey = isArtifactValidator ? `artifact-checks-${id}` : undefined;
+export const ValidatorDetails = ({ id }: tValidatorDetails) => {
+  const paginationKey = `validator-checks-${id}`;
   const [pagination] = usePagination({ urlKey: paginationKey });
 
   const {
@@ -25,7 +24,6 @@ export const ValidatorDetails = ({ id, isArtifactValidator }: tValidatorDetails)
     ids: [id],
     checksOffset: pagination?.offset,
     checksLimit: pagination?.limit,
-    checksFailedFirst: isArtifactValidator ? true : undefined,
   });
 
   if (isLoading) {
