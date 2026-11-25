@@ -35,7 +35,7 @@ COMPONENT_TEST_DIRECTORY = f"{MAIN_DIRECTORY}/tests/component"
 # durations so the jobs finish together, which is why suites unrelated to a shard's
 # name sit in it. The catch-all is the one that grows; rebalance when it pulls ahead.
 COMPONENT_TEST_SHARDS: dict[str, list[str]] = {
-    "graphql": ["graphql"],
+    "graphql": ["graphql", "pools"],
     "core-diff": ["core/diff", "core/migrations", "core/changelog", "merge_recompute_coalescing"],
     "core-schema": [
         "core/schema",
@@ -47,6 +47,7 @@ COMPONENT_TEST_SHARDS: dict[str, list[str]] = {
         "core/node",
         "core/hierarchy",
         "core/graph",
+        "core/merge",
         "api",
         "computed_attribute",
     ],
@@ -89,13 +90,17 @@ def _component_shard_targets(shard: str) -> str:
 INTEGRATION_TEST_DIRECTORY = f"{MAIN_DIRECTORY}/tests/integration"
 
 # Integration test shards run by CI in parallel jobs (see backend-tests-integration).
-# Directories listed here run under their named shard; everything else falls into the
-# catch-all shard, which ignores exactly the directories assigned below so new test
-# directories are picked up automatically. The partition is verified by
+# Paths (directories or test files) listed here run under their named shard; everything
+# else falls into the catch-all shard, which ignores exactly the paths assigned below so
+# new test directories are picked up automatically. The partition is verified by
 # backend.validate-integration-shards. Shard contents are sized from measured durations,
 # rebalance when they drift apart.
+#
+# One test class runs on one xdist worker, so the slowest class of a shard is the floor
+# of its duration: the named shard carries the longest git classes and fills its other
+# workers with shorter files.
 INTEGRATION_TEST_SHARDS: dict[str, list[str]] = {
-    "a": ["schema_lifecycle", "git"],
+    "a": ["git", "schema_lifecycle/test_generic_migrations.py"],
 }
 INTEGRATION_TEST_CATCHALL_SHARD = "b"
 
