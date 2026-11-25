@@ -36,7 +36,7 @@ from tests.adapters.migration_recorder import (
 )
 from tests.component.core.migrations.schema.second_run_helpers import register_candidate
 from tests.conftest import do_car_person_schema_unregistered, do_empty_database, do_reset_registry
-from tests.helpers.db_validation import assert_attribute_path_status, count_branch_edges_at
+from tests.helpers.db_validation import count_branch_edges_at
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -663,7 +663,7 @@ class TestSchemaLoadsThatRenameAndChange:
         await verify_graph(db=db, kinds=["TestCar", "ProfileTestCar", "TemplateTestCar"])
 
     async def test_an_attribute_renamed_and_made_unique_is_restored_by_the_rollback(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, target_branch: Branch
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, target_branch: Branch, rename_data: RenameData
     ) -> None:
         def rename_trim_and_make_it_unique(car_schema: NodeSchema) -> None:
             trim = car_schema.get_attribute(name="trim")
@@ -683,15 +683,16 @@ class TestSchemaLoadsThatRenameAndChange:
 
         await GraphRollbacker(db=db).rollback(target_branch=target_branch, ats=[at], scope=RollbackScope.AT_TIMESTAMP)
 
-        for node_label in ("TestCar", "ProfileTestCar", "TemplateTestCar"):
+        active = RelationshipStatus.ACTIVE.value
+        for node_label, node_id in (
+            ("TestCar", rename_data.car),
+            ("ProfileTestCar", rename_data.car_profile),
+            ("TemplateTestCar", rename_data.car_template),
+        ):
             # The values were created on the default branch before the user branch was created
-            await assert_attribute_path_status(
-                db=db,
-                node_label=node_label,
-                attr_name="trim",
-                branch_name=default_branch_scope_class.name,
-                expected_status=RelationshipStatus.ACTIVE.value,
-            )
+            assert await _open_attribute_edge_statuses(
+                db=db, node_label=node_label, attribute_name="trim", branch_name=default_branch_scope_class.name
+            ) == {node_id: ([active], [active])}
             assert (
                 await _open_attribute_edge_statuses(
                     db=db, node_label=node_label, attribute_name="trim_level", branch_name=target_branch.name
