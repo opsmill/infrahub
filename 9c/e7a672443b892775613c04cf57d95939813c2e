@@ -1,0 +1,21 @@
+backend/infrahub/core/validators/node/hierarchy.py
+  s_4fa415708315a7::t_a8faaad28ad0b0 183,186,228-256
+backend/tests/component/core/constraint_validators/test_node_hierarchy_update.py
+  s_4fa415708315a7::t_6e93c28be53205 1-2,733-807
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9ce7a672443b892775613c04cf57d95939813c2e",
+  "prompts": {},
+  "sessions": {
+    "s_4fa415708315a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03e5d1ed-c4d3-4710-b21f-22b15f31d216",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
