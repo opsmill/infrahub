@@ -50,6 +50,7 @@ from tests.component.core.migrations.schema.selection_dataset import (
     SelectionDataset,
     assert_count_matches_write,
     build_attribute_add_migration,
+    build_attribute_kind_update_kwargs,
     build_attribute_migration,
     build_node_kind_update_migration,
     build_node_remove_migration,
@@ -398,7 +399,7 @@ async def test_attribute_kind_update_to_large(
     await assert_count_matches_write(
         db=db,
         queries=[AttributeKindUpdateMigrationQuery],
-        init_kwargs={"migration": migration},
+        init_kwargs=await build_attribute_kind_update_kwargs(db=db, branch=branch, migration=migration),
         branch=branch,
         expected=case.expected,
         population=population(WIDGET_KIND),
@@ -414,7 +415,7 @@ async def test_attribute_kind_update_agnostic_node(
     await assert_count_matches_write(
         db=db,
         queries=[AttributeKindUpdateMigrationQuery],
-        init_kwargs={"migration": migration},
+        init_kwargs=await build_attribute_kind_update_kwargs(db=db, branch=branch, migration=migration),
         branch=branch,
         expected=case.expected,
         population=population(BEACON_KIND),
@@ -430,7 +431,7 @@ async def test_attribute_kind_update_agnostic_attribute(
     await assert_count_matches_write(
         db=db,
         queries=[AttributeKindUpdateMigrationQuery],
-        init_kwargs={"migration": migration},
+        init_kwargs=await build_attribute_kind_update_kwargs(db=db, branch=branch, migration=migration),
         branch=branch,
         expected=case.expected,
         population=population(WIDGET_KIND),

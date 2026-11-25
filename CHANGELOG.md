@@ -11,6 +11,19 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.12.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.12.3) - 2026-11-25
+
+### Changed
+
+- Creating a node or updating its text area, JSON or list attributes is now faster in large databases: the value is found through an index instead of reading every attribute value. The upgrade sets the index on the values already stored.
+- Rebasing a branch, updating its diff, and merging a branch or a proposed change are faster on large databases.
+- The form that adds members on a group's Members tab now accepts several nodes of the chosen kind and adds them all to the group when you save.
+
+### Fixed
+
+- Fixed branch deletions, schema updates and Python transform changes recording one task run for every open branch in the task manager database. ([#11165](https://github.com/opsmill/infrahub/issues/11165))
+- Fixed pressing Escape in a field that selects several related nodes: it closed the list of options and also tried to close the side panel that holds the form. Escape now closes only the list.
+
 ## [Infrahub - v1.12.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.12.2) - 2026-11-20
 
 ### Security

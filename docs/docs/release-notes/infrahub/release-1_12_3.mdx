@@ -1,0 +1,33 @@
+---
+title: Release 1.12.3
+release_date: 2026-11-25
+release_type: patch
+description: "Infrahub 1.12.3 speeds up creating nodes and updating their text area, JSON and list attributes, as well as rebasing, updating the diff of and merging branches on large databases, and lets you add several members to a group in one save. It also fixes branch deletions, schema updates and Python transform changes recording one task run for every open branch, and pressing Escape in a field that selects several related nodes also trying to close the side panel that holds the form."
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.12.3</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>November 25th, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.12.3](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.12.3)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Changed
+
+- Creating a node or updating its text area, JSON or list attributes is now faster in large databases: the value is found through an index instead of reading every attribute value. The upgrade sets the index on the values already stored.
+- Rebasing a branch, updating its diff, and merging a branch or a proposed change are faster on large databases.
+- The form that adds members on a group's Members tab now accepts several nodes of the chosen kind and adds them all to the group when you save.
+
+### Fixed
+
+- Fixed branch deletions, schema updates and Python transform changes recording one task run for every open branch in the task manager database. ([#11165](https://github.com/opsmill/infrahub/issues/11165))
+- Fixed pressing Escape in a field that selects several related nodes: it closed the list of options and also tried to close the side panel that holds the form. Escape now closes only the list.

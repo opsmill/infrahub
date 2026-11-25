@@ -319,6 +319,41 @@ async def test_validator(
     )
 
 
+async def test_validator_checks_only_the_listed_nodes(
+    db: InfrahubDatabase,
+    branch: Branch,
+    criticality_schema: NodeSchema,
+    criticality_low: Node,
+    criticality_medium: Node,
+) -> None:
+    await branch.rebase(db=db)
+    crit_med = await NodeManager.get_one(id=criticality_medium.id, db=db, branch=branch)
+    crit_med.status.value = "passive"
+    await crit_med.save(db=db)
+    crit_high = await Node.init(db=db, schema=criticality_schema, branch=branch)
+    await crit_high.new(db=db, name="high", level=4, status="passive")
+    await crit_high.save(db=db)
+
+    crit_schema = registry.schema.get(name="TestCriticality", branch=branch)
+    crit_schema.get_attribute(name="status").choices = [
+        DropdownChoice(name="active", color="#00ff00", description="Online things")
+    ]
+
+    request = SchemaConstraintValidatorRequest(
+        branch=branch,
+        constraint_name="attribute.choices.update",
+        node_schema=crit_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCriticality", field_name="status"),
+        schema_branch=SchemaBranch(cache={}, name="test"),
+        node_uuids=[crit_high.id],
+    )
+
+    grouped_data_paths = await AttributeChoicesChecker(db=db, branch=branch).check(request)
+
+    # both criticalities are passive, which is no longer a choice, but only the listed one is checked
+    assert [path.node_id for paths in grouped_data_paths for path in paths.get_all_data_paths()] == [crit_high.id]
+
+
 async def test_validator_generic_and_node_have_different_choices(
     db: InfrahubDatabase,
     default_branch: Branch,

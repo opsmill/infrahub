@@ -13,6 +13,8 @@ class ConstraintCheckerInterface(ABC):
     # Whether a change to instance data (as opposed to schema) can cause this constraint to be
     # violated. If the checker only compares schemas, it should set this False.
     triggered_by_data_change: bool = True
+    # Whether checking only the nodes a data change lists is complete for this constraint, so it can receive a list.
+    reads_listed_nodes: bool = False
 
     @property
     @abstractmethod

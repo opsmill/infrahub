@@ -44,6 +44,7 @@ jobs:
           - "opsmill/infrahub-mcp"
           - "opsmill/infrahub-solution-ai-dc"
           - "opsmill/nornir-infrahub"
+          - "opsmill/schema-library"
           - "INFRAHUB_PACKER_REPOSITORY"
           - "INFRAHUB_ENTERPRISE_REPOSITORY"
           - "INFRAHUB_CUSTOMER1_REPOSITORY"
