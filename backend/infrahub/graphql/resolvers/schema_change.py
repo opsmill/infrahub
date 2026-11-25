@@ -63,6 +63,7 @@ class SchemaChangeNodeValue:
     summary: str
     version: int | None
     status: str
+    source: str
     branch: str
     created_at: datetime | None
     updated_at: datetime | None
@@ -96,6 +97,7 @@ def build_schema_change_node(entry: SchemaChangeHistoryEntry, loaders: SchemaCha
         summary=schema_change.summary,
         version=schema_change.version,
         status=schema_change.status.value,
+        source=schema_change.source.value,
         branch=schema_change.branch,
         created_at=_to_datetime(schema_change.created_at),
         updated_at=_to_datetime(schema_change.updated_at),

@@ -22,8 +22,10 @@ change or its application.
 (SchemaChangeApplication)-[:SCHEMA_APPLICATION_HAS_MIGRATION]->(SchemaChangeMigration)
 ```
 
-- `SchemaChange`: the branch name as a `branch` property, the status, the version, the summary,
-  the operation format version, and `applied_at`. The name, `<version in five digits>_<summary>`,
+- `SchemaChange`: the branch name as a `branch` property, the status, the source, the version, the
+  summary, the operation format version, and `applied_at`. The source is `user` for a schema load
+  or a dropdown or enum mutation, and `core_schema_update` for the core schema update of an upgrade;
+  a vertex without the property reads as `user`. The name, `<version in five digits>_<summary>`,
   is calculated when the GraphQL resolver reads it, and is the summary alone without a version.
 - `SchemaChangeOperation`: one operation, at a `position` from 0. `value` and `previous_value` are
   JSON text, so the JSON value `null` stays apart from a field that is not set. No field holds a
@@ -102,7 +104,8 @@ again, because a failed statement aborts the transaction and only its owner can 
 
 All three build a `SchemaCandidate` (operations, processed schema, `SchemaUpdateValidationResult`)
 with `SchemaCandidateBuilder`, which `factory.py::build_schema_candidate_builder` builds. The
-candidate schema is always the schema that `SchemaChangeApplier` builds from the operations.
+candidate schema is the schema that `SchemaChangeApplier` builds from the operations, except when a
+schema file changes nothing (see step 3 below).
 
 A schema load and a schema check call `api/schema.py::build_candidate_from_submitted_schemas`.
 It first passes the files through `SubmittedSchemaIdResolver`, which keeps only the IDs that the
@@ -123,7 +126,14 @@ through `api/schema.py::build_candidate_from_schemas`:
    is merged into the renamed kind and lost, or it overwrites the stored row of the renamed kind.
 3. `SchemaOperationBuilder` lays the merged file over a copy of the branch schema, processes it,
    diffs it against the branch schema, and keeps each path of that diff that the file states as an
-   operation. That processed copy is the direct-load schema. A renamed kind gives one
+   operation. A file states the fields its model has as set, so `SchemaRoot.merge` and
+   `SchemaRoot.duplicate`, which the check of submitted IDs uses, dump the files with `exclude_unset`:
+   a field that no file states stays unset and gives no operation.
+   That processed copy is the direct-load schema. When its diff is empty, the file gives no operation,
+   and `from_schema_root` returns the direct-load schema as the candidate without steps 4 to 6:
+   applying no operation would rebuild the branch schema, which the direct-load schema equals. A
+   core schema update with no change to the core schema, and a load of an unchanged file, therefore
+   process the schema once. A renamed kind gives one
    `node_rename` operation that sets its name and namespace together, so the kind never passes
    through a kind between the two. The operations of removed kinds come first, then those of
    changed kinds, then the `node_add` operations. Within a kind, the renames of attributes and
@@ -170,7 +180,7 @@ the file, and names the kinds. It is not a 5XX, because the SDK retries those an
 gives the same result. For a `ValueError` it names every kind that the operations name. The
 operation builder already processed the same file without an error, so such a `ValueError` comes
 from the operations, and it does not reach the API as `SchemaNotValidError` (HTTP 422). The load saves nothing, and the check returns the same error. A load
-therefore processes the schema twice. A file that gives a new kind, or a new attribute or
+that changes the schema therefore processes it twice. A file that gives a new kind, or a new attribute or
 relationship of an existing kind, an ID loads as if it gave none.
 
 A dropdown or enum mutation (`graphql/mutations/schema.py::apply_attribute_property_change`) reads
@@ -185,8 +195,9 @@ whose kind, attribute or relationship the schema already has.
 
 ### Every load checks its operations
 
-Because every load and check compares the applied schema with the direct-load schema, every test
-that loads a schema fails when the operations miss a change of the file. No setting or test fixture
+Because every load and check of a file that changes the schema compares the applied schema with the
+direct-load schema, every test that loads a schema fails when the operations miss a change of the
+file. No setting or test fixture
 turns the comparison off, and a server or task worker in a container compares the same way.
 
 ## How a load records its schema change
@@ -202,8 +213,10 @@ no migration. The migration records report
 progress and are best effort.
 
 1. `SchemaChangeRecorder.start` creates the schema change and one application, both `running`, with
-   the operations, at the timestamp the coordinator then uses for every write. When it fails, the
-   load fails before it changes anything.
+   the operations, at the timestamp the coordinator then uses for every write. The records take that
+   timestamp as their `created_at`, so an applied schema change has `created_at` equal to `applied_at`,
+   and a load takes it inside the schema lock, so `created_at` keeps the order of the versions.
+   When it fails, the load fails before it changes anything.
 2. The coordinator receives the application ID and puts it in `SchemaApplyMigrationData`. The flow
    `core/migrations/schema/tasks.py::schema_apply_migrations` builds a `MigrationRecorder` with
    `build_migration_recorder`, writing through a database session of its own. The positions sort the
@@ -242,8 +255,32 @@ with `application_id=None`, stores no schema change and logs a warning naming th
 happens when `process()` calculates a value that differs from the stored schema, for example after
 an upgrade changed `process()`: the file changed nothing, but the saved schema changes.
 
-A merge, a rebase and the core schema update in `cli/db.py` pass `application_id=None`, so their
-migrations use `NoRecordMigrationRecorder` and they store no schema change.
+A merge and a rebase pass `application_id=None`, so their migrations use `NoRecordMigrationRecorder`
+and they store no schema change.
+
+The core schema update of `infrahub upgrade` and `infrahub db update-core-schema`
+(`cli/db.py::update_core_schema`) records like a load, but takes no lock, so it must run while no
+server or task worker runs, as an upgrade does. Run `infrahub db update-core-schema` with them
+stopped too: a schema load during the update could take the same version of the default branch.
+It merges the
+internal schema, the core models and the deprecated models into one schema file
+(`build_core_schema_root`) and builds its candidate with `from_schema_root` and
+`enforce_update_support=False`, so a change to a property that has no migration (`UpdateSupport.NOT_SUPPORTED`)
+is saved without an error, a migration or a constraint check. The runner applies it with
+`DirectMigrations`, so the migrations run in the CLI process with no request context, as the system
+user, and stores a schema change on the default branch with the source `core_schema_update`. Any
+error of `from_schema_root`, an operation mismatch included, is printed with its traceback on the
+migration console, which `infrahub upgrade` shows without `--verbose`, and stops the upgrade with
+exit code 1 before any write, as a failed validation does; running it again gives the same error,
+because the cause is in the core schema files or in the operation builder, not in the data.
+`build_core_schema_candidate` builds the candidate and prints these errors for both the update and
+`infrahub upgrade --check`, so the check reports the same error.
+
+`SchemaChangeApplicationRunner.run` takes how the migrations run as one value
+(`core/schema/update_coordinator.py`): `WorkflowMigrations`, which holds the request context that
+the migration workflow needs, or `DirectMigrations`, which has none. The runner passes its executor
+and context to the coordinator, so a workflow run without a context cannot be built. A schema load
+passes `WorkflowMigrations`.
 
 A dropdown or enum mutation calls `SchemaChangeRecorder.record_applied` inside its database
 transaction, before `update_schema_branch`, because `update_schema_branch` replaces the schema in

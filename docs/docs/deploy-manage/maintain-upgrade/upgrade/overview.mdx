@@ -64,6 +64,7 @@ Step 2/6: Internal schema
 Internal schema initialized
 
 Step 3/6: Core schema
+Core Schema has diff, will need to be updated
 Core Schema updated successfully
 
 Step 4/6: Internal objects
@@ -82,6 +83,14 @@ Upgrade complete SUCCESS
 ```
 
 Lines such as `Cleaning up …`, `Recomputing HFID/display_label …`, `Normalized N HFID value(s) …`, and `Rewrote … → …` are migration progress messages, not errors. They tell you which data the current migration is about to touch and are expected output.
+
+When the core schema update cannot be applied, Step 3/6 prints `Unable to update the schema` and stops before it changes the core schema:
+
+- when the update cannot be built from the core schema files, the line is followed by the traceback, and `infrahub upgrade --check` prints the same error;
+- when the new core schema fails validation, the line ends with `due to failed validations` and is followed by the errors, and `infrahub upgrade --check` prints the same errors;
+- when existing data fails a constraint of the new core schema, the line ends with `due to failed validations` and is followed by the constraint violations. `infrahub upgrade --check` does not check the data, so it does not report these.
+
+When applying the update fails, for example in a data migration, Step 3/6 prints `Schema update failed` with the error, and the update is rolled back.
 
 ### What `--verbose` does
 

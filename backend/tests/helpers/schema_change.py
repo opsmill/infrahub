@@ -17,6 +17,7 @@ from infrahub.core.schema_change.enums import (
     SchemaChangeEdgeType,
     SchemaChangeMigrationStatus,
     SchemaChangeRecordLabel,
+    SchemaChangeSource,
     SchemaChangeStatus,
     SchemaOperationSection,
     SchemaOperationType,
@@ -152,7 +153,7 @@ async def seed_schema_change_history(
             operations = build_seeded_operations(nbr_operations=branch_seed.nbr_operations)
             at = Timestamp()
             created = await repository.create_schema_change(
-                branch=branch_seed.branch, operations=operations, at=at, user_id=user_id
+                branch=branch_seed.branch, operations=operations, at=at, user_id=user_id, source=SchemaChangeSource.USER
             )
             await _seed_migrations(
                 repository=repository, application_id=created.application_id, migrations=branch_seed.migrations

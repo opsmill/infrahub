@@ -200,12 +200,14 @@ class SchemaRoot(BaseModel):
                     item.id = str(uuid.uuid4())
 
     def merge(self, schema: SchemaRoot) -> SchemaRoot:
-        """Return a new `SchemaRoot` after merging `self` with `schema`."""
-        return SchemaRoot.model_validate(deep_merge_dict(dicta=self.model_dump(), dictb=schema.model_dump()))
+        """Return a new `SchemaRoot` after merging `self` with `schema`; a field that neither of them states stays unset."""
+        return SchemaRoot.model_validate(
+            deep_merge_dict(dicta=self.model_dump(exclude_unset=True), dictb=schema.model_dump(exclude_unset=True))
+        )
 
     def duplicate(self) -> SchemaRoot:
-        """Return a duplicate of the current schema."""
-        return SchemaRoot.model_validate(self.model_dump())
+        """Return a duplicate of the current schema, which states the same fields."""
+        return SchemaRoot.model_validate(self.model_dump(exclude_unset=True))
 
 
 internal_schema = internal.to_dict()

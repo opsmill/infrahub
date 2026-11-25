@@ -8,6 +8,7 @@ from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.schema_change.enums import (
     SchemaChangeEdgeType,
     SchemaChangeMigrationStatus,
+    SchemaChangeSource,
     SchemaChangeStatus,
     SchemaOperationNodeType,
     SchemaOperationSection,
@@ -117,7 +118,7 @@ async def test_create_schema_change_stores_operations_in_order_and_links_the_rec
     at = Timestamp()
 
     created = await repository.create_schema_change(
-        branch=BRANCH_NAME, operations=operations, at=at, user_id=SYSTEM_USER_ID
+        branch=BRANCH_NAME, operations=operations, at=at, user_id=SYSTEM_USER_ID, source=SchemaChangeSource.USER
     )
     await repository.create_migration_records(application_id=created.application_id, migrations=[attribute_migration()])
     applied = await repository.mark_applied(
@@ -241,7 +242,11 @@ async def test_fields_that_are_not_set_are_missing_properties_and_the_text_null_
     )
     repository = build_schema_change_repository(db=db)
     created = await repository.create_schema_change(
-        branch=BRANCH_NAME, operations=[operation], at=Timestamp(), user_id=SYSTEM_USER_ID
+        branch=BRANCH_NAME,
+        operations=[operation],
+        at=Timestamp(),
+        user_id=SYSTEM_USER_ID,
+        source=SchemaChangeSource.USER,
     )
     await repository.create_migration_records(
         application_id=created.application_id,
@@ -252,6 +257,7 @@ async def test_fields_that_are_not_set_are_missing_properties_and_the_text_null_
         "schema_change": {
             "branch": BRANCH_NAME,
             "status": "running",
+            "source": "user",
             "summary": "testcar_NULL_update",
             "format_version": 1,
             "created_by": SYSTEM_USER_ID,
@@ -289,6 +295,51 @@ async def test_fields_that_are_not_set_are_missing_properties_and_the_text_null_
     assert [stored.operation for stored in pages[created.schema_change_id].operations] == [operation]
 
 
+async def test_create_schema_change_stores_the_core_schema_update_source(
+    db: InfrahubDatabase, empty_database: None
+) -> None:
+    repository = build_schema_change_repository(db=db)
+
+    created = await repository.create_schema_change(
+        branch=BRANCH_NAME,
+        operations=build_seeded_operations(nbr_operations=1),
+        at=Timestamp(),
+        user_id=SYSTEM_USER_ID,
+        source=SchemaChangeSource.CORE_SCHEMA_UPDATE,
+    )
+
+    records = await read_branch_schema_change_records(db=db, branch=BRANCH_NAME)
+    assert records[created.schema_change_id].properties["source"] == "core_schema_update"
+
+
+async def test_records_of_a_new_schema_change_are_created_at_the_timestamp_of_its_application(
+    db: InfrahubDatabase, empty_database: None
+) -> None:
+    repository = build_schema_change_repository(db=db)
+    at = Timestamp("2026-03-01T09:30:00.000000Z")
+
+    created = await repository.create_schema_change(
+        branch=BRANCH_NAME,
+        operations=build_seeded_operations(nbr_operations=2),
+        at=at,
+        user_id=SYSTEM_USER_ID,
+        source=SchemaChangeSource.USER,
+    )
+
+    records = await read_branch_schema_change_records(db=db, branch=BRANCH_NAME)
+    assert len(records) == 4
+    assert {
+        (uuid, key): record.properties[key]
+        for uuid, record in records.items()
+        for key in ("created_at", "updated_at")
+        if key in record.properties
+    } == {
+        **{(uuid, "created_at"): "2026-03-01T09:30:00.000000Z" for uuid in records},
+        (created.schema_change_id, "updated_at"): "2026-03-01T09:30:00.000000Z",
+        (created.application_id, "updated_at"): "2026-03-01T09:30:00.000000Z",
+    }
+
+
 async def test_operation_values_keep_their_json_type_apart_from_a_value_not_set(
     db: InfrahubDatabase, empty_database: None
 ) -> None:
@@ -314,7 +365,11 @@ async def test_operation_values_keep_their_json_type_apart_from_a_value_not_set(
     ]
     repository = build_schema_change_repository(db=db)
     created = await repository.create_schema_change(
-        branch=BRANCH_NAME, operations=operations, at=Timestamp(), user_id=SYSTEM_USER_ID
+        branch=BRANCH_NAME,
+        operations=operations,
+        at=Timestamp(),
+        user_id=SYSTEM_USER_ID,
+        source=SchemaChangeSource.USER,
     )
 
     reader = build_schema_change_history_reader(db=db)
@@ -480,7 +535,11 @@ async def test_mark_applied_of_a_schema_change_deleted_with_its_branch_returns_f
     repository = build_schema_change_repository(db=db)
     at = Timestamp()
     created = await repository.create_schema_change(
-        branch=OTHER_BRANCH_NAME, operations=build_seeded_operations(nbr_operations=1), at=at, user_id=SYSTEM_USER_ID
+        branch=OTHER_BRANCH_NAME,
+        operations=build_seeded_operations(nbr_operations=1),
+        at=at,
+        user_id=SYSTEM_USER_ID,
+        source=SchemaChangeSource.USER,
     )
     assert await count_schema_change_records(db=db, uuids=[created.schema_change_id, created.application_id]) == 2
     await repository.delete_branch_schema_changes(branch=OTHER_BRANCH_NAME, batch_size=10)
@@ -507,6 +566,7 @@ async def test_mark_failed_of_a_schema_change_deleted_with_its_branch_returns_fa
         operations=build_seeded_operations(nbr_operations=1),
         at=Timestamp(),
         user_id=SYSTEM_USER_ID,
+        source=SchemaChangeSource.USER,
     )
     await repository.delete_branch_schema_changes(branch=OTHER_BRANCH_NAME, batch_size=10)
 

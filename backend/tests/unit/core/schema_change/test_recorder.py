@@ -7,6 +7,7 @@ import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SYSTEM_USER_ID
+from infrahub.core.schema_change.enums import SchemaChangeSource
 from infrahub.core.schema_change.recorder import SchemaChangeRecorder, SchemaChangeRecording
 from infrahub.core.schema_change.repository import AppliedSchemaChangeVersion, CreatedSchemaChange
 from infrahub.core.schema_change.version_resolver import SchemaChangeVersionResolver
@@ -66,14 +67,24 @@ async def test_start_creates_the_schema_change_and_returns_its_ids_with_the_time
     operations = build_seeded_operations(nbr_operations=2)
 
     recording = await _build_recorder(repository=repository).start(
-        branch=Branch(name=MAIN), operations=operations, at=AT, user_id=SYSTEM_USER_ID
+        branch=Branch(name=MAIN),
+        operations=operations,
+        at=AT,
+        user_id=SYSTEM_USER_ID,
+        source=SchemaChangeSource.CORE_SCHEMA_UPDATE,
     )
 
     assert recording == RECORDING
     assert repository.calls == [
         SchemaChangeRepositoryCall(
             method=CREATE_SCHEMA_CHANGE,
-            arguments={"branch": MAIN, "operations": operations, "at": AT, "user_id": SYSTEM_USER_ID},
+            arguments={
+                "branch": MAIN,
+                "operations": operations,
+                "at": AT,
+                "user_id": SYSTEM_USER_ID,
+                "source": SchemaChangeSource.CORE_SCHEMA_UPDATE,
+            },
         )
     ]
 
@@ -118,14 +129,20 @@ async def test_record_applied_creates_the_schema_change_then_marks_it_applied() 
     operations = build_seeded_operations(nbr_operations=1)
 
     recording = await _build_recorder(repository=repository).record_applied(
-        branch=Branch(name=MAIN), operations=operations, at=AT, user_id=SYSTEM_USER_ID
+        branch=Branch(name=MAIN), operations=operations, at=AT, user_id=SYSTEM_USER_ID, source=SchemaChangeSource.USER
     )
 
     assert recording == RECORDING
     assert repository.calls == [
         SchemaChangeRepositoryCall(
             method=CREATE_SCHEMA_CHANGE,
-            arguments={"branch": MAIN, "operations": operations, "at": AT, "user_id": SYSTEM_USER_ID},
+            arguments={
+                "branch": MAIN,
+                "operations": operations,
+                "at": AT,
+                "user_id": SYSTEM_USER_ID,
+                "source": SchemaChangeSource.USER,
+            },
         ),
         SchemaChangeRepositoryCall(method=GET_HIGHEST_APPLIED_VERSION, arguments={"branch": MAIN}),
         _mark_applied_call(version=1, parent_id=None),
@@ -137,9 +154,13 @@ async def test_start_and_record_applied_refuse_an_empty_list_of_operations_and_s
     recorder = _build_recorder(repository=repository)
 
     with pytest.raises(ValueError, match=EMPTY_OPERATIONS_ERROR):
-        await recorder.start(branch=Branch(name=MAIN), operations=[], at=AT, user_id=SYSTEM_USER_ID)
+        await recorder.start(
+            branch=Branch(name=MAIN), operations=[], at=AT, user_id=SYSTEM_USER_ID, source=SchemaChangeSource.USER
+        )
     with pytest.raises(ValueError, match=EMPTY_OPERATIONS_ERROR):
-        await recorder.record_applied(branch=Branch(name=MAIN), operations=[], at=AT, user_id=SYSTEM_USER_ID)
+        await recorder.record_applied(
+            branch=Branch(name=MAIN), operations=[], at=AT, user_id=SYSTEM_USER_ID, source=SchemaChangeSource.USER
+        )
 
     assert repository.calls == []
 

@@ -8,6 +8,11 @@ class SchemaChangeStatus(InfrahubStringEnum):
     FAILED = "failed"
 
 
+class SchemaChangeSource(InfrahubStringEnum):
+    USER = "user"
+    CORE_SCHEMA_UPDATE = "core_schema_update"
+
+
 class SchemaChangeApplicationStatus(InfrahubStringEnum):
     RUNNING = "running"
     APPLIED = "applied"

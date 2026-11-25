@@ -9,7 +9,12 @@ from neo4j.exceptions import TransientError
 from infrahub.core.constants import SYSTEM_USER_ID, SchemaPathType
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.path import SchemaPath
-from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus, SchemaOperationSection, SchemaOperationType
+from infrahub.core.schema_change.enums import (
+    SchemaChangeMigrationStatus,
+    SchemaChangeSource,
+    SchemaOperationSection,
+    SchemaOperationType,
+)
 from infrahub.core.schema_change.factory import build_schema_change_repository
 from infrahub.core.schema_change.operations import SchemaOperation
 from infrahub.core.timestamp import Timestamp
@@ -35,7 +40,7 @@ def _create_schema_change(repository: SchemaChangeRepository) -> Awaitable[objec
         value={"name": "color", "kind": "Text"},
     )
     return repository.create_schema_change(
-        branch="main", operations=[operation], at=Timestamp(), user_id=SYSTEM_USER_ID
+        branch="main", operations=[operation], at=Timestamp(), user_id=SYSTEM_USER_ID, source=SchemaChangeSource.USER
     )
 
 
