@@ -146,9 +146,19 @@ CHILDREN_CONSTRAINT_NAMES = (
 
 
 @dataclass(frozen=True)
-class _HierarchyDirection:
+class HierarchyDirection:
     side: HierarchySide
     peer_kind: str
+
+
+def get_directions_to_check(node_schema: NodeSchema, constraint_name: str) -> list[HierarchyDirection]:
+    """Return the sides of a kind whose stored edges a hierarchy constraint has to check against the candidate."""
+    directions: list[HierarchyDirection] = []
+    if node_schema.parent and constraint_name in PARENT_CONSTRAINT_NAMES:
+        directions.append(HierarchyDirection(side=HierarchySide.PARENT, peer_kind=node_schema.parent))
+    if node_schema.children and constraint_name in CHILDREN_CONSTRAINT_NAMES:
+        directions.append(HierarchyDirection(side=HierarchySide.CHILDREN, peer_kind=node_schema.children))
+    return directions
 
 
 class NodeHierarchyChecker(ConstraintCheckerInterface):
@@ -177,7 +187,7 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
         if not isinstance(request.node_schema, NodeSchema):
             return []
         node_schema = request.node_schema
-        directions = self._get_directions_to_check(node_schema=node_schema, constraint_name=request.constraint_name)
+        directions = get_directions_to_check(node_schema=node_schema, constraint_name=request.constraint_name)
         if not directions:
             return []
         allowed_hierarchy_kinds = self._get_allowed_hierarchy_kinds(node_schema=node_schema, request=request)
@@ -194,15 +204,6 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
             )
         return grouped_data_paths_list
 
-    @staticmethod
-    def _get_directions_to_check(node_schema: NodeSchema, constraint_name: str) -> list[_HierarchyDirection]:
-        directions: list[_HierarchyDirection] = []
-        if node_schema.parent and constraint_name in PARENT_CONSTRAINT_NAMES:
-            directions.append(_HierarchyDirection(side=HierarchySide.PARENT, peer_kind=node_schema.parent))
-        if node_schema.children and constraint_name in CHILDREN_CONSTRAINT_NAMES:
-            directions.append(_HierarchyDirection(side=HierarchySide.CHILDREN, peer_kind=node_schema.children))
-        return directions
-
     def _get_allowed_hierarchy_kinds(
         self, node_schema: NodeSchema, request: SchemaConstraintValidatorRequest
     ) -> list[str]:
@@ -214,7 +215,7 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
         self,
         request: SchemaConstraintValidatorRequest,
         node_schema: NodeSchema,
-        direction: _HierarchyDirection,
+        direction: HierarchyDirection,
         allowed_hierarchy_kinds: list[str],
     ) -> list[GroupedDataPaths]:
         grouped_data_paths_list: list[GroupedDataPaths] = []
