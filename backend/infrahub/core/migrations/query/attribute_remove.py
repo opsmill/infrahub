@@ -137,8 +137,8 @@ class AttributeRemoveQuery(MigrationSelectionQuery):
         WITH active_node, a1 as active_attr, r1 as rb, p1 as peer_node
         WHERE rb.status = "active" AND type(rb) IN $attribute_edge_types
         WITH active_node, active_attr, rb, peer_node, rb.branch = $branch_name AND rb.from = $at AS created_by_this_load
-        // An edge an earlier migration of this load created gets no deleted edge, because a deleted edge
-        // from the same time as the closed edge would be a second path between the same vertices.
+        // An edge that starts at this migration's timestamp on this branch is only closed, because a deleted edge
+        // from the same timestamp would duplicate its path.
         CALL (peer_node, rb, active_attr, created_by_this_load) {
             WITH peer_node, rb, active_attr, created_by_this_load
             WHERE NOT created_by_this_load AND startNode(rb) = peer_node

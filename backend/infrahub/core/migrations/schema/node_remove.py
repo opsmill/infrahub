@@ -142,8 +142,8 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
 
     // ----------------------------------------------------------
     // Create a "deleted" edge of the same type and direction
-    // An edge an earlier migration of this load created gets no deleted edge, because a deleted edge
-    // from the same time as the closed edge would be a second path between the same vertices.
+    // An edge that starts at this migration's timestamp on this branch is only closed, because a deleted edge
+    // from the same timestamp would duplicate its path.
     // ----------------------------------------------------------
     CALL (peer_node, active_node, rel_inbound, new_branch, new_branch_level) {
         WITH peer_node, active_node, rel_inbound, new_branch, new_branch_level
@@ -189,8 +189,8 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
 
     // ----------------------------------------------------------
     // Create a deleted sub-edge of the same type and direction
-    // An edge an earlier migration of this load created gets no deleted edge, because a deleted edge
-    // from the same time as the closed edge would be a second path between the same vertices.
+    // An edge that starts at this migration's timestamp on this branch is only closed, because a deleted edge
+    // from the same timestamp would duplicate its path.
     // ----------------------------------------------------------
     CALL (sub_start, sub_end, sub_edge, new_branch, new_branch_level) {
         WITH sub_start, sub_end, sub_edge, new_branch, new_branch_level
@@ -294,8 +294,8 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
 
     // ----------------------------------------------------------
     // Create a "deleted" edge of the same type and direction
-    // An edge an earlier migration of this load created gets no deleted edge, because a deleted edge
-    // from the same time as the closed edge would be a second path between the same vertices.
+    // An edge that starts at this migration's timestamp on this branch is only closed, because a deleted edge
+    // from the same timestamp would duplicate its path.
     // ----------------------------------------------------------
     CALL (active_node, peer_node, rel_outbound, new_branch, new_branch_level) {
         WITH active_node, peer_node, rel_outbound, new_branch, new_branch_level
@@ -336,8 +336,8 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
 
     // ----------------------------------------------------------
     // Create a deleted sub-edge of the same type and direction.
-    // An edge an earlier migration of this load created gets no deleted edge, because a deleted edge
-    // from the same time as the closed edge would be a second path between the same vertices.
+    // An edge that starts at this migration's timestamp on this branch is only closed, because a deleted edge
+    // from the same timestamp would duplicate its path.
     // ----------------------------------------------------------
     CALL (sub_start, sub_end, sub_edge, new_branch, new_branch_level) {
         WITH sub_start, sub_end, sub_edge, new_branch, new_branch_level
