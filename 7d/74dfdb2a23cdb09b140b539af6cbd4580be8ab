@@ -1,0 +1,19 @@
+changelog/+schema-load-attribute-rename-out-of-uniqueness-constraint.fixed.md
+  s_a61eb58394be2f::t_23fafdad34b355 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7d74dfdb2a23cdb09b140b539af6cbd4580be8ab",
+  "prompts": {},
+  "sessions": {
+    "s_a61eb58394be2f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91f2ff34-ccf0-4dd9-915b-f293c464558b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
