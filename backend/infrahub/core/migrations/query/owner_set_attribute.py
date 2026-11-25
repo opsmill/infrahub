@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipStatus
 from infrahub.core.ownership.queries import owner_set_key_filter
-from infrahub.core.query import Query, QueryType
+from infrahub.core.query import QueryType
 from infrahub.core.schema.generic_schema import GenericSchema
+
+from .selection import MigrationSelectionQuery
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -36,7 +38,17 @@ def profile_and_template_kinds(
     return [f"{prefix}{kind}" for kind in kinds for prefix in ("Profile", "Template")], kinds_to_skip
 
 
-class OwnerSetKeyMigrationQuery(Query):
+# The write lock lasts until the commit, so the reads after it see a committed delete and no other write creates the set
+NODE_LOCK = """
+CALL (n) {
+    WITH n
+    WHERE $new_set_key IS NOT NULL
+    SET n.uuid = n.uuid
+}
+"""
+
+
+class OwnerSetKeyMigrationQuery(MigrationSelectionQuery):
     """Close the sets of owners of one field of the nodes of some kinds, and their edges.
 
     For a renamed attribute, the owners first go to the set with the new name. The key of a set is a vertex
@@ -50,6 +62,7 @@ class OwnerSetKeyMigrationQuery(Query):
     name = "migration_owner_set_key"
     type: QueryType = QueryType.WRITE
     insert_return: bool = False
+    selected_node: ClassVar[str] = "n"
 
     def __init__(
         self,
@@ -73,6 +86,50 @@ class OwnerSetKeyMigrationQuery(Query):
         self.new_set_key = new_set_key
         self.kinds_to_skip = kinds_to_skip or []
         super().__init__(**kwargs)
+
+    def render_selection(self, lock: bool = False) -> str:
+        """Return the nodes and their sets with the key, after the lock of each node when `lock` is True."""
+        branch_filter, _ = self.branch.get_query_filter_path(at=self.at)
+        return """
+%(node_match)s
+MATCH (n)-[:HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(s:OwnerSet)
+WHERE %(same_key)s
+WITH DISTINCT n, s
+%(lock)s
+// ------------
+// A rename gives no set to a node that is not active after the lock
+// ------------
+CALL (n) {
+    OPTIONAL MATCH (n)-[r:IS_PART_OF]->(:Root)
+    WHERE %(branch_filter)s
+    WITH n, r
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+    RETURN r.status = "active" AND NOT EXISTS {
+        // A delete that commits while the query waits for the lock can have a later time than the query
+        MATCH (n)-[later:IS_PART_OF {status: "deleted"}]->(:Root)
+        WHERE later.branch IN $later_branches AND later.from > $at
+    } AS is_active
+}
+WITH n, s, is_active
+WHERE $new_set_key IS NULL OR is_active
+CALL (n, s) {
+    MATCH (n)-[r:HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(s)
+    WHERE %(branch_filter)s
+    RETURN r AS attached
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+}
+WITH n, s, attached
+WHERE attached.status = "active"
+""" % {
+            "node_match": self.render_node_match(
+                "n", self.node_kinds, conditions=["none(label IN labels(n) WHERE label IN $kinds_to_skip)"]
+            ),
+            "branch_filter": branch_filter,
+            "same_key": owner_set_key_filter(vertex="s", key="set_key"),
+            "lock": NODE_LOCK if lock else "",
+        }
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
@@ -108,42 +165,7 @@ class OwnerSetKeyMigrationQuery(Query):
             }
         )
         query = """
-MATCH (n:%(node_kinds)s)-[:HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(s:OwnerSet)
-WHERE %(same_key)s
-AND none(label IN labels(n) WHERE label IN $kinds_to_skip)
-WITH DISTINCT n, s
-CALL (n) {
-    // The write lock lasts until the commit, so the reads below see a committed delete and no other write creates the set
-    WITH n
-    WHERE $new_set_key IS NOT NULL
-    SET n.uuid = n.uuid
-}
-// ------------
-// A rename gives no set to a node that is not active after the lock
-// ------------
-CALL (n) {
-    OPTIONAL MATCH (n)-[r:IS_PART_OF]->(:Root)
-    WHERE %(branch_filter)s
-    WITH n, r
-    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-    LIMIT 1
-    RETURN r.status = "active" AND NOT EXISTS {
-        // A delete that commits while the query waits for the lock can have a later time than the query
-        MATCH (n)-[later:IS_PART_OF {status: "deleted"}]->(:Root)
-        WHERE later.branch IN $later_branches AND later.from > $at
-    } AS is_active
-}
-WITH n, s, is_active
-WHERE $new_set_key IS NULL OR is_active
-CALL (n, s) {
-    MATCH (n)-[r:HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(s)
-    WHERE %(branch_filter)s
-    RETURN r AS attached
-    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-    LIMIT 1
-}
-WITH n, s, attached
-WHERE attached.status = "active"
+%(selection)s
 CALL (s) {
     MATCH (s)-[r:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE]->(peer)
     WHERE %(branch_filter)s
@@ -209,10 +231,9 @@ CALL (edge) {
 }
 RETURN DISTINCT elementId(s) AS owner_set
         """ % {
-            "node_kinds": "|".join(self.node_kinds),
+            "selection": self.render_selection(lock=True),
             "branch_filter": branch_filter,
             "inherited_filter": inherited_filter,
-            "same_key": owner_set_key_filter(vertex="s", key="set_key"),
             "same_new_key": owner_set_key_filter(vertex="existing", key="new_set_key"),
         }
         self.add_to_query(query)

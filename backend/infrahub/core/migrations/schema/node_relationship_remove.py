@@ -355,6 +355,8 @@ class NodeRelationshipRemoveMigration(RelationshipSchemaMigration):
                 branch=branch,
                 at=migration_input.at,
                 user_id=migration_input.user_id,
+                operation_ats=migration_input.operation_ats,
+                node_ids=migration_input.node_ids,
                 node_kinds=self._get_node_kinds(db=migration_input.db, branch=branch),
                 set_key={
                     "identifier": previous_relationship.get_identifier(),

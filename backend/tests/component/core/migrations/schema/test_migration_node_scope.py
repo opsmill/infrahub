@@ -18,6 +18,7 @@ from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, HashableModelState, InfrahubKind, SchemaPathType
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations import MIGRATION_MAP
+from infrahub.core.migrations.query.owner_set_attribute import OwnerSetKeyMigrationQuery
 from infrahub.core.migrations.schema.attribute_kind_update import (
     AttributeKindUpdateMigration,
     AttributeKindUpdateMigrationQuery,
@@ -52,6 +53,7 @@ from infrahub.core.migrations.schema.tasks import schema_path_migrate
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.ownership.models import field_holder
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
@@ -75,6 +77,7 @@ from tests.component.core.migrations.schema.selection_dataset import (
     load_selection_dataset,
     population,
 )
+from tests.helpers.ownership import set_owners
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -900,5 +903,124 @@ async def test_profile_and_template_migration_changes_only_the_nodes_in_the_set(
         node_ids=_ids(nodes, case.remaining),
         expected_ids=_ids_per_kind(nodes, case.expected_remaining),
     )
+
+    await verify_graph(db=db, kinds=WIDGET_POPULATION)
+
+
+# ---------------------------------------------------------------------------
+# Owners that profiles give to a field
+# ---------------------------------------------------------------------------
+
+TARGET_SET_KEYS = """
+MATCH (n:Node)-[r:HAS_TARGET_OWNER_SET]->(s:OwnerSet)
+WHERE n.uuid IN $node_ids AND r.status = "active" AND r.to IS NULL
+RETURN n.uuid AS node_id, collect(properties(s)) AS set_keys
+"""
+
+
+async def _target_set_keys(db: InfrahubDatabase, node_ids: set[str]) -> dict[str, list[dict[str, str]]]:
+    """Return the keys of the open sets of owners that each node gives to the fields of other nodes."""
+    results = await db.execute_query(query=TARGET_SET_KEYS, params={"node_ids": sorted(node_ids)})
+    return {result["node_id"]: result["set_keys"] for result in results}
+
+
+async def _attribute_owner_query(
+    db: InfrahubDatabase, branch: Branch, migration: SchemaMigration, at: Timestamp, node_ids: set[str]
+) -> MigrationSelectionQuery:
+    query_class = migration.queries[-1]
+    return await query_class.init(db=db, branch=branch, at=at, migration=migration, node_ids=sorted(node_ids))
+
+
+async def _relationship_owner_query(
+    db: InfrahubDatabase, branch: Branch, migration: SchemaMigration, at: Timestamp, node_ids: set[str]
+) -> MigrationSelectionQuery:
+    assert isinstance(migration, NodeRelationshipRemoveMigration)
+    relationship = migration.previous_relationship_schema
+    return await OwnerSetKeyMigrationQuery.init(
+        db=db,
+        branch=branch,
+        at=at,
+        node_ids=sorted(node_ids),
+        node_kinds=migration._get_node_kinds(db=db, branch=branch),
+        set_key={"identifier": relationship.get_identifier(), "direction": relationship.direction.value},
+        kinds_to_skip=migration._get_owner_set_kinds_to_skip(db=db, branch=branch),
+    )
+
+
+@dataclass
+class OwnerScopeCase:
+    name: str
+    field_name: str
+    build: Callable[[InfrahubDatabase, Branch], SchemaMigration]
+    owner_query: Callable[..., Any]
+    """Builds the query that moves or closes the sets of owners, which counts the nodes it changes."""
+    moved_key: dict[str, str] | None
+    """The key of the set of the profile in the set after the run. None is a closed set."""
+
+
+OWNER_SCOPE_CASES = [
+    OwnerScopeCase(
+        name="attribute-rename",
+        field_name="color",
+        build=lambda db, branch: _attribute_rename(db, branch).migration,
+        owner_query=_attribute_owner_query,
+        moved_key={"attribute": "colour"},
+    ),
+    OwnerScopeCase(
+        name="attribute-remove",
+        field_name="color",
+        build=lambda db, branch: _attribute_remove(db, branch).migration,
+        owner_query=_attribute_owner_query,
+        moved_key=None,
+    ),
+    OwnerScopeCase(
+        name="relationship-remove",
+        field_name="gadget",
+        build=lambda db, branch: _relationship_remove(db, branch).migration,
+        owner_query=_relationship_owner_query,
+        moved_key=None,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", OWNER_SCOPE_CASES, ids=lambda case: case.name)
+async def test_migration_moves_only_the_owners_that_the_profiles_in_the_set_give(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    selection_dataset: SelectionDataset,
+    case: OwnerScopeCase,
+) -> None:
+    nodes = selection_dataset.nodes
+    nodes["pw2"] = await Node.init(db=db, schema=PROFILE_WIDGET_KIND, branch=default_branch)
+    await nodes["pw2"].new(db=db, profile_name="pw2", color="white")
+    await nodes["pw2"].save(db=db)
+    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP, branch=default_branch)
+    await group.new(db=db, name="dc-emea")
+    await group.save(db=db)
+    holder = field_holder(
+        schema=registry.schema.get(name=WIDGET_KIND, branch=default_branch), field_name=case.field_name, target=True
+    )
+    assert holder is not None
+    profile_ids = _ids(nodes, {"pw1", "pw2"})
+    for profile_id in profile_ids:
+        await set_owners(db=db, branch=default_branch, node_id=profile_id, owner_ids=(group.id,), holder=holder)
+    keys_before = await _target_set_keys(db=db, node_ids=profile_ids)
+    migration = case.build(db, default_branch)
+
+    at = Timestamp()
+    scope_ids = _ids(nodes, {"pw1"})
+    counted = await (await case.owner_query(db, default_branch, migration, at, scope_ids)).count_changes(db=db)
+    result = await migration.execute(
+        migration_input=MigrationInput(db=db, at=at, node_ids=frozenset(scope_ids)), branch=default_branch
+    )
+    assert result.errors == []
+
+    changed = {PROFILE_WIDGET_KIND: scope_ids}
+    assert counted == {kind: len(ids) for kind, ids in changed.items()}
+    assert await changed_node_ids(db=db, kinds=[*CHECKED_KINDS, GADGET_KIND], at=at) == changed
+    keys_after = await _target_set_keys(db=db, node_ids=profile_ids)
+    assert keys_after.get(nodes["pw1"].id, []) == ([case.moved_key] if case.moved_key else [])
+    assert keys_after[nodes["pw2"].id] == keys_before[nodes["pw2"].id]
 
     await verify_graph(db=db, kinds=WIDGET_POPULATION)
