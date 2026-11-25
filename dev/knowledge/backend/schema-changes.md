@@ -46,8 +46,9 @@ to the dataclass, the serializer and the Cypher that reads or writes it.
 
 ## Indexes
 
-Three range indexes in `core/graph/index.py` cover the property each query starts from. The graph
-migration `m085_schema_change_indexes.py` adds them to an existing database.
+Three range indexes in `core/graph/index.py` cover the property each query starts from. The server
+adds every index in that file each time it starts, so an existing database gets them without a
+graph migration.
 
 - `SchemaChange(uuid)`: marking a schema change applied or failed, finding the parent, and the
   pages of operations and applications.
