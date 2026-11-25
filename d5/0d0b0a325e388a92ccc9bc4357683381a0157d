@@ -1,0 +1,19 @@
+dev/knowledge/backend/schema-changes.md
+  s_759d6ad8a10936::t_d0854d816bfbbb 107-111,115-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d50d0b0a325e388a92ccc9bc4357683381a0157d",
+  "prompts": {},
+  "sessions": {
+    "s_759d6ad8a10936": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b6b11bd-cdbf-4a27-a3e5-47e600fa2588",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
