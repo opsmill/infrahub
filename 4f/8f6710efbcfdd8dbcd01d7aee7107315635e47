@@ -1,0 +1,30 @@
+backend/infrahub/core/migrations/schema/attribute_kind_update.py
+  s_3bd2720ce5c828::t_6a974674c59931 53-55
+  s_3bd2720ce5c828::t_d7c5cc39b43ba2 16-18,21,23-24,26-27,30-41,43,47-50,56-74,76-78,80-83,87,139-141,143-144,182-183,185-196,197
+  s_3bd2720ce5c828::t_13d8652b9c561b 45
+  s_3bd2720ce5c828::t_de55e0cfaf4bbc 142,145-149,184,198
+  s_3bd2720ce5c828::t_9076f3544cdc53 150-181
+  s_3bd2720ce5c828::t_cb22d76b7d7c00 25
+changelog/+attribute-kind-update-value-lookup.changed.md
+  s_3bd2720ce5c828::t_1bfd7d4139d630 1
+backend/tests/component/core/migrations/schema/test_attribute_kind_update.py
+  s_3bd2720ce5c828::t_3c92045deb18c7 241-250,313
+  s_3bd2720ce5c828::t_dfec41abba54a6 134-201,206-208,210-211,213-240,251-307,310-312,315-321
+  s_3bd2720ce5c828::t_ff9027a3924046 202-205,209,212,308-309,314
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4f8f6710efbcfdd8dbcd01d7aee7107315635e47",
+  "prompts": {},
+  "sessions": {
+    "s_3bd2720ce5c828": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "546223bb-0898-4553-b0b9-16fcc429e062",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

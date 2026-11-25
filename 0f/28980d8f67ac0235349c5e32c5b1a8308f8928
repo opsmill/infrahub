@@ -1,0 +1,23 @@
+backend/tests/unit/core/schema_change/helpers.py
+  s_e3124b241e516d::t_cfd6b0595b3ea4 4,825-849
+  s_e3124b241e516d::t_f0771e386069a3 850-851
+backend/tests/unit/core/schema_change/test_application_runner.py
+  s_e3124b241e516d::t_cfd6b0595b3ea4 36,40,289-307
+  s_e3124b241e516d::t_e8ef50452f92ce 308-310
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0f28980d8f67ac0235349c5e32c5b1a8308f8928",
+  "prompts": {},
+  "sessions": {
+    "s_e3124b241e516d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8dc6f626-32ca-4abd-abf6-b94c48167543",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

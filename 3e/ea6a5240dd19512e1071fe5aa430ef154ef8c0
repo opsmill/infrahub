@@ -1,0 +1,19 @@
+dev/specs/ifc-2167-placeholder-automations-db/opsmill-implement-report.md
+  s_74093a1f05db71::t_bbed2413948094 1-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3eea6a5240dd19512e1071fe5aa430ef154ef8c0",
+  "prompts": {},
+  "sessions": {
+    "s_74093a1f05db71": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8287ada-67f6-4c5b-8894-8e29155a23ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

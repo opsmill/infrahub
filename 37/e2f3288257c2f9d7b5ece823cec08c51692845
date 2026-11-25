@@ -1,0 +1,19 @@
+dev/guides/backend/creating-migrations.md
+  s_86a183a456d0fe::t_8baccc6182c7ba 37-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "37e2f3288257c2f9d7b5ece823cec08c51692845",
+  "prompts": {},
+  "sessions": {
+    "s_86a183a456d0fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70ca524c-d3c0-480e-bdb3-83ac5c526c97",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

@@ -1,0 +1,62 @@
+changelog/+schema-load-attribute-rename-with-kind-change.fixed.md
+  s_304fd28b0f6da2::t_245f356e85c228 1
+backend/infrahub/core/migrations/schema/attribute_supports_generated_schema.py
+  s_29ee9c595a6e47::t_10810dcfb972c5 125-126,133,158
+backend/infrahub/core/migrations/shared.py
+  s_29ee9c595a6e47::t_10810dcfb972c5 67-69,290
+  s_29ee9c595a6e47::t_d7a7bd65a22d1f 70-78,289,291-292
+  s_ee52b28c9e680a::t_7bed70e051c6b3 293
+backend/tests/component/core/migrations/schema/test_runner.py
+  s_29ee9c595a6e47::t_aea7e70b8da912 423
+  s_29ee9c595a6e47::t_05131d5f739f2e 111-132,151-152,319-326,432-435
+  s_304fd28b0f6da2::t_f43ce6c8b97932 153-168,396,437-458,460-461,463-478
+  s_304fd28b0f6da2::t_d712fce6daaa56 459,462
+  s_304fd28b0f6da2::t_96fdbb75db950a 382-384
+  s_29ee9c595a6e47::t_9ffe019506b39a 327-347,349-354,358,402-411,414-415,419-422,424-431
+  s_304fd28b0f6da2::t_30d07a5adbb584 62-79,82,133-150,355-357,359-381,385-391,393,397-401
+  s_304fd28b0f6da2::t_e5048c0f02b361 394-395
+  s_ee52b28c9e680a::t_4fc16ef50b34b5 169-170
+backend/infrahub/core/migrations/schema/attribute_name_update.py
+  s_304fd28b0f6da2::t_b53097422e1ac2 35
+changelog/+schema-load-kind-rename-with-field-changes.fixed.md
+  s_304fd28b0f6da2::t_245f356e85c228 1
+backend/infrahub/core/migrations/schema/node_uniqueness_constraints_update.py
+  s_29ee9c595a6e47::t_10810dcfb972c5 14-20,47
+backend/infrahub/core/migrations/schema/attribute_kind_update.py
+  s_304fd28b0f6da2::t_b53097422e1ac2 146
+  s_29ee9c595a6e47::t_10810dcfb972c5 192,221-224
+backend/infrahub/core/migrations/schema/node_relationship_remove.py
+  s_304fd28b0f6da2::t_b53097422e1ac2 264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4f87ea6b3fdb537096ff98e73e8190d6160f4d34",
+  "prompts": {},
+  "sessions": {
+    "s_29ee9c595a6e47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6739bd57-3231-493b-9d6f-e3d752abed62",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    },
+    "s_304fd28b0f6da2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d041e4c5-f5ab-4a1c-bc00-caa008b4b1d9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    },
+    "s_ee52b28c9e680a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f615a00-dc59-4b57-9038-d8fb0dac4518",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

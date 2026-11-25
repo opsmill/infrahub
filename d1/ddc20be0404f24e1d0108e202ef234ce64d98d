@@ -1,0 +1,25 @@
+frontend/app/src/entities/proposed-changes/ui/action-button/pc-merge-button.tsx
+  s_d39781b4d6a4c3::t_04421b4f4b9917 9
+  s_d39781b4d6a4c3::t_067d2838ff81f0 43
+frontend/app/src/entities/branches/ui/queries/refresh-branches-until-gone.ts
+  s_d39781b4d6a4c3::t_6f2328f7d4cc1c 16-19
+  s_d39781b4d6a4c3::t_1cce7806d1a829 1-15,20-26
+frontend/app/src/entities/branches/ui/queries/refresh-branches-until-gone.test.ts
+  s_d39781b4d6a4c3::t_fa1d93d2d4df26 1-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d1ddc20be0404f24e1d0108e202ef234ce64d98d",
+  "prompts": {},
+  "sessions": {
+    "s_d39781b4d6a4c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87386907-69dd-4d37-9a17-8c0b6c8a25aa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

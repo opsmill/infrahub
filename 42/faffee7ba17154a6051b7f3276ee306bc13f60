@@ -1,0 +1,49 @@
+backend/infrahub/lock.py
+  s_aa0ffa0a591001::t_e28599ae6e7fec 475-476
+  s_aa0ffa0a591001::t_5d8cbc875ed5d8 450,452-455
+  s_aa0ffa0a591001::t_358e77a7e3a531 10
+  s_aa0ffa0a591001::t_a5a10523a8efb3 406-409,411,415-416
+  s_aa0ffa0a591001::t_68af8d4bb7668f 373-374
+backend/tests/adapters/lock/registry.py
+  s_aa0ffa0a591001::t_0f90d85634e0c0 106-108
+  s_aa0ffa0a591001::t_0ab96e96ef4767 17
+backend/tests/unit/test_lock_shared.py
+  s_aa0ffa0a591001::t_08b451516ff2e1 273-276,279-283
+  s_aa0ffa0a591001::t_da9f66a0a8bf81 277-278
+  s_aa0ffa0a591001::t_7189303ed67e44 284-306
+  s_aa0ffa0a591001::t_b7261766977890 5
+backend/tests/component/database/test_transaction_holds.py
+  s_aa0ffa0a591001::t_a1ed525d59ec50 81-98
+  s_aa0ffa0a591001::t_d05db722638027 18-19
+  s_aa0ffa0a591001::t_6ebdf25fbab59a 3,10-11
+  s_cc096b96e273dc::t_fbe7836f1d4874 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "42faffee7ba17154a6051b7f3276ee306bc13f60",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_aa0ffa0a591001": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0386a0ea-d655-4857-bcb3-d9b04036a9c5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_cc096b96e273dc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "288369b8-6bb1-4f6d-b2ce-2ff6a62ada0e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

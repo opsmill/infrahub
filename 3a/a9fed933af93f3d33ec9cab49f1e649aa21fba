@@ -1,0 +1,22 @@
+docs/docs/branches/merge.mdx
+  s_c635c0ab719820::t_4925ee23ea8b2f 31
+  s_c635c0ab719820::t_822fd27669133b 46-48
+changelog/+merge-branch-schema-changes.fixed.md
+  s_c635c0ab719820::t_f4424dbf7ef573 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3aa9fed933af93f3d33ec9cab49f1e649aa21fba",
+  "prompts": {},
+  "sessions": {
+    "s_c635c0ab719820": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9dc6648c-b1f2-4d6d-9231-bda66faa77f5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

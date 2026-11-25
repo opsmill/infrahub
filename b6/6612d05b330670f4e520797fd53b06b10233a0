@@ -1,0 +1,30 @@
+dev/specs/ifc-2167-placeholder-automations-db/research.md
+  s_d4905394d23311::t_ec30310118308e 1-135
+dev/specs/ifc-2167-placeholder-automations-db/plan.md
+  s_d4905394d23311::t_8c80d6effe41e1 1-150
+dev/specs/ifc-2167-placeholder-automations-db/quickstart.md
+  s_d4905394d23311::t_31a4f58c7e7cba 1-53,55-61
+  s_d4905394d23311::t_ff7c48f28ce1a8 54
+dev/specs/ifc-2167-placeholder-automations-db/data-model.md
+  s_d4905394d23311::t_90ce9d04c6a8d1 67
+  s_d4905394d23311::t_b4159f0a4299e7 1-10,12-66,68-82
+  s_d4905394d23311::t_479cd3726d341d 11
+dev/specs/ifc-2167-placeholder-automations-db/contracts/definition-record-store.md
+  s_d4905394d23311::t_d38883147d7885 1-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b66612d05b330670f4e520797fd53b06b10233a0",
+  "prompts": {},
+  "sessions": {
+    "s_d4905394d23311": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "606c7b9d-2b0f-4fbf-83a6-d94ee50d7927",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

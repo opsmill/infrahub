@@ -1,0 +1,50 @@
+backend/tests/unit/core/template_fingerprint/test_decision.py
+  s_225cf36e97a1bb::t_b3fd130edb3089 1-186
+backend/tests/component/core/template_fingerprint/test_repository.py
+  s_225cf36e97a1bb::t_d24f54d83ff1e5 1-121
+dev/specs/ifc-2167-placeholder-automations/opsmill-implement-ledger.md
+  s_225cf36e97a1bb::t_925bd15a2195e4 14-46
+backend/infrahub/core/template_fingerprint/models.py
+  s_225cf36e97a1bb::t_2fffbb54d9c685 1-58
+backend/infrahub/core/query/template_fingerprint.py
+  s_225cf36e97a1bb::t_c1d5eb4b8ba1af 1-3,5,7-130
+  s_225cf36e97a1bb::t_f0ab40c47ba179 4,6
+backend/infrahub/core/template_fingerprint/repository.py
+  s_225cf36e97a1bb::t_2e5948cced7693 1-46,50,53-68,71-76
+  s_225cf36e97a1bb::t_8c492a51ed9ac4 47-49,51-52
+  s_225cf36e97a1bb::t_2ca758a4acf84f 69-70
+backend/infrahub/core/template_fingerprint/collector.py
+  s_225cf36e97a1bb::t_9e5c2d60ecaecb 1-43
+backend/infrahub/core/template_fingerprint/decision.py
+  s_225cf36e97a1bb::t_4b8905e5e92ba9 1-25,27-56
+  s_225cf36e97a1bb::t_ad3cd387aec5aa 26
+backend/tests/unit/core/template_fingerprint/test_collector.py
+  s_225cf36e97a1bb::t_60a6db34fa9255 26,106,109,111,113
+  s_225cf36e97a1bb::t_d310cc18a33bee 1-25,27-36,42-86,89-100,102-105,107-108,110,112,114-127,130,136,138-159,168
+  s_225cf36e97a1bb::t_04a5187dc0f733 37-41,87-88,101,128-129,131-135,137,160-167,169-180
+dev/specs/ifc-2167-placeholder-automations/tasks.md
+  s_225cf36e97a1bb::t_feebeea4eb99a8 58
+  s_225cf36e97a1bb::t_e078bd3a52ca1c 59
+  s_225cf36e97a1bb::t_55268841c21dd9 73
+  s_225cf36e97a1bb::t_d1ae6c2422c031 66
+  s_225cf36e97a1bb::t_76d424daadfde8 45
+  s_225cf36e97a1bb::t_0749692784296a 72
+  s_225cf36e97a1bb::t_b017d750598065 74
+  s_225cf36e97a1bb::t_8d94a103b7671a 54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e5edec7245b20fb9fcb3565d566c14a46beb76d1",
+  "prompts": {},
+  "sessions": {
+    "s_225cf36e97a1bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c88fd5e-f7e4-42fc-8432-4550b15c0b6d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

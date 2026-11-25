@@ -1,0 +1,69 @@
+backend/infrahub/trigger/setup.py
+  s_1b0e55bb70ddc6::t_51f1fecd385438 229
+  s_1b0e55bb70ddc6::t_2856d5ca889548 281-297,299,301-304,311-312
+  s_1b0e55bb70ddc6::t_0cd2ed393bab8d 300,305
+  s_1b0e55bb70ddc6::t_ffbffc71cfccb1 309-310
+  s_1b0e55bb70ddc6::t_71e9b7d49879e2 298
+  s_1b0e55bb70ddc6::t_7d4998794871f9 306-308
+  s_1b0e55bb70ddc6::t_8d5737b634c3d5 268-271
+  s_1b0e55bb70ddc6::t_58f8e9973e85de 33
+  s_1b0e55bb70ddc6::t_d042d3014034c3 250-251
+  s_1b0e55bb70ddc6::t_f3780af15a4758 240
+  s_1b0e55bb70ddc6::t_ff3d645cc4e298 26
+  s_1b0e55bb70ddc6::t_553e2c05e5c998 30
+  s_1b0e55bb70ddc6::t_fc7cc72db36531 18-19
+backend/infrahub/display_labels/tasks.py
+  s_1b0e55bb70ddc6::t_f3a3125a4094a2 139
+  s_1b0e55bb70ddc6::t_762905c34f459b 30,33-36
+  s_1b0e55bb70ddc6::t_313a345b51d743 31-32
+  s_1b0e55bb70ddc6::t_a2fb12a22e1a69 3-4
+  s_1b0e55bb70ddc6::t_0ce97c64cc44a1 106-124
+backend/infrahub/trigger/tasks.py
+  s_1b0e55bb70ddc6::t_808856efcda62a 3,11,13,24,26-33,56
+backend/infrahub/core/derived_definition/placeholder_import.py
+  s_1b0e55bb70ddc6::t_0cd2ed393bab8d 39-41
+  s_1b0e55bb70ddc6::t_a3035138e9eec9 1-38,42-62
+backend/tests/component/trigger/test_definition_record_setup.py
+  s_1b0e55bb70ddc6::t_ef6e44345b627f 4
+  s_1b0e55bb70ddc6::t_f4398b1fe8ada4 64
+  s_1b0e55bb70ddc6::t_0cd2ed393bab8d 143-145
+backend/tests/component/trigger/test_tasks.py
+  s_1b0e55bb70ddc6::t_53cf44d98d782d 9-10
+  s_1b0e55bb70ddc6::t_145bafd0659132 28-29
+  s_1b0e55bb70ddc6::t_e9db37dee009ac 1-2,4,11-17,21-22,24-27,30-33
+  s_1b0e55bb70ddc6::t_9fc7e8a4baff2a 97-141,143-322
+  s_1b0e55bb70ddc6::t_14171e72478894 142
+backend/tests/unit/core/derived_definition/test_placeholder_import.py
+  s_1b0e55bb70ddc6::t_3c06774de8579e 1-113
+dev/specs/ifc-2167-placeholder-automations-db/tasks.md
+  s_1b0e55bb70ddc6::t_8a76599590a8a5 198
+  s_1b0e55bb70ddc6::t_dd25233619a484 178
+  s_1b0e55bb70ddc6::t_c53c5cc5c8279d 199
+  s_1b0e55bb70ddc6::t_0d00941b1bf25f 191
+  s_1b0e55bb70ddc6::t_b661591b3ca902 172
+  s_1b0e55bb70ddc6::t_6c62203d0072a2 187
+dev/specs/ifc-2167-placeholder-automations-db/opsmill-implement-ledger.md
+  s_1b0e55bb70ddc6::t_978f55658e0e16 176-210
+backend/infrahub/hfid/tasks.py
+  s_1b0e55bb70ddc6::t_41793978505fd0 28,31-34
+  s_1b0e55bb70ddc6::t_9552b97925d02f 3-4
+  s_1b0e55bb70ddc6::t_f3251a599c88d4 127
+  s_1b0e55bb70ddc6::t_f2e339f4558828 29-30
+  s_1b0e55bb70ddc6::t_85faf0951ddeeb 96-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "18f17b72220f6863a792e7abbf9958cab7044bd0",
+  "prompts": {},
+  "sessions": {
+    "s_1b0e55bb70ddc6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5046f5dd-f5a0-4bdc-8b0b-6bc8fa085fc7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

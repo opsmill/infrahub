@@ -1,0 +1,38 @@
+backend/tests/component/core/migrations/schema/test_node_remove.py
+  s_2e5bd5d6ae03be::t_a65a85b749a689 28,273
+backend/tests/component/core/migrations/schema/test_node_attribute_remove.py
+  s_2e5bd5d6ae03be::t_a65a85b749a689 29,235
+backend/tests/component/core/migrations/schema/test_attribute_kind_update.py
+  s_2e5bd5d6ae03be::t_a65a85b749a689 23,399
+backend/tests/component/core/migrations/schema/test_attribute_name_update.py
+  s_2e5bd5d6ae03be::t_a65a85b749a689 31,278
+backend/tests/component/core/migrations/schema/test_node_relationship_remove.py
+  s_2e5bd5d6ae03be::t_a65a85b749a689 35,193
+backend/tests/component/core/migrations/schema/test_node_attribute_add.py
+  s_2e5bd5d6ae03be::t_a65a85b749a689 55,292
+backend/tests/component/core/migrations/schema/test_node_kind_update.py
+  s_2e5bd5d6ae03be::t_a65a85b749a689 37,312
+backend/tests/component/core/test_rollback.py
+  s_2e5bd5d6ae03be::t_4bda5c900eb3ac 20,729,734-735,739-740,749-751,767,774,802-808,838-840,874-876,898,926-930
+  s_2e5bd5d6ae03be::t_236b8aa1f9ef71 931
+backend/tests/component/core/migrations/schema/metadata_helpers.py
+  s_2e5bd5d6ae03be::t_0bea3bcdb670b2 9,106-117,132-138
+backend/tests/component/core/merge/test_recovery_rollback.py
+  s_2e5bd5d6ae03be::t_7127ac3f44330b 29,152,188,217,238,264,274,311,334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b869aa4340748d74ba9ca1a2b5944d03020d6dc1",
+  "prompts": {},
+  "sessions": {
+    "s_2e5bd5d6ae03be": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21fc7e3f-8986-420d-aa01-f2da603b8b8d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

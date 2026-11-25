@@ -1,0 +1,21 @@
+.gitignore
+  s_54a81161fc2aed::t_25a0a719188e6a 32
+dev/specs/ifc-2167-placeholder-automations-db/opsmill-implement-ledger.md
+  s_54a81161fc2aed::t_12b2713e7d7a43 263-280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b6856f39d4120854b593569b47d8a1da0c9f9a4",
+  "prompts": {},
+  "sessions": {
+    "s_54a81161fc2aed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77c22775-d7b4-4153-9ea0-1a6397a4fb60",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

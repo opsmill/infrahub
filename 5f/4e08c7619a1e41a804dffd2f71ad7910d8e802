@@ -1,0 +1,43 @@
+dev/specs/ifc-3618-schema-migration-by-node/research.md
+  s_b636cf4e853527::t_187375b2553330 135-145,147-160,162,164
+  s_b636cf4e853527::t_ca90137608b1d8 70
+  s_b636cf4e853527::t_bc77f606da7b2f 66
+  s_b636cf4e853527::t_f5f8f036a48d61 54
+  s_b636cf4e853527::t_84b24ecdd10b6c 104-109
+  s_b636cf4e853527::t_c0b7f62364e799 168
+  s_b636cf4e853527::t_004bb10ecbde76 146
+  s_b636cf4e853527::t_b44ac0c1077dab 80-88
+  s_b636cf4e853527::t_a75cc7be7df1a0 38
+dev/specs/ifc-3618-schema-migration-by-node/contracts/migration-node-scope.md
+  s_b636cf4e853527::t_e93208045e79c9 75
+  s_b636cf4e853527::t_bc36cde381f561 80-81
+dev/specs/ifc-3618-schema-migration-by-node/quickstart.md
+  s_b636cf4e853527::t_e8ec36d7fc7e30 8,11,16,19-20,27-35,38-40,42,50,61-69
+dev/specs/ifc-3618-schema-migration-by-node/tasks.md
+  s_b636cf4e853527::t_9595faf76dfb98 11,22,24-27,31,40,46,52-55,68-73,88-99,101,105,109-116,119-120,126-127,132,146-150,155,169-170,173-176,190-192,197-199,207-214,222,225-226,233-238,242-245,250-254,265,269-270
+dev/specs/ifc-3618-schema-migration-by-node/spec.md
+  s_b636cf4e853527::t_2b5dff4b819d61 129
+  s_b636cf4e853527::t_a7641c4a537349 147
+  s_b636cf4e853527::t_01a49bc4164039 157
+  s_b636cf4e853527::t_cf268c84122844 146
+dev/specs/ifc-3618-schema-migration-by-node/plan.md
+  s_b636cf4e853527::t_b56ebed4078568 27,42-43,95,97-99,105,135,139,147
+dev/specs/ifc-3618-schema-migration-by-node/alignment-check.md
+  s_b636cf4e853527::t_84d2809f077792 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5f4e08c7619a1e41a804dffd2f71ad7910d8e802",
+  "prompts": {},
+  "sessions": {
+    "s_b636cf4e853527": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9e2c2131-1be4-43e0-83d8-56224be168d9",
+        "model": "unknown"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

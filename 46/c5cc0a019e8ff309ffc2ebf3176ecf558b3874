@@ -1,0 +1,19 @@
+backend/tests/integration/schema_lifecycle/test_schema_load_rollback.py
+  s_304fd28b0f6da2::t_e016cab0834366 9,16,40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "46c5cc0a019e8ff309ffc2ebf3176ecf558b3874",
+  "prompts": {},
+  "sessions": {
+    "s_304fd28b0f6da2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d041e4c5-f5ab-4a1c-bc00-caa008b4b1d9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+frontend/app/src/entities/nodes/object/ui/queries/get-display-label.query.ts
+  s_d39781b4d6a4c3::t_9ecada6be6d456 7,9,45-52
+  s_d39781b4d6a4c3::t_196b40b2c589cf 44,53,59
+  s_d39781b4d6a4c3::t_752a4bc00f7067 67-76
+frontend/app/src/entities/nodes/object/ui/node-label.test.tsx
+  s_d39781b4d6a4c3::t_5f38f88d8ede72 1-53,57-81
+  s_d39781b4d6a4c3::t_d769074c5e66f8 54-56
+frontend/app/src/shared/components/ui/id.test.tsx
+  s_d39781b4d6a4c3::t_8040faef7757c9 1-58
+frontend/app/src/entities/nodes/object/ui/node-label.tsx
+  s_d39781b4d6a4c3::t_ef6bf404011727 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f7eb6d752153b7dff1b1cd160e5e137aeeb41c45",
+  "prompts": {},
+  "sessions": {
+    "s_d39781b4d6a4c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87386907-69dd-4d37-9a17-8c0b6c8a25aa",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+changelog/+schema-load-kind-rename-with-field-changes.fixed.md
+  s_a61eb58394be2f::t_6562005b8f425f 1
+changelog/+schema-load-attribute-rename-with-kind-change.fixed.md
+  s_a61eb58394be2f::t_f116f0b9e52ac8 1
+backend/tests/component/core/migrations/schema/test_runner.py
+  s_a61eb58394be2f::t_e375db2206ab55 319-320,338,428-429,446-447,449,452,541,544,551,557-563,574-580,690-732,780-782,786-788,792-794
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "48ec76d3cd397c8a56d76d133750a85bb419c113",
+  "prompts": {},
+  "sessions": {
+    "s_a61eb58394be2f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91f2ff34-ccf0-4dd9-915b-f293c464558b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

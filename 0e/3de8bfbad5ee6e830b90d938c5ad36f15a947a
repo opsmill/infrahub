@@ -1,0 +1,23 @@
+backend/infrahub/core/branch/data_deleter.py
+  s_dc0b6c2fee3221::t_6af3149443b1aa 17,102,108-111
+  s_dc0b6c2fee3221::t_a591558d6bfec3 112
+backend/tests/component/branch/test_template_fingerprint_cleanup.py
+  s_dc0b6c2fee3221::t_184b183dd5979d 1-14,16-24,26-82
+  s_dc0b6c2fee3221::t_69190f6493f040 15,25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0e3de8bfbad5ee6e830b90d938c5ad36f15a947a",
+  "prompts": {},
+  "sessions": {
+    "s_dc0b6c2fee3221": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2da40565-0ebc-41d9-9103-c7dfa878f851",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+dev/specs/ifc-2167-placeholder-automations/tasks.md
+  s_8f5ea57da7de83::t_4f68240c29f881 1-199,201-295
+  s_8f5ea57da7de83::t_ddc2c8639470d2 200
+.specify/workflows/runs/5ab86115/log.jsonl
+  s_c084e8bac6e69f::t_68750e3d850b68 25-30
+.specify/workflows/runs/5ab86115/state.json
+  s_c084e8bac6e69f::t_7362ca31803df8 8,12,159-160,308-382,386-394
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a098444176f7035eb26fe9d009ff3e8f748d664f",
+  "prompts": {},
+  "sessions": {
+    "s_8f5ea57da7de83": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d63ef8d8-430a-4a7a-9c37-b11793c9896f",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_c084e8bac6e69f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a62b57c8-0237-436f-98fd-7089eb103a35",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

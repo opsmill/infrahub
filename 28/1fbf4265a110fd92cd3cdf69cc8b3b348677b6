@@ -1,0 +1,26 @@
+backend/infrahub/core/node/resource_manager/ip_prefix_pool.py
+  s_92ce1f25dbe045::t_427bbfbf7fdcd0 8,154-157
+backend/infrahub/core/node/create.py
+  s_92ce1f25dbe045::t_8609ed36ee3e78 270-273
+  s_92ce1f25dbe045::t_542703f3a7de86 288-289,291,293
+  s_92ce1f25dbe045::t_a1764a77ebc7bf 24-26
+  s_92ce1f25dbe045::t_aeff6d0b3e2c5a 302-304,306
+backend/infrahub/core/node/resource_manager/ip_address_pool.py
+  s_92ce1f25dbe045::t_427bbfbf7fdcd0 8,144-148,158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "281fbf4265a110fd92cd3cdf69cc8b3b348677b6",
+  "prompts": {},
+  "sessions": {
+    "s_92ce1f25dbe045": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4d35956-d350-4d16-acf4-30ed14df1414",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

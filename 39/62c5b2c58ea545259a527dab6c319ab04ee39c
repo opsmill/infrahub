@@ -1,0 +1,91 @@
+backend/tests/component/core/changelog/test_diff.py
+  s_ee52b28c9e680a::t_7679d6b3a6b622 199
+backend/tests/component/core/constraint_validators/test_attribute_length.py
+  s_ee52b28c9e680a::t_ecf935469eb5dc 19
+backend/tests/component/core/constraint_validators/test_attribute_number_constraints.py
+  s_ee52b28c9e680a::t_bcd16b00f0d087 18
+backend/tests/component/core/constraint_validators/test_attribute_numberpool_constraints.py
+  s_ee52b28c9e680a::t_028a7c1848049f 84
+backend/tests/component/core/constraint_validators/test_node_grouped_uniqueness.py
+  s_ee52b28c9e680a::t_ba0558aa090bf7 244
+backend/tests/component/core/constraint_validators/test_relationship_count.py
+  s_ee52b28c9e680a::t_c027528b34fe60 16,127
+backend/tests/component/core/diff/diff_calculator/test_attributes.py
+  s_ee52b28c9e680a::t_2826643b04db58 432
+backend/tests/component/core/diff/merge/test_manual_conflict_resolution.py
+  s_ee52b28c9e680a::t_888aa1ed7a81a0 354
+backend/tests/component/core/diff/query/test_read.py
+  s_ee52b28c9e680a::t_45de8c6332a013 188
+backend/tests/component/core/diff/test_conflicts_enricher.py
+  s_ee52b28c9e680a::t_9e9f12bebc5530 625,821
+backend/tests/component/core/diff/test_diff_combiner.py
+  s_ee52b28c9e680a::t_36ecc796206a37 110,133,747
+backend/tests/component/core/ipam/conftest.py
+  s_ee52b28c9e680a::t_63409df15e7240 188
+backend/tests/component/core/ipam/test_ipam.py
+  s_ee52b28c9e680a::t_bbacf3cea1fb07 53
+backend/tests/component/core/node/test_node_field_name_update.py
+  s_ee52b28c9e680a::t_5ad903715e3ef3 66
+backend/tests/component/core/schema/schema_branch/test_schema_hfid.py
+  s_ee52b28c9e680a::t_0cce1ae957fe6c 72
+backend/tests/component/core/schema/schema_branch/test_schema_uniqueness_constraints.py
+  s_ee52b28c9e680a::t_6bc491fd4c8487 8
+backend/tests/component/core/schema/schema_branch/test_validate_computed_attributes.py
+  s_ee52b28c9e680a::t_2ff88f8e943f0a 11
+backend/tests/component/core/schema_manager/test_manager_schema.py
+  s_ee52b28c9e680a::t_d7b1816a8ace89 217,266,557,1192,1318,1795,1876,1970,2007,2081,2154,2204,2263,2365,2368,4636
+backend/tests/component/core/schema_manager/test_validate_schema_path.py
+  s_ee52b28c9e680a::t_6c40954fb632d2 80,131
+backend/tests/component/core/test_attribute.py
+  s_ee52b28c9e680a::t_ca2ccaeb9f4233 334,357,1588-1590,1628,1672
+backend/tests/component/core/test_node.py
+  s_ee52b28c9e680a::t_1e9a267d81d831 222
+backend/tests/component/core/test_utils.py
+  s_ee52b28c9e680a::t_97ebcf02ec0256 10
+backend/tests/component/graphql/auth/query_permission_checker/test_default_branch_checker.py
+  s_ee52b28c9e680a::t_5db3550e73aee3 78,129
+backend/tests/component/graphql/auth/query_permission_checker/test_merge_operation_checker.py
+  s_ee52b28c9e680a::t_7ab33ba8e94e3a 78,120
+backend/tests/component/graphql/auth/query_permission_checker/test_object_permission_checker.py
+  s_ee52b28c9e680a::t_de2068addab580 601,747,809,863,1009
+backend/tests/component/graphql/auth/test_anonymous_checker.py
+  s_ee52b28c9e680a::t_f41bceb638c725 28,38-40
+backend/tests/component/graphql/diff/test_diff_tree_query.py
+  s_ee52b28c9e680a::t_fe18a4d22e160a 822,928
+backend/tests/component/graphql/mutations/test_repository.py
+  s_ee52b28c9e680a::t_0880176179a5fd 152
+backend/tests/component/graphql/queries/test_ipam.py
+  s_ee52b28c9e680a::t_e4765a54548a93 112,156,532,642,744,855,1003
+backend/tests/component/graphql/queries/test_search.py
+  s_ee52b28c9e680a::t_69b01523d9342b 280
+backend/tests/component/graphql/resource_manager/test_resource_manager.py
+  s_ee52b28c9e680a::t_f8e3442528cb0f 332
+backend/tests/component/graphql/test_graphql_query.py
+  s_ee52b28c9e680a::t_c9abac5d18b8b2 641,1155
+backend/tests/component/graphql/test_manager.py
+  s_ee52b28c9e680a::t_82eed831c2e4de 325
+backend/tests/component/graphql/test_mutation_create_attributes.py
+  s_ee52b28c9e680a::t_bce9408d3e29ed 421
+backend/tests/component/graphql/test_mutation_update.py
+  s_ee52b28c9e680a::t_b7d3cec77a468f 96
+backend/tests/component/permissions/test_types.py
+  s_ee52b28c9e680a::t_58098660c0ca0c 18
+backend/tests/integration/diff/test_diff_merge.py
+  s_ee52b28c9e680a::t_58bd3b798d1044 156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3962c5b2c58ea545259a527dab6c319ab04ee39c",
+  "prompts": {},
+  "sessions": {
+    "s_ee52b28c9e680a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f615a00-dc59-4b57-9038-d8fb0dac4518",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

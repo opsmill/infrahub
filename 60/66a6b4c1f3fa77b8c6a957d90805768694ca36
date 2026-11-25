@@ -1,0 +1,32 @@
+backend/tests/helpers/agnostic_edges.py
+  s_df41172c2bb3fa::t_a51e4f61483c7a 623
+backend/tests/integration/schema_lifecycle/test_schema_migration_branch.py
+  s_df41172c2bb3fa::t_a51e4f61483c7a 65,101
+backend/tests/unit/core/test_query.py
+  s_df41172c2bb3fa::t_504c15901afd65 8
+backend/infrahub/core/query/__init__.py
+  s_df41172c2bb3fa::t_504c15901afd65 437
+backend/tests/component/core/resource_manager/test_number_pool_attribute_rename.py
+  s_df41172c2bb3fa::t_502b28b4992cb5 452-454,461
+backend/infrahub/core/migrations/query/attribute_rename.py
+  s_df41172c2bb3fa::t_504c15901afd65 91-92,122-124,126,134,139-141,155-157,204
+backend/tests/component/core/migrations/schema/test_agnostic_attribute_rename.py
+  s_df41172c2bb3fa::t_dde158ccc1c379 75-76
+  s_df41172c2bb3fa::t_f80bd7d9cf7b27 1-9,25-31,61-68,71-74,77-78,80-86,198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6066a6b4c1f3fa77b8c6a957d90805768694ca36",
+  "prompts": {},
+  "sessions": {
+    "s_df41172c2bb3fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0dc08ef8-dcfe-4680-813b-8e1b8eb38c5b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

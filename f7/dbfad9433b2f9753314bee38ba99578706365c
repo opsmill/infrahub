@@ -1,0 +1,21 @@
+backend/repositories/18e9c094-a4e0-5398-37cc-2216ff29cce5/commits/92fdf61f93f06aa903135af3614229cac25a8e22
+  s_62cc9c9b753083::t_ee1d84e6f92767 1
+backend/repositories/18e9c094-a4e0-5398-37cc-2216ff29cce5/main
+  s_62cc9c9b753083::t_d4c21ede492e08 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f7dbfad9433b2f9753314bee38ba99578706365c",
+  "prompts": {},
+  "sessions": {
+    "s_62cc9c9b753083": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4791b33-ee5d-4da4-9471-01c8fa9b5683",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

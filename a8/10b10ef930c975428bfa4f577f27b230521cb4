@@ -1,0 +1,19 @@
+backend/tests/integration/schema_lifecycle/test_unique_field_updates.py
+  s_05196466af1985::t_cae38573135361 642-648
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a810b10ef930c975428bfa4f577f27b230521cb4",
+  "prompts": {},
+  "sessions": {
+    "s_05196466af1985": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "124d0d26-f7c5-4a25-b789-a162eac7a3fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

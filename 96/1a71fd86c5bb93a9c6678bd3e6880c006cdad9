@@ -1,0 +1,21 @@
+frontend/app/src/entities/branches/ui/queries/refresh-branches-until-gone.test.ts
+  s_d39781b4d6a4c3::t_449d30b75b2cbf 20,33,37-52
+frontend/app/src/entities/branches/ui/queries/refresh-branches-until-gone.ts
+  s_d39781b4d6a4c3::t_c50ff5aa40bf12 8-9,17,24-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "961a71fd86c5bb93a9c6678bd3e6880c006cdad9",
+  "prompts": {},
+  "sessions": {
+    "s_d39781b4d6a4c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "87386907-69dd-4d37-9a17-8c0b6c8a25aa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

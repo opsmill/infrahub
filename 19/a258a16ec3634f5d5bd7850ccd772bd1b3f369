@@ -1,0 +1,50 @@
+backend/infrahub/core/schema_change/history_reader.py
+  s_3e7908235603b2::t_39081c09f27459 7-8
+backend/tests/unit/core/schema_change/test_recorder.py
+  s_3e7908235603b2::t_f86d7005ee8a44 22,145-156
+  s_3e7908235603b2::t_4dee7c035a9f7c 157-166
+backend/tests/unit/core/schema_change/test_application_runner.py
+  s_3e7908235603b2::t_ead28b80ecdf2e 33,50-52,264,284-307
+  s_3e7908235603b2::t_a17268231d1d1d 308-309
+backend/tests/component/core/schema_change/test_repository.py
+  s_3e7908235603b2::t_f86d7005ee8a44 28,472-518
+  s_3e7908235603b2::t_3bffd0dddcd06f 519-521
+backend/infrahub/core/schema_change/repository.py
+  s_3e7908235603b2::t_7bb6608117a21f 210-218,220-223,239,243-249,277-280,543-563,567
+  s_3e7908235603b2::t_39081c09f27459 10
+  s_3e7908235603b2::t_36508d258154d5 201-202
+dev/specs/ifc-3614-store-schema-changes/spec.md
+  s_3e7908235603b2::t_ad815a9fe85684 265-267
+backend/infrahub/core/schema_change/application_runner.py
+  s_3e7908235603b2::t_36508d258154d5 37,136,169-188
+  s_3e7908235603b2::t_60423983afbd39 87-89,97-98
+  s_3e7908235603b2::t_636892eb32c0b1 38,189
+backend/tests/unit/core/schema_change/helpers.py
+  s_3e7908235603b2::t_bd6558b35a27b7 328,343,351,354,393-405,536,552-553,556,558,590-599,618,620,628,632
+backend/infrahub/core/schema_change/recorder.py
+  s_3e7908235603b2::t_36508d258154d5 36-39,95-96,105-112
+  s_3e7908235603b2::t_65ddfa810a6edd 113-118
+dev/knowledge/backend/schema-changes.md
+  s_3e7908235603b2::t_ad815a9fe85684 171-176,228,270-271
+backend/infrahub/core/schema_change/cypher_names.py
+  s_3e7908235603b2::t_023b46bc6cccfe 1-13
+dev/specs/ifc-3614-store-schema-changes/contracts/internal-interfaces.md
+  s_3e7908235603b2::t_2a52f4bf052e1a 389,392
+  s_3e7908235603b2::t_ad815a9fe85684 493-496
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "19a258a16ec3634f5d5bd7850ccd772bd1b3f369",
+  "prompts": {},
+  "sessions": {
+    "s_3e7908235603b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "556de896-5146-4ff1-b6a8-3b85575169e0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

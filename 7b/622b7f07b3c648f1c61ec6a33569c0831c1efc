@@ -1,0 +1,19 @@
+backend/infrahub/core/migrations/schema/tasks.py
+  s_304fd28b0f6da2::t_5f765db5655898 66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7b622b7f07b3c648f1c61ec6a33569c0831c1efc",
+  "prompts": {},
+  "sessions": {
+    "s_304fd28b0f6da2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d041e4c5-f5ab-4a1c-bc00-caa008b4b1d9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

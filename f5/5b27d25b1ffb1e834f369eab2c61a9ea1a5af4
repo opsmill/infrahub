@@ -1,0 +1,61 @@
+dev/specs/ifc-2167-placeholder-automations/opsmill-implement-ledger.md
+  s_107a130324ccf6::t_7da7eb8d0050ae 47-75
+backend/tests/component/computed_attribute/test_scoped_recompute_jinja2.py
+  s_107a130324ccf6::t_a7d633742ea14b 89-92
+  s_107a130324ccf6::t_cb577460c65848 191,199
+  s_107a130324ccf6::t_eb917dba0bf910 3,10,13,86-88,93-94,152-190,192-198,200-206
+backend/infrahub/computed_attribute/tasks.py
+  s_107a130324ccf6::t_4897103a3cfa9f 694,696
+  s_107a130324ccf6::t_6c001f22a53949 64-67
+  s_107a130324ccf6::t_7e9113d66ef8ac 726-727
+  s_107a130324ccf6::t_06ca685aa7ec5e 638-655,660,665-672,675,687-693,695,697-699,701-711
+  s_107a130324ccf6::t_fef42895848605 716-725
+backend/infrahub/computed_attribute/gather.py
+  s_107a130324ccf6::t_ccbc1766a9690c 144-146,150
+.specify/workflows/runs/5ab86115/state.json
+  s_c084e8bac6e69f::t_4f8a1dbbcd98cb 8,56
+  s_c084e8bac6e69f::t_dae3b85fb5ad8f 883-946,951-953
+dev/specs/ifc-2167-placeholder-automations/tasks.md
+  s_107a130324ccf6::t_07fb3650afbce4 107
+  s_107a130324ccf6::t_a4fb0e6986289f 89
+  s_107a130324ccf6::t_b1d88d45f7b243 90
+  s_107a130324ccf6::t_05f9b67a10aa59 88
+  s_107a130324ccf6::t_cca172317f54b9 100
+  s_107a130324ccf6::t_baa2b5d83813ea 101
+backend/tests/functional/computed_attributes/test_local_computation.py
+  s_107a130324ccf6::t_6e4473725abf22 40,46,48-49,54,62,64
+backend/tests/component/computed_attribute/test_gather.py
+  s_107a130324ccf6::t_c021e1e104f5bf 218-219,223,225,227
+  s_107a130324ccf6::t_3eea3ba94e8a5a 228
+  s_107a130324ccf6::t_92af86a8e6ed8a 195-198,200
+backend/tests/component/computed_attribute/test_placeholder_removal.py
+  s_107a130324ccf6::t_d372b216bad14a 1-21,24-82,84-89
+  s_107a130324ccf6::t_548da73db8d856 83
+  s_107a130324ccf6::t_65e6512d25cecd 22-23
+.specify/workflows/runs/5ab86115/log.jsonl
+  s_c084e8bac6e69f::t_fbe3ca1595a4ea 69-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f55b27d25b1ffb1e834f369eab2c61a9ea1a5af4",
+  "prompts": {},
+  "sessions": {
+    "s_107a130324ccf6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d9809d30-a84f-4731-bbab-b1bd90af0a30",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_c084e8bac6e69f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a62b57c8-0237-436f-98fd-7089eb103a35",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

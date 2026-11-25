@@ -1,0 +1,43 @@
+backend/infrahub/core/schema/update_coordinator.py
+  s_6bc119ebacf23a::t_083c7d7f85c3a4 3,5,39-55
+  s_6bc119ebacf23a::t_819f0e7157b1be 118,140
+  s_6bc119ebacf23a::t_330d4eb1e443f7 56-57
+backend/tests/component/cli/test_core_schema_update.py
+  s_6bc119ebacf23a::t_51573091e209f3 3,26,47-48,126-127,132,337-342,345,350,354-355
+backend/tests/unit/core/schema_change/test_application_runner.py
+  s_6bc119ebacf23a::t_9a12e76e4a9c2e 17,105,133,170-192
+  s_6bc119ebacf23a::t_4afee3c6741f14 193-194
+backend/infrahub/cli/db.py
+  s_6bc119ebacf23a::t_3f66a3ea0d2af0 74,1072,1135
+  s_6bc119ebacf23a::t_2a6ce99cbd6a79 76,1071
+  s_6bc119ebacf23a::t_8aafcacd580562 63,108
+  s_6bc119ebacf23a::t_ee91d25206a49e 1063
+  s_6bc119ebacf23a::t_f3afa51385f195 109
+backend/infrahub/api/schema.py
+  s_6bc119ebacf23a::t_3f66a3ea0d2af0 523-525
+  s_6bc119ebacf23a::t_8aafcacd580562 57
+dev/knowledge/backend/schema-changes.md
+  s_6bc119ebacf23a::t_204aeb566afd03 255-267
+backend/tests/unit/core/schema_change/helpers.py
+  s_6bc119ebacf23a::t_b77dec78082eeb 905,923,962,977,1005,1020
+  s_6bc119ebacf23a::t_f6d81bdb35a665 41
+backend/infrahub/core/schema_change/application_runner.py
+  s_6bc119ebacf23a::t_6e4bf4e577e22e 90,121,140,159,170-171
+  s_6bc119ebacf23a::t_083c7d7f85c3a4 17,57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b59fbc42fb2eb2fc478b17e11b9e566f77899dac",
+  "prompts": {},
+  "sessions": {
+    "s_6bc119ebacf23a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "941de9ea-8387-4c4d-8c1e-5cfcc3b27b3f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

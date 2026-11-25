@@ -1,0 +1,19 @@
+changelog/+schema-load-migration-errors-status.changed.md
+  s_6e607f1bff2973::t_37ea91ac9f09ed 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "601278068e87f332081e6ce52fc527aa98dff5aa",
+  "prompts": {},
+  "sessions": {
+    "s_6e607f1bff2973": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c67b2273-d06c-45a0-9daf-8d6cd700d2d2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

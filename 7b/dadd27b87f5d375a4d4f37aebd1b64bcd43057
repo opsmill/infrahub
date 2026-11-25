@@ -1,0 +1,26 @@
+backend/tests/component/core/migrations/schema/test_migration_node_scope.py
+  s_86a183a456d0fe::t_82466d62db62f8 402-426
+  s_86a183a456d0fe::t_56e223d28620cd 15
+  s_86a183a456d0fe::t_655574da375ee8 47
+backend/infrahub/core/migrations/schema/tasks.py
+  s_86a183a456d0fe::t_4e4fccd097a828 193,195-197,202,227-233
+  s_86a183a456d0fe::t_0483d3cacedafb 198-200
+  s_86a183a456d0fe::t_cc5d31a8dbf5f3 212,214
+  s_86a183a456d0fe::t_9f3f605d493068 201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7bdadd27b87f5d375a4d4f37aebd1b64bcd43057",
+  "prompts": {},
+  "sessions": {
+    "s_86a183a456d0fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70ca524c-d3c0-480e-bdb3-83ac5c526c97",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

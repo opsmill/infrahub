@@ -1,0 +1,52 @@
+backend/infrahub/trigger/setup.py
+  s_7eeaddf080e989::t_b3bd11b3b5d3c8 52-54
+  s_7eeaddf080e989::t_de85edb15f61b1 14
+  s_7eeaddf080e989::t_810fdd512b24d3 1-2
+  s_7eeaddf080e989::t_cab08f0e7d11c9 51,55-65,72
+dev/specs/ifc-2167-placeholder-automations/opsmill-implement-ledger.md
+  s_7eeaddf080e989::t_307ea9b858317f 225-234,236,239-241
+  s_7eeaddf080e989::t_1e1e2abdee3441 235
+  s_7eeaddf080e989::t_1ffb92cef46e55 237
+  s_7eeaddf080e989::t_82cecccdc39514 238
+  s_7eeaddf080e989::t_d65516e0b3787a 242
+backend/infrahub/services/adapters/workflow/worker.py
+  s_7eeaddf080e989::t_e47fc7089c47e9 66-69
+  s_7eeaddf080e989::t_9156a70dc4e2ea 14
+backend/infrahub/display_labels/tasks.py
+  s_7eeaddf080e989::t_293e235263d94b 124
+  s_7eeaddf080e989::t_abb38b5aa66e27 23
+backend/infrahub/hfid/tasks.py
+  s_7eeaddf080e989::t_1668cd6ad7cf77 20
+  s_7eeaddf080e989::t_04518f0c6212e2 110
+backend/infrahub/trigger/tasks.py
+  s_7eeaddf080e989::t_92297c689b2b79 50-52,54-58
+  s_7eeaddf080e989::t_569099e6d6666e 20
+.specify/workflows/runs/5ab86115/log.jsonl
+  s_c084e8bac6e69f::t_48dca8e576de5f 117-120
+.specify/workflows/runs/5ab86115/state.json
+  s_c084e8bac6e69f::t_75c27a125d90df 8,56,711-712,1472-1489,1492-1509,1513-1515,1518-1519
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2e1df23bbce02f74acf966c1617d1d4d62b60fb0",
+  "prompts": {},
+  "sessions": {
+    "s_7eeaddf080e989": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d0b921e-7500-4022-b1f1-f5cd0bc6e367",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_c084e8bac6e69f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a62b57c8-0237-436f-98fd-7089eb103a35",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

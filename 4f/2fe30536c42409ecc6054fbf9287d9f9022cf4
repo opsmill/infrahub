@@ -1,0 +1,35 @@
+dev/specs/ifc-2167-placeholder-automations/spec.md
+  s_e8e97b33486d37::t_6d13ef732d4141 1-145
+dev/specs/ifc-2167-placeholder-automations/checklists/requirements.md
+  s_e8e97b33486d37::t_d5958d004388e9 1-36
+.specify/workflows/runs/db54451b/log.jsonl
+  s_efabefa475e91d::t_5744aa369953f2 9-15
+.specify/workflows/runs/db54451b/state.json
+  s_efabefa475e91d::t_3e7d74b5189dcc 6,8-24,27-28,39-40,55,134-151,154-171,181-183,196-212
+.specify/workflows/runs/5ab86115/workflow.yml
+  s_e8e97b33486d37::t_134fad9c892d7f 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4f2fe30536c42409ecc6054fbf9287d9f9022cf4",
+  "prompts": {},
+  "sessions": {
+    "s_e8e97b33486d37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ed13814-d005-4aed-a989-db3ed1f46cd6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_efabefa475e91d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99e1db76-c6ee-472d-bb99-0d010014b033",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

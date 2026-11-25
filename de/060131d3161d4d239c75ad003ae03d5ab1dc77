@@ -1,0 +1,49 @@
+backend/infrahub/core/schema_change/repository.py
+  s_8c6ad6674612c6::t_b3f99df14c2039 238-241
+  s_8c6ad6674612c6::t_4249ef37611cbd 200-202
+  s_8c6ad6674612c6::t_edee47bb18d802 265
+  s_8c6ad6674612c6::t_dd5ba04f25c1f2 549,557-560
+  s_8c6ad6674612c6::t_d5c30aed05eaf0 217
+  s_8c6ad6674612c6::t_8e2d14db5c6c0f 573
+backend/tests/component/core/schema_change/test_repository.py
+  s_8c6ad6674612c6::t_8f5fddd2bb28cb 472,475-480,488-493
+  s_8c6ad6674612c6::t_a01565c3a22c70 524-527,531-548
+dev/knowledge/backend/schema-changes.md
+  s_8c6ad6674612c6::t_3f28443175f4f7 178-179
+  s_8c6ad6674612c6::t_96a8e92ebbedd0 206-208
+  s_8c6ad6674612c6::t_b1d743ea80267c 218-220
+dev/specs/ifc-3614-store-schema-changes/contracts/internal-interfaces.md
+  s_8c6ad6674612c6::t_847e40ec817d53 392
+  s_8c6ad6674612c6::t_95c771d4e1b91b 235-237
+dev/specs/ifc-3614-store-schema-changes/research.md
+  s_8c6ad6674612c6::t_3bac28fa2a1eaa 392-396
+dev/specs/ifc-3614-store-schema-changes/spec.md
+  s_8c6ad6674612c6::t_9676042209f08c 269-270
+  s_8c6ad6674612c6::t_1714e7e076252d 447-449
+  s_8c6ad6674612c6::t_488495169e2439 642-647
+dev/specs/ifc-3614-store-schema-changes/tasks.md
+  s_8c6ad6674612c6::t_2b19eea3c1449f 1109-1110
+  s_8c6ad6674612c6::t_aea976c2e2fe51 1049-1052
+dev/specs/ifc-3614-store-schema-changes/contracts/schema-change-history.graphql
+  s_8c6ad6674612c6::t_0554ead366243c 44-45
+backend/infrahub/core/schema_change/recorder.py
+  s_8c6ad6674612c6::t_f4c361156a423e 104-107
+dev/specs/ifc-3614-store-schema-changes/data-model.md
+  s_8c6ad6674612c6::t_1dff2325214328 157-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de060131d3161d4d239c75ad003ae03d5ab1dc77",
+  "prompts": {},
+  "sessions": {
+    "s_8c6ad6674612c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "18613163-eab0-4bd1-8493-c25f0662e6d2",
+        "model": "unknown"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
