@@ -2616,17 +2616,6 @@ async def register_core_schema_db(
     registry.schema.set_schema_branch(name=default_branch.name, schema=updated_schema)
 
 
-@pytest.fixture(scope="class")
-async def register_core_schema_db_scope_class(
-    db: InfrahubDatabase, default_branch_scope_class: Branch, register_core_models_schema_scope_class: SchemaBranch
-) -> None:
-    await registry.schema.load_schema_to_db(
-        schema=register_core_models_schema_scope_class, branch=default_branch_scope_class, db=db, at=Timestamp()
-    )
-    updated_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch_scope_class)
-    registry.schema.set_schema_branch(name=default_branch_scope_class.name, schema=updated_schema)
-
-
 @pytest.fixture
 async def register_account_schema(db: InfrahubDatabase) -> None:
     SCHEMAS_TO_REGISTER = [
