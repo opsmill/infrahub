@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.utils import InfrahubStringEnum
 
 if TYPE_CHECKING:
@@ -48,24 +49,32 @@ def _node_labels(kinds: list[str] | None) -> str:
     return "|".join(kinds)
 
 
-def _near_kind_filter(*variables: str, kinds: list[str] | None) -> str:
-    """Build a Cypher predicate matching vertices carrying, or attached to a Node carrying, a requested label.
+def _edges_near_kinds(kinds: list[str]) -> str:
+    """Build a Cypher clause binding ``p``, ``e`` and ``q`` to every edge touching a vertex in scope of the kinds.
 
-    Attribute, Relationship and value vertices carry no kind label of their own, so restricting a check
-    that anchors on them requires looking one hop out to the Node they hang off.
-
-    ``_near_kind_filter("p", "q", kinds=["TestCar", "TestPerson"])`` returns::
-
-        ((p:TestCar|TestPerson OR EXISTS { MATCH (p)--(:TestCar|TestPerson) })
-         OR (q:TestCar|TestPerson OR EXISTS { MATCH (q)--(:TestCar|TestPerson) }))
-
-    Returns ``true`` when no filter is requested, so it can be interpolated unconditionally.
+    A vertex is in scope when it carries one of the labels or is one hop from a vertex that does, because
+    Attribute, Relationship and value vertices carry no kind label of their own. The clause starts from the
+    kind vertices, so its cost follows their neighborhood rather than the size of the graph.
     """
-    if not kinds:
-        return "true"
-    labels = "|".join(kinds)
-    predicates = [f"({variable}:{labels} OR EXISTS {{ MATCH ({variable})--(:{labels}) }})" for variable in variables]
-    return "(" + " OR ".join(predicates) + ")"
+    return """
+MATCH (kind_vertex:%(labels)s)
+CALL (kind_vertex) {
+    RETURN kind_vertex AS in_scope
+    UNION
+    MATCH (kind_vertex)--(in_scope)
+    RETURN in_scope
+}
+WITH DISTINCT in_scope
+CALL (in_scope) {
+    MATCH (in_scope)-[e]->()
+    RETURN e
+    UNION
+    MATCH ()-[e]->(in_scope)
+    RETURN e
+}
+WITH DISTINCT e
+WITH startNode(e) AS p, e, endNode(e) AS q
+    """ % {"labels": "|".join(kinds)}
 
 
 async def _check_duplicate_relationships(db: InfrahubDatabase, kinds: list[str] | None) -> list[GraphViolation]:
@@ -186,20 +195,13 @@ RETURN n.uuid AS n_uuid, delete_branch, delete_time, added_e, added_peer
 
 async def _check_duplicate_paths(db: InfrahubDatabase, kinds: list[str] | None) -> list[GraphViolation]:
     """Verify that no duplicate paths exist at the database level."""
+    edges = _edges_near_kinds(kinds=kinds) if kinds else "MATCH (p)-[e]->(q)"
     query = """
-MATCH path = (p)-[e]->(q)
-WHERE %(kind_filter)s
-WITH
-    elementId(p) AS node_id1,
-    e.branch AS branch,
-    e.from AS from_time,
-    type(e) AS edge_type,
-    elementId(q) AS node_id2,
-    path
-WITH node_id1, branch, from_time, edge_type, node_id2, size(collect(path)) AS num_paths
+%(edges)s
+WITH p, q, e.branch AS branch, e.from AS from_time, type(e) AS edge_type, count(*) AS num_paths
 WHERE num_paths > 1
-RETURN node_id1, branch, from_time, edge_type, node_id2, num_paths
-    """ % {"kind_filter": _near_kind_filter("p", "q", kinds=kinds)}
+RETURN elementId(p) AS node_id1, branch, from_time, edge_type, elementId(q) AS node_id2, num_paths
+    """ % {"edges": edges}
     records = await db.execute_query(query=query)
     violations = []
     for record in records:
@@ -460,6 +462,83 @@ RETURN n.uuid AS node_id, branch, field_name, num_fields
     return violations
 
 
+_ATTRIBUTE_PROPERTY_EDGE_TYPES = (
+    DatabaseEdgeType.HAS_VALUE,
+    DatabaseEdgeType.IS_PROTECTED,
+    DatabaseEdgeType.HAS_OWNER,
+    DatabaseEdgeType.HAS_SOURCE,
+)
+
+_EXPECTS_GLOBAL_BRANCH = (
+    "(a.branch_support = $agnostic OR (a.branch_support = $local AND n.branch_support = $agnostic))"
+)
+
+_LIVE_EDGES_OF_OWNED_ATTRIBUTE = """
+CALL (a, owning) {
+    RETURN owning AS e
+    UNION ALL
+    MATCH (a)-[e]->()
+    WHERE e.status = "active" AND e.to IS NULL
+    RETURN e
+}"""
+
+
+def _live_attribute_edges_of_kinds(kinds: list[str]) -> str:
+    """Build a Cypher clause binding ``n``, ``a`` and ``e`` to every live edge of the attributes of the kinds."""
+    return """
+MATCH (n:%(labels)s)-[owning:HAS_ATTRIBUTE]->(a:Attribute)
+WHERE owning.status = "active" AND owning.to IS NULL
+%(live_edges)s
+    """ % {"labels": "|".join(kinds), "live_edges": _LIVE_EDGES_OF_OWNED_ATTRIBUTE}
+
+
+def _live_attribute_edges_off_their_branch() -> str:
+    """Build a Cypher clause binding ``n``, ``a`` and ``e`` to the live attribute edges that may be misplaced.
+
+    Those are every live edge on the global branch, read through the branch index of each edge type, and
+    every live edge elsewhere of an attribute expecting the global branch. Only those attributes have their
+    edges expanded, so the cost follows the global branch rather than the number of attributes.
+    """
+    global_property_edges = "\n        UNION ALL\n".join(
+        """        MATCH (a)-[e:%s {branch: $global_branch}]->()
+        RETURN a, e"""
+        % edge_type.value
+        for edge_type in _ATTRIBUTE_PROPERTY_EDGE_TYPES
+    )
+    return """
+CALL () {
+    CALL () {
+        MATCH (n)-[e:HAS_ATTRIBUTE {branch: $global_branch}]->(a)
+        RETURN n, a, e
+    }
+    WITH n, a, e
+    WHERE n:Node AND a:Attribute AND e.status = "active" AND e.to IS NULL
+    RETURN n, a, e
+    UNION ALL
+    // One MATCH per edge type, because a type union in a single pattern is planned without the branch index
+    CALL () {
+%(global_property_edges)s
+    }
+    WITH a, e
+    WHERE a:Attribute AND e.status = "active" AND e.to IS NULL
+    MATCH (n:Node)-[owning:HAS_ATTRIBUTE]->(a)
+    WHERE owning.status = "active" AND owning.to IS NULL
+    RETURN n, a, e
+    UNION ALL
+    MATCH (n:Node)-[owning:HAS_ATTRIBUTE]->(a:Attribute)
+    WHERE owning.status = "active" AND owning.to IS NULL AND %(expects_global)s
+    %(live_edges)s
+    WITH n, a, e
+    WHERE e.branch <> $global_branch
+    RETURN n, a, e
+}
+    """ % {
+        "global_property_edges": global_property_edges,
+        "expects_global": _EXPECTS_GLOBAL_BRANCH,
+        "live_edges": _LIVE_EDGES_OF_OWNED_ATTRIBUTE,
+    }
+
+
 async def _check_attribute_edge_branch(db: InfrahubDatabase, kinds: list[str] | None) -> list[GraphViolation]:
     """Verify that an Attribute's live edges sit on the branch its branch support implies.
 
@@ -468,15 +547,10 @@ async def _check_attribute_edge_branch(db: InfrahubDatabase, kinds: list[str] | 
     Only open, active edges are judged: a deleted branch-agnostic attribute is deliberately tombstoned
     at branch level, and the closed edges of same-uuid node copies are history rather than current state.
     """
+    edges = _live_attribute_edges_of_kinds(kinds=kinds) if kinds else _live_attribute_edges_off_their_branch()
     query = """
-MATCH (n:%(node_labels)s)-[owning:HAS_ATTRIBUTE]->(a:Attribute)
-WHERE owning.status = "active" AND owning.to IS NULL
-WITH n, a, owning,
-    (a.branch_support = $agnostic OR (a.branch_support = $local AND n.branch_support = $agnostic)) AS expects_global
-OPTIONAL MATCH (a)-[prop]->()
-WHERE prop.status = "active" AND prop.to IS NULL
-WITH n, a, owning, expects_global, collect(prop) AS props
-UNWIND [owning] + props AS e
+%(edges)s
+WITH n, a, e, %(expects_global)s AS expects_global
 WITH n, a, expects_global, e,
     CASE WHEN (e.branch = $global_branch) <> expects_global THEN "branch" ELSE "branch_level" END AS reason
 WHERE (e.branch = $global_branch) <> expects_global
@@ -484,7 +558,7 @@ WHERE (e.branch = $global_branch) <> expects_global
 RETURN n.uuid AS node_id, a.name AS field_name, a.branch_support AS branch_support, expects_global,
        e.branch AS branch, e.branch_level AS branch_level, reason,
        collect(DISTINCT type(e)) AS edge_types, count(*) AS num_edges
-    """ % {"node_labels": _node_labels(kinds)}
+    """ % {"edges": edges, "expects_global": _EXPECTS_GLOBAL_BRANCH}
     results = await db.execute_query(
         query=query,
         params={

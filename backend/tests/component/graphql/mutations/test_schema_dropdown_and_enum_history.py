@@ -13,6 +13,7 @@ from infrahub.core.node import Node
 from infrahub.core.schema_change.constants import SCHEMA_CHANGE_HISTORY_MAX_LIMIT, SCHEMA_CHANGE_OPERATIONS_MAX_LIMIT
 from infrahub.core.schema_change.enums import (
     SchemaChangeApplicationStatus,
+    SchemaChangeSource,
     SchemaChangeStatus,
     SchemaOperationSection,
     SchemaOperationType,
@@ -112,6 +113,7 @@ class StoredSchemaChange:
 
     id: str
     status: SchemaChangeStatus
+    source: SchemaChangeSource
     version: int | None
     parent_id: str | None
     applied_at: str | None
@@ -131,6 +133,7 @@ async def _read_history(db: InfrahubDatabase, branch: str) -> list[StoredSchemaC
         StoredSchemaChange(
             id=str(entry.schema_change.uuid),
             status=entry.schema_change.status,
+            source=entry.schema_change.source,
             version=entry.schema_change.version,
             parent_id=str(entry.parent.uuid) if entry.parent else None,
             applied_at=entry.schema_change.applied_at,
@@ -220,6 +223,7 @@ class TestDropdownAndEnumMutationHistory:
         assert schema_change == StoredSchemaChange(
             id=schema_change.id,
             status=SchemaChangeStatus.APPLIED,
+            source=SchemaChangeSource.USER,
             version=1,
             parent_id=None,
             applied_at=schema_change.applied_at,
@@ -259,6 +263,7 @@ class TestDropdownAndEnumMutationHistory:
         assert second == StoredSchemaChange(
             id=second.id,
             status=SchemaChangeStatus.APPLIED,
+            source=SchemaChangeSource.USER,
             version=2,
             parent_id=first.id,
             applied_at=second.applied_at,
@@ -298,6 +303,7 @@ class TestDropdownAndEnumMutationHistory:
         assert third == StoredSchemaChange(
             id=third.id,
             status=SchemaChangeStatus.APPLIED,
+            source=SchemaChangeSource.USER,
             version=3,
             parent_id=history[1].id,
             applied_at=third.applied_at,
@@ -373,6 +379,7 @@ class TestDropdownAndEnumMutationHistory:
         assert fourth == StoredSchemaChange(
             id=fourth.id,
             status=SchemaChangeStatus.APPLIED,
+            source=SchemaChangeSource.USER,
             version=4,
             parent_id=history[2].id,
             applied_at=fourth.applied_at,

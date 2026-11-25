@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema_change.enums import (
         SchemaChangeApplicationStatus,
         SchemaChangeMigrationStatus,
+        SchemaChangeSource,
         SchemaChangeStatus,
         SchemaOperationNodeType,
         SchemaOperationSection,
@@ -22,6 +23,7 @@ class SchemaChange:
     uuid: str
     branch: str
     status: SchemaChangeStatus
+    source: SchemaChangeSource
     summary: str
     format_version: int
     created_at: str
