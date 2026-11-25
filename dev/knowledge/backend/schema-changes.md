@@ -253,9 +253,10 @@ A merge and a rebase pass `application_id=None`, so their migrations use `NoReco
 and they store no schema change.
 
 The core schema update of `infrahub upgrade` and `infrahub db update-core-schema`
-(`cli/db.py::update_core_schema`) records like a load, but takes no lock: an upgrade runs while no
-server or task worker runs, so nothing else writes the next version of the default branch, and
-`infrahub db update-core-schema` does not need the cache. It merges the
+(`cli/db.py::update_core_schema`) records like a load, but takes no lock, so it must run while no
+server or task worker runs, as an upgrade does. Run `infrahub db update-core-schema` with them
+stopped too: a schema load during the update could take the same version of the default branch.
+It merges the
 internal schema, the core models and the deprecated models into one schema file
 (`build_core_schema_root`) and builds its candidate with `from_schema_root` and
 `enforce_update_support=False`, so a change to a property that has no migration (`UpdateSupport.NOT_SUPPORTED`)
