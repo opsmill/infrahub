@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import type {
-  IpAddressPoolNode,
-  IpPrefixPoolNode,
-} from "@/entities/resource-manager/api/get-ip-pool-from-api";
+import type { IpAddressPoolNode } from "@/entities/resource-manager/api/get-ip-address-pool-from-api";
+import type { IpPrefixPoolNode } from "@/entities/resource-manager/api/get-ip-prefix-pool-from-api";
 
 import { mapToIpAddressPoolData, mapToIpPrefixPoolData } from "./ip-pool.mappers";
 

@@ -30,7 +30,7 @@ export function IpPoolDetailsPage({
   schema,
   permission,
 }: IpPoolDetailsPageProps) {
-  const { data: pool, error, isPending } = useGetIpPool(poolId);
+  const { data: pool, error, isPending } = useGetIpPool({ poolId, poolKind });
 
   if (error && !pool) return <ErrorScreen message={error.message} />;
 

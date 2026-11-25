@@ -17,11 +17,18 @@ export function getIpPoolQueryOptions(params: GetIpPoolParams) {
   });
 }
 
-export function useGetIpPool(poolId: string) {
+export type UseGetIpPoolParams = Pick<GetIpPoolParams, "poolId" | "poolKind">;
+
+export function useGetIpPool({ poolId, poolKind }: UseGetIpPoolParams) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
   return useQuery(
-    getIpPoolQueryOptions({ poolId, branchName: currentBranch.name, atDate: timeMachineDate })
+    getIpPoolQueryOptions({
+      poolId,
+      poolKind,
+      branchName: currentBranch.name,
+      atDate: timeMachineDate,
+    })
   );
 }

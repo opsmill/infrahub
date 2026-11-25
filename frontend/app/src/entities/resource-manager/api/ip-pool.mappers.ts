@@ -1,7 +1,5 @@
-import type {
-  IpAddressPoolNode,
-  IpPrefixPoolNode,
-} from "@/entities/resource-manager/api/get-ip-pool-from-api";
+import type { IpAddressPoolNode } from "@/entities/resource-manager/api/get-ip-address-pool-from-api";
+import type { IpPrefixPoolNode } from "@/entities/resource-manager/api/get-ip-prefix-pool-from-api";
 import {
   IP_POOL_MEMBER_TYPE_ADDRESS,
   IP_POOL_MEMBER_TYPE_PREFIX,
@@ -11,7 +9,9 @@ import {
 } from "@/entities/resource-manager/domain/model/ip-pool";
 import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/domain/model/pool";
 
-type NamespaceNode = IpPrefixPoolNode["ip_namespace"]["node"];
+type NamespaceNode =
+  | IpPrefixPoolNode["ip_namespace"]["node"]
+  | IpAddressPoolNode["ip_namespace"]["node"];
 
 const mapToNamespace = (node: NamespaceNode): IpPoolNamespace => ({
   id: node?.id ?? "",
