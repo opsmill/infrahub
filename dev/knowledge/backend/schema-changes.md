@@ -104,7 +104,8 @@ again, because a failed statement aborts the transaction and only its owner can 
 
 All three build a `SchemaCandidate` (operations, processed schema, `SchemaUpdateValidationResult`)
 with `SchemaCandidateBuilder`, which `factory.py::build_schema_candidate_builder` builds. The
-candidate schema is always the schema that `SchemaChangeApplier` builds from the operations.
+candidate schema is the schema that `SchemaChangeApplier` builds from the operations, except when a
+schema file changes nothing (see step 3 below).
 
 A schema load and a schema check call `api/schema.py::build_candidate_from_submitted_schemas`.
 It first passes the files through `SubmittedSchemaIdResolver`, which keeps only the IDs that the
@@ -128,7 +129,11 @@ through `api/schema.py::build_candidate_from_schemas`:
    operation. A file states the fields its model has as set, so `SchemaRoot.merge` and
    `SchemaRoot.duplicate`, which the check of submitted IDs uses, dump the files with `exclude_unset`:
    a field that no file states stays unset and gives no operation.
-   That processed copy is the direct-load schema. A renamed kind gives one
+   That processed copy is the direct-load schema. When its diff is empty, the file gives no operation,
+   and `from_schema_root` returns the direct-load schema as the candidate without steps 4 to 6:
+   applying no operation would rebuild the branch schema, which the direct-load schema equals. A
+   core schema update with no change to the core schema, and a load of an unchanged file, therefore
+   process the schema once. A renamed kind gives one
    `node_rename` operation that sets its name and namespace together, so the kind never passes
    through a kind between the two. The operations of removed kinds come first, then those of
    changed kinds, then the `node_add` operations. Within a kind, the renames of attributes and
@@ -175,7 +180,7 @@ the file, and names the kinds. It is not a 5XX, because the SDK retries those an
 gives the same result. For a `ValueError` it names every kind that the operations name. The
 operation builder already processed the same file without an error, so such a `ValueError` comes
 from the operations, and it does not reach the API as `SchemaNotValidError` (HTTP 422). The load saves nothing, and the check returns the same error. A load
-therefore processes the schema twice. A file that gives a new kind, or a new attribute or
+that changes the schema therefore processes it twice. A file that gives a new kind, or a new attribute or
 relationship of an existing kind, an ID loads as if it gave none.
 
 A dropdown or enum mutation (`graphql/mutations/schema.py::apply_attribute_property_change`) reads
@@ -190,8 +195,9 @@ whose kind, attribute or relationship the schema already has.
 
 ### Every load checks its operations
 
-Because every load and check compares the applied schema with the direct-load schema, every test
-that loads a schema fails when the operations miss a change of the file. No setting or test fixture
+Because every load and check of a file that changes the schema compares the applied schema with the
+direct-load schema, every test that loads a schema fails when the operations miss a change of the
+file. No setting or test fixture
 turns the comparison off, and a server or task worker in a container compares the same way.
 
 ## How a load records its schema change

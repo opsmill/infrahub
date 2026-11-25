@@ -208,15 +208,21 @@ def test_a_schema_file_and_its_operations_give_the_same_candidate(
     assert (from_file.validation.errors, from_operations.validation.errors) == ([], [])
 
 
-def test_a_file_that_changes_nothing_gives_an_empty_diff_and_no_operation(
+def test_a_file_that_changes_nothing_gives_an_empty_diff_and_applies_no_operation(
     equivalence_base_schema: SchemaBranch,
 ) -> None:
-    candidate = build_schema_candidate_builder().from_schema_root(
+    applier = RecordingSchemaChangeApplier()
+    builder = SchemaCandidateBuilder(
+        operation_builder=SchemaOperationBuilder(), applier=applier, comparer=SchemaCandidateComparer()
+    )
+
+    candidate = builder.from_schema_root(
         branch_schema=equivalence_base_schema,
         schema_root=build_base_schema_root(),
         default_branch_schema=equivalence_base_schema,
     )
 
+    assert applier.calls == []
     assert candidate.operations == []
     assert candidate.validation.diff.all == []
     assert (candidate.validation.migrations, candidate.validation.constraints) == ([], [])

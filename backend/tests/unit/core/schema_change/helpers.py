@@ -755,7 +755,9 @@ class FixedOperationsBuilder(SchemaOperationBuilder):
         result = super().build(
             branch_schema=branch_schema, schema_root=schema_root, default_branch_schema=default_branch_schema
         )
-        return SchemaOperationBuildResult(operations=self.operations, direct_load_schema=result.direct_load_schema)
+        return SchemaOperationBuildResult(
+            operations=self.operations, direct_load_schema=result.direct_load_schema, diff=result.diff
+        )
 
 
 RECORDER_START = "start"
