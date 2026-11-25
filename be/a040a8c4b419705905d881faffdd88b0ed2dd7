@@ -1,0 +1,19 @@
+changelog/+schema-load-kind-rename-with-field-changes.fixed.md
+  s_a61eb58394be2f::t_0b635dca8b66fe 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bea040a8c4b419705905d881faffdd88b0ed2dd7",
+  "prompts": {},
+  "sessions": {
+    "s_a61eb58394be2f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91f2ff34-ccf0-4dd9-915b-f293c464558b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
