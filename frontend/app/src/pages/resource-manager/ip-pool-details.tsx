@@ -28,8 +28,6 @@ export function IpPoolDetailsPage({ poolId, schema, permission }: IpPoolDetailsP
   // requested here so it loads alongside the pool instead of after it
   useGetIpPoolUtilization(poolId);
 
-  if (error && !pool) return <ErrorScreen message={error.message} />;
-
   if (isPending) {
     return (
       <Content.Card className="grow">
@@ -37,6 +35,8 @@ export function IpPoolDetailsPage({ poolId, schema, permission }: IpPoolDetailsP
       </Content.Card>
     );
   }
+
+  if (error && !pool) return <ErrorScreen message={error.message} />;
 
   return (
     <Content.Card className="grow">
@@ -63,7 +63,7 @@ function IpPoolBody({ pool }: IpPoolBodyProps) {
 
   return (
     <Row className="min-h-0 items-start px-2 pb-2">
-      <Col className="min-h-0 w-80 shrink-0 gap-2">
+      <Col className="min-h-0 w-80 shrink-0">
         <IpPoolResourcesCard
           poolId={pool.id}
           poolKind={pool.__typename}
