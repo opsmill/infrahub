@@ -4,11 +4,13 @@ from typing import Any
 import pytest
 
 from infrahub.core.constants import HierarchySide
-from infrahub.core.schema import NodeSchema, SchemaRoot
+from infrahub.core.schema import NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.node.hierarchy import (
     HierarchyDirection,
+    HierarchyFieldConflict,
     get_directions_to_check,
+    get_hierarchy_field_conflicts,
     get_kinds_left_in_hierarchy,
 )
 
@@ -206,3 +208,84 @@ def test_kinds_left_in_hierarchy(case: KindsLeftCase) -> None:
         )
         == case.expected
     )
+
+
+def _relationship(name: str, peer: str, inherited: bool = False) -> RelationshipSchema:
+    return RelationshipSchema(name=name, peer=peer, cardinality="one", optional=True, inherited=inherited)
+
+
+def _site(hierarchy: str | None = None, relationships: list[RelationshipSchema] | None = None) -> NodeSchema:
+    return NodeSchema(name="Site", namespace="Location", hierarchy=hierarchy, relationships=relationships or [])
+
+
+@dataclass
+class ConflictCase:
+    name: str
+    current: NodeSchema | None
+    candidate: NodeSchema
+    expected: list[HierarchyFieldConflict]
+
+
+CONFLICT_CASES = [
+    ConflictCase(
+        name="own-parent-relationship",
+        current=_site(relationships=[_relationship(name="parent", peer="OrganizationTenant")]),
+        candidate=_site(hierarchy=HIERARCHY),
+        expected=[HierarchyFieldConflict(field_name="parent", value="OrganizationTenant")],
+    ),
+    ConflictCase(
+        name="own-children-relationship",
+        current=_site(relationships=[_relationship(name="children", peer="OrganizationTenant")]),
+        candidate=_site(hierarchy=HIERARCHY),
+        expected=[HierarchyFieldConflict(field_name="children", value="OrganizationTenant")],
+    ),
+    ConflictCase(
+        name="own-parent-and-children-relationships",
+        current=_site(
+            relationships=[
+                _relationship(name="parent", peer="OrganizationTenant"),
+                _relationship(name="children", peer="OrganizationSite"),
+            ]
+        ),
+        candidate=_site(hierarchy=HIERARCHY),
+        expected=[
+            HierarchyFieldConflict(field_name="parent", value="OrganizationTenant"),
+            HierarchyFieldConflict(field_name="children", value="OrganizationSite"),
+        ],
+    ),
+    ConflictCase(
+        name="inherited-parent-relationship",
+        current=_site(relationships=[_relationship(name="parent", peer=HIERARCHY, inherited=True)]),
+        candidate=_site(hierarchy=HIERARCHY),
+        expected=[],
+    ),
+    ConflictCase(
+        name="no-parent-or-children-relationship",
+        current=_site(relationships=[_relationship(name="owner", peer="OrganizationTenant")]),
+        candidate=_site(hierarchy=HIERARCHY),
+        expected=[],
+    ),
+    ConflictCase(
+        name="new-kind",
+        current=None,
+        candidate=_site(hierarchy=HIERARCHY),
+        expected=[],
+    ),
+    ConflictCase(
+        name="kind-already-in-a-hierarchy",
+        current=_site(hierarchy=HIERARCHY, relationships=[_relationship(name="parent", peer="OrganizationTenant")]),
+        candidate=_site(hierarchy=HIERARCHY),
+        expected=[],
+    ),
+    ConflictCase(
+        name="kind-not-joining-a-hierarchy",
+        current=_site(relationships=[_relationship(name="parent", peer="OrganizationTenant")]),
+        candidate=_site(),
+        expected=[],
+    ),
+]
+
+
+@pytest.mark.parametrize("case", CONFLICT_CASES, ids=lambda case: case.name)
+def test_hierarchy_field_conflicts(case: ConflictCase) -> None:
+    assert get_hierarchy_field_conflicts(current=case.current, candidate=case.candidate) == case.expected

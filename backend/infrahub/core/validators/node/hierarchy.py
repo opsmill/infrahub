@@ -180,6 +180,26 @@ def get_kinds_left_in_hierarchy(
     )
 
 
+@dataclass(frozen=True)
+class HierarchyFieldConflict:
+    field_name: str
+    value: str
+
+
+def get_hierarchy_field_conflicts(current: NodeSchema | None, candidate: NodeSchema) -> list[HierarchyFieldConflict]:
+    """Return the fields of an existing kind that clash with the fields a hierarchy it joins defines for itself.
+
+    The current schema is read because the candidate already carries the hierarchy's own fields.
+    """
+    if current is None or current.hierarchy or not candidate.hierarchy:
+        return []
+    return [
+        HierarchyFieldConflict(field_name=relationship.name, value=relationship.peer)
+        for relationship in current.relationships
+        if relationship.name in HierarchySide and not relationship.inherited
+    ]
+
+
 class NodeHierarchyChecker(ConstraintCheckerInterface):
     query_classes = [NodeHierarchyUpdateValidatorQuery]
     # Writing a parent or child already checks its kind, so only a change to the hierarchy can be refused.
@@ -209,12 +229,12 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
     async def _check_node(
         self, request: SchemaConstraintValidatorRequest, node_schema: NodeSchema
     ) -> list[GroupedDataPaths]:
+        grouped_data_paths_list = self._check_kind_joining_hierarchy(request=request, node_schema=node_schema)
         directions = get_directions_to_check(node_schema=node_schema, constraint_name=request.constraint_name)
         if not directions:
-            return []
+            return grouped_data_paths_list
         allowed_hierarchy_kinds = self._get_allowed_hierarchy_kinds(node_schema=node_schema, request=request)
 
-        grouped_data_paths_list: list[GroupedDataPaths] = []
         for direction in directions:
             grouped_data_paths_list.extend(
                 await self._check_direction(
@@ -246,6 +266,31 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
                 value=kinds_in_hierarchy,
             )
         )
+        return [grouped_data_paths]
+
+    def _check_kind_joining_hierarchy(
+        self, request: SchemaConstraintValidatorRequest, node_schema: NodeSchema
+    ) -> list[GroupedDataPaths]:
+        if request.constraint_name != ConstraintIdentifier.NODE_HIERARCHY_UPDATE.value:
+            return []
+        current = None
+        if self.db.schema.has(name=node_schema.kind, branch=request.branch):
+            current = self.db.schema.get_node_schema(name=node_schema.kind, branch=request.branch, duplicate=False)
+
+        grouped_data_paths = GroupedDataPaths()
+        for conflict in get_hierarchy_field_conflicts(current=current, candidate=node_schema):
+            grouped_data_paths.add_data_path(
+                DataPath(
+                    branch=str(request.branch.name),
+                    path_type=PathType.NODE,
+                    node_id=str(node_schema.id),
+                    kind="SchemaNode",
+                    field_name=conflict.field_name,
+                    value=conflict.value,
+                )
+            )
+        if not grouped_data_paths.get_all_data_paths():
+            return []
         return [grouped_data_paths]
 
     def _get_allowed_hierarchy_kinds(
