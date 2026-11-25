@@ -77,7 +77,7 @@ function NumberPoolBody({ pool, division }: NumberPoolBodyProps) {
 
   return (
     <Row className="min-h-0 items-start px-2 pb-2">
-      <Col className="min-h-0 w-80 shrink-0">
+      <Col className="max-h-full min-h-0 w-80 shrink-0">
         {division && <NumberPoolDivisionCard pool={pool} division={division} />}
         <NumberPoolRangesCard
           poolId={pool.id}

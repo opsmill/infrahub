@@ -96,7 +96,7 @@ export function IpPoolResourcesCard({
   if (resources.length === 0) return <NoResourcesCard poolKind={poolKind} />;
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader variant="ghost" className="flex items-baseline justify-between">
         <Row className="gap-1">
           <h2>Resource prefixes</h2>
@@ -128,7 +128,7 @@ export function IpPoolResourcesCard({
             textValue={resource.display_label}
             className="flex-col items-stretch gap-1.5 rounded-xl px-2.5 py-2"
           >
-            <Row className="justify-between gap-3">
+            <Row className="justify-between">
               <Text slot="label" className="min-w-0 truncate font-medium tabular-nums">
                 {resource.display_label}
               </Text>
