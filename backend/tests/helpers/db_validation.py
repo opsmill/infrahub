@@ -2,6 +2,7 @@ from typing import Any
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.node import Node
 from infrahub.core.query import Query, QueryType
 from infrahub.database import InfrahubDatabase
@@ -36,7 +37,7 @@ class ValidateNodeRelationshipQuery(Query):
 
         query = """
         // Match the pattern with specific branch conditions
-        MATCH (input_node {uuid: $node_id})-[r:IS_RELATED]-(rel:Relationship)
+        MATCH (input_node:Node {uuid: $node_id})-[r:IS_RELATED]-(rel:Relationship)
         WITH DISTINCT rel
         MATCH (rel)-[is_related:IS_RELATED]-(node: Node)
 
@@ -152,10 +153,30 @@ async def assert_attribute_absent(
     assert len(results) == 0, f"Expected no active/deleted {node_label}.{attr_name} edges, found {len(results)}"
 
 
+def _count_graph_edges_query(predicate: str) -> str:
+    """Build a query counting the edges of every graph edge type that match ``predicate`` on ``r``.
+
+    Each type gets its own MATCH, because a type union in a single pattern is planned without the indexes.
+    """
+    matches = "\n    UNION ALL\n".join(
+        f"    MATCH ()-[r:{edge_type.value}]->()\n    WHERE {predicate}\n    RETURN r" for edge_type in DatabaseEdgeType
+    )
+    return f"CALL () {{\n{matches}\n}}\nRETURN count(r) AS c"
+
+
 async def count_branch_edges_at(db: InfrahubDatabase, branch_name: str, at: str) -> int:
     """Count edges on a branch whose ``from`` timestamp equals ``at`` (edges written exactly then)."""
     result = await db.execute_query(
-        query="MATCH ()-[r {from: $at, branch: $branch}]->() RETURN count(r) AS c",
+        query=_count_graph_edges_query(predicate="r.from = $at AND r.branch = $branch"),
+        params={"at": at, "branch": branch_name},
+    )
+    return result[0].get("c")
+
+
+async def count_branch_edges_since(db: InfrahubDatabase, branch_name: str, at: str) -> int:
+    """Count edges on a branch whose ``from`` timestamp is ``at`` or later."""
+    result = await db.execute_query(
+        query=_count_graph_edges_query(predicate="r.branch = $branch AND r.from >= $at"),
         params={"at": at, "branch": branch_name},
     )
     return result[0].get("c")

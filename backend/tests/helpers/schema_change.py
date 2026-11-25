@@ -42,7 +42,7 @@ SEEDED_FAILURE_ERROR = "The migration node.attribute.add failed on 2 nodes"
 SEEDED_SUMMARY = "testcar_color_update"
 """The summary of a seeded schema change with one operation; `_and_<n>_more` follows when it has more."""
 
-SCHEMA_CHANGE_RECORD_LABELS = tuple(label.value for label in SchemaChangeRecordLabel)
+SCHEMA_CHANGE_RECORD_LABEL_EXPRESSION = "|".join(label.value for label in SchemaChangeRecordLabel)
 
 
 def seeded_operation_value(position: int) -> str:
@@ -329,16 +329,12 @@ async def read_branch_schema_change_records(
 async def count_schema_change_records(*, db: InfrahubDatabase, uuids: Sequence[str] | None = None) -> int:
     """Count the record vertices of every branch, or only those with one of the UUIDs given."""
     results = await db.execute_query(
-        query="""
-        MATCH (record)
-        WHERE any(label IN labels(record) WHERE label IN $record_labels)
-            AND ($uuids IS NULL OR record.uuid IN $uuids)
+        query=f"""
+        MATCH (record:{SCHEMA_CHANGE_RECORD_LABEL_EXPRESSION})
+        WHERE $uuids IS NULL OR record.uuid IN $uuids
         RETURN count(record) AS nbr_records
         """,
-        params={
-            "record_labels": list(SCHEMA_CHANGE_RECORD_LABELS),
-            "uuids": list(uuids) if uuids is not None else None,
-        },
+        params={"uuids": list(uuids) if uuids is not None else None},
         name="test_count_schema_change_records",
     )
     return int(results[0].get("nbr_records"))
@@ -347,12 +343,10 @@ async def count_schema_change_records(*, db: InfrahubDatabase, uuids: Sequence[s
 async def count_schema_change_record_edges_to_root(*, db: InfrahubDatabase) -> int:
     """Count the edges between a record vertex and the root vertex, in either direction."""
     results = await db.execute_query(
-        query="""
-        MATCH (record)-[edge]-(:Root)
-        WHERE any(label IN labels(record) WHERE label IN $record_labels)
+        query=f"""
+        MATCH (record:{SCHEMA_CHANGE_RECORD_LABEL_EXPRESSION})-[edge]-(:Root)
         RETURN count(edge) AS nbr_edges
         """,
-        params={"record_labels": list(SCHEMA_CHANGE_RECORD_LABELS)},
         name="test_count_schema_change_record_edges_to_root",
     )
     return int(results[0].get("nbr_edges"))

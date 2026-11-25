@@ -175,7 +175,7 @@ async def get_active_attribute_edge_details(
 async def count_branch_level_attribute_edges(db: InfrahubDatabase, branch_name: str) -> int:
     """Count every attribute-row edge carried by the given branch."""
     query = """
-    MATCH ()-[r:HAS_ATTRIBUTE|HAS_VALUE|IS_PROTECTED|IS_VISIBLE { branch: $branch_name }]->()
+    MATCH ()-[r:HAS_ATTRIBUTE|HAS_VALUE|IS_PROTECTED { branch: $branch_name }]->()
     RETURN count(r) AS edge_count
     """
     results = await db.execute_query(query=query, params={"branch_name": branch_name})
