@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 from fastapi.routing import APIRoute, APIWebSocketRoute, iter_route_contexts
+from prefect.server.database import aprovide_database_interface
 
 from infrahub.graphql.api.dependencies import get_graphql_query_permission_checker
 from infrahub.prefect_server.app import router as task_manager_router
-from infrahub.prefect_server.database import get_prefect_database
 from infrahub.server import app
 
 if TYPE_CHECKING:
@@ -38,7 +38,7 @@ ROUTE_DEPENDENCIES_TEST_CASES: list[RouteDependenciesTestCase] = [
     RouteDependenciesTestCase(
         name="task_manager",
         routes=task_manager_router.routes,
-        known_dependency=get_prefect_database,
+        known_dependency=aprovide_database_interface,
         known_dependency_routes={"GET /infrahub/database/version", "POST /infrahub/events/filter"},
     ),
 ]
