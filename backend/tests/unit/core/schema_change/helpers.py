@@ -38,8 +38,8 @@ if TYPE_CHECKING:
     from infrahub.core.models import SchemaDiff, SchemaUpdateMigrationInfo, SchemaUpdateValidationResult
     from infrahub.core.query import QueryType
     from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.core.schema.update_coordinator import SchemaUpdateFinalStep
-    from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus
+    from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateFinalStep
+    from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus, SchemaChangeSource
     from infrahub.core.schema_change.operations import SchemaOperation
     from infrahub.core.schema_change.repository import AppliedSchemaChangeVersion, CreatedSchemaChange
     from infrahub.core.timestamp import Timestamp
@@ -576,9 +576,17 @@ class RecordingSchemaChangeRepository(SchemaChangeRecordStore, AppliedVersionRea
 
     @override
     async def create_schema_change(
-        self, *, branch: str, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
+        self,
+        *,
+        branch: str,
+        operations: Sequence[SchemaOperation],
+        at: Timestamp,
+        user_id: str,
+        source: SchemaChangeSource,
     ) -> CreatedSchemaChange:
-        self._record(CREATE_SCHEMA_CHANGE, branch=branch, operations=list(operations), at=at, user_id=user_id)
+        self._record(
+            CREATE_SCHEMA_CHANGE, branch=branch, operations=list(operations), at=at, user_id=user_id, source=source
+        )
         return self._created.pop(0)
 
     @override
@@ -747,7 +755,9 @@ class FixedOperationsBuilder(SchemaOperationBuilder):
         result = super().build(
             branch_schema=branch_schema, schema_root=schema_root, default_branch_schema=default_branch_schema
         )
-        return SchemaOperationBuildResult(operations=self.operations, direct_load_schema=result.direct_load_schema)
+        return SchemaOperationBuildResult(
+            operations=self.operations, direct_load_schema=result.direct_load_schema, diff=result.diff
+        )
 
 
 RECORDER_START = "start"
@@ -780,12 +790,24 @@ class RecordingApplicationRecorder(ApplicationRecorder):
 
     @override
     async def start(
-        self, *, branch: Branch, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
+        self,
+        *,
+        branch: Branch,
+        operations: Sequence[SchemaOperation],
+        at: Timestamp,
+        user_id: str,
+        source: SchemaChangeSource,
     ) -> SchemaChangeRecording:
         self.calls.append(
             SchemaApplicationCall(
                 method=RECORDER_START,
-                arguments={"branch": branch, "operations": list(operations), "at": at, "user_id": user_id},
+                arguments={
+                    "branch": branch,
+                    "operations": list(operations),
+                    "at": at,
+                    "user_id": user_id,
+                    "source": source,
+                },
             )
         )
         return SchemaChangeRecording(
@@ -881,7 +903,8 @@ class RecordingSchemaUpdateExecutor(SchemaUpdateExecutor):
         rollback_schema: SchemaBranch,
         candidate_schema: SchemaBranch,
         at: Timestamp,
-        context: InfrahubContext,
+        context: InfrahubContext | None,
+        migration_executor: MigrationExecutor,
         diff: SchemaDiff,
         migrations: list[SchemaUpdateMigrationInfo],
         limit: list[str],
@@ -899,6 +922,7 @@ class RecordingSchemaUpdateExecutor(SchemaUpdateExecutor):
                     "candidate_schema": candidate_schema,
                     "at": at,
                     "context": context,
+                    "migration_executor": migration_executor,
                     "diff": diff,
                     "migrations": list(migrations),
                     "limit": list(limit),
@@ -936,7 +960,8 @@ class FailingSchemaUpdateExecutor(RecordingSchemaUpdateExecutor):
         rollback_schema: SchemaBranch,
         candidate_schema: SchemaBranch,
         at: Timestamp,
-        context: InfrahubContext,
+        context: InfrahubContext | None,
+        migration_executor: MigrationExecutor,
         diff: SchemaDiff,
         migrations: list[SchemaUpdateMigrationInfo],
         limit: list[str],
@@ -951,6 +976,7 @@ class FailingSchemaUpdateExecutor(RecordingSchemaUpdateExecutor):
             candidate_schema=candidate_schema,
             at=at,
             context=context,
+            migration_executor=migration_executor,
             diff=diff,
             migrations=migrations,
             limit=limit,
@@ -977,7 +1003,8 @@ class BlockingSchemaUpdateExecutor(RecordingSchemaUpdateExecutor):
         rollback_schema: SchemaBranch,
         candidate_schema: SchemaBranch,
         at: Timestamp,
-        context: InfrahubContext,
+        context: InfrahubContext | None,
+        migration_executor: MigrationExecutor,
         diff: SchemaDiff,
         migrations: list[SchemaUpdateMigrationInfo],
         limit: list[str],
@@ -992,6 +1019,7 @@ class BlockingSchemaUpdateExecutor(RecordingSchemaUpdateExecutor):
             candidate_schema=candidate_schema,
             at=at,
             context=context,
+            migration_executor=migration_executor,
             diff=diff,
             migrations=migrations,
             limit=limit,

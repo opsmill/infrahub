@@ -19,6 +19,7 @@ from infrahub.core.initialization import (
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.shared import get_migration_console, suppress_internal_logs
 from infrahub.core.protocols import CoreAccount, CoreObjectPermission
+from infrahub.core.schema_change.factory import build_schema_candidate_builder
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import DatabaseError
 from infrahub.lock import initialize_lock
@@ -35,6 +36,7 @@ from infrahub.workflows.initialization import (
 
 from .constants import ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
 from .db import (
+    CoreSchemaStatus,
     check_core_schema_diff,
     detect_migration_to_run,
     get_branches_needing_rebase,
@@ -48,6 +50,7 @@ from .db import (
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
     from infrahub.core.branch.models import Branch
+    from infrahub.core.schema_change.candidate import SchemaCandidateBuilder
     from infrahub.database import InfrahubDatabase
 
 app = AsyncTyper()
@@ -137,7 +140,11 @@ async def upgrade_cmd(
     root_node = await get_root_node(db=dbdriver)
 
     if check:
-        await _upgrade_check(db=dbdriver, root_node_graph_version=root_node.graph_version)
+        await _upgrade_check(
+            db=dbdriver,
+            root_node_graph_version=root_node.graph_version,
+            candidate_builder=build_schema_candidate_builder(),
+        )
         await dbdriver.close()
         return
 
@@ -179,10 +186,10 @@ async def _upgrade_execute(
 
     console.log("[bold]Step 3/6: Core schema[/bold]")
     if verbose:
-        await update_core_schema(db=db, initialize=False)
+        await update_core_schema(db=db, candidate_builder=build_schema_candidate_builder(), initialize=False)
     else:
         with suppress_internal_logs():
-            await update_core_schema(db=db, initialize=False)
+            await update_core_schema(db=db, candidate_builder=build_schema_candidate_builder(), initialize=False)
 
     console.log("[bold]Step 4/6: Internal objects[/bold]")
     await upgrade_menu(db=db)
@@ -221,7 +228,9 @@ async def _upgrade_execute(
     console.log(f"[bold]Upgrade complete[/bold] {SUCCESS_BADGE}")
 
 
-async def _upgrade_check(db: InfrahubDatabase, root_node_graph_version: int) -> None:
+async def _upgrade_check(
+    db: InfrahubDatabase, root_node_graph_version: int, candidate_builder: SchemaCandidateBuilder
+) -> None:
     """Display comprehensive upgrade status without executing any changes."""
     console.log("[bold]Infrahub Upgrade Check[/bold]")
 
@@ -237,11 +246,14 @@ async def _upgrade_check(db: InfrahubDatabase, root_node_graph_version: int) -> 
 
     console.log("\nCore schema:")
     try:
-        has_diff = await check_core_schema_diff(db=db)
-        if has_diff:
-            console.log("  Schema has differences, update required")
-        else:
-            console.log("  Up to date, nothing to do")
+        status = await check_core_schema_diff(db=db, candidate_builder=candidate_builder)
+        match status:
+            case CoreSchemaStatus.UPDATE_REQUIRED:
+                console.log("  Schema has differences, update required")
+            case CoreSchemaStatus.UP_TO_DATE:
+                console.log("  Up to date, nothing to do")
+            case CoreSchemaStatus.REFUSED:
+                console.log("  The core schema update would stop with the error above")
     # Best-effort dry-run report: a failed schema probe is reported inline and the remaining checks still run
     except Exception as exc:  # noqa: BLE001
         console.log(f"  Unable to check: {exc}")

@@ -49,6 +49,9 @@ ANSI = re.compile(
 # The Actions list-runs API silently returns at most this many results per query.
 API_RESULT_CAP = 1000
 
+# A lookback that reaches this many PRs drops the oldest ones, and their runs then go unmatched.
+PR_LIST_LIMIT = 2000
+
 # Playwright's breadcrumb separator (U+203A) as it appears in job logs.
 PW_SEP = "\u203a"
 
@@ -98,6 +101,13 @@ BUCKETS: list[tuple[str, str]] = [
         r"infrahub-server-\d+\s+\|\s+redis\.exceptions\.TimeoutError: Timeout reading from"
         r'|##\[group\]Run docker logs "\$\{INFRAHUB_BUILD_NAME\}-server-1"[^\n]*\n'
         r"(?:(?!\S+ ##\[group\]Run )[^\n]*\n)*?[^\n]*redis\.exceptions\.TimeoutError: Timeout reading from",
+    ),
+    # Self-hosted runners on one host share the apt state, so a hung apt-get fails every job that installs a package.
+    ("apt-lock-held", r"E: Could not get lock /var/lib/(?:apt/lists|dpkg)/lock(?:-frontend)?\. It is held by process"),
+    (
+        "package-download-failure",
+        r"error: Failed to download `[^`]+`"
+        r"|Server answered with HTTP 5\d\d when performing the request to https://registry\.npmjs\.org",
     ),
 ]
 
@@ -168,7 +178,7 @@ def list_prs(repo: str, since: dt.date, base_globs: list[str]) -> list[dict]:
                 "--state",
                 "all",
                 "--limit",
-                "500",
+                str(PR_LIST_LIMIT),
                 "--search",
                 f"updated:>={pr_since.isoformat()}",
                 "--json",
@@ -176,6 +186,10 @@ def list_prs(repo: str, since: dt.date, base_globs: list[str]) -> list[dict]:
             ]
         )
     )
+    if len(prs) >= PR_LIST_LIMIT:
+        print(
+            f"[collect] WARN {len(prs)} PRs reach the listing limit; runs of older PRs are not matched", file=sys.stderr
+        )
     if base_globs:
         prs = [p for p in prs if any(fnmatch.fnmatch(p["baseRefName"], g) for g in base_globs)]
     return prs

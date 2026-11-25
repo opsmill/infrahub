@@ -97,11 +97,11 @@ linked by their own edge types.
 - Reusing `IS_RELATED` or another existing edge type: those are in
   `core/constants/database.py::DatabaseEdgeType`, and the branch deletion loops over that list.
 
-## R3. Three indexes, added by a graph migration
+## R3. Three indexes, added when the server starts
 
 **Decision**: three range indexes in `core/graph/index.py`, chosen from the properties that the
-queries start from. The graph migration `core/migrations/graph/m085_schema_change_indexes.py` adds
-them to an existing database, and `GRAPH_VERSION` is 85.
+queries start from. The server adds every index in that file each time it starts, so an existing
+database gets them without a graph migration, and `GRAPH_VERSION` stays 84.
 
 | Index | Queries that start from it |
 | --- | --- |

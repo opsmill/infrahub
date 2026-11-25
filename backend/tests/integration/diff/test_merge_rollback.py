@@ -17,6 +17,7 @@ from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.database.validation import verify_graph
 from tests.constants import TestKind
+from tests.helpers.db_validation import count_branch_edges_at
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -30,14 +31,6 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
     from tests.adapters.message_bus import BusSimulator
-
-
-async def _count_branch_edges_at(db: InfrahubDatabase, branch_name: str, at: str) -> int:
-    result = await db.execute_query(
-        query="MATCH ()-[r {from: $at, branch: $branch}]->() RETURN count(r) AS c",
-        params={"at": at, "branch": branch_name},
-    )
-    return result[0].get("c")
 
 
 async def _get_node_metadata(db: InfrahubDatabase, node_uuid: str) -> dict[str, str | None]:
@@ -107,7 +100,7 @@ class EdgeCountingRollbackHandler(MergeRollbackHandler):
         pre_merge_state: PreMergeState,
         user_id: str,
     ) -> bool:
-        type(self).edge_count_before_rollback = await _count_branch_edges_at(
+        type(self).edge_count_before_rollback = await count_branch_edges_at(
             db=self.db, branch_name=self.destination_branch.name, at=merge_started_at.to_string()
         )
         return await super().rollback(
@@ -285,7 +278,7 @@ class TestBranchMergeRollback(TestInfrahubApp):
         reloaded_branch = await Branch.get_by_name(db=db, name=branch1.name)
         assert reloaded_branch.merge_started_at is not None
 
-        edges_after = await _count_branch_edges_at(
+        edges_after = await count_branch_edges_at(
             db=db, branch_name=registry.default_branch, at=reloaded_branch.merge_started_at
         )
         assert edges_after == 0, "The rollback must remove every edge committed by the partial merge"

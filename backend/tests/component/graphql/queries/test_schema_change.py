@@ -53,6 +53,7 @@ query($limit: Int, $offset: Int, $status: [SchemaChangeStatus!]) {
         summary
         version
         status
+        source
         branch
         created_at
         updated_at
@@ -531,6 +532,7 @@ class TestSchemaChangeHistoryQuery:
                 "summary": MAIN_SUMMARY,
                 "version": 1,
                 "status": "APPLIED",
+                "source": "USER",
                 "branch": "main",
                 "parent": None,
             },
@@ -540,6 +542,7 @@ class TestSchemaChangeHistoryQuery:
                 "summary": MAIN_SUMMARY,
                 "version": None,
                 "status": "FAILED",
+                "source": "USER",
                 "branch": "main",
                 "parent": None,
             },
@@ -549,6 +552,7 @@ class TestSchemaChangeHistoryQuery:
                 "summary": MAIN_SUMMARY,
                 "version": 2,
                 "status": "APPLIED",
+                "source": "USER",
                 "branch": "main",
                 "parent": {"id": applied_1.id, "name": f"00001_{MAIN_SUMMARY}", "version": 1, "branch": "main"},
             },
@@ -558,6 +562,7 @@ class TestSchemaChangeHistoryQuery:
                 "summary": BRANCH_SUMMARY,
                 "version": 3,
                 "status": "APPLIED",
+                "source": "USER",
                 "branch": BRANCH_WITH_CHANGES,
                 "parent": {"id": applied_2.id, "name": f"00002_{MAIN_SUMMARY}", "version": 2, "branch": "main"},
             },
@@ -567,6 +572,7 @@ class TestSchemaChangeHistoryQuery:
                 "summary": BRANCH_SUMMARY,
                 "version": 4,
                 "status": "APPLIED",
+                "source": "USER",
                 "branch": BRANCH_WITH_CHANGES,
                 "parent": {
                     "id": branch_change_3.id,

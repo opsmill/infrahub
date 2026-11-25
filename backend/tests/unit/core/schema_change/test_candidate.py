@@ -4,7 +4,8 @@ from dataclasses import dataclass
 
 import pytest
 
-from infrahub.core.constants import HashableModelState
+from infrahub.core.constants import BranchSupportType, HashableModelState, SchemaPathType, UpdateValidationErrorType
+from infrahub.core.path import SchemaPath
 from infrahub.core.schema import AttributeSchema, DropdownChoice, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.schema_change.applier import SchemaChangeApplier
@@ -207,15 +208,21 @@ def test_a_schema_file_and_its_operations_give_the_same_candidate(
     assert (from_file.validation.errors, from_operations.validation.errors) == ([], [])
 
 
-def test_a_file_that_changes_nothing_gives_an_empty_diff_and_no_operation(
+def test_a_file_that_changes_nothing_gives_an_empty_diff_and_applies_no_operation(
     equivalence_base_schema: SchemaBranch,
 ) -> None:
-    candidate = build_schema_candidate_builder().from_schema_root(
+    applier = RecordingSchemaChangeApplier()
+    builder = SchemaCandidateBuilder(
+        operation_builder=SchemaOperationBuilder(), applier=applier, comparer=SchemaCandidateComparer()
+    )
+
+    candidate = builder.from_schema_root(
         branch_schema=equivalence_base_schema,
         schema_root=build_base_schema_root(),
         default_branch_schema=equivalence_base_schema,
     )
 
+    assert applier.calls == []
     assert candidate.operations == []
     assert candidate.validation.diff.all == []
     assert (candidate.validation.migrations, candidate.validation.constraints) == ([], [])
@@ -648,4 +655,70 @@ def test_an_id_that_a_file_gives_a_new_kind_or_attribute_is_left_out(
     assert target.id is None
     assert [operation.operation_type for operation in candidate.operations] == [
         SchemaOperationType.NODE_ADD if test_case.element_name is None else SchemaOperationType.ELEMENT_ADD
+    ]
+
+
+def _make_manufacturer_branch_agnostic() -> SchemaRoot:
+    device = base_node_definition(TestKind.DEVICE)
+    device.get_attribute(name="manufacturer").branch = BranchSupportType.AGNOSTIC
+    return SchemaRoot(nodes=[device])
+
+
+MANUFACTURER_BRANCH_PATH = SchemaPath(
+    path_type=SchemaPathType.ATTRIBUTE,
+    schema_kind=TestKind.DEVICE,
+    field_name="manufacturer",
+    property_name="branch",
+)
+
+
+def test_unsupported_property_change_is_an_error_by_default(equivalence_base_schema: SchemaBranch) -> None:
+    candidate = build_schema_candidate_builder().from_schema_root(
+        branch_schema=equivalence_base_schema,
+        schema_root=_make_manufacturer_branch_agnostic(),
+        default_branch_schema=equivalence_base_schema,
+    )
+
+    assert [(error.path, error.error) for error in candidate.validation.errors] == [
+        (MANUFACTURER_BRANCH_PATH, UpdateValidationErrorType.NOT_SUPPORTED)
+    ]
+
+
+def test_unsupported_property_change_is_accepted_without_the_update_support_check(
+    equivalence_base_schema: SchemaBranch,
+) -> None:
+    candidate = build_schema_candidate_builder().from_schema_root(
+        branch_schema=equivalence_base_schema,
+        schema_root=_make_manufacturer_branch_agnostic(),
+        default_branch_schema=equivalence_base_schema,
+        enforce_update_support=False,
+    )
+
+    assert candidate.validation.errors == []
+    assert (candidate.validation.migrations, candidate.validation.constraints) == ([], [])
+    device = candidate.schema.get(name=TestKind.DEVICE, duplicate=False)
+    assert device.get_attribute(name="manufacturer").branch == BranchSupportType.AGNOSTIC
+
+
+def test_schema_files_merged_into_one_add_an_element_with_only_the_fields_its_file_states(
+    equivalence_base_schema: SchemaBranch,
+) -> None:
+    device = base_node_definition(TestKind.DEVICE)
+    device.attributes.append(AttributeSchema(name="color", kind="Text", optional=True))
+    unchanged_tag = SchemaRoot(nodes=[base_node_definition(TestKind.TAG)])
+
+    candidate = build_schema_candidate_builder().from_schema_root(
+        branch_schema=equivalence_base_schema,
+        schema_root=SchemaRoot(nodes=[device]).merge(schema=unchanged_tag),
+        default_branch_schema=equivalence_base_schema,
+    )
+
+    assert candidate.operations == [
+        SchemaOperation(
+            operation_type=SchemaOperationType.ELEMENT_ADD,
+            kind=TestKind.DEVICE,
+            section=SchemaOperationSection.ATTRIBUTES,
+            element_name="color",
+            value={"name": "color", "kind": "Text", "optional": True, "order_weight": 1000},
+        )
     ]
