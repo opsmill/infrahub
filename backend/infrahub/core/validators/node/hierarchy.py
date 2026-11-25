@@ -7,6 +7,7 @@ from infrahub.core.constants import HierarchySide, PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import NodeSchema
 
+from ..enum import ConstraintIdentifier
 from ..interface import ConstraintCheckerInterface
 from ..renamed_kinds import get_kinds_with_previous_names
 from ..shared import SchemaValidatorQuery
@@ -134,8 +135,14 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
         return grouped_data_paths
 
 
-PARENT_CONSTRAINT_NAMES = ("node.parent.update", "node.hierarchy.update")
-CHILDREN_CONSTRAINT_NAMES = ("node.children.update", "node.hierarchy.update")
+PARENT_CONSTRAINT_NAMES = (
+    ConstraintIdentifier.NODE_PARENT_UPDATE.value,
+    ConstraintIdentifier.NODE_HIERARCHY_UPDATE.value,
+)
+CHILDREN_CONSTRAINT_NAMES = (
+    ConstraintIdentifier.NODE_CHILDREN_UPDATE.value,
+    ConstraintIdentifier.NODE_HIERARCHY_UPDATE.value,
+)
 
 
 @dataclass(frozen=True)
@@ -155,14 +162,14 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
 
     @property
     def name(self) -> str:
-        return "node.hierarchy.update"
+        return ConstraintIdentifier.NODE_HIERARCHY_UPDATE.value
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
         return request.constraint_name in (
-            "node.parent.update",
-            "node.children.update",
-            "node.hierarchy.update",
-            "node.hierarchical.update",
+            ConstraintIdentifier.NODE_PARENT_UPDATE.value,
+            ConstraintIdentifier.NODE_CHILDREN_UPDATE.value,
+            ConstraintIdentifier.NODE_HIERARCHY_UPDATE.value,
+            ConstraintIdentifier.NODE_HIERARCHICAL_UPDATE.value,
         )
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
