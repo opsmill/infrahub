@@ -3,9 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants import HierarchySide, PathType
+from infrahub.core.constants import HashableModelState, HierarchySide, PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
-from infrahub.core.schema import NodeSchema
+from infrahub.core.schema import GenericSchema, NodeSchema
 
 from ..enum import ConstraintIdentifier
 from ..interface import ConstraintCheckerInterface
@@ -14,6 +14,7 @@ from ..shared import SchemaValidatorQuery
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
     from ..model import SchemaConstraintValidatorRequest
@@ -164,6 +165,21 @@ def get_directions_to_check(node_schema: NodeSchema, constraint_name: str) -> li
     return directions
 
 
+def get_kinds_left_in_hierarchy(
+    current: GenericSchema, candidate: GenericSchema, schema_branch: SchemaBranch
+) -> list[str]:
+    """Return the kinds that still use the hierarchy of a generic that stops being hierarchical, which they cannot leave."""
+    if not current.hierarchical or candidate.hierarchical:
+        return []
+    return sorted(
+        node_kind
+        for node_kind in candidate.used_by
+        if isinstance(node := schema_branch.get(name=node_kind, duplicate=False), NodeSchema)
+        and node.hierarchy == candidate.kind
+        and node.state != HashableModelState.ABSENT
+    )
+
+
 class NodeHierarchyChecker(ConstraintCheckerInterface):
     query_classes = [NodeHierarchyUpdateValidatorQuery]
     # Writing a parent or child already checks its kind, so only a change to the hierarchy can be refused.
@@ -186,10 +202,13 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
         )
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
-        # A generic stores no nodes, and each node inheriting from it is checked through its own hierarchy.
-        if not isinstance(request.node_schema, NodeSchema):
-            return []
-        node_schema = request.node_schema
+        if isinstance(request.node_schema, NodeSchema):
+            return await self._check_node(request=request, node_schema=request.node_schema)
+        return self._check_generic(request=request, generic=request.node_schema)
+
+    async def _check_node(
+        self, request: SchemaConstraintValidatorRequest, node_schema: NodeSchema
+    ) -> list[GroupedDataPaths]:
         directions = get_directions_to_check(node_schema=node_schema, constraint_name=request.constraint_name)
         if not directions:
             return []
@@ -206,6 +225,28 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
                 )
             )
         return grouped_data_paths_list
+
+    def _check_generic(
+        self, request: SchemaConstraintValidatorRequest, generic: GenericSchema
+    ) -> list[GroupedDataPaths]:
+        current = self.db.schema.get_generic_schema(name=generic.kind, branch=request.branch, duplicate=False)
+        kinds_in_hierarchy = get_kinds_left_in_hierarchy(
+            current=current, candidate=generic, schema_branch=request.schema_branch
+        )
+        if not kinds_in_hierarchy:
+            return []
+        grouped_data_paths = GroupedDataPaths()
+        grouped_data_paths.add_data_path(
+            DataPath(
+                branch=str(request.branch.name),
+                path_type=PathType.NODE,
+                node_id=str(generic.id),
+                kind="SchemaGeneric",
+                field_name="hierarchical",
+                value=kinds_in_hierarchy,
+            )
+        )
+        return [grouped_data_paths]
 
     def _get_allowed_hierarchy_kinds(
         self, node_schema: NodeSchema, request: SchemaConstraintValidatorRequest

@@ -667,3 +667,39 @@ class TestHierarchyValidatorRenamedParent:
             (nodes["beijing"].id, nodes["asia"].id),
             (nodes["singapore"].id, nodes["asia"].id),
         }
+
+
+def _generic_turned_flat(default_branch: Branch, generic_kind: str) -> SchemaConstraintValidatorRequest:
+    candidate = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
+    generic = candidate.get_generic(name=generic_kind)
+    generic.hierarchical = False
+    candidate.set(name=generic_kind, schema=generic)
+    return SchemaConstraintValidatorRequest(
+        branch=default_branch,
+        constraint_name="node.hierarchical.update",
+        node_schema=generic,
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind=generic_kind, field_name="hierarchical"),
+        schema_branch=candidate,
+    )
+
+
+async def test_validator_generic_leaving_a_used_hierarchy_failure(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple: SchemaRoot
+) -> None:
+    """A generic cannot stop being hierarchical while kinds use its hierarchy."""
+    request = _generic_turned_flat(default_branch=default_branch, generic_kind="LocationGeneric")
+
+    grouped_data_paths = await NodeHierarchyChecker(db=db, branch=default_branch).check(request)
+
+    assert [paths.get_all_data_paths() for paths in grouped_data_paths] == [
+        [
+            DataPath(
+                branch=default_branch.name,
+                path_type=PathType.NODE,
+                node_id=str(request.node_schema.id),
+                kind="SchemaGeneric",
+                field_name="hierarchical",
+                value=["LocationRack", "LocationRegion", "LocationSite"],
+            )
+        ]
+    ]
