@@ -1,0 +1,31 @@
+backend/infrahub/core/schema/hierarchy_update.py
+  s_4fa415708315a7::t_f38d8f9b7f311c 15,35-37
+  s_4fa415708315a7::t_f38cdb37a10e27 1-13,16-34,38-47,50,54-85
+  s_4fa415708315a7::t_c8aa6771180cc6 14
+  s_4fa415708315a7::t_bd34f73f899ee2 48-49,51-53
+backend/infrahub/core/schema/basenode_schema.py
+  s_4fa415708315a7::t_25af1f9fcfca1c 50
+  s_4fa415708315a7::t_b8641f2f44d5c1 773-775
+backend/infrahub/core/schema/schema_branch.py
+  s_4fa415708315a7::t_f38d8f9b7f311c 66
+  s_4fa415708315a7::t_4af5ece5351a39 366-367
+backend/tests/unit/core/schema/test_schema_update_validation.py
+  s_4fa415708315a7::t_f38d8f9b7f311c 455-456,540
+  s_4fa415708315a7::t_32952086ccff2b 457-539,541-563
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "37aee4f584a82653c18665bfa802060320edeb10",
+  "prompts": {},
+  "sessions": {
+    "s_4fa415708315a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03e5d1ed-c4d3-4710-b21f-22b15f31d216",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
