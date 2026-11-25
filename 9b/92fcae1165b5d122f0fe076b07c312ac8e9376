@@ -1,5 +1,6 @@
 backend/infrahub/core/schema/hierarchy_update.py
   s_4fa415708315a7::t_22280c61cbaa00 41,51-58
+  s_4fa415708315a7::t_f266b1ecce8088 5-10
 backend/tests/unit/core/schema/test_schema_update_validation.py
   s_4fa415708315a7::t_af26ea7fb82237 547-551
 ---
