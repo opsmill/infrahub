@@ -1,0 +1,26 @@
+backend/infrahub/core/validators/node/hierarchy.py
+  s_4fa415708315a7::t_145c4faa3b53e7 185,200-202,213-216,218,223,282,285-293
+  s_4fa415708315a7::t_c9099bcd0137b0 294
+  s_4fa415708315a7::t_5f2d7d7dd9600f 203-212,279
+backend/tests/unit/core/validators/node/test_hierarchy.py
+  s_4fa415708315a7::t_41ce91900e6d16 7,295-300,302-308,310-312,322-326,328-335,337-344,346-351,367-369,371-372,374-376,378-379,381-386
+  s_4fa415708315a7::t_5f2d7d7dd9600f 13,301,309,313-321,327,336,345,352-366,370,373,377,380,387-393
+backend/tests/component/core/constraint_validators/test_node_hierarchy_update.py
+  s_4fa415708315a7::t_0acb2f1f5ca3d9 783-833
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "91f56385dc5d0d10153fd9a48ae210bac33e9637",
+  "prompts": {},
+  "sessions": {
+    "s_4fa415708315a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03e5d1ed-c4d3-4710-b21f-22b15f31d216",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
