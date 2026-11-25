@@ -17,7 +17,7 @@ from .gather import gather_trigger_profile_refresh
 from .graphql_queries import ProfileNodeIDQuery
 from .node_applier import NodeProfilesApplier
 from .refresh import NodeProfilesRefresher
-from .replay import NodeRefreshFilter, ProfileValueSelector, RefreshAllNodes
+from .replay import DatabaseProfileValueReader, NodeRefreshFilter, ProfileValueSelector, RefreshAllNodes
 from .submission import submit_profile_refresh
 
 REFRESH_PROFILES_MUTATION = """
@@ -143,7 +143,7 @@ async def profile_refresh_process(
     async with database.start_session() as db:
         node_filter: NodeRefreshFilter = RefreshAllNodes()
         if attribute_names:
-            value_filter = await ProfileValueSelector(db=db).prepare(
+            value_filter = await ProfileValueSelector(reader=DatabaseProfileValueReader(db=db)).prepare(
                 branch_name=branch_name, profile_id=profile_id, attribute_names=attribute_names
             )
             if value_filter is None:

@@ -13,9 +13,9 @@ from .gather import get_profile_trigger_fields
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Mapping, Sequence
+    from uuid import UUID
 
     from infrahub.core.changelog.models import NodeChangelog
-    from infrahub.core.node import Node
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from infrahub.events.models import EventContext
@@ -77,76 +77,116 @@ class RefreshAllNodes:
         return node_ids
 
 
+@dataclass(frozen=True)
+class LinkedNodeState:
+    """The value and the source of some attributes of a node linked to a profile, and the profiles of the node."""
+
+    values: dict[str, Any]
+    source_ids: dict[str, str | UUID | None]
+    profile_ids: list[str]
+
+
+class ProfileValueReader(Protocol):
+    """Read the values of a profile and the state of its linked nodes."""
+
+    async def get_profile_values(
+        self, branch_name: str, profile_id: str, attribute_names: list[str]
+    ) -> dict[str, Any] | None:
+        """Return the value of each named attribute of the profile, or None when the profile does not exist."""
+        ...
+
+    async def get_linked_nodes(
+        self, branch_name: str, node_ids: list[str], attribute_names: list[str]
+    ) -> dict[str, LinkedNodeState]:
+        """Return the state of each node that exists, by node id."""
+        ...
+
+
+class DatabaseProfileValueReader:
+    """Read the values of a profile and the state of its linked nodes from the database."""
+
+    def __init__(self, db: InfrahubDatabase) -> None:
+        self.db = db
+
+    async def get_profile_values(
+        self, branch_name: str, profile_id: str, attribute_names: list[str]
+    ) -> dict[str, Any] | None:
+        profile = await NodeManager.get_one(
+            db=self.db, id=profile_id, branch=branch_name, fields=dict.fromkeys(attribute_names)
+        )
+        if profile is None:
+            return None
+        return {name: profile.get_attribute(name=name).value for name in attribute_names}
+
+    async def get_linked_nodes(
+        self, branch_name: str, node_ids: list[str], attribute_names: list[str]
+    ) -> dict[str, LinkedNodeState]:
+        nodes = await NodeManager.get_many(
+            db=self.db,
+            ids=node_ids,
+            branch=branch_name,
+            fields=dict.fromkeys(attribute_names),
+            include_metadata=MetadataOptions.SOURCE,
+        )
+        await NodeManager.prefetch_relationships(
+            db=self.db, nodes=nodes.values(), names={"profiles"}, branch=branch_name
+        )
+        return {
+            node_id: LinkedNodeState(
+                values={name: node.get_attribute(name=name).value for name in attribute_names},
+                source_ids={name: node.get_attribute(name=name).source_id for name in attribute_names},
+                profile_ids=[
+                    rel.peer_id
+                    for rel in await node.get_relationship(name="profiles").get_relationships(db=self.db)
+                    if rel.peer_id
+                ],
+            )
+            for node_id, node in nodes.items()
+        }
+
+
 class ProfileValueFilter:
     """Leave out the nodes that hold, from the profile as their only one, its value of some attributes."""
 
-    def __init__(self, db: InfrahubDatabase, branch_name: str, profile_id: str, values: dict[str, Any]) -> None:
-        self.db = db
+    def __init__(self, reader: ProfileValueReader, branch_name: str, profile_id: str, values: dict[str, Any]) -> None:
+        self.reader = reader
         self.branch_name = branch_name
         self.profile_id = profile_id
         self.values = values
 
     async def select(self, node_ids: list[str]) -> list[str]:
-        nodes = await NodeManager.get_many(
-            db=self.db,
-            ids=node_ids,
-            branch=self.branch_name,
-            fields=dict.fromkeys(self.values),
-            include_metadata=MetadataOptions.SOURCE,
+        nodes = await self.reader.get_linked_nodes(
+            branch_name=self.branch_name, node_ids=node_ids, attribute_names=list(self.values)
         )
-        await NodeManager.prefetch_relationships(
-            db=self.db, nodes=nodes.values(), names={"profiles"}, branch=self.branch_name
-        )
-        profile_ids = {
-            node_id: [
-                rel.peer_id
-                for rel in await node.get_relationship(name="profiles").get_relationships(db=self.db)
-                if rel.peer_id
-            ]
-            for node_id, node in nodes.items()
-        }
         return [
             node_id
             for node_id in node_ids
-            if not _holds(
-                node=nodes.get(node_id),
-                profile_ids=profile_ids.get(node_id, []),
-                profile_id=self.profile_id,
-                values=self.values,
-            )
+            if not _holds(node=nodes.get(node_id), profile_id=self.profile_id, values=self.values)
         ]
 
 
 class ProfileValueSelector:
     """Build the filter that leaves out the nodes linked to a profile that hold its value of some attributes."""
 
-    def __init__(self, db: InfrahubDatabase) -> None:
-        self.db = db
+    def __init__(self, reader: ProfileValueReader) -> None:
+        self.reader = reader
 
     async def prepare(self, branch_name: str, profile_id: str, attribute_names: list[str]) -> ProfileValueFilter | None:
         """Return the filter for the current value of each named attribute, or None when the profile does not exist."""
-        profile = await NodeManager.get_one(
-            db=self.db, id=profile_id, branch=branch_name, fields=dict.fromkeys(attribute_names)
+        values = await self.reader.get_profile_values(
+            branch_name=branch_name, profile_id=profile_id, attribute_names=attribute_names
         )
-        if profile is None:
+        if values is None:
             return None
-        return ProfileValueFilter(
-            db=self.db,
-            branch_name=branch_name,
-            profile_id=profile_id,
-            values={name: profile.get_attribute(name=name).value for name in attribute_names},
-        )
+        return ProfileValueFilter(reader=self.reader, branch_name=branch_name, profile_id=profile_id, values=values)
 
 
-def _holds(node: Node | None, profile_ids: list[str], profile_id: str, values: dict[str, Any]) -> bool:
+def _holds(node: LinkedNodeState | None, profile_id: str, values: dict[str, Any]) -> bool:
     # Another profile of the node can win an attribute, even when the value and its source did not change.
-    if node is None or profile_ids != [profile_id]:
+    if node is None or node.profile_ids != [profile_id]:
         return False
     # The source tells which profile won, so an equal value from another source still needs the refresh.
-    return all(
-        node.get_attribute(name=name).source_id == profile_id and node.get_attribute(name=name).value == value
-        for name, value in values.items()
-    )
+    return all(node.source_ids[name] == profile_id and node.values[name] == value for name, value in values.items())
 
 
 class ProfileReplayRefresher:

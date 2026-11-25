@@ -22,7 +22,7 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
-from infrahub.profiles.replay import ProfileValueSelector
+from infrahub.profiles.replay import DatabaseProfileValueReader, ProfileValueSelector
 from infrahub.workers.dependencies import build_cache, build_component, build_database, build_event_service
 from infrahub.workflows.catalogue import PROFILE_REFRESH_MULTIPLE, PROFILE_REFRESH_PROCESS
 from infrahub.workflows.constants import WorkflowPriority
@@ -121,7 +121,7 @@ def _replayed_profile_calls(workflow: WorkflowRecorder) -> list[dict[str, object
 async def _select_nodes_to_refresh(
     db: InfrahubDatabase, branch_name: str, profile_id: str, node_ids: list[str], attribute_names: list[str]
 ) -> list[str]:
-    node_filter = await ProfileValueSelector(db=db).prepare(
+    node_filter = await ProfileValueSelector(reader=DatabaseProfileValueReader(db=db)).prepare(
         branch_name=branch_name, profile_id=profile_id, attribute_names=attribute_names
     )
     assert node_filter is not None
