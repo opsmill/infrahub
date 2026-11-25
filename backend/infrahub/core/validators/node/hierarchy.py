@@ -20,6 +20,12 @@ if TYPE_CHECKING:
 
 
 class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
+    """Find the nodes of a kind whose active parent, or children, would break the candidate hierarchy.
+
+    One run checks one direction: an edge is reported when it belongs to a hierarchy outside the allowed hierarchy
+    kinds, or when the peer has none of the allowed peer kinds.
+    """
+
     name = "node_constraints_hierarchy_validator"
 
     def __init__(
