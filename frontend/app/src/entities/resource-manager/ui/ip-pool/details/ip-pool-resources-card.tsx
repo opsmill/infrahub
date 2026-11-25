@@ -1,8 +1,8 @@
-import { Card, ListBox, ListBoxItem } from "@infrahub/ui";
+import { Card, CardHeader, ListBox, ListBoxItem, Tooltip } from "@infrahub/ui";
 import { Text } from "react-aria-components";
 
 import { Row } from "@/shared/components/container";
-import { pluralize } from "@/shared/utils/string";
+import { formatNumberDisplay } from "@/shared/utils/number";
 
 import type {
   IpPoolResource,
@@ -10,6 +10,8 @@ import type {
 } from "@/entities/resource-manager/domain/model/ip-pool";
 import { IP_PREFIX_POOL, type IpPoolKind } from "@/entities/resource-manager/domain/model/pool";
 import { IpPoolUsageBar } from "@/entities/resource-manager/ui/ip-pool/details/ip-pool-usage-bar";
+import { formatUsagePercent } from "@/entities/resource-manager/ui/pool/format-usage-percent";
+import { UtilizationTooltipMessage } from "@/entities/resource-manager/ui/pool/utilization-tooltip-message";
 import { getIpPoolResourceUrl } from "@/entities/resource-manager/ui/routing/ip-pool-urls";
 
 interface NoResourcesCardProps {
@@ -27,6 +29,50 @@ function NoResourcesCard({ poolKind }: NoResourcesCardProps) {
       </p>
       <p className="text-foreground-muted">Edit the pool to add one.</p>
     </Card>
+  );
+}
+
+interface ResourceCountProps {
+  count: number;
+}
+
+function ResourceCount({ count }: ResourceCountProps) {
+  return (
+    <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-content-strong px-1.5 font-medium text-foreground-muted text-xxs tabular-nums">
+      {formatNumberDisplay(count)}
+      <span className="sr-only"> {count === 1 ? "resource prefix" : "resource prefixes"}</span>
+    </span>
+  );
+}
+
+interface TotalUsageProps {
+  usage: IpPoolResourceUsage;
+}
+
+function TotalUsage({ usage }: TotalUsageProps) {
+  return (
+    <Tooltip
+      nonInteractiveTrigger
+      message={
+        <Row>
+          <UtilizationTooltipMessage
+            title="Default branch"
+            value={formatUsagePercent(usage.utilizationDefaultBranch)}
+          />
+          <UtilizationTooltipMessage
+            title="This branch only"
+            value={formatUsagePercent(usage.utilizationBranches)}
+          />
+        </Row>
+      }
+    >
+      <Row className="shrink-0 gap-1 text-xs">
+        <span className="text-foreground-muted">Total usage</span>
+        <span className="font-medium text-foreground tabular-nums">
+          {formatUsagePercent(usage.utilization)}
+        </span>
+      </Row>
+    </Tooltip>
   );
 }
 
@@ -51,21 +97,13 @@ export function IpPoolResourcesCard({
 
   return (
     <Card>
-      <div className="px-3 pt-2 pb-1 font-medium text-foreground-muted text-sm">
-        Resource prefixes
-      </div>
-      <section
-        aria-label="All resource prefixes"
-        className="mx-1 flex flex-col gap-1.5 px-2.5 py-2"
-      >
-        <Row className="justify-between gap-3">
-          <span className="font-medium">All resource prefixes</span>
-          <span className="shrink-0 text-foreground-muted text-xs">
-            {pluralize(resources.length, "resource prefix", "es")}
-          </span>
+      <CardHeader variant="ghost" className="flex items-baseline justify-between">
+        <Row className="gap-1">
+          <h2>Resource prefixes</h2>
+          <ResourceCount count={resources.length} />
         </Row>
-        <IpPoolUsageBar usage={usage} />
-      </section>
+        <TotalUsage usage={usage} />
+      </CardHeader>
       {areWeightsUnavailable && (
         <p role="status" className="mx-1 px-2.5 pb-1 text-foreground-muted text-xs">
           The weights could not be loaded, so the list is sorted by prefix, not in the order the

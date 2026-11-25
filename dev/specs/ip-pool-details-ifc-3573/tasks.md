@@ -59,7 +59,7 @@ Paths are under `frontend/app/` unless they start with `tests/`, `docs/` or `cha
 
 ## Phase 7: Review rounds
 
-- [x] T027 Show the whole pool's usage above the resource prefixes, link the selected resource prefix to its IPAM page, and start the usage request alongside the pool request.
+- [x] T027 Show the number of resource prefixes and the whole pool's total usage in the resource prefix list title, link the selected resource prefix to its IPAM page, and start the usage request alongside the pool request.
 - [x] T028 Keep loaded allocations and offer a Retry button when the next page or a refresh fails, in the IP pool and number pool tables (`$RM/ui/pool/pool-allocations-error.tsx`).
 - [x] T029 Show the pool type and the schema extension fields in the header (`get-ip-pool-extra-fields.ts`, `ip-pool-extra-fields.tsx`), and the ID column in the allocations table.
 - [x] T030 Tutorial: the pool page lists the allocations of the viewed branch, while an allocation made on a branch stays reserved on every branch.

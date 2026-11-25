@@ -60,7 +60,7 @@ describe("IpPoolResourcesCard", () => {
     ]);
   });
 
-  it("shows how full the whole pool is above the resource prefixes", async () => {
+  it("shows the number of resource prefixes and the usage of the whole pool in the title", async () => {
     // GIVEN
     const props = { usage: generateIpPoolResourceUsage({ utilization: 30 }), resources };
 
@@ -68,10 +68,15 @@ describe("IpPoolResourcesCard", () => {
     const component = await renderCard(props);
 
     // THEN
-    const wholePool = component.getByRole("region", { name: "All resource prefixes" });
     await expect
-      .element(wholePool)
-      .toHaveTextContent("All resource prefixes2 resource prefixes30%");
+      .element(component.getByRole("heading", { level: 2, name: "Resource prefixes" }))
+      .toBeVisible();
+    await expect.element(component.getByText("2 resource prefixes")).toBeInTheDocument();
+    const totalUsage = component.getByText("Total usage", { exact: true }).element().parentElement;
+    expect(totalUsage).toHaveTextContent("Total usage30%");
+    await expect
+      .element(component.getByRole("listbox", { name: "Resource prefixes" }))
+      .toBeVisible();
   });
 
   it("says the list is sorted by prefix when the weights could not be loaded", async () => {
