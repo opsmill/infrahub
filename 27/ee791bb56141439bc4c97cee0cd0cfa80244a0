@@ -1,0 +1,57 @@
+backend/tests/component/core/migrations/schema/test_runner.py
+  s_a61eb58394be2f::t_22189760f24d50 65,67-84,87,92,99,104,118-177
+  s_a61eb58394be2f::t_bb3f86e294da8a 4-5,22,24,293-317,319-382,385-390,392-395,397-431,433-438,440-464,486-594
+  s_a61eb58394be2f::t_4e1769a9b1f1c6 481,483,485
+  s_a61eb58394be2f::t_df0e31537016e6 36,465-480,482,484
+backend/infrahub/core/migrations/schema/node_uniqueness_constraints_update.py
+  s_a61eb58394be2f::t_8be603291436fe 47
+  s_304fd28b0f6da2::t_bc1be113c95857 14-20
+backend/infrahub/core/migrations/schema/attribute_name_update.py
+  s_a61eb58394be2f::t_177eaa5642e0a1 35
+backend/infrahub/core/migrations/schema/attribute_kind_update.py
+  s_a61eb58394be2f::t_177eaa5642e0a1 224,298-301
+  s_a61eb58394be2f::t_b94554130439c5 275-276
+  s_a61eb58394be2f::t_8ea552ecf1e8f6 179
+backend/infrahub/core/migrations/schema/attribute_supports_generated_schema.py
+  s_ee52b28c9e680a::t_3a6f687be2d8b7 125-126,133,158
+backend/infrahub/core/migrations/schema/node_relationship_remove.py
+  s_ee52b28c9e680a::t_b5170a2d81eced 264
+backend/infrahub/core/migrations/shared.py
+  s_ee52b28c9e680a::t_4c57ece5e77932 67-78,300-304
+changelog/+schema-load-attribute-rename-with-kind-change.fixed.md
+  s_ee52b28c9e680a::t_70914044679cf7 1
+changelog/+schema-load-kind-rename-with-field-changes.fixed.md
+  s_ee52b28c9e680a::t_7341a5ce1ff7f8 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "27ee791bb56141439bc4c97cee0cd0cfa80244a0",
+  "prompts": {},
+  "sessions": {
+    "s_304fd28b0f6da2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d041e4c5-f5ab-4a1c-bc00-caa008b4b1d9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    },
+    "s_a61eb58394be2f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91f2ff34-ccf0-4dd9-915b-f293c464558b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    },
+    "s_ee52b28c9e680a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f615a00-dc59-4b57-9038-d8fb0dac4518",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
