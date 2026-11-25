@@ -4,12 +4,13 @@ from typing import Any
 import pytest
 
 from infrahub.core.constants import HierarchySide
-from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.node.hierarchy import (
     HierarchyDirection,
     HierarchyFieldConflict,
     get_directions_to_check,
+    get_generic_hierarchy_conflicts,
     get_hierarchy_field_conflicts,
     get_kinds_left_in_hierarchy,
 )
@@ -321,3 +322,102 @@ CONFLICT_CASES = [
 @pytest.mark.parametrize("case", CONFLICT_CASES, ids=lambda case: case.name)
 def test_hierarchy_field_conflicts(case: ConflictCase) -> None:
     assert get_hierarchy_field_conflicts(current=case.current, candidate=case.candidate) == case.expected
+
+
+def _generic(
+    hierarchical: bool,
+    attributes: list[AttributeSchema] | None = None,
+    relationships: list[RelationshipSchema] | None = None,
+    used_by: list[str] | None = None,
+) -> GenericSchema:
+    return GenericSchema(
+        name="Generic",
+        namespace="Location",
+        hierarchical=hierarchical,
+        attributes=attributes or [],
+        relationships=relationships or [],
+        used_by=used_by or [],
+    )
+
+
+def _schema_branch_with_kinds_in_hierarchy(kinds: list[str]) -> SchemaBranch:
+    schema_branch = SchemaBranch(cache={}, name="test")
+    for kind in kinds:
+        schema_branch.set(
+            name=f"Location{kind}", schema=NodeSchema(name=kind, namespace="Location", hierarchy=HIERARCHY)
+        )
+    return schema_branch
+
+
+@dataclass
+class GenericConflictCase:
+    name: str
+    current: GenericSchema
+    candidate: GenericSchema
+    kinds_in_hierarchy: list[str]
+    expected: list[HierarchyFieldConflict]
+
+
+GENERIC_CONFLICT_CASES = [
+    GenericConflictCase(
+        name="becoming-hierarchical-with-a-reserved-attribute-name",
+        current=_generic(hierarchical=False, attributes=[AttributeSchema(name="ancestors", kind="Text")]),
+        candidate=_generic(hierarchical=True, attributes=[AttributeSchema(name="ancestors", kind="Text")]),
+        kinds_in_hierarchy=[],
+        expected=[HierarchyFieldConflict(field_name="ancestors", value="Text")],
+    ),
+    GenericConflictCase(
+        name="becoming-hierarchical-with-a-reserved-relationship-name",
+        current=_generic(hierarchical=False),
+        candidate=_generic(
+            hierarchical=True, relationships=[_relationship(name="descendants", peer="OrganizationTenant")]
+        ),
+        kinds_in_hierarchy=[],
+        expected=[HierarchyFieldConflict(field_name="descendants", value="OrganizationTenant")],
+    ),
+    GenericConflictCase(
+        name="becoming-hierarchical-without-a-reserved-name",
+        current=_generic(hierarchical=False, attributes=[AttributeSchema(name="name", kind="Text")]),
+        candidate=_generic(hierarchical=True, attributes=[AttributeSchema(name="name", kind="Text")]),
+        kinds_in_hierarchy=[],
+        expected=[],
+    ),
+    GenericConflictCase(
+        name="leaving-a-used-hierarchy",
+        current=_generic(hierarchical=True, used_by=["LocationSite"]),
+        candidate=_generic(hierarchical=False, used_by=["LocationSite"]),
+        kinds_in_hierarchy=["Site"],
+        expected=[HierarchyFieldConflict(field_name="hierarchical", value=["LocationSite"])],
+    ),
+    GenericConflictCase(
+        name="leaving-an-unused-hierarchy-with-a-reserved-name",
+        current=_generic(hierarchical=True, attributes=[AttributeSchema(name="ancestors", kind="Text")]),
+        candidate=_generic(hierarchical=False, attributes=[AttributeSchema(name="ancestors", kind="Text")]),
+        kinds_in_hierarchy=[],
+        expected=[],
+    ),
+    GenericConflictCase(
+        name="staying-hierarchical-with-a-reserved-name",
+        current=_generic(hierarchical=True, attributes=[AttributeSchema(name="ancestors", kind="Text")]),
+        candidate=_generic(hierarchical=True, attributes=[AttributeSchema(name="ancestors", kind="Text")]),
+        kinds_in_hierarchy=[],
+        expected=[],
+    ),
+    GenericConflictCase(
+        name="never-hierarchical-with-a-reserved-name",
+        current=_generic(hierarchical=False, attributes=[AttributeSchema(name="ancestors", kind="Text")]),
+        candidate=_generic(hierarchical=False, attributes=[AttributeSchema(name="ancestors", kind="Text")]),
+        kinds_in_hierarchy=[],
+        expected=[],
+    ),
+]
+
+
+@pytest.mark.parametrize("case", GENERIC_CONFLICT_CASES, ids=lambda case: case.name)
+def test_generic_hierarchy_conflicts(case: GenericConflictCase) -> None:
+    schema_branch = _schema_branch_with_kinds_in_hierarchy(kinds=case.kinds_in_hierarchy)
+
+    assert (
+        get_generic_hierarchy_conflicts(current=case.current, candidate=case.candidate, schema_branch=schema_branch)
+        == case.expected
+    )

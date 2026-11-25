@@ -183,7 +183,7 @@ def get_kinds_left_in_hierarchy(
 @dataclass(frozen=True)
 class HierarchyFieldConflict:
     field_name: str
-    value: str
+    value: str | list[str]
 
 
 def get_hierarchy_field_conflicts(current: NodeSchema | None, candidate: NodeSchema) -> list[HierarchyFieldConflict]:
@@ -198,14 +198,30 @@ def get_hierarchy_field_conflicts(current: NodeSchema | None, candidate: NodeSch
         for relationship in current.relationships
         if relationship.name in HierarchySide and not relationship.inherited
     ]
-    conflicts += [
+    return conflicts + _get_reserved_name_conflicts(schema=candidate)
+
+
+def get_generic_hierarchy_conflicts(
+    current: GenericSchema, candidate: GenericSchema, schema_branch: SchemaBranch
+) -> list[HierarchyFieldConflict]:
+    """Return what prevents an existing generic from becoming hierarchical, or from no longer being hierarchical."""
+    if not current.hierarchical and candidate.hierarchical:
+        return _get_reserved_name_conflicts(schema=candidate)
+    kinds_in_hierarchy = get_kinds_left_in_hierarchy(current=current, candidate=candidate, schema_branch=schema_branch)
+    if kinds_in_hierarchy:
+        return [HierarchyFieldConflict(field_name="hierarchical", value=kinds_in_hierarchy)]
+    return []
+
+
+def _get_reserved_name_conflicts(schema: NodeSchema | GenericSchema) -> list[HierarchyFieldConflict]:
+    conflicts = [
         HierarchyFieldConflict(field_name=attribute.name, value=attribute.kind)
-        for attribute in candidate.attributes
+        for attribute in schema.attributes
         if attribute.name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES and not attribute.inherited
     ]
     conflicts += [
         HierarchyFieldConflict(field_name=relationship.name, value=relationship.peer)
-        for relationship in candidate.relationships
+        for relationship in schema.relationships
         if relationship.name in RESERVED_ATTR_REL_HIERARCHICAL_NAMES and not relationship.inherited
     ]
     return conflicts
@@ -261,22 +277,23 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
         self, request: SchemaConstraintValidatorRequest, generic: GenericSchema
     ) -> list[GroupedDataPaths]:
         current = self.db.schema.get_generic_schema(name=generic.kind, branch=request.branch, duplicate=False)
-        kinds_in_hierarchy = get_kinds_left_in_hierarchy(
+        conflicts = get_generic_hierarchy_conflicts(
             current=current, candidate=generic, schema_branch=request.schema_branch
         )
-        if not kinds_in_hierarchy:
+        if not conflicts:
             return []
         grouped_data_paths = GroupedDataPaths()
-        grouped_data_paths.add_data_path(
-            DataPath(
-                branch=str(request.branch.name),
-                path_type=PathType.NODE,
-                node_id=str(generic.id),
-                kind="SchemaGeneric",
-                field_name="hierarchical",
-                value=kinds_in_hierarchy,
+        for conflict in conflicts:
+            grouped_data_paths.add_data_path(
+                DataPath(
+                    branch=str(request.branch.name),
+                    path_type=PathType.NODE,
+                    node_id=str(generic.id),
+                    kind="SchemaGeneric",
+                    field_name=conflict.field_name,
+                    value=conflict.value,
+                )
             )
-        )
         return [grouped_data_paths]
 
     def _check_kind_joining_hierarchy(

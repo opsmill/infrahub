@@ -780,3 +780,54 @@ async def test_validator_kind_joining_a_hierarchy_with_its_own_parent_failure(
         [],
         [],
     ]
+
+
+async def test_validator_generic_joining_a_hierarchy_with_a_reserved_name_failure(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    """An existing generic with a field named ancestors cannot become hierarchical, which reserves that name."""
+
+    def generic_schema(hierarchical: bool) -> SchemaRoot:
+        return SchemaRoot(
+            version="1.0",
+            generics=[
+                {
+                    "id": "generic-id",
+                    "name": "Generic",
+                    "namespace": "Location",
+                    "hierarchical": hierarchical,
+                    "attributes": [
+                        {"name": "name", "kind": "Text", "unique": True},
+                        {"name": "ancestors", "kind": "Text", "optional": True},
+                    ],
+                }
+            ],
+            nodes=[{"id": "site-id", "name": "Site", "namespace": "Location", "inherit_from": ["LocationGeneric"]}],
+        )
+
+    registry.schema.register_schema(schema=generic_schema(hierarchical=False), branch=default_branch.name)
+    candidate = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
+    candidate.load_schema(schema=generic_schema(hierarchical=True))
+    candidate.process()
+    request = SchemaConstraintValidatorRequest(
+        branch=default_branch,
+        constraint_name="node.hierarchical.update",
+        node_schema=candidate.get_generic(name="LocationGeneric"),
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationGeneric", field_name="hierarchical"),
+        schema_branch=candidate,
+    )
+
+    grouped_data_paths = await NodeHierarchyChecker(db=db, branch=default_branch).check(request)
+
+    assert [paths.get_all_data_paths() for paths in grouped_data_paths] == [
+        [
+            DataPath(
+                branch=default_branch.name,
+                path_type=PathType.NODE,
+                node_id="generic-id",
+                kind="SchemaGeneric",
+                field_name="ancestors",
+                value="Text",
+            )
+        ]
+    ]
