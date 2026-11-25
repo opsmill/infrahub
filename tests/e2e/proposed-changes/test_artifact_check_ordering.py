@@ -65,10 +65,6 @@ async def artifact_checks(
         # The source branch predates these definitions, so its automatic checks cannot replace the seeded results.
         await infrahub_client.branch.create(branch_name=prefix, sync_with_git=False)
         cleanup.push_async_callback(infrahub_client.branch.delete, branch_name=prefix)
-        proposed_change = await create_node(
-            "CoreProposedChange", name=prefix, source_branch=prefix, destination_branch="main"
-        )
-
         remote_dir = infrahub_compose_dir / PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY"]
         await GitRepo(
             name=prefix, src_directory=REPOSITORY_FIXTURE, dst_directory=remote_dir, shared=True
@@ -81,6 +77,10 @@ async def artifact_checks(
             await deadline.tick()
             repository_node = await infrahub_client.get(kind="CoreRepository", id=repository_node.id)
 
+        # Delete the proposed change and its repository validators before deleting the repository.
+        proposed_change = await create_node(
+            "CoreProposedChange", name=prefix, source_branch=prefix, destination_branch="main"
+        )
         query = await create_node("CoreGraphQLQuery", name=prefix, query="query { CoreAccount { count } }")
         targets = await create_node("CoreStandardGroup", name=prefix)
         transform = await create_node(
