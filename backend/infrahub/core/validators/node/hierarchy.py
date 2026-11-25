@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import NodeSchema
+from infrahub.utils import InfrahubStringEnum
 
 from ..interface import ConstraintCheckerInterface
 from ..renamed_kinds import get_kinds_with_previous_names
@@ -131,6 +133,21 @@ class NodeHierarchyUpdateValidatorQuery(SchemaValidatorQuery):
         return grouped_data_paths
 
 
+PARENT_CONSTRAINT_NAMES = ("node.parent.update", "node.hierarchy.update")
+CHILDREN_CONSTRAINT_NAMES = ("node.children.update", "node.hierarchy.update")
+
+
+class _HierarchySide(InfrahubStringEnum):
+    PARENT = "parent"
+    CHILDREN = "children"
+
+
+@dataclass(frozen=True)
+class _HierarchyDirection:
+    side: _HierarchySide
+    peer_kind: str
+
+
 class NodeHierarchyChecker(ConstraintCheckerInterface):
     query_classes = [NodeHierarchyUpdateValidatorQuery]
     # Writing a parent or child already checks its kind, so only a change to the hierarchy can be refused.
@@ -153,41 +170,65 @@ class NodeHierarchyChecker(ConstraintCheckerInterface):
         )
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
-        grouped_data_paths_list: list[GroupedDataPaths] = []
-
         # A generic stores no nodes, and each node inheriting from it is checked through its own hierarchy.
         if not isinstance(request.node_schema, NodeSchema):
-            return grouped_data_paths_list
+            return []
         node_schema = request.node_schema
-        directions = [
-            (check_parent, peer_kind)
-            for check_parent, peer_kind, constraint_names in (
-                (True, node_schema.parent, ("node.parent.update", "node.hierarchy.update")),
-                (False, node_schema.children, ("node.children.update", "node.hierarchy.update")),
-            )
-            if peer_kind and request.constraint_name in constraint_names
-        ]
+        directions = self._get_directions_to_check(node_schema=node_schema, constraint_name=request.constraint_name)
         if not directions:
-            return grouped_data_paths_list
+            return []
+        allowed_hierarchy_kinds = self._get_allowed_hierarchy_kinds(node_schema=node_schema, request=request)
+
+        grouped_data_paths_list: list[GroupedDataPaths] = []
+        for direction in directions:
+            grouped_data_paths_list.extend(
+                await self._check_direction(
+                    request=request,
+                    node_schema=node_schema,
+                    direction=direction,
+                    allowed_hierarchy_kinds=allowed_hierarchy_kinds,
+                )
+            )
+        return grouped_data_paths_list
+
+    @staticmethod
+    def _get_directions_to_check(node_schema: NodeSchema, constraint_name: str) -> list[_HierarchyDirection]:
+        directions: list[_HierarchyDirection] = []
+        if node_schema.parent and constraint_name in PARENT_CONSTRAINT_NAMES:
+            directions.append(_HierarchyDirection(side=_HierarchySide.PARENT, peer_kind=node_schema.parent))
+        if node_schema.children and constraint_name in CHILDREN_CONSTRAINT_NAMES:
+            directions.append(_HierarchyDirection(side=_HierarchySide.CHILDREN, peer_kind=node_schema.children))
+        return directions
+
+    def _get_allowed_hierarchy_kinds(
+        self, node_schema: NodeSchema, request: SchemaConstraintValidatorRequest
+    ) -> list[str]:
         if not node_schema.hierarchy:
             raise RuntimeError(f"No 'hierarchy' defined for {node_schema.kind}")
-        allowed_hierarchy_kinds = get_kinds_with_previous_names(
-            db=self.db, request=request, kinds=[node_schema.hierarchy]
-        )
+        return get_kinds_with_previous_names(db=self.db, request=request, kinds=[node_schema.hierarchy])
 
-        for check_parent, peer_kind in directions:
-            for query_class in self.query_classes:
-                # TODO add exception handling
-                query = await query_class.init(
-                    db=self.db,
-                    branch=self.branch,
-                    node_schema=node_schema,
-                    schema_path=request.schema_path,
-                    allowed_peer_kinds=get_kinds_with_previous_names(db=self.db, request=request, kinds=[peer_kind]),
-                    allowed_hierarchy_kinds=allowed_hierarchy_kinds,
-                    check_children=not check_parent,
-                    check_parent=check_parent,
-                )
-                await query.execute(db=self.db)
-                grouped_data_paths_list.append(await query.get_paths())
+    async def _check_direction(
+        self,
+        request: SchemaConstraintValidatorRequest,
+        node_schema: NodeSchema,
+        direction: _HierarchyDirection,
+        allowed_hierarchy_kinds: list[str],
+    ) -> list[GroupedDataPaths]:
+        grouped_data_paths_list: list[GroupedDataPaths] = []
+        for query_class in self.query_classes:
+            # TODO add exception handling
+            query = await query_class.init(
+                db=self.db,
+                branch=self.branch,
+                node_schema=node_schema,
+                schema_path=request.schema_path,
+                allowed_peer_kinds=get_kinds_with_previous_names(
+                    db=self.db, request=request, kinds=[direction.peer_kind]
+                ),
+                allowed_hierarchy_kinds=allowed_hierarchy_kinds,
+                check_children=direction.side is _HierarchySide.CHILDREN,
+                check_parent=direction.side is _HierarchySide.PARENT,
+            )
+            await query.execute(db=self.db)
+            grouped_data_paths_list.append(await query.get_paths())
         return grouped_data_paths_list
