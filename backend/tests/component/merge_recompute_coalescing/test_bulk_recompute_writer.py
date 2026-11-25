@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 from datetime import UTC, datetime
 from functools import partial
 from typing import TYPE_CHECKING
@@ -46,6 +45,7 @@ from tests.helpers.merge_recompute.dataset import (
     load_chain_schema,
     load_profile_schema,
 )
+from tests.helpers.ownership import wait_for_the_other_write
 from tests.helpers.regeneration_barrier import regeneration_barrier
 from tests.helpers.schema import CASCADE_NODE, CASCADE_SCHEMA, CYCLE_A, CYCLE_B, CYCLE_SCHEMA, load_schema
 
@@ -589,9 +589,6 @@ async def test_chain_bound_scales_with_the_schema_so_deep_chains_are_not_truncat
     assert all(submission.family == COMPUTED_ATTRIBUTE for submission in submissions)
 
 
-SECONDS_TO_WAIT_FOR_THE_OTHER_WRITE = 1.0
-
-
 async def test_two_bulk_writes_of_the_same_nodes_in_reverse_order_do_not_deadlock(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -604,15 +601,14 @@ async def test_two_bulk_writes_of_the_same_nodes_in_reverse_order_do_not_deadloc
     is_saved = {"forward": asyncio.Event(), "backward": asyncio.Event()}
     applied: dict[str, int] = {"forward": 0, "backward": 0}
     original_apply = bulk_write._apply
+    tasks: dict[str, asyncio.Task[list[WrittenNode]]] = {}
 
     async def pausing_apply(node: Node, write: AttributeValueWrite) -> None:
         direction = "forward" if write.value and str(write.value).endswith("forward") else "backward"
         if applied[direction]:
             is_saved[direction].set()
             other = "backward" if direction == "forward" else "forward"
-            # The other write never saves its first node while it waits for a lock that this one holds.
-            with contextlib.suppress(TimeoutError):
-                await asyncio.wait_for(is_saved[other].wait(), timeout=SECONDS_TO_WAIT_FOR_THE_OTHER_WRITE)
+            await wait_for_the_other_write(db=db, other=tasks[other], event=is_saved[other])
         applied[direction] += 1
         await original_apply(node=node, write=write)
 
@@ -630,9 +626,9 @@ async def test_two_bulk_writes_of_the_same_nodes_in_reverse_order_do_not_deadloc
         )
 
     # Both writes run to their end, so a failed one leaves no open transaction for the next test.
-    results = await asyncio.gather(
-        write("forward", node_ids), write("backward", node_ids[::-1]), return_exceptions=True
-    )
+    tasks["forward"] = asyncio.create_task(write("forward", node_ids))
+    tasks["backward"] = asyncio.create_task(write("backward", node_ids[::-1]))
+    results = await asyncio.gather(*tasks.values(), return_exceptions=True)
 
     assert [type(result) for result in results] == [list, list]
     await verify_graph(db=db, kinds=["TestPerson"])

@@ -200,12 +200,14 @@ async def create_car(db: InfrahubDatabase, name: str, person: Node, owner_id: st
     return car
 
 
-async def wait_for_the_other_write(db: InfrahubDatabase, other: asyncio.Future[Any]) -> None:
-    """Return once a transaction waits for a lock, or once the other write ends without a wait."""
+async def wait_for_the_other_write(
+    db: InfrahubDatabase, other: asyncio.Future[Any], event: asyncio.Event | None = None
+) -> None:
+    """Return once `event` is set, once a transaction waits for a lock, or once the other write ends without a wait."""
     params = {"database": config.SETTINGS.database.database_name}
     try:
         async with asyncio.timeout(SECONDS_TO_WAIT):
-            while not other.done():
+            while not other.done() and not (event and event.is_set()):
                 if (await db.execute_query(query=BLOCKED_TRANSACTIONS, params=params))[0]["blocked"]:
                     return
                 await asyncio.sleep(SECONDS_BETWEEN_POLLS)

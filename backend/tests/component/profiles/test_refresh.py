@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -37,10 +36,13 @@ from tests.adapters.event import FailingInfrahubEvent, MemoryInfrahubEvent
 from tests.adapters.python_target_sources import RecordingPythonTargetResolver
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
+from tests.helpers.ownership import SECONDS_TO_WAIT, wait_for_the_other_write
 from tests.helpers.regeneration_barrier import regeneration_barrier
 from tests.helpers.schema import load_schema
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
@@ -48,7 +50,6 @@ if TYPE_CHECKING:
 ROOM_KIND = "TestRoom"
 SERVER_KIND = "TestServer"
 PORT_KIND = "TestPort"
-SECONDS_TO_WAIT_FOR_THE_OTHER_REFRESH = 1.0
 
 ROOM = NodeSchema(
     name="Room",
@@ -558,18 +559,18 @@ async def test_refresh_reports_a_node_that_does_not_exist(
     )
 
 
-def _pausing_applier(first_is_saved: asyncio.Event, other_first_is_saved: asyncio.Event) -> type[NodeProfilesApplier]:
+def _pausing_applier(
+    first_is_saved: asyncio.Event, wait_for_the_other_write: Callable[[], Awaitable[None]]
+) -> type[NodeProfilesApplier]:
     class PausingProfilesApplier(NodeProfilesApplier):
-        """Waits before its second node until the other refresh saved its first node, or a timeout ends."""
+        """Waits before its second node until the other write saved its first node, waits for a lock or ends."""
 
         applied_nodes = 0
 
         async def apply_profiles(self, node: Node) -> list[str]:
             if self.applied_nodes:
                 first_is_saved.set()
-                # The other refresh never saves its first node while it waits for a lock that this one holds.
-                with contextlib.suppress(TimeoutError):
-                    await asyncio.wait_for(other_first_is_saved.wait(), timeout=SECONDS_TO_WAIT_FOR_THE_OTHER_REFRESH)
+                await wait_for_the_other_write()
             self.applied_nodes += 1
             return await super().apply_profiles(node=node)
 
@@ -588,25 +589,27 @@ async def test_two_refreshes_of_the_same_nodes_in_reverse_order_do_not_deadlock(
     db: InfrahubDatabase, default_branch: Branch, server_schema: None
 ) -> None:
     dataset = await _create_servers(db=db, count=2, profile_sets_room=False)
-    forward_is_saved = asyncio.Event()
-    backward_is_saved = asyncio.Event()
-    forward = _refresher(
-        db=db, branch=default_branch, applier_class=_pausing_applier(forward_is_saved, backward_is_saved)
-    )
-    backward = _refresher(
-        db=db, branch=default_branch, applier_class=_pausing_applier(backward_is_saved, forward_is_saved)
-    )
+    is_saved = {"forward": asyncio.Event(), "backward": asyncio.Event()}
+    tasks: dict[str, asyncio.Task[list[str]]] = {}
 
-    # Both refreshes run to their end, so a failed one leaves no open transaction for the next test.
-    results = await asyncio.gather(
-        forward.refresher.refresh(
+    def refresher(direction: str, other: str) -> NodeProfilesRefresher:
+        applier_class = _pausing_applier(
+            is_saved[direction], lambda: wait_for_the_other_write(db=db, other=tasks[other], event=is_saved[other])
+        )
+        return _refresher(db=db, branch=default_branch, applier_class=applier_class).refresher
+
+    tasks["forward"] = asyncio.create_task(
+        refresher("forward", "backward").refresh(
             branch=default_branch, node_ids=dataset.server_ids, context=_context(branch=default_branch)
-        ),
-        backward.refresher.refresh(
-            branch=default_branch, node_ids=dataset.server_ids[::-1], context=_context(branch=default_branch)
-        ),
-        return_exceptions=True,
+        )
     )
+    tasks["backward"] = asyncio.create_task(
+        refresher("backward", "forward").refresh(
+            branch=default_branch, node_ids=dataset.server_ids[::-1], context=_context(branch=default_branch)
+        )
+    )
+    # Both refreshes run to their end, so a failed one leaves no open transaction for the next test.
+    results = await asyncio.gather(*tasks.values(), return_exceptions=True)
 
     assert results == [[], []]
     assert [await _role_and_room(db=db, branch=default_branch, node_id=node_id) for node_id in dataset.server_ids] == [
@@ -622,24 +625,29 @@ async def test_refresh_and_delete_of_the_same_nodes_in_reverse_order_do_not_dead
 ) -> None:
     dataset = await _create_servers(db=db, count=2, profile_sets_room=False)
     first_is_saved = asyncio.Event()
-    doubles = _refresher(db=db, branch=default_branch, applier_class=_pausing_applier(first_is_saved, asyncio.Event()))
+    tasks: dict[str, asyncio.Task[None]] = {}
+    doubles = _refresher(
+        db=db,
+        branch=default_branch,
+        applier_class=_pausing_applier(first_is_saved, lambda: wait_for_the_other_write(db=db, other=tasks["delete"])),
+    )
 
     async def delete_nodes() -> None:
-        await first_is_saved.wait()
+        await asyncio.wait_for(first_is_saved.wait(), timeout=SECONDS_TO_WAIT)
         async with db.start_session() as session_db, session_db.start_transaction() as dbt:
             nodes = await NodeManager.get_many(db=dbt, ids=dataset.server_ids, branch=default_branch)
             await NodeManager.delete(
                 db=dbt, nodes=[nodes[node_id] for node_id in dataset.server_ids[::-1]], cascade_delete=False
             )
 
-    # Both writes run to their end, so a failed one leaves no open transaction for the next test.
-    results = await asyncio.gather(
+    refresh = asyncio.create_task(
         doubles.refresher.refresh(
             branch=default_branch, node_ids=dataset.server_ids, context=_context(branch=default_branch)
-        ),
-        delete_nodes(),
-        return_exceptions=True,
+        )
     )
+    tasks["delete"] = asyncio.create_task(delete_nodes())
+    # Both writes run to their end, so a failed one leaves no open transaction for the next test.
+    results = await asyncio.gather(refresh, tasks["delete"], return_exceptions=True)
 
     assert results == [[], None]
     assert await NodeManager.get_many(db=db, ids=dataset.server_ids, branch=default_branch) == {}
