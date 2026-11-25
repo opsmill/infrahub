@@ -325,6 +325,14 @@ def _scalar_type_from_any_of(schema: dict) -> str | None:
     return None
 
 
+def _optional_ref_from_any_of(schema: dict) -> str | None:
+    """Return the reference of an optional field whose only non-null option is a ``$ref``, such as ``Enum | None``."""
+    options = [option for option in schema.get("anyOf", []) if option.get("type") != "null"]
+    if len(options) == 1:
+        return options[0].get("$ref")
+    return None
+
+
 def _extract_nested_parameters(
     prop_schema: dict,
     model_fields: dict,
@@ -499,7 +507,7 @@ def _process_section_parameters(
         default = param_schema.get("default")
         if default is None and param_name in model_fields:
             default = _factory_default(model_fields[param_name])
-        ref = param_schema.get("$ref")
+        ref = param_schema.get("$ref") or _optional_ref_from_any_of(param_schema)
         definition = None
 
         if "properties" in param_schema or ref:

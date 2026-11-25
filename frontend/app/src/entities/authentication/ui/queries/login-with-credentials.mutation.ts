@@ -1,6 +1,7 @@
 import { mutationOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { loginWithCredentials } from "@/entities/authentication/domain/use-cases/login-with-credentials";
+import { clearSessionCache } from "@/entities/authentication/ui/queries/clear-session-cache";
 
 export function loginWithCredentialsMutationOptions() {
   return mutationOptions({
@@ -15,11 +16,7 @@ export function useLoginWithCredentials() {
   return useMutation({
     ...loginWithCredentialsMutationOptions(),
     onSuccess: () => {
-      // Logging in may be a different user than whatever cached data we hold
-      // (re-auth after token expiry, switching accounts, etc.). Wipe the
-      // entire cache so no prior user's data leaks into the new session —
-      // mirrors the `queryClient.clear()` in logout.
-      queryClient.clear();
+      clearSessionCache(queryClient);
     },
   });
 }

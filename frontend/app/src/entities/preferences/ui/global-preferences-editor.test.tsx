@@ -15,7 +15,12 @@ vi.mock("@/entities/preferences/domain/use-cases/update-global-preference");
 // that ignored the timezone being edited cannot match by accident.
 const FIXED_INSTANT = new Date("2026-06-11T23:30:00Z");
 
-const baseGlobal: GlobalPreferences = { dateFormat: null, timezone: "Asia/Tokyo" };
+const baseGlobal: GlobalPreferences = {
+  dateFormat: null,
+  timezone: "Asia/Tokyo",
+  instanceLabel: null,
+  instanceColor: null,
+};
 
 describe("GlobalPreferencesEditor", () => {
   beforeEach(() => {
@@ -33,6 +38,22 @@ describe("GlobalPreferencesEditor", () => {
     const component = await render(<GlobalPreferencesEditor />);
 
     await expect.element(component.getByText("Global date and time")).toBeVisible();
+  });
+
+  test("renders the instance identity card below the date and time card", async () => {
+    // GIVEN
+    vi.mocked(getGlobalPreferences).mockResolvedValue({ ...baseGlobal, instanceLabel: "QA" });
+
+    // WHEN
+    const component = await render(<GlobalPreferencesEditor />);
+
+    // THEN
+    await expect.element(component.getByText("Instance identity", { exact: true })).toBeVisible();
+    await expect.element(component.getByLabelText("Instance label")).toHaveValue("QA");
+    const pageText = component.baseElement.textContent ?? "";
+    expect(pageText.indexOf("Global date and time")).toBeLessThan(
+      pageText.indexOf("Instance identity")
+    );
   });
 
   test("renders the card wide enough (max-w-3xl) for the inline date-format example", async () => {
@@ -71,7 +92,7 @@ describe("GlobalPreferencesEditor", () => {
   });
 
   test("renders the example in the browser zone when the global timezone is unset", async () => {
-    vi.mocked(getGlobalPreferences).mockResolvedValue({ dateFormat: null, timezone: null });
+    vi.mocked(getGlobalPreferences).mockResolvedValue({ ...baseGlobal, timezone: null });
 
     const component = await render(<GlobalPreferencesEditor />);
 
@@ -104,7 +125,7 @@ describe("GlobalPreferencesEditor", () => {
     await component.getByRole("button", { name: /date format/i }).click();
 
     await component.getByRole("option", { name: "dd/MM/yyyy HH:mm", exact: true }).click();
-    await component.getByRole("button", { name: "Save" }).click();
+    await component.getByRole("button", { name: "Save", exact: true }).click();
 
     await vi.waitFor(() => {
       expect(vi.mocked(updateGlobalPreference).mock.calls[0]?.[0]).toEqual({
@@ -116,6 +137,7 @@ describe("GlobalPreferencesEditor", () => {
 
   test("prefills the form from the raw GLOBAL scope values", async () => {
     vi.mocked(getGlobalPreferences).mockResolvedValue({
+      ...baseGlobal,
       dateFormat: "ISO_DATETIME",
       timezone: "Europe/Paris",
     });

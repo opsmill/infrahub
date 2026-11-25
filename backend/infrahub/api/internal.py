@@ -9,7 +9,7 @@ from lunr.index import Index
 from pydantic import BaseModel, Field
 
 from infrahub import config
-from infrahub.api.dependencies import get_current_user, get_permission_manager
+from infrahub.api.dependencies import get_current_user, get_db, get_permission_manager
 from infrahub.config import (  # noqa: TC001
     AnalyticsSettings,
     ExperimentalFeaturesSettings,
@@ -17,7 +17,12 @@ from infrahub.config import (  # noqa: TC001
     MainSettings,
 )
 from infrahub.core import registry
+from infrahub.core.preferences.constants import GLOBAL_OWNER_ID
+from infrahub.core.preferences.repository import PreferenceRepository
+from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import NodeNotFoundError
+from infrahub.instance_identity import InstanceColor  # noqa: TC001
+from infrahub.log import get_logger
 from infrahub.message_bus.messages import RefreshSettingsResponseDelay
 from infrahub.permissions.globals import SUPER_ADMIN_PERMISSION
 from infrahub.workers.dependencies import get_installation_type
@@ -27,7 +32,16 @@ if TYPE_CHECKING:
     from infrahub.permissions import PermissionManager
     from infrahub.services import InfrahubServices
 
+log = get_logger()
+
 router = APIRouter()
+
+
+class InstanceIdentityAPI(BaseModel):
+    """A label and a color that identify this instance to every visitor."""
+
+    label: str | None = Field(description="Instance label shown in the header badge and the tab title")
+    color: InstanceColor | None = Field(description="Preset color of the instance badge, bar and tab icon")
 
 
 class ConfigAPI(BaseModel):
@@ -39,6 +53,15 @@ class ConfigAPI(BaseModel):
     ldap: config.LDAPInfo
     installation_type: str
     policy: config.PolicySettings
+    instance: InstanceIdentityAPI = Field(
+        description=(
+            "Instance identity: each field is the value saved in the global preferences, else the deployment default;"
+            " both fields are null when the saved values cannot be read"
+        )
+    )
+    instance_defaults: InstanceIdentityAPI = Field(
+        description="Instance identity set by the deployment configuration, used for a field with no saved value"
+    )
 
 
 class InfoAPI(BaseModel):
@@ -46,8 +69,42 @@ class InfoAPI(BaseModel):
     version: str
 
 
+def get_instance_defaults() -> InstanceIdentityAPI:
+    return InstanceIdentityAPI(label=config.SETTINGS.instance.label, color=config.SETTINGS.instance.color)
+
+
+class InstanceIdentityResolver:
+    def __init__(self, repository: PreferenceRepository, defaults: InstanceIdentityAPI) -> None:
+        self.repository = repository
+        self.defaults = defaults
+
+    async def resolve(self) -> InstanceIdentityAPI:
+        """Resolve each field to its saved value, else the deployment default; a failed read serves no identity."""
+        try:
+            global_preference = await self.repository.get_for_owner(owner_id=GLOBAL_OWNER_ID)
+        # The config response loads every page, the login page included, so no read error may fail it.
+        except Exception:
+            # A default could name another stage than the saved value it stands in for, so show nothing.
+            log.exception("Instance identity unavailable, serving it as unset")
+            return InstanceIdentityAPI(label=None, color=None)
+        if global_preference is None:
+            return self.defaults.model_copy()
+        label = global_preference.instance_label
+        color = global_preference.instance_color
+        return InstanceIdentityAPI(
+            label=label if label is not None else self.defaults.label,
+            color=color if color is not None else self.defaults.color,
+        )
+
+
+async def build_instance_identity_resolver(db: InfrahubDatabase = Depends(get_db)) -> InstanceIdentityResolver:
+    return InstanceIdentityResolver(repository=PreferenceRepository(db=db), defaults=get_instance_defaults())
+
+
 @router.get("/config")
-async def get_config() -> ConfigAPI:
+async def get_config(
+    instance_resolver: InstanceIdentityResolver = Depends(build_instance_identity_resolver),
+) -> ConfigAPI:
     return ConfigAPI(
         main=config.SETTINGS.main,
         logging=config.SETTINGS.logging,
@@ -61,6 +118,8 @@ async def get_config() -> ConfigAPI:
         ),
         installation_type=get_installation_type(),
         policy=config.SETTINGS.policy,
+        instance=await instance_resolver.resolve(),
+        instance_defaults=instance_resolver.defaults,
     )
 
 
