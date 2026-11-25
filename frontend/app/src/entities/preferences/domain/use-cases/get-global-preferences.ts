@@ -11,5 +11,7 @@ export const getGlobalPreferences: GetGlobalPreferences = async () => {
   return {
     dateFormat: global.date_format ?? null,
     timezone: global.timezone ?? null,
+    instanceLabel: global.instance_label ?? null,
+    instanceColor: global.instance_color ?? null,
   };
 };

@@ -13,7 +13,15 @@ from infrahub.core.preferences.permissions import MANAGE_GLOBAL_PREFERENCES_PERM
 from infrahub.core.preferences.repository import PreferenceRepository
 from infrahub.core.preferences.validation import validate_timezone
 from infrahub.database import retry_db_transaction
-from infrahub.graphql.types.preferences import DateFormat, PreferenceWriteScope, PreferenceWriteScopeType
+from infrahub.exceptions import ValidationError
+from infrahub.graphql.types.preferences import (
+    DateFormat,
+    InstanceColor,
+    PreferenceWriteScope,
+    PreferenceWriteScopeType,
+)
+from infrahub.instance_identity import InstanceColor as InstanceColorEnum
+from infrahub.instance_identity import validate_instance_label
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -51,10 +59,14 @@ class InfrahubSetPreferences(Mutation):
         scope = Argument(PreferenceWriteScopeType, required=True)
         date_format = Argument(DateFormat, required=False)
         timezone = String(required=False)
+        instance_label = String(required=False)
+        instance_color = Argument(InstanceColor, required=False)
 
     ok = Boolean()
     date_format = Field(DateFormat, required=False)
     timezone = String(required=False)
+    instance_label = String(required=False)
+    instance_color = Field(InstanceColor, required=False)
 
     @classmethod
     @retry_db_transaction(name="set_preferences")
@@ -65,6 +77,8 @@ class InfrahubSetPreferences(Mutation):
         scope: str,
         date_format: str | _Unset | None = _UNSET,
         timezone: str | _Unset | None = _UNSET,
+        instance_label: str | _Unset | None = _UNSET,
+        instance_color: str | _Unset | None = _UNSET,
     ) -> Self:
         graphql_context: GraphqlContext = info.context
 
@@ -75,13 +89,23 @@ class InfrahubSetPreferences(Mutation):
             graphql_context.active_permissions.raise_for_permission(permission=MANAGE_GLOBAL_PREFERENCES_PERMISSION)
             owner_id = GLOBAL_OWNER_ID
         else:
+            if instance_label is not _UNSET or instance_color is not _UNSET:
+                raise ValidationError(input_value="instance_label and instance_color can only be set with scope GLOBAL")
             owner_id = account_id
 
         if timezone is not _UNSET:
             timezone = validate_timezone(timezone)
+        if instance_label is not _UNSET:
+            instance_label = validate_instance_label(instance_label)
 
         return await cls._set(
-            graphql_context, owner_id=owner_id, actor_id=account_id, date_format=date_format, timezone=timezone
+            graphql_context,
+            owner_id=owner_id,
+            actor_id=account_id,
+            date_format=date_format,
+            timezone=timezone,
+            instance_label=instance_label,
+            instance_color=instance_color,
         )
 
     @classmethod
@@ -92,6 +116,8 @@ class InfrahubSetPreferences(Mutation):
         actor_id: str,
         date_format: str | _Unset | None,
         timezone: str | _Unset | None,
+        instance_label: str | _Unset | None,
+        instance_color: str | _Unset | None,
     ) -> Self:
         # Per-owner distributed lock: the read-modify-write block below is not atomic on its own, so
         # concurrent first-upserts for the same owner could otherwise each see "no row" and create a
@@ -111,7 +137,17 @@ class InfrahubSetPreferences(Mutation):
                     preference.date_format = None if date_format is None else DateFormatEnum(date_format)
                 if timezone is not _UNSET:
                     preference.timezone = timezone
+                if instance_label is not _UNSET:
+                    preference.instance_label = instance_label
+                if instance_color is not _UNSET:
+                    preference.instance_color = None if instance_color is None else InstanceColorEnum(instance_color)
 
                 await repository.save(preference, actor_id=actor_id)
 
-        return cls(ok=True, date_format=preference.date_format, timezone=preference.timezone)  # type: ignore[call-arg]
+        return cls(  # type: ignore[call-arg]
+            ok=True,
+            date_format=preference.date_format,
+            timezone=preference.timezone,
+            instance_label=preference.instance_label,
+            instance_color=preference.instance_color,
+        )

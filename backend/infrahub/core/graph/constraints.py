@@ -135,10 +135,15 @@ class ConstraintItemMemgraph(ConstraintItem):
     def get_query_exist_drop(self) -> str:
         raise NotImplementedError()
 
+    # Memgraph constraints can only require a property to exist, so an optional property gets none.
     def get_add_queries(self) -> list[str]:
+        if not self.mandatory:
+            return []
         return [self.get_query_exist_add()]
 
     def get_drop_queries(self) -> list[str]:
+        if not self.mandatory:
+            return []
         return [self.get_query_exist_drop()]
 
 

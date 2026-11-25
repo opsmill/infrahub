@@ -1,6 +1,6 @@
 import { Autocomplete, Button, ListBox, ListBoxItem, Popover, PopoverTrigger } from "@infrahub/ui";
 import { ChevronsUpDownIcon } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import type { Selection } from "react-aria-components";
 
 import { classNames } from "@/shared/utils/common";
@@ -8,6 +8,8 @@ import { classNames } from "@/shared/utils/common";
 export interface ComboboxItem {
   value: string;
   label: string;
+  /** Rendered before the label in the option list; the label alone stays the option's accessible name. */
+  icon?: ReactNode;
 }
 
 export interface ComboboxProps {
@@ -42,7 +44,8 @@ export function Combobox({
 }: ComboboxProps) {
   const [open, setOpen] = useState(false);
 
-  const currentLabel = items.find((item) => item.value === value)?.label ?? value;
+  const currentItem = items.find((item) => item.value === value);
+  const currentLabel = currentItem?.label ?? value;
 
   const handleSelectionChange = (keys: Selection) => {
     // Re-selecting the current value yields an empty set → null clears the selection.
@@ -60,8 +63,14 @@ export function Combobox({
         aria-describedby={ariaDescribedBy}
         className={classNames("w-full justify-between font-normal", className)}
       >
-        <span className={classNames("truncate", currentLabel ? "" : "text-subtle-muted")}>
-          {currentLabel ?? placeholder}
+        <span
+          className={classNames(
+            "flex min-w-0 items-center gap-2",
+            currentLabel ? "" : "text-subtle-muted"
+          )}
+        >
+          {currentItem?.icon}
+          <span className="truncate">{currentLabel ?? placeholder}</span>
         </span>
         <ChevronsUpDownIcon className="ml-2 size-3.5 shrink-0 text-subtle-muted" />
       </Button>
@@ -81,6 +90,7 @@ export function Combobox({
           >
             {items.map((item) => (
               <ListBoxItem key={item.value} id={item.value} textValue={item.label}>
+                {item.icon}
                 {item.label}
               </ListBoxItem>
             ))}

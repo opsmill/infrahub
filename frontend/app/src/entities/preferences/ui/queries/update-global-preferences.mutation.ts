@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { getConfigQueryOptions } from "@/entities/config/ui/queries/get-config.query";
 import {
   type UpdateGlobalPreferenceParams,
   updateGlobalPreference,
@@ -11,8 +12,12 @@ export function useUpdateGlobalPreferences() {
 
   return useMutation({
     mutationFn: (params: UpdateGlobalPreferenceParams) => updateGlobalPreference(params),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: preferencesQueryKeys.all() });
-    },
+    // Returning the refetches keeps a save pending until the page shows the saved values.
+    onSuccess: (_data, params) =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: preferencesQueryKeys.all() }),
+        ("instanceLabel" in params || "instanceColor" in params) &&
+          queryClient.invalidateQueries({ queryKey: getConfigQueryOptions().queryKey }),
+      ]),
   });
 }

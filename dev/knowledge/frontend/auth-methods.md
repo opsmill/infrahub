@@ -35,6 +35,7 @@ authentication/
     ├── hooks/                            # use-available-auth-methods, use-last-used-method (owns LAST_USED_METHOD_KEY)
     ├── routing/login-redirect.ts
     └── queries/
+        ├── clear-session-cache.ts        # credentials and LDAP login, and logout, remove cached queries through it
         ├── login-with-credentials.mutation.ts
         ├── login-with-ldap.mutation.ts
         ├── logout.mutation.ts
@@ -121,6 +122,7 @@ useConfig() ─► resolveAvailableAuthMethods(config) ─► AuthMethod[]
 | `api/refresh-access-token-from-api.ts` | Transport. `POST /api/auth/refresh`. |
 | `ui/queries/login-with-credentials.mutation.ts` | TanStack mutation wrapping the local domain function. |
 | `ui/queries/login-with-ldap.mutation.ts` | TanStack mutation wrapping the LDAP domain function. |
+| `ui/queries/clear-session-cache.ts` | Called on credentials and LDAP login and on logout; SSO login reaches the app through a full-page redirect, which starts with an empty cache. Removes every cached query and mutation except the public config, whose provider stays mounted above the router and would otherwise read a removed entry that no refetch updates. A login method that completes without a page load calls it instead of `queryClient.clear()`. |
 
 ## Contracts that make adding a method mechanical
 

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 from typing import TYPE_CHECKING, Any, Optional
 
+import ujson
 from pydantic import BaseModel, Field
 
 from infrahub.utils import InfrahubStringEnum
@@ -144,7 +146,22 @@ class GraphAttributeNode(GraphVertex):
 # -----------------------------------------------------
 # AttributeValue
 # -----------------------------------------------------
+def get_attribute_value_key(value: Any) -> str:
+    """Return the indexed key of a value of a large attribute kind, stored without the AttributeValueIndexed label.
+
+    The key is a hash of the serialized value, which fits a RANGE index whatever the size of the value, so a lookup
+    seeks the key and then compares the whole value.
+    """
+    serialized = value if isinstance(value, str) else ujson.dumps(value)
+    return hashlib.md5(serialized.encode("utf-8", "surrogatepass"), usedforsecurity=False).hexdigest()
+
+
 class GraphAttributeValueProperties(BaseModel):
+    value: Any = Field(..., description="value of the attribute")
+    value_key: str | None = Field(None, description="Hash of the value, indexed for a value of a large attribute kind")
+
+
+class GraphAttributeValueIndexedProperties(BaseModel):
     value: Any = Field(..., description="value of the attribute")
 
 
@@ -178,7 +195,7 @@ class GraphAttributeValueNode(GraphVertex):
 
 class GraphAttributeValueIndexedNode(GraphVertex):
     default_label: str = "AttributeValueIndexed"
-    properties: GraphAttributeValueProperties
+    properties: GraphAttributeValueIndexedProperties
     relationships: GraphAttributeValueRelationships
 
 
