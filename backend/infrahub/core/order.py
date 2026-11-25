@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Self
 
 from pydantic import BaseModel, ConfigDict, model_validator
@@ -31,23 +32,32 @@ class OrderByEntry(BaseModel):
     direction: OrderDirection = OrderDirection.ASC
 
 
+@dataclass(frozen=True)
+class AttributeValuePriority:
+    attribute: str
+    value: str
+
+
 class OrderModel(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     disable: bool | None = None
     node_metadata: NodeMetaOrder | None = None
     by: tuple[OrderByEntry, ...] | None = None
+    priority: AttributeValuePriority | None = None
 
     def __bool__(self) -> bool:
         return bool(self.disable) or self.has_explicit_entries
 
     @property
     def has_explicit_entries(self) -> bool:
-        """True when the model carries override ordering entries (metadata or by)."""
-        return bool(self.node_metadata) or bool(self.by)
+        """True when the model carries override ordering entries."""
+        return bool(self.node_metadata) or bool(self.by) or self.priority is not None
 
     @model_validator(mode="after")
     def validate_metadata(self) -> Self:
+        if self.priority is not None and (self.disable or self.node_metadata or self.by):
+            raise ValidationError("Cannot combine attribute value priority with another order.")
         if self.node_metadata and self.node_metadata.created_at and self.node_metadata.updated_at:
             raise ValidationError("Cannot order by both created_at and updated_at simultaneously.")
         if self.node_metadata and self.by:

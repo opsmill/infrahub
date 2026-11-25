@@ -29,9 +29,9 @@ const getVerifiedOffset = (offset: number | undefined) => {
   return offset;
 };
 
-const usePagination = () => {
+const usePagination = ({ urlKey = QSP.PAGINATION }: { urlKey?: string } = {}) => {
   const [parsedPagination, setPaginationInQueryString] = useQueryState(
-    QSP.PAGINATION,
+    urlKey,
     parseAsJson(Pagination).withDefault({ limit: DEFAULT_LIMIT, offset: DEFAULT_OFFSET })
   );
   const pagination = {

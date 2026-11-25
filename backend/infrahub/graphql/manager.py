@@ -501,6 +501,15 @@ class GraphQLSchemaManager:
                 elif rel.cardinality == RelationshipCardinality.MANY:
                     peer_type = self.get_type(name=f"NestedPaginated{peer_schema.kind}")
 
+                    if node_schema.kind == InfrahubKind.ARTIFACTVALIDATOR and rel.name == "checks":
+                        peer_filters["failed_first"] = graphene.Boolean(
+                            default_value=False,
+                            description=(
+                                "Place failed checks first, preserving ID order within failed and other checks. "
+                                "Cannot be combined with an explicit order."
+                            ),
+                        )
+
                     if (isinstance(node_schema, NodeSchema) and node_schema.hierarchy) or (
                         isinstance(node_schema, GenericSchema) and node_schema.hierarchical
                     ):

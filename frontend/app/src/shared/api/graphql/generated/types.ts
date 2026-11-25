@@ -3200,6 +3200,7 @@ export type CoreArtifactValidatorChecksArgs = {
   display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   display_label__value?: InputMaybe<Scalars['String']['input']>;
   display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  failed_first?: InputMaybe<Scalars['Boolean']['input']>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
   kind__is_protected?: InputMaybe<Scalars['Boolean']['input']>;

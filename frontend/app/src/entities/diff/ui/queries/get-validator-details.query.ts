@@ -12,6 +12,7 @@ export function getValidatorDetailsQueryOptions(params: GetValidatorDetailsParam
       validatorId: params.ids?.[0] ?? "",
       checksOffset: params.checksOffset ?? undefined,
       checksLimit: params.checksLimit ?? undefined,
+      checksFailedFirst: params.checksFailedFirst,
     }),
     queryFn: () => getValidatorDetails(params),
   });

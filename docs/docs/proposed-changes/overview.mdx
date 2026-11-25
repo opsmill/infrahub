@@ -67,6 +67,12 @@ These artifacts are generated on the source branch and are not merged. After the
 
 Learn more about [Transformations](../transformations/overview) and [Artifacts](../artifacts/overview).
 
+#### Find failed artifact checks
+
+In the **Checks** tab, expand an artifact definition to see its results. **Failed first** is enabled by default and puts failed checks before other results across all pages. Each definition is sorted independently, and successful results remain available.
+
+Clear **Failed first** to remove failure priority. Changing this option returns that definition to its first page. Sorting changes the display order only; it does not run any checks.
+
 ### Understanding artifact regeneration
 
 When a proposed change includes commits to a linked Git repository, Infrahub regenerates only the artifacts whose Transformation actually depends on a changed file. Each Transformation's dependency closure - the templates it includes for a Jinja2 Transformation, or its own source file for a Python Transformation - is computed when the repository is imported and stored on the Transformation. A file change regenerates a definition's artifacts only when the changed file is in that definition's closure. A change to a GraphQL query the definition uses, or to the artifact definition itself, also triggers regeneration.
