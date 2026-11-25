@@ -147,8 +147,9 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
   that lock the same two nodes in the reverse order deadlock, on every branch, and Neo4j stops one of them with
   `DeadlockDetected`. The update, upsert and delete mutations retry this error (`retry_db_transaction`), so a user
   sees a delay.
-  - The cascade of `NodeManager.delete`, the profile refresh and the IPAM reconciler lock their nodes in the order
-    of the node IDs, so two of these writers lock their shared nodes in one order. A node delete also locks its
+  - The cascade of `NodeManager.delete`, the profile refresh, the IPAM reconciler and the bulk recompute writer
+    (`core/recompute/bulk_write.py`) lock their nodes in the order of the node IDs, so two of these writers lock
+    their shared nodes in one order. A node delete also locks its
     peer nodes in no fixed order, so these writers can still deadlock through the peers of a deleted node. The
     cascade locks all its nodes first and then deletes them in its own order, because a delete leaves out of its
     changelog the links that an earlier delete closed.
@@ -310,6 +311,9 @@ the holders that are not attributes are in `core/ownership/fields.py` (see [Diff
   new set of a branch-agnostic node gets its edges on the global branch, where a write of owners can replace them.
   On another branch, the new set gets its edges on that branch until the merge runs the migration on the default
   branch.
+  When the migration has a node scope (`MigrationInput.node_ids`), the query reads only the nodes in the scope, and
+  its count of changes reads the same nodes as its write. A rename locks each node in the write only, because the
+  count runs as a read query.
 - The removal of a kind (`core/migrations/schema/node_remove.py`) closes the owner edges and the source edges that
   start at each node of the kind, at its attributes and at its `OwnerSet` vertices. For the edges that end at a node
   of the kind, it does what a delete of the node does: it closes each `HAS_OWNER_SOURCE` edge, and the `HAS_OWNER`
@@ -360,7 +364,8 @@ the owner edges of the default branch under the new kind.
   the upgrade.
 - Two transactions that write the same nodes in a different order deadlock, on every branch, because each one
   locks the nodes in its own order (see "Order of the nodes"). Only the cascade of `NodeManager.delete`, the profile
-  refresh and the IPAM reconciler sort their nodes.
+  refresh, the IPAM reconciler and the bulk recompute writer sort their nodes. Nothing retries a chunk of the bulk
+  recompute writer after a deadlock: the flow fails, and the chunks that committed before stay written.
 - The graph migration `m085` skips an attribute whose owner a branch wrote and then cleared before the upgrade.
   The release before closed the edge of the branch at the clear, and added its own `deleted` edge for the owner of
   the default branch at that time. So a read on the branch at a time between the write and the clear gives two
