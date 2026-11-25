@@ -166,6 +166,9 @@ The engineer opens the Actions menu in the header. It offers Copy ID, Copy HFID,
 - The allocation weight is read through the weighted pool resource generic when every resource prefix kind inherits it. When that read fails, the list shows no weight and the card says that the weights could not be loaded, so the list is sorted by prefix instead of fill order. The utilization query's `weight` field is the size of the prefix and is not shown.
 - The usage split on the bar is the default-branch share and the extra share on the viewing branch, which is what the utilization query returns. On the default branch, the second segment is empty.
 - The allocated table has no Branch column, because the backend returns the viewing branch for every row.
+- The header has no schema namespace badge ("Core"): the pool type label at the start of the defaults line replaces it.
+- The allocated table has no close button, because a resource prefix is always selected (FR-011).
+- The allocated table ignores the `limit` and `offset` URL parameters of the old pager, so an old link with them opens at the top of the list.
 - The table lists every prefix or address inside the resource prefix that is visible on the viewing branch, including ones created by hand, because that is what the allocations query returns. An entry the pool did not reserve has no identifier.
 - A prefix pool whose member type is not set reads "Member type has no default" rather than the prototype's "defaults to Prefix", because the backend has no fallback at allocation time.
 - The existing route shape, `/resource-manager/:resourcePoolId/resources/:resourceId`, is kept for the selected resource prefix, so the breadcrumb's resource selector keeps working.
