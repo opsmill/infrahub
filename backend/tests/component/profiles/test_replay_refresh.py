@@ -121,14 +121,11 @@ def _replayed_profile_calls(workflow: WorkflowRecorder) -> list[dict[str, object
 async def _select_nodes_to_refresh(
     db: InfrahubDatabase, branch_name: str, profile_id: str, node_ids: list[str], attribute_names: list[str]
 ) -> list[str]:
-    selector = ProfileValueSelector(db=db)
-    values = await selector.read_profile_values(
+    node_filter = await ProfileValueSelector(db=db).prepare(
         branch_name=branch_name, profile_id=profile_id, attribute_names=attribute_names
     )
-    assert values is not None
-    return await selector.select_nodes_to_refresh(
-        branch_name=branch_name, profile_id=profile_id, node_ids=node_ids, values=values
-    )
+    assert node_filter is not None
+    return await node_filter.select(node_ids)
 
 
 async def test_select_nodes_to_refresh_keeps_the_nodes_without_the_value_from_the_profile(

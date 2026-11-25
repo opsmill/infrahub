@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from contextlib import AsyncExitStack
-from typing import Any
-
 from prefect import flow
 from prefect.logging import get_run_logger
 
@@ -20,7 +17,7 @@ from .gather import gather_trigger_profile_refresh
 from .graphql_queries import ProfileNodeIDQuery
 from .node_applier import NodeProfilesApplier
 from .refresh import NodeProfilesRefresher
-from .replay import ProfileValueSelector
+from .replay import NodeRefreshFilter, ProfileValueSelector, RefreshAllNodes
 from .submission import submit_profile_refresh
 
 REFRESH_PROFILES_MUTATION = """
@@ -142,19 +139,17 @@ async def profile_refresh_process(
 
     database = await get_database()
     workflow = get_workflow()
-    async with AsyncExitStack() as stack:
-        selector: ProfileValueSelector | None = None
-        values: dict[str, Any] = {}
+    # A read-only session can go to a replica without the merge, where a stale node and profile would look held.
+    async with database.start_session() as db:
+        node_filter: NodeRefreshFilter = RefreshAllNodes()
         if attribute_names:
-            # A read-only session can go to a replica without the merge, where a stale node and profile would look held.
-            selector = ProfileValueSelector(db=await stack.enter_async_context(database.start_session()))
-            profile_values = await selector.read_profile_values(
+            value_filter = await ProfileValueSelector(db=db).prepare(
                 branch_name=branch_name, profile_id=profile_id, attribute_names=attribute_names
             )
-            if profile_values is None:
+            if value_filter is None:
                 log.info(f"Profile {profile_id} does not exist, so no linked node needs its refresh")
                 return
-            values = profile_values
+            node_filter = value_filter
 
         for peer_kind in peer_kinds:
             node_query = ProfileNodeIDQuery(kind=peer_kind, profile_id=profile_id)
@@ -163,11 +158,7 @@ async def profile_refresh_process(
             async for page_ids in node_query.fetch_all_paginated(
                 client=client, branch_name=branch_name, page_size=node_query.page_size
             ):
-                node_ids = page_ids
-                if selector is not None:
-                    node_ids = await selector.select_nodes_to_refresh(
-                        branch_name=branch_name, profile_id=profile_id, node_ids=page_ids, values=values
-                    )
+                node_ids = await node_filter.select(page_ids)
                 if node_ids:
                     await submit_profile_refresh(
                         workflow=workflow,
