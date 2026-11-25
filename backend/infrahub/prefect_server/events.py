@@ -11,7 +11,7 @@ router = APIRouter(prefix="/events", tags=["Infrahub"])
 @router.post(
     "/filter",
 )
-async def read_events(
+async def read_infrahub_events(
     event_filter: InfrahubEventfilterInput,
     db: PrefectDBInterface = Depends(get_prefect_database),  # noqa: B008
 ) -> InfrahubEventPage:

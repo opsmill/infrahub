@@ -24,7 +24,9 @@ dependencies = [
     "pytest",
     "httpx>=0.20",
     "pydantic>=2.10.6,<3",
-    "prefect-client==3.8.6",
+    # prefect-client 3.9 requires Python 3.11 or later.
+    "prefect-client==3.9.5; python_version >= '3.11'",
+    "prefect-client==3.8.6; python_version < '3.11'",
 ]
 
 [project.urls]
