@@ -1,0 +1,20 @@
+backend/tests/component/core/constraint_validators/test_relationship_peer_update.py
+  s_4fa415708315a7::t_3e7c3156993d0e 648-657,659-671
+  s_4fa415708315a7::t_61c4fe63640d18 658
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d64db9da7c944a5253191ea34b385b13bb8e9c07",
+  "prompts": {},
+  "sessions": {
+    "s_4fa415708315a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03e5d1ed-c4d3-4710-b21f-22b15f31d216",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
