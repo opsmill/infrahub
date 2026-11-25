@@ -83,7 +83,7 @@ class StandardNode(BaseModel):
 
         # `Optional[X]` resolves to `Union` while `X | None` resolves to `UnionType` on Python < 3.14,
         # where the two are distinct; both must be recognized as nullable fields.
-        if annotation_origin in (Union, UnionType) and len(annotation_args) == 2 and type(None) in annotation_args:
+        if annotation_origin in {Union, UnionType} and len(annotation_args) == 2 and type(None) in annotation_args:
             # Union member order is preserved, so pick the non-None member rather than assuming its
             # position: `X | None` and `None | X` must both resolve to `X`.
             wrapped = next(arg for arg in annotation_args if arg is not type(None))
@@ -202,7 +202,7 @@ class StandardNode(BaseModel):
         result = query.get_result()
         if not result:
             raise Error(f"Unable to create the node {self.get_type()}")
-        node = result.get("n")
+        node = result.get_node("n")
 
         self.id = node.element_id
         self.uuid = UUID(node["uuid"])

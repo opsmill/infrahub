@@ -64,7 +64,7 @@ class TestSchemaIntegrityRelationshipConstraints(TestInfrahubApp):
         car = await NodeManager.get_one(db=db, id=initial_dataset["car_id"], branch=branch.name)
         assert car
         # One attribute change and one cardinality-one relationship change on the same node.
-        car.color.value = "Blue"  # type: ignore[attr-defined]
+        car.color.value = "Blue"
         await car.get_relationship("manufacturer").update(db=db, data={"id": initial_dataset["cyberdyne_id"]})
         await car.save(db=db)
 

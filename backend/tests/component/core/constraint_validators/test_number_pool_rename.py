@@ -4,11 +4,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.api.schema import evaluate_candidate_schemas
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema_change.factory import build_schema_candidate_builder
 from infrahub.core.validators.aggregated_checker import AggregatedConstraintChecker
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.dependencies.registry import get_component_registry
@@ -115,13 +115,16 @@ class TestNumberPoolRenameSchemaChange:
         db: InfrahubDatabase, branch: Branch, change: Callable[[SchemaBranch], SchemaRoot]
     ) -> list[tuple[str, str]]:
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
-        candidate_schema, result = evaluate_candidate_schemas(
-            branch_schema=branch_schema, schemas_to_evaluate=[change(branch_schema.duplicate())]
+        candidate = build_schema_candidate_builder().from_schema_root(
+            branch_schema=branch_schema,
+            schema_root=change(branch_schema.duplicate()),
+            default_branch_schema=registry.schema.get_schema_branch(name=registry.default_branch),
         )
+        candidate_schema = candidate.schema
         checker = await get_component_registry().get_component(AggregatedConstraintChecker, db=db, branch=branch)
 
         violations: list[tuple[str, str]] = []
-        for constraint in result.constraints:
+        for constraint in candidate.validation.constraints:
             node_schema = candidate_schema.get(name=constraint.path.schema_kind, duplicate=False)
             assert isinstance(node_schema, NodeSchema | GenericSchema)
             request = SchemaConstraintValidatorRequest(

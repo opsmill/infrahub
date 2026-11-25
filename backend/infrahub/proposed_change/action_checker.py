@@ -162,16 +162,15 @@ class ActionRulesEvaluator:
         db: InfrahubDatabase,
         graphql_context: GraphqlContext,
     ) -> list[dict[str, str | bool | None]]:
-        report: list[dict[str, str | bool | None]] = []
-        for rule in self.rules:
-            report.append(
-                await rule.evaluate(
-                    proposed_change=proposed_change,
-                    proposed_change_author=proposed_change_author,
-                    db=db,
-                    graphql_context=graphql_context,
-                )
+        report: list[dict[str, str | bool | None]] = [
+            await rule.evaluate(
+                proposed_change=proposed_change,
+                proposed_change_author=proposed_change_author,
+                db=db,
+                graphql_context=graphql_context,
             )
+            for rule in self.rules
+        ]
         return report
 
 

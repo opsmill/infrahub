@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Sequence  # noqa: TC003  needed for pydantic
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from infrahub.core.constants import SchemaPathType
+from infrahub.core.migrations.schema.phases import MigrationPhase
 from infrahub.core.path import SchemaPath
 
 from ..query import MigrationQuery
@@ -56,8 +57,9 @@ class NodeKindUpdateMigrationQuery01(MigrationQuery, NodeDuplicateQuery):
 
 
 class NodeKindUpdateMigration(SchemaMigration):
+    phase: ClassVar[MigrationPhase] = MigrationPhase.KIND_UPDATE
     name: str = "node.kind.update"
-    queries: Sequence[type[MigrationQuery]] = [NodeKindUpdateMigrationQuery01]  # type: ignore[assignment]
+    queries: Sequence[type[MigrationQuery]] = [NodeKindUpdateMigrationQuery01]
 
     async def execute(
         self,

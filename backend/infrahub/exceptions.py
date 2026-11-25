@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from infrahub.core.diff.model.diff import SchemaConflict
+    from infrahub.core.schema_change.enums import SchemaOperationSection, SchemaOperationType
     from infrahub.core.validators.model import SchemaViolation
     from infrahub.git.models import PushRejectionReason
     from infrahub.pools.scope import Division
@@ -377,6 +378,13 @@ class ProcessingError(Error):
         super().__init__(self.message)
 
 
+class ProfileRefreshError(Error):
+    def __init__(self, node_ids: list[str]) -> None:
+        self.node_ids = node_ids
+        self.message = f"The profile refresh failed for {len(node_ids)} node(s): {', '.join(node_ids)}"
+        super().__init__(self.message)
+
+
 class PoolExhaustedError(Error):
     HTTP_CODE: int = 409
     message: str = "No more resources available in the pool"
@@ -409,6 +417,121 @@ class SchemaNotFoundError(Error):
         {self.message}
         {self.branch_name} | {self.identifier}
         """
+
+
+class SchemaOperationTargetNotFoundError(Error):
+    """A schema operation names a kind, attribute or relationship that the schema it applies to does not have."""
+
+    HTTP_CODE: int = 422
+
+    def __init__(
+        self,
+        *,
+        position: int,
+        operation_type: SchemaOperationType,
+        kind: str,
+        section: SchemaOperationSection | None = None,
+        element_name: str | None = None,
+    ) -> None:
+        """Build the error for a missing kind, or for a missing element of a kind when `element_name` is given."""
+        self.position = position
+        self.operation_type = operation_type
+        self.kind = kind
+        self.section = section
+        self.element_name = element_name
+        if section is not None and element_name is not None:
+            target = f"'{element_name}' in the {section.value} of the kind {kind}"
+        else:
+            target = f"the kind {kind}"
+        self.message = (
+            f"Schema operation {position} ({operation_type.value}) names {target}, which the schema does not have."
+        )
+        super().__init__(self.message)
+
+
+class SchemaOperationTargetExistsError(Error):
+    """A schema operation adds a kind, attribute or relationship that the schema it applies to already has."""
+
+    HTTP_CODE: int = 422
+
+    def __init__(
+        self,
+        *,
+        position: int,
+        operation_type: SchemaOperationType,
+        kind: str,
+        section: SchemaOperationSection | None = None,
+        element_name: str | None = None,
+    ) -> None:
+        """Build the error for an existing kind, or for an existing element of a kind when `element_name` is given."""
+        self.position = position
+        self.operation_type = operation_type
+        self.kind = kind
+        self.section = section
+        self.element_name = element_name
+        if section is not None and element_name is not None:
+            target = f"'{element_name}' to the {section.value} of the kind {kind}"
+        else:
+            target = f"the kind {kind}"
+        self.message = (
+            f"Schema operation {position} ({operation_type.value}) adds {target}, which the schema already has."
+        )
+        super().__init__(self.message)
+
+
+class SchemaNameReusedError(Error):
+    """A schema file frees a kind, or a field name of a kind, and gives it to another in the same load."""
+
+    HTTP_CODE: int = 422
+
+    def __init__(self, *, kind: str, section: SchemaOperationSection | None = None, name: str | None = None) -> None:
+        """Build the error for a reused kind, or for a reused field name of a kind when `section` and `name` are given."""
+        self.kind = kind
+        self.section = section
+        self.name = name
+        if section is not None and name is not None:
+            field_type = section.value.removesuffix("s")
+            self.message = (
+                f"The schema load frees the {field_type} name '{name}' of the kind {kind} and gives it to another "
+                f"{field_type}, which Infrahub cannot apply in one load. Load the changes in separate steps, so that "
+                "no load both frees and reuses a name."
+            )
+        else:
+            self.message = (
+                f"The schema load frees the kind {kind} and gives it to another kind, which Infrahub cannot apply in "
+                "one load. Load the changes in separate steps, so that no load both frees and reuses a kind."
+            )
+        super().__init__(self.message)
+
+
+class SchemaOperationsRebuildError(Error):
+    """The operations built from a schema file do not rebuild the schema of that file laid over the branch schema."""
+
+    # Not a 5XX: clients retry those, and the same input always gives the same result.
+    HTTP_CODE: int = 422
+
+    def __init__(self, *, kinds: list[str]) -> None:
+        self.kinds = kinds
+        self.message = (
+            "The schema change cannot be built accurately, so the request was not completed. This is an error in "
+            "Infrahub, not in the schema file: the operations built from the file do not rebuild its schema for the "
+            f"kinds {', '.join(kinds)}."
+        )
+        super().__init__(self.message)
+
+
+class SchemaChangeRecordNotFoundError(Error):
+    """The records of a schema change were deleted before the schema update that created them completed."""
+
+    HTTP_CODE: int = 422
+
+    def __init__(self, *, schema_change_id: str) -> None:
+        self.schema_change_id = schema_change_id
+        self.message = (
+            f"The schema change {schema_change_id}, its application or its parent was deleted before the schema update "
+            "completed, so the update was rolled back. Deleting the branch deletes its schema changes."
+        )
+        super().__init__(self.message)
 
 
 class QueryError(Error):
@@ -450,7 +573,8 @@ class GatewayError(Error):
 
 
 class MigrationError(Error):
-    HTTP_CODE = 502
+    # Not a 5XX: clients retry those, and each migration task already retries its own transient failures.
+    HTTP_CODE = 422
 
     def __init__(self, message: str) -> None:
         self.message = message
@@ -471,9 +595,10 @@ class ValidationError(Error):
             if all(isinstance(item, ValidationError) for item in input_value):
                 self.message = ", ".join([validation_error.message for validation_error in input_value])
             if all(isinstance(item, dict) for item in input_value):
-                messages = []
-                for item in input_value:
-                    messages.append(", ".join([f"{message} at {location}" for location, message in item.items()]))
+                messages = [
+                    ", ".join([f"{message} at {location}" for location, message in item.items()])
+                    for item in input_value
+                ]
                 self.message = ", ".join(messages)
 
         if not self.message:

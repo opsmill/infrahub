@@ -10,7 +10,7 @@ Style: be direct and substantive. Challenge flawed approaches and ask before gue
 
 Exact versions: `pyproject.toml` (Python) and `frontend/pnpm-workspace.yaml` / `frontend/package.json` / `frontend/app/package.json` (frontend; `frontend/package.json` also pins pnpm via `packageManager`).
 
-- **Backend:** Python 3.14, FastAPI, Neo4j 2026.05 (driver 6), Pydantic 2
+- **Backend:** Python 3.14, FastAPI, Neo4j 2026.10 (driver 6), Pydantic 2
 - **Frontend:** TypeScript 6, React 19, Vite 8, Tailwind CSS 4
 - **Testing:** pytest 9, Vitest 5, Playwright
 - **Linting:** ruff, mypy 2, Biome 2
@@ -122,11 +122,13 @@ The `python_sdk` submodule tracks the SDK branch **named after** the current
 Infrahub branch, not the SDK's own same-named branch:
 
 - Infrahub `develop` → SDK `infrahub-develop`
+- Infrahub `release-x.y` → SDK `infrahub-release-x.y`
 - Infrahub `stable` → SDK `stable`
 
 The SDK repo also has its own `develop` branch. It is **not** the counterpart of
 Infrahub `develop` — do not use it to update the submodule. When updating
-`python_sdk` from Infrahub `develop`, pin `origin/infrahub-develop`.
+`python_sdk` from Infrahub `develop`, pin `origin/infrahub-develop`; from Infrahub
+`release-x.y`, pin `origin/infrahub-release-x.y`.
 
 You can modify code inside a submodule, but the changes live in a separate
 repository. Before opening a PR on this repository, push the submodule commit
@@ -176,7 +178,7 @@ CI validates that all generated files are committed — the `validate-generated-
 - Investigate test timeouts for avoidable work and optimize the measured bottleneck while preserving assertions and isolation; follow [Investigating test timeouts](dev/guides/backend/investigating-test-timeouts.md) before increasing a deadline.
 - Run formatters before committing (`uv run invoke format`, `pnpm biome:fix`)
 - Write tests for new functionality
-- Add a towncrier changelog fragment for any user-visible change, UI styling included (use the `creating-changelog-entries` skill). `housekeeping` is not a catch-all: internal maintenance gets a fragment only when a user could still notice the change (the skill draws the boundary on user visibility) — agent-doc, CI-config, and test-only tweaks are the typical cases a user never notices, so they get none
+- Add a towncrier changelog fragment for any user-visible change, UI styling included (use the `creating-changelog-entries` skill). `housekeeping` is not a catch-all: internal maintenance gets a fragment only when a user could still notice the change (the skill draws the boundary on user visibility) — agent-doc, CI-config, and test-only tweaks are the typical cases a user never notices, so they get none. Judge visibility against the dependency versions `uv.lock` pins, which the container image installs and every documented install uses: a fix that only changes behavior under a version the lockfile does not pin (a newer release that a later upgrade brings in, or what `pip install` resolves without the lockfile) gets no fragment
 - Use type hints for Python (backend) and TypeScript types (frontend)
 - In `tasks/*.py`, use the shared helpers for project-scoped Docker Compose operations rather than hard-coding `docker compose` or service names: build the command with `get_compose_cmd` (it selects the required `--profile`/`--ansi never` options) plus `get_env_vars`, run it through `execute_command` (which handles `sudo`), and reference named services via the shared constants (e.g. `SERVICE_WORKER_NAME`). Literal `docker compose` is acceptable only for genuinely global, project-agnostic discovery commands.
 - Before pushing, run the lint commands under *Linting & Formatting* for the areas you changed and `uv run invoke docs.validate` (CI fails if a generated doc is stale), then remind the user to run `/pre-ci` (`$pre-ci` in Codex): it runs the locally-executable CI checks for the areas you changed, and only the user can start it

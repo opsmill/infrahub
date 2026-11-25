@@ -166,9 +166,13 @@ class FingerprintComposer:
                 # The closure is a sorted set of paths, so it cannot say which of them is the
                 # entry point: when `watch` names a directory, moving the entry point to another
                 # file already in that directory leaves the closure identical.
-                terms.append(f"file_path={inputs.file_path}")
-                terms.append(f"class_name={inputs.class_name}")
-                terms.append(f"convert_query_response={inputs.convert_query_response}")
+                terms.extend(
+                    (
+                        f"file_path={inputs.file_path}",
+                        f"class_name={inputs.class_name}",
+                        f"convert_query_response={inputs.convert_query_response}",
+                    )
+                )
                 # A Python transform's dependencies are auto-detected as its source file alone,
                 # so anything it imports is absent from the list: the author has to name those
                 # files in `watch` before the fingerprint can drop the commit id.

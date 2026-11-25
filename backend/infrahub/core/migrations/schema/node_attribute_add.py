@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Sequence  # noqa: TC003  needed for pydantic
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from infrahub.core import registry
+from infrahub.core.migrations.schema.phases import MigrationPhase
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.query.node import NodeGetListQuery
 from infrahub.core.schema.generic_schema import GenericSchema
@@ -66,6 +67,7 @@ class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery, AttributeAddQuer
 
 
 class NodeAttributeAddMigration(AttributeSchemaMigration):
+    phase: ClassVar[MigrationPhase] = MigrationPhase.ATTRIBUTE_ADD
     name: str = "node.attribute.add"
     queries: Sequence[type[MigrationBaseQuery]] = [NodeAttributeAddMigrationQuery01]
     force_inherited: bool = False
@@ -113,7 +115,8 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
 
         async def allocate_numbers(db: InfrahubDatabase) -> None:
             allocator = build_existing_node_number_allocator(db=db, branch=branch)
-            node_query = await NodeGetListQuery.init(db=db, schema=self.new_schema, branch=branch)
+            filters = {"ids": list(migration_input.node_ids)} if migration_input.node_ids is not None else None
+            node_query = await NodeGetListQuery.init(db=db, schema=self.new_schema, branch=branch, filters=filters)
             await node_query.execute(db=db)
             node_ids = node_query.get_node_ids()
 

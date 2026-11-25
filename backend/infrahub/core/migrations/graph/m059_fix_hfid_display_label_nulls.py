@@ -105,15 +105,14 @@ RETURN n.uuid AS node_uuid, n.kind AS node_kind, bad_attrs
 
     def get_bad_nodes(self) -> list[BadNodeInfo]:
         """Return list of BadNodeInfo for nodes with bad attribute values."""
-        results: list[BadNodeInfo] = []
-        for result in self.get_results():
-            results.append(
-                BadNodeInfo(
-                    node_uuid=str(result.get("node_uuid")),
-                    node_kind=str(result.get("node_kind")),
-                    bad_attrs=[str(a) for a in result.get("bad_attrs")],
-                )
+        results: list[BadNodeInfo] = [
+            BadNodeInfo(
+                node_uuid=str(result.get("node_uuid")),
+                node_kind=str(result.get("node_kind")),
+                bad_attrs=result.get_as_list_of_type("bad_attrs", return_type=str),
             )
+            for result in self.get_results()
+        ]
         return results
 
 

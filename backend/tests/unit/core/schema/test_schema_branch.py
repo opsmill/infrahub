@@ -11,6 +11,7 @@ from infrahub.core.schema import (
     internal_schema,
 )
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.schema.schema_element import SchemaElementType, StoredSchemaElement
 from tests.helpers.merge_recompute.dataset import PROFILE_NODE_KIND, build_profile_schema
 
 
@@ -436,3 +437,47 @@ def test_malformed_hfid_is_not_propagated_to_constraints(car_person_schema_root:
         match=r"^TestCar\.human_friendly_id: name__value__color__value has too many segments on schema TestCar$",
     ):
         schema_branch.validate_human_friendly_id()
+
+
+class TestGetSchemaElementIds:
+    def test_lists_ids_of_nodes_generics_and_their_own_fields(self) -> None:
+        schema_branch = SchemaBranch(cache={}, name="test")
+        schema_branch.load_schema(
+            schema=SchemaRoot(
+                generics=[
+                    GenericSchema(
+                        id="g1",
+                        name="Thing",
+                        namespace="Testing",
+                        attributes=[AttributeSchema(id="g1a", name="label", kind="Text")],
+                    )
+                ],
+                nodes=[
+                    NodeSchema(
+                        id="n1",
+                        name="Widget",
+                        namespace="Testing",
+                        inherit_from=["TestingThing"],
+                        attributes=[AttributeSchema(id="n1a", name="serial", kind="Text")],
+                        relationships=[
+                            RelationshipSchema(id="n1r", name="parts", peer="TestingWidget", cardinality="many")
+                        ],
+                    )
+                ],
+            )
+        )
+        schema_branch.process()
+
+        assert schema_branch.get_schema_element_ids() == {
+            "g1": StoredSchemaElement(element_type=SchemaElementType.GENERIC, kind="TestingThing"),
+            "g1a": StoredSchemaElement(
+                element_type=SchemaElementType.ATTRIBUTE, kind="TestingThing", field_name="label"
+            ),
+            "n1": StoredSchemaElement(element_type=SchemaElementType.NODE, kind="TestingWidget"),
+            "n1a": StoredSchemaElement(
+                element_type=SchemaElementType.ATTRIBUTE, kind="TestingWidget", field_name="serial"
+            ),
+            "n1r": StoredSchemaElement(
+                element_type=SchemaElementType.RELATIONSHIP, kind="TestingWidget", field_name="parts"
+            ),
+        }

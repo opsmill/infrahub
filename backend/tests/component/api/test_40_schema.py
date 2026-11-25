@@ -16,7 +16,7 @@ from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import RESERVED_ATTR_REL_HIERARCHICAL_NAMES, InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
-from infrahub.core.schema import SchemaRoot, core_models
+from infrahub.core.schema import NodeSchema, SchemaRoot, core_models
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
@@ -566,6 +566,61 @@ async def test_schema_load_endpoint_constraints_not_valid(
         "errors": [{"extensions": {"code": 422}, "message": error_message}],
     }
     assert response.status_code == 422
+
+
+async def test_schema_load_absent_choice_rejected_while_in_use(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    rpc_bus: BusRPCMock,
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+    criticality_schema: NodeSchema,
+) -> None:
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db)
+    criticality = await Node.init(db=db, schema=criticality_schema)
+    await criticality.new(db=db, name="med", level=4, status="passive")
+    await criticality.save(db=db)
+
+    status_attribute = {
+        "name": "status",
+        "kind": "Dropdown",
+        "optional": True,
+        "choices": [{"name": "passive", "state": "absent"}],
+    }
+    with client:
+        response = client.post(
+            "/api/schema/load",
+            headers=admin_headers,
+            json={
+                "schemas": [
+                    {
+                        "version": "1.0",
+                        "nodes": [
+                            {
+                                "name": "Criticality",
+                                "namespace": "Test",
+                                "inherit_from": ["TestGenericCriticality"],
+                                "attributes": [status_attribute],
+                            }
+                        ],
+                    }
+                ]
+            },
+        )
+
+    error_message = (
+        "Attribute-level 'choices' constraint violation on schema 'TestCriticality'."
+        " Node (Med) is not compliant. The error relates to field status='passive'."
+    )
+    assert response.json() == {"data": None, "errors": [{"extensions": {"code": 422}, "message": error_message}]}
+    assert response.status_code == 422
+    status_choices = registry.schema.get(name="TestCriticality", branch=default_branch).get_attribute("status").choices
+    assert status_choices is not None
+    assert sorted(choice.name for choice in status_choices) == ["active", "passive"]
 
 
 @pytest.mark.parametrize("allow_anonymous_access", [False, True])

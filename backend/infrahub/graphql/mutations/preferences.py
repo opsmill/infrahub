@@ -124,27 +124,29 @@ class InfrahubSetPreferences(Mutation):
         # duplicate (and concurrent updates could lose writes). The read runs inside the lock so it
         # observes any in-flight write for the same owner. Keyed on owner_id so distinct owners never
         # contend.
-        async with lock.registry.get(name=owner_id, namespace=PREFERENCE_LOCK_NAMESPACE, local=False):
-            async with graphql_context.db.start_transaction() as db:
-                repository = PreferenceRepository(db=db)
-                preference = await repository.get_for_owner(owner_id=owner_id)
-                if preference is None:
-                    preference = Preference(owner_id=owner_id)
+        async with (
+            lock.registry.get(name=owner_id, namespace=PREFERENCE_LOCK_NAMESPACE, local=False),
+            graphql_context.db.start_transaction() as db,
+        ):
+            repository = PreferenceRepository(db=db)
+            preference = await repository.get_for_owner(owner_id=owner_id)
+            if preference is None:
+                preference = Preference(owner_id=owner_id)
 
-                if date_format is not _UNSET:
-                    # Graphene hands over the enum member's value (a plain string); coerce it to the
-                    # domain enum here
-                    preference.date_format = None if date_format is None else DateFormatEnum(date_format)
-                if timezone is not _UNSET:
-                    preference.timezone = timezone
-                if instance_label is not _UNSET:
-                    preference.instance_label = instance_label
-                if instance_color is not _UNSET:
-                    preference.instance_color = None if instance_color is None else InstanceColorEnum(instance_color)
+            if date_format is not _UNSET:
+                # Graphene hands over the enum member's value (a plain string); coerce it to the
+                # domain enum here
+                preference.date_format = None if date_format is None else DateFormatEnum(date_format)
+            if timezone is not _UNSET:
+                preference.timezone = timezone
+            if instance_label is not _UNSET:
+                preference.instance_label = instance_label
+            if instance_color is not _UNSET:
+                preference.instance_color = None if instance_color is None else InstanceColorEnum(instance_color)
 
-                await repository.save(preference, actor_id=actor_id)
+            await repository.save(preference, actor_id=actor_id)
 
-        return cls(  # type: ignore[call-arg]
+        return cls(
             ok=True,
             date_format=preference.date_format,
             timezone=preference.timezone,

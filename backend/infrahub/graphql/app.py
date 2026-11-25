@@ -401,7 +401,7 @@ class InfrahubGraphQLApp:
         subscriptions: dict[str, AsyncGenerator[Any, None]] = {}
         await websocket.accept("graphql-ws")
         try:
-            while WebSocketState.DISCONNECTED not in (websocket.client_state, websocket.application_state):
+            while WebSocketState.DISCONNECTED not in {websocket.client_state, websocket.application_state}:
                 message = await websocket.receive_json()
                 await self._handle_websocket_message(
                     db=db,
@@ -415,7 +415,7 @@ class InfrahubGraphQLApp:
             pass
         finally:
             if subscriptions:
-                await asyncio.gather(*(subscription.aclose() for _, subscription in subscriptions.items()))
+                await asyncio.gather(*(subscription.aclose() for subscription in subscriptions.values()))
 
     async def _handle_websocket_message(
         self,
@@ -550,7 +550,7 @@ class InfrahubGraphQLApp:
                 }
             )
 
-        if WebSocketState.DISCONNECTED not in (websocket.client_state, websocket.application_state):
+        if WebSocketState.DISCONNECTED not in {websocket.client_state, websocket.application_state}:
             await websocket.send_json({"type": GQL_COMPLETE, "id": operation_id})
 
 

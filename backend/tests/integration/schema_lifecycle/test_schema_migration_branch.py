@@ -243,17 +243,17 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         )
         assert len(persons) == 1
         john = persons[0]
-        assert john.firstname.value == "John"  # type: ignore[attr-defined]
+        assert john.firstname.value == "John"
 
         # Set a value to the new attribute
-        john.lastname.value = "Doe"  # type: ignore[attr-defined]
+        john.lastname.value = "Doe"
         await john.save(db=db)
 
         # And ensure that we can still query them with the original schema in MAIN
         persons = await registry.manager.query(db=db, schema=PERSON_KIND, filters={"name__value": "John"})
         assert len(persons) == 1
         john = persons[0]
-        assert john.name.value == "John"  # type: ignore[attr-defined]
+        assert john.name.value == "John"
 
     async def test_step03_check(
         self,
@@ -360,7 +360,7 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         )
         assert len(manufacturers) == 1
         renault = manufacturers[0]
-        renault_cars = await renault.cars.get_peers(db=db)  # type: ignore[attr-defined]
+        renault_cars = await renault.cars.get_peers(db=db)
         assert len(renault_cars) == 2
 
     async def test_rebase(
@@ -397,7 +397,7 @@ class TestSchemaLifecycleBranch(TestSchemaLifecycleBase):
         )
         assert len(manufacturers) == 1
         honda = manufacturers[0]
-        honda_cars = await honda.cars.get_peers(db=db)  # type: ignore[attr-defined]
+        honda_cars = await honda.cars.get_peers(db=db)
         assert len(honda_cars) == 2
 
         # Validate metadata on nodes modified by rebase migrations

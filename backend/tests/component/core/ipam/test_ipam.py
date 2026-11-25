@@ -50,7 +50,7 @@ async def test_ipaddress_creation(
 
 
 @pytest.mark.parametrize(
-    "input,response",
+    ("input", "response"),
     [
         (ipaddress.ip_network("10.10.0.0/22"), ["10.10.1.0/24", "10.10.2.0/24", "10.10.3.0/27"]),
         (ipaddress.ip_network("2001:db8::/32"), ["2001:db8::/48"]),

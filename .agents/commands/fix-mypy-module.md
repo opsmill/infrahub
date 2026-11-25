@@ -130,7 +130,7 @@ The goal is to fix typing violations so that error codes can be removed from `di
 
 ## Important Notes
 
-- Do NOT add blanket `# type: ignore` comments - be specific with error codes if required, the goal should be to completely avoid any ignores
+- Do NOT add blanket `# type: ignore` comments - be specific with error codes if required, the goal should be to completely avoid any ignores. ty also reads a bare `# type: ignore` as its own blanket ignore, so it hides every ty error on the line (see *Name the mypy error code in every `# type: ignore`* in `dev/guidelines/backend/typing.md`)
 - If a module has many violations (>20 for a single error code), fix in batches of ~10. After each batch, validate and ask: "Fixed N of M violations. Continue with the next batch?"
 - Some typing fixes may require refactoring - be cautious and test
 - Preserve code functionality - the goal is type safety, not rewriting

@@ -45,7 +45,7 @@ async def create_checks(
     for check_kind in check_kinds:
         for conclusion in CONCLUSIONS:
             check_data = {}
-            if check_kind in ("CoreStandardCheck", "CoreFileCheck"):
+            if check_kind in {"CoreStandardCheck", "CoreFileCheck"}:
                 check_data = {
                     "name": f"{validator.display_label} - {RSF.get_one()}",
                     "validator": validator,

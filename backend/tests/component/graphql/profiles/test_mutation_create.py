@@ -1,3 +1,4 @@
+from infrahub.auth.session import AccountSession
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -8,7 +9,9 @@ from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.helpers.graphql import graphql
 
 
-async def test_create_profile(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch) -> None:
+async def test_create_profile(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch, session_admin: AccountSession
+) -> None:
     query = """
     mutation {
         ProfileTestPersonCreate(data: {
@@ -24,7 +27,7 @@ async def test_create_profile(db: InfrahubDatabase, default_branch: Branch, car_
     }
     """
     default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch, account_session=session_admin)
     # gql mutation needs function workflow
     gql_params.context.service = await InfrahubServices.new(workflow=WorkflowLocalExecution())
     result = await graphql(

@@ -83,7 +83,7 @@ class ChangelogRelationshipMapper:
                     else:
                         previous_value = previous_property.value
                 property_name = (
-                    property_to_update if property_to_update not in ["source", "owner"] else f"{property_to_update}_id"
+                    property_to_update if property_to_update not in {"source", "owner"} else f"{property_to_update}_id"
                 )
                 self.cardinality_one_relationship.add_property(
                     name=property_to_update,

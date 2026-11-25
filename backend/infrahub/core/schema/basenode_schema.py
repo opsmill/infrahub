@@ -25,7 +25,7 @@ from .generated.base_node_schema import GeneratedBaseNodeSchema
 from .relationship_schema import RelationshipSchema
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Callable, Collection, Iterable
     from typing import Self
 
     from pydantic.config import JsonDict
@@ -37,6 +37,15 @@ if TYPE_CHECKING:
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 NODE_PROPERTY_ATTRIBUTES = [DISPLAY_LABEL_ATTRIBUTE_NAME, HFID_ATTRIBUTE_NAME]
 INHERITED = "INHERITED"
+
+SCHEMA_PATH_PROPERTIES = (
+    "uniqueness_constraints",
+    "human_friendly_id",
+    "display_labels",
+    "order_by",
+    "default_filter",
+)
+"""The properties of a kind whose values are paths that start with the name of an attribute or a relationship."""
 
 OPTIONAL_TEXT_FIELDS = [
     "default_filter",
@@ -256,9 +265,8 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         The logic is the same for both, except that the functions we are using to access these objects are differents.
 
-        To map elements from the local and other objects together, we are using a combinasion of ID and name
-        If the same id is present on both we'll use the ID to match the elements on both side
-        If the id is not present on either side, we'll try to match with the name
+        Elements that share an ID on both sides are matched by ID.
+        All other elements are matched by name, also when the two sides carry different IDs.
 
         """
         # Build a mapping between name and id for all element as well as the reverse mapping to make it easy to access the data
@@ -391,10 +399,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
     def get_relationships_by_identifier(self, id: str) -> list[RelationshipSchema]:
         """Return a list of relationship instead of a single one."""
-        rels: list[RelationshipSchema] = []
-        for item in self.relationships:
-            if item.identifier == id:
-                rels.append(item)
+        rels: list[RelationshipSchema] = [item for item in self.relationships if item.identifier == id]
 
         return rels
 
@@ -419,10 +424,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
     @property
     def has_parent_relationship(self) -> bool:
-        for rel in self.relationships:
-            if rel.kind == RelationshipKind.PARENT:
-                return True
-        return False
+        return any(rel.kind == RelationshipKind.PARENT for rel in self.relationships)
 
     @property
     def valid_input_names(self) -> list[str]:
@@ -702,17 +704,23 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         self.apply_schema_path_updates(deleted_field_names=deleted_names, renamed_field_name_map=renamed_field_name_map)
 
-    def apply_schema_path_updates(self, deleted_field_names: set[str], renamed_field_name_map: dict[str, str]) -> None:
+    def apply_schema_path_updates(
+        self,
+        deleted_field_names: set[str],
+        renamed_field_name_map: dict[str, str],
+        kept_properties: Collection[str] = (),
+    ) -> None:
         """Strip deleted/renamed field names from schema-path properties.
 
-        Applies to `uniqueness_constraints`, `human_friendly_id`, `display_labels`, `order_by`, `default_filter`.
+        Applies to `uniqueness_constraints`, `human_friendly_id`, `display_labels`, `order_by`, `default_filter`,
+        except the ones in `kept_properties`.
         Compound constraints with at least one surviving path are kept with surviving paths only;
         constraints that become empty are dropped. `default_filter` (single string) becomes None
         when its path references a deleted field.
         """
         if not deleted_field_names and not renamed_field_name_map:
             return
-        if self.uniqueness_constraints:
+        if self.uniqueness_constraints and "uniqueness_constraints" not in kept_properties:
             # deduplicate in case field-deletion causes duplicate entries. list instead of set preserves order
             updated_constraints: list[list[str]] = []
             for constraint in self.uniqueness_constraints:
@@ -727,25 +735,25 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
                     continue
                 updated_constraints.append(updated_constraint)
             self.uniqueness_constraints = updated_constraints
-        if self.human_friendly_id:
+        if self.human_friendly_id and "human_friendly_id" not in kept_properties:
             self.human_friendly_id = self._update_schema_paths(
                 schema_paths_list=self.human_friendly_id,
                 field_name_update_map=renamed_field_name_map,
                 deleted_field_names=deleted_field_names,
             )
-        if self.display_labels:
+        if self.display_labels and "display_labels" not in kept_properties:
             self.display_labels = self._update_schema_paths(
                 schema_paths_list=self.display_labels,
                 field_name_update_map=renamed_field_name_map,
                 deleted_field_names=deleted_field_names,
             )
-        if self.order_by:
+        if self.order_by and "order_by" not in kept_properties:
             self.order_by = self._update_schema_paths(
                 schema_paths_list=self.order_by,
                 field_name_update_map=renamed_field_name_map,
                 deleted_field_names=deleted_field_names,
             )
-        if self.default_filter:
+        if self.default_filter and "default_filter" not in kept_properties:
             updated = self._update_schema_paths(
                 schema_paths_list=[self.default_filter],
                 field_name_update_map=renamed_field_name_map,
@@ -770,7 +778,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
                 continue
             local_value = local_text_values[field_name]
             # keep current local value if it's already None or ""
-            setattr(self, field_name, local_value if local_value in (None, "") else None)
+            setattr(self, field_name, local_value if local_value in {None, ""} else None)
 
         return self
 

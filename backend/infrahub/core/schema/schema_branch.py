@@ -63,6 +63,7 @@ from infrahub.core.schema.attribute_parameters import (
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.schema.derived_kinds import get_object_template_kind, get_profile_kind
+from infrahub.core.schema.schema_element import SchemaElementType, StoredSchemaElement
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.core.validators.schema_branch.display_label_validator import DisplayLabelValidator
 from infrahub.core.validators.schema_branch.hierarchical_nodes_restricted_words_validator import (
@@ -539,6 +540,26 @@ class SchemaBranch:
             message=f"Unable to find the schema with the id {id!r} in the registry",
         )
 
+    def get_schema_element_ids(self) -> dict[str, StoredSchemaElement]:
+        """Map the stored ID of every node, generic and non-inherited attribute or relationship to what it is."""
+        element_ids: dict[str, StoredSchemaElement] = {}
+        for schemas, element_type in ((self.nodes, SchemaElementType.NODE), (self.generics, SchemaElementType.GENERIC)):
+            for kind in schemas:
+                schema = self.get(name=kind, duplicate=False)
+                if schema.id is not None:
+                    element_ids[schema.id] = StoredSchemaElement(element_type=element_type, kind=kind)
+                for attribute in schema.local_attributes:
+                    if attribute.id is not None:
+                        element_ids[attribute.id] = StoredSchemaElement(
+                            element_type=SchemaElementType.ATTRIBUTE, kind=kind, field_name=attribute.name
+                        )
+                for relationship in schema.local_relationships:
+                    if relationship.id is not None:
+                        element_ids[relationship.id] = StoredSchemaElement(
+                            element_type=SchemaElementType.RELATIONSHIP, kind=kind, field_name=relationship.name
+                        )
+        return element_ids
+
     def get_by_any_id(self, id: str) -> MainSchemaTypes:
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
@@ -571,6 +592,24 @@ class SchemaBranch:
             return True
         except SchemaNotFoundError:
             return False
+
+    def get_dependent_kinds(self, name: str) -> frozenset[str]:
+        """Return the kinds whose vertices hold the data of a kind: the kind, the kinds that inherit from it, and their profile and template kinds."""
+        if not self.has(name=name):
+            return frozenset()
+        schema = self.get(name=name, duplicate=False)
+        node_kinds = [name]
+        if isinstance(schema, GenericSchema):
+            node_kinds.extend(schema.used_by)
+        return frozenset(
+            kind
+            for node_kind in node_kinds
+            for kind in (
+                node_kind,
+                get_profile_kind(node_kind=node_kind),
+                get_object_template_kind(node_kind=node_kind),
+            )
+        )
 
     def get_all(self, include_internal: bool = False, duplicate: bool = True) -> dict[str, MainSchemaTypes]:
         """Retrieve everything in a single dictionary."""
@@ -750,6 +789,7 @@ class SchemaBranch:
     def process_pre_validation(self) -> None:
         self.process_nodes_state()
         self.process_attributes_state()
+        self.process_dropdown_choices_state()
         self.process_relationships_state()
         self.generate_identifiers()
         self.process_default_values()
@@ -1794,10 +1834,7 @@ class SchemaBranch:
         def check_if_need_to_update_label(node: MainSchemaTypes) -> bool:
             if not node.label:
                 return True
-            for item in node.relationships + node.attributes:
-                if not item.label:
-                    return True
-            return False
+            return any(not item.label for item in node.relationships + node.attributes)
 
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
@@ -1955,7 +1992,7 @@ class SchemaBranch:
                     element_name="human_friendly_id",
                 )
 
-                if node_schema.is_node_schema and node_schema.namespace not in ["Schema", "Internal"]:
+                if node_schema.is_node_schema and node_schema.namespace not in {"Schema", "Internal"}:
                     self.hfids.register_hfid_schema_path(
                         kind=node_schema.kind, schema_path=schema_path, hfid=node_schema.human_friendly_id
                     )
@@ -2113,7 +2150,7 @@ class SchemaBranch:
                     peer_node = self.get(name=rel.peer, duplicate=False)
                     if node.branch == peer_node.branch:
                         rels_to_update[rel.name] = node.branch
-                    elif BranchSupportType.LOCAL in (node.branch, peer_node.branch):
+                    elif BranchSupportType.LOCAL in {node.branch, peer_node.branch}:
                         rels_to_update[rel.name] = BranchSupportType.LOCAL
                     else:
                         rels_to_update[rel.name] = BranchSupportType.AWARE
@@ -2253,6 +2290,33 @@ class SchemaBranch:
             updated_node = node.duplicate()
             updated_node.attributes = filtered_attributes
             self.set(name=name, schema=updated_node)
+
+    def process_dropdown_choices_state(self) -> None:
+        """Drop the choices marked absent and reject a dropdown attribute left without any choice.
+
+        Raises:
+            ValueError: When a dropdown attribute has no choice left.
+
+        """
+        for name in self.node_names + self.generic_names_without_templates:
+            node = self.get(name=name, duplicate=False)
+            updated_node: MainSchemaTypes | None = None
+            for index, attribute in enumerate(node.attributes):
+                if attribute.kind != "Dropdown":
+                    continue
+                choices = [choice for choice in attribute.choices or [] if choice.state != HashableModelState.ABSENT]
+                if not choices:
+                    raise ValueError(f"Unable to remove the last dropdown on {node.kind} in attribute {attribute.name}")
+                if len(choices) == len(attribute.choices or []):
+                    continue
+                updated_node = updated_node or node.duplicate()
+                updated_attribute = updated_node.attributes[index]
+                updated_attribute.choices = [
+                    choice for choice in updated_attribute.choices or [] if choice.state != HashableModelState.ABSENT
+                ]
+
+            if updated_node:
+                self.set(name=name, schema=updated_node)
 
     def process_nodes_state(self) -> None:
         for name in self.node_names + self.generic_names_without_templates:
@@ -2429,7 +2493,7 @@ class SchemaBranch:
             if schema.kind in INTERNAL_SCHEMA_NODE_KINDS or schema.kind == InfrahubKind.GENERICGROUP:
                 continue
 
-            if schema.kind in (InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE):
+            if schema.kind in {InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE}:
                 continue
 
             if "member_of_groups" not in schema.relationship_names:
@@ -2699,10 +2763,10 @@ class SchemaBranch:
                 node.namespace in RESTRICTED_NAMESPACES
                 and node.namespace != "Builtin"
                 and node.kind
-                not in (
+                not in {
                     InfrahubKind.IPRANGEAVAILABLE,
                     InfrahubKind.IPPREFIXAVAILABLE,
-                )
+                }
             ):
                 continue
 
@@ -2943,17 +3007,17 @@ class SchemaBranch:
         is_autogenerated_subtemplate = isinstance(node, GenericSchema) or not node.generate_template
 
         for relationship in node.relationships:
-            if relationship.peer in [InfrahubKind.GENERICGROUP, InfrahubKind.PROFILE] or relationship.kind not in [
+            if relationship.peer in {InfrahubKind.GENERICGROUP, InfrahubKind.PROFILE} or relationship.kind not in {
                 RelationshipKind.COMPONENT,
                 RelationshipKind.PARENT,
                 RelationshipKind.ATTRIBUTE,
                 RelationshipKind.GENERIC,
-            ]:
+            }:
                 continue
 
             rel_template_peer = (
                 relationship.peer
-                if relationship.kind in [RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC]
+                if relationship.kind in {RelationshipKind.ATTRIBUTE, RelationshipKind.GENERIC}
                 or relationship.peer in SUBTEMPLATE_EXCLUDED_KINDS
                 else self._get_object_template_kind(node_kind=relationship.peer)
             )
@@ -2968,7 +3032,7 @@ class SchemaBranch:
             )
             label = (
                 f"{relationship.name} template".title()
-                if relationship.kind in [RelationshipKind.COMPONENT, RelationshipKind.PARENT]
+                if relationship.kind in {RelationshipKind.COMPONENT, RelationshipKind.PARENT}
                 else relationship.name.title()
             )
 
@@ -3125,13 +3189,13 @@ class SchemaBranch:
 
         for relationship in node_schema.relationships:
             if (
-                relationship.peer in [InfrahubKind.GENERICGROUP, InfrahubKind.PROFILE]
+                relationship.peer in {InfrahubKind.GENERICGROUP, InfrahubKind.PROFILE}
                 or (
                     isinstance(node_schema, NodeSchema)
                     and relationship.kind == RelationshipKind.PARENT
                     and node_schema.generate_template
                 )
-                or relationship.kind not in [RelationshipKind.PARENT, RelationshipKind.COMPONENT]
+                or relationship.kind not in {RelationshipKind.PARENT, RelationshipKind.COMPONENT}
             ):
                 continue
 

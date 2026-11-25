@@ -145,7 +145,7 @@ class BranchDiffer:
         commit_to: str,
     ) -> list[FileDiffElement]:
         """Return all the files that have added, changed or removed for a given repository between 2 commits."""
-        files = []
+        files: list[FileDiffElement] = []
 
         model = GitDiffNamesOnly(
             repository_id=repository.id,
@@ -167,18 +167,18 @@ class BranchDiffer:
         }
 
         for action_name, diff_action in actions.items():
-            for filename in getattr(diff, action_name, []):
-                files.append(
-                    FileDiffElement(
-                        branch=branch_name,
-                        location=filename,
-                        repository_id=repository.id,
-                        repository_display_label=repository_display_label,
-                        action=diff_action,
-                        commit_to=commit_to,
-                        commit_from=commit_from,
-                    )
+            files.extend(
+                FileDiffElement(
+                    branch=branch_name,
+                    location=filename,
+                    repository_id=repository.id,
+                    repository_display_label=repository_display_label,
+                    action=diff_action,
+                    commit_to=commit_to,
+                    commit_from=commit_from,
                 )
+                for filename in getattr(diff, action_name, [])
+            )
 
         return files
 

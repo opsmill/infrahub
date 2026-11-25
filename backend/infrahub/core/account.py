@@ -147,16 +147,14 @@ class AccountGlobalPermissionQuery(Query):
         self.return_labels = ["global_permission", "global_permission_action", "global_permission_decision"]
 
     def get_permissions(self) -> list[GlobalPermission]:
-        permissions: list[GlobalPermission] = []
-
-        for result in self.get_results():
-            permissions.append(
-                GlobalPermission(
-                    id=result.get("global_permission").get("uuid"),
-                    action=result.get("global_permission_action").get("value"),
-                    decision=result.get("global_permission_decision").get("value"),
-                )
+        permissions: list[GlobalPermission] = [
+            GlobalPermission(
+                id=result.get_node("global_permission").get("uuid"),
+                action=result.get_node("global_permission_action").get("value"),
+                decision=result.get_node("global_permission_decision").get("value"),
             )
+            for result in self.get_results()
+        ]
 
         return permissions
 
@@ -278,17 +276,16 @@ class AccountObjectPermissionQuery(Query):
         ]
 
     def get_permissions(self) -> list[ObjectPermission]:
-        permissions: list[ObjectPermission] = []
-        for result in self.get_results():
-            permissions.append(
-                ObjectPermission(
-                    id=result.get("object_permission").get("uuid"),
-                    namespace=result.get("object_permission_namespace").get("value"),
-                    name=result.get("object_permission_name").get("value"),
-                    action=result.get("object_permission_action").get("value"),
-                    decision=result.get("object_permission_decision").get("value"),
-                )
+        permissions: list[ObjectPermission] = [
+            ObjectPermission(
+                id=result.get_node("object_permission").get("uuid"),
+                namespace=result.get_node("object_permission_namespace").get("value"),
+                name=result.get_node("object_permission_name").get("value"),
+                action=result.get_node("object_permission_action").get("value"),
+                decision=result.get_node("object_permission_decision").get("value"),
             )
+            for result in self.get_results()
+        ]
 
         return permissions
 
@@ -378,16 +375,14 @@ class AccountRoleGlobalPermissionQuery(Query):
         self.return_labels = ["global_permission", "global_permission_action", "global_permission_decision"]
 
     def get_permissions(self) -> list[GlobalPermission]:
-        permissions: list[GlobalPermission] = []
-
-        for result in self.get_results():
-            permissions.append(
-                GlobalPermission(
-                    id=result.get("global_permission").get("uuid"),
-                    action=result.get("global_permission_action").get("value"),
-                    decision=result.get("global_permission_decision").get("value"),
-                )
+        permissions: list[GlobalPermission] = [
+            GlobalPermission(
+                id=result.get_node("global_permission").get("uuid"),
+                action=result.get_node("global_permission_action").get("value"),
+                decision=result.get_node("global_permission_decision").get("value"),
             )
+            for result in self.get_results()
+        ]
 
         return permissions
 
@@ -486,17 +481,16 @@ class AccountRoleObjectPermissionQuery(Query):
         ]
 
     def get_permissions(self) -> list[ObjectPermission]:
-        permissions: list[ObjectPermission] = []
-        for result in self.get_results():
-            permissions.append(
-                ObjectPermission(
-                    id=result.get("object_permission").get("uuid"),
-                    namespace=result.get("object_permission_namespace").get("value"),
-                    name=result.get("object_permission_name").get("value"),
-                    action=result.get("object_permission_action").get("value"),
-                    decision=result.get("object_permission_decision").get("value"),
-                )
+        permissions: list[ObjectPermission] = [
+            ObjectPermission(
+                id=result.get_node("object_permission").get("uuid"),
+                namespace=result.get_node("object_permission_namespace").get("value"),
+                name=result.get_node("object_permission_name").get("value"),
+                action=result.get_node("object_permission_action").get("value"),
+                decision=result.get_node("object_permission_decision").get("value"),
             )
+            for result in self.get_results()
+        ]
 
         return permissions
 

@@ -14,6 +14,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m024_missing_hierarchy_backfill import Migration024
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema_change.factory import build_schema_change_repository
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
@@ -43,7 +44,9 @@ class TestHierarchyCorrected:
         await diff_merger.merge_graph(at=at)
 
         # delete the branch
-        await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch)
+        await BranchDataDeleter(
+            db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)
+        ).delete(branch=branch)
 
         # remove the hierarchy property on main
         query = """

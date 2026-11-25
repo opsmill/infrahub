@@ -1104,7 +1104,7 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
             migrations=result.migrations,
             limit=result.diff.all,
             update_db=True,
-            update_registry=True,
+            application_id=None,
         )
     except Exception as exc:
         get_migration_console().log(f"{ERROR_BADGE} | Schema update failed: {exc}")
@@ -1397,7 +1397,7 @@ async def load_export(db: InfrahubDatabase, export_dir: Path, query_limit: int =
             for k, v in edge_row.items():
                 if k == "edge_type" or not v:
                     continue
-                if k in ["start_node_id", "end_node_id"]:
+                if k in {"start_node_id", "end_node_id"}:
                     edge_dict[k] = v
                 else:
                     edge_properties[k] = v

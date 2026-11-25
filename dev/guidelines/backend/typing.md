@@ -153,12 +153,74 @@ def get_node(self, label: str) -> Node:
 If the correct type causes many errors in callers, keep the callers' annotation for now, retype it in
 a separate change, and say so in the PR.
 
+## A global set at startup starts as a placeholder that raises, not `None`
+
+Give a module global that an `initialize_*()` function sets at startup a placeholder of the global's
+own type, whose operations raise `InitializationError`. `None` under a non-optional annotation needs
+a suppression, and `| None` adds a guard at every read. A module-level `__getattr__` that raises
+`InitializationError` is not an alternative: type checkers then accept any attribute of the module, and `hasattr()` and
+`monkeypatch` raise instead of reporting the attribute as missing.
+
+```python
+# ❌ Bad - the annotation is false until startup, and a suppression hides it
+registry: InfrahubLockRegistry = None  # type: ignore[assignment]
+
+# ✅ Good - the annotation is always true, and use before startup raises
+class UninitializedLockRegistry(InfrahubLockRegistry):
+    def __init__(self) -> None:
+        super().__init__(local_only=True)
+
+    def _find(self, lock_name: str) -> InfrahubLock | None:
+        raise InitializationError("The lock registry has not been initialized")
+
+registry: InfrahubLockRegistry = UninitializedLockRegistry()
+
+def is_initialized() -> bool:
+    return not isinstance(registry, UninitializedLockRegistry)
+```
+
+- Override the method every operation goes through, so the placeholder returns no result.
+- Build the placeholder without reading configuration or opening a connection, because the module
+  creates it at import.
+- A caller that tested `is None` calls the predicate instead.
+- Check each attribute callers read from the global. An empty value on the placeholder, such as a
+  connection that is `None`, must not select a fallback: move that caller to a method that raises.
+
+When callers read typed sections from the global and call no methods on it, hold the optional value
+in a wrapper whose properties raise, as `infrahub/config.py::ConfiguredSettings` does.
+
 ## A change that makes a type real retires its suppressions
 
-CI runs mypy without `--warn-unused-ignores`, so a `# type: ignore` that no longer suppresses
-anything stays, and later hides a real error on the same line. When a change lets the checker see a
-type it could not before, run `uv run mypy --warn-unused-ignores backend` and delete every ignore it
-reports as unused, including in files the change does not otherwise touch.
+`pyproject.toml` sets `warn_unused_ignores = true`, so `uv run mypy backend` fails on a
+`# type: ignore[code]` that no longer suppresses anything, including in files a change does not
+otherwise touch. Delete each ignore it reports. ty checks only the ignores it reads (a bare
+`# type: ignore`, a `ty:` code, a `# ty: ignore`), and counts only the rules enabled for the file, so
+a rule that a `[[tool.ty.overrides]]` block turns off does not keep an ignore in use. Then run
+`uv run ty check .`: a deleted bare ignore, or one that carried a `ty:` code, can have suppressed a ty
+error, so when ty fails on that line, add a `# ty: ignore[rule]` for the rule ty reports instead of
+restoring the mypy ignore.
+
+## Name the mypy error code in every `# type: ignore`
+
+Never write a bare `# type: ignore`: ty reads it as its own blanket ignore, so it also hides every ty
+error on that line. ty skips a `# type: ignore[code]` whose codes have no `ty:` prefix, so the coded
+form acts on mypy only. A line that needs both checkers silenced takes a separate `# ty: ignore[rule]`
+comment, placed after the mypy one: mypy reads `# type: ignore` only when it is the first comment on
+the line. mypy reports a `ty:` code inside its own brackets as an unused ignore.
+
+```python
+# ❌ Bad - hides every mypy and ty error on the line
+result = build()  # type: ignore
+
+# ❌ Bad - mypy reports ty:missing-argument as an unused ignore code
+result = build()  # type: ignore[call-arg, ty:missing-argument]
+
+# ❌ Bad - mypy skips a type: ignore that follows another comment and reports call-arg
+result = build()  # ty: ignore[missing-argument]  # type: ignore[call-arg]
+
+# ✅ Good - each checker reads only its own comment
+result = build()  # type: ignore[call-arg]  # ty: ignore[missing-argument]
+```
 
 ## Don't write "one or many" unions — take the plural form and let callers wrap
 

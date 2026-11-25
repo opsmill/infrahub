@@ -107,7 +107,7 @@ class PrefixUtilizationGetter:
         if ip_prefixes is None:
             ip_prefixes = self.ip_prefixes
         for ip_prefix in ip_prefixes:
-            if ip_prefix.member_type.value == PrefixMemberType.ADDRESS.value:  # type: ignore[union-attr,attr-defined]
+            if ip_prefix.member_type.value == PrefixMemberType.ADDRESS.value:  # type: ignore[attr-defined]
                 address_prefixes.append(ip_prefix)
             else:
                 prefix_prefixes.append(ip_prefix)

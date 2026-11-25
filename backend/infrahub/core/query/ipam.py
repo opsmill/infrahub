@@ -485,7 +485,7 @@ class IPPrefixSubnetFetch(Query):
 
         for result in self.get_results():
             subnet = IPPrefixData(
-                id=result.get("pfx").get("uuid"), prefix=ipaddress.ip_network(result.get("av").get("value"))
+                id=result.get_node("pfx").get("uuid"), prefix=ipaddress.ip_network(result.get_node("av").get("value"))
             )
             subnets.append(subnet)
 
@@ -825,7 +825,8 @@ class IPPrefixIPAddressFetch(Query):
 
         for result in self.get_results():
             address = IPAddressData(
-                id=result.get("addr").get("uuid"), address=ipaddress.ip_interface(result.get("av").get("value"))
+                id=result.get_node("addr").get("uuid"),
+                address=ipaddress.ip_interface(result.get_node("av").get("value")),
             )
             addresses.append(address)
 
@@ -1220,7 +1221,7 @@ class IPPrefixReconcileQueryResult:
 
         def get_optional_node_uuid(label: str) -> str | None:
             """Extract UUID from an optional node (may be None from OPTIONAL MATCH)."""
-            node = result.get(label)
+            node = result.get_optional_node(label)
             return str(node.get("uuid")) if node and node.get("uuid") else None
 
         def get_collection_uuids(label: str) -> tuple[str, ...]:

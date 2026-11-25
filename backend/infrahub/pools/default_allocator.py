@@ -34,7 +34,7 @@ class DefaultPoolAllocator(PoolAllocator):
             return None
 
         attr_schema = target_schema.get_attribute(name=attribute_name)
-        return await pool.get_resource(db=self.db, branch=self.branch, identifier=identifier, attribute=attr_schema)  # type: ignore[attr-defined]
+        return await pool.get_resource(db=self.db, branch=self.branch, identifier=identifier, attribute=attr_schema)
 
     async def allocate_for_relationship(self, pool_relationship: RelationshipManager, identifier: str) -> Node | None:
         """Allocate from pool referenced by relationship."""
@@ -42,7 +42,7 @@ class DefaultPoolAllocator(PoolAllocator):
         if not pool:
             return None
 
-        allocated = await pool.get_resource(db=self.db, branch=self.branch, identifier=identifier)  # type: ignore
+        allocated = await pool.get_resource(db=self.db, branch=self.branch, identifier=identifier)
         if allocated:
             NodeMutationContext.record_if_active(node=allocated, action=MutationAction.CREATED)
         return allocated

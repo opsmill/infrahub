@@ -31,7 +31,7 @@ class Namespace(StrEnum):
 
 INVOKE_SUDO = os.getenv("INVOKE_SUDO", None)
 INVOKE_PTY = os.getenv("INVOKE_PTY", None)
-DEBUG = os.environ.get("DEBUG", "").lower() in ("true", "1", "yes")
+DEBUG = os.environ.get("DEBUG", "").lower() in {"true", "1", "yes"}
 INFRAHUB_DATABASE = os.getenv("INFRAHUB_DB_TYPE", DatabaseType.NEO4J.value)
 INFRAHUB_ADDRESS = os.getenv("INFRAHUB_ADDRESS", "http://localhost:8000")
 
@@ -40,7 +40,7 @@ INFRAHUB_DEBUG_TRACE: bool = str_to_bool(value=os.getenv("INFRAHUB_DEBUG_TRACE",
 
 DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
 MEMGRAPH_DOCKER_IMAGE = os.getenv("MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-mage:1.19-memgraph-2.19-no-ml")
-NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:2026.05.0-enterprise")
+NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:2026.10.1-enterprise")
 MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv("MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:4.2.1-management")
 CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:8.4.0")
 

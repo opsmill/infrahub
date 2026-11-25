@@ -202,36 +202,32 @@ RETURN profile.uuid AS profile_uuid, attributes, relationships
         profile_data_list: list[ProfileData] = []
         for result in self.results:
             profile_uuid = result.get_as_type(label="profile_uuid", return_type=str)
-            attributes = result.get(label="attributes")
-            relationships = result.get(label="relationships")
 
             profile_data = ProfileData(
                 uuid=profile_uuid, priority=float("inf"), attribute_values={}, relationship_peers={}
             )
 
-            for attr_pair in attributes:
-                if not isinstance(attr_pair, list) or len(attr_pair) != 2:
-                    continue
-                attr_name, attr_value = attr_pair
-                if attr_value == NULL_VALUE:
-                    attr_value = None
-                if attr_name == "profile_priority":
-                    if attr_value is not None and not isinstance(attr_value, int):
-                        attr_value = int(attr_value)
-                    profile_data.priority = attr_value
-                else:
-                    profile_data.attribute_values[attr_name] = attr_value
+            for attr_pair in result.get_list(label="attributes"):
+                match attr_pair:
+                    case [str() as attr_name, attr_value]:
+                        if attr_value == NULL_VALUE:
+                            attr_value = None
+                        if attr_name == "profile_priority":
+                            # A null priority keeps the default, which ranks the profile below every profile with one.
+                            if isinstance(attr_value, int | float | str):
+                                profile_data.priority = int(attr_value)
+                        else:
+                            profile_data.attribute_values[attr_name] = attr_value
 
             # Parse relationships
-            for rel_tuple in relationships:
-                if not isinstance(rel_tuple, list) or len(rel_tuple) != 3:
-                    continue
-                rel_name, direction_str, peer_uuid = rel_tuple
-                direction = RelationshipDirection(direction_str)
-                rel_filter = RelationshipFilter(relationship_identifier=rel_name, direction=direction)
-                if rel_filter not in profile_data.relationship_peers:
-                    profile_data.relationship_peers[rel_filter] = []
-                profile_data.relationship_peers[rel_filter].append(peer_uuid)
+            for rel_tuple in result.get_list(label="relationships"):
+                match rel_tuple:
+                    case [str() as rel_name, str() as direction_str, str() as peer_uuid]:
+                        direction = RelationshipDirection(direction_str)
+                        rel_filter = RelationshipFilter(relationship_identifier=rel_name, direction=direction)
+                        if rel_filter not in profile_data.relationship_peers:
+                            profile_data.relationship_peers[rel_filter] = []
+                        profile_data.relationship_peers[rel_filter].append(peer_uuid)
 
             profile_data_list.append(profile_data)
         return profile_data_list

@@ -50,11 +50,7 @@ class NodePropertyAttribute[T]:
         """Tell if this node property attribute must be recomputed given a list of updated fields of a node."""
         if self._manually_assigned or not fields:
             return True
-        for field in fields:
-            if field in self.node_attributes or field in self.node_relationships:
-                return True
-
-        return False
+        return any(field in self.node_attributes or field in self.node_relationships for field in fields)
 
     @property
     def attribute_value(self) -> AttributeFromDB | dict[str, T | None]:
@@ -75,7 +71,7 @@ class NodePropertyAttribute[T]:
     def get_value(self, node: Node, at: Timestamp) -> T | None:
         if isinstance(self._value, AttributeFromDB):
             attr = self.get_node_attribute(node=node, at=at)
-            return attr.value  # type: ignore
+            return attr.value  # ty: ignore[invalid-return-type]
 
         return self._value
 

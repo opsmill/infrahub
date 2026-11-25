@@ -154,8 +154,7 @@ and remove them when touching the code:
   `authentication`'s `ui/queries` refresh-token query), most of `shared/components/inputs/`
   (`peer`, `enum`, `dropdown`, `pool-select`, `relationship-one`/`-many`, `node-kind-select`,
   `kind-multi-select`), plus `shared/components/display/slide-over.tsx`,
-  `shared/components/display/meta-details-tooltips.tsx`, `shared/components/table/data-table.tsx`,
-  `shared/components/ui/id.tsx`, and `shared/libs/graphiql/use-graphiql-fetcher.ts` (which even
+  `shared/components/table/data-table.tsx`, `shared/components/ui/id.tsx`, and `shared/libs/graphiql/use-graphiql-fetcher.ts` (which even
   reaches `nodes/object`'s `api/`).
 <!-- Extracted from specs/001-entities-arch-migration on 2026-07-03 -->
 - Backend-authoritative violation: `path-traversal/domain/rules/visible-namespace.ts`

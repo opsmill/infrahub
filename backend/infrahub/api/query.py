@@ -185,7 +185,7 @@ async def graphql_query_get(
     params = {
         key: value
         for key, value in request.query_params.items()
-        if key not in ["branch", "at", "update_group", "subscribers"]
+        if key not in {"branch", "at", "update_group", "subscribers"}
     }
 
     return await execute_query(

@@ -84,7 +84,7 @@ class Migration066(ArbitraryMigration):
             # exception and commits, so a mid-loop failure can persist partial consolidation.
             # Re-raising (or moving this handler outside the transaction) is a separate follow-up.
             except Exception as exc:  # noqa: BLE001
-                error_msg = str(exc) or f"{type(exc).__name__}: {repr(exc)}"
+                error_msg = str(exc) or f"{type(exc).__name__}: {exc!r}"
                 return MigrationResult(errors=[error_msg])
 
         return MigrationResult()

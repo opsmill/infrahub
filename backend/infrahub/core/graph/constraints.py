@@ -262,17 +262,14 @@ class ConstraintManagerNeo4j(ConstraintManagerBase):
     async def list(self) -> list[ConstraintInfo]:
         query = "SHOW CONSTRAINTS"
         records = await self.db.execute_query(query=query, params={}, name="constraint_show", type=QueryType.READ)
-        results = []
-        for record in records:
-            results.append(
-                ConstraintInfo(
-                    item_name=record["name"],
-                    item_label=", ".join(record["labelsOrTypes"]),
-                    property=", ".join(record["properties"]),
-                )
+        return [
+            ConstraintInfo(
+                item_name=record["name"],
+                item_label=", ".join(record["labelsOrTypes"]),
+                property=", ".join(record["properties"]),
             )
-
-        return results
+            for record in records
+        ]
 
 
 class ConstraintManagerMemgraph(ConstraintManagerBase):
@@ -292,8 +289,7 @@ class ConstraintManagerMemgraph(ConstraintManagerBase):
     async def list(self) -> list[ConstraintInfo]:
         query = "SHOW CONSTRAINT INFO"
         records = await self.db.execute_query(query=query, params={}, name="constraint_show", type=QueryType.READ)
-        results = []
-        for record in records:
-            results.append(ConstraintInfo(item_name="n_a", item_label=record["label"], property=record["properties"]))
-
-        return results
+        return [
+            ConstraintInfo(item_name="n_a", item_label=record["label"], property=record["properties"])
+            for record in records
+        ]

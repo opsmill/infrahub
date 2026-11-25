@@ -64,7 +64,7 @@ class AttributeNumberUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         for result in self.results:
             grouped_data_paths.add_data_path(
                 DataPath(
-                    branch=str(result.get("value_relationship").get("branch")),
+                    branch=str(result.get_rel("value_relationship").get("branch")),
                     path_type=PathType.ATTRIBUTE,
                     node_id=str(result.get("node.uuid")),
                     field_name=self.attribute_schema.name,
@@ -94,11 +94,11 @@ class AttributeNumberChecker(ConstraintCheckerInterface):
         if not config.SETTINGS.main.schema_strict_mode:
             return False
 
-        return request.constraint_name in (
+        return request.constraint_name in {
             ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MIN_VALUE_UPDATE.value,
             ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MAX_VALUE_UPDATE.value,
             ConstraintIdentifier.ATTRIBUTE_PARAMETERS_EXCLUDED_VALUES_UPDATE.value,
-        )
+        }
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         if not request.schema_path.field_name:

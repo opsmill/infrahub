@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Sequence  # noqa: TC003  needed for pydantic
-from typing import Any
+from typing import Any, ClassVar
+
+from infrahub.core.migrations.schema.phases import MigrationPhase
 
 from ..query import AttributeMigrationQuery
 from ..query.attribute_rename import AttributeInfo, AttributeRenameQuery
@@ -41,5 +43,6 @@ class AttributeNameUpdateMigrationQuery01(AttributeMigrationQuery, AttributeRena
 
 
 class AttributeNameUpdateMigration(AttributeSchemaMigration):
+    phase: ClassVar[MigrationPhase] = MigrationPhase.ATTRIBUTE_RENAME
     name: str = "attribute.name.update"
-    queries: Sequence[type[AttributeMigrationQuery]] = [AttributeNameUpdateMigrationQuery01]  # type: ignore[assignment]
+    queries: Sequence[type[AttributeMigrationQuery]] = [AttributeNameUpdateMigrationQuery01]

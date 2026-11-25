@@ -225,7 +225,4 @@ async def test_large_value_lookups_seek_the_key_index(
     assert await _planned_value_reads(db=db, query=create_query) == one_seek
     assert await _planned_value_reads(db=db, query=update_query) == one_seek
     assert await _planned_value_reads(db=db, query=add_query) == one_seek
-    # One lookup creates the missing values, the second links each attribute to its value.
-    assert await _planned_value_reads(db=db, query=kind_query) == _PlannedValueReads(
-        full_scans=[], seeks=[KEY_SEEK, KEY_SEEK]
-    )
+    assert await _planned_value_reads(db=db, query=kind_query) == one_seek

@@ -156,9 +156,11 @@ each write class:
 
 - a name **in** the table is dropped and reported as a **warning** — a `READ`-level field, the
   `id`/`state` bookkeeping every internal schema model carries on the nested value models
-  (parameters, choices, computed attribute, extensions), or a field belonging to a sibling
-  variant of a discriminated union. These are all names a schema read back from Infrahub can
-  carry, so accepting them is what keeps the read → edit → load round trip working.
+  (parameters, computed attribute, extensions; on a dropdown choice only `id`), or a field
+  belonging to a sibling variant of a discriminated union. These are all names a schema read
+  back from Infrahub can carry, so accepting them is what keeps the read → edit → load round
+  trip working. `state` on a choice is settable, because `state: absent` is how a schema file
+  removes a single choice; only the write variant declares it, so the read shape leaves it out.
 - a name **not** in the table is an **error**, since the only ways to produce one are a typo and
   a field that no longer exists.
 
@@ -216,6 +218,42 @@ After changing a field's `visibility` (or adding a field), run
 `invoke backend.generate` and commit the regenerated SDK models alongside the backend
 change; CI fails if the generated artifact is stale.
 
+## IDs in a submitted schema
+
+A schema load and a schema check pass the submitted files through
+`backend/infrahub/core/schema/submitted_ids/resolver.py::SubmittedSchemaIdResolver` before
+merging them into a copy of the branch schema, which only a load then saves, so the merge and the
+save only ever see IDs the branch holds. The merge pairs elements by a shared `id` (that is how a file renames an element), and the
+save looks up each element's vertex by its `id`; an `id` from another instance or another branch
+would otherwise reach the save and fail it. For the `id` of each node, generic, attribute and
+relationship, the resolver checks, in this order:
+
+1. If an element earlier in the load (generics, then nodes, then extensions, file by file) was
+   given the same `id` and is a different
+   element, the load is refused. Two elements are the same when they have the same type, the same
+   target node and the same name, such as a node repeated in two files or an extension field that
+   repeats a node's field. Only the later element is refused; the first is checked as below.
+2. Otherwise, if the branch holds the `id` for an element of the same type on the same node (the
+   node the file's node maps to by its own `id`, otherwise by kind): the `id` is kept, and a
+   different name is a rename. A node without an `id`, or an extension, whose kind is the new
+   kind of a node renamed by `id` anywhere in the load maps to the renamed stored node, as the
+   merge applies renames first.
+3. Otherwise, if the branch holds the `id` for anything else (a field of another node, the other
+   field type, a generic for a node): the load is refused.
+4. Otherwise, if no schema vertex has ever held the `id`, on any branch: the `id` is removed with
+   a warning and the element is matched by name, so it keeps its stored ID or gets a new one.
+5. Otherwise (a deleted element, or one on another branch only): an element marked `state: absent`
+   is skipped with a warning, which keeps reloading a file that removed an element by `id` a
+   no-op; any other element refuses the load.
+
+The branch's IDs come from the in-memory registry (`SchemaBranch.get_schema_element_ids`); the
+"ever held" lookup is one `SchemaElementIdsQuery` for all the remaining IDs, through the
+`SchemaElementIdLookup` protocol. A refusal is a 422 raised before anything is written.
+Warnings join the response's `warnings`, typed `deprecation` because that is the only type the
+SDK accepts. The fields of a skipped node or generic are skipped with it, unless a field repeats
+an `id` given to another element, which still refuses the load. A load in which no element carries
+an `id` skips the check.
+
 ## Key Locations
 
 | Component | Path |
@@ -228,6 +266,7 @@ change; CI fails if the generated artifact is stale.
 | Generated SDK write/read models (do not edit) | `python_sdk/infrahub_sdk/schema/generated/{write,read}.py` |
 | Generated non-settable field table (do not edit) | `python_sdk/infrahub_sdk/schema/generated/contract.py` |
 | Offline write-contract validator | `python_sdk/infrahub_sdk/schema/validate.py` |
+| Submitted schema ID checks | `backend/infrahub/core/schema/submitted_ids/` |
 | RelationshipSchema class | `backend/infrahub/core/schema/relationship_schema.py` |
 | AttributeSchema class | `backend/infrahub/core/schema/attribute_schema.py` |
 | GenericSchema class | `backend/infrahub/core/schema/generic_schema.py` |

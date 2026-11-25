@@ -348,11 +348,11 @@ class TestRatioSampler:
         sampler = RatioSampler(default_ratio=0.0, clock=clock)
 
         sampler.set_temporary_ratio(ratio=1.0, expires_at=NOW + timedelta(minutes=10))
-        assert sampler.ratio == 1.0
+        assert sampler.ratio == pytest.approx(1.0)
         assert _decision(sampler=sampler, trace_id=TRACE_ID_AT_LIMIT) is Decision.RECORD_AND_SAMPLE
 
         clock.now = NOW + timedelta(minutes=10)
-        assert sampler.ratio == 0.0
+        assert sampler.ratio == pytest.approx(0.0)
         assert _decision(sampler=sampler, trace_id=TRACE_ID_BELOW_LIMIT) is Decision.DROP
 
     def test_new_temporary_ratio_replaces_the_previous_one(self) -> None:
@@ -371,7 +371,7 @@ class TestRatioSampler:
 
         sampler.clear_temporary_ratio()
 
-        assert sampler.ratio == 0.0
+        assert sampler.ratio == pytest.approx(0.0)
         assert _decision(sampler=sampler, trace_id=TRACE_ID_BELOW_LIMIT) is Decision.DROP
 
     def test_ratio_out_of_range_is_rejected(self) -> None:

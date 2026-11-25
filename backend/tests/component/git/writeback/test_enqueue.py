@@ -31,6 +31,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.merge.repository_merge_dispatcher import RepositoryMergeDispatcher
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
+from infrahub.core.schema_change.factory import build_schema_change_repository
 from infrahub.exceptions import DeliveryStateUnavailableError
 from infrahub.git import tasks as git_tasks
 from infrahub.git.models import GitRepositoryDeliveryRetry, GitRepositoryMerge
@@ -702,7 +703,9 @@ async def test_an_enqueue_that_fails_at_every_try_leaves_the_entry_and_a_full_re
     assert (await store.read(repository_id=repository.id)).queue == DeliveryQueue()
 
     # A merge can delete its branch before the merge flow runs, so the flow must not need it.
-    await BranchDataDeleter(db=db, batch_size=5).delete(branch=source_branch)
+    await BranchDataDeleter(db=db, batch_size=5, schema_change_records=build_schema_change_repository(db=db)).delete(
+        branch=source_branch
+    )
     # The attempt then stops at the fetch, so no delivery removes what the flow queued.
     repository.remove_origin()
     await run_merge_flow(dependency_provider=dependency_provider, client=repository.client, model=model)

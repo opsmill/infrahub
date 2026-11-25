@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
+    from infrahub.core.query import CypherValue
     from infrahub.database import InfrahubDatabase
 
 
@@ -334,13 +335,62 @@ WITH n.uuid AS uuid, kind, is_generic, attributes, relationships
         index = SchemaSummaryIndex()
         for result in self.get_results():
             kind = result.get_as_type("kind", return_type=str)
-            attributes_raw = cast("list[list[str]]", result.get("attributes") or [])
-            relationships_raw = cast("list[list[str]]", result.get("relationships") or [])
             summary = SchemaSummary(
                 uuid=result.get_as_type("uuid", return_type=str),
                 is_generic=result.get_as_type("is_generic", return_type=bool),
-                attributes={pair[1]: pair[0] for pair in attributes_raw if pair and pair[1] is not None},
-                relationships={pair[1]: pair[0] for pair in relationships_raw if pair and pair[1] is not None},
+                attributes=self._map_names_to_uuids(pairs=result.get_list("attributes")),
+                relationships=self._map_names_to_uuids(pairs=result.get_list("relationships")),
             )
             index.add(kind=kind, summary=summary)
         return index
+
+    def _map_names_to_uuids(self, pairs: list[CypherValue]) -> dict[str, str]:
+        names_to_uuids: dict[str, str] = {}
+        for pair in pairs:
+            match pair:
+                case [str() as uuid, str() as name]:
+                    names_to_uuids[name] = uuid
+        return names_to_uuids
+
+
+@dataclass(frozen=True)
+class SchemaElementIdsQueryResult:
+    """The given IDs that a schema vertex holds."""
+
+    ids: frozenset[str]
+
+
+class SchemaElementIdsQuery(Query):
+    """Find which of the given IDs belong to a schema vertex on any branch, at any time.
+
+    The query has no branch or time filter, so a vertex counts whether it is active, deleted or
+    only present on another branch. EXPLAIN shows a NodeIndexSeek on the ``Node(uuid)`` range index.
+    The results are ordered so that each page of a paged read continues where the previous one ended.
+    """
+
+    name: str = "schema_element_ids"
+    type: QueryType = QueryType.READ
+    insert_return: bool = False
+
+    def __init__(self, ids: list[str], **kwargs: Any) -> None:
+        self.ids = ids
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["ids"] = self.ids
+        self.add_to_query(
+            """
+MATCH (n:Node)
+WHERE n.uuid IN $ids
+  AND (n:SchemaNode OR n:SchemaGeneric OR n:SchemaAttribute OR n:SchemaRelationship)
+RETURN DISTINCT n.uuid AS uuid
+ORDER BY uuid
+            """
+        )
+        self.update_return_labels(["uuid"])
+
+    def get_data(self) -> SchemaElementIdsQueryResult:
+        """Return the IDs that match a schema vertex."""
+        return SchemaElementIdsQueryResult(
+            ids=frozenset(result.get_as_type("uuid", str) for result in self.get_results())
+        )

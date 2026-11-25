@@ -123,7 +123,7 @@ class GetPathDetailsBranchQuery(GetResultMapQuery):
     ) -> None:
         super().__init__(**kwargs)
 
-        if self.branch.name in [registry.default_branch, GLOBAL_BRANCH_NAME]:
+        if self.branch.name in {registry.default_branch, GLOBAL_BRANCH_NAME}:
             raise ValueError("This query can only be used on non-default branches")
         self.schema_kind = schema_kind
         self.updates_only = updates_only

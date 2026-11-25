@@ -433,3 +433,35 @@ def test_number_pool_allocation_scope_reaches_the_internal_schema() -> None:
     parameters = loaded.internal_schema.nodes[0].attributes[1].parameters
     assert isinstance(parameters, NumberPoolParameters)
     assert parameters.allocation_scope == ["site"]
+
+
+def test_dropdown_choice_state_reaches_the_internal_schema() -> None:
+    # ``state: absent`` is how a schema file removes a single choice, so it must survive the load.
+    payload = {
+        "version": "1.0",
+        "generics": [
+            {
+                "name": "Resource",
+                "namespace": "Testing",
+                "attributes": [
+                    {
+                        "name": "criticality",
+                        "kind": "Dropdown",
+                        "optional": True,
+                        "choices": [{"name": "tier_1"}, {"name": "tier_2", "state": "absent"}, {"name": "tier_3"}],
+                    }
+                ],
+            }
+        ],
+    }
+
+    loaded = SchemaLoadAPI.model_validate(payload)
+
+    choices = loaded.internal_schema.generics[0].attributes[0].choices
+    assert choices is not None
+    assert [(choice.name, choice.state) for choice in choices] == [
+        ("tier_1", HashableModelState.PRESENT),
+        ("tier_2", HashableModelState.ABSENT),
+        ("tier_3", HashableModelState.PRESENT),
+    ]
+    assert loaded.contract_warnings == []

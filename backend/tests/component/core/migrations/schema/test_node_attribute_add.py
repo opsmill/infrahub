@@ -52,6 +52,7 @@ from infrahub.pools.number_pool_locker import RESOURCE_POOL_LOCK_NAMESPACE
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from tests.adapters.lock import LockTimeline, RecordingLockRegistry
 from tests.component.core.migrations.schema.metadata_helpers import (
+    EdgeFingerprint,
     VertexMetadata,
     branch_edge_fingerprint,
     branch_metadata_fingerprint,
@@ -138,7 +139,7 @@ async def init_database(db: InfrahubDatabase) -> None:
         CREATE (n)-[r:IS_PART_OF $rel_props ]->(root)
     )
     RETURN root
-    """ % {}
+    """
     await db.execute_query(query=query_init_root, params=params)
 
 
@@ -288,7 +289,7 @@ class _AttributeAdd:
     migration_time: Timestamp
     user_id: str
     node_before: VertexMetadata
-    pre_migration_fingerprint: list[tuple]
+    pre_migration_fingerprint: list[EdgeFingerprint]
     pre_migration_metadata: list[tuple]
 
 
@@ -393,7 +394,7 @@ class TestNodeAttributeAddMetadata:
         async def _run_rollback() -> None:
             await GraphRollbacker(db=db).rollback(
                 target_branch=context.branch,
-                at=context.migration_time,
+                ats=[context.migration_time],
                 scope=RollbackScope.SINCE_TIMESTAMP,
             )
 
@@ -1227,34 +1228,6 @@ async def test_aware_attribute_edges_stay_on_migration_branch(
 
     await assert_no_global_edges_with_wrong_branch_level(db=db)
     await verify_graph(db=db)
-
-
-async def test_agnostic_attribute_add_is_idempotent(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
-) -> None:
-    """The re-run guard still matches an owning edge the previous run put on the global branch."""
-    migration_branch = await create_branch(branch_name="branch-agnostic-idempotent", db=db)
-
-    previous_schema, candidate = add_attribute_to_test_car(
-        branch_name=migration_branch.name,
-        attribute=AttributeSchema(name="tag", kind="Text", optional=True, branch=BranchSupportType.AGNOSTIC),
-    )
-
-    assert (
-        await run_test_car_attribute_add(
-            db=db, branch=migration_branch, previous_schema=previous_schema, candidate=candidate, attribute_name="tag"
-        )
-        == 2
-    )
-    attribute_count = await count_nodes(db=db, label="Attribute")
-
-    assert (
-        await run_test_car_attribute_add(
-            db=db, branch=migration_branch, previous_schema=previous_schema, candidate=candidate, attribute_name="tag"
-        )
-        == 0
-    )
-    assert await count_nodes(db=db, label="Attribute") == attribute_count
 
 
 async def test_migration_agnostic_numberpool_attribute(

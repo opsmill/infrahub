@@ -289,7 +289,7 @@ async def test_response_delay_endpoint_requires_super_admin(
     with client:
         response = client.post("/api/response-delay", headers=client_headers, json={"response_delay": 1})
 
-    assert response.status_code in (401, 403)
+    assert response.status_code in {401, 403}
 
 
 async def test_response_delay_message_updates_settings() -> None:

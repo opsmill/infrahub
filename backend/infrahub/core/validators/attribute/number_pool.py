@@ -58,7 +58,7 @@ class AttributeNumberPoolUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         for result in self.results:
             grouped_data_paths.add_data_path(
                 DataPath(
-                    branch=str(result.get("value_relationship").get("branch")),
+                    branch=str(result.get_rel("value_relationship").get("branch")),
                     path_type=PathType.ATTRIBUTE,
                     node_id=str(result.get("node.uuid")),
                     field_name=self.attribute_schema.name,
@@ -84,11 +84,11 @@ class AttributeNumberPoolChecker(ConstraintCheckerInterface):
         return "attribute.number_pool.update"
 
     def supports(self, request: SchemaConstraintValidatorRequest) -> bool:
-        return request.constraint_name in (
+        return request.constraint_name in {
             ConstraintIdentifier.ATTRIBUTE_PARAMETERS_START_RANGE_UPDATE.value,
             ConstraintIdentifier.ATTRIBUTE_PARAMETERS_END_RANGE_UPDATE.value,
             ConstraintIdentifier.ATTRIBUTE_PARAMETERS_RANGES_UPDATE.value,
-        )
+        }
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         grouped_data_paths_list: list[GroupedDataPaths] = []

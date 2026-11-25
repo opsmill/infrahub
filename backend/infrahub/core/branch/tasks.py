@@ -62,6 +62,7 @@ from infrahub.core.migrations.runner import MigrationRunner
 from infrahub.core.query.node_agnostic_retirement import NodesToCheckForGlobalEdgesQuery, RetireNodeAgnosticFieldsQuery
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
+from infrahub.core.schema_change.factory import build_schema_change_repository
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.constraint_merge import build_constraint_info_merger
 from infrahub.core.validators.determiner import build_constraint_validator_determiner
@@ -84,6 +85,7 @@ from infrahub.git.constants import (
 from infrahub.git.merge_readiness import RemoteHeadsMergeCheck
 from infrahub.git.remote_refs import GitRemoteHeadReader
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
+from infrahub.profiles.submission import submit_profile_refresh
 from infrahub.utils import log_exception_guard
 from infrahub.workers.dependencies import (
     get_cache,
@@ -96,7 +98,6 @@ from infrahub.workflows.catalogue import (
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
     IPAM_RECONCILIATION,
-    PROFILE_REFRESH_MULTIPLE,
 )
 from infrahub.workflows.constants import WorkflowPriority
 from infrahub.workflows.utils import add_tags
@@ -408,9 +409,9 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                         migration_executor=MigrationExecutor.WORKFLOW if send_events else MigrationExecutor.DIRECT,
                         migrations=migrations,
                         update_db=False,
-                        update_registry=True,
                         user_id=user_id,
                         manage_rollback=True,
+                        application_id=None,
                     )
                     log.info("Migrations completed")
 
@@ -535,10 +536,11 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
 
     if profile_refresh_node_ids:
         with log_exception_guard(log, "Failed to submit the post-rebase profile refresh"):
-            await workflow.submit_workflow(
-                workflow=PROFILE_REFRESH_MULTIPLE,
-                context=low_context,
-                parameters={"branch_name": user_branch.name, "node_ids": profile_refresh_node_ids},
+            await submit_profile_refresh(
+                workflow=workflow,
+                branch_name=user_branch.name,
+                node_ids=profile_refresh_node_ids,
+                context=low_context.to_event_context(),
             )
 
 
@@ -631,7 +633,12 @@ async def delete_branch(
 
         log = get_run_logger()
         orchestrator = BranchDeleteOrchestrator(
-            data_deleter=BranchDataDeleter(db=db, batch_size=config.SETTINGS.database.query_size_limit, log=log),
+            data_deleter=BranchDataDeleter(
+                db=db,
+                batch_size=config.SETTINGS.database.query_size_limit,
+                schema_change_records=build_schema_change_repository(db=db),
+                log=log,
+            ),
             diff_freezer=diff_repository,
             event_service=event_service,
             workflow=workflow,

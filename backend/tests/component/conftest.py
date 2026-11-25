@@ -134,7 +134,7 @@ def pytest_runtest_makereport(
     )
     if section is not None:
         report.sections.append(section)
-    return report  # noqa: B901 - a pytest wrapper hook yields, then returns the result it wrapped
+    return report
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -1111,6 +1111,17 @@ async def base_dataset_04(
 
 @pytest.fixture
 async def choices_schema(db: InfrahubDatabase, default_branch: Branch, node_group_schema: None) -> None:
+    do_choices_schema(branch=default_branch)
+
+
+@pytest.fixture(scope="class")
+async def choices_schema_scope_class(
+    db: InfrahubDatabase, default_branch_scope_class: Branch, node_group_schema_scope_class: None
+) -> None:
+    do_choices_schema(branch=default_branch_scope_class)
+
+
+def do_choices_schema(branch: Branch) -> None:
     SCHEMA: dict[str, Any] = {
         "generics": [
             {
@@ -1159,7 +1170,7 @@ async def choices_schema(db: InfrahubDatabase, default_branch: Branch, node_grou
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    registry.schema.register_schema(schema=schema, branch=branch.name)
 
 
 @pytest.fixture

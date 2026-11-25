@@ -668,7 +668,7 @@ class AttributePoolApplier:
             ValidationError: When the pool targets another kind or attribute.
 
         """
-        if pool.node.value in [schema.kind, *schema.inherit_from] and pool.node_attribute.value == attribute.name:
+        if pool.node.value in {schema.kind, *schema.inherit_from} and pool.node_attribute.value == attribute.name:
             return
         raise ValidationError(
             {f"{attribute.name}.from_pool": f"The '{pool.name.value}' pool can't be used for '{attribute.name}'."}

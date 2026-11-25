@@ -38,8 +38,8 @@ class InfrahubS3ObjectStorage(fastapi_storages.S3Storage):
             # forwards them to boto3, which sends an empty string verbatim instead of falling back
             # to the default AWS credential provider chain. Set them to None so boto3 resolves
             # credentials from the environment (IRSA, EC2 instance profiles, ECS task roles).
-            self.AWS_ACCESS_KEY_ID = None  # type: ignore[assignment]
-            self.AWS_SECRET_ACCESS_KEY = None  # type: ignore[assignment]
+            self.AWS_ACCESS_KEY_ID = None
+            self.AWS_SECRET_ACCESS_KEY = None
 
         # Mirrors fastapi_storages.S3Storage.__init__, which offers no hook to pass a CA bundle to boto3.
         if self.AWS_S3_ENDPOINT_URL.startswith("http"):
@@ -61,7 +61,7 @@ class InfrahubS3ObjectStorage(fastapi_storages.S3Storage):
         self._bucket.download_fileobj(name, f)
         f.flush()
         f.seek(0)
-        return f  # type: ignore
+        return f
 
     def delete(self, name: str) -> None:
         self._bucket.Object(name).delete()

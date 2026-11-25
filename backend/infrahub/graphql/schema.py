@@ -62,6 +62,7 @@ from .queries import (
     InfrahubRepositoryCommits,
     InfrahubResourcePoolAllocated,
     InfrahubResourcePoolUtilization,
+    InfrahubSchemaChange,
     InfrahubSearchAnywhere,
     InfrahubStatus,
     InfrahubUserPreferences,
@@ -83,6 +84,7 @@ QUERIES_REQUIRING_AUTHENTICATION = frozenset(
         "InfrahubEffectivePreferences",
         "InfrahubUserPreferences",
         "InfrahubGlobalPreferences",
+        "InfrahubSchemaChange",
     }
 )
 
@@ -111,6 +113,8 @@ class InfrahubBaseQuery(ObjectType):
 
     InfrahubRepositoryCommits = InfrahubRepositoryCommits
     InfrahubRepositoryActivity = InfrahubRepositoryActivity
+
+    InfrahubSchemaChange = InfrahubSchemaChange
 
     InfrahubTask = Task
     InfrahubEvent = Event

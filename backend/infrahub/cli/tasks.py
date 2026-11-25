@@ -56,7 +56,7 @@ async def execute(
 
         result = await worker.execute_workflow(
             workflow=DUMMY_FLOW, parameters={"data": DummyInput(firstname="John", lastname="Doe")}
-        )  # type: ignore[var-annotated]
+        )
         print(result)
 
 

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Sequence  # noqa: TC003  needed for pydantic
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from infrahub.core.graph.schema import get_attribute_value_key
+from infrahub.core.migrations.schema.phases import MigrationPhase
 from infrahub.core.query import Query, QueryType
+from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 from infrahub.types import is_large_attribute_type
 
 from ..query import AttributeMigrationQuery, MigrationBaseQuery
@@ -51,118 +53,63 @@ def _get_node_kinds(kind: str) -> list[str]:
     return [kind, f"Profile{kind}", f"Template{kind}"]
 
 
-class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
-    """Link each attribute whose kind changed to a value stored the way its new kind stores values.
+TOWARD_INDEXED_QUERY = """
+%(selection)s
 
-    `value_keys` maps each value converted to a large kind, as a string, to its key, and is empty otherwise.
-    """
-
-    name = "migration_attribute_kind"
-    insert_return = False
-
-    def __init__(self, value_keys: dict[str, str], **kwargs: Any) -> None:
-        self.value_keys = value_keys
-        super().__init__(**kwargs)
-
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
-        self.params.update(branch_params)
-        needs_index = not is_large_attribute_type(self.migration.new_attribute_schema.kind)
-        self.params["needs_index"] = needs_index
-        self.params["branch"] = self.branch.name
-        self.params["branch_level"] = self.branch.hierarchy_level
-        self.params["at"] = self.at.to_string()
-        self.params["attr_name"] = self.migration.previous_attribute_schema.name
-        self.params["user_id"] = self.user_id
-
-        # Set metadata for vertex properties on default/global branch
-        self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
-
-        if needs_index:
-            create_value_query = """
-    OPTIONAL MATCH (existing_av:AttributeValue {is_default: av_is_default, value: av_value})
-    WHERE "AttributeValueIndexed" IN labels(existing_av) = $needs_index
-    WITH existing_av WHERE existing_av IS NULL
+// ------------
+// group the attributes by value so that each value is looked up and created once
+// ------------
+WITH av.is_default AS av_is_default, av.value AS av_value,
+    collect({n: n, attr: attr, has_value_e: has_value_e, av: av}) AS updates
+CALL (av_is_default, av_value) {
+    OPTIONAL MATCH (existing_av:AttributeValue:AttributeValueIndexed {is_default: av_is_default, value: av_value})
+    RETURN existing_av
     LIMIT 1
-    CREATE (:AttributeValue:AttributeValueIndexed {is_default: av_is_default, value: av_value})"""
-            get_value_query = """
-    MATCH (new_av:AttributeValue:AttributeValueIndexed {is_default: av.is_default, value: av.value})
-    WHERE "AttributeValueIndexed" IN labels(new_av) = $needs_index
-    LIMIT 1"""
-        else:
-            self.params["value_keys"] = self.value_keys
-            # Indexed values never carry a key, so merging on the key cannot reuse one of them.
-            create_value_query = """
-    MERGE (:AttributeValue {
-        is_default: av_is_default, value: av_value, value_key: $value_keys[%(lookup)s]
-    })""" % {"lookup": VALUE_LOOKUP % {"value": "av_value"}}
-            get_value_query = """
+}
+CALL (av_is_default, av_value, existing_av) {
+    WITH av_is_default, av_value, existing_av
+    WHERE existing_av IS NULL
+    CREATE (created_av:AttributeValue:AttributeValueIndexed {is_default: av_is_default, value: av_value})
+    RETURN collect(created_av) AS created_avs
+}
+WITH updates, coalesce(existing_av, head(created_avs)) AS new_av
+UNWIND updates AS update
+WITH update.n AS n, update.attr AS attr, update.has_value_e AS has_value_e, update.av AS av, new_av
+
+%(edge_updates)s
+"""
+
+TOWARD_LARGE_QUERY = """
+%(selection)s
+
+// ------------
+// group the attributes by value so that each value is looked up and created once
+// ------------
+WITH av.is_default AS av_is_default, av.value AS av_value,
+    collect({n: n, attr: attr, has_value_e: has_value_e, av: av}) AS updates
+
+// ------------
+// indexed values never carry a key, so merging on the key cannot reuse one of them,
+// and LIMIT 1 links each attribute to one value when concurrent writes left equal values
+// ------------
+CALL (av_is_default, av_value) {
     MERGE (new_av:AttributeValue {
-        is_default: av.is_default, value: av.value, value_key: $value_keys[%(lookup)s]
+        is_default: av_is_default, value: av_value, value_key: $value_keys[%(lookup)s]
     })
-    LIMIT 1""" % {"lookup": VALUE_LOOKUP % {"value": "av.value"}}
-        # ruff: noqa: S608
-        query = """
-// ------------
-// start with all the Attribute vertices we might care about
-// ------------
-MATCH (n:%(schema_kinds)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)
-WHERE attr.name = $attr_name
-WITH DISTINCT n, attr
-
-// ------------
-// for each Attribute, find the most recent active edge and AttributeValue vertex that needs to be [un]indexed
-// ------------
-CALL (n, attr) {
-    MATCH (n)-[r1:HAS_ATTRIBUTE]->(attr:Attribute)-[r2:HAS_VALUE]->(av)
-    WHERE all(r IN [r1, r2] WHERE %(branch_filter)s)
-    WITH r2, av, r1.status = "active" AND r2.status = "active" AS is_active
-    ORDER BY r2.branch_level DESC, r2.from DESC, r2.status = "active" DESC, r1.branch_level DESC, r1.from DESC, r1.status = "active" DESC
+    RETURN new_av
     LIMIT 1
-    WITH r2 AS has_value_e, av, "AttributeValueIndexed" IN labels(av) AS is_indexed
-    WHERE is_active AND is_indexed <> $needs_index
-    RETURN has_value_e, av
 }
+UNWIND updates AS update
+WITH update.n AS n, update.attr AS attr, update.has_value_e AS has_value_e, update.av AS av, new_av
 
-// ------------
-// check if the correct AttributeValue vertex to use exists
-// create it if not
-// ------------
-WITH DISTINCT av.is_default AS av_is_default, av.value AS av_value
-CALL (av_is_default, av_value) {%(create_value_query)s
-}
+%(edge_updates)s
+"""
 
-// ------------
-// get all the AttributeValue vertices that need to be updated again and run the updates
-// ------------
-WITH 1 AS one
-LIMIT 1
-MATCH (n:%(schema_kinds)s)-[:HAS_ATTRIBUTE]->(attr:Attribute)
-WHERE attr.name = $attr_name
-WITH DISTINCT n, attr
-
-// ------------
-// for each Attribute, find the most recent active edge and AttributeValue vertex that needs to be [un]indexed
-// ------------
-CALL (n, attr) {
-    MATCH (n)-[r1:HAS_ATTRIBUTE]->(attr:Attribute)-[r2:HAS_VALUE]->(av)
-    WHERE all(r IN [r1, r2] WHERE %(branch_filter)s)
-    WITH r2, av, r1.status = "active" AND r2.status = "active" AS is_active
-    ORDER BY r2.branch_level DESC, r2.from DESC, r2.status = "active" DESC, r1.branch_level DESC, r1.from DESC, r1.status = "active" DESC
-    LIMIT 1
-    WITH r2 AS has_value_e, av, "AttributeValueIndexed" IN labels(av) AS is_indexed
-    WHERE is_active AND is_indexed <> $needs_index
-    RETURN has_value_e, av
-}
-
+EDGE_UPDATES_QUERY = """
 // ------------
 // create and update the HAS_VALUE edges
 // ------------
-CALL (attr, has_value_e, av) {
-    // ------------
-    // get the correct AttributeValue vertex b/c it definitely exists now
-    // ------------%(get_value_query)s
-
+CALL (attr, has_value_e, av, new_av) {
     // ------------
     // create the new HAS_VALUE edge
     // ------------
@@ -207,25 +154,106 @@ CALL (has_value_e) {
 CALL (attr, n) {
     WITH attr, n
     WHERE $set_metadata
-    SET attr.previous_updated_at = CASE WHEN attr.updated_at IS NULL OR attr.updated_at <> $at THEN attr.updated_at ELSE attr.previous_updated_at END,
-        attr.previous_updated_by = CASE WHEN attr.updated_at IS NULL OR attr.updated_at <> $at THEN attr.updated_by ELSE attr.previous_updated_by END
-    SET attr.updated_at = $at, attr.updated_by = $user_id
-    SET n.previous_updated_at = CASE WHEN n.updated_at IS NULL OR n.updated_at <> $at THEN n.updated_at ELSE n.previous_updated_at END,
-        n.previous_updated_by = CASE WHEN n.updated_at IS NULL OR n.updated_at <> $at THEN n.updated_by ELSE n.previous_updated_by END
-    SET n.updated_at = $at, n.updated_by = $user_id
+    %(stamp_attr)s
+    %(stamp_n)s
 }
-        """ % {
-            "schema_kinds": "|".join(_get_node_kinds(self.migration.previous_schema.kind)),
-            "branch_filter": branch_filter,
-            "create_value_query": create_value_query,
-            "get_value_query": get_value_query,
+"""
+
+
+class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
+    """Link each attribute whose kind changed to a value stored the way its new kind stores values.
+
+    `value_keys` maps each value converted to a large kind, as a string, to its key, and is empty otherwise.
+    """
+
+    name = "migration_attribute_kind"
+    insert_return = False
+    selected_node = "n"
+
+    def __init__(self, value_keys: dict[str, str], **kwargs: Any) -> None:
+        self.value_keys = value_keys
+        super().__init__(**kwargs)
+
+    def render_selection(self) -> str:
+        branch_filter, _ = self.branch.get_query_filter_path(at=self.at)
+        schema_kinds = _get_node_kinds(self.migration.previous_schema.kind)
+        # The index hint of the node scope applies only to a MATCH that holds the node alone.
+        node_match = self.render_node_match("n", schema_kinds)
+        node_attribute_match = f"{node_match}\nMATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute)"
+        return """
+%(node_attribute_match)s
+WHERE attr.name = $attr_name
+WITH DISTINCT n, attr
+
+// ------------
+// a branch-agnostic attribute's global edges are visible from nodes that do not exist on this branch
+// ------------
+CALL (n) {
+    MATCH (:Root)<-[r:IS_PART_OF]-(n)
+    WHERE %(branch_filter)s
+    RETURN r
+    ORDER BY r.branch_level DESC, r.from DESC
+    LIMIT 1
+}
+WITH n, attr
+WHERE r.status = "active"
+
+// ------------
+// for each Attribute, find the most recent active edge and AttributeValue vertex that needs to be [un]indexed
+// ------------
+CALL (n, attr) {
+    MATCH (n)-[r1:HAS_ATTRIBUTE]->(attr:Attribute)-[r2:HAS_VALUE]->(av)
+    WHERE all(r IN [r1, r2] WHERE %(branch_filter)s)
+    WITH r2, av, r1.status = "active" AND r2.status = "active" AS is_active
+    ORDER BY r2.branch_level DESC, r2.from DESC, r2.status = "active" DESC, r1.branch_level DESC, r1.from DESC, r1.status = "active" DESC
+    LIMIT 1
+    WITH r2 AS has_value_e, av, "AttributeValueIndexed" IN labels(av) AS is_indexed
+    WHERE is_active AND is_indexed <> $needs_index
+    RETURN has_value_e, av
+}
+""" % {"node_attribute_match": node_attribute_match, "branch_filter": branch_filter}
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        _, branch_params = self.branch.get_query_filter_path(at=self.at)
+        self.params.update(branch_params)
+        needs_index = not is_large_attribute_type(self.migration.new_attribute_schema.kind)
+        self.params["needs_index"] = needs_index
+        self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
+        self.params["at"] = self.at.to_string()
+        self.params["attr_name"] = self.migration.previous_attribute_schema.name
+        self.params["user_id"] = self.user_id
+
+        # Set metadata for vertex properties on default/global branch
+        self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
+
+        if needs_index:
+            template = TOWARD_INDEXED_QUERY
+        else:
+            template = TOWARD_LARGE_QUERY
+            self.params["value_keys"] = self.value_keys
+        stamp_attr, stamp_params = stamp_vertex_metadata("attr", at=self.at, operation_ats=self.operation_ats)
+        self.params.update(stamp_params)
+        stamp_n, stamp_params = stamp_vertex_metadata("n", at=self.at, operation_ats=self.operation_ats)
+        self.params.update(stamp_params)
+        edge_updates = EDGE_UPDATES_QUERY % {
+            "stamp_attr": stamp_attr,
+            "stamp_n": stamp_n,
         }
-        self.add_to_query(query)
+        self.add_to_query(
+            template
+            % {
+                "selection": self.render_selection(),
+                "edge_updates": edge_updates,
+                "lookup": VALUE_LOOKUP % {"value": "av_value"},
+            }
+        )
 
 
 class AttributeKindUpdateMigration(AttributeSchemaMigration):
+    phase: ClassVar[MigrationPhase] = MigrationPhase.ATTRIBUTE_KIND_UPDATE
     name: str = "attribute.kind.update"
-    queries: Sequence[type[AttributeMigrationQuery]] = [AttributeKindUpdateMigrationQuery]  # type: ignore[assignment]
+    queries: Sequence[type[AttributeMigrationQuery]] = [AttributeKindUpdateMigrationQuery]
 
     async def build_query(
         self,
@@ -256,6 +284,8 @@ class AttributeKindUpdateMigration(AttributeSchemaMigration):
             at=migration_input.at,
             migration=self,
             user_id=migration_input.user_id,
+            operation_ats=migration_input.operation_ats,
+            node_ids=migration_input.node_ids,
             value_keys=value_keys,
         )
 

@@ -95,27 +95,27 @@ class DiffCountChanges(Query):
         """
         # each edge type is read through its `from` index, then through its `to` index, so the cost follows
         # the number of edges in the window instead of the size of the graph
-        edge_reads = []
+        edge_reads: list[str] = []
         for edge_type in DatabaseEdgeType:
-            edge_reads.append(
-                """
+            edge_reads.extend(
+                (
+                    """
             MATCH (p)-[diff_rel:%(edge_type)s]->(q)
             USING INDEX SEEK diff_rel:%(edge_type)s(from)
             WHERE diff_rel.from >= $from_time AND diff_rel.from < $to_time
             %(count_vertices)s
                 """
-                % {"edge_type": edge_type.value, "count_vertices": count_vertices}
-            )
-            # an edge opened and closed in the window is already counted by the read on `from`
-            edge_reads.append(
-                """
+                    % {"edge_type": edge_type.value, "count_vertices": count_vertices},
+                    # an edge opened and closed in the window is already counted by the read on `from`
+                    """
             MATCH (p)-[diff_rel:%(edge_type)s]->(q)
             USING INDEX SEEK diff_rel:%(edge_type)s(to)
             WHERE diff_rel.to >= $from_time AND diff_rel.to < $to_time
             AND NOT coalesce(diff_rel.from >= $from_time AND diff_rel.from < $to_time, false)
             %(count_vertices)s
                 """
-                % {"edge_type": edge_type.value, "count_vertices": count_vertices}
+                    % {"edge_type": edge_type.value, "count_vertices": count_vertices},
+                )
             )
         query = """
         CALL () {
@@ -1024,25 +1024,25 @@ def _window_edge_reads(pattern: str, edge_types: tuple[DatabaseEdgeType, ...], t
         tail: The text that continues the `WHERE` clause of each read and returns its rows.
 
     """
-    edge_reads = []
+    edge_reads: list[str] = []
     for edge_type in edge_types:
         match = pattern % {"edge_type": edge_type.value}
-        edge_reads.append(
-            f"""
+        edge_reads.extend(
+            (
+                f"""
     MATCH {match}
     USING INDEX SEEK diff_rel:{edge_type.value}(from)
     WHERE diff_rel.from >= $from_time AND diff_rel.from < $to_time
     AND (diff_rel.to IS NULL OR diff_rel.to > $to_time)
     {tail}
-            """
-        )
-        edge_reads.append(
-            f"""
+            """,
+                f"""
     MATCH {match}
     USING INDEX SEEK diff_rel:{edge_type.value}(to)
     WHERE diff_rel.to >= $from_time AND diff_rel.to < $to_time
     {tail}
-            """
+            """,
+            )
         )
     return "UNION ALL".join(edge_reads)
 

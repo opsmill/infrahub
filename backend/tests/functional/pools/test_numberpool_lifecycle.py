@@ -273,13 +273,13 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
         await incident10.save()
 
         # Ensure the calculated allocation is correct for both pools
-        number_pool = [pool for pool in pools_after if pool.node_attribute.value == "number"][0]
+        number_pool = next(pool for pool in pools_after if pool.node_attribute.value == "number")
         number_allocation = await client.execute_graphql(
             query=number_pool_allocation_query.render(), variables={"pool_id": number_pool.id}
         )
         assert number_allocation["InfrahubResourcePoolAllocated"]["count"] == 6
 
-        new_number_pool = [pool for pool in pools_after if pool.node_attribute.value == "new_number"][0]
+        new_number_pool = next(pool for pool in pools_after if pool.node_attribute.value == "new_number")
         new_number_allocation = await client.execute_graphql(
             query=number_pool_allocation_query.render(), variables={"pool_id": new_number_pool.id}
         )

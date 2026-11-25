@@ -6,14 +6,14 @@ rolled back to their original state.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Generator, Sequence
+from typing import TYPE_CHECKING, Any, ClassVar, Generator, Sequence
 
-import httpx
 import pytest
 
 import infrahub.core.migrations.schema.tasks as tasks_module
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.schema.phases import MigrationPhase
 from infrahub.core.migrations.shared import MigrationInput, MigrationResult, SchemaMigration
 from infrahub.core.node import Node
 
@@ -37,6 +37,7 @@ if TYPE_CHECKING:
 class BrokenMigration(SchemaMigration):
     """A migration class that always fails."""
 
+    phase: ClassVar[MigrationPhase] = MigrationPhase.ATTRIBUTE_RENAME
     name: str = "broken_migration"
     queries: list = []  # Required field, but we won't use it since we override execute
 
@@ -141,10 +142,16 @@ class TestSchemaLoadRollback(TestSchemaLifecycleBase):
 
         # Attempt to load the schema - should fail and trigger rollback
 
-        with pytest.raises(httpx.HTTPStatusError) as exc_info:
-            await client.schema.load(schemas=[schema_step02])
-        # MigrationError is a 502
-        assert exc_info.value.response.status_code == 502, "Expected a 502 Internal Server Error"
+        response = await client.schema.load(schemas=[schema_step02])
+        assert response.errors == {
+            "data": None,
+            "errors": [
+                {
+                    "message": "Simulated migration failure - this is intentional for testing",
+                    "extensions": {"code": 422},
+                }
+            ],
+        }
 
         # Verify schema registry has been restored
         registry_schema_branch = registry.schema.get_schema_branch(name=default_branch.name)

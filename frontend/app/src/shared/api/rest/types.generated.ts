@@ -862,6 +862,11 @@ export interface components {
              * @description Human friendly representation of the choice.
              */
             label?: string | null;
+            /**
+             * @description Expected state of the choice after loading the schema
+             * @default present
+             */
+            state: components["schemas"]["SchemaState"];
         };
         /** EnterpriseRequiredResponse */
         EnterpriseRequiredResponse: {

@@ -187,7 +187,7 @@ class MenuItemDict(MenuItem):
         return {
             key: value
             for key, value in other_attributes.items()
-            if value != self_attributes[key] and key not in ["id", "children"]
+            if value != self_attributes[key] and key not in {"id", "children"}
         }
 
     @classmethod
