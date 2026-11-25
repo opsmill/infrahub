@@ -10,6 +10,8 @@ backend/infrahub/core/migrations/schema/attribute_name_update.py
   s_a61eb58394be2f::t_177eaa5642e0a1 35
 backend/infrahub/core/migrations/schema/attribute_kind_update.py
   s_a61eb58394be2f::t_177eaa5642e0a1 224,298-301
+  s_a61eb58394be2f::t_b94554130439c5 275-276
+  s_a61eb58394be2f::t_8ea552ecf1e8f6 179
 backend/infrahub/core/migrations/schema/attribute_supports_generated_schema.py
   s_ee52b28c9e680a::t_3a6f687be2d8b7 125-126,133,158
 backend/infrahub/core/migrations/schema/node_relationship_remove.py
