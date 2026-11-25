@@ -42,6 +42,7 @@ from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.database.validation import GraphValidationError
+from tests.component.core.migrations.schema.schema_load_helpers import register_candidate
 from tests.component.core.migrations.schema.second_run_helpers import (
     AGNOSTIC_BRANCH_KINDS,
     BRANCH_KINDS,
@@ -54,7 +55,6 @@ from tests.component.core.migrations.schema.second_run_helpers import (
     changed_vertex_uuids,
     get_migration_branch,
     read_graph_state,
-    register_candidate,
     run_migrations,
 )
 from tests.helpers.agnostic_edges import create_gadget, create_widget

@@ -5,7 +5,6 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.timestamp import Timestamp
@@ -18,7 +17,6 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.migrations.shared import SchemaMigration
-    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
     from tests.db_snapshot import DbEdge, DbNode, DbSnapshot
 
@@ -102,14 +100,6 @@ async def get_migration_branch(db: InfrahubDatabase, default_branch: Branch, bra
     if branch_kind is BranchKind.DEFAULT_WITH_READER_BRANCH:
         await create_branch(db=db, branch_name=READER_BRANCH_NAME)
     return default_branch
-
-
-async def register_candidate(db: InfrahubDatabase, branch: Branch, candidate: SchemaBranch) -> None:
-    """Store the candidate schema on the branch the way a schema load does before its migrations run."""
-    candidate.process()
-    registry.schema.set_schema_branch(name=branch.name, schema=candidate)
-    branch.update_schema_hash()
-    await branch.save(db=db)
 
 
 async def run_migrations(
