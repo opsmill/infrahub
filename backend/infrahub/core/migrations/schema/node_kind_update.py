@@ -9,7 +9,7 @@ from infrahub.core.path import SchemaPath
 
 from ..query import MigrationQuery
 from ..query.node_duplicate import NodeDuplicateQuery, SchemaNodeInfo
-from ..shared import MigrationInput, MigrationResult, SchemaMigration
+from ..shared import MigrationInput, MigrationResult, SchemaMigration, find_previous_attribute_schema
 from .node_attribute_add import NodeAttributeAddMigration
 
 if TYPE_CHECKING:
@@ -92,6 +92,10 @@ class NodeKindUpdateMigration(SchemaMigration):
         return result
 
     def _newly_inherited_attributes(self) -> list[AttributeSchema]:
-        new_names = set(self.new_schema.attribute_names) - set(self.previous_schema.attribute_names)
-        attributes = (self.new_schema.get_attribute(name=name) for name in sorted(new_names))
-        return [attribute for attribute in attributes if attribute.inherited]
+        # An inherited attribute renamed in the same load keeps its ID, and its own migration moves its values
+        return [
+            attribute
+            for attribute in sorted(self.new_schema.attributes, key=lambda attribute: attribute.name)
+            if attribute.inherited
+            and find_previous_attribute_schema(previous_schema=self.previous_schema, attribute=attribute) is None
+        ]
