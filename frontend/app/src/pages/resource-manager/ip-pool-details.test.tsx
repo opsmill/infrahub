@@ -63,6 +63,7 @@ const renderPage = (path = `/resource-manager/${pool.id}`) => {
   const page = (
     <IpPoolDetailsPage
       poolId={pool.id}
+      poolKind={pool.__typename}
       schema={prefixPoolSchema}
       permission={generatePermission()}
     />
@@ -96,6 +97,7 @@ describe("IpPoolDetailsPage", () => {
       error: null,
       isPending: true,
     } as unknown as ReturnType<typeof useGetIpPool>);
+    mockUtilization(undefined);
 
     // WHEN
     const component = await renderPage();

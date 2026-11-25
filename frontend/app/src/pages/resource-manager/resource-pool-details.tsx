@@ -65,7 +65,12 @@ function ResourcePoolDetailsPage({
           case IP_PREFIX_POOL:
           case IP_ADDRESS_POOL:
             return (
-              <IpPoolDetailsPage poolId={resourcePoolId} schema={schema} permission={permission} />
+              <IpPoolDetailsPage
+                poolId={resourcePoolId}
+                poolKind={schema.kind}
+                schema={schema}
+                permission={permission}
+              />
             );
           default:
             return <NoDataFound />;
