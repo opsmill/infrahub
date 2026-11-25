@@ -1,1 +1,2 @@
 Fixed a schema load that renamed a kind and, in the same load, renamed one of its attributes or removed one of its relationships: existing objects kept the old attribute name, and the relationship removal failed with `Unable to find the schema`.
+Fixed a schema load that renamed a kind and, in the same load, removed another kind that had a relationship to it: the load applied but left duplicate relationship edges on the nodes of the renamed kind.
