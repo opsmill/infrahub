@@ -1,0 +1,22 @@
+backend/infrahub/core/validators/node/hierarchy.py
+  s_4fa415708315a7::t_fe98173b62f8fa 149,154-163,190,218
+backend/tests/unit/core/validators/node/test_hierarchy.py
+  s_4fa415708315a7::t_2013d7098eb7e9 15,25,33,41,52,60,72
+  s_4fa415708315a7::t_133e27783af22c 1-14,16-24,26-32,34-40,42-51,53-59,61-71,73-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e20a9f4f65c6977028ace385ed9a79fd9fc0cde",
+  "prompts": {},
+  "sessions": {
+    "s_4fa415708315a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03e5d1ed-c4d3-4710-b21f-22b15f31d216",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
