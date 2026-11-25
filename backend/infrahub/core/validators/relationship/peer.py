@@ -32,6 +32,7 @@ class RelationshipPeerUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
 
         self.params["relationship_id"] = self.relationship_schema.identifier
         self.params["allowed_peer_kinds"] = self.allowed_peer_kinds
+        arrows = self.get_query_arrows(direction=self.relationship_schema.direction)
 
         # ruff: noqa: E501
         query = """
@@ -46,7 +47,7 @@ class RelationshipPeerUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
         WITH full_path, active_node
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         CALL (active_node) {
-            MATCH path = (active_node)-[rrel1:IS_RELATED]-(rel:Relationship { name: $relationship_id })-[rrel2:IS_RELATED]-(peer:Node)
+            MATCH path = (active_node)%(lstart)s[rrel1:IS_RELATED]%(lend)s(rel:Relationship { name: $relationship_id })%(rstart)s[rrel2:IS_RELATED]%(rend)s(peer:Node)
             WHERE all(
                 r in relationships(path)
                 WHERE (%(branch_filter)s)
@@ -78,7 +79,14 @@ class RelationshipPeerUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
         WITH start_node, current_peer, branch_name, current_path
         WHERE all(r in relationships(current_path) WHERE r.status = "active")
         AND NOT any(label IN LABELS(current_peer) WHERE label IN $allowed_peer_kinds)
-        """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
+        """ % {
+            "branch_filter": branch_filter,
+            "node_kind": self.node_schema.kind,
+            "lstart": arrows.left.start,
+            "lend": arrows.left.end,
+            "rstart": arrows.right.start,
+            "rend": arrows.right.end,
+        }
 
         self.add_to_query(query)
         self.return_labels = ["start_node.uuid", "branch_name", "current_peer.uuid"]

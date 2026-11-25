@@ -645,3 +645,22 @@ class TestPeerValidatorRenamedPeer:
                 )
             ]
         ]
+
+
+async def test_validator_hierarchy_parent_ignores_children(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple: dict[str, Node]
+) -> None:
+    site_schema = registry.schema.get_node_schema(name="LocationSite")
+    assert site_schema.get_relationship(name="parent").peer == "LocationRegion"
+
+    request = SchemaConstraintValidatorRequest(
+        branch=default_branch,
+        constraint_name="relationship.peer.update",
+        node_schema=site_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="LocationSite", field_name="parent"),
+        schema_branch=registry.schema.get_schema_branch(name=default_branch.name),
+    )
+
+    grouped_data_paths = await RelationshipPeerChecker(db=db, branch=default_branch).check(request)
+
+    assert [paths.get_all_data_paths() for paths in grouped_data_paths] == [[]]
