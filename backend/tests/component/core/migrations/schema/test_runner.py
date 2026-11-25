@@ -316,6 +316,8 @@ def _rename_and_change_schema() -> SchemaRoot:
             AttributeSchema(name="vin", kind="Text", optional=True),
             AttributeSchema(name="plate", kind="Text", optional=True),
             AttributeSchema(name="trim", kind="Text", optional=True),
+            AttributeSchema(name="badge", kind="Text", optional=True),
+            AttributeSchema(name="engine", kind="Text", optional=True),
         ]
     )
     car.uniqueness_constraints = [["name__value"], ["plate__value", "name__value"]]
@@ -333,6 +335,7 @@ def _rename_and_change_schema() -> SchemaRoot:
                 attributes=[
                     AttributeSchema(name="name", kind="Text", unique=True),
                     AttributeSchema(name="cargo", kind="Text", optional=True),
+                    AttributeSchema(name="axles", kind="Text", optional=True),
                 ],
             ),
             NodeSchema(
@@ -422,6 +425,8 @@ async def rename_data(
         "transmission": "manual",
         "vin": "vin-1",
         "trim": "sport",
+        "badge": "chrome",
+        "engine": "v6",
     }
     car = await _create_node(
         db=db, branch=branch, schema="TestCar", name="civic", plate="plate-1", owner=john, **car_values
@@ -438,12 +443,13 @@ async def rename_data(
         owner=template_person,
         **car_values,
     )
-    truck = await _create_node(db=db, branch=branch, schema="TestTruck", name="hauler", cargo="gravel")
+    truck_values = {"cargo": "gravel", "axles": "six"}
+    truck = await _create_node(db=db, branch=branch, schema="TestTruck", name="hauler", **truck_values)
     truck_profile = await _create_node(
-        db=db, branch=branch, schema="ProfileTestTruck", profile_name="truck-profile", cargo="gravel"
+        db=db, branch=branch, schema="ProfileTestTruck", profile_name="truck-profile", **truck_values
     )
     truck_template = await _create_node(
-        db=db, branch=branch, schema="TemplateTestTruck", template_name="truck-template", cargo="gravel"
+        db=db, branch=branch, schema="TemplateTestTruck", template_name="truck-template", **truck_values
     )
     trailer = await _create_node(db=db, branch=branch, schema="TestTrailer", name="trailer-1", towed_by=john)
     mechanic = await _create_node(db=db, branch=branch, schema="TestMechanic", name="mike")
@@ -532,23 +538,29 @@ class TestSchemaLoadsThatRenameAndChange:
                 db=db, node_label=node_label, attribute_name="registration", branch_name=target_branch.name
             ) == {node_id: ([active], [active])}
 
-    async def test_an_attribute_renamed_with_a_new_kind_while_its_node_kind_is_renamed_keeps_its_values(
+    async def test_attributes_renamed_with_a_new_kind_or_removed_while_their_node_kind_is_renamed(
         self, db: InfrahubDatabase, target_branch: Branch, rename_data: RenameData
     ) -> None:
-        def rename_truck_kind_and_cargo(candidate: SchemaBranch) -> None:
+        def rename_truck_kind_and_cargo_and_remove_axles(candidate: SchemaBranch) -> None:
             truck_schema = candidate.get_node(name="TestTruck")
             candidate.delete(name="TestTruck")
             truck_schema.name = "Lorry"
             cargo = truck_schema.get_attribute(name="cargo")
             cargo.name = "load"
             cargo.kind = "TextArea"
+            truck_schema.attributes = [attribute for attribute in truck_schema.attributes if attribute.name != "axles"]
             candidate.set(name="TestLorry", schema=truck_schema)
 
         await _load_change(
             db=db,
             branch=target_branch,
-            change_schema=rename_truck_kind_and_cargo,
-            expected_migration_names=["attribute.kind.update", "attribute.name.update", "node.name.update"],
+            change_schema=rename_truck_kind_and_cargo_and_remove_axles,
+            expected_migration_names=[
+                "attribute.kind.update",
+                "attribute.name.update",
+                "node.attribute.remove",
+                "node.name.update",
+            ],
         )
 
         lorries = await NodeManager.query(
@@ -559,6 +571,13 @@ class TestSchemaLoadsThatRenameAndChange:
             assert await _active_value_labels(db=db, node_id=node_id, attribute_name="load", branch=target_branch) == [
                 ["AttributeValue"]
             ]
+        for node_label in ("TestLorry", "ProfileTestLorry", "TemplateTestLorry"):
+            assert (
+                await _open_attribute_edge_statuses(
+                    db=db, node_label=node_label, attribute_name="axles", branch_name=target_branch.name
+                )
+                == {}
+            )
 
     async def test_a_relationship_removed_while_its_node_kind_is_renamed_leaves_the_node(
         self, db: InfrahubDatabase, target_branch: Branch, rename_data: RenameData
@@ -668,6 +687,49 @@ class TestSchemaLoadsThatRenameAndChange:
         assert [technician.id for technician in technicians] == [rename_data.mechanic]
         await verify_graph(db=db, kinds=["TestTechnician", "TestGarage"])
 
+    async def test_attributes_renamed_and_made_read_only_or_required_keep_the_values_they_support(
+        self, db: InfrahubDatabase, target_branch: Branch, rename_data: RenameData
+    ) -> None:
+        def rename_badge_read_only_and_engine_required(car_schema: NodeSchema) -> None:
+            badge = car_schema.get_attribute(name="badge")
+            badge.name = "emblem"
+            badge.read_only = True
+            engine = car_schema.get_attribute(name="engine")
+            engine.name = "motor"
+            engine.optional = False
+
+        await _load_car_change(
+            db=db,
+            branch=target_branch,
+            change_car=rename_badge_read_only_and_engine_required,
+            expected_migration_names=[
+                "attribute.name.update",
+                "attribute.name.update",
+                "attribute.optional.update",
+                "attribute.read_only.update",
+            ],
+        )
+
+        active = RelationshipStatus.ACTIVE.value
+        for node_label in ("ProfileTestCar", "TemplateTestCar"):
+            assert (
+                await _open_attribute_edge_statuses(
+                    db=db, node_label=node_label, attribute_name="emblem", branch_name=target_branch.name
+                )
+                == {}
+            )
+        assert await _open_attribute_edge_statuses(
+            db=db, node_label="TestCar", attribute_name="emblem", branch_name=target_branch.name
+        ) == {rename_data.car: ([active], [active])}
+        for node_label, node_id in (
+            ("ProfileTestCar", rename_data.car_profile),
+            ("TemplateTestCar", rename_data.car_template),
+            ("TestCar", rename_data.car),
+        ):
+            assert await _open_attribute_edge_statuses(
+                db=db, node_label=node_label, attribute_name="motor", branch_name=target_branch.name
+            ) == {node_id: ([active], [active])}
+
     async def test_an_attribute_renamed_and_made_unique_is_restored_by_the_rollback(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, target_branch: Branch, rename_data: RenameData
     ) -> None:
@@ -715,12 +777,21 @@ class TestSchemaLoadsThatRenameAndChange:
                 "TestPerson",
                 "ProfileTestPerson",
                 "TemplateTestPerson",
+                "TestTruck",
+                "ProfileTestTruck",
+                "TemplateTestTruck",
                 "TestLorry",
                 "ProfileTestLorry",
                 "TemplateTestLorry",
+                "TestTrailer",
+                "ProfileTestTrailer",
+                "TemplateTestTrailer",
                 "TestCaravan",
                 "ProfileTestCaravan",
                 "TemplateTestCaravan",
+                "TestMechanic",
+                "ProfileTestMechanic",
+                "TemplateTestMechanic",
                 "TestTechnician",
                 "ProfileTestTechnician",
                 "TemplateTestTechnician",
