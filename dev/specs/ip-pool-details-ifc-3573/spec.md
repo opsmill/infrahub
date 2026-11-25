@@ -66,7 +66,7 @@ The engineer scans the resource prefix list on the left. Each resource prefix sh
 **Acceptance Scenarios**:
 
 1. **Given** a pool with three resource prefixes, **When** the engineer opens the pool on the default branch, **Then** each resource prefix shows its prefix, a usage bar and the usage percentage, and the tooltip of the bar reads the default-branch share.
-2. **Given** a resource prefix that received an allocation on branch `b1`, **When** the engineer views the pool on `b1`, **Then** the bar shows the extra usage of `b1` as a second, lighter segment, and the tooltip names it as usage on this branch only.
+2. **Given** a resource prefix that received an allocation on branch `b1`, **When** the engineer views the pool on `b1`, **Then** the bar shows the extra usage of `b1` as a second, lighter segment, and the tooltip names it as usage on other branches only.
 3. **Given** resource prefixes whose kind has an allocation weight and whose weights are 100, 100 and 50, **When** the engineer reads the list, **Then** the list shows "Weight 100", "Weight 100", "Weight 50" in that order, which is the order in which the backend fills them, and the two resource prefixes with weight 100 are ordered by prefix: IP version, then address, then prefix length.
 4. **Given** resource prefixes whose kind has no allocation weight, **When** the engineer reads the list, **Then** no weight is shown and the list is ordered by prefix: IP version, then address, then prefix length.
 5. **Given** a pool with no resource prefix, **When** the engineer opens it, **Then** the list is replaced by a card that says the pool cannot allocate until it has a resource prefix, and no allocated table is shown.

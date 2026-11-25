@@ -9,9 +9,11 @@ import type {
   IpPoolResourceUsage,
 } from "@/entities/resource-manager/domain/model/ip-pool";
 import { IP_PREFIX_POOL, type IpPoolKind } from "@/entities/resource-manager/domain/model/pool";
-import { IpPoolUsageBar } from "@/entities/resource-manager/ui/ip-pool/details/ip-pool-usage-bar";
+import {
+  IpPoolUsageBar,
+  IpPoolUsageBreakdown,
+} from "@/entities/resource-manager/ui/ip-pool/details/ip-pool-usage-bar";
 import { formatUsagePercent } from "@/entities/resource-manager/ui/pool/format-usage-percent";
-import { UtilizationTooltipMessage } from "@/entities/resource-manager/ui/pool/utilization-tooltip-message";
 import { getIpPoolResourceUrl } from "@/entities/resource-manager/ui/routing/ip-pool-urls";
 
 interface NoResourcesCardProps {
@@ -51,21 +53,7 @@ interface TotalUsageProps {
 
 function TotalUsage({ usage }: TotalUsageProps) {
   return (
-    <Tooltip
-      nonInteractiveTrigger
-      message={
-        <Row>
-          <UtilizationTooltipMessage
-            title="Default branch"
-            value={formatUsagePercent(usage.utilizationDefaultBranch)}
-          />
-          <UtilizationTooltipMessage
-            title="This branch only"
-            value={formatUsagePercent(usage.utilizationBranches)}
-          />
-        </Row>
-      }
-    >
+    <Tooltip nonInteractiveTrigger message={<IpPoolUsageBreakdown usage={usage} />}>
       <Row className="shrink-0 gap-1 text-xs">
         <span className="text-foreground-muted">Total usage</span>
         <span className="font-medium text-foreground tabular-nums">

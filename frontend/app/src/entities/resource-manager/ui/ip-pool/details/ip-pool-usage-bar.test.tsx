@@ -36,7 +36,7 @@ describe("IpPoolUsageBar", () => {
     await expect.element(page.getByRole("tooltip")).toHaveTextContent("Default branch40%");
   });
 
-  it("shows the share this branch adds on hover of the second segment", async () => {
+  it("shows the share of the other branches on hover of the second segment", async () => {
     // GIVEN
     const usage = generateIpPoolResourceUsage({
       utilization: 60,
@@ -51,6 +51,25 @@ describe("IpPoolUsageBar", () => {
     await page.elementLocator(branchSegment as HTMLElement).hover();
 
     // THEN
-    await expect.element(page.getByRole("tooltip")).toHaveTextContent("This branch only20%");
+    await expect.element(page.getByRole("tooltip")).toHaveTextContent("Other branches only20%");
+  });
+
+  it("shows both shares and the total on hover of the percentage", async () => {
+    // GIVEN
+    const usage = generateIpPoolResourceUsage({
+      utilization: 40,
+      utilizationDefaultBranch: 40,
+      utilizationBranches: 0,
+    });
+    const component = await render(<IpPoolUsageBar usage={usage} />);
+    await initPointerTracking(component.locator);
+
+    // WHEN
+    await component.getByText("40%", { exact: true }).hover();
+
+    // THEN
+    await expect
+      .element(page.getByRole("tooltip"))
+      .toHaveTextContent("Default branch40%Other branches0%Utilization40%");
   });
 });

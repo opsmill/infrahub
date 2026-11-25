@@ -35,7 +35,7 @@ Paths are under `frontend/app/` unless they start with `tests/`, `docs/` or `cha
 
 - [x] T014 [P] [US1] `$RM/ui/ip-pool/details/ip-pool-default-fields.tsx` + test (US1 scenarios 1-4, kind opens the schema viewer, namespace href), `ip-pool-header.tsx` + test (title, description, metadata, id, refresh, actions, skeleton).
 - [x] T015 [P] [US4] The Actions menu in `$RM/ui/ip-pool/details/ip-pool-header.tsx` + test (the View schema link points to the prefix pool or address pool schema). The enabled and disabled states of Edit, Groups and Delete, with their tooltips, are tested on the shared menu in `number-pool-actions-menu.test.tsx`; opening the IP pool form from Edit is tested in the e2e test (T024).
-- [x] T016 [P] [US2] `$RM/ui/ip-pool/details/ip-pool-usage-bar.tsx` + test (two segments, tooltips "Default branch" and "This branch only", percent label) and `ip-pool-resources-card.tsx` + test (order, "Weight N" only when set, selected option, href, empty card).
+- [x] T016 [P] [US2] `$RM/ui/ip-pool/details/ip-pool-usage-bar.tsx` + test (two segments, tooltips "Default branch" and "Other branches only", percent label) and `ip-pool-resources-card.tsx` + test (order, "Weight N" only when set, selected option, href, empty card).
 - [x] T017 [P] [US3] `$RM/ui/ip-pool/details/ip-pool-allocations-table.tsx` + test (columns by pool kind, identifier "-", link, count, load more) and `ip-pool-allocations-card.tsx` + test (not found, empty).
 
 ## Phase 4: Page, route, deletions
