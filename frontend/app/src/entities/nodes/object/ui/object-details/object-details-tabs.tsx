@@ -1,4 +1,6 @@
-import { ScrollArea } from "@infrahub/ui";
+import { Button, ScrollArea } from "@infrahub/ui";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 
 import { Row } from "@/shared/components/container";
 import { LinkTab } from "@/shared/components/ui/link";
@@ -27,32 +29,115 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
   const isTaskTarget = isOfKind(TASK_TARGET, objectSchema);
   const isRepository = isOfKind(GENERIC_REPOSITORY_KIND, objectSchema);
 
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const { canScrollLeft, canScrollRight } = useHorizontalOverflow(viewportRef);
+
+  const scrollTabs = (direction: -1 | 1) => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    viewport.scrollBy({ left: direction * viewport.clientWidth * 0.8, behavior: "smooth" });
+  };
+
   return (
-    <ScrollArea type="auto" scrollX scrollY={false} className="shrink-0">
-      <nav aria-label="Tabs" className="pb-1">
-        <Row className="items-end gap-4 px-4" data-testid="object-details-tabs">
-          <LinkTab to={getObjectDetailsUrl(objectKind, objectId)} scrollIntoViewOnActive>
-            Details
-          </LinkTab>
-          {relationshipsTabs.map((tab) => (
-            <RelationshipTab
-              key={tab.name}
-              objectKind={objectKind}
-              objectId={objectId}
-              relationshipSchema={tab}
-            />
-          ))}
-          {isTaskTarget && <ObjectTaskTab objectKind={objectKind} objectId={objectId} />}
-          {isRepository && <RepositoryObjectsTab objectKind={objectKind} objectId={objectId} />}
-          {isRepository && (
-            <RepositoryCommitsTab
-              objectKind={objectKind}
-              objectId={objectId}
-              internalStatus={getRepositoryInternalStatus(objectData)}
-            />
-          )}
-        </Row>
-      </nav>
-    </ScrollArea>
+    <div className="relative shrink-0">
+      <ScrollArea ref={viewportRef} type="auto" scrollX scrollY={false}>
+        <nav aria-label="Tabs" className="pb-1">
+          <Row className="items-end gap-4 px-4" data-testid="object-details-tabs">
+            <LinkTab to={getObjectDetailsUrl(objectKind, objectId)} scrollIntoViewOnActive>
+              Details
+            </LinkTab>
+            {relationshipsTabs.map((tab) => (
+              <RelationshipTab
+                key={tab.name}
+                objectKind={objectKind}
+                objectId={objectId}
+                relationshipSchema={tab}
+              />
+            ))}
+            {isTaskTarget && <ObjectTaskTab objectKind={objectKind} objectId={objectId} />}
+            {isRepository && <RepositoryObjectsTab objectKind={objectKind} objectId={objectId} />}
+            {isRepository && (
+              <RepositoryCommitsTab
+                objectKind={objectKind}
+                objectId={objectId}
+                internalStatus={getRepositoryInternalStatus(objectData)}
+              />
+            )}
+          </Row>
+        </nav>
+      </ScrollArea>
+      {canScrollLeft && (
+        <div className="absolute top-0 bottom-1 left-0 flex items-center bg-linear-to-r from-background via-background to-transparent pr-6 pl-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            shape="square"
+            aria-label="Scroll tabs left"
+            onPress={() => scrollTabs(-1)}
+          >
+            <ChevronLeftIcon />
+          </Button>
+        </div>
+      )}
+      {canScrollRight && (
+        <div className="absolute top-0 right-0 bottom-1 flex items-center bg-linear-to-l from-background via-background to-transparent pr-1 pl-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            shape="square"
+            aria-label="Scroll tabs right"
+            onPress={() => scrollTabs(1)}
+          >
+            <ChevronRightIcon />
+          </Button>
+        </div>
+      )}
+    </div>
   );
+}
+
+// Tracks which sides of a horizontal scroll container hide content, and lets a vertical
+// mouse wheel scroll it sideways, since most mice cannot scroll horizontally.
+function useHorizontalOverflow(viewportRef: RefObject<HTMLDivElement | null>) {
+  const [overflow, setOverflow] = useState({ canScrollLeft: false, canScrollRight: false });
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const update = () => {
+      const maxScrollLeft = viewport.scrollWidth - viewport.clientWidth;
+      setOverflow({
+        canScrollLeft: viewport.scrollLeft > 1,
+        canScrollRight: viewport.scrollLeft < maxScrollLeft - 1,
+      });
+    };
+
+    const onWheel = (event: WheelEvent) => {
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      const maxScrollLeft = viewport.scrollWidth - viewport.clientWidth;
+      const atEdge =
+        (event.deltaY < 0 && viewport.scrollLeft <= 0) ||
+        (event.deltaY > 0 && viewport.scrollLeft >= maxScrollLeft - 1);
+      // Hand the wheel back to the page when the tabs fit or are already at that edge.
+      if (maxScrollLeft <= 0 || atEdge) return;
+      event.preventDefault();
+      viewport.scrollLeft += event.deltaY;
+    };
+
+    update();
+    viewport.addEventListener("scroll", update, { passive: true });
+    viewport.addEventListener("wheel", onWheel, { passive: false });
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(viewport);
+    if (viewport.firstElementChild) resizeObserver.observe(viewport.firstElementChild);
+
+    return () => {
+      viewport.removeEventListener("scroll", update);
+      viewport.removeEventListener("wheel", onWheel);
+      resizeObserver.disconnect();
+    };
+  }, [viewportRef]);
+
+  return overflow;
 }
