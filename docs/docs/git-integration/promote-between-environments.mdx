@@ -108,6 +108,86 @@ Connect the repository as a read-write repository, and set its default branch to
 
 The instance imports the Git branch of its environment into its `main` branch. [Connect a repository](./connect-repository.mdx) describes credentials and the other options.
 
+If the instance already has a read-only repository for the Git repository, [convert it](#convert-an-existing-read-only-repository) instead of connecting a new one.
+
+### Convert an existing read-only repository
+
+An instance that imports its Git branch through a read-only repository can switch to the read-write workflow without connecting a second repository. Convert the read-only repository to a read-write repository. Infrahub keeps the queries, Transformations, checks, Generator definitions and artifact definitions that it imported, with the same IDs, and keeps the artifacts, Generator actions and webhooks that use them. If you delete the read-only repository instead, Infrahub deletes the queries, Transformations, checks and Generator definitions with it.
+
+The conversion changes these things:
+
+- The repository keeps its name, location and credential. Its `ref` is removed, and the repository imports the Git branch named in `default_branch` instead. If you do not set `default_branch`, it is `main`.
+- The repository gets a new ID. Update any script or pipeline that uses the old ID.
+- Every other Infrahub branch changes to the `NEED_REBASE` status, as described in [object conversion](../objects/convert-object-kind.mdx#version-control-integration).
+- Right after the conversion, Infrahub synchronizes the repository. It imports the Git branch in `default_branch` into `main`, and creates an Infrahub branch for each Git branch that matches the import filter.
+
+Infrahub runs the conversion only on the `main` branch. Follow these steps on each instance:
+
+1. Back up the database, as described in [database backup](../deploy-manage/maintain-upgrade/database-backup/backup-and-restore.mdx).
+2. Merge or delete the Infrahub branches that you no longer need. Each branch that stays open changes to `NEED_REBASE`, and you rebase it in step 5.
+3. Set the configuration on the server and the task workers, as described in [Step 1](#step-1-set-the-configuration), and restart them. The conversion starts a synchronization, so the import filter has to be active first. Without it, the instance imports every Git branch.
+4. Convert the repository, and set `default_branch` to the Git branch of the environment, for example `develop`:
+
+   <Tabs groupId="method" queryString>
+   <TabItem value="Via the Web Interface" default>
+     1. Go to **Integrations > Git Repositories**, and select the read-only repository.
+     2. Select **Actions**, then **Convert object type**.
+     3. In **Select target object type**, select **Repository**. The form lists the fields of a read-write repository. Every field that also exists on the read-only repository is set to **From source**.
+     4. In **Default Branch**, replace `main` with the Git branch of the environment.
+     5. Select **Convert**. Infrahub opens the details page of the converted repository.
+   </TabItem>
+   <TabItem value="Via the GraphQL Interface">
+     Query the ID of the read-only repository:
+
+     ```graphql
+     query {
+       CoreReadOnlyRepository {
+         edges { node { id name { value } ref { value } } }
+       }
+     }
+     ```
+
+     Convert it on `main`. Only `default_branch` needs a value. Infrahub copies every field that has the same name on both kinds.
+
+     ```graphql
+     mutation {
+       ConvertObjectType(
+         data: {
+           node_id: "<repository-id>"
+           target_kind: "CoreRepository"
+           fields_mapping: { default_branch: { data: { attribute_value: "develop" } } }
+         }
+       ) {
+         ok
+         node
+       }
+     }
+     ```
+
+     The `node` in the response contains the new ID of the repository.
+   </TabItem>
+   <TabItem value="Via the Infrahub SDK">
+
+     ```python
+     from infrahub_sdk.convert_object_type import ConversionFieldInput, ConversionFieldValue
+
+     repository = client.get("CoreReadOnlyRepository", name__value="infra")
+     new_repository = client.convert_object_type(
+         node_id=repository.id,
+         target_kind="CoreRepository",
+         fields_mapping={
+             "default_branch": ConversionFieldInput(data=ConversionFieldValue(attribute_value="develop")),
+         },
+     )
+     ```
+
+   </TabItem>
+   </Tabs>
+
+5. [Rebase](../branches/rebase.mdx) each Infrahub branch that is still open.
+
+When the synchronization completes, the **Sync Status** of the repository is **In Sync**, and its **Commit** is the latest commit of the Git branch in `default_branch`.
+
 ### Develop a change on the development instance
 
 Develop the change on a `feature/` branch, and merge its Proposed Change on the development instance, as described in [develop changes from a Git repository](./develop-changes.mdx#with-a-read-write-repository). Infrahub then merges the change into `develop` and pushes `develop`.
