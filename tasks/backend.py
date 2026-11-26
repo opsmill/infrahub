@@ -885,8 +885,8 @@ def _write_sdk_generated_contract(
         f"{_render_field_table(read_only_fields)}"
         "}\n"
         "\n"
-        "# Optional fields a schema export keeps when set, keyed the same way: schema processing does\n"
-        "# not derive them, so a schema file without them fails to load.\n"
+        "# Optional fields a schema export keeps unless they hold their default, keyed the same way: a\n"
+        "# shortened export without them fails validation, so the export writes every value.\n"
         "KEEP_IN_EXPORT_FIELDS: dict[str, frozenset[str]] = {\n"
         f"{_render_field_table(keep_in_export_fields)}"
         "}\n"
@@ -1453,7 +1453,7 @@ class SdkSchemaGenerator:
         return {class_name: frozenset(fields) for class_name, fields in read_only.items() if fields}
 
     def _keep_in_export_fields(self) -> dict[str, frozenset[str]]:
-        """Field names a schema export never removes from a generated write class.
+        """Field names a schema export removes from a generated write class only when they hold their default value.
 
         Each entry is resolved through the parent chain, as the read-only table is.
         """

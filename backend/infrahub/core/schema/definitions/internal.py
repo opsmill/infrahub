@@ -103,7 +103,7 @@ class SchemaAttribute(BaseModel):
 
     @property
     def keep_in_export(self) -> bool:
-        # Processing does not derive these fields, so a schema export without them fails to load.
+        # A shortened schema export without these fields fails validation, so the export writes every value.
         return self.extra.get("keep_in_export", False)
 
     @property

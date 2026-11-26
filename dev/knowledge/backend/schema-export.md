@@ -96,11 +96,13 @@ with no change to the exporter, for example when processing starts deriving a va
 before. The export still loads to the same schema. Do not treat a text difference between two exports made
 on different releases as a defect on its own.
 
-## Fields the loop never removes: `keep_in_export`
+## Fields kept unless they hold their default: `keep_in_export`
 
-Some optional fields are not derived by processing, and a candidate without them fails validation, which
-sends the export to the `FULL` fallback. `inherit_from` is one: without it, a `human_friendly_id` that names an
-inherited relationship no longer validates. These fields are marked in the schema definitions, next to
+A candidate without some optional fields fails validation, which sends the export to the `FULL` fallback.
+This holds for fields processing never sets, such as `inherit_from`, and for fields it derives, such as a
+relationship `identifier` (`SchemaBranch.generate_identifiers`) or an attribute `unique` (set from
+`uniqueness_constraints`). Without `inherit_from`, a `human_friendly_id` that names an inherited relationship
+no longer validates. These fields are marked in the schema definitions, next to
 `visibility`, with `"keep_in_export": True` in the `extra` of the field
 (`backend/infrahub/core/schema/definitions/internal.py::ExtraField`). The mark never reaches the database.
 

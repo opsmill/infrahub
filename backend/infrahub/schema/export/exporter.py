@@ -75,9 +75,10 @@ def build_core_schema_baseline(name: str) -> SchemaBranch:
 def convert_deprecated_attribute_fields(attribute: Mapping[str, Any]) -> dict[str, Any]:
     """Return a copy of a dumped attribute that holds its parameters only in their current form.
 
-    Top-level `regex`, `min_length` and `max_length` move into `parameters` when the parameters of the kind
-    support them and do not set them already, and NumberPool `start_range` and `end_range` become one entry
-    of `ranges`. The given mapping and the values nested in it are not changed.
+    Top-level `regex`, `min_length` and `max_length` are removed when the parameters of the kind support them,
+    and their value is written into `parameters` only when `parameters` does not set it already. NumberPool
+    `start_range` and `end_range` become one entry of `ranges`. The given mapping and the values nested in it
+    are not changed.
     """
     converted = dict(attribute)
     parameters = dict(converted.get("parameters") or {})
