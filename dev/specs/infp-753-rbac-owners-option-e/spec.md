@@ -329,7 +329,7 @@ The names of fields, filters and object file keys in this section follow the [en
 
 #### Read and set owners through the API
 
-- **FR-010**: Users MUST be able to read an `ownership` block on a node, on each attribute and on each relationship field. The block MUST give the state (`OWNERS`, `NO_OWNER`, `INHERIT`), the origin (`SELF`, `PROFILE`, `TEMPLATE`, `PARENT`, `OBJECT`), the origin node, and the owners that apply. The origin node and each owner MUST give their ID, kind, display label and HFID. Each owner MUST say whether it is deleted.
+- **FR-010**: Users MUST be able to read an `ownership` block on a node, on each attribute and on each relationship field. The block MUST give the state (`OWNERS`, `NO_OWNER`, `INHERIT`), the origin (`SELF`, `PROFILE`, `TEMPLATE`, `PARENT`, `NODE`), the origin node, and the owners that apply. The origin node and each owner MUST give their ID, kind, display label and HFID. Each owner MUST say whether it is deleted.
   - Check: the examples of [eng, section 2][eng] return the documented responses.
 - **FR-011**: Infrahub MUST return the `ownership` block of a relationship also when the relationship has no peer. For a relationship with several peers, it MUST read the owners of the field once, not once for each peer. When a query asks only for the `ownership` of a relationship, Infrahub MUST NOT read the peers.
   - Check: count the database queries of a page of 50 devices with the `ownership` of `interfaces`.
@@ -606,6 +606,7 @@ The spike measures two limits for Infrahub Enterprise on this storage:
   - Answer of 2026-11-16: the reference data set is the one of this spec (section "Reference data set"). For SC-003, the limit of the owner filter is accepted for this phase (PD-8).
 - Whether the `ownership` block must give the profile as origin node for a field whose node takes its owners from a profile (E-15).
   - Answer of 2026-11-16: E-15 stays as written. The field shows its own node as origin node. The API gives the origin value `OBJECT`.
+  - Answer of 2026-11-26: the origin value is `NODE`, as in the engineering design that Wim approved on 2026-11-19. The origin node stays the node of the field.
 
 Guillaume Mazoyer, maintainer, gave these four answers on 2026-11-16. They confirm the values of PD-7 in [provisional-decisions.md](provisional-decisions.md) ("Decisions of 2026-11-16").
 

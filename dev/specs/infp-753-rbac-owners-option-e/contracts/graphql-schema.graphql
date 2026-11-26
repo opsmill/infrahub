@@ -2,6 +2,7 @@
 # The storage option does not change this contract.
 # Names are proposals. An API review fixes them before the SDK change (spec, "Open questions").
 # Decision of 2026-11-16 (../provisional-decisions.md, PD-6): these names are confirmed, with the field `name` on `MetadataNodeInput`.
+# Decision of 2026-11-26 (../provisional-decisions.md): the origin value of a field that takes the owners of its node is `NODE`, as in the engineering design.
 # Source of the owner shape: product meeting of 2026-11-09, engineering design section 2.
 # The shapes of `sources` and `permissions` are proposals of the plan (research R-8 and R-16).
 
@@ -18,7 +19,7 @@ enum OwnerOrigin {
   PROFILE
   TEMPLATE
   PARENT
-  OBJECT
+  NODE
 }
 
 """A node that metadata refers to: an owner, a source, or the origin of owners."""

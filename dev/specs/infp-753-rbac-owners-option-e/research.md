@@ -61,7 +61,7 @@ The Technical Context of the plan has no open "NEEDS CLARIFICATION" item. The op
 - Code: `graphql/types/ownership.py::InfrahubOwnership`, `InfrahubMetadataNode`, wired in `graphql/manager.py`.
 - The deprecated `owner` field of attributes returns the own owner when the attribute has exactly one, else null (FR-014). `graphql/manager.py` sets the deprecation reason.
 - Open: product did not sign off on the names. An API review fixes them before the SDK change (spec, "Questions for engineering").
-- The origin value `OBJECT` and the values of `applies_to` (R-15) use "object", as the object permission does. The engineering design names this origin `NODE`, so the API review confirms the name.
+- The origin value `NODE` is the name of the engineering design. The plan first used `OBJECT`, as the object permission does. Decision of 2026-11-26: `NODE` ([provisional-decisions.md](provisional-decisions.md), "Decisions of 2026-11-26"). The values of `applies_to` (R-15) keep "object".
 
 ## R-5: Write contract
 

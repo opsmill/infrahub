@@ -47,14 +47,15 @@ description: "Task list for owner and source metadata, Community side, storage o
 - [X] T009 Add the edge types `HAS_NO_OWNER`, `HAS_OWNER_SET`, `HAS_TARGET_OWNER_SET` and `HAS_OWNER_SOURCE` to `DatabaseEdgeType` in backend/infrahub/core/constants/database.py
 - [X] T010 Declare the `OwnerSet` and `NoOwner` vertices and the new edges in backend/infrahub/core/graph/schema.py, next to `GraphNodeRelationships` and `GraphAttributeRelationships` (data-model.md, "Graph structure")
 - [X] T011 Add a range index on `HAS_NO_OWNER(branch)` in backend/infrahub/core/graph/index.py, next to `owner_branch`
-- [X] T012 [P] Create `OwnerState` (`INHERIT`, `OWNERS`, `NO_OWNER`), `OwnerOrigin` (`SELF`, `PROFILE`, `TEMPLATE`, `PARENT`, `OBJECT`), `HolderKind`, `HolderKey` (`kind`, `attribute`, `identifier`, `direction`), `StoredOwnerState`, `StoredNodeOwnership`, `ResolvedOwnership` and `OwnerReference` as frozen dataclasses and enums in backend/infrahub/core/ownership/models.py
+- [X] T012 [P] Create `OwnerState` (`INHERIT`, `OWNERS`, `NO_OWNER`), `OwnerOrigin` (`SELF`, `PROFILE`, `TEMPLATE`, `PARENT`, `NODE`), `HolderKind`, `HolderKey` (`kind`, `attribute`, `identifier`, `direction`), `StoredOwnerState`, `StoredNodeOwnership`, `ResolvedOwnership` and `OwnerReference` as frozen dataclasses and enums in backend/infrahub/core/ownership/models.py
+  - `OwnerReference` and the origin value left pull request 1: commit `47ea980e82` (branch `gma-20261117-ifc3626-presquash`) and commit `f3b47495d9` removed them. T152 adds them back. The value is `NODE` since 2026-11-26.
 - [X] T013 [P] Create the constants (UUID of the `NoOwner` vertex, depth limit of the parent walk, filter names) in backend/infrahub/core/ownership/constants.py
 - [X] T014 Write the query that reads the stored owner state of the node holder for a list of node IDs, with the branch and time filters, in backend/infrahub/core/ownership/queries.py. No edge is inherit, only `HAS_NO_OWNER` is no owner, one or more `HAS_OWNER` are those owners
 - [X] T015 Write the queries that set a holder to own owners, to no owner and to inherit in backend/infrahub/core/ownership/queries.py, with the edge changes of data-model.md ("State changes"). A write on a branch hides each owner edge that the branch inherits
 - [X] T016 Create the repository that runs the queries and returns frozen dataclasses in backend/infrahub/core/ownership/repository.py
 - [X] T017 Create the writer that applies a parsed owner input to one holder inside the transaction of the caller in backend/infrahub/core/ownership/writer.py
-- [X] T018 Create the input parser in backend/infrahub/core/ownership/input.py. It accepts an owner as `id`, or as `hfid` with `kind`. It refuses the whole input when an owner is not found, is not an account or an account group, has an unknown kind, has neither an ID nor a kind with an HFID, or has an HFID of the wrong length (FR-003)
-- [X] T019 [P] Write unit tests for the five refusal cases of FR-003 and for the three values of D-5 (key left out, `null`, `[]`) in backend/tests/unit/core/ownership/test_input.py (moved to pull request 2 on 2026-11-19, with the code it tests)
+- [ ] T018 Create the input parser in backend/infrahub/core/ownership/input.py. It accepts an owner as `id`, or as `hfid` with `kind`. It refuses the whole input when an owner is not found, is not an account or an account group, has an unknown kind, has neither an ID nor a kind with an HFID, or has an HFID of the wrong length (FR-003) (moved to pull request 2 on 2026-11-19: commit `f3b47495d9` removed the code from pull request 1, and T152 adds it back)
+- [ ] T019 [P] Write unit tests for the five refusal cases of FR-003 and for the three values of D-5 (key left out, `null`, `[]`) in backend/tests/unit/core/ownership/test_input.py (moved to pull request 2 on 2026-11-19: commit `f3b47495d9` removed the code from pull request 1, and T152 adds it back)
 - [X] T020 [P] Write component tests that set each state on a node on a branch and read it back on that branch and on the default branch in backend/tests/component/core/ownership/test_storage.py (FR-001, FR-002)
 - [X] T021 Take a lock for the node in every mutation that writes owners or sources, with `InfrahubMultiLock` of backend/infrahub/lock.py, in `InfrahubMutationMixin` of backend/infrahub/graphql/mutations/main.py (research R-21). Not needed for FR-032: see the check of 2026-11-20 under "Pull Request Split"
   - Closed on 2026-11-20 without code: the database write lock on the node vertex gives FR-032 (provisional-decisions.md, "Decision of 2026-11-20"), and the tests of two open transactions in backend/tests/component/core/ownership/test_owner_sets.py cover it.
@@ -76,16 +77,19 @@ description: "Task list for owner and source metadata, Community side, storage o
 - [X] T024 [P] [US1] Write unit tests for the order of sources of a node (own state, then parent; own owners stop the walk; "no owner" stops the walk) in backend/tests/unit/core/ownership/test_resolution.py
 - [X] T025 [P] [US1] Write component tests for the walk to the parents: Parent relationship, hierarchy parent, and a node with both (the Parent relationship wins), and a node at the depth limit and one level beyond it, with the result that the engineering review decided, in backend/tests/component/core/ownership/test_resolver.py (FR-004, D-3, E-16)
 - [ ] T026 [P] [US1] Write GraphQL tests for scenarios 1 to 9 and 12 to 14 of user story 1 in backend/tests/component/graphql/metadata/test_graphql_node_owners.py, and a test that changes only the owners of a device and reads `updated_at` and `updated_by` of the device and of one interface (FR-053)
-- [X] T027 [P] [US1] Write component tests for the owner filter and the "no owner" filter with pagination and `count` in backend/tests/component/core/ownership/test_filter.py (FR-018 to FR-020) (moved to pull request 2 on 2026-11-19, with the code it tests)
+- [ ] T027 [P] [US1] Write component tests for the owner filter and the "no owner" filter with pagination and `count` in backend/tests/component/core/ownership/test_filter.py (FR-018 to FR-020) (moved to pull request 2 on 2026-11-19: commit `f3b47495d9` removed the code from pull request 1, and T152 adds it back)
 - [X] T028 [P] [US1] Write component tests that show an owner change in the diff with the display labels of the owners added and removed in backend/tests/component/core/diff/merge/test_ownership_diff.py. The diff of an owner change on a device lists one node, and the interfaces show the new owners at the next read (FR-006, FR-029)
 - [X] T029 [P] [US1] Write one merge scenario test for each case of FR-030 that needs node owners only (owners set, an owner added, an owner removed, "no owner" set, a node deleted on the branch, an owner group deleted on the branch, a parent changed on the branch) in backend/tests/component/core/diff/merge/test_ownership_merge.py. Each test reads on the branch, in the diff and on the default branch after the merge
 - [X] T030 [P] [US1] Write scenario tests for a rebase after both sides changed the same owners, and for two branches merged one after the other, in backend/tests/component/core/diff/merge/test_ownership_rebase.py (FR-030)
-- [ ] T031 [P] [US1] Write a test that runs two first writes of owners on one node at the same time, and checks that the node has the complete state of one write, in backend/tests/component/core/ownership/test_concurrent_owner_writes.py (FR-032)
+- [X] T031 [P] [US1] Write a test that runs two first writes of owners on one node at the same time, and checks that the node has the complete state of one write, in backend/tests/component/core/ownership/test_concurrent_owner_writes.py (FR-032)
+  - Dropped on 2026-11-26 by the maintainer, with no new file. `test_two_first_writes_in_open_transactions_create_one_set` and `test_two_writes_of_one_owner_in_open_transactions_create_one_edge` in backend/tests/component/core/ownership/test_owner_sets.py cover FR-032.
 - [ ] T032 [P] [US1] Write a test that reads the activity log after a change of owners and again after a rename of the owner group, and compares the display labels of the owners, in backend/tests/component/graphql/queries/test_event_owner_changes.py (FR-031)
 - [ ] T033 [P] [US1] Write an E2E test that sets owners on a device, reads the inherited owners of an interface, filters by owner and reads the deprecated `owner` field of an attribute, through the `infrahub_client` fixture on the full stack, in tests/e2e/ownership/test_node_owners.py. The test opens no page (user stories 1 and 5)
 - [X] T034 [P] [US1] Write a component test that changes the kind of a node with owners and reads the owners after the change in backend/tests/component/core/migrations/schema/test_node_kind_update_owners.py (FR-040)
 
 ### Implementation for User Story 1
+
+- [ ] T152 [US1] Do this task first in pull request 2. Add back the code and the tests that pull request 1 removed because they had no caller: revert commit `f3b47495d9` (the input parser, `find_ids_by_hfid`, `resolve_field_ownership`, `resolve_target_ownership`, the owner and source filters with their constants and their list query code, and their tests), and reverse commit `47ea980e82` (`OwnerReference`, `OwnershipResolver.resolve_fields` and the field read of the parents). Name the origin of a field that takes the owners of its node `NODE`, not `OBJECT` (decision of 2026-11-26). Adapt the code to the changes that pull request 1 made after these commits, and keep the removal of the query-count asserts of commit `259305a5c8`. This completes the pull request 2 part of T012, T018, T019, T027, T043, T075, T114 and T136
 
 - [X] T035 [US1] Implement the order of sources of a node as a pure function in backend/infrahub/core/ownership/resolution.py (FR-004)
 - [X] T036 [US1] Implement the batch read of the owners that apply in backend/infrahub/core/ownership/resolver.py: one read of the stored states and the parents of all requested nodes, then the walk through the Parent relationship and the hierarchy parent (FR-004, FR-017)
@@ -95,8 +99,8 @@ description: "Task list for owner and source metadata, Community side, storage o
 - [ ] T040 [US1] Add `ownership` to `node_metadata`, the `node_metadata` input to the create, update and upsert mutations, and the filters `node_metadata__owners__ids` and `node_metadata__owners__isnull` in backend/infrahub/graphql/manager.py
 - [ ] T041 [US1] Apply the `node_metadata.owners` input after the node is saved, inside the transaction, in `mutate_create`, `mutate_update_object` and `mutate_upsert` of backend/infrahub/graphql/mutations/main.py (FR-013)
 - [X] T042 [US1] Close the owner edges of a node when the node is deleted in `backend/infrahub/core/node/__init__.py` (E-11)
-- [X] T043 [US1] Implement the owner filter and the "no owner" filter in backend/infrahub/core/ownership/filter.py, with the approach that the spike chose, and call it from `NodeGetListQuery` in backend/infrahub/core/query/node.py so that it applies before pagination (FR-018 to FR-020) (moved to pull request 2 on 2026-11-19, with its tests)
-- [ ] T044 [US1] Check that a query without owners in its fields or filters runs no owner query, with a query count test in backend/tests/component/graphql/metadata/test_graphql_node_owners.py (FR-009)
+- [ ] T043 [US1] Implement the owner filter and the "no owner" filter in backend/infrahub/core/ownership/filter.py, with the approach that the spike chose, and call it from `NodeGetListQuery` in backend/infrahub/core/query/node.py so that it applies before pagination (FR-018 to FR-020) (moved to pull request 2 on 2026-11-19: commit `f3b47495d9` removed the code from pull request 1, and T152 adds it back)
+- [ ] T044 [US1] Check that a query without owners in its fields or filters runs no owner query (FR-009). Since 2026-11-18, no test asserts a count of queries (commit `259305a5c8`): the benchmarks of T061 measure FR-009, and the pull request text gives their result
 - [X] T045 [US1] Write the diff query for owner edges with one pattern for each edge type in backend/infrahub/core/diff/query/ownership.py
 - [X] T046 [US1] Build one diff property for each holder, with the sorted list of owner IDs as value, in backend/infrahub/core/diff/ownership_differ.py, and the reserved field names in backend/infrahub/core/diff/ownership_fields.py (now in backend/infrahub/core/ownership/fields.py)
 - [X] T047 [US1] Call the owner differ from backend/infrahub/core/diff/calculator.py and backend/infrahub/core/diff/query_parser.py
@@ -160,6 +164,7 @@ description: "Task list for owner and source metadata, Community side, storage o
 
 - [X] T074 [US2] Write the queries that read and write the `OwnerSet` that a profile or an object template gives to its nodes, reached by `HAS_TARGET_OWNER_SET` with no key, in backend/infrahub/core/ownership/queries.py. A write first reuses a set created by any branch
 - [X] T075 [US2] Read the profiles of each requested node with their priority in the batch read of backend/infrahub/core/ownership/repository.py, and apply the order of D-6 in backend/infrahub/core/ownership/resolution.py (FR-025)
+  - `resolve_target_ownership` left pull request 1 with commit `f3b47495d9`. T152 adds it back.
 - [ ] T076 [US2] Add `target_ownership` to `node_metadata` of profiles and object templates, and the `target_owners` input, in backend/infrahub/graphql/manager.py and backend/infrahub/graphql/types/ownership.py. Refuse `target_owners` on other kinds in backend/infrahub/core/ownership/input.py (FR-012)
 - [X] T077 [US2] Copy the owners that the template and its subtemplates give to the new node and to its components, with a `HAS_OWNER_SOURCE` edge to the template, in the template functions of backend/infrahub/core/node/create.py (`read_template_components`, `read_subtemplates`, `handle_template_relationships`). Read the owners in a fixed number of queries (FR-026, FR-027)
 - [X] T078 [US2] Close the "from template" mark when a user writes owners on the holder, and read a holder with the mark as `INHERIT` with the origin `TEMPLATE`, in backend/infrahub/core/ownership/writer.py and backend/infrahub/core/ownership/models.py (D-7)
@@ -221,7 +226,7 @@ description: "Task list for owner and source metadata, Community side, storage o
 ### Tests for User Story 3
 
 - [X] T105 [P] [US3] Write unit tests for the order of sources of a field (own state, profile field owners by priority, template copy, node) in backend/tests/unit/core/ownership/test_resolution.py (FR-005)
-- [ ] T106 [P] [US3] Write GraphQL tests for scenarios 1 to 4 and 9 to 11 of user story 3 in backend/tests/component/graphql/metadata/test_graphql_field_owners.py, with a count of the database queries for a page of 50 devices with the `ownership` of `interfaces` (FR-010, FR-011)
+- [ ] T106 [P] [US3] Write GraphQL tests for scenarios 1 to 4 and 9 to 11 of user story 3 in backend/tests/component/graphql/metadata/test_graphql_field_owners.py (FR-010, FR-011). The tests assert no count of database queries (decision of 2026-11-18)
 - [ ] T107 [P] [US3] Write GraphQL tests for scenarios 5 to 8 of user story 3 (read and write of the deprecated `owner` field with zero, one and two own owners, and `properties { owner }` on links) in backend/tests/component/graphql/metadata/test_graphql_owner_field.py (FR-014, FR-015, FR-007)
 - [X] T108 [P] [US3] Write migration tests that rename and remove an attribute and a relationship that have owners, on the default branch and on a branch that is then merged, in backend/tests/component/core/migrations/schema/test_owner_field_migrations.py (FR-041)
 - [X] T109 [P] [US3] Write a merge test for two branches that each set the first owners of the same relationship field in backend/tests/component/core/diff/merge/test_ownership_merge.py (FR-032, E-12)
@@ -234,6 +239,7 @@ description: "Task list for owner and source metadata, Community side, storage o
 - [X] T112 [US3] Write the queries that read and write the `OwnerSet` of a relationship field, reached by `HAS_OWNER_SET` with the key `identifier` and `direction`, in backend/infrahub/core/ownership/queries.py. A write first reuses a set with the same key under the same node, created by any branch
 - [X] T113 [US3] Store several `HAS_OWNER` edges and the `HAS_NO_OWNER` edge on an attribute vertex in backend/infrahub/core/query/attribute.py and backend/infrahub/core/attribute.py
 - [X] T114 [US3] Implement the order of sources of a field in backend/infrahub/core/ownership/resolution.py, and read the field holders in the batch read of backend/infrahub/core/ownership/repository.py (FR-005)
+  - `resolve_field_ownership` left pull request 1 with commit `f3b47495d9`, and `OwnershipResolver.resolve_fields` with the field read of the parents left it with commit `47ea980e82`. T152 adds them back.
 - [ ] T115 [US3] Add `ownership` to every attribute type and every relationship field type in backend/infrahub/graphql/manager.py
 - [ ] T116 [US3] Return the `ownership` of a relationship without a read of the peers, also when the relationship has no peer, in backend/infrahub/graphql/resolvers/many_relationship.py and backend/infrahub/graphql/resolvers/single_relationship.py (FR-011)
 - [ ] T117 [US3] Add the `field_owners` and `target_field_owners` inputs to `NodeMetadataInput` in backend/infrahub/graphql/types/ownership.py, the `owners` input next to `value` in backend/infrahub/graphql/mutations/attribute.py, and `target_field_ownership(fields:)` in backend/infrahub/graphql/manager.py. Refuse a field name that is not an attribute or a relationship of the kind in backend/infrahub/core/ownership/input.py
@@ -302,7 +308,7 @@ description: "Task list for owner and source metadata, Community side, storage o
   - The read of the sources is part of the read of the stored owner states (`NodeOwnerStateReadQuery`). `sources.py` holds the write, the filter and the function that takes the sources out of the read.
   - The sources of a node are the state of one more holder, `NODE_SOURCES_HOLDER`. So the writer, the diff, the merge and the object conversion use the code of the owners.
 - [ ] T135 [US4] Add `sources` to `node_metadata`, the `sources` input, and the filter `node_metadata__sources__ids` in backend/infrahub/graphql/manager.py and backend/infrahub/graphql/types/ownership.py. A user with update permission on the kind can change sources (FR-034, D-10)
-- [X] T136 [US4] Apply the source filter before pagination in `NodeGetListQuery` of backend/infrahub/core/query/node.py (FR-020)
+- [ ] T136 [US4] Apply the source filter before pagination in `NodeGetListQuery` of backend/infrahub/core/query/node.py (FR-020) (moved to pull request 2 on 2026-11-19: commit `f3b47495d9` removed the code from pull request 1, and T152 adds it back)
   - The filter needs the hint `USING INDEX SEEK source:Node(uuid)` to start from the source ([measurements.md](measurements.md), "Source filter and the list query").
 - [X] T137 [US4] Include node sources in the diff, the merge and the changelog under the reserved name `node_metadata__sources` in backend/infrahub/core/diff/ownership_differ.py, backend/infrahub/core/diff/query/bulk_merge.py and backend/infrahub/core/changelog/diff.py (FR-029, FR-031)
   - The diff shows the sources as one `HAS_SOURCE` property of the attribute `node_metadata__sources`. The conflict rule of owner lists and the block of the rebase apply to it.
@@ -407,10 +413,10 @@ The pull requests follow the layers, not the phases. Each pull request holds one
 
 - **No pull request**: T001 to T005, T008, T022, T023, T145. These are the decisions, the API review, the spike and the measures.
 - **1. Storage, branch and upgrade**
-  - Database layer: T006, T007, T009 to T020, T024, T025, T027, T035, T036, T042, T043, T053, T061, T069 to T071, T074, T075, T077, T078, T105, T112 to T114, T118, T120, T134, T136, T144, T146
+  - Database layer: T006, T007, T009 to T017, T020, T024, T025, T035, T036, T042, T053, T061, T069 to T071, T074, T075, T077, T078, T105, T112 to T114, T118, T120, T134, T144, T146
   - Branch layer: T028 to T030, T045 to T051, T072, T079, T109, T121, T132, T137
   - Upgrade: T034, T054, T055, T057 to T059, T062 to T066, T080, T108, T122, T123, T138
-- **2. GraphQL API**: T021, T026, T031 to T033, T037 to T041, T044, T052, T056, T060, T067, T068, T073, T076, T106, T107, T110, T111, T115 to T117, T119, T131, T133, T135
+- **2. GraphQL API**: T152 first, then T018, T019, T021, T026, T027, T031 to T033, T037 to T041, T043, T044, T052, T056, T060, T067, T068, T073, T076, T106, T107, T110, T111, T115 to T117, T119, T131, T133, T135, T136
 - **3. Permissions and object files**
   - Permission layer: T081 to T104, T147
   - Account group tree: T124 to T130
@@ -435,9 +441,9 @@ Check of 2026-11-20: T021 is not needed for FR-032.
 - `test_two_first_writes_in_open_transactions_create_one_set` and `test_two_writes_of_one_owner_in_open_transactions_create_one_edge` in `backend/tests/component/core/ownership/test_owner_sets.py` cover the case of T031.
 - An owner input replaces the whole list (D-5). So a mutation does not read the owners before the save.
 - Pull request 2 needs T021 only if a mutation reads the owners before the save and writes a list that it makes from them.
-- Not decided: whether pull request 2 drops T021 and T031. The maintainer decides.
+- Decided: T021 on 2026-11-20 and T031 on 2026-11-26. Both are closed.
 
-Decision of 2026-11-20: T021 is closed, and no mutation takes `InfrahubMultiLock` for owners. The database lock on the node vertex stays (provisional-decisions.md, "Decision of 2026-11-20"). Not decided: whether pull request 2 drops T031.
+Decision of 2026-11-20: T021 is closed, and no mutation takes `InfrahubMultiLock` for owners. The database lock on the node vertex stays (provisional-decisions.md, "Decision of 2026-11-20"). Decision of 2026-11-26: pull request 2 drops T031 (see T031).
 
 ## Implementation Strategy
 

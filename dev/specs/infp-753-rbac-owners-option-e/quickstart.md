@@ -90,7 +90,7 @@ Run each scenario as an administrator in the GraphQL sandbox, unless the step na
 ### 4. Field owners and the deprecated `owner` field (user story 3)
 
 1. Set `field_owners` on a relationship without peers.
-   - Expected: the relationship returns its `ownership` block with `origin: SELF`. The other fields return `origin: OBJECT`.
+   - Expected: the relationship returns its `ownership` block with `origin: SELF`. The other fields return `origin: NODE`.
 2. Read `owner` on an attribute with one own owner, then with two.
    - Expected: that owner, then null.
 

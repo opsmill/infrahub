@@ -118,3 +118,13 @@ Reasons. The evidence is in the scratch files of the review of 2026-11-20 (`revi
 - A Redis lock waits with no limit. `RedisLock.acquire` loops until it gets the key (`backend/infrahub/lock.py:188-209` on `origin/develop`), and a lock that is not an init lock gets no time to live (`lock.py:612-627` on `origin/develop`). The lock modes of pull request 11410 do not change this. Two writers that take two node locks in the reverse order wait without end. Neo4j finds a deadlock of database locks, and the mutation retries it (`retry_db_transaction`).
 
 Update time, changed after the review of 2026-11-23: `Node._update` reads the update time after the lock when the caller gives no time. With the time read before the lock, an owner update that waited behind another owner update wrote at an earlier time, did not see the owners of the other update, and left both lists active. A value update that waits behind a delete wrote an active `HAS_VALUE` edge on a deleted attribute: the same probe saw it in 7 of 160 pairs with the lock and in 28 of 80 pairs on `develop`. With the update time read after the lock, it saw 0 of 80, and the update fails. `NodeLockQuery` now also reads, after the lock, whether the node is active, so such an update raises `NodeNotFoundError`. A write of owners with a time from before the lock fails when the holder has an owner edge with a later time. `develop` has the `HAS_VALUE` bug without this change.
+
+## Decisions of 2026-11-26
+
+Guillaume Mazoyer, maintainer, made these decisions on 2026-11-26, before pull request 2 (GraphQL API).
+
+- The origin value of a field that takes the owners of its node is `NODE`, not `OBJECT`. This replaces the answer of 2026-11-16 to E-15 (spec.md) and the value of PD-6 for this one name.
+  - Reason: the engineering design names it `NODE` (sections 2 and 3, and the GraphQL examples of 2026-11-09). Wim approved this shape at the status meeting of 2026-11-19, after PD-6.
+  - The origin node does not change: it is the node of the field.
+- Task T031 is dropped. Two tests of `backend/tests/component/core/ownership/test_owner_sets.py` already run two first writes of owners in two open transactions on one node. Task T021 was closed on 2026-11-20 for the same reason.
+- No test asserts a count of database queries (decision of 2026-11-18, commit `259305a5c8`). Tasks T044 and T106 follow this rule: the benchmarks of T061 measure FR-009.
