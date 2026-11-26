@@ -1,0 +1,32 @@
+backend/tests/component/api/test_20_graphql.py
+  s_6cf9025f3dcfd8::t_5dad5336ccfc8c 269,271-272,279-282,284-288
+  s_6cf9025f3dcfd8::t_c874fb705cf5bf 274
+  s_6cf9025f3dcfd8::t_44626f6eb63bcb 270,273,275-278,283
+  s_6cf9025f3dcfd8::t_1d98fbc2037ed9 21-26
+  s_6cf9025f3dcfd8::t_a998b5f994cb03 289-291
+  s_6cf9025f3dcfd8::t_ef472bf6aed15f 27
+  s_6cf9025f3dcfd8::t_0a8d9ff69755d0 28-30
+  s_6cf9025f3dcfd8::t_651b1e44c4cf3f 31-39,292
+  s_6cf9025f3dcfd8::t_29bbcd52913d8c 268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0c1ab826491d51dc5e8cb37c6cd508454aa499e6",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_6cf9025f3dcfd8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3af1dfcc-e45f-4a6e-8b9a-ae53989039d0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
