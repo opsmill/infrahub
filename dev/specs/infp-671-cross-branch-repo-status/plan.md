@@ -41,7 +41,7 @@ The rule was lifted when increment B deleted the stub.
 
 **Project Type**: Web application backend slice; frontend consumes the generated types
 
-**Performance Goals**: Database queries per page independent of branch count up to `database.query_size_limit` (three reads: repository lookup, branch list, attribute primitive; the repository lookup goes through `NodeManager`, so it is more than one statement and no absolute figure is promised); periodic sync issues `ceil(N / 100)` attribute reads for N branches across all repositories, on top of one `NodeManager.query` for the repository nodes whose statement count does not depend on N
+**Performance Goals**: Database queries per page independent of branch count (three reads: repository lookup, branch list, attribute primitive; the repository lookup goes through `NodeManager`, so it is more than one statement and no absolute figure is promised); periodic sync issues `ceil(N / 100)` attribute reads for N branches across all repositories, on top of one `NodeManager.query` for the repository nodes whose statement count does not depend on N
 
 **Constraints**: Read-only; zero message-bus sends and no task worker on the path; permission check covering default and non-default branches regardless of execution branch; `limit` default 40 with no hard maximum
 
@@ -238,7 +238,7 @@ of patching a module attribute, which `.agents/rules/testing-python.md` rules ou
 | Permission enforced in the resolver rather than the checker pipeline | The analyzer ignores hand-written root fields and the pipeline never requires `ALLOW_ALL` | A new pipeline checker keyed on one root field name is more machinery for one query; revisit if a second cross-branch query appears |
 | `Branch.get_list(limit=None)` widening | The resolver must read every in-scope branch before attribute filters apply | Passing a large literal limit is an arbitrary cap; a preceding count query adds a statement to every page |
 | E2E test deferred to the Branches card (Principle IV deviation) | The user-facing surface is the card, owned by the frontend team and built against this contract | An E2E test that only fires a GraphQL document adds nothing over the component tests. Accepted only because T059 opens a tracked subtask carrying the requirement; without that it is an unrecorded miss against a MUST |
-| ~~Id tiebreaker added to `StandardNodeGetListQuery`~~ **reversed during implementation** | Claimed the unpaged chunked read is only correct over a total order | Both preconditions are unreachable: `query_size_limit` defaults to 5000 against a 200-branch scale, so there is one chunk and no boundary, and `created_at` is per-instance at microsecond precision, so ties do not occur. `spec.md` asks for neither and says no repository is expected to exceed the query size limit. `StandardNodeGetListQuery` is left untouched, which also means this feature changes no shared machinery |
+| ~~Id tiebreaker added to `StandardNodeGetListQuery`~~ **reversed during implementation** | Claimed the unpaged chunked read is only correct over a total order | Both preconditions are unreachable: `query_size_limit` defaults to 5000 against a 200-branch scale, so there is one chunk and no boundary, and `created_at` is per-instance at microsecond precision, so ties do not occur. `spec.md` asks for neither and says no repository is expected to exceed the query size limit. `StandardNodeGetListQuery` is left untouched, which also means this feature changes no shared machinery. Since IFC-3277, a read without a limit runs as one query, so the chunked path no longer exists. |
 
 ---
 
@@ -250,7 +250,7 @@ of patching a module attribute, which `.agents/rules/testing-python.md` rules ou
    the core `test_branch.py`. No argument on `InfrahubBranchQueryList`: the resolver reads through
    `Branch.get_list`, nothing queries `InfrahubBranch`, and exposing it there would be public API
    with no caller (research.md, Decision 5, reversed).
-2. `Branch.get_list` accepts `limit=None` and reads all rows through the base chunked path.
+2. `Branch.get_list` accepts `limit=None` and reads all rows in one query.
 3. GraphQL types in `graphql/types/repository_branch_status.py`; resolver, wiring and field in
    `graphql/queries/repository_branch_status/`; registration on `InfrahubBaseQuery` importing
    `field.py` directly, with no re-export through `graphql/queries/__init__.py`.
@@ -269,7 +269,7 @@ of patching a module attribute, which `.agents/rules/testing-python.md` rules ou
 6. Leave `StandardNodeGetListQuery` alone. An earlier revision added an id tiebreaker to its
    timestamp `ORDER BY` arms for the unpaged chunked read; that guards a scenario needing both
    more than `query_size_limit` (5000) branches and a microsecond-precision timestamp collision,
-   and this feature's scale is 200.
+   and this feature's scale is 200. Since IFC-3277, a read without a limit runs as one query, so the chunked path no longer exists.
 7. Regenerate `schema/schema.graphql`; run both `pnpm codegen` and `pnpm codegen:graphql`; commit
    all four files.
 8. Component tests for membership per kind, not-found, permission matrix including anonymous with and
