@@ -56,3 +56,7 @@ class NodeMetadataInput(InputObjectType):
     owners = List(
         NonNull(MetadataNodeInput), description="Left out: no change. null: inherit. []: no owner. List: own owners"
     )
+    target_owners = List(
+        NonNull(MetadataNodeInput),
+        description="Profiles and object templates only: the owners given to their nodes. null: gives nothing",
+    )

@@ -1666,6 +1666,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
             if meta_field == "ownership":
                 data["ownership"] = {"node_id": self.get_id()}
+
+            if meta_field == "target_ownership" and (
+                self.get_schema().is_profile_schema or self.get_schema().is_template_schema
+            ):
+                data["target_ownership"] = {"node_id": self.get_id()}
         return data
 
     async def from_graphql(

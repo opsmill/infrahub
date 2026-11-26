@@ -7,8 +7,9 @@ from typing import TYPE_CHECKING, Any
 from aiodataloader import DataLoader
 
 from infrahub.core.manager import NodeManager
-from infrahub.core.ownership.models import OwnerReference, ResolvedOwnership
+from infrahub.core.ownership.models import OwnerReference, ResolvedOwnership, StoredNodeOwnership
 from infrahub.core.ownership.repository import OwnershipRepository
+from infrahub.core.ownership.resolution import resolve_target_ownership
 from infrahub.core.ownership.resolver import OwnershipResolver
 from infrahub.database import retry_db_transaction
 
@@ -35,6 +36,21 @@ class NodeOwnershipLoader(DataLoader[str, ResolvedOwnership | None]):
             repository = OwnershipRepository(db=db, branch=self.branch, at=self.at)
             resolved = await OwnershipResolver(repository=repository).resolve(node_ids=keys)
         return [resolved.get(key) for key in keys]
+
+
+class StoredOwnershipLoader(DataLoader[str, StoredNodeOwnership | None]):
+    """Load the owner states that the nodes of one request store, with one batch."""
+
+    def __init__(self, db: InfrahubDatabase, branch: Branch, at: Timestamp | None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.db = db
+        self.branch = branch
+        self.at = at
+
+    async def batch_load_fn(self, keys: list[str]) -> list[StoredNodeOwnership | None]:
+        async with self.db.start_session(read_only=True) as db:
+            stored = await OwnershipRepository(db=db, branch=self.branch, at=self.at).read(node_ids=keys)
+        return [stored.get(key) for key in keys]
 
 
 class MetadataNodeLoader(DataLoader[str, OwnerReference]):
@@ -82,6 +98,7 @@ class OwnershipGraphqlResolver:
 
     def __init__(self) -> None:
         self._node_loaders: dict[tuple[str, str], NodeOwnershipLoader] = {}
+        self._stored_loaders: dict[tuple[str, str], StoredOwnershipLoader] = {}
         self._metadata_node_loaders: dict[tuple[str, str], MetadataNodeLoader] = {}
 
     @staticmethod
@@ -93,6 +110,12 @@ class OwnershipGraphqlResolver:
         if key not in self._node_loaders:
             self._node_loaders[key] = NodeOwnershipLoader(db=context.db, branch=context.branch, at=context.at)
         return self._node_loaders[key]
+
+    def _stored_loader(self, context: GraphqlContext) -> StoredOwnershipLoader:
+        key = self._loader_key(context=context)
+        if key not in self._stored_loaders:
+            self._stored_loaders[key] = StoredOwnershipLoader(db=context.db, branch=context.branch, at=context.at)
+        return self._stored_loaders[key]
 
     def _metadata_node_loader(self, context: GraphqlContext) -> MetadataNodeLoader:
         key = self._loader_key(context=context)
@@ -108,6 +131,14 @@ class OwnershipGraphqlResolver:
         resolved = await self._node_loader(context=info.context).load(reference["node_id"])
         return _to_graphql(resolved=resolved) if resolved else None
 
+    async def resolve_target_ownership(self, parent: dict[str, Any], info: GraphQLResolveInfo) -> dict[str, Any] | None:
+        """Resolve the owners that a profile or an object template gives to its nodes, from its reference."""
+        reference = parent.get(info.field_name)
+        if not reference:
+            return None
+        stored = await self._stored_loader(context=info.context).load(reference["node_id"])
+        return _to_graphql(resolved=resolve_target_ownership(node=stored)) if stored else None
+
     async def load_metadata_nodes(self, context: GraphqlContext, node_ids: list[str]) -> list[OwnerReference]:
         """Return the kind and the labels that each node has now, or mark it as deleted."""
         return await self._metadata_node_loader(context=context).load_many(node_ids)
@@ -121,6 +152,12 @@ class OwnershipGraphqlResolver:
 async def ownership_resolver(parent: dict[str, Any], info: GraphQLResolveInfo) -> dict[str, Any] | None:
     graphql_context: GraphqlContext = info.context
     return await graphql_context.ownership_resolver.resolve_ownership(parent=parent, info=info)
+
+
+@retry_db_transaction(name="target_ownership_resolver")
+async def target_ownership_resolver(parent: dict[str, Any], info: GraphQLResolveInfo) -> dict[str, Any] | None:
+    graphql_context: GraphqlContext = info.context
+    return await graphql_context.ownership_resolver.resolve_target_ownership(parent=parent, info=info)
 
 
 @retry_db_transaction(name="metadata_node_resolver")

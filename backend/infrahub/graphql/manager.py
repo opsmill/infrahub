@@ -48,7 +48,7 @@ from .registry import registry
 from .resolvers.account_metadata import account_metadata_resolver
 from .resolvers.ipam import ipam_paginated_list_resolver
 from .resolvers.object_by_id import object_by_id_resolver
-from .resolvers.ownership import ownership_resolver
+from .resolvers.ownership import ownership_resolver, target_ownership_resolver
 from .resolvers.resolver import (
     account_resolver,
     ancestors_resolver,
@@ -785,6 +785,12 @@ class GraphQLSchemaManager:
                 required=False,
                 resolver=ownership_resolver,
                 description="Owners of the node, own or inherited",
+            ),
+            "target_ownership": graphene.Field(
+                InfrahubOwnership,
+                required=False,
+                resolver=target_ownership_resolver,
+                description="Profiles and object templates only: the owners given to their nodes",
             ),
             "Meta": type("Meta", (object,), meta_attrs),
         }
