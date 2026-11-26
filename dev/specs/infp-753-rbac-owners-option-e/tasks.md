@@ -132,7 +132,8 @@ description: "Task list for owner and source metadata, Community side, storage o
 - [X] T057 [P] [US5] Write a migration test on a fixture with repository owners, account group owners and attributes without owners, with a read at a time before the upgrade, in backend/tests/component/core/migrations/graph/test_close_repository_owner_edges.py (FR-036)
 - [X] T058 [P] [US5] Write a migration test for an attribute owner written on a branch before the upgrade in backend/tests/component/core/migrations/graph/test_hide_replaced_branch_attribute_owners.py (FR-037)
 - [X] T059 [P] [US5] Write a test of the report on a fixture with a repository owner, a relationship whose links have owners, and a value with `is_protected` set, in backend/tests/component/cli/test_ownership_report.py (FR-038)
-- [ ] T060 [P] [US5] Write GraphQL tests for scenarios 3 to 6 of user story 5 (the `owner` field, the `ownership` block of existing attributes, `is_protected`) in backend/tests/component/graphql/metadata/test_graphql_owner_upgrade.py (FR-015, FR-037, FR-039)
+- [X] T060 [P] [US5] Write GraphQL tests for scenarios 3 to 6 of user story 5 (the `owner` field, the `ownership` block of existing attributes, `is_protected`) in backend/tests/component/graphql/metadata/test_graphql_owner_upgrade.py (FR-015, FR-037, FR-039)
+  - An attribute without an owner on a node without owners reads `origin: null` and `origin_node: null`, not `NODE`: nothing gives it owners. The existing tests read the same value.
 - [X] T061 [P] [US5] Write query benchmarks for SC-001 and SC-002 on the reference data set in backend/tests/query_benchmark/ownership/test_no_owner_overhead.py
 
 ### Implementation for User Story 5
@@ -142,8 +143,10 @@ description: "Task list for owner and source metadata, Community side, storage o
 - [X] T064 [US5] Register both migrations and raise `GRAPH_VERSION` in `backend/infrahub/core/graph/__init__.py`
 - [X] T065 [US5] Refuse every kind other than an account or an account group as owner, on attributes and on links, in backend/infrahub/core/ownership/input.py and in the property write of backend/infrahub/core/attribute.py (D-4)
 - [X] T066 [US5] Write the report queries in backend/infrahub/core/ownership/report.py and the command `infrahub db ownership-report` in backend/infrahub/cli/db.py. The command must run on a database of the release before (FR-038)
-- [ ] T067 [US5] Mark `is_protected` and its filter as deprecated, without a change of behaviour, in backend/infrahub/graphql/manager.py (FR-039)
-- [ ] T068 [US5] Run the existing permission tests in backend/tests/unit/permissions and backend/tests/component/permissions without changes, and fix every difference (SC-007)
+- [X] T067 [US5] Mark `is_protected` and its filter as deprecated, without a change of behaviour, in backend/infrahub/graphql/manager.py (FR-039)
+  - The change is in `graphql/types/attribute.py` (`AttributeInterface`) and `types.py` (the filters), as research.md says, not in `manager.py`. The mutation inputs and `RelationshipProperty.is_protected` stay as they are.
+- [X] T068 [US5] Run the existing permission tests in backend/tests/unit/permissions and backend/tests/component/permissions without changes, and fix every difference (SC-007)
+  - The permission checker tests in backend/tests/component/graphql/auth failed without changes, because `GraphqlContext` needed `ownership_resolver`. The field now has a default, and the three test files are back to their content before the feature.
 
 **Checkpoint**: stories 1 and 5 work together (delivery step 1).
 

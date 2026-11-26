@@ -16,7 +16,6 @@ from infrahub.graphql.auth.query_permission_checker.super_admin_checker import S
 from infrahub.graphql.initialization import GraphqlContext, GraphqlParams
 from infrahub.graphql.resolvers.account_metadata import AccountMetadataResolver
 from infrahub.graphql.resolvers.object_by_id import ObjectByIdResolver
-from infrahub.graphql.resolvers.ownership import OwnershipGraphqlResolver
 from infrahub.permissions import PermissionManager
 
 if TYPE_CHECKING:
@@ -124,7 +123,6 @@ class TestSuperAdminPermission:
             many_relationship_resolver=MagicMock(),
             account_metadata_resolver=AccountMetadataResolver(),
             object_by_id_resolver=ObjectByIdResolver(),
-            ownership_resolver=OwnershipGraphqlResolver(),
             account_session=session,
             permissions=permission_manager,
         )
