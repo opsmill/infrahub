@@ -6,12 +6,13 @@ import os
 from fastapi import APIRouter, FastAPI
 from prefect.server.api.server import create_app
 
-from . import events
+from . import database_version, events
 from .bootstrap import init_prefect
 
 router = APIRouter(prefix="/infrahub")
 
 router.include_router(events.router)
+router.include_router(database_version.router)
 
 
 async def _init_prefect() -> None:

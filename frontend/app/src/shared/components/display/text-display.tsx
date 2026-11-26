@@ -1,6 +1,6 @@
-import { Icon } from "@iconify-icon/react";
 import React from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import { classNames } from "@/shared/utils/common";
 
 const MAX_TEXT_LENGTH = 200;

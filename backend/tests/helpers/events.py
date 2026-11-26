@@ -48,7 +48,8 @@ async def has_event(client: PrefectClient, event_id: UUID) -> bool:
     try:
         await query_event(client=client, event_id=event_id)
         return True
-    except Exception:
+    # Polling probe: query_event signals absence with a bare Exception; any failure means "not available yet"
+    except Exception:  # noqa: BLE001
         return False
 
 

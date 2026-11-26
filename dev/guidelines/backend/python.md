@@ -30,17 +30,13 @@ Keep `constants.py` limited to module-level values (plain literals, enums, froze
 
 ### Imports
 
-All imports must be at the top of the file. Never import inside functions, methods, or classes; Ruff enforces this (`PLC0415`):
+All imports must be at the top of the file. Never import inside functions, methods, or classes (ruff
+`PLC0415`). The only function-local imports we keep defer an optional or heavy dependency that must
+not load on every import, each marked `# noqa: PLC0415` with the reason:
 
 ```python
 # ✅ Good - imports at module level
-from infrahub.core.query import Query
 from infrahub.exceptions import ValidationError
-
-class NodeManager:
-    def validate(self, node: Node) -> None:
-        if not node.name:
-            raise ValidationError("Node name is required")
 
 # ❌ Bad - import inside function
 class NodeManager:
@@ -50,20 +46,9 @@ class NodeManager:
             raise ValidationError("Node name is required")
 ```
 
-A function-local import is acceptable only to break a genuine circular import or to defer an optional or heavy dependency that must not load on every import. Mark each such import with `# noqa: PLC0415` and a short reason.
-
-All backend modules use `from __future__ import annotations`, which turns annotations into strings at runtime. This means imports used **only** in type hints have no runtime effect and can be placed under `TYPE_CHECKING` to prevent circular imports:
-
-```python
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from infrahub.database import InfrahubDatabase
-```
-
-If an import is only referenced in parameter types, return types, or variable annotations, move it under `TYPE_CHECKING` — especially when it causes or risks a circular import chain:
+All backend modules use `from __future__ import annotations`, so an import used **only** in
+parameter types, return types, or variable annotations has no runtime effect. Put it under
+`TYPE_CHECKING`, especially when it causes or risks a circular import chain:
 
 ```python
 # ❌ Bad - top-level import only used in annotations; causes circular import
@@ -82,18 +67,45 @@ def collect_filters(self, schema_branch: SchemaBranch) -> dict[str, set[str]]:
     ...
 ```
 
-**Exception — `tasks/*.py`:** keep `infrahub.*` and other heavy/optional imports function-local
-here. `tasks/__init__.py` eagerly imports every task submodule into the Invoke `Collection`, so a
-top-level backend import in any `tasks/*.py` file would load the full backend package on every
-`invoke` command, even unrelated ones (`invoke --list`, `invoke docs.*`, ...). This is a
-deliberate, documented exception: `pyproject.toml`'s `"tasks/**.py"` per-file-ignore disables the
-"import not at top level" lint rule for exactly this reason. Keep lightweight, always-needed
-imports (stdlib, `invoke`, sibling `.shared`/`.utils` modules) at the top; defer the rest into the
-function that needs them.
+### An import cycle is a layering defect, not a reason for a function-local import
 
-The exception covers a thin task wrapper, not logic that happens to live in `tasks/`. A task body
-needing a dozen deferred imports is telling you the logic belongs in a module of its own, which the
-task then imports once — put it there and the deferred imports mostly disappear with it.
+A cycle means the module reaches into a layer above it, and hiding the import inside a function only
+hides that. Map the cycle first: a hub package such as `infrahub.services` reaches low-level modules
+by several routes, so cutting one edge rarely frees it. Then fix the dependency itself:
+
+- Depend on the narrower interface the code actually uses: a lock that only calls `service.cache`
+  takes the cache adapter, not the services container that owns it.
+- When the import only served a runtime `isinstance`, give each accepted type its own parameter so
+  the branches narrow on `None` and the type stays a `TYPE_CHECKING` import. This does not apply
+  when the types are two backends for the same role: those go behind one interface (see
+  [Interfaces for multiple implementations](component-design.md#interfaces-for-multiple-implementations)).
+- Move a helper next to its only caller when that module already sits at the right layer.
+
+```python
+# ❌ Bad - the check needs a type from the layer above, so the import hides in the function
+def _require_service(connection: redis.Redis | InfrahubServices | None) -> InfrahubServices:
+    from infrahub.services import InfrahubServices  # noqa: PLC0415  # avoid circular import
+    if not isinstance(connection, InfrahubServices):
+        raise TypeError(...)
+    return connection
+
+# ✅ Good - one typed slot per driver; each branch narrows on None, importing nothing above this layer
+def __init__(self, name: str, connection: redis.Redis | None = None, cache: InfrahubCache | None = None) -> None:
+    if connection is not None:
+        self.connection: redis.Redis = connection
+    elif cache is not None:
+        self.cache: InfrahubCache = cache
+    else:
+        raise TypeError(f"Lock {name!r} requires a connection or a cache adapter")
+```
+
+**Exception — `tasks/*.py`:** keep `infrahub.*` and other heavy imports function-local there.
+`tasks/__init__.py` eagerly imports every task submodule into the Invoke `Collection`, so a top-level
+backend import in any task file would load the full backend on every `invoke` command, and
+`pyproject.toml`'s `"tasks/**.py"` per-file-ignore disables the rule for exactly this reason. Keep
+stdlib, `invoke` and sibling `.shared`/`.utils` imports at the top and defer the rest. The exception
+covers a thin task wrapper: a task body needing a dozen deferred imports belongs in a module of its
+own, which the task imports once.
 
 Import a singleton from the module that defines it, not from a package `__init__.py` that re-exports
 it under the same name as its submodule. `from infrahub.core import registry` names two things — the
@@ -110,8 +122,9 @@ from infrahub.core import registry
 from infrahub.core.registry import registry
 ```
 
-Fix the import where the checker flags it rather than sweeping existing call sites, and prefer not
-importing the registry into a new component at all — see
+Do not use `from x import Y as Y` solely to silence an unused-import warning. Keep intentional public re-exports and declare them explicitly with `__all__`; otherwise delete the import when its last internal user goes.
+
+Fix the import where the checker flags it, not across existing call sites, and avoid importing the registry into a new component — see
 [Accessing schema](../../knowledge/backend/query-pattern.md#accessing-schema-inject-schemamanager-else-dbschema-never-registry).
 
 ## Data Structures
@@ -228,8 +241,9 @@ Prefer `dict.get(key, default)` over an `in` check or `try/except KeyError` for 
 key (without a second argument `get()` returns `None`); use `setdefault()` when the default is a
 mutable object you build up.
 
-Zero is a value, not an absence. Test an optional numeric with `is not None` — a truthiness check
-silently treats a legitimate `0` as unset:
+Zero and empty values are values, not absence. Test an optional with `is None` / `is not None` — a
+truthiness check treats a legitimate `0`, `""` or `[]` as unset, so an empty list in stored data is
+accepted as "not provided" instead of being rejected:
 
 ```python
 # ❌ Bad - offset=0 is dropped, so the first page renders a different query text
@@ -241,8 +255,21 @@ if offset is not None:
     query += " SKIP $offset"
 ```
 
-When zero deliberately means "no bound" in the caller contract, keep that reading — and pin it with
-a test, so the next pass at the line fails fast instead of shipping the inversion.
+`None` must mean one thing. When an optional parameter's `None` would carry two readings — "the value
+is known to be absent" and "the value is unknown, go look it up" — the function is hiding two
+contracts. Split it into two methods, one per contract, and share the common logic privately:
+
+```python
+# ❌ Bad - checksum=None means both "artifact has none: refuse" and "unknown: query for it"
+async def read(self, storage_id: str, checksum: str | None = None) -> bytes: ...
+
+# ✅ Good - one contract each
+async def read_artifact(self, storage_id: str, checksum: str | None) -> bytes: ...  # absent → refuse
+async def read_stored_object(self, storage_id: str) -> bytes: ...                   # look up the recorded checksum
+```
+
+When zero or empty deliberately means "no bound" in the caller contract, keep that reading and pin it
+with a test.
 
 ## Configuration Settings
 
@@ -339,6 +366,40 @@ async def create_branch(db: InfrahubDatabase, name: str, description: str | None
 
 Database reads and writes go through the `Query` class pattern — the lifecycle, Cypher
 conventions and result dataclasses are in [Query Pattern](../../knowledge/backend/query-pattern.md).
+
+### Several queries of the same shape: one query, then parallel, a loop last
+
+When the same query has to run for several inputs, choose in this order:
+
+1. **One query for all inputs.** Pass the inputs as one list parameter and let Cypher iterate over it (`UNWIND $ids`, `WHERE n.uuid IN $ids`, or one `CALL` subquery per input). Every query awaited on its own is a round trip to the database. Page the list when it has no upper bound.
+2. **Parallel, when independent queries cannot be merged and `db.is_transaction` is false.** Give each query its own session, because a session cannot serve two coroutines at once. Bound concurrent database work: sessions borrow connections from the pool as needed, rather than when created.
+3. **A query awaited inside a `for` loop, as the last resort.** It is right when a query needs the result of the one before it, or when the queries belong to one transaction: a transaction has one connection, and a new session does not read what the transaction has not committed.
+
+```python
+# ✅ Best - one query for all inputs
+query = await ItemsQuery.init(db=db, item_ids=item_ids)
+await query.execute(db=db)
+
+# ✅ Independent queries that cannot be merged
+if db.is_transaction:
+    results = []
+    for item_id in item_ids:
+        query = await ItemQuery.init(db=db, item_id=item_id)
+        await query.execute(db=db)
+        results.append(query.get_item())
+else:
+    semaphore = asyncio.Semaphore(MAX_PARALLEL_READS)
+
+    async def read(item_id: str) -> ItemResult:
+        async with semaphore, db.start_session(read_only=True) as session:
+            query = await ItemQuery.init(db=session, item_id=item_id)
+            await query.execute(db=session)
+            return query.get_item()
+
+    results = await asyncio.gather(*(read(item_id=item_id) for item_id in item_ids))
+```
+
+Check what an `await` in a loop does before changing it: an `async` function that only builds query text sends nothing to the database.
 
 ## Methods stay on the instance
 

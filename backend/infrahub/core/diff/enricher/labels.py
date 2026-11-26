@@ -1,6 +1,6 @@
 from collections import defaultdict
+from collections.abc import Generator
 from dataclasses import dataclass
-from typing import Generator
 
 from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType

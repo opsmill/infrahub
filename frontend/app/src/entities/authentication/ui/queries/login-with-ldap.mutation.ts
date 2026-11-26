@@ -1,6 +1,7 @@
 import { mutationOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { loginWithLdap } from "@/entities/authentication/domain/use-cases/login-with-ldap";
+import { clearSessionCache } from "@/entities/authentication/ui/queries/clear-session-cache";
 
 export function loginWithLdapMutationOptions() {
   return mutationOptions({
@@ -15,11 +16,7 @@ export function useLoginWithLdap() {
   return useMutation({
     ...loginWithLdapMutationOptions(),
     onSuccess: () => {
-      // Logging in may be a different user than whatever cached data we hold
-      // (re-auth after token expiry, switching accounts, etc.). Wipe the
-      // entire cache so no prior user's data leaks into the new session —
-      // mirrors the `queryClient.clear()` in logout.
-      queryClient.clear();
+      clearSessionCache(queryClient);
     },
   });
 }

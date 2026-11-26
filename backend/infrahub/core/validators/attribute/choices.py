@@ -27,11 +27,13 @@ class AttributeChoicesUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         self.excluded_kinds: list[str] = excluded_kinds or []
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         if self.attribute_schema.choices is None:
             return
 
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), is_isolated=self.is_isolated
+        )
         self.params.update(branch_params)
 
         self.params["attr_name"] = self.attribute_schema.name
@@ -40,7 +42,7 @@ class AttributeChoicesUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         self.params["excluded_kinds"] = self.excluded_kinds
 
         query = """
-        MATCH (n:%(node_kind)s)
+        %(match_nodes)s
         WHERE size($excluded_kinds) = 0 OR NOT n.kind IN $excluded_kinds
         CALL (n) {
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
@@ -57,7 +59,7 @@ class AttributeChoicesUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         AND attribute_value IS NOT NULL
         AND attribute_value <> $null_value
         AND NOT (attribute_value IN $allowed_values)
-        """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
+        """ % {"branch_filter": branch_filter, "match_nodes": self.match_nodes()}
 
         self.add_to_query(query)
         self.return_labels = ["node.uuid", "attribute_value", "value_relationship"]
@@ -82,6 +84,7 @@ class AttributeChoicesUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 
 
 class AttributeChoicesChecker(ConstraintCheckerInterface):
+    reads_listed_nodes = True
     query_classes = [AttributeChoicesUpdateValidatorQuery]
 
     def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
@@ -121,6 +124,8 @@ class AttributeChoicesChecker(ConstraintCheckerInterface):
                 node_schema=request.node_schema,
                 schema_path=request.schema_path,
                 excluded_kinds=excluded_kinds,
+                is_isolated=request.is_isolated,
+                node_uuids=request.node_uuids,
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())

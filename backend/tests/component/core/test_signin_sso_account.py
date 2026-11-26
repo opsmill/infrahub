@@ -17,6 +17,14 @@ from infrahub.external_protocols import ExternalAuthProtocol
 
 
 @pytest.fixture
+def sso_account_name_fallback_enabled() -> Iterator[None]:
+    original = config.SETTINGS.security.sso_account_name_fallback
+    config.SETTINGS.security.sso_account_name_fallback = True
+    yield
+    config.SETTINGS.security.sso_account_name_fallback = original
+
+
+@pytest.fixture
 def sso_account_name_fallback_disabled() -> Iterator[None]:
     original = config.SETTINGS.security.sso_account_name_fallback
     config.SETTINGS.security.sso_account_name_fallback = False
@@ -136,7 +144,10 @@ async def test_label_is_updated_when_display_name_changes(
 
 
 async def test_transition_fallback_unclaimed_account_is_linked(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    sso_account_name_fallback_enabled: None,
 ) -> None:
     """Accounts created before this feature was introduced have no identity node.
 
@@ -173,7 +184,10 @@ async def test_transition_fallback_unclaimed_account_is_linked(
 
 
 async def test_transition_fallback_ignores_unrelated_identities(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    sso_account_name_fallback_enabled: None,
 ) -> None:
     """The is-this-account-already-linked check must be scoped to the candidate account.
 
@@ -228,7 +242,10 @@ async def test_transition_fallback_ignores_unrelated_identities(
 
 
 async def test_transition_fallback_claimed_account_uses_email_as_name(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    sso_account_name_fallback_enabled: None,
 ) -> None:
     """If a name-matched account is already linked to a different provider identity it cannot.
 

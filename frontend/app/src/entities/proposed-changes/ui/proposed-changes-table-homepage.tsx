@@ -57,7 +57,7 @@ export function ProposedChangesTableHomepage({
       <ListBox
         aria-label="Proposed changes list"
         items={flatData}
-        className={classNames("flex flex-col divide-y divide-gray-200", className)}
+        className={classNames("flex flex-col divide-y", className)}
       >
         {(proposedChange) => (
           <ProposedChangesItemLight key={proposedChange.id} proposedChange={proposedChange} />

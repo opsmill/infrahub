@@ -4,7 +4,10 @@ import React from "react";
 import {
   Controller,
   type ControllerProps,
+  type DefaultValues,
+  type FieldValues,
   FormProvider,
+  type UseFormProps,
   type UseFormReturn,
   useForm,
   useFormContext,
@@ -16,27 +19,32 @@ import Label, { type LabelProps } from "@/shared/components/ui/label";
 import { inputErrorStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
-export type FormRef = ReturnType<typeof useForm>;
+export type FormRef<TValues extends FieldValues = FieldValues> = UseFormReturn<TValues>;
 
-export interface FormProps extends Omit<React.FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
-  onSubmit?: (v: Record<string, any>) => void;
+export interface FormProps<TValues extends FieldValues = FieldValues>
+  extends Omit<React.FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
+  /** A rejected promise keeps the form dirty, so the user can retry; the handler reports the failure itself. */
+  onSubmit?: (v: TValues) => unknown;
   onCancel?: () => void;
-  defaultValues?: Partial<Record<string, unknown>>;
-  form?: UseFormReturn;
-  ref?: React.Ref<FormRef>;
+  defaultValues?: DefaultValues<TValues>;
+  /** When the fields validate; ignored when `form` is given, since that form already has one. */
+  mode?: UseFormProps<TValues>["mode"];
+  form?: UseFormReturn<TValues>;
+  ref?: React.Ref<FormRef<TValues>>;
 }
 
-export const Form = ({
+export const Form = <TValues extends FieldValues = FieldValues>({
   form,
   defaultValues,
+  mode,
   className,
   children,
   onSubmit,
   onCancel,
   ref,
   ...props
-}: FormProps) => {
-  const currentForm = form ?? useForm({ defaultValues });
+}: FormProps<TValues>) => {
+  const currentForm = form ?? useForm<TValues>({ defaultValues, mode });
 
   const dismissGuard = React.use(DismissGuardContext);
   const [showConfirm, setShowConfirm] = React.useState(false);
@@ -61,13 +69,16 @@ export const Form = ({
           }
 
           if (onSubmit) {
-            currentForm.handleSubmit(async (data) => {
-              await onSubmit(data);
-              currentForm.reset(data);
-            })(event);
+            currentForm
+              .handleSubmit(async (data) => {
+                await onSubmit(data);
+                // Keeps errors the submit handler set, such as a refusal from the backend.
+                currentForm.reset(data, { keepErrors: true });
+              })(event)
+              .catch((error: unknown) => console.error(error));
           }
         }}
-        className={classNames("space-y-4", className)}
+        className={classNames("space-y-6", className)}
         {...props}
       >
         {children}
@@ -166,7 +177,7 @@ export const FormMessage = ({
 
   return (
     <p
-      className={classNames("text-gray-600 text-sm", error && "text-red-600", className)}
+      className={classNames("text-foreground-muted text-sm", error && "text-danger", className)}
       {...props}
     >
       {message}

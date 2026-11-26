@@ -11,7 +11,7 @@ Key questions to consider when planning and implementing new backend features. U
 Consider whether the feature will:
 
 - Add, remove, or modify node/relationship properties in ways that the schema migrations can't resolve
-- Change indexes or constraints
+- Drop or replace an index, or change a constraint (adding an index needs no migration — see [Database Indexes](../../knowledge/backend/database-indexes.md))
 - Alter the graph structure or schema definitions
 - Modify how data is stored in Neo4j
 
@@ -22,6 +22,7 @@ When adding a new migration:
 - Bump `GRAPH_VERSION` in `backend/infrahub/core/graph/__init__.py` to match the new migration number
 - Set the migration's `minimum_version` to the previous `GRAPH_VERSION`
 - Run `uv run pytest backend/tests/unit/core/graph/test_graph_version.py` to verify consistency between `GRAPH_VERSION` and the migrations
+- Batch any migration that deletes or rewrites an unbounded number of nodes, and collect failures per item instead of aborting on the first one — see [Creating Migrations, Step 3](../../guides/backend/creating-migrations.md#step-3-batching-large-datasets)
 
 ### How will this feature maintain graph integrity?
 
@@ -38,13 +39,15 @@ Design the feature to ensure:
 
 Plan for query efficiency and data volume by considering:
 
-- **Database round-trips** - design to use batch queries when operating on multiple nodes
+- **Database round-trips** - design to use batch queries when operating on multiple nodes; when queries cannot be merged, follow the [order of preference](python.md#several-queries-of-the-same-shape-one-query-then-parallel-a-loop-last); keep dependent queries and queries in a caller’s transaction sequential
 - **N+1 query patterns** - operate set-based in both directions: load related data in bulk, and update/delete by condition in one query instead of mutating each fetched node individually
 - **Data volume per query** - avoid overquerying by fetching only necessary fields and relationships
+- **Reuse loaded data** - read attributes off a node already loaded for the request instead of querying again
 - **Memory footprint** - consider how much data will be held in memory during processing
 - **Pagination and streaming** - plan to process large result sets incrementally when appropriate
 - **Scalability testing** - consider how the feature behaves with 10, 100, 1000+ nodes
 - **Query optimization** - plan to use EXPLAIN in Neo4j to validate query performance
+- **Indexes** - when a new or modified query selects vertices or edges by a property, check that an index on that property exists for every label or edge type it reads, and declare the missing index in the same change; adding an index needs no migration — see [Database Indexes](../../knowledge/backend/database-indexes.md)
 
 ## Security & Access Control
 
@@ -134,6 +137,27 @@ Plan to follow established patterns:
 - **Consistent verb patterns** - use `create_`, `update_`, `delete_`, `get_`, `list_`
 - **Standard parameter names** - use `db`, `node_id`, `branch_name` consistently
 - **Domain language** - choose names that match terminology from the domain model
+
+## Telemetry
+
+<!-- Extracted from specs/infp-631-resource-telemetry on 2026-10-08 -->
+### Does this feature change the telemetry payload?
+
+The receiving service already ingests the payload and charts some fields over time, so a change
+must keep every existing reading valid:
+
+- **Never change what an existing field means**, even when its key and type stay the same. Narrowing
+  what a count covers breaks the series built on it.
+- **Put new information in new blocks** that follow the existing convention, for example a block
+  with its own `total` and `active` next to `workers`, rather than new fields that redefine an old
+  block.
+- **Raise `payload_format` only after the receiving service confirms** it accepts the change; until
+  then the additions ship under the existing version.
+- **Report `null` for a figure that could not be read**, never `0` and never a fallback that could
+  overstate it.
+
+See [ADR 0021](../../adr/0021-resource-allocation-telemetry.md) and
+[Telemetry](../../knowledge/backend/telemetry.md).
 
 ## See Also
 

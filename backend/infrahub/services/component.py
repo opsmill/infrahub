@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import re
 from typing import TYPE_CHECKING, Any
 
-from attr import dataclass
+from attr import Factory, dataclass
 
 from infrahub.components import ComponentType
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
@@ -11,6 +12,12 @@ from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
+from infrahub.telemetry.resources import (
+    RESOURCE_READ_FAILURES,
+    ProcessResources,
+    PsutilMachine,
+    WorkerResourceReading,
+)
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
@@ -21,6 +28,21 @@ if TYPE_CHECKING:
 PRIMARY_API_SERVER = "workers:primary:api_server"
 WORKER_MATCH = re.compile(r":worker:([^:]+)")
 
+# Writing, finding and parsing the resource keys all start from this prefix, so the three cannot drift apart.
+RESOURCE_KEY_PREFIX = "workers:resources:"
+RESOURCE_KEY_MATCH = re.compile(re.escape(RESOURCE_KEY_PREFIX) + r"([^:]+):worker:([^:]+)$")
+
+# The component names written into the cache keys, which tell API server processes from task workers.
+COMPONENT_API_SERVER = "api_server"
+COMPONENT_GIT_AGENT = "git_agent"
+_KNOWN_COMPONENTS = frozenset({COMPONENT_API_SERVER, COMPONENT_GIT_AGENT})
+
+# Every key that names a component puts the name just before ":worker:", whatever comes earlier in the key.
+WORKER_COMPONENT_MATCH = re.compile(r":([^:]+):worker:[^:]+$")
+
+# A read can fail for a moment, so it is tried a few times before giving up.
+RESOURCE_READ_MAX_ATTEMPTS = 3
+
 log = get_logger()
 
 
@@ -28,9 +50,9 @@ def get_component_names(component_type: ComponentType) -> list[str]:
     """Return the component labels a worker of this type reports under in the cache."""
     names = []
     if component_type == ComponentType.API_SERVER:
-        names.append("api_server")
+        names.append(COMPONENT_API_SERVER)
     elif component_type == ComponentType.GIT_AGENT:
-        names.append("git_agent")
+        names.append(COMPONENT_GIT_AGENT)
     return names
 
 
@@ -76,12 +98,26 @@ class InfrahubComponent:
     db: InfrahubDatabase
     message_bus: InfrahubMessageBus
     component_type: ComponentType
+    process_resources: ProcessResources = Factory(
+        lambda: ProcessResources(machine=PsutilMachine(), processes_per_container=1)
+    )
 
     @classmethod
     async def new(
-        cls, cache: InfrahubCache, db: InfrahubDatabase, message_bus: InfrahubMessageBus, component_type: ComponentType
+        cls,
+        cache: InfrahubCache,
+        db: InfrahubDatabase,
+        message_bus: InfrahubMessageBus,
+        component_type: ComponentType,
+        process_resources: ProcessResources,
     ) -> InfrahubComponent:
-        component = cls(cache=cache, db=db, message_bus=message_bus, component_type=component_type)
+        component = cls(
+            cache=cache,
+            db=db,
+            message_bus=message_bus,
+            component_type=component_type,
+            process_resources=process_resources,
+        )
         await component.refresh_heartbeat()
         return component
 
@@ -153,9 +189,74 @@ class InfrahubComponent:
         """Publish this worker's liveness once, through the main-loop cache connection.
 
         The recurring refresh runs on the ``WorkerHeartbeat`` thread; this is for the one-off writes
-        at startup, before that thread exists.
+        at startup, before that thread exists. The worker's CPU and memory figures are stored after
+        its liveness, so a failure to store them cannot hide a live worker.
         """
         await refresh_worker_heartbeat(cache=self.cache, component_type=self.component_type)
+        await self.refresh_resources()
+
+    async def refresh_resources(self) -> None:
+        """Read this process's CPU and memory figures on a separate thread and store them for the daily report.
+
+        Reading the limit files and the machine's figures waits on the operating system, so it runs
+        off the main loop, where it would hold up requests and flows. The reading is kept for two
+        hours, so a long task that keeps the main loop from reading again does not lose it; the
+        report uses only the readings of workers that are still alive.
+        """
+        reading = await asyncio.to_thread(self._read_own_resources)
+        if reading is None:
+            return
+        for component in self.component_names:
+            await self.cache.set(
+                key=f"{RESOURCE_KEY_PREFIX}{component}:worker:{WORKER_IDENTITY}",
+                value=reading.model_dump_json(),
+                expires=KVTTL.TWO_HOURS,
+            )
+
+    def _read_own_resources(self) -> WorkerResourceReading | None:
+        """Read this process's CPU and memory figures, trying again if the read fails.
+
+        If every try fails, a warning names the component and the error, so a worker
+        that stops reporting leaves a trace in the log, and ``None`` is returned so the
+        last stored reading is kept.
+        """
+        last_error: Exception | None = None
+        for _ in range(RESOURCE_READ_MAX_ATTEMPTS):
+            try:
+                return self.process_resources.read()
+            except RESOURCE_READ_FAILURES as exc:
+                last_error = exc
+
+        log.warning(
+            "Unable to read process resource allocation for telemetry; keeping the last stored reading",
+            component_type=self.component_type.name,
+            worker_id=WORKER_IDENTITY,
+            error=str(last_error),
+        )
+        return None
+
+    async def read_worker_resources(self, worker_ids: set[str]) -> dict[str, list[WorkerResourceReading]]:
+        """Return the latest CPU and memory reading of each of ``worker_ids``, grouped by component, skipping damaged ones.
+
+        A stopped worker's reading stays in the cache for up to two hours, so only the
+        readings of the given workers are returned.
+        """
+        keys = await self.cache.list_keys(filter_pattern=f"{RESOURCE_KEY_PREFIX}*")
+        values = await self.cache.get_values(keys=keys)
+
+        grouped: dict[str, list[WorkerResourceReading]] = {}
+        for key, value in zip(keys, values, strict=False):
+            if value is None:
+                continue
+            match = RESOURCE_KEY_MATCH.search(key)
+            if not match or match.group(2) not in worker_ids:
+                continue
+            try:
+                reading = WorkerResourceReading.model_validate_json(value)
+            except ValueError:
+                continue
+            grouped.setdefault(match.group(1), []).append(reading)
+        return grouped
 
 
 class WorkerInfo:
@@ -163,6 +264,8 @@ class WorkerInfo:
         self.id = identity
         self.active = False
         self._schema_hash: str | None = None
+        # None when only an exited process's presence key is left.
+        self.component: str | None = None
 
     @property
     def schema_hash(self) -> str | None:
@@ -175,6 +278,8 @@ class WorkerInfo:
     def add_key(self, key: str) -> None:
         if "workers:active:" in key:
             self.active = True
+        if (match := WORKER_COMPONENT_MATCH.search(key)) and match.group(1) in _KNOWN_COMPONENTS:
+            self.component = match.group(1)
 
     def add_value(self, key: str, value: str | None = None) -> None:
         if ":schema_hash:" in key:

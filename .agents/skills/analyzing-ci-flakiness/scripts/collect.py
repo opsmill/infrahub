@@ -36,6 +36,7 @@ import subprocess  # noqa: S404
 import sys
 from collections import defaultdict
 from pathlib import Path
+from typing import TypedDict
 
 # The raw job log keeps every terminal escape sequence, not only colour (SGR) codes. Strip general
 # CSI sequences (colour, cursor moves, erase-line/screen) and OSC sequences (window title) so none
@@ -47,6 +48,9 @@ ANSI = re.compile(
 
 # The Actions list-runs API silently returns at most this many results per query.
 API_RESULT_CAP = 1000
+
+# A lookback that reaches this many PRs drops the oldest ones, and their runs then go unmatched.
+PR_LIST_LIMIT = 2000
 
 # Playwright's breadcrumb separator (U+203A) as it appears in job logs.
 PW_SEP = "\u203a"
@@ -80,6 +84,30 @@ BUCKETS: list[tuple[str, str]] = [
     (
         "pytest-green-exit-1",
         r"=+ \d+ passed(?:(?!\d+ (?:failed|error))[^\n])*=+[^\n]*\n(?:[^\n]*\n){0,3}[^\n]*Process completed with exit code 1\.",
+    ),
+    # The shard ran out of its pytest-xdist session budget, so the job fails with every test it reached green.
+    ("pytest-session-timeout", r"xdist\.dsession\.Interrupted: session-timeout: [\d.]+ sec exceeded"),
+    # Raised in asyncio's stream reader during the benchmarks' Neo4j handshake, so every benchmark errors at setup.
+    ("asyncio-stream-buffer-error", r"BufferError: Existing exports of data: object cannot be re-sized"),
+    # Only a pull that ends the step counts, because a pull retried successfully leaves the same message in the log.
+    (
+        "docker-pull-lease",
+        r"unable to lease content: lease does not exist[^\n]*\n(?:[^\n]*\n){0,3}[^\n]*##\[error\]Process completed with exit code 1\.",
+    ),
+    # Matched only in the server's output (Compose-prefixed, or inside the server-log step up to the next
+    # step), because a unit test raises the same message on purpose.
+    (
+        "redis-read-timeout",
+        r"infrahub-server-\d+\s+\|\s+redis\.exceptions\.TimeoutError: Timeout reading from"
+        r'|##\[group\]Run docker logs "\$\{INFRAHUB_BUILD_NAME\}-server-1"[^\n]*\n'
+        r"(?:(?!\S+ ##\[group\]Run )[^\n]*\n)*?[^\n]*redis\.exceptions\.TimeoutError: Timeout reading from",
+    ),
+    # Self-hosted runners on one host share the apt state, so a hung apt-get fails every job that installs a package.
+    ("apt-lock-held", r"E: Could not get lock /var/lib/(?:apt/lists|dpkg)/lock(?:-frontend)?\. It is held by process"),
+    (
+        "package-download-failure",
+        r"error: Failed to download `[^`]+`"
+        r"|Server answered with HTTP 5\d\d when performing the request to https://registry\.npmjs\.org",
     ),
 ]
 
@@ -150,7 +178,7 @@ def list_prs(repo: str, since: dt.date, base_globs: list[str]) -> list[dict]:
                 "--state",
                 "all",
                 "--limit",
-                "500",
+                str(PR_LIST_LIMIT),
                 "--search",
                 f"updated:>={pr_since.isoformat()}",
                 "--json",
@@ -158,6 +186,10 @@ def list_prs(repo: str, since: dt.date, base_globs: list[str]) -> list[dict]:
             ]
         )
     )
+    if len(prs) >= PR_LIST_LIMIT:
+        print(
+            f"[collect] WARN {len(prs)} PRs reach the listing limit; runs of older PRs are not matched", file=sys.stderr
+        )
     if base_globs:
         prs = [p for p in prs if any(fnmatch.fnmatch(p["baseRefName"], g) for g in base_globs)]
     return prs
@@ -305,12 +337,22 @@ def append_ledger(ledger_path: Path, jobs_out: list[dict], repo: str, today: dt.
     return added
 
 
-def ranked_tests(jobs_out: list[dict]) -> list[dict]:
+class RankedTest(TypedDict):
+    test: str
+    distinct_runs: int
+    distinct_prs: int
+    attempts: int
+    recovered_on_retry: int
+    buckets: list[str]
+    prs: list[int]
+
+
+def ranked_tests(jobs_out: list[dict]) -> list[RankedTest]:
     freq: dict[str, list[dict]] = defaultdict(list)
     for e in jobs_out:
         for t in e["tests"]:
             freq[t].append(e)
-    table = [
+    table: list[RankedTest] = [
         {
             "test": test,
             "distinct_runs": len({e["run"] for e in entries}),

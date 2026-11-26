@@ -109,7 +109,9 @@ Pass-through cases that bypass admission entirely:
 - The kill-switch: when `backpressure_enabled` is false, every request passes through.
 - Excluded paths — liveness/scrape/probe/static/docs: `/health`, `/metrics`, `/api/config`,
   `/assets`, `/favicons`, `/docs`, `/api/schema`. Liveness, scraping, and the config probe must
-  never be shed.
+  never be shed. `/api/config` is not I/O-free: it reads the global preference row on each call
+  (no per-query timeout), so these reads take no admission slot and a stalled database
+  can hold the request open.
 - CORS preflights (`OPTIONS` advertising `access-control-request-method`) — see
   [Known limitations](#known-limitations).
 - Page navigations — a `GET` whose `Accept` lists `text/html` as a media range of its own. The frontend is served by
@@ -231,7 +233,11 @@ and alerted on).
 Stress signal (`infrahub_db_reference_query_*`): `floor_seconds`, `window_min_seconds`,
 `stress_ratio_median`. The floor and window-min gauges aggregate across workers as `min` and the
 stress ratio as `max` under a `MultiProcessCollector` (when `PROMETHEUS_MULTIPROC_DIR` is set), so
-the scraped values are meaningful cross-worker figures.
+the scraped values are meaningful cross-worker figures. The admission state stays per worker, but its
+gauges declare a multiprocess mode too: `in_flight`, `waiters` and `max_concurrency` are summed over
+live workers (`livesum`), so total usage compares with total capacity, and `sustained_load_seconds`
+keeps one series per live worker (`liveall`). See
+[Observability](observability.md#every-gauge-declares-how-processes-are-combined).
 
 ## Configuration
 

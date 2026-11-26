@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from infrahub.core import registry
@@ -9,6 +11,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.tasks.registry import refresh_branches
 from tests.helpers.log import find_logged_events
+from tests.helpers.paused_branch_list import PausedBranchList
 
 
 async def test_refresh_branches_continues_past_a_branch_it_cannot_refresh(
@@ -79,3 +82,27 @@ async def test_refresh_branches_leaves_an_unchanged_branch_alone(
     await refresh_branches(db=db)
 
     assert registry.branch[branch.name] is cached
+
+
+async def test_refresh_branches_keeps_a_branch_cached_after_it_read_the_database(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+    paused_branch_list: PausedBranchList,
+) -> None:
+    """A writer caches a branch only after saving it, so a refresh that read the branch earlier must keep that copy."""
+    branch = await create_branch(db=db, branch_name="saved-during-refresh")
+
+    async with db.start_session() as refresh_db:
+        refresh = asyncio.create_task(refresh_branches(db=refresh_db))
+        try:
+            await asyncio.wait_for(paused_branch_list.read.wait(), timeout=30)
+            saved_branch = await Branch.get_by_name(db=db, name=branch.name)
+            saved_branch.description = "saved after the refresh read the database"
+            await saved_branch.save(db=db)
+            registry.branch[branch.name] = saved_branch
+        finally:
+            paused_branch_list.resume.set()
+            await asyncio.wait_for(refresh, timeout=30)
+
+    assert registry.branch[branch.name] is saved_branch

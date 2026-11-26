@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import TYPE_CHECKING, ForwardRef, Optional, Union, get_origin
+from typing import TYPE_CHECKING, ForwardRef, Optional, Self, Union, get_origin
 
 from pydantic import BaseModel
-from typing_extensions import Self
 
 from infrahub.core.query import QueryType
 
@@ -136,10 +135,15 @@ class ConstraintItemMemgraph(ConstraintItem):
     def get_query_exist_drop(self) -> str:
         raise NotImplementedError()
 
+    # Memgraph constraints can only require a property to exist, so an optional property gets none.
     def get_add_queries(self) -> list[str]:
+        if not self.mandatory:
+            return []
         return [self.get_query_exist_add()]
 
     def get_drop_queries(self) -> list[str]:
+        if not self.mandatory:
+            return []
         return [self.get_query_exist_drop()]
 
 

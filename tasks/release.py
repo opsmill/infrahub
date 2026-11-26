@@ -112,7 +112,7 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/", versio
     print(" - [release] Update Helm chart")
 
     # Import here to not require installing packaging when running invoke without installing dependencies.
-    from packaging.version import Version
+    from packaging.version import InvalidVersion, Version
 
     # Explicit version (target release) wins over the installed package metadata
     # (which is resolved from the git tag at build time)
@@ -152,7 +152,7 @@ def update_helm_chart(context: Context, chart_repo: str | None = "helm/", versio
                     new_helm_version = Version(
                         f"{new_helm_version.major}.{new_helm_version.minor}.{new_helm_version.micro + 1}"
                     )
-        except Exception:
+        except InvalidVersion:
             # Fallback in case app_version has non-standard format for Helm comparison
             print(f"Warning: Unable to strictly compare versions, using default Helm chart version: {new_helm_version}")
 
@@ -210,7 +210,7 @@ def update_docker_compose(
     print(" - [release] Update docker-compose.yml")
 
     # Import here to not require installing packaging when running invoke without installing dependencies.
-    from packaging.version import Version
+    from packaging.version import InvalidVersion, Version
 
     # Explicit version (target release) wins over the installed package metadata
     # (which is resolved from the git tag at build time)
@@ -239,7 +239,7 @@ def update_docker_compose(
             # rewrites the pinned image tags downward.
             try:
                 should_update = not new_version.is_prerelease and new_version > Version(old_version)
-            except Exception:
+            except InvalidVersion:
                 should_update = False
             if should_update:
                 # Replace old version with the new version in the image field

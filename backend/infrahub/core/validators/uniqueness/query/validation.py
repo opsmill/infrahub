@@ -289,10 +289,6 @@ class UniquenessValidationQuery(Query):
     ) -> tuple[str, dict[str, str | int | float | bool]]:
         attr_name_var = f"attr_name_{index}"
         attr_value_var = f"attr_value_{index}"
-        if is_first_query:
-            first_query_filter = "WHERE $node_ids_to_exclude IS NULL OR NOT node.uuid IN $node_ids_to_exclude"
-        else:
-            first_query_filter = ""
 
         # Determine the appropriate label based on attribute type
         attr_value_label = (
@@ -301,10 +297,22 @@ class UniquenessValidationQuery(Query):
             else GraphAttributeValueIndexedNode.get_default_label()
         )
 
-        attribute_query = """
+        # A later subquery starts from the nodes already found, because the planner would otherwise start from the
+        # value, and every attribute in the database that holds the value links to that one vertex.
+        anchor_query = ""
+        if is_first_query:
+            anchor_query = """
 MATCH (node:%(node_kind)s)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: $%(attr_name_var)s})-[:HAS_VALUE]->(:%(attr_value_label)s {value: $%(attr_value_var)s})
-%(first_query_filter)s
-WITH DISTINCT node
+WHERE $node_ids_to_exclude IS NULL OR NOT node.uuid IN $node_ids_to_exclude
+WITH DISTINCT node""" % {
+                "node_kind": node_kind,
+                "attr_name_var": attr_name_var,
+                "attr_value_var": attr_value_var,
+                "attr_value_label": attr_value_label,
+            }
+
+        attribute_query = """
+%(anchor_query)s
 CALL (node) {
     MATCH (node)-[r:HAS_ATTRIBUTE]->(attr:Attribute {name: $%(attr_name_var)s})
     WHERE %(branch_filter)s
@@ -324,13 +332,11 @@ CALL (node) {
     RETURN 1 AS is_match_%(index)s
 }
         """ % {
-            "first_query_filter": first_query_filter,
-            "node_kind": node_kind,
+            "anchor_query": anchor_query,
             "attr_name_var": attr_name_var,
             "attr_value_var": attr_value_var,
             "branch_filter": branch_filter,
             "index": index,
-            "attr_value_label": attr_value_label,
         }
         params: dict[str, str | int | float | bool] = {
             attr_name_var: attr_path.attribute_name,
@@ -418,13 +424,13 @@ CALL (node) {
             first_match += "(:Node)"
         if rel_attr_match:
             first_match += rel_attr_match
+        relationship_query = ""
+        # A later subquery starts from the nodes already found, so that a peer or value shared by many nodes is not
+        # the start of the match.
         if is_first_query:
-            first_query_filter = "WHERE $node_ids_to_exclude IS NULL OR NOT node.uuid IN $node_ids_to_exclude"
-        else:
-            first_query_filter = ""
-        relationship_query = f"""
+            relationship_query = f"""
 {first_match}
-{first_query_filter}
+WHERE $node_ids_to_exclude IS NULL OR NOT node.uuid IN $node_ids_to_exclude
 WITH DISTINCT node
         """
         relationship_query += """

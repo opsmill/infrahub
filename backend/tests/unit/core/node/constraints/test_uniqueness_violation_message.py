@@ -92,3 +92,11 @@ def test_unknown_field_is_skipped_silently(
     car = schema_branch.get(name="TestCar", duplicate=False)
     message = builder.build(node_schema=car, fields=["does_not_exist"])
     assert message == "Violates uniqueness constraint 'does_not_exist'"
+
+
+def test_advice_follows_the_computed_inputs(
+    builder: UniquenessViolationMessageBuilder, schema_branch: SchemaBranch
+) -> None:
+    car = schema_branch.get(name="TestCar", duplicate=False)
+    message = builder.build(node_schema=car, fields=["name"], advice=": change the model, then retry.")
+    assert message == "Violates uniqueness constraint 'name' (computed from: model): change the model, then retry."

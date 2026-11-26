@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence  # noqa: TC003  needed for pydantic
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import NULL_VALUE
 from infrahub.core.migrations.shared import MigrationResult
@@ -23,7 +24,7 @@ class Migration055Query01(Query):
     name = "migration_055_01"
     type: QueryType = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["at"] = self.at.to_string()
         self.params["null_value"] = NULL_VALUE
 

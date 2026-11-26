@@ -1,4 +1,3 @@
-import { Icon } from "@iconify-icon/react";
 import { Card, CardContent, CardHeader, Tooltip } from "@infrahub/ui";
 import type { HTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router";
@@ -7,6 +6,7 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import Accordion from "@/shared/components/display/accordion";
 import { Avatar } from "@/shared/components/display/avatar";
 import { DateDisplay } from "@/shared/components/display/date-display";
+import { Icon } from "@/shared/components/display/icon";
 import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
 import { type Property, PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
@@ -171,7 +171,7 @@ export const ProposedChangeDetails = ({
   ];
 
   return (
-    <div className="flex grow flex-col gap-2.5 bg-stone-50 p-2.5">
+    <div className="flex grow flex-col gap-2.5 bg-background p-2.5">
       {!loadingCheck && !!checkCount && (
         <Card>
           <CardContent>
@@ -201,7 +201,7 @@ export const ProposedChangeDetails = ({
 
                 <DateDisplay
                   date={proposedChangeData.description.updated_at}
-                  className="ml-auto font-normal text-gray-600 text-xs"
+                  className="ml-auto font-normal text-foreground-muted text-xs"
                 />
               </CardHeader>
 
@@ -212,11 +212,11 @@ export const ProposedChangeDetails = ({
           <Overview />
         </div>
 
-        <Card className="col-start-3 col-end-4 min-w-[300px]">
+        <Card className="col-start-3 col-end-4 min-w-75">
           <CardHeader className="flex items-center justify-between">
             <div
               onClick={() => navigate(path)}
-              className="cursor-pointer font-semibold text-base text-gray-900 leading-6 hover:underline"
+              className="cursor-pointer font-semibold text-base text-foreground leading-6 hover:underline"
             >
               Proposed change
             </div>
@@ -226,7 +226,7 @@ export const ProposedChangeDetails = ({
 
           <PropertyList properties={proposedChangeProperties} />
 
-          <div className="flex grow gap-2 border-gray-200 border-t p-2">
+          <div className="flex grow gap-2 border-t p-2">
             <PcReviewButton />
             <PcActionButton />
           </div>

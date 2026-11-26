@@ -11,6 +11,7 @@ from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
+from infrahub.profiles.data_reader import ProfileDataReader
 from infrahub.profiles.node_applier import NodeProfilesApplier
 
 from ..shared import MigrationRequiringRebase
@@ -28,7 +29,7 @@ class GetUpdatedProfilesForBranchQuery(Query):
     name = "get_profiles_by_branch"
     type = QueryType.READ
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["branch"] = self.branch.name
         query = """
 MATCH (profile:CoreProfile)-[:HAS_ATTRIBUTE]->(attr:Attribute)-[e:HAS_VALUE]->(:AttributeValue)
@@ -49,7 +50,7 @@ class GetNodesWithProfileUpdatesForBranchQuery(Query):
     name = "get_nodes_with_profile_updates_by_branch"
     type = QueryType.READ
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["branch"] = self.branch.name
         query = """
 MATCH (node:Node)-[e:IS_RELATED]->(:Relationship {name: "node__profile"})
@@ -80,7 +81,7 @@ class Migration042(MigrationRequiringRebase):
     minimum_version: int = 41
 
     def _get_profile_applier(self, db: InfrahubDatabase, branch: Branch) -> NodeProfilesApplier:
-        return NodeProfilesApplier(db=db, branch=branch)
+        return NodeProfilesApplier(db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch))
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()

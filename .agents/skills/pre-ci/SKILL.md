@@ -18,6 +18,7 @@ allowed-tools:
   - Bash(uv run --directory python_testcontainers pytest:*)
   - Bash(uv lock --check:*)
   - Bash(uv lock:*)
+  - Bash(pnpm --dir frontend:*)
   - Bash(pnpm --dir frontend/app:*)
   - Bash(pnpm --dir frontend/packages/graph:*)
   - Bash(npx markdownlint*:*)
@@ -67,6 +68,7 @@ them: **python** is narrowed to keep the slow phases off `models/` and root-scri
 | **testcontainers** | `python_testcontainers/**`, `.github/workflows/*.yml` (any workflow, not just `ci.yml`) | Phase 5.2 |
 | **docs** | `docs/**`, `**/*.{md,mdx}`, `.vale/**`, `.vale.ini`, `package.json`, `package-lock.json`, `development/**`, `tasks/**`, `python_sdk` | Phases 1C, 4C |
 | **schema** | `schema/**` | Phase 4D |
+| **release** | `changelog/*.md`, `CHANGELOG.md`, `docs/docs/release-notes/infrahub/*.mdx` | Phase 4E |
 | **yaml** | `**/*.{yml,yaml}`, `**/pyproject.toml`, `**/uv.lock` | Phase 2C |
 
 Three frontend validation jobs gate on their own narrow filters rather than the whole frontend
@@ -82,7 +84,7 @@ area — check these paths separately:
 `Detected changes: frontend, docs. Skipping backend phases.`
 
 Sub-step letters are stable per area — **A** frontend, **B** backend or python, **C** docs (yaml
-in Phase 2), **D** schema — so a phase omits letters where an area has nothing to do. Phase 3 is
+in Phase 2), **D** schema, **E** release — so a phase omits letters where an area has nothing to do. Phase 3 is
 entirely frontend: `3A`–`3E` enumerate its individual CI jobs.
 
 > **Phase 3A always runs, even with no frontend changes.** The `frontend-lint` job has **no path
@@ -98,8 +100,12 @@ These modify files and must complete before any lint check.
 **1A. Frontend** — *if frontend changed*
 
 ```bash
-pnpm --dir frontend/app run biome:fix
+pnpm --dir frontend run biome:fix
 ```
+
+`--dir frontend`, the pnpm workspace root, **not** `--dir frontend/app`: one Biome config at
+`frontend/biome.jsonc` governs the app and `packages/*` together, and the app-scoped
+invocation would silently leave the packages unformatted.
 
 **1B. Python** — *if backend or python changed*
 
@@ -122,8 +128,8 @@ uv run invoke docs.format
 **2B. Python** — *if backend or python changed*
 
 1. `uv run invoke main.lint`
-2. `uv run ruff check . --exclude python_sdk`
-3. `uv run ruff format --check --diff --exclude python_sdk .`
+2. `uv run ruff check . --exclude python_sdk,.specify`
+3. `uv run ruff format --check --diff --exclude python_sdk,.specify .`
 4. `uv run ty check .`
 5. `uv lock --check` — root project (job `infrahub-uv-check`). On failure run `uv lock` and
    commit the updated lockfile.
@@ -154,8 +160,9 @@ The **complete** set of frontend checks CI runs. If dependencies are stale, firs
 **3A. Lint trio — ALWAYS run, regardless of detected areas** (job `frontend-lint`). Send as
 parallel Bash calls:
 
-1. `pnpm --dir frontend/app exec biome ci .` — `biome ci`, **not** `biome check --write`: only
-   the `ci` variant is check-only.
+1. `pnpm --dir frontend exec biome ci .` — from the workspace root, so the app and
+   `packages/*` are both gated, matching the `frontend-lint` job. `biome ci`, **not**
+   `biome check --write`: only the `ci` variant is check-only.
 2. `pnpm --dir frontend/app run knip` — unused exports, files, and dependencies.
 3. `pnpm --dir frontend/app exec betterer ci` — `betterer ci`, **not** bare `betterer`, which
    rewrites the snapshot instead of failing.
@@ -220,6 +227,16 @@ pnpm --dir frontend/app run check:error-bindings
    diffs. On failure the correct file is already on disk; stage and commit it.
 2. `uv run invoke schema.validate-jsonschema` — same, for `schema/openapi.json`.
 
+**4E. Release notes** — *if release changed* (job `validate-release-notes-style`)
+
+1. `uv run invoke release.vale` — vale over `changelog/`, the release-notes pages and
+   `CHANGELOG.md`. A fragment's text becomes the release notes, and `docs.lint` does not cover
+   `changelog/`. Errors fail the check; warnings do not.
+
+When `vale` is not installed, `release.vale` and `docs.lint` print `Warning, Vale is not installed`
+and exit 0 without checking anything. Report those rows as `not run (vale not installed)`, not as
+passed.
+
 ---
 
 ## Phase 5 — Slow unit tests
@@ -269,6 +286,7 @@ Summarize in a table. Include **every** row; mark rows as `skipped (no <area> ch
 | JSON schema validation | json-schema | ... |
 | Docs lint (markdownlint + vale) | markdown-lint, validate-documentation-style | ... |
 | Generated docs validation | validate-generated-documentation | ... |
+| Release notes style (vale) | validate-release-notes-style | ... |
 | Backend unit tests | backend-tests-unit | ... |
 | Testcontainers unit tests | backend-testcontainers-unit | ... |
 

@@ -3,7 +3,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, NULL_VALUE, BranchSupportType, RelationshipStatus
-from infrahub.core.graph.schema import GraphAttributeValueIndexedNode, GraphAttributeValueNode
+from infrahub.core.graph.schema import (
+    GraphAttributeValueIndexedNode,
+    GraphAttributeValueNode,
+    get_attribute_value_key,
+)
 from infrahub.core.query import Query, QueryType
 from infrahub.types import is_large_attribute_type
 
@@ -41,7 +45,7 @@ class AttributeAddQuery(Query):
         self.uuids = uuids
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
@@ -83,16 +87,9 @@ class AttributeAddQuery(Query):
             """ % {"attr_value_label": attr_value_label}
         else:
             # cannot be indexed
+            self.params["attr_value_key"] = get_attribute_value_key(self.params["attr_value"])
             match_query = """
-            OPTIONAL MATCH (existing_av:%(attr_value_label)s { value: $attr_value, is_default: true })
-            WHERE NOT existing_av:AttributeValueIndexed
-            CALL (existing_av) {
-                WITH existing_av
-                WHERE existing_av IS NULL
-                CREATE (:%(attr_value_label)s { value: $attr_value, is_default: true })
-            }
-            MATCH (av:%(attr_value_label)s { value: $attr_value, is_default: true })
-            WHERE NOT av:AttributeValueIndexed
+            MERGE (av:%(attr_value_label)s { value_key: $attr_value_key, value: $attr_value, is_default: true })
             LIMIT 1
             """ % {"attr_value_label": attr_value_label}
 

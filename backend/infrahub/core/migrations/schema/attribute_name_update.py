@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Sequence
+from collections.abc import Sequence  # noqa: TC003  needed for pydantic
+from typing import Any
 
 from ..query import AttributeMigrationQuery
 from ..query.attribute_rename import AttributeInfo, AttributeRenameQuery

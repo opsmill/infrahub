@@ -6,11 +6,9 @@ import { oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
 import {
   EditorView,
   keymap,
-  lineNumbers,
   placeholder as placeholderView,
   type ViewUpdate,
 } from "@codemirror/view";
-import { graphql } from "cm6-graphql";
 import { basicLight } from "cm6-theme-basic-light";
 import { useEffect, useState } from "react";
 
@@ -36,25 +34,30 @@ const theme = EditorView.baseTheme({
   },
 });
 
+const darkTheme = EditorView.theme(
+  {
+    "&": {
+      backgroundColor: "transparent",
+      color: "var(--foreground)",
+    },
+    ".cm-cursor": {
+      borderLeftColor: "var(--foreground)",
+    },
+  },
+  { dark: true }
+);
+
 type CodeMirrorProps = {
   defaultValue?: string;
   value?: string;
   placeholder?: string;
   onChange?: (value: string) => void;
-  lang?: "markdown" | "graphql";
   readOnly?: boolean;
 };
 
 export function useCodeMirror(
   container: HTMLDivElement | null,
-  {
-    value,
-    defaultValue = "",
-    onChange,
-    placeholder = "",
-    lang = "markdown",
-    readOnly = false,
-  }: CodeMirrorProps
+  { value, defaultValue = "", onChange, placeholder = "", readOnly = false }: CodeMirrorProps
 ) {
   const [containerElement, setContainerElement] = useState<HTMLDivElement>();
   const [view, setView] = useState<EditorView>();
@@ -82,28 +85,16 @@ export function useCodeMirror(
 
   useEffect(() => {
     if (containerElement && !state) {
-      const langExtensions =
-        lang === "markdown"
-          ? [
-              keymap.of([...defaultKeymap, indentWithTab, ...markdownKeymap, ...historyKeymap]),
-              basicLight,
-              markdown({ base: markdownLanguage }),
-            ]
-          : [
-              keymap.of([...defaultKeymap, indentWithTab, ...historyKeymap]),
-              syntaxHighlighting(oneDarkHighlightStyle),
-              lineNumbers(),
-              graphql(),
-            ];
-
+      const isDark = document.documentElement.classList.contains("dark");
       const stateCurrent = EditorState.create({
         doc: defaultValue,
         extensions: [
           updateListener,
           theme,
           history(),
-          ...langExtensions,
-          updateListener,
+          keymap.of([...defaultKeymap, indentWithTab, ...markdownKeymap, ...historyKeymap]),
+          ...(isDark ? [darkTheme, syntaxHighlighting(oneDarkHighlightStyle)] : [basicLight]),
+          markdown({ base: markdownLanguage }),
           placeholderView(placeholder),
           EditorState.readOnly.of(readOnly),
         ],

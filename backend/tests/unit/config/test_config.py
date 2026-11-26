@@ -20,6 +20,7 @@ from infrahub.config import (
     SecurityOIDCProvider1,
     SecurityOIDCProvider2,
     SecurityOIDCSettings,
+    SecuritySettings,
     Settings,
     StorageSettings,
     UserInfoMethod,
@@ -229,6 +230,42 @@ def test_oidc_default_signature_verification_is_silent(caplog: pytest.LogCapture
     assert not [record for record in caplog.records if "OIDC id_token verification is disabled" in record.message]
 
 
+SSO_ACCOUNT_NAME_FALLBACK_WARNING = (
+    "INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK (security.sso_account_name_fallback) is enabled: "
+    "a first SSO login can claim an existing "
+    "unlinked account whose name matches the display name sent by the identity provider. "
+    "This setting is deprecated and will be removed in Infrahub 1.13."
+)
+
+
+def test_sso_account_name_fallback_enabled_warns(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK", raising=False)
+    with capture_logs() as records:
+        SecuritySettings(sso_account_name_fallback=True)
+
+    assert records == [{"event": SSO_ACCOUNT_NAME_FALLBACK_WARNING, "log_level": "warning"}]
+
+
+def test_sso_account_name_fallback_default_is_silent(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK", raising=False)
+    with capture_logs() as records:
+        SecuritySettings()
+
+    assert records == []
+
+
+def test_sso_account_name_fallback_enabled_in_env_warns_when_settings_load(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK", "true")
+    with capture_logs() as records:
+        settings = load(config_data={"main": {}})
+
+    assert settings.security.sso_account_name_fallback is True
+    # pydantic-settings validates the factory-built default again, which reruns the after-validator.
+    assert {(record["event"], record["log_level"]) for record in records} == {
+        (SSO_ACCOUNT_NAME_FALLBACK_WARNING, "warning")
+    }
+
+
 def _build_oauth2_provider(groups_claim: str = "groups") -> SecurityOAuth2Provider1:
     return SecurityOAuth2Provider1(
         client_id="infrahub-client",
@@ -417,6 +454,7 @@ def test_cache_url_loads_under_the_compose_environment(monkeypatch: pytest.Monke
         "INFRAHUB_CACHE_USERNAME": "",
         "INFRAHUB_CACHE_TLS_ENABLED": "false",
         "INFRAHUB_CACHE_TLS_INSECURE": "false",
+        "INFRAHUB_CACHE_MAX_CONNECTIONS": "1000",
     }
     for name, value in compose_env.items():
         monkeypatch.setenv(name, value)
@@ -429,6 +467,42 @@ def test_cache_url_loads_under_the_compose_environment(monkeypatch: pytest.Monke
     assert records == [
         {"event": SUPERSEDED_WARNING, "log_level": "warning", "superseded_settings": ["INFRAHUB_CACHE_ADDRESS"]}
     ]
+
+
+@dataclass
+class PoolSizeOverrideCase:
+    name: str
+    url: str
+    superseded: bool
+
+
+POOL_SIZE_SUPERSEDED = {
+    "event": SUPERSEDED_WARNING,
+    "log_level": "warning",
+    "superseded_settings": ["INFRAHUB_CACHE_MAX_CONNECTIONS"],
+}
+
+POOL_SIZE_OVERRIDE_CASES = [
+    PoolSizeOverrideCase(name="url_size", url="redis://cache:6379/0?max_connections=7", superseded=True),
+    PoolSizeOverrideCase(
+        name="sentinel_url_size", url="redis+sentinel://s1:26379/mymaster?max_connections=7", superseded=True
+    ),
+    # redis-py reads 0 as its own default of 100 connections, so the setting is not applied either.
+    PoolSizeOverrideCase(name="zero", url="redis://cache:6379/0?max_connections=0", superseded=True),
+    # redis-py drops a blank option, so the setting still sizes the pool.
+    PoolSizeOverrideCase(name="blank", url="redis://cache:6379/0?max_connections=", superseded=False),
+    PoolSizeOverrideCase(name="no_size", url="redis://cache:6379/0?socket_timeout=3", superseded=False),
+]
+
+
+@pytest.mark.usefixtures("without_cache_environment")
+@pytest.mark.parametrize("case", POOL_SIZE_OVERRIDE_CASES, ids=lambda case: case.name)
+def test_cache_url_pool_size_supersedes_the_setting_only_when_it_applies(case: PoolSizeOverrideCase) -> None:
+    """The override is reported when the pool that the URL builds does not get the configured size."""
+    with capture_logs() as records:
+        CacheSettings(url=SecretStr(case.url), max_connections=250)
+
+    assert records == ([POOL_SIZE_SUPERSEDED] if case.superseded else [])
 
 
 @pytest.mark.usefixtures("without_cache_environment")

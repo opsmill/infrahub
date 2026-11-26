@@ -17,7 +17,21 @@ async def define_permissions(
     db: InfrahubDatabase,
     object_permissions: list[ObjectPermission] | None = None,
     global_permissions: list[GlobalPermission] | None = None,
+    role_name: str = "chief-people-officer",
+    group_name: str = "hr",
 ) -> None:
+    """Grant an account a set of permissions through a new role and group.
+
+    Args:
+        account: Account to add to the new group.
+        db: Database connection instance.
+        object_permissions: Object permissions to grant.
+        global_permissions: Global permissions to grant.
+        role_name: Name of the role to create; both role and group names are unique, so a caller
+            granting several accounts in one database must pass its own.
+        group_name: Name of the group to create.
+
+    """
     object_permissions = object_permissions or []
     global_permissions = global_permissions or []
     permissions = []
@@ -44,11 +58,11 @@ async def define_permissions(
         permissions.append(obj)
 
     role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
-    await role.new(db=db, name="chief-people-officer", permissions=permissions)
+    await role.new(db=db, name=role_name, permissions=permissions)
     await role.save(db=db)
 
     group = await Node.init(db=db, schema=CoreAccountGroup)
-    await group.new(db=db, name="hr", roles=[role])
+    await group.new(db=db, name=group_name, roles=[role])
     await group.save(db=db)
 
     await group.members.add(db=db, data={"id": account.id})

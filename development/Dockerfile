@@ -134,17 +134,22 @@ ENV PATH="/.venv/bin:${PATH}" \
     INFRAHUB_FRONTEND_DIRECTORY="/opt/infrahub/frontend/app" \
     INFRAHUB_DOCS_DIRECTORY="/opt/infrahub/docs"
 
-ENV PREFECT_WORKER_QUERY_SECONDS="2" \
+# The default UI build directory is inside the virtualenv, which only root can write to.
+ENV PREFECT_UI_STATIC_DIRECTORY="/opt/infrahub/prefect-ui" \
+    PREFECT_WORKER_QUERY_SECONDS="2" \
     PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES=500 \
     PREFECT_API_DATABASE_TIMEOUT=60 \
     PREFECT_FLOWS_HEARTBEAT_FREQUENCY=30 \
-    PREFECT_SERVER_API_MAX_PARAMETER_SIZE=0
+    PREFECT_SERVER_API_MAX_PARAMETER_SIZE=0 \
+    PREFECT_SERVER_DATABASE_SQLALCHEMY_POOL_SIZE=15 \
+    PREFECT_SERVER_DATABASE_SQLALCHEMY_MAX_OVERFLOW=0
 
-# Runtime-only OS packages: tini (init/entrypoint), git (repository sync), curl (healthcheck).
+# Runtime-only OS packages: tini (init/entrypoint), git (repository sync), curl (healthcheck),
+# procps (GitPython runs `ps --ppid` to stop a Git command at its time limit).
 # No build-essential/pkg-config — the compiler toolchain exists only in the builder stage.
 RUN apt-get update && \
     apt-get upgrade -y && \
-    apt-get install --no-install-recommends -y tini git curl ca-certificates && \
+    apt-get install --no-install-recommends -y tini git curl ca-certificates procps && \
     apt-get autoremove -y && \
     apt-get clean all && \
     rm -rf /var/lib/apt/lists/*
@@ -153,17 +158,26 @@ RUN apt-get update && \
 # `FROM` this one can install extra Python packages into /.venv when extending Infrahub.
 COPY --from=base /root/.local/bin/uv /root/.local/bin/uvx /usr/local/bin/
 
+# One home for every user, so a uid without a passwd entry does not get HOME=/.
+ENV HOME="/home/infrahub"
+
 RUN mkdir /prom_shared /remote && \
-    mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/infrahub/frontend/app/dist /opt/infrahub/workflow
+    mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/infrahub/frontend/app/dist /opt/infrahub/workflow /opt/infrahub/prefect-ui && \
+    useradd --uid 1000 --gid 0 --home-dir /home/infrahub --create-home --shell /usr/sbin/nologin infrahub
 
 # --------------------------------------------
 # Configure Git
 # --------------------------------------------
+# In $HOME/.gitconfig, which the task worker replaces with its own file at startup (git.global_config_file).
 RUN git config --global user.name "Infrahub" && \
     git config --global user.email "infrahub@opsmill.com" && \
     git config --global --add safe.directory '*' && \
     git config --global credential.usehttppath true && \
     git config --global credential.helper "/usr/bin/env infrahub-git-credential"
+
+# Owned by uid 1000, and group 0 gets the owner's permissions so an arbitrary uid in group 0 can write too.
+RUN chown -R infrahub:0 /prom_shared /remote /opt/infrahub /home/infrahub && \
+    chmod -R g=u /prom_shared /remote /opt/infrahub /home/infrahub
 
 WORKDIR /source
 

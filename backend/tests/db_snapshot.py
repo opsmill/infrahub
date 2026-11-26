@@ -11,6 +11,13 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
+def _hash_property(value: Any) -> int:
+    """Hash a vertex or edge property, which the graph may store as a list."""
+    if isinstance(value, list):
+        return hash(tuple(value))
+    return hash(value)
+
+
 @dataclass
 class DbNode:
     db_id: str
@@ -21,7 +28,7 @@ class DbNode:
         cumulative_hash = hash(frozenset(self.labels))
         for k, v in self.properties.items():
             cumulative_hash += hash(k)
-            cumulative_hash += hash(v)
+            cumulative_hash += _hash_property(v)
         return hash(cumulative_hash)
 
 
@@ -38,7 +45,7 @@ class DbEdge:
         cumulative_hash = 0
         for k, v in self.properties.items():
             cumulative_hash += hash(k)
-            cumulative_hash += hash(v)
+            cumulative_hash += _hash_property(v)
         return hash(f"{labels_hash}:{cumulative_hash}")
 
 
@@ -588,7 +595,9 @@ class DbSnapshotterDeduplicated:
     Captures the state of all nodes, attributes, and relationships on the database, removing duplicated edges/vertices
 
     Notes:
-    - Does not account for the IS_RESERVED edge type
+    - Does not account for the IS_RESERVED edge type. A number pool's record points at the
+      per-object Attribute vertex, which this snapshot does bind, but only its outbound property
+      edges are read, so an inbound record is invisible here.
     - Does not fully account for the same attribute/relationship being removed and re-added on the same branch.
       - for example, if I do the following updates
         - (t0) n.car.name = "a"

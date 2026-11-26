@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Sequence  # noqa: TC003  needed for pydantic
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipStatus
 from infrahub.core.query import QueryType
@@ -61,7 +62,7 @@ class NodeRelationshipRemoveMigrationQuery(RelationshipMigrationQuery):
         self.query_params = query_params
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         params = self.query_params
 
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())

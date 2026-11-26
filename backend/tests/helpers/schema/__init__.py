@@ -22,7 +22,7 @@ from .recompute import CASCADE_NODE, CYCLE_A, CYCLE_B
 from .snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
 from .tag import TAG
 from .thing import THING
-from .ticket import TICKET
+from .ticket import SHARED_NUMBER_TICKET, TICKET
 from .tshirt import TSHIRT
 from .widget import WIDGET
 
@@ -63,6 +63,12 @@ async def load_schema(
     branch.update_schema_hash()
     await branch.save(db=db)
     graphql_registry.clear_cache()
+
+
+async def save_schema(db: InfrahubDatabase, schema: SchemaRoot, branch_name: str | None = None) -> None:
+    """Load the schema and save only its own kinds, because saving the whole core schema takes about 25 seconds."""
+    kinds = [element.kind for element in [*schema.generics, *schema.nodes]]
+    await load_schema(db=db, schema=schema, branch_name=branch_name, update_db=True, limit=kinds)
 
 
 async def _write_and_read_back_schema(
@@ -136,6 +142,7 @@ __all__ = [
     "RACK",
     "RACK_SCHEMA",
     "SFP",
+    "SHARED_NUMBER_TICKET",
     "SITE",
     "SLOT",
     "TAG",

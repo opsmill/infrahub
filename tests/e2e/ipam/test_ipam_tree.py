@@ -46,7 +46,7 @@ class TestIpamTree:
         await expect(ipam_tree.get_by_text("10.0.0.0/8")).to_be_visible()
         await expect(ipam_tree.get_by_text("10.1.0.0/16")).to_be_visible()
         await expect(ipam_tree.get_by_text("10.1.0.12/31")).to_be_visible()
-        await expect(ipam_tree.get_by_role("row", name="10.1.0.12/31")).to_contain_class("bg-neutral-100")
+        await expect(ipam_tree.get_by_role("row", name="10.1.0.12/31")).to_contain_class("bg-selected")
 
     async def test_go_to_prefix_summary_on_click(self, page: Page, data_sites: SitesHandle) -> None:
         await page.goto("/ipam")

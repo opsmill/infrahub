@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence  # noqa: TC003  needed for pydantic
+from typing import TYPE_CHECKING, Any
 
+from infrahub.core.graph.schema import get_attribute_value_key
+from infrahub.core.query import Query, QueryType
 from infrahub.types import is_large_attribute_type
 
 from ..query import AttributeMigrationQuery, MigrationBaseQuery
@@ -11,12 +14,57 @@ if TYPE_CHECKING:
     from infrahub.core.branch.models import Branch
     from infrahub.database import InfrahubDatabase
 
+# The string a stored value is looked up by in the map of keys, built the same way on both sides of the query.
+VALUE_LOOKUP = "CASE WHEN %(value)s IS :: STRING THEN %(value)s ELSE toString(%(value)s) END"
+
+
+class IndexedAttributeValuesQuery(Query):
+    """Read the distinct indexed values an attribute of the given kinds has on any branch or at any time."""
+
+    name = "migration_attribute_kind_indexed_values"
+    type = QueryType.READ
+
+    def __init__(self, node_kinds: list[str], attribute_name: str, **kwargs: Any) -> None:
+        self.node_kinds = node_kinds
+        self.attribute_name = attribute_name
+        # A stable order keeps the pages of the read from skipping or repeating a value.
+        super().__init__(order_by=["lookup"], **kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["attr_name"] = self.attribute_name
+        query = """
+        MATCH (:%(node_kinds)s)-[:HAS_ATTRIBUTE]->(:Attribute {name: $attr_name})-[:HAS_VALUE]->(av:AttributeValueIndexed)
+        WITH DISTINCT av.value AS value
+        WITH value, %(lookup)s AS lookup
+        """ % {"node_kinds": "|".join(self.node_kinds), "lookup": VALUE_LOOKUP % {"value": "value"}}
+        self.add_to_query(query)
+        self.return_labels = ["value", "lookup"]
+
+    def get_value_keys(self) -> dict[str, str]:
+        return {
+            result.get_as_type("lookup", return_type=str): get_attribute_value_key(result.get("value"))
+            for result in self.get_results()
+        }
+
+
+def _get_node_kinds(kind: str) -> list[str]:
+    return [kind, f"Profile{kind}", f"Template{kind}"]
+
 
 class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
+    """Link each attribute whose kind changed to a value stored the way its new kind stores values.
+
+    `value_keys` maps each value converted to a large kind, as a string, to its key, and is empty otherwise.
+    """
+
     name = "migration_attribute_kind"
     insert_return = False
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+    def __init__(self, value_keys: dict[str, str], **kwargs: Any) -> None:
+        self.value_keys = value_keys
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
         self.params.update(branch_params)
         needs_index = not is_large_attribute_type(self.migration.new_attribute_schema.kind)
@@ -30,9 +78,29 @@ class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
         # Set metadata for vertex properties on default/global branch
         self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
 
-        new_attr_value_labels = "AttributeValue"
         if needs_index:
-            new_attr_value_labels += ":AttributeValueIndexed"
+            create_value_query = """
+    OPTIONAL MATCH (existing_av:AttributeValue {is_default: av_is_default, value: av_value})
+    WHERE "AttributeValueIndexed" IN labels(existing_av) = $needs_index
+    WITH existing_av WHERE existing_av IS NULL
+    LIMIT 1
+    CREATE (:AttributeValue:AttributeValueIndexed {is_default: av_is_default, value: av_value})"""
+            get_value_query = """
+    MATCH (new_av:AttributeValue:AttributeValueIndexed {is_default: av.is_default, value: av.value})
+    WHERE "AttributeValueIndexed" IN labels(new_av) = $needs_index
+    LIMIT 1"""
+        else:
+            self.params["value_keys"] = self.value_keys
+            # Indexed values never carry a key, so merging on the key cannot reuse one of them.
+            create_value_query = """
+    MERGE (:AttributeValue {
+        is_default: av_is_default, value: av_value, value_key: $value_keys[%(lookup)s]
+    })""" % {"lookup": VALUE_LOOKUP % {"value": "av_value"}}
+            get_value_query = """
+    MERGE (new_av:AttributeValue {
+        is_default: av.is_default, value: av.value, value_key: $value_keys[%(lookup)s]
+    })
+    LIMIT 1""" % {"lookup": VALUE_LOOKUP % {"value": "av.value"}}
         # ruff: noqa: S608
         query = """
 // ------------
@@ -61,12 +129,7 @@ CALL (n, attr) {
 // create it if not
 // ------------
 WITH DISTINCT av.is_default AS av_is_default, av.value AS av_value
-CALL (av_is_default, av_value) {
-    OPTIONAL MATCH (existing_av:AttributeValue {is_default: av_is_default, value: av_value})
-    WHERE "AttributeValueIndexed" IN labels(existing_av) = $needs_index
-    WITH existing_av WHERE existing_av IS NULL
-    LIMIT 1
-    CREATE (:%(new_attr_value_labels)s {is_default: av_is_default, value: av_value})
+CALL (av_is_default, av_value) {%(create_value_query)s
 }
 
 // ------------
@@ -98,10 +161,7 @@ CALL (n, attr) {
 CALL (attr, has_value_e, av) {
     // ------------
     // get the correct AttributeValue vertex b/c it definitely exists now
-    // ------------
-    MATCH (new_av:%(new_attr_value_labels)s {is_default: av.is_default, value: av.value})
-    WHERE "AttributeValueIndexed" IN labels(new_av) = $needs_index
-    LIMIT 1
+    // ------------%(get_value_query)s
 
     // ------------
     // create the new HAS_VALUE edge
@@ -155,11 +215,10 @@ CALL (attr, n) {
     SET n.updated_at = $at, n.updated_by = $user_id
 }
         """ % {
-            "schema_kinds": (
-                f"{self.migration.previous_schema.kind}|Profile{self.migration.previous_schema.kind}|Template{self.migration.previous_schema.kind}"
-            ),
+            "schema_kinds": "|".join(_get_node_kinds(self.migration.previous_schema.kind)),
             "branch_filter": branch_filter,
-            "new_attr_value_labels": new_attr_value_labels,
+            "create_value_query": create_value_query,
+            "get_value_query": get_value_query,
         }
         self.add_to_query(query)
 
@@ -167,6 +226,38 @@ CALL (attr, n) {
 class AttributeKindUpdateMigration(AttributeSchemaMigration):
     name: str = "attribute.kind.update"
     queries: Sequence[type[AttributeMigrationQuery]] = [AttributeKindUpdateMigrationQuery]  # type: ignore[assignment]
+
+    async def build_query(
+        self,
+        migration_query: type[MigrationBaseQuery],
+        migration_input: MigrationInput,
+        branch: Branch,
+    ) -> MigrationBaseQuery:
+        if not issubclass(migration_query, AttributeKindUpdateMigrationQuery):
+            return await super().build_query(
+                migration_query=migration_query, migration_input=migration_input, branch=branch
+            )
+
+        value_keys: dict[str, str] = {}
+        if is_large_attribute_type(self.new_attribute_schema.kind):
+            # Cypher cannot compute the hash, so the keys of the values to convert are computed before the query.
+            values_query = await IndexedAttributeValuesQuery.init(
+                db=migration_input.db,
+                branch=branch,
+                node_kinds=_get_node_kinds(self.previous_schema.kind),
+                attribute_name=self.previous_attribute_schema.name,
+            )
+            await values_query.execute(db=migration_input.db)
+            value_keys = values_query.get_value_keys()
+
+        return await migration_query.init(
+            db=migration_input.db,
+            branch=branch,
+            at=migration_input.at,
+            migration=self,
+            user_id=migration_input.user_id,
+            value_keys=value_keys,
+        )
 
     async def execute(
         self,

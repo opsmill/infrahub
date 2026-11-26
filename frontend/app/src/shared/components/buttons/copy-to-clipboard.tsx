@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, type ButtonProps } from "@infrahub/ui";
 import type { ReactNode } from "react";
 
+import { Icon } from "@/shared/components/display/icon";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 
 interface CopyToClipboardProps extends Omit<ButtonProps, "children"> {

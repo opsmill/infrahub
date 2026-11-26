@@ -6,7 +6,12 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import type { SidebarItemConfig } from '@docusaurus/plugin-content-docs/src/sidebars/types';
+import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
+
+// Docusaurus does not export SidebarItemConfig from the package entry point,
+// so derive it from the public SidebarsConfig type instead of deep-importing
+// the plugin's source files, which tsc cannot resolve.
+type SidebarItemConfig = Extract<SidebarsConfig[string], unknown[]>[number];
 
 const RELEASE_DIR = path.join(__dirname, 'docs', 'release-notes', 'infrahub');
 const RELEASE_RE = /^release-(\d+)_(\d+)(?:_(\d+))?\.mdx$/;

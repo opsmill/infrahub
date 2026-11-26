@@ -1,10 +1,10 @@
-import { Icon } from "@iconify-icon/react";
 import { LinkButton, type LinkButtonProps, Spinner, Tooltip } from "@infrahub/ui";
 import { useQuery } from "@tanstack/react-query";
 
 import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 
 import { constructPath, type overrideQueryParams } from "@/shared/api/rest/fetch";
+import { Icon } from "@/shared/components/display/icon";
 import { Pulse } from "@/shared/components/ui/pulse";
 import { QSP } from "@/shared/config/qsp";
 
@@ -49,7 +49,7 @@ export function TaskStatus() {
     return (
       <Tooltip message={tooltipContent}>
         <LinkButton {...commonButtonProps} aria-label={tooltipContent}>
-          <Icon icon="mdi:error-outline" className="text-red-500" />
+          <Icon icon="mdi:error-outline" className="text-danger" />
         </LinkButton>
       </Tooltip>
     );
@@ -64,6 +64,7 @@ export function TaskStatus() {
       <LinkButton {...commonButtonProps} aria-label={tooltipContent}>
         {isPending ? <Spinner /> : <TasksStatusIcon />}
         {isTaskRunningOnBranch && (
+          // biome-ignore lint/nursery/noTailwindArbitraryValue: pixel-nudge: centres the pulse dot on the button corner; 6.5px is off the 0.25rem grid and has no design meaning
           <Pulse className="right-[6.5px] bottom-[6.5px]" data-testid="pulse" />
         )}
       </LinkButton>

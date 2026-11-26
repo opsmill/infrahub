@@ -126,6 +126,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Check formatting and linting (Biome)
+        # Run from the pnpm workspace root: one Biome config now covers the app
+        # and frontend/packages/*, so this single check gates the whole frontend.
+        working-directory: ./frontend
         run: pnpm exec biome ci .
       - name: Check unused exports (Knip)
         run: pnpm knip
@@ -329,9 +332,9 @@ jobs:
       - name: Install dependencies
         run: "uv sync --all-groups"
       - name: "Linting: ruff check"
-        run: "uv run ruff check . --exclude python_sdk"
+        run: "uv run ruff check . --exclude python_sdk,.specify"
       - name: "Linting: ruff format"
-        run: "uv run ruff format --check --diff --exclude python_sdk ."
+        run: "uv run ruff format --check --diff --exclude python_sdk,.specify ."
       - name: "Linting: ty check"
         run: "uv run ty check ."
       - name: "Linting: mypy"
@@ -609,6 +612,7 @@ jobs:
           - "graphql"
           - "core-diff"
           - "core-schema"
+          - "resource-manager-git"
           - "other"
     runs-on:
       group: huge-runners
@@ -636,6 +640,7 @@ jobs:
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install dependencies
         run: "uv sync --all-groups"
       - name: "Component Tests (${{ matrix.shard }})"
@@ -695,6 +700,7 @@ jobs:
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install dependencies
         run: "uv sync --all-groups"
       - name: "Validate integration test shards"
@@ -742,6 +748,7 @@ jobs:
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install dependencies
         run: "uv sync --all-groups"
       - name: "Functional Tests"
@@ -814,6 +821,7 @@ jobs:
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install dependencies
         run: "uv sync --all-groups"
       - name: "Build container"
@@ -875,7 +883,8 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       (needs.files-changed.outputs.backend == 'true' ||
-      needs.files-changed.outputs.documentation == 'true')
+      needs.files-changed.outputs.documentation == 'true' ||
+      needs.files-changed.outputs.error_catalogue == 'true')
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: ubuntu-latest
     steps:
@@ -1216,6 +1225,7 @@ jobs:
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install dependencies
         run: "uv sync --all-groups"
       - name: Install Playwright browsers
@@ -1304,6 +1314,7 @@ jobs:
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install dependencies
         run: "uv sync --all-groups"
 
@@ -1400,6 +1411,7 @@ jobs:
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install dependencies
         run: "uv sync --all-groups"
       - name: Update PATH
@@ -1407,7 +1419,7 @@ jobs:
 
       - name: Run all benchmarks
         if: contains(github.event.pull_request.labels.*.name, 'ci/run-intensive-benchmarks')
-        uses: CodSpeedHQ/action@821a40cd6c80e3cfe387caf55668287addd808da # v5.5.0
+        uses: CodSpeedHQ/action@b1f28b5eccf7cb5bfe6a2a89cb3053eb67f1150c # v5.8.0
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
           mode: instrumentation
@@ -1416,7 +1428,7 @@ jobs:
       - name: Run non-intensive benchmarks
         if: |
           !contains(github.event.pull_request.labels.*.name, 'ci/run-intensive-benchmarks')
-        uses: CodSpeedHQ/action@821a40cd6c80e3cfe387caf55668287addd808da # v5.5.0
+        uses: CodSpeedHQ/action@b1f28b5eccf7cb5bfe6a2a89cb3053eb67f1150c # v5.8.0
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
           mode: instrumentation
@@ -1461,5 +1473,5 @@ jobs:
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          carryforward: "backend-unit,backend-integration-a,backend-integration-b,frontend-unit,backend-component-graphql,backend-component-core-diff,backend-component-core-schema,backend-component-other"
+          carryforward: "backend-unit,backend-integration-a,backend-integration-b,frontend-unit,backend-component-graphql,backend-component-core-diff,backend-component-core-schema,backend-component-resource-manager-git,backend-component-other"
           parallel-finished: true

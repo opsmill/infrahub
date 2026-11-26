@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 from graphql import GraphQLError
 
+from infrahub.errors.catalogue import CATALOGUE
 from infrahub.errors.exceptions import (
     AttributeConstraintViolationError,
     AttributeInvalidTypeError,
@@ -18,11 +19,14 @@ from infrahub.exceptions import (
     BranchNeedsRebaseError,
     BranchNotFoundError,
     Error,
+    HFIDViolatedError,
     MergeInProgressError,
     MergeRecoveryRequiredError,
     NodeNotFoundError,
     PermissionDeniedError,
     SchemaNotFoundError,
+    UniquenessViolationError,
+    WorkerTimeoutError,
 )
 from infrahub.graphql.error_formatter import (
     UNDEFINED_ERROR_CODE,
@@ -113,6 +117,34 @@ CASES = [
         },
     ),
     CodeCase(
+        name="uniqueness_violation_single_field",
+        exc=UniquenessViolationError("Violates uniqueness constraint 'name'", node_kind="BuiltinTag", fields=["name"]),
+        expected_code="UNIQUENESS_VIOLATION",
+        expected_http_status=422,
+        expected_data={"node_kind": "BuiltinTag", "fields": ["name"]},
+    ),
+    CodeCase(
+        name="uniqueness_violation_composite_constraint",
+        exc=UniquenessViolationError(
+            "Violates uniqueness constraint 'name-owner'", node_kind="TestCar", fields=["name", "owner"]
+        ),
+        expected_code="UNIQUENESS_VIOLATION",
+        expected_http_status=422,
+        expected_data={"node_kind": "TestCar", "fields": ["name", "owner"]},
+    ),
+    CodeCase(
+        name="hfid_violated_resolves_via_parent_class",
+        exc=HFIDViolatedError(
+            "Violates uniqueness constraint 'name'",
+            node_kind="BuiltinTag",
+            fields=["name"],
+            matching_nodes_ids={"abc-123"},
+        ),
+        expected_code="UNIQUENESS_VIOLATION",
+        expected_http_status=422,
+        expected_data={"node_kind": "BuiltinTag", "fields": ["name"]},
+    ),
+    CodeCase(
         name="branch_not_found",
         exc=BranchNotFoundError(identifier="missing"),
         expected_code="BRANCH_NOT_FOUND",
@@ -162,7 +194,34 @@ CASES = [
         expected_http_status=423,
         expected_data={"branch_name": "main", "merging_branch": "feature-branch"},
     ),
+    CodeCase(
+        name="worker_timeout",
+        exc=WorkerTimeoutError(operation="git.repository.connectivity", timeout_seconds=30),
+        expected_code="WORKER_TIMEOUT",
+        expected_http_status=504,
+        expected_data={
+            "operation": "git.repository.connectivity",
+            "timeout_seconds": 30,
+            "retry_after_seconds": 30,
+        },
+    ),
+    CodeCase(
+        name="worker_timeout_sub_second",
+        exc=WorkerTimeoutError(operation="git.repository.connectivity", timeout_seconds=0.25),
+        expected_code="WORKER_TIMEOUT",
+        expected_http_status=504,
+        expected_data={
+            "operation": "git.repository.connectivity",
+            "timeout_seconds": 1,
+            "retry_after_seconds": 1,
+        },
+    ),
 ]
+
+
+def test_every_catalogued_code_has_a_case() -> None:
+    # UNDEFINED_ERROR is the fallback for anything uncatalogued and has its own tests below.
+    assert {case.expected_code for case in CASES} == set(CATALOGUE) - {"UNDEFINED_ERROR"}
 
 
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.name)

@@ -6,7 +6,7 @@ Catching, scoping, and suppressing exceptions in the Python backend.
 
 ## Catch only what you expect
 
-Do not use bare `except:` or a broad `except Exception` to wrap code you haven't verified can raise something you can recover from — it swallows `KeyboardInterrupt`/`SystemExit` intent, hides bugs (typos, `AttributeError`, misconfiguration) behind the same handler as the error you meant to catch, and makes failures silent.
+Do not use bare `except:` or a broad `except Exception` to wrap code you haven't verified can raise something you can recover from — a bare `except:` also swallows `KeyboardInterrupt`/`SystemExit`, and both hide bugs (typos, `AttributeError`, misconfiguration) behind the same handler as the error you meant to catch and make failures silent. A broad catch that stays carries a comment that says why no narrower type works, whether or not ruff flags it.
 
 ```python
 # ❌ Bad - swallows everything, including programming errors
@@ -78,18 +78,26 @@ except Exception as exc:
     key = None                        # explicit, safe (over-executing) fallback signal
 ```
 
+The mirror case is cleanup running while another exception propagates — a reset or release in an
+`except`/`finally` recovery path. Anything the cleanup raises replaces the failure being recovered
+from with a less useful one, so catch what the cleanup can raise and log it with `log.exception`.
+Catch `Exception` only when that set is not knowable, and say why in the comment. Cancellation still
+propagates: `asyncio.CancelledError` is a `BaseException`, so state the contract in the helper's docstring as "raises nothing but cancellation", not "never raises".
+
 ## `# noqa: BLE001`
 
 Narrowing is the default answer when ruff flags a broad `except Exception` — most call sites raise a
-knowable set of types (see above). Suppress the rule only when catching everything is deliberate, and
-name which case it is in the comment above it:
+knowable set of types (see above). Catching everything is not the target design: the lower layers
+should raise precise exceptions so callers can catch them. Until they do, the rule is suppressed only
+in the cases below:
 
 - a top-level boundary (worker loop, request handler) that must not let one failure take down the process
 - a loop that turns a per-item failure into a reported result instead of aborting the whole run
 - a best-effort side effect that must not fail the primary operation (see above) — after checking the
   catch is needed at all
+- cleanup in a recovery path that must not mask the failure in flight (see above)
 
-All three still log or record the failure; none discards it.
+All four still log or record the failure; none discards it.
 
 Inside a transaction, catching and returning commits the partial work: `__aexit__` rolls back only
 when an exception leaves the `async with` block. Re-raise inside and convert outside, and write what

@@ -234,13 +234,13 @@ def _generate_infrahub_schema_attribute_kind_parameters_snippet() -> None:
 
     from infrahub.core.schema.attribute_schema import attribute_schema_class_by_kind
 
-    kind_ap_parameters: dict[str, dict] = {}
+    kind_ap_parameters: dict[str, dict[str, str]] = {}
     for kind, schema_cls in attribute_schema_class_by_kind.items():
         # If the schema has a parameters class, add it to the list
         init_schema = schema_cls(name="ignore", kind=kind)
         if hasattr(init_schema, "parameters") and init_schema.parameters is not None:
             params = {
-                param: info
+                param: str(info.get_default(call_default_factory=True))
                 for param, info in init_schema.parameters.__class__.model_fields.items()
                 if info.json_schema_extra and info.json_schema_extra.get("update") == "validate_constraint"
             }
@@ -258,7 +258,8 @@ def _generate_infrahub_schema_attribute_kind_parameters_snippet() -> None:
 
     template_text = template_file.read_text(encoding="utf-8")
 
-    environment = jinja2.Environment()
+    # The markdown linter wants the file to end with exactly one newline, which the default environment strips.
+    environment = jinja2.Environment(keep_trailing_newline=True)
     template = environment.from_string(template_text)
     rendered_file = template.render(kinds=kind_ap_parameters)
 
@@ -321,6 +322,14 @@ def _scalar_type_from_any_of(schema: dict) -> str | None:
     types = [option["type"] for option in schema.get("anyOf", []) if option.get("type") not in (None, "null")]
     if len(types) == 1:
         return types[0]
+    return None
+
+
+def _optional_ref_from_any_of(schema: dict) -> str | None:
+    """Return the reference of an optional field whose only non-null option is a ``$ref``, such as ``Enum | None``."""
+    options = [option for option in schema.get("anyOf", []) if option.get("type") != "null"]
+    if len(options) == 1:
+        return options[0].get("$ref")
     return None
 
 
@@ -498,7 +507,7 @@ def _process_section_parameters(
         default = param_schema.get("default")
         if default is None and param_name in model_fields:
             default = _factory_default(model_fields[param_name])
-        ref = param_schema.get("$ref")
+        ref = param_schema.get("$ref") or _optional_ref_from_any_of(param_schema)
         definition = None
 
         if "properties" in param_schema or ref:
@@ -967,6 +976,8 @@ def _error_catalogue_type_label(schema: dict[str, Any]) -> str:
         return " \\| ".join(_error_catalogue_type_label(branch) for branch in schema["anyOf"])
     if schema.get("format") == "date-time":
         return "string (date-time)"
+    if schema.get("type") == "array":
+        return f"{_error_catalogue_type_label(schema.get('items', {}))}[]"
     json_type = schema.get("type")
     return str(json_type) if json_type is not None else "object"
 
@@ -980,6 +991,8 @@ def _error_catalogue_example_value(schema: dict[str, Any]) -> Any:  # noqa: ANN4
         return None
     if schema.get("format") == "date-time":
         return "2026-01-01T00:00:00Z"
+    if schema.get("type") == "array":
+        return [_error_catalogue_example_value(schema.get("items", {}))]
     samples: dict[str, Any] = {"string": "example", "integer": 1, "number": 1, "boolean": True, "null": None}
     return samples.get(str(schema.get("type")))
 

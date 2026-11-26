@@ -29,6 +29,7 @@ export function BranchNameCell({ branch, isSelected, onClickCheckbox }: BranchNa
         <Checkbox
           isSelected={isSelected}
           onPress={onClickCheckbox}
+          aria-label={`Select ${branch.name}`}
           data-testid="branch-checkbox-cell"
           className="mt-2"
         />
@@ -41,7 +42,7 @@ export function BranchNameCell({ branch, isSelected, onClickCheckbox }: BranchNa
               variant="ghost"
               size="sm"
               href={getBranchDetailsUrl(branch.name)}
-              className="min-w-0 shrink rounded-full px-2.5 text-custom-blue-700 data-hovered:bg-custom-blue-700/10 data-hovered:underline"
+              className="min-w-0 shrink rounded-full px-2.5 text-accent data-hovered:bg-accent/10 data-hovered:underline"
             >
               {/* The ellipsis has to sit on a child: `text-overflow` does nothing on
                   the button's own flex box. */}
@@ -59,7 +60,9 @@ export function BranchNameCell({ branch, isSelected, onClickCheckbox }: BranchNa
         </Row>
 
         {branch.description && (
-          <span className="truncate pl-2.5 text-gray-600 text-xs">{branch.description}</span>
+          <span className="truncate pl-2.5 text-foreground-muted text-xs">
+            {branch.description}
+          </span>
         )}
       </Col>
     </StickyLeftCell>

@@ -6,6 +6,7 @@ from graphene import Enum, Field, ObjectType, String
 
 from infrahub.core.preferences.constants import DateFormat as DateFormatEnum
 from infrahub.core.preferences.constants import PreferenceSource as PreferenceSourceEnum
+from infrahub.instance_identity import InstanceColor as InstanceColorEnum
 
 # Keep the description a single line: graphql-core's SDL printer dedents multi-line descriptions
 # differently across versions, which makes the generated schema.graphql environment-dependent.
@@ -15,6 +16,15 @@ DateFormat = Enum.from_enum(
         "Semantic date-format keys. The stored date_format is one of these keys (not a rendering "
         "pattern); each client maps the key to its own formatter. Single source of truth for the "
         "value on Preference.date_format."
+    ),
+)
+
+
+InstanceColor = Enum.from_enum(
+    InstanceColorEnum,
+    description=(
+        "Preset colors for the instance badge, bar and tab icon. The stored instance_color is one of these keys; "
+        "each client maps the key to its own theme."
     ),
 )
 
@@ -86,3 +96,10 @@ class RawPreferencesType(ObjectType):
 
     date_format = Field(DateFormat, required=False)
     timezone = Field(String, required=False)
+
+
+class GlobalPreferencesType(RawPreferencesType):
+    """The organisation-wide raw preferences, plus the instance identity that exists at that scope only."""
+
+    instance_label = Field(String, required=False)
+    instance_color = Field(InstanceColor, required=False)

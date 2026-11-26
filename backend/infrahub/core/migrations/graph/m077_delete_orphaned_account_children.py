@@ -163,7 +163,8 @@ class Migration077(ArbitraryMigration):
                     at=migration_input.at,
                 )
                 await query.execute(db=db)
-            except Exception as exc:
+            # A per-kind failure becomes a reported migration error instead of aborting the run.
+            except Exception as exc:  # noqa: BLE001
                 result.errors.append(f"Unable to delete the {kind} nodes with no account: {exc}")
                 continue
 

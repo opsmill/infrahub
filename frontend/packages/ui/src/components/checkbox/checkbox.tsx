@@ -11,20 +11,20 @@ import { composeAriaClassName } from "../../utils/compose-aria-class-name";
 
 const checkboxVariants = tv({
   base: [
-    "group/checkbox flex cursor-pointer items-center gap-1.5 text-sm select-none",
+    "group/checkbox flex cursor-pointer select-none items-center gap-1.5 text-sm",
     "data-disabled:cursor-not-allowed data-disabled:opacity-70",
   ],
 });
 
 const checkboxIndicatorVariants = tv({
   base: [
-    "flex size-4.5 shrink-0 items-center justify-center rounded-md border border-neutral-300 bg-white text-white transition-all duration-200",
+    "flex size-4.5 shrink-0 items-center justify-center rounded-md border border-border-strong bg-input text-white transition-all duration-200",
     "group-data-pressed/checkbox:scale-90",
-    "group-data-focus-visible/checkbox:border-cyan-700 group-data-focus-visible/checkbox:ring-2 group-data-focus-visible/checkbox:ring-cyan-700/25 group-data-focus-visible/checkbox:outline-hidden",
+    "group-data-focus-visible/checkbox:border-ring group-data-focus-visible/checkbox:outline-hidden group-data-focus-visible/checkbox:ring-2 group-data-focus-visible/checkbox:ring-ring-halo",
   ],
   variants: {
     isActive: {
-      true: "border-cyan-800 bg-linear-to-b from-cyan-800 to-cyan-600 inset-shadow-[0_1px_0_rgba(255,255,255,0.4)]",
+      true: "inset-shadow-[0_1px_0_rgba(255,255,255,0.4)] border-cyan-800 bg-linear-to-b from-cyan-800 to-cyan-600",
     },
   },
 });

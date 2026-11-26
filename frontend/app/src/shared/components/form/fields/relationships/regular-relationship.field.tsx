@@ -2,15 +2,15 @@ import { useEffect, useState } from "react";
 
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField, ResetAction } from "@/shared/components/form/fields/common";
-import type { PoolValue } from "@/shared/components/form/pool-selector";
+import { PoolBackedField } from "@/shared/components/form/pool-backed-field";
 import type {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
+  PoolValue,
 } from "@/shared/components/form/type";
 import { canDisplayResetActions } from "@/shared/components/form/utils/canDisplayResetActions";
 import { getParentRelationship } from "@/shared/components/form/utils/getParentRelationship";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
-import { PoolSelect } from "@/shared/components/inputs/pool-select";
 import { RelationshipInput } from "@/shared/components/inputs/relationship-one";
 import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 
@@ -18,6 +18,17 @@ import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useDefaultParent } from "@/entities/nodes/relationships/ui/queries/get-default-parent.query";
 
 import { useCommonParentFilter } from "./useCommonParentFilter";
+
+/**
+ * The peer the object picker renders. A from-pool marker is not a node — the pool tab shows the
+ * pool itself — and an array belongs to the cardinality-many field, so both narrow to nothing
+ * here rather than being asserted into a `Node`.
+ */
+const toPickedNode = (fieldData: FormRelationshipValue | undefined): Node | null => {
+  const value = fieldData?.value;
+  if (!value || Array.isArray(value) || "from_pool" in value) return null;
+  return { ...value, display_label: value.display_label ?? "" };
+};
 
 export interface RegularRelationshipFieldProps extends DynamicRelationshipFieldProps {
   parentDisabled?: boolean;
@@ -98,6 +109,7 @@ export const NodeRelationshipField = ({
                     {...props}
                     value={selectedParent}
                     peer={parentRelationship?.peer}
+                    placeholder="Select a parent"
                     disabled={props.parentDisabled || props.disabled}
                     onChange={(value: Node | PoolValue | null) =>
                       setSelectedParent(value as Node | null)
@@ -118,64 +130,54 @@ export const NodeRelationshipField = ({
         defaultValue={defaultValue}
         shouldUnregister={shouldUnregister}
         render={({ field }) => {
-          const fieldData: FormRelationshipValue = field.value;
+          const fieldData: FormRelationshipValue = field.value ?? DEFAULT_FORM_FIELD_VALUE;
 
           const { peer } = relationship;
-          const selectedPoolId = fieldData?.source?.type === "pool" ? fieldData.source.id : null;
 
           const onChange = (newValue: Node | PoolValue | null) => {
             field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
           };
 
-          const value =
-            fieldData?.value && !Array.isArray(fieldData.value) ? (fieldData.value as Node) : null;
-
           return (
-            <div className="relative flex flex-col space-y-2">
-              <LabelFormField
-                label={label}
-                unique={unique}
-                required={!!rules?.required}
-                description={description}
-                variant={showManualParent ? "small" : undefined}
-                fieldData={fieldData}
-              />
-
-              <div className="flex gap-2">
-                <FormInput>
-                  <RelationshipInput
-                    {...field}
-                    {...props}
-                    value={value}
-                    onChange={onChange}
-                    peer={peer}
-                    parent={
-                      commonParent.isActive
-                        ? commonParent.parent
-                        : { name: parentRelationship?.name, value: selectedParent?.id }
-                    }
-                    addNewInitialObject={commonParent.addNewInitialObject}
-                  />
-                </FormInput>
-
-                {pool && (
-                  <PoolSelect
-                    name={name}
-                    poolKind={pool.kind}
-                    poolDefaultAllocatedObjectKind={pool.defaultAllocatedObjectKind}
-                    selectedPoolId={selectedPoolId}
-                    value={fieldData}
-                    onChange={onChange}
-                  />
-                )}
-              </div>
+            <PoolBackedField
+              name={name}
+              label={label}
+              description={description}
+              unique={unique}
+              required={!!rules?.required}
+              labelVariant={showManualParent ? "small" : undefined}
+              fieldData={fieldData}
+              defaultValue={defaultValue}
+              // A concrete peer pins the kind the pool allocates, so there is nothing to override.
+              pool={pool}
+              valueTabLabel="Object"
+              disabled={props.disabled}
+              untabbedClassName="relative"
+              onPoolChange={onChange}
+              onTabSwitch={() => setSelectedParent(null)}
+            >
+              <FormInput>
+                <RelationshipInput
+                  {...field}
+                  {...props}
+                  value={toPickedNode(fieldData)}
+                  onChange={onChange}
+                  peer={peer}
+                  parent={
+                    commonParent.isActive
+                      ? commonParent.parent
+                      : { name: parentRelationship?.name, value: selectedParent?.id }
+                  }
+                  addNewInitialObject={commonParent.addNewInitialObject}
+                />
+              </FormInput>
 
               {canDisplayResetActions(relationship, isBulkUpdate) && (
                 <ResetAction field={field} defaultValue={defaultValue} />
               )}
 
               <FormMessage />
-            </div>
+            </PoolBackedField>
           );
         }}
       />

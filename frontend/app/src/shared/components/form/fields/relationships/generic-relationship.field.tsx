@@ -1,12 +1,19 @@
+import { useAtomValue } from "jotai";
 import { useId, useRef, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
 import { Col } from "@/shared/components/container";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField } from "@/shared/components/form/fields/common";
-import type { DynamicRelationshipFieldProps } from "@/shared/components/form/type";
+import { PoolBackedField } from "@/shared/components/form/pool-backed-field";
+import type {
+  DynamicRelationshipFieldProps,
+  FormRelationshipValue,
+  PoolValue,
+} from "@/shared/components/form/type";
 import { getParentRelationship } from "@/shared/components/form/utils/getParentRelationship";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
+import { RelationshipManyInput } from "@/shared/components/inputs/relationship-many";
 import { RelationshipInput } from "@/shared/components/inputs/relationship-one";
 import { Badge } from "@/shared/components/ui/badge";
 import {
@@ -21,7 +28,15 @@ import { FormField, FormInput, FormMessage } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { useDefaultParent } from "@/entities/nodes/relationships/ui/queries/get-default-parent.query";
+import { resolveSchema } from "@/entities/schema/domain/rules/resolve-schema";
+import {
+  genericSchemasAtom,
+  nodeSchemasAtom,
+  profileSchemasAtom,
+  templateSchemasAtom,
+} from "@/entities/schema/stores/schema.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 import { useCommonParentFilter } from "./useCommonParentFilter";
@@ -31,6 +46,32 @@ interface GenericOption extends Node {
   display_label: string;
   badge: string;
 }
+
+/**
+ * Narrows the stored value to the single peer the picker renders: an array (cardinality-many)
+ * and a from-pool marker are not one, and a nullish label stays `""` for the hfid/id fallback.
+ */
+const toRelationshipInputValue = (
+  fieldData: FormRelationshipValue | undefined
+): Node | PoolValue | null => {
+  const value = fieldData?.value;
+  if (!value || Array.isArray(value)) return null;
+
+  if ("from_pool" in value) {
+    const poolSource = fieldData?.source?.type === "pool" ? fieldData.source : null;
+    if (!poolSource) return null;
+
+    return {
+      from_pool: { ...value.from_pool, name: poolSource.label ?? "", kind: poolSource.kind },
+    };
+  }
+
+  return { ...value, display_label: value.display_label ?? "" };
+};
+
+const toRelationshipManyInputValue = (
+  fieldData: FormRelationshipValue | undefined
+): Array<NodeCore> | null => (Array.isArray(fieldData?.value) ? fieldData.value : null);
 
 export interface GenericRelationshipFieldProps extends DynamicRelationshipFieldProps {
   parentDisabled?: boolean;
@@ -46,6 +87,7 @@ export const GenericRelationshipField = ({
   type,
   options,
   parent,
+  pool,
   relationship,
   shouldUnregister,
   ...props
@@ -58,11 +100,12 @@ export const GenericRelationshipField = ({
     defaultSelectedGeneric as GenericOption | null
   );
 
-  const parentRelationship = selectedGeneric?.id && getParentRelationship(selectedGeneric.id);
+  const parentRelationship = selectedGeneric?.id ? getParentRelationship(selectedGeneric.id) : null;
   const commonParent = useCommonParentFilter(relationship, name);
   // When common_parent drives the filter from a sibling field, the manual "Parent" picker
   // is redundant — hide it and source the peer filter from the sibling value instead.
   const showManualParent = !commonParent.isActive && !!parentRelationship;
+  const isMany = relationship.cardinality === "many";
 
   const { data: defaultParent } = useDefaultParent({
     defaultValue,
@@ -78,13 +121,23 @@ export const GenericRelationshipField = ({
   const [selectedParent, setSelectedParent] = useState<Node | null>(defaultParent || null);
   const hasDerivedKindFromDefault = useRef(false);
 
+  // One subscription per schema collection, resolved with the same pure lookup `useSchema`
+  // uses. Calling `useSchema` per `used_by` entry would put a hook inside the loop, making
+  // the hook count vary with the number of implementations.
+  const schemas = {
+    nodeSchemas: useAtomValue(nodeSchemasAtom),
+    genericSchemas: useAtomValue(genericSchemasAtom),
+    profileSchemas: useAtomValue(profileSchemasAtom),
+    templateSchemas: useAtomValue(templateSchemasAtom),
+  };
+
   const genericOptions = (isGeneric ? (peerSchema?.used_by ?? []) : [])
-    .map((name: string) => {
-      const { schema: relatedSchema } = useSchema(name);
+    .map((usedByKind: string) => {
+      const { schema: relatedSchema } = resolveSchema(usedByKind, schemas);
 
       if (relatedSchema) {
         return {
-          id: name,
+          id: usedByKind,
           display_label: relatedSchema.label || relatedSchema.name,
           badge: relatedSchema.namespace,
         };
@@ -134,6 +187,15 @@ export const GenericRelationshipField = ({
     setSelectedParent(defaultParent);
   }
 
+  // The single-node input builds this filter from its parent prop; the multi-node input takes it ready-made.
+  const manualParentFilterQuery =
+    parentRelationship && selectedParent?.id
+      ? { [`${parentRelationship.name}__ids`]: [selectedParent.id] }
+      : undefined;
+  const manyPeerFilterQuery = commonParent.isActive
+    ? commonParent.filterQuery
+    : manualParentFilterQuery;
+
   const form = useFormContext();
 
   // A user switching the kind invalidates any node picked under the previous kind, along with
@@ -149,95 +211,142 @@ export const GenericRelationshipField = ({
 
   return (
     <div className="space-y-2">
-      <LabelFormField
-        label={label}
-        unique={unique}
-        required={!!rules?.required}
-        description={description}
-      />
-
-      <GenericSchemaPicker
-        genericOptions={genericOptions}
-        selectedGeneric={selectedGeneric}
-        setSelectedGeneric={handleKindChange}
-      />
-
-      {showManualParent && parentRelationship && (
-        <Col>
-          <LabelFormField
-            label={parentRelationship?.label ?? "Parent"}
-            description={parentRelationship?.description}
-            unique={unique}
-            variant="small"
-          />
-          <RelationshipInput
-            name={name + "_parent"}
-            value={selectedParent ?? null}
-            peer={parentRelationship.peer}
-            disabled={props.disabled || !selectedGeneric?.id}
-            onChange={(value) => setSelectedParent(value as Node | null)}
-          />
-        </Col>
-      )}
-
       <FormField
         key={name}
         name={name}
         rules={rules}
         shouldUnregister={shouldUnregister}
         render={({ field }) => {
-          const fieldData = field.value;
+          // RHF hands back `undefined` until this field's default lands, so normalise to the
+          // empty value the pool controls expect rather than letting it reach them raw.
+          const fieldData: FormRelationshipValue = field.value ?? DEFAULT_FORM_FIELD_VALUE;
 
-          if (!selectedGeneric?.id) {
+          const onChange = (newValue: Node | PoolValue | null) => {
+            field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
+          };
+
+          const onNodesChange = (nodes: Array<NodeCore>) => {
+            field.onChange(
+              updateRelationshipFieldValue(nodes.length > 0 ? nodes : null, defaultValue)
+            );
+          };
+
+          const renderObjectValue = () => {
+            if (!selectedGeneric?.id) {
+              return (
+                <div className="relative flex flex-col space-y-2">
+                  <LabelFormField
+                    label={selectedGeneric?.display_label ?? "Select a kind first"}
+                    unique={unique}
+                    required={!!rules?.required}
+                    description={description}
+                    variant="small"
+                    className="italic"
+                  />
+                  <FormInput>
+                    <Input disabled name="node-placholder" />
+                  </FormInput>
+                </div>
+              );
+            }
+
             return (
               <div className="relative flex flex-col space-y-2">
                 <LabelFormField
-                  label={selectedGeneric?.display_label ?? "Select a kind first"}
+                  label={selectedGeneric?.display_label ?? "Node"}
                   unique={unique}
                   required={!!rules?.required}
                   description={description}
                   variant="small"
-                  className="italic"
                 />
-                <FormInput>
-                  <Input disabled name="node-placholder" />
-                </FormInput>
+                <Col className="gap-2">
+                  <FormInput>
+                    {isMany ? (
+                      <RelationshipManyInput
+                        {...field}
+                        peer={selectedGeneric.id}
+                        value={toRelationshipManyInputValue(fieldData)}
+                        onChange={onNodesChange}
+                        filterQuery={manyPeerFilterQuery}
+                        enforceFilterQueryOnIdSearch={commonParent.isActive}
+                        addNewInitialObject={commonParent.addNewInitialObject}
+                        disabled={props.disabled}
+                      />
+                    ) : (
+                      <RelationshipInput
+                        {...field}
+                        {...props}
+                        options={undefined}
+                        value={toRelationshipInputValue(fieldData)}
+                        onChange={onChange}
+                        peer={selectedGeneric.id}
+                        parent={
+                          commonParent.isActive
+                            ? commonParent.parent
+                            : { name: parentRelationship?.name, value: selectedParent?.id }
+                        }
+                        addNewInitialObject={commonParent.addNewInitialObject}
+                        disabled={props.disabled}
+                      />
+                    )}
+                  </FormInput>
+
+                  <FormMessage />
+                </Col>
               </div>
             );
-          }
+          };
 
           return (
-            <div className="relative flex flex-col space-y-2">
-              <LabelFormField
-                label={selectedGeneric?.display_label ?? "Node"}
-                unique={unique}
-                required={!!rules?.required}
-                description={description}
-                variant="small"
+            <PoolBackedField
+              name={name}
+              label={label}
+              description={description}
+              unique={unique}
+              required={!!rules?.required}
+              fieldData={fieldData}
+              defaultValue={defaultValue}
+              // A pool allocates a single peer, so it cannot satisfy a cardinality-many relationship.
+              pool={isMany ? undefined : pool}
+              allocatableKinds={genericOptions.map((option) => ({
+                kind: option.id,
+                label: option.display_label,
+                namespace: option.badge,
+              }))}
+              valueTabLabel="Object"
+              disabled={props.disabled}
+              untabbedClassName="rounded-md border border-border p-3"
+              onPoolChange={onChange}
+              onTabSwitch={() => setSelectedParent(null)}
+            >
+              {/* The kind picker is object-tab only: the pool list spans the generic's whole `used_by`, so a picked kind would contradict the chosen pool. */}
+              <GenericSchemaPicker
+                genericOptions={genericOptions}
+                selectedGeneric={selectedGeneric}
+                setSelectedGeneric={handleKindChange}
               />
-              <div>
-                <FormInput>
-                  <RelationshipInput
-                    {...field}
-                    {...props}
-                    options={undefined}
-                    value={fieldData?.value}
-                    onChange={(newValue) => {
-                      field.onChange(updateRelationshipFieldValue(newValue, defaultValue));
-                    }}
-                    peer={selectedGeneric?.id ?? ""}
-                    parent={
-                      commonParent.isActive
-                        ? commonParent.parent
-                        : { name: parentRelationship?.name, value: selectedParent?.id }
-                    }
-                    addNewInitialObject={commonParent.addNewInitialObject}
-                    disabled={props.disabled || !selectedGeneric?.id}
+
+              {showManualParent && parentRelationship && (
+                <Col>
+                  <LabelFormField
+                    label={parentRelationship?.label ?? "Parent"}
+                    description={parentRelationship?.description}
+                    unique={unique}
+                    variant="small"
                   />
-                </FormInput>
-                <FormMessage />
-              </div>
-            </div>
+                  <RelationshipInput
+                    name={name + "_parent"}
+                    value={selectedParent ?? null}
+                    peer={parentRelationship.peer}
+                    placeholder="Select a parent"
+                    disabled={props.disabled || !selectedGeneric?.id}
+                    onChange={(value) => setSelectedParent(value as Node | null)}
+                  />
+                </Col>
+              )}
+
+              {renderObjectValue()}
+            </PoolBackedField>
           );
         }}
       />
@@ -268,10 +377,12 @@ const GenericSchemaPicker = ({
 
       <Combobox open={open} onOpenChange={setOpen}>
         <ComboboxTrigger id={id}>
-          {selectedGeneric && (
+          {selectedGeneric ? (
             <div className="flex w-full justify-between" data-testid="select-value">
               {selectedGeneric.display_label} <Badge>{selectedGeneric.badge}</Badge>
             </div>
+          ) : (
+            <span className="text-subtle-muted">Select a kind</span>
           )}
         </ComboboxTrigger>
 

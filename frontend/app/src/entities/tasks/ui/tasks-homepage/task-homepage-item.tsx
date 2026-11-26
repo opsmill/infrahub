@@ -1,8 +1,8 @@
-import { Icon } from "@iconify-icon/react";
+import { Card } from "@infrahub/ui";
 import { Link } from "react-router";
 
-import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
+import { Icon } from "@/shared/components/display/icon";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
@@ -11,6 +11,7 @@ import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-u
 import { getSchemaIcon } from "@/entities/schema/domain/rules/get-schema-icon";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 import type { TaskHomepageNode } from "@/entities/tasks/domain/use-cases/get-tasks-homepage";
+import { getTaskDetailsUrl } from "@/entities/tasks/ui/routing/task-urls";
 
 export const TaskHomepageItem = ({
   id,
@@ -20,13 +21,14 @@ export const TaskHomepageItem = ({
   related_nodes,
 }: TaskHomepageNode) => {
   return (
-    <div className="flex w-full flex-col gap-1.5 rounded-md border border-transparent bg-white p-2 text-xs shadow-sm">
+    <Card className="w-full gap-1.5 rounded-md p-2 text-xs">
       <Link
         className={classNames(
           focusVisibleStyle,
-          "line-clamp-2 font-semibold transition-colors hover:text-custom-blue-700"
+          "line-clamp-2 font-semibold transition-colors",
+          "hover:text-accent"
         )}
-        to={constructPath(`/tasks/${id}`)}
+        to={getTaskDetailsUrl(id)}
       >
         {title}
       </Link>
@@ -44,7 +46,8 @@ export const TaskHomepageItem = ({
                 key={node.id}
                 className={classNames(
                   focusVisibleStyle,
-                  "flex items-center gap-1 rounded px-1 py-0.5 text-gray-600 transition-colors hover:bg-gray-100 hover:text-custom-blue-700"
+                  "flex items-center gap-1 rounded px-1 py-0.5 text-foreground-muted transition-colors",
+                  "hover:bg-highlight hover:text-accent"
                 )}
                 to={getObjectDetailsUrl(node.kind, node.id)}
               >
@@ -56,11 +59,11 @@ export const TaskHomepageItem = ({
         </div>
       )}
 
-      <span className="flex items-center gap-1 text-gray-500">
+      <span className="flex items-center gap-1 text-foreground-muted">
         <Icon icon={"mdi:source-branch"} />
         <span className="truncate">{branch}</span>
       </span>
-      <DateDisplay date={updated_at} className="text-gray-500" />
-    </div>
+      <DateDisplay date={updated_at} className="text-foreground-muted" />
+    </Card>
   );
 };

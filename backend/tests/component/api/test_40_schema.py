@@ -300,6 +300,23 @@ async def test_json_schema_kind_default_branch(
     assert "prefix" in schema["properties"]["member_type"]["enum"]
 
 
+async def test_json_schema_kind_with_list_attribute(
+    db: InfrahubDatabase,
+    client: TestClient,
+    client_headers: dict[str, str],
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+    car_person_data_generic: dict[str, Node],
+) -> None:
+    with client:
+        response = client.get(f"/api/schema/json_schema/{InfrahubKind.GRAPHQLQUERY}", headers=client_headers)
+
+    assert response.status_code == 200
+    operations = response.json()["properties"]["operations"]
+    assert operations["type"] == "array"
+    assert operations["items"] == {}
+
+
 async def test_schema_kind_not_valid(
     db: InfrahubDatabase,
     client: TestClient,
@@ -698,6 +715,47 @@ async def test_schema_check_reserved_suffix_attribute(
         response.json()["errors"][0]["message"]
         == "Reserved suffix '_from_resource_pool' used on attribute 'foo_from_resource_pool' in 'TestTestNode'"
     )
+
+
+async def test_schema_check_warns_on_number_pool_shorthand(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    workflow_local: WorkflowLocalExecution,
+    authentication_base: Node,
+) -> None:
+    payload = {
+        "version": "1.0",
+        "nodes": [
+            {
+                "name": "Vlan",
+                "namespace": "Test",
+                "attributes": [
+                    {
+                        "name": "vlan_id",
+                        "kind": "NumberPool",
+                        "read_only": True,
+                        "parameters": {"start_range": 100, "end_range": 200},
+                    }
+                ],
+            }
+        ],
+    }
+
+    with client:
+        response = client.post("/api/schema/check", headers=admin_headers, json={"schemas": [payload]})
+
+    assert response.status_code == 202, response.text
+    assert response.json()["warnings"] == [
+        {
+            "type": "deprecation",
+            "kinds": [{"kind": "TestVlan", "field": "vlan_id"}],
+            "message": "Use of 'start_range' and 'end_range' on NumberPool attributes is deprecated, "
+            "use 'ranges' instead",
+        }
+    ]
 
 
 async def test_schema_check_reserved_suffix_relationship(

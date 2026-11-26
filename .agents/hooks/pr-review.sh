@@ -19,9 +19,14 @@ fi
 
 payload=$(cat)
 
-# Claude Code records a pull request only when the command created one.
+# A Bash command records a pull request only when it created one, and the GitHub MCP tool's response holds its URL.
 claude_pr_url() {
-    printf '%s' "$payload" | jq -r 'select(.tool_response.gitOperation.pr.action == "created") | .tool_response.gitOperation.pr.url // empty'
+    printf '%s' "$payload" | jq -r '
+        if .tool_name == "mcp__github__create_pull_request" then
+            .tool_response | tostring | [match("https://github[.]com/[^/\"\\\\ ]+/[^/\"\\\\ ]+/pull/[0-9]+").string] | first // empty
+        else
+            select(.tool_response.gitOperation.pr.action == "created") | .tool_response.gitOperation.pr.url // empty
+        end'
 }
 
 codex_pr_url() {

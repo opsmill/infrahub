@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Generator
+from typing import TYPE_CHECKING, Any
 
 from infrahub import config
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, DiffAction, RelationshipStatus
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from infrahub.core.branch import Branch
     from infrahub.core.diff.model.field_specifiers_map import NodeFieldSpecifierMap
     from infrahub.database import InfrahubDatabase
@@ -23,9 +26,9 @@ class DiffQuery(Query):
     def __init__(
         self,
         branch: Branch,
-        diff_from: Timestamp | str = None,
-        diff_to: Timestamp | str = None,
-        **kwargs,
+        diff_from: Timestamp | str | None = None,
+        diff_to: Timestamp | str | None = None,
+        **kwargs: Any,
     ) -> None:
         """A diff is always in the context of a branch.
 
@@ -54,6 +57,12 @@ class DiffQuery(Query):
 
 
 class DiffCountChanges(Query):
+    """Count the edges of each branch that were opened or closed in a time window.
+
+    An edge counts once for each of its two vertices that is a `Node`, `Attribute` or `Relationship`, when at
+    least one of the two is branch-aware.
+    """
+
     name = "diff_count_changes"
     type = QueryType.READ
 
@@ -62,41 +71,67 @@ class DiffCountChanges(Query):
         branch_names: list[str],
         diff_from: Timestamp,
         diff_to: Timestamp,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.branch_names = branch_names
         self.diff_from = diff_from
         self.diff_to = diff_to
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
             "from_time": self.diff_from.to_string(),
             "to_time": self.diff_to.to_string(),
             "branch_names": self.branch_names,
         }
-        query = """
-        MATCH (p:Node|Attribute|Relationship)-[diff_rel]-(q)
-        WHERE diff_rel.branch in $branch_names
-        AND (
-            (diff_rel.from >= $from_time AND diff_rel.from < $to_time)
-            OR (diff_rel.to >= $from_time AND diff_rel.to < $to_time)
-        )
-        AND (p.branch_support = "aware" OR q.branch_support = "aware")
-        WITH diff_rel.branch AS branch_name, count(*) AS num_changes
+        # each read sums its own edges, which costs less than passing every edge to one sum at the end
+        count_vertices = """
+            AND diff_rel.branch IN $branch_names
+            AND (p.branch_support = "aware" OR q.branch_support = "aware")
+            RETURN diff_rel.branch AS branch_name, sum(
+                (CASE WHEN p:Node|Attribute|Relationship THEN 1 ELSE 0 END)
+                + (CASE WHEN q:Node|Attribute|Relationship THEN 1 ELSE 0 END)
+            ) AS num_vertices
         """
+        # each edge type is read through its `from` index, then through its `to` index, so the cost follows
+        # the number of edges in the window instead of the size of the graph
+        edge_reads = []
+        for edge_type in DatabaseEdgeType:
+            edge_reads.append(
+                """
+            MATCH (p)-[diff_rel:%(edge_type)s]->(q)
+            USING INDEX SEEK diff_rel:%(edge_type)s(from)
+            WHERE diff_rel.from >= $from_time AND diff_rel.from < $to_time
+            %(count_vertices)s
+                """
+                % {"edge_type": edge_type.value, "count_vertices": count_vertices}
+            )
+            # an edge opened and closed in the window is already counted by the read on `from`
+            edge_reads.append(
+                """
+            MATCH (p)-[diff_rel:%(edge_type)s]->(q)
+            USING INDEX SEEK diff_rel:%(edge_type)s(to)
+            WHERE diff_rel.to >= $from_time AND diff_rel.to < $to_time
+            AND NOT coalesce(diff_rel.from >= $from_time AND diff_rel.from < $to_time, false)
+            %(count_vertices)s
+                """
+                % {"edge_type": edge_type.value, "count_vertices": count_vertices}
+            )
+        query = """
+        CALL () {
+            %(edge_reads)s
+        }
+        WITH branch_name, sum(num_vertices) AS num_changes
+        WHERE num_changes > 0
+        """ % {"edge_reads": "UNION ALL".join(edge_reads)}
         self.add_to_query(query=query)
         self.return_labels = ["branch_name", "num_changes"]
 
     def get_num_changes_by_branch(self) -> dict[str, int]:
         branch_count_map = {}
         for result in self.get_results():
-            branch_name = str(result.get("branch_name"))
-            try:
-                count = int(result.get("num_changes"))
-            except (TypeError, ValueError):
-                count = 0
-            branch_count_map[branch_name] = count
+            branch_name = result.get_as_type(label="branch_name", return_type=str)
+            branch_count_map[branch_name] = result.get_as_type(label="num_changes", return_type=int)
         for branch_name in self.branch_names:
             if branch_name not in branch_count_map:
                 branch_count_map[branch_name] = 0
@@ -980,25 +1015,61 @@ AND (
         self.return_labels = ["collect(DISTINCT p.uuid) AS node_uuids"]
 
 
+def _window_edge_reads(pattern: str, edge_types: tuple[DatabaseEdgeType, ...], tail: str) -> str:
+    """Return one read per edge type through its `from` index, then its `to` index, joined with `UNION ALL`.
+
+    Args:
+        pattern: The pattern of each read, which names the edge `diff_rel` and holds `%(edge_type)s` for its type.
+        edge_types: The edge types to read.
+        tail: The text that continues the `WHERE` clause of each read and returns its rows.
+
+    """
+    edge_reads = []
+    for edge_type in edge_types:
+        match = pattern % {"edge_type": edge_type.value}
+        edge_reads.append(
+            f"""
+    MATCH {match}
+    USING INDEX SEEK diff_rel:{edge_type.value}(from)
+    WHERE diff_rel.from >= $from_time AND diff_rel.from < $to_time
+    AND (diff_rel.to IS NULL OR diff_rel.to > $to_time)
+    {tail}
+            """
+        )
+        edge_reads.append(
+            f"""
+    MATCH {match}
+    USING INDEX SEEK diff_rel:{edge_type.value}(to)
+    WHERE diff_rel.to >= $from_time AND diff_rel.to < $to_time
+    {tail}
+            """
+        )
+    return "UNION ALL".join(edge_reads)
+
+
 class DiffFieldNodesQuery(DiffChangedNodesQuery):
     name = "diff_field_nodes"
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params.update(self.get_params())
+        # without the hints the planner can read every node of the graph instead of the edges in the window
+        edge_reads = _window_edge_reads(
+            pattern="(p:Node)-[diff_rel:%(edge_type)s {branch: $branch_name}]-(q)",
+            edge_types=(DatabaseEdgeType.HAS_ATTRIBUTE, DatabaseEdgeType.IS_RELATED),
+            tail="""AND q.branch_support = $branch_aware
+    AND ($node_kinds IS NULL OR p.kind IN $node_kinds)
+    RETURN DISTINCT p.uuid AS node_uuid""",
+        )
         query = """
 // -------------------------------------
 // Identify nodes with an attribute/relationship added/removed on branch
 // -------------------------------------
-MATCH (p:Node)-[diff_rel:HAS_ATTRIBUTE|IS_RELATED {branch: $branch_name}]-(q)
-WHERE q.branch_support = $branch_aware
-AND ($node_kinds IS NULL OR p.kind IN $node_kinds)
-AND (
-    ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
-    OR ($from_time <= diff_rel.to < $to_time)
-)
-        """
+CALL () {
+    %(edge_reads)s
+}
+        """ % {"edge_reads": edge_reads}
         self.add_to_query(query)
-        self.return_labels = ["collect(DISTINCT p.uuid) AS node_uuids"]
+        self.return_labels = ["collect(DISTINCT node_uuid) AS node_uuids"]
 
 
 class DiffPropertyNodesQuery(DiffChangedNodesQuery):
@@ -1006,19 +1077,30 @@ class DiffPropertyNodesQuery(DiffChangedNodesQuery):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params.update(self.get_params())
+        # without the hints the planner reads every attribute and relationship of the graph instead of the edges in
+        # the window
+        edge_reads = _window_edge_reads(
+            pattern="(p:Attribute|Relationship)-[diff_rel:%(edge_type)s {branch: $branch_name}]->()",
+            edge_types=(
+                DatabaseEdgeType.IS_PROTECTED,
+                DatabaseEdgeType.HAS_SOURCE,
+                DatabaseEdgeType.HAS_OWNER,
+                DatabaseEdgeType.HAS_VALUE,
+            ),
+            tail="""AND p.branch_support = $branch_aware
+    RETURN DISTINCT p""",
+        )
         query = """
 // -------------------------------------
 // Identify nodes with a property added/removed on branch
 // -------------------------------------
-MATCH (n:Node)-[:HAS_ATTRIBUTE|IS_RELATED]-(p:Attribute|Relationship)
-    -[diff_rel:IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE {branch: $branch_name}]->()
-WHERE p.branch_support = $branch_aware
-AND ($node_kinds IS NULL OR n.kind IN $node_kinds)
-AND (
-    ($from_time <= diff_rel.from < $to_time AND (diff_rel.to IS NULL OR diff_rel.to > $to_time))
-    OR ($from_time <= diff_rel.to < $to_time)
-)
-        """
+CALL () {
+    %(edge_reads)s
+}
+WITH DISTINCT p
+MATCH (n:Node)-[:HAS_ATTRIBUTE|IS_RELATED]-(p)
+WHERE $node_kinds IS NULL OR n.kind IN $node_kinds
+        """ % {"edge_reads": edge_reads}
         self.add_to_query(query)
         self.return_labels = ["collect(DISTINCT n.uuid) AS node_uuids"]
 

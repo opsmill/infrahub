@@ -22,6 +22,11 @@ class InfrahubEventPage(PrefectBaseModel):
     total: int = Field(..., description="The total number of matching Events")
 
 
+class InfrahubDatabaseVersion(PrefectBaseModel):
+    type: str = Field(..., description="The type of database, for example postgresql or sqlite")
+    version: str | None = Field(..., description="The version reported by the database server")
+
+
 class InfrahubEventfilterInput(BaseModel):
     limit: int = Field(default=50)
     filter: InfrahubEventFilter = Field(default_factory=InfrahubEventFilter.default)

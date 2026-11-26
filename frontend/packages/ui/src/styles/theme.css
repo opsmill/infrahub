@@ -1,0 +1,426 @@
+/* TODO: DELETE @custom-variant AT THE END */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* Tells the browser which palette to paint the parts of the page CSS cannot reach: scrollbars,
+     native form controls and their popups, autofill highlights, and the canvas behind overscroll. */
+  color-scheme: light;
+
+  --background: var(--color-stone-100);
+  --surface: var(--color-stone-200);
+  --foreground: var(--color-stone-800);
+  --foreground-muted: var(--color-stone-600);
+  --subtle: var(--color-stone-600);
+  --subtle-muted: var(--color-stone-400);
+
+  --border: var(--color-neutral-200);
+  --border-strong: var(--color-neutral-300);
+
+  --ring: var(--color-cyan-700);
+  --ring-halo: --alpha(var(--ring) / 25%);
+
+  --accent: #087895;
+
+  /* Companions to --accent, covering the roles the legacy custom-blue ramp served with four
+     interchangeable shades: a pale tint behind a selected row or badge, a saturated fill for
+     avatars and pulse dots, and the foreground that sits on that fill. The 10% alpha reproduces
+     the legacy accent tint it replaces, so those surfaces do not move.
+     NOTE: --accent-strong / --accent-foreground contrast wants a designer's sign-off. */
+  --accent-surface: --alpha(var(--accent) / 10%);
+  --accent-strong: #0987a8;
+  --accent-foreground: var(--color-white);
+
+  /* Marks the element the user is currently acting on: an open navigation menu, a column being
+     sorted or filtered. Each theme needs its own end of the ramp to clear WCAG AA against its own
+     background, so a single shade cannot serve both. */
+  --active: var(--color-indigo-700);
+  --active-surface: var(--color-indigo-100);
+
+  --danger: var(--color-rose-700);
+  --danger-surface: --alpha(var(--color-rose-500) / 15%);
+  /* A second danger intensity, for the one place that needs it: the check-severity stripe uses
+     one step hotter for "critical" than for "error". */
+  --danger-strong: var(--color-rose-600);
+
+  /* The remaining status families, following the --danger recipe: foreground -700, surface
+     alpha(-500 / 15%), strong one step hotter. Amber (not yellow) is warning: the two hues mean
+     the same thing in this codebase and differ only by the age of the code. Sky (not blue or
+     cyan) is info: cyan collides with --accent and --ring, blue with --active. */
+  --success: var(--color-green-700);
+  --success-surface: --alpha(var(--color-green-500) / 15%);
+  --success-strong: var(--color-green-600);
+
+  --warning: var(--color-amber-700);
+  --warning-surface: --alpha(var(--color-amber-500) / 15%);
+  --warning-strong: var(--color-amber-500);
+  /* Warning is the only family that draws a hairline between surface and foreground. */
+  --warning-border: --alpha(var(--color-amber-500) / 35%);
+
+  /* Highlighted text (<mark>). Not --warning-surface: a highlight is an annotation, not a
+     warning, and coupling them would let a warning retune silently restyle marked text.
+     Not bridged into @theme: it is consumed as a raw var, and no utility is needed. */
+  --marked: --alpha(var(--color-amber-400) / 35%);
+
+  --info: var(--color-sky-700);
+  --info-surface: --alpha(var(--color-sky-500) / 15%);
+
+  /* Diff status is its own family, not the status palette. Use these for anything in a diff view:
+     the four members are read against each other in one viewport, and a removal is a successful
+     operation, so --danger is the wrong token for it. */
+  --diff-added: var(--color-green-700);
+  --diff-added-surface: --alpha(var(--color-green-500) / 15%);
+  --diff-removed: var(--color-rose-700);
+  --diff-removed-surface: --alpha(var(--color-rose-500) / 15%);
+  --diff-updated: var(--color-blue-700);
+  --diff-updated-surface: --alpha(var(--color-blue-500) / 15%);
+  --diff-conflict: var(--color-yellow-700);
+  --diff-conflict-surface: --alpha(var(--color-yellow-500) / 15%);
+
+  /* A raised content surface: diff rows, check panels, rendered diagrams. Distinct from --surface,
+     which sits lower, and from --input, which happens to share these values but tracks form fields. */
+  --content: var(--color-white);
+  --content-muted: var(--color-gray-50);
+  --content-strong: var(--color-gray-100);
+
+  --input: var(--color-white);
+  --input-border: var(--border);
+  --input-shadow: 0 2px 4px rgb(0 0 0 / 0.04);
+
+  /* The 1px top highlight that makes a small control read as raised: count badges, outline
+     buttons, checkbox cards. Light needs a near-white catch and dark a barely-there one, so no
+     single literal serves both, so use this token rather than a literal plus a dark: variant. */
+  --raised-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9);
+
+  --popover: --alpha(var(--color-stone-100) / 70%);
+
+  --highlight: linear-gradient(
+    --alpha(var(--color-stone-600) / 10%),
+    --alpha(var(--color-stone-600) / 10%)
+  );
+  --highlight-foreground: var(--foreground);
+
+  --selected: var(--highlight);
+  --selected-foreground: var(--foreground);
+  --selected-shadow: 0 0 #0000;
+  --selected-highlight: var(--highlight), var(--selected);
+
+  --card: linear-gradient(
+    to bottom,
+    var(--color-stone-50) 0%,
+    var(--color-white) 10%
+  );
+  --card-shadow:
+    inset 0 2px 0 rgb(255 255 255), inset 0 -1px 2px 1px rgb(0 0 0 / 0.03),
+    0 1px 1px rgb(0 0 0 / 0.02);
+
+  --card-header: linear-gradient(
+    to bottom,
+    var(--color-white) 0%,
+    var(--color-neutral-50) 100%
+  );
+  --card-header-foreground: var(--color-neutral-700);
+  --card-header-shadow: inset 0 1px 0 rgb(255 255 255 / 0.85);
+
+  --secondary: var(--card);
+  --secondary-shadow: var(--card-shadow);
+
+  --panel: linear-gradient(var(--color-gray-50), var(--color-gray-50));
+  --panel-shadow: 0 0 #0000;
+
+  --modal-frame: --alpha(var(--color-white) / 25%);
+  --modal-frame-border: var(--border);
+  --modal-shadow:
+    0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  --table-cell: var(--color-stone-50);
+  --table-cell-pinned: var(--color-white);
+  --table-frame: none;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --background: var(--color-black);
+  --surface: var(--color-stone-800);
+  --foreground: var(--color-stone-200);
+  --foreground-muted: var(--color-stone-400);
+  --subtle: var(--color-stone-400);
+  --subtle-muted: var(--color-stone-600);
+
+  --border: var(--color-stone-800);
+  --border-strong: var(--color-stone-700);
+
+  --ring: var(--color-cyan-700);
+  --ring-halo: --alpha(var(--ring) / 25%);
+
+  --accent: #a7d9e6;
+
+  --accent-surface: --alpha(var(--accent) / 15%);
+  --accent-strong: #0b97bb;
+
+  --active: var(--color-indigo-400);
+  --active-surface: --alpha(var(--color-indigo-400) / 15%);
+
+  --danger: var(--color-rose-400);
+  --danger-surface: --alpha(var(--color-rose-400) / 20%);
+  --danger-strong: var(--color-rose-500);
+
+  --success: var(--color-green-400);
+  --success-surface: --alpha(var(--color-green-500) / 15%);
+  --success-strong: var(--color-green-500);
+
+  /* Dark amber sits at -300: -400 reads far brighter than rose-400 at the same step. */
+  --warning: var(--color-amber-300);
+  --warning-surface: --alpha(var(--color-amber-400) / 20%);
+  --warning-strong: var(--color-amber-400);
+  --warning-border: --alpha(var(--color-amber-400) / 30%);
+
+  --marked: --alpha(var(--color-amber-400) / 25%);
+
+  --info: var(--color-sky-400);
+  --info-surface: --alpha(var(--color-sky-400) / 20%);
+
+  --diff-added: var(--color-green-400);
+  --diff-added-surface: --alpha(var(--color-green-400) / 20%);
+  --diff-removed: var(--color-rose-400);
+  --diff-removed-surface: --alpha(var(--color-rose-400) / 20%);
+  --diff-updated: var(--color-blue-400);
+  --diff-updated-surface: --alpha(var(--color-blue-400) / 20%);
+  --diff-conflict: var(--color-yellow-400);
+  --diff-conflict-surface: --alpha(var(--color-yellow-400) / 20%);
+
+  --content: var(--color-stone-900);
+  --content-muted: rgb(255 255 255 / 0.05);
+  --content-strong: rgb(255 255 255 / 0.1);
+
+  --input: var(--color-stone-900);
+  --input-border: var(--border-strong);
+  --input-shadow: 0 2px 4px rgb(0 0 0 / 0.35);
+
+  --raised-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
+
+  --popover: --alpha(var(--color-stone-900) / 70%);
+
+  --highlight:
+    radial-gradient(
+      72% 100% at 50% 100%,
+      rgb(255 255 255 / 0.09),
+      transparent 72%
+    ),
+    linear-gradient(rgb(255 255 255 / 0.02), rgb(255 255 255 / 0.02));
+  --highlight-foreground: var(--foreground);
+
+  --selected:
+    radial-gradient(
+      72% 100% at 50% 100%,
+      rgb(255 255 255 / 0.16),
+      transparent 72%
+    ),
+    linear-gradient(rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.05));
+  --selected-foreground: var(--foreground);
+  --selected-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08), 0 1px 2px rgb(0 0 0 / 0.6);
+
+  --card: linear-gradient(180deg, #201d1c 0%, #191716 55%, #141312 100%);
+  --card-shadow:
+    inset 0 2px 2px 1px rgb(32 28 26 / 0.2), 0 1px 2px rgb(0 0 0 / 0.5);
+
+  --card-header: linear-gradient(
+    180deg,
+    rgb(255 251 246 / 0.045) 0%,
+    rgb(255 251 246 / 0.03) 100%
+  );
+  --card-header-foreground: var(--color-stone-300);
+  --card-header-shadow:
+    inset 0 1px 0 lch(24.13 2.26 37.96), 0 0 2px oklch(0.16 0.01 0);
+
+  --secondary:
+    radial-gradient(
+      120% 55% at 0% 0%,
+      rgb(255 255 255 / 0.005),
+      transparent 62%
+    ),
+    linear-gradient(180deg, #1a1817 0%, #0d0c0b 18%, #000000 100%);
+  --secondary-shadow: 0 0 #0000;
+
+  --panel: linear-gradient(
+    180deg,
+    #211f1d 0,
+    #141414 160px,
+    #141414 calc(100% - 160px),
+    #211f1d 100%
+  );
+  --panel-shadow: 0 0 #0000;
+
+  --modal-frame: rgb(255 251 246 / 0.14);
+  --modal-frame-border: rgb(255 255 255 / 0.22);
+  --modal-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.12), 0 28px 70px rgb(0 0 0 / 0.75),
+    0 6px 20px rgb(0 0 0 / 0.5);
+
+  --table-cell: rgb(255 255 255 / 0.02);
+  --table-cell-pinned: rgb(18 18 18 / 0.94);
+  --table-frame:
+    radial-gradient(85% 60% at 10% 0%, rgb(255 244 230 / 0.11), transparent 55%),
+    linear-gradient(0deg, rgb(255 244 230 / 0.09), transparent 160px),
+    linear-gradient(var(--color-black), var(--color-black));
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-subtle: var(--subtle);
+  --color-subtle-muted: var(--subtle-muted);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-ring: var(--ring);
+  --color-ring-halo: var(--ring-halo);
+
+  --color-accent: var(--accent);
+  --color-accent-surface: var(--accent-surface);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-active: var(--active);
+  --color-active-surface: var(--active-surface);
+
+  --color-danger: var(--danger);
+  --color-danger-surface: var(--danger-surface);
+  --color-danger-strong: var(--danger-strong);
+
+  --color-success: var(--success);
+  --color-success-surface: var(--success-surface);
+  --color-success-strong: var(--success-strong);
+
+  --color-warning: var(--warning);
+  --color-warning-surface: var(--warning-surface);
+  --color-warning-strong: var(--warning-strong);
+  --color-warning-border: var(--warning-border);
+
+  --color-info: var(--info);
+  --color-info-surface: var(--info-surface);
+
+  --color-diff-added: var(--diff-added);
+  --color-diff-added-surface: var(--diff-added-surface);
+  --color-diff-removed: var(--diff-removed);
+  --color-diff-removed-surface: var(--diff-removed-surface);
+  --color-diff-updated: var(--diff-updated);
+  --color-diff-updated-surface: var(--diff-updated-surface);
+  --color-diff-conflict: var(--diff-conflict);
+  --color-diff-conflict-surface: var(--diff-conflict-surface);
+
+  --color-content: var(--content);
+  --color-content-muted: var(--content-muted);
+  --color-content-strong: var(--content-strong);
+
+  --color-input: var(--input);
+  --color-input-border: var(--input-border);
+  --shadow-input: var(--input-shadow);
+  --inset-shadow-raised: var(--raised-shadow);
+
+  --color-popover: var(--popover);
+
+  --background-image-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
+
+  --background-image-selected: var(--selected);
+  --color-selected-foreground: var(--selected-foreground);
+  --shadow-selected: var(--selected-shadow);
+  --background-image-selected-highlight: var(--selected-highlight);
+
+  --background-image-card: var(--card);
+  --background-image-card-header: var(--card-header);
+  --color-card-header-foreground: var(--card-header-foreground);
+
+  --shadow-card: var(--card-shadow);
+  --shadow-card-header: var(--card-header-shadow);
+
+  --background-image-secondary: var(--secondary);
+  --shadow-secondary: var(--secondary-shadow);
+
+  --background-image-panel: var(--panel);
+  --shadow-panel: var(--panel-shadow);
+
+  --color-modal-frame: var(--modal-frame);
+  --color-modal-frame-border: var(--modal-frame-border);
+  --shadow-modal: var(--modal-shadow);
+
+  --color-table-cell: var(--table-cell);
+  --color-table-cell-pinned: var(--table-cell-pinned);
+  --background-image-table-frame: var(--table-frame);
+}
+
+/* Theme-invariant scales. Unlike everything above, .dark does not override these — they are
+   dimensions and timings, not colours. They live in a plain @theme (not @theme inline) so the
+   custom property is emitted as well as the utility: several call sites need to read the raw
+   value from inside a calc() or minmax() that has no utility form. */
+@theme {
+  /* One step below Tailwind's text-xs, for dense metadata: graph node labels, table sublabels.
+     Deliberately no --text-xxs--line-height: the value this replaces set font-size only, so
+     adding a line-height here would shift every existing text-xxs call site. */
+  --text-xxs: 0.625rem;
+
+  /* The term column of a definition-style row. Shared by the schema-driven object detail row and
+     the schema-free DetailRow, which have to line up when both appear on the same page. */
+  --detail-label-width: 200px;
+  --grid-template-columns-detail-row: var(--detail-label-width) auto;
+
+  /* Chrome stacked above a full-height page body: app header, breadcrumb, page title row. Page
+     bodies and their loading placeholders subtract it from the viewport. The -tabs variant is for
+     shells that add their own tab row. */
+  --height-page-body: calc(100vh - 10.5rem);
+  --height-page-body-tabs: calc(100vh - 14rem);
+
+  /* Vertical offset of the labelled tab sitting flush above a filter popover; equals that tab's
+     own rendered height. Used negated, as -top-filter-tab. */
+  --inset-filter-tab: 1.8rem;
+
+  /* Skeleton loading rhythm — twice the speed of Tailwind's animate-pulse. Own keyframes so the
+     token does not depend on the tailwindcss-animate plugin, which is disabled under CI. */
+  --animate-skeleton: skeleton-pulse 1s ease-in-out infinite;
+
+  @keyframes skeleton-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+}
+
+@utility bg-stripes-* {
+  --tw-stripes-color: --value(--color-*, [color]);
+  --tw-stripes-color: --alpha(
+    --value(--color-*, [color]) /
+    calc(--modifier(integer) * 1%)
+  );
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--tw-stripes-color) 0 2px,
+    transparent 2px 6px
+  );
+}
+
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-border);
+  }
+
+  body {
+    color: var(--foreground);
+  }
+
+  /* To prevent conflict with Separator component styling */
+  hr {
+    border-top-width: 0;
+  }
+}

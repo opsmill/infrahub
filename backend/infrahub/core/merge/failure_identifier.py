@@ -98,7 +98,7 @@ class MergeFailureIdentifier:
 
             branch.status = BranchStatus.MERGE_FAILED
             await branch.save(db=self.db)
-            registry.branch[branch.name] = branch
+            registry.refresh_cached_branch(branch)
             await self.merge_write_blocker.set(branch=branch.name, state=MergeProtectionState.MERGE_FAILED)
 
             worker_id = await self.merge_lock_holder()

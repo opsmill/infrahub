@@ -124,6 +124,7 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
             schemas=[location_schema_02.model_dump(mode="json")], branch=branch_1.name
         )
         assert success
+        assert response is not None
         # Submitting a full internal dump carries the fields Infrahub owns and derives itself, so
         # the check reports each of them rather than dropping the values silently.
         assert [warning["message"] for warning in response.pop("warnings")] == [
@@ -187,15 +188,15 @@ class TestSchemaLifecycleBase(TestInfrahubApp):
         assert rels_by_name["parent"].peer == "LocationMetro"
         assert rels_by_name["children"].peer == "LocationGeneric"
 
-        country_schema = db.schema.get_node_schema(name="LocationCountry", branch=branch_1, duplicate=False)
-        assert country_schema.parent == ""  # noqa: PLC1901
-        assert country_schema.children == "LocationMetro"
-        metro_schema = db.schema.get_node_schema(name="LocationMetro", branch=branch_1, duplicate=False)
-        assert metro_schema.parent == "LocationCountry"
-        assert metro_schema.children == "LocationSite"
-        site_schema = db.schema.get_node_schema(name="LocationSite", branch=branch_1, duplicate=False)
-        assert site_schema.parent == "LocationMetro"
-        assert site_schema.children == ""  # noqa: PLC1901
+        country_node_schema = db.schema.get_node_schema(name="LocationCountry", branch=branch_1, duplicate=False)
+        assert country_node_schema.parent == ""  # noqa: PLC1901
+        assert country_node_schema.children == "LocationMetro"
+        metro_node_schema = db.schema.get_node_schema(name="LocationMetro", branch=branch_1, duplicate=False)
+        assert metro_node_schema.parent == "LocationCountry"
+        assert metro_node_schema.children == "LocationSite"
+        site_node_schema = db.schema.get_node_schema(name="LocationSite", branch=branch_1, duplicate=False)
+        assert site_node_schema.parent == "LocationMetro"
+        assert site_node_schema.children == ""  # noqa: PLC1901
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_graph(db=db)

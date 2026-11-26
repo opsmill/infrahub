@@ -1,6 +1,5 @@
-import type React from "react";
-
 import { SearchIcon, XIcon } from "lucide-react";
+import type React from "react";
 import {
   Autocomplete as AriaAutocomplete,
   type AutocompleteProps as AriaAutocompleteProps,
@@ -30,9 +29,9 @@ function AutocompleteSearchField({
       autoFocus
       {...props}
     >
-      <SearchIcon aria-hidden className="m-2 size-3.5 text-neutral-400" />
+      <SearchIcon aria-hidden className="m-2 size-3.5 text-subtle-muted" />
       <AriaInput
-        className="min-w-0 flex-1 border-none outline-hidden placeholder:text-neutral-400 [&::-webkit-search-cancel-button]:hidden"
+        className="min-w-0 flex-1 border-none outline-hidden placeholder:text-subtle-muted [&::-webkit-search-cancel-button]:hidden"
         placeholder={placeholder}
       />
       <Button
@@ -40,7 +39,7 @@ function AutocompleteSearchField({
         variant="ghost"
         shape="square"
         size="xxs"
-        className="opacity-50 group-data-empty:invisible hover:opacity-100"
+        className="opacity-50 hover:opacity-100 group-data-empty:invisible"
       >
         <XIcon />
       </Button>
@@ -66,7 +65,7 @@ export function Autocomplete({
   return (
     <AriaAutocomplete filter={resolvedFilter} onInputChange={onInputChange} {...props}>
       <div className="max-h-[inherit] overflow-hidden">
-        <div className="sticky flex w-full items-center gap-0 overflow-hidden border-b border-neutral-300 pr-1">
+        <div className="sticky flex w-full items-center gap-0 overflow-hidden border-border-strong border-b pr-1">
           <AutocompleteSearchField placeholder="Search..." className="grow" />
           {suffix}
         </div>

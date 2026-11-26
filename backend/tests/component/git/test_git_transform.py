@@ -1,4 +1,7 @@
+from collections.abc import Generator
+
 import pytest
+from fast_depends import Provider
 from infrahub_sdk import InfrahubClient
 
 from infrahub.core.constants import InfrahubKind
@@ -8,7 +11,9 @@ from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.transformations.models import TransformJinjaTemplateData, TransformPythonData
 from infrahub.transformations.tasks import transform_python, transform_render_jinja2_template
+from infrahub.workers.dependencies import build_client
 from tests.conftest import TestHelper
+from tests.helpers.git import build_repository_client
 
 
 @pytest.fixture
@@ -16,8 +21,35 @@ async def init_service() -> InfrahubServices:
     return await InfrahubServices.new(client=InfrahubClient(), workflow=WorkflowLocalExecution())
 
 
+def _scope_worker_client(dependency_provider: Provider, repo: InfrahubRepository) -> Generator[None, None, None]:
+    """Serve the repository read the transform flow's own construction performs."""
+    client = build_repository_client(
+        repository_id=str(repo.id), name=repo.name, location=repo.get_location(), default_branch="main"
+    )
+    with dependency_provider.scope(build_client, lambda: client):
+        yield
+
+
+@pytest.fixture
+def worker_client_jinja(
+    dependency_provider: Provider, register_core_models_schema: None, git_repo_jinja: InfrahubRepository
+) -> Generator[None, None, None]:
+    yield from _scope_worker_client(dependency_provider, git_repo_jinja)
+
+
+@pytest.fixture
+def worker_client_fixture_repo(
+    dependency_provider: Provider, register_core_models_schema: None, git_fixture_repo: InfrahubRepository
+) -> Generator[None, None, None]:
+    yield from _scope_worker_client(dependency_provider, git_fixture_repo)
+
+
 async def test_git_transform_jinja2_success(
-    git_repo_jinja: InfrahubRepository, init_service: InfrahubServices, prefect_test_fixture: None, helper: TestHelper
+    git_repo_jinja: InfrahubRepository,
+    init_service: InfrahubServices,
+    prefect_test_fixture: None,
+    helper: TestHelper,
+    worker_client_jinja: None,
 ) -> None:
     commit = git_repo_jinja.get_commit_value(branch_name="main")
     message = TransformJinjaTemplateData(
@@ -41,7 +73,11 @@ magnum
 
 
 async def test_git_transform_jinja2_missing(
-    git_repo_jinja: InfrahubRepository, init_service: InfrahubServices, prefect_test_fixture: None, helper: TestHelper
+    git_repo_jinja: InfrahubRepository,
+    init_service: InfrahubServices,
+    prefect_test_fixture: None,
+    helper: TestHelper,
+    worker_client_jinja: None,
 ) -> None:
     commit = git_repo_jinja.get_commit_value(branch_name="main")
 
@@ -68,6 +104,7 @@ async def test_git_transform_jinja2_invalid(
     helper: TestHelper,
     caplog: pytest.LogCaptureFixture,
     init_service: InfrahubServices,
+    worker_client_jinja: None,
 ) -> None:
     commit = git_repo_jinja.get_commit_value(branch_name="main")
 
@@ -89,7 +126,11 @@ async def test_git_transform_jinja2_invalid(
 
 
 async def test_transform_python_success(
-    git_fixture_repo: InfrahubRepository, init_service: InfrahubServices, prefect_test_fixture: None, helper: TestHelper
+    git_fixture_repo: InfrahubRepository,
+    init_service: InfrahubServices,
+    prefect_test_fixture: None,
+    helper: TestHelper,
+    worker_client_fixture_repo: None,
 ) -> None:
     commit = git_fixture_repo.get_commit_value(branch_name="main")
 

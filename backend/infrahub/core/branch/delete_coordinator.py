@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.events.branch_action import BranchDeletedEvent
 from infrahub.events.models import EventMeta
 from infrahub.exceptions import ValidationError
@@ -68,7 +69,7 @@ class BranchDeleteOrchestrator:
         # Freezing has to precede the deletion, which takes away the branch name they are found by.
         await self.diff_freezer.freeze_diffs_for_branch(branch_name=branch.name)
 
-        result = await self.data_deleter.delete(branch=branch, user_id=context.account.account_id)
+        result = await self.data_deleter.delete(branch=branch, user_id=context.account.account_id or SYSTEM_USER_ID)
 
         if result.branch_deleted:
             await self.workflow.submit_workflow(

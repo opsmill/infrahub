@@ -19,15 +19,17 @@ if TYPE_CHECKING:
 class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
     name: str = "attribute_constraints_regex_validator"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), is_isolated=self.is_isolated
+        )
         self.params.update(branch_params)
 
         self.params["attr_name"] = self.attribute_schema.name
         self.params["attr_value_regex"] = self.attribute_schema.get_regex()
         self.params["null_value"] = NULL_VALUE
         query = """
-        MATCH p = (n:%(node_kind)s)
+        %(match_nodes)s
         CALL (n) {
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
             WHERE all(
@@ -42,7 +44,7 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
         AND attribute_value <> $null_value
         AND NOT attribute_value =~ $attr_value_regex
-        """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
+        """ % {"branch_filter": branch_filter, "match_nodes": self.match_nodes()}
 
         self.add_to_query(query)
         self.return_labels = ["node.uuid", "attribute_value", "value_relationship"]
@@ -67,6 +69,7 @@ class AttributeRegexUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 
 
 class AttributeRegexChecker(ConstraintCheckerInterface):
+    reads_listed_nodes = True
     query_classes = [AttributeRegexUpdateValidatorQuery]
 
     def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
@@ -91,7 +94,12 @@ class AttributeRegexChecker(ConstraintCheckerInterface):
         for query_class in self.query_classes:
             # TODO add exception handling
             query = await query_class.init(
-                db=self.db, branch=self.branch, node_schema=request.node_schema, schema_path=request.schema_path
+                db=self.db,
+                branch=self.branch,
+                node_schema=request.node_schema,
+                schema_path=request.schema_path,
+                is_isolated=request.is_isolated,
+                node_uuids=request.node_uuids,
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())

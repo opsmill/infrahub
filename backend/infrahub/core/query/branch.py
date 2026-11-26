@@ -5,12 +5,12 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES, BranchStatus
 from infrahub.core.branch.filters import BranchListFilters
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.standard_node import StandardNodeGetListQuery
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
-    from infrahub.core.constants.database import DatabaseEdgeType
     from infrahub.database import InfrahubDatabase
 
 
@@ -78,6 +78,50 @@ AND NOT EXISTS {
 }
 CALL (n) {
     MATCH (n)-[:HAS_ATTRIBUTE {branch: $global_branch_name}]-(attr:Attribute)
+    DETACH DELETE attr
+} IN TRANSACTIONS OF %(batch_size)s ROWS
+        """ % {"batch_size": self.batch_size}
+        self.params["branch_name"] = self.branch_name
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
+        self.add_to_query(query)
+
+
+class DeleteBranchReservedAttributesQuery(Query):
+    """Delete the Attribute vertices a number pool reserves that exist only on this branch.
+
+    A pool's IS_RESERVED edge is global, so the branch edge deletion never removes it, and an
+    attribute whose every other edge is on this branch would be left holding only that edge: an
+    object created on the branch, or the new vertex of an attribute renamed on it. Must run before
+    the branch's edges are deleted, because it reads the attribute's owning edge on the branch.
+    """
+
+    name: str = "delete_branch_reserved_attributes"
+    insert_return: bool = False
+    insert_limit: bool = False
+
+    type: QueryType = QueryType.WRITE
+
+    def __init__(self, branch_name: str, batch_size: int, **kwargs: Any) -> None:
+        self.branch_name = branch_name
+        self.batch_size = batch_size
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        query = """
+MATCH ()-[:IS_RESERVED {branch: $global_branch_name}]->(attr:Attribute)
+WITH DISTINCT attr
+WHERE EXISTS {
+    MATCH (:Node)-[:HAS_ATTRIBUTE {branch: $branch_name}]->(attr)
+}
+// --------------
+// Every edge other than an IS_RESERVED edge must be on this branch. A global owning or value edge is
+// real data on every branch.
+// --------------
+AND NOT EXISTS {
+    MATCH (attr)-[kept]-()
+    WHERE kept.branch <> $branch_name AND type(kept) <> "IS_RESERVED"
+}
+CALL (attr) {
     DETACH DELETE attr
 } IN TRANSACTIONS OF %(batch_size)s ROWS
         """ % {"batch_size": self.batch_size}
@@ -160,13 +204,26 @@ class RebaseBranchQuery(Query):
         self.params["branch_name"] = self.branch.name
         self.params["at"] = self.at.to_string()
 
+        # Naming each edge type lets its `branch` index serve the read, so the cost follows the edges of the
+        # branch instead of every edge of the graph.
+        edge_reads = [
+            """
+    MATCH (s)-[r:%(edge_type)s]->(d)
+    USING INDEX SEEK r:%(edge_type)s(branch)
+    WHERE r.branch = $branch_name
+    RETURN r, s, d
+"""
+            % {"edge_type": edge_type.value}
+            for edge_type in DatabaseEdgeType
+        ]
+
         query = """
 // --------------
 // Get all edges on this branch with their source and destination vertices
 // --------------
-MATCH (s)-[r]-(d)
-WHERE r.branch = $branch_name
-WITH DISTINCT r, s, d
+CALL () {
+%(edge_reads)s
+}
 WITH r, s, d,
     CASE
         // No `to` and `from` <= at: update
@@ -205,7 +262,7 @@ CALL (n) {
     WHERE NOT exists((n)--())
     DELETE n
 }
-        """
+        """ % {"edge_reads": "    UNION ALL".join(edge_reads)}
         self.add_to_query(query=query)
 
 
@@ -267,10 +324,23 @@ class BranchNodeGetListQuery(StandardNodeGetListQuery):
             self._branch_filter_params[param_name] = [status.value for status in self.branch_filters.statuses]
             conditions.append(f"n.status IN ${param_name}")
 
+        if self.branch_filters.sync_with_git is not None:
+            param_name = "filter_sync_with_git"
+            self._branch_filter_params[param_name] = self.branch_filters.sync_with_git
+            conditions.append(f"n.sync_with_git = ${param_name}")
+
         if self.branch_filters.created_by_id:
             param_name = "filter_created_by"
             self._branch_filter_params[param_name] = self.branch_filters.created_by_id
             conditions.append(f"n.created_by = ${param_name}")
+
+        conditions.extend(self._build_timestamp_filters())
+
+        return " AND ".join(conditions) if conditions else ""
+
+    def _build_timestamp_filters(self) -> list[str]:
+        """Return the timestamp range conditions for the same WHERE clause the caller assembles."""
+        conditions: list[str] = []
 
         # Branched from (rebase timestamp) filters (with NULL check)
         if self.branch_filters.branched_from_after:
@@ -315,4 +385,4 @@ class BranchNodeGetListQuery(StandardNodeGetListQuery):
             ).to_string()
             conditions.append(f"(n.updated_at IS NOT NULL AND n.updated_at < ${param_name})")
 
-        return " AND ".join(conditions) if conditions else ""
+        return conditions

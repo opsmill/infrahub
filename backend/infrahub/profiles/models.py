@@ -31,15 +31,14 @@ class ProfileRefreshTriggerDefinition(TriggerBranchDefinition):
         event_trigger.events.add(NodeUpdatedEvent.event_name)
         event_trigger.match = {"infrahub.node.kind": profile_kind}
 
-        if branches_out_of_scope:
-            event_trigger.match["infrahub.branch.name"] = [f"!{b}" for b in branches_out_of_scope]
-        elif branch != registry.default_branch:
+        if branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
 
         event_trigger.match_related = {
             "prefect.resource.role": ["infrahub.node.attribute_update", "infrahub.node.relationship_update"],
             "infrahub.field.name": trigger_fields,
         }
+        event_trigger.exclude_branches(branches_out_of_scope or [])
 
         workflow_action = ExecuteWorkflow(
             workflow=workflow,

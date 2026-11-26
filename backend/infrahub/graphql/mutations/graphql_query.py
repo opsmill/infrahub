@@ -1,8 +1,7 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from graphene import InputObjectType, Mutation
 from graphql import GraphQLResolveInfo, GraphQLSyntaxError
-from typing_extensions import Self
 
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node

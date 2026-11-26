@@ -19,8 +19,10 @@ if TYPE_CHECKING:
 class AttributeLengthUpdateValidatorQuery(AttributeSchemaValidatorQuery):
     name: str = "attribute_constraints_length_validator"
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), is_isolated=self.is_isolated
+        )
         self.params.update(branch_params)
 
         self.params["attr_name"] = self.attribute_schema.name
@@ -28,7 +30,7 @@ class AttributeLengthUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         self.params["max_length"] = self.attribute_schema.get_max_length()
 
         query = """
-        MATCH (n:%(node_kind)s)
+        %(match_nodes)s
         CALL (n) {
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
             WHERE all(
@@ -45,7 +47,7 @@ class AttributeLengthUpdateValidatorQuery(AttributeSchemaValidatorQuery):
             (toInteger($min_length) IS NOT NULL AND size(attribute_value) < toInteger($min_length))
             OR (toInteger($max_length) IS NOT NULL AND size(attribute_value) > toInteger($max_length))
         )
-        """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
+        """ % {"branch_filter": branch_filter, "match_nodes": self.match_nodes()}
 
         self.add_to_query(query)
         self.return_labels = ["node.uuid", "value_relationship", "attribute_value"]
@@ -67,6 +69,7 @@ class AttributeLengthUpdateValidatorQuery(AttributeSchemaValidatorQuery):
 
 
 class AttributeLengthChecker(ConstraintCheckerInterface):
+    reads_listed_nodes = True
     query_classes = [AttributeLengthUpdateValidatorQuery]
 
     def __init__(self, db: InfrahubDatabase, branch: Branch | None = None) -> None:
@@ -98,7 +101,12 @@ class AttributeLengthChecker(ConstraintCheckerInterface):
         for query_class in self.query_classes:
             # TODO add exception handling
             query = await query_class.init(
-                db=self.db, branch=self.branch, node_schema=request.node_schema, schema_path=request.schema_path
+                db=self.db,
+                branch=self.branch,
+                node_schema=request.node_schema,
+                schema_path=request.schema_path,
+                is_isolated=request.is_isolated,
+                node_uuids=request.node_uuids,
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())

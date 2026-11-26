@@ -11,7 +11,7 @@ interface ArtifactRepoDiffProps {
 
 export function ArtifactRepoDiff({ diff }: ArtifactRepoDiffProps) {
   return (
-    <div className="rounded-lg bg-white p-2 text-sm shadow-sm" id={diff.id}>
+    <div className="rounded-lg bg-content p-2 text-sm shadow-sm" id={diff.id}>
       <Accordion
         title={
           <Row>

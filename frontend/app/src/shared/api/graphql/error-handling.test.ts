@@ -1,11 +1,12 @@
-import type { CombinedError } from "@urql/core";
+import { CombinedError } from "@urql/core";
+import { GraphQLError } from "graphql";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ERROR_CODES } from "@/shared/api/errors";
 import { SHED_USER_MESSAGE } from "@/shared/api/rate-limit/shed-envelope";
 
 import { SHED_BODY } from "../../../../tests/fake/shed-response";
-import { handleGraphQLErrors } from "./error-handling";
+import { handleGraphQLErrors, hasOnlyThrownCatalogueCode } from "./error-handling";
 
 function combinedError(errors: Array<Record<string, unknown>>): CombinedError {
   return { graphQLErrors: errors } as unknown as CombinedError;
@@ -61,5 +62,34 @@ describe("handleGraphQLErrors — a shed request", () => {
     // THEN
     expect(processErrorMessage).toHaveBeenCalledWith(SHED_USER_MESSAGE);
     expect(processErrorMessage).toHaveBeenCalledWith("Node not found");
+  });
+});
+
+const graphQLError = (extensions: Record<string, unknown>) =>
+  new GraphQLError("Request failed", { extensions });
+
+const permissionDenial = () => graphQLError({ code: ERROR_CODES.PERMISSION_DENIED });
+
+const thrownByTransport = (...graphQLErrors: GraphQLError[]) =>
+  new Error("Request failed", { cause: new CombinedError({ graphQLErrors }) });
+
+describe("hasOnlyThrownCatalogueCode", () => {
+  it("is true when every GraphQL error carries the code", () => {
+    const error = thrownByTransport(permissionDenial(), permissionDenial());
+
+    expect(hasOnlyThrownCatalogueCode(error, ERROR_CODES.PERMISSION_DENIED)).toBe(true);
+  });
+
+  it("is false when another error comes with it", () => {
+    const error = thrownByTransport(permissionDenial(), new GraphQLError("Database unavailable"));
+
+    expect(hasOnlyThrownCatalogueCode(error, ERROR_CODES.PERMISSION_DENIED)).toBe(false);
+  });
+
+  it("is false for an error without GraphQL errors", () => {
+    expect(hasOnlyThrownCatalogueCode(new Error("offline"), ERROR_CODES.PERMISSION_DENIED)).toBe(
+      false
+    );
+    expect(hasOnlyThrownCatalogueCode("offline", ERROR_CODES.PERMISSION_DENIED)).toBe(false);
   });
 });

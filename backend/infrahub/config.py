@@ -7,7 +7,7 @@ import tomllib
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, Self
 
 from infrahub_sdk.utils import generate_uuid
 from pydantic import (
@@ -24,15 +24,17 @@ from pydantic import (
     model_validator,
 )
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
-from typing_extensions import Self
 
 from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
+from infrahub.exceptions import ValidationError as InfrahubValidationError
+from infrahub.instance_identity import InstanceColor, validate_instance_label
 from infrahub.log import get_logger
-from infrahub.redis_connection import validate_redis_url
+from infrahub.redis_connection import pool_size_from_url, validate_redis_url
 from infrahub.tls.bundle import resolve_ca_bundle
 
 if TYPE_CHECKING:
+    from infrahub.git.state.reader import RepositoryGitStateReader
     from infrahub.services.adapters.cache import InfrahubCache
     from infrahub.services.adapters.message_bus import InfrahubMessageBus
     from infrahub.services.adapters.workflow import InfrahubWorkflow
@@ -568,6 +570,9 @@ class BrokerSettings(BaseSettings):
         default=2, description="The maximum number of concurrent messages fetched by each worker", ge=1
     )
     virtualhost: str = Field(default="/", description="The virtual host to connect to")
+    rpc_timeout: int = Field(
+        default=120, ge=1, description="The maximum number of seconds to wait for a worker to answer an RPC request"
+    )
     driver: BrokerDriver = Field(
         default=BrokerDriver.RabbitMQ,
         description="Message bus implementation. RabbitMQ is the only supported value.",
@@ -637,6 +642,16 @@ class CacheSettings(BaseSettings):
         default=None,
         description="File path to a CA cert or bundle in PEM format, or the PEM text itself.",
     )
+    max_connections: int = Field(
+        default=1000,
+        ge=1,
+        description=(
+            "Maximum number of connections in each Redis connection pool that an Infrahub process opens for the "
+            "cache and the locks; with a Sentinel URL, the pools to the Sentinel daemons get the same size. A "
+            "command that finds every connection of its pool in use fails with MaxConnectionsError. A "
+            "max_connections query parameter in the cache URL takes precedence."
+        ),
+    )
     clean_up_deadlocks_interval_mins: int = Field(
         default=15,
         ge=1,
@@ -648,6 +663,23 @@ class CacheSettings(BaseSettings):
         description=(
             "Time-to-live in minutes for the global initialization locks. If a worker dies while holding one, "
             "the lock auto-expires after this period so Infrahub can recover on its own."
+        ),
+    )
+    shared_lock_ttl_secs: int = Field(
+        default=60,
+        ge=1,
+        description=(
+            "Time-to-live in seconds of the record that each holder of a lock in shared mode writes. The holder "
+            "renews the record while it runs, so the record expires when the worker stops, or when every renewal "
+            "fails for this long."
+        ),
+    )
+    exclusive_lock_wait_secs: int = Field(
+        default=30,
+        ge=1,
+        description=(
+            "Time in seconds that a request for a lock in exclusive mode waits for the holders of the lock in "
+            "shared mode to finish before it fails."
         ),
     )
 
@@ -668,20 +700,27 @@ class CacheSettings(BaseSettings):
         if url is None:
             return self
 
+        validate_redis_url(url.get_secret_value())
+
         # The URL supersedes rather than excludes the scalars because the shipped Compose files set every one of them.
         fields = type(self).model_fields
-        superseded = sorted(
+        superseded = {
             name
             for name in self.model_fields_set & CACHE_URL_SUPERSEDED_FIELDS
             if getattr(self, name) != fields[name].get_default()
-        )
+        }
+        # The pool size is superseded only when the URL sets one, so the check reads the pool that redis-py builds.
+        if (
+            "max_connections" in self.model_fields_set
+            and self.max_connections != fields["max_connections"].get_default()
+            and pool_size_from_url(url.get_secret_value(), max_connections=self.max_connections) != self.max_connections
+        ):
+            superseded.add("max_connections")
         if superseded:
             log.warning(
                 "INFRAHUB_CACHE_URL is set and supersedes the scalar cache connection settings",
-                superseded_settings=[f"INFRAHUB_CACHE_{name.upper()}" for name in superseded],
+                superseded_settings=[f"INFRAHUB_CACHE_{name.upper()}" for name in sorted(superseded)],
             )
-
-        validate_redis_url(url.get_secret_value())
         return self
 
     @model_validator(mode="after")
@@ -919,6 +958,12 @@ class GitSettings(BaseSettings):
         default=False,
         description="When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. "
         "Requires delete_branch_after_merge to be enabled.",
+    )
+    read_only_refs_check_interval_mins: int = Field(
+        default=15,
+        ge=1,
+        le=1440,
+        description="Time (in minutes) between two checks of a read-only repository's remote for movement of its tracked refs.",
     )
     tls_insecure: bool = Field(
         default=False,
@@ -1233,6 +1278,40 @@ class ExperimentalFeaturesSettings(BaseSettings):
     )
 
 
+class InstanceSettings(BaseSettings):
+    """Default instance label and color, used when no value is saved in the global preferences."""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_INSTANCE_")
+    label: str | None = Field(
+        default=None,
+        description="Default instance label, shown when no label is saved in the global preferences.",
+    )
+    color: InstanceColor | None = Field(
+        default=None,
+        description="Default instance color, used when no color is saved in the global preferences.",
+    )
+
+    @field_validator("label")
+    @classmethod
+    def validate_label(cls, value: str | None) -> str | None:
+        try:
+            return validate_instance_label(value, field_name="INFRAHUB_INSTANCE_LABEL")
+        except InfrahubValidationError as exc:
+            raise ValueError(exc.message) from exc
+
+    @field_validator("color", mode="before")
+    @classmethod
+    def normalize_color(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        color = value.strip().upper()
+        if not color:
+            return None
+        if color not in InstanceColor.available_types():
+            raise ValueError(f"INFRAHUB_INSTANCE_COLOR must be one of {', '.join(InstanceColor.available_types())}")
+        return color
+
+
 class SecuritySettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_SECURITY_")
     access_token_lifetime: int = Field(default=3600, description="Lifetime of access token in seconds")
@@ -1332,14 +1411,25 @@ class SecuritySettings(BaseSettings):
         return len(self._auto_create_groups_filter_patterns) > 0
 
     sso_account_name_fallback: bool = Field(
-        default=True,
+        default=False,
         description=(
             "When enabled, an SSO login that has no linked identity and matches an existing account by "
             "display name claims that account, as long as it has not already been linked to another "
             "identity. When disabled, such a login always provisions a separate account instead of "
-            "reusing an existing one."
+            "reusing an existing one. Deprecated: this setting will be removed in Infrahub 1.13."
         ),
     )
+
+    @model_validator(mode="after")
+    def warn_when_sso_account_name_fallback_enabled(self) -> Self:
+        if self.sso_account_name_fallback:
+            log.warning(
+                "INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK (security.sso_account_name_fallback) is enabled: "
+                "a first SSO login can claim an existing "
+                "unlinked account whose name matches the display name sent by the identity provider. "
+                "This setting is deprecated and will be removed in Infrahub 1.13."
+            )
+        return self
 
     @model_validator(mode="after")
     def check_oauth2_provider_settings(self) -> Self:
@@ -1463,6 +1553,16 @@ class TraceSettings(BaseSettings):
         default=TraceTransportProtocol.GRPC, description="Protocol to be used for exporting traces"
     )
     exporter_endpoint: str | None = Field(default=None, description="OTLP endpoint for exporting traces")
+    sample_ratio: float = Field(
+        default=0.1,
+        ge=0,
+        le=1,
+        allow_inf_nan=False,
+        description=(
+            "Share of new traces to record, from 0 (none) to 1 (all). A request or task that arrives with a trace "
+            "context follows the sampling decision of its caller."
+        ),
+    )
 
     @property
     def uses_tls(self) -> bool:
@@ -2011,6 +2111,7 @@ class Override:
     message_bus: InfrahubMessageBus | None = None
     cache: InfrahubCache | None = None
     workflow: InfrahubWorkflow | None = None
+    repository_git_state_reader: RepositoryGitStateReader | None = None
 
 
 @dataclass
@@ -2126,6 +2227,10 @@ class ConfiguredSettings:
         return self.active_settings.experimental_features
 
     @property
+    def instance(self) -> InstanceSettings:
+        return self.active_settings.instance
+
+    @property
     def enterprise_features(self) -> list[EnterpriseFeatures]:
         """Returns a list of enterprise features that are enabled based on the settings."""
         return self.active_settings.enterprise_features
@@ -2154,12 +2259,15 @@ class Settings(BaseSettings):
     analytics: AnalyticsSettings = AnalyticsSettings()
     initial: InitialSettings = InitialSettings()
     policy: PolicySettings = PolicySettings()
-    security: SecuritySettings = SecuritySettings()
+    # A factory so the account-name fallback warning reflects the loaded settings rather than the environment at import.
+    security: SecuritySettings = Field(default_factory=SecuritySettings)
     ldap: LDAPSettings = LDAPSettings()
     storage: StorageSettings = StorageSettings()
     trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
     log_forwarding: LogForwardingSettings = LogForwardingSettings()
+    # A factory so an invalid label or color is reported when the settings load rather than on import.
+    instance: InstanceSettings = Field(default_factory=InstanceSettings)
 
     @model_validator(mode="after")
     def validate_git_branch_deletion_requires_branch_deletion(self) -> Self:

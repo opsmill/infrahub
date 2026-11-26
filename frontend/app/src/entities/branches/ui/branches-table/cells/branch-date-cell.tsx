@@ -8,7 +8,11 @@ interface BranchDateCellProps {
 export function BranchDateCell({ date }: BranchDateCellProps) {
   return (
     <TableCell className="h-auto min-h-14">
-      {date ? <DateDisplay date={date} hideDefault /> : <span className="text-gray-400">-</span>}
+      {date ? (
+        <DateDisplay date={date} hideDefault />
+      ) : (
+        <span className="text-subtle-muted">-</span>
+      )}
     </TableCell>
   );
 }

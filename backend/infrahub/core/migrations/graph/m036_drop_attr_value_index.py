@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from collections.abc import Sequence  # noqa: TC003  needed for pydantic
+from typing import TYPE_CHECKING
 
 from infrahub.constants.database import IndexType
 from infrahub.core.migrations.shared import MigrationInput, MigrationResult
@@ -36,7 +37,8 @@ class Migration036(GraphMigration):
             index_manager = IndexManagerNeo4j(db=db)
             index_manager.init(nodes=[INDEX_TO_DELETE], rels=[])
             await index_manager.drop()
-        except Exception as exc:
+        # Migration contract: failures become MigrationResult errors; the runner reports them and halts
+        except Exception as exc:  # noqa: BLE001
             result.errors.append(str(exc))
             return result
 
