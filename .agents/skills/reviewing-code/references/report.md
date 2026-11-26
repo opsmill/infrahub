@@ -18,6 +18,8 @@ Context read: <each rule, AGENTS.md and article, with the reviewer that read it>
 P1: <n> | P2: <n> | P3: <n>; fixed: <n>, declined: <n>, deferred: <n>, asked: <n>, rounds: <n>
 Ask First changes: <schema or migration, GraphQL schema, dependency, CI workflow, authentication | none>
 Fixes outside the manifest: <paths, each with its approved Ask | none>
+Checks after the fixes: <each command, with the end of its output>
+Skills not installed: <opsmill-product skills the run could not load | none>
 
 ### Questions for you
 - <finding line>; the fix would contradict <requirement: quote | commit sha: subject>, or <the decision and its missing reason>

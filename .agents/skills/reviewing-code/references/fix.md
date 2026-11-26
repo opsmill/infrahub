@@ -1,7 +1,8 @@
 # Phase 3: Fix and review the fixes
 
 Show the classified list and wait for approval. Fix each approved finding with the smallest
-change, run the checks in the touched area's `AGENTS.md`, and do not commit. Note each finding
+change, run the checks in the touched area's `AGENTS.md`, and do not commit. Record each check's
+command and the end of its output, as `opsmill-product-verifying-changes` asks, for the report. Note each finding
 the user rejects, with their reason, for Phase 4.
 
 Rerun once a browser-mode Vitest or Playwright timeout in a file the fixes did not touch before
@@ -13,9 +14,11 @@ Review the fixes as a new change after each round:
 
 - **Scope.** List each path in `git diff HEAD --name-only` (minus the paths left out or set aside
   in Phase 0) that the manifest does not list. Revert it unless an approved Ask covers it.
-- **Each fix.** A reviewer that did not write the fixes gets the classified list and
-  `git diff HEAD`, and reports each fix that resolves nothing, resolves only part of its finding,
-  or changes more than the finding needs. Those go back for the next round.
+- **Each fix.** A reviewer that did not write the fixes gets the classified list,
+  `git diff HEAD`, and the `fix` and `test` evasions in the `anti-gaming.md` file of
+  `opsmill-product-judging-changes`, any one of which fails the fix. It reports each fix that
+  resolves nothing, resolves only part of its finding, or changes more than the finding needs.
+  Those go back for the next round.
 - **Bugs.** Run `code-review` with the arguments `high <path> <path> ...`.
 - **Rules.** Run the rule check on `git diff HEAD -- <paths>` and the code around it.
 - **Design.** When a fix moves code between files or entities, run the design check on it.

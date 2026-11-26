@@ -13,7 +13,10 @@ It reports only lines the change adds or changes, and code the change leaves unu
 
 ## Comments
 
-For each comment and docstring on or beside a changed line, delete or fix it when it:
+Give the reviewer "The Test" and "What to Keep" of `opsmill-product-pruning-residues`: a
+comment that fails the test is cut, one on the keep list stays, and one in doubt is kept and
+flagged. Where that skill keeps a `TODO`, `code-doc-style.md` wins and bans it. Also delete or
+fix each comment and docstring on or beside a changed line when it:
 
 - restates the code, narrates the change or describes its history
 - is no longer true for the code beside it, often because a later commit changed the code
