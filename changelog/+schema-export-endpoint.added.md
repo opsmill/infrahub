@@ -1,0 +1,1 @@
+Added the `GET /api/schema/export` endpoint, which returns the nodes and generics you defined in the schema of a branch, in the format a schema load accepts, with a `BRIEF` mode that leaves out the values Infrahub derives when the schema is loaded and a `FULL` mode that returns every value.
