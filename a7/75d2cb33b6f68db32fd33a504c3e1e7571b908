@@ -1,0 +1,27 @@
+backend/infrahub/graphql/app.py
+  s_6cf9025f3dcfd8::t_55c8b66a229247 318
+backend/infrahub/graphql/analyzer.py
+  s_6cf9025f3dcfd8::t_6483ae943d748f 39
+  s_6cf9025f3dcfd8::t_5eae59b2e19308 798-831,838-839
+  s_6cf9025f3dcfd8::t_051361c833d1a4 840-841,907
+changelog/+graphql-fragment-operation-permission.security.md
+  s_6cf9025f3dcfd8::t_b9c280804ceb0d 1
+backend/tests/component/graphql/test_query_analyzer.py
+  s_6cf9025f3dcfd8::t_3aedbd909d9e78 1191-1234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a775d2cb33b6f68db32fd33a504c3e1e7571b908",
+  "prompts": {},
+  "sessions": {
+    "s_6cf9025f3dcfd8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3af1dfcc-e45f-4a6e-8b9a-ae53989039d0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

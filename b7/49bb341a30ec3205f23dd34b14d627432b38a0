@@ -1,0 +1,19 @@
+backend/tests/component/graphql/auth/test_anonymous_checker.py
+  s_6cf9025f3dcfd8::t_6da80f67815a80 112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b749bb341a30ec3205f23dd34b14d627432b38a0",
+  "prompts": {},
+  "sessions": {
+    "s_6cf9025f3dcfd8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3af1dfcc-e45f-4a6e-8b9a-ae53989039d0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

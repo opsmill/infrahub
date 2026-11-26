@@ -1,0 +1,25 @@
+backend/tests/component/graphql/auth/test_anonymous_checker.py
+  s_6cf9025f3dcfd8::t_a514794150b30d 134-150,155,168,174-175,184-185
+  s_6cf9025f3dcfd8::t_5a7e1a72b0080a 1
+  s_6cf9025f3dcfd8::t_f39522ea1bba16 102-105,111-116
+backend/tests/component/graphql/test_query_analyzer.py
+  s_6cf9025f3dcfd8::t_c3b23e7487696b 1257,1260,1269,1272,1279,1282
+  s_6cf9025f3dcfd8::t_9e30283f05b9ec 1194-1210
+  s_6cf9025f3dcfd8::t_5668b190387b6a 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b52a53de22ad6109d64ad456905a9f9ab7caee58",
+  "prompts": {},
+  "sessions": {
+    "s_6cf9025f3dcfd8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3af1dfcc-e45f-4a6e-8b9a-ae53989039d0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
