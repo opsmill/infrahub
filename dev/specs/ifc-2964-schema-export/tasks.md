@@ -236,14 +236,14 @@ All tasks in this phase change the SDK repository and use `httpx_mock` for the H
 
 - [X] T046 [P] Regenerate `schema/openapi.json` with `uv run invoke schema.generate-jsonschema`, then `frontend/app/src/shared/api/rest/types.generated.ts` with `cd frontend/app && pnpm codegen` (FR-017). Do not edit either file by hand
 - [X] T047 [P] Regenerate the schema-file JSON schema built from `SchemaLoadAPI` (`backend/infrahub/cli/dev.py::export_node_schema`) with `uv run invoke schema.generate-infrahubnodeschema`, and the reference docs with `uv run invoke docs.generate`
-- [ ] T048 [P] Write `docs/docs/schema/export.mdx` and add it to the schema section of `docs/sidebars.ts` next to `schema/create-and-load` (FR-018). Use the `writing-infrahub-docs` skill. The page covers:
+- [X] T048 [P] Write `docs/docs/schema/export.mdx` and add it to the schema section of `docs/sidebars.ts` next to `schema/create-and-load` (FR-018). Use the `writing-infrahub-docs` skill. The page covers:
   - the `BRIEF` and `FULL` modes, and the `branch` and `namespaces` parameters;
   - the `infrahubctl schema export` options, including `--single-file` (D9);
   - the known limitations from D2 (extensions to restricted kinds are not exported, and neither is `IpamNamespace` or a change to it), D3 (a value equal to the derived value is left out and then follows its source field, while a derived value can be written next to the value it comes from) and D4 (properties taken from a generic are written on the node);
   - what a load into an instance that already has some of the same nodes does not change: nothing is removed, and a value the source does not set is not written (spec Edge Cases);
   - each case in spec Edge Cases where a load can fail, with the error the schema owner gets. Get each error text by running the case, not from memory
 - [X] T049 [P] In `docs/docs/objects/import-from-csv.mdx`, the only page outside the reference that describes `infrahubctl schema export` today, update the row about the export so it matches the new output and links to `docs/docs/schema/export.mdx`. Change only the text about the export
-- [ ] T050 [P] Write `dev/knowledge/backend/schema-export.md` (FR-019, follow `dev/guidelines/documentation.md`), covering:
+- [X] T050 [P] Write `dev/knowledge/backend/schema-export.md` (FR-019, follow `dev/guidelines/documentation.md`), covering:
   - which fields the export writes, and that a field's `visibility` decides it (research R1);
   - how the `BRIEF` reduction loop decides which values to leave out, and how to find out why a value was left out: the debug log of fields put back (research R3);
   - the `keep_in_export` mark on field definitions: which fields have it, why, and how a missing mark shows in CI (research R3);
