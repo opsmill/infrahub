@@ -77,16 +77,34 @@ describe("ObjectDetailsTabs", () => {
 
     await expect
       .poll(() => {
-        const scrollBar = viewport.parentElement!.querySelector('[data-orientation="horizontal"]');
+        const scrollBar = viewport.parentElement!.querySelector(
+          ':scope > [data-orientation="horizontal"]'
+        );
         return scrollBar ? getComputedStyle(scrollBar).display : "absent";
       })
       .not.toMatch(/^(none|absent)$/);
 
-    const scrollBar = viewport.parentElement!.querySelector('[data-orientation="horizontal"]')!;
+    const scrollBar = viewport.parentElement!.querySelector(
+      ':scope > [data-orientation="horizontal"]'
+    )!;
     const detailsTab = component.getByRole("link", { name: "Details" }).element();
     expect(scrollBar.getBoundingClientRect().top).toBeGreaterThanOrEqual(
       detailsTab.getBoundingClientRect().bottom
     );
+  });
+
+  test("shows no horizontal scroll bar when the tabs fit", async () => {
+    // WHEN
+    const component = await renderTabs("BuiltinTag", []);
+
+    // THEN
+    await expect.element(component.getByRole("link", { name: "Details" })).toBeVisible();
+    const tabs = component.getByTestId("object-details-tabs").element();
+    const viewport = tabs.closest("[data-radix-scroll-area-viewport]")!;
+    expect(viewport.scrollWidth).toBeLessThanOrEqual(viewport.clientWidth);
+    expect(
+      viewport.parentElement!.querySelector(':scope > [data-orientation="horizontal"]')
+    ).toBeNull();
   });
 
   test("shows no Commits tab for an object that is not a repository", async () => {
