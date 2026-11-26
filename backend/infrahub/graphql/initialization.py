@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from starlette.background import BackgroundTasks
@@ -44,7 +44,7 @@ class GraphqlContext:
     many_relationship_resolver: ManyRelationshipResolver
     account_metadata_resolver: AccountMetadataResolver
     object_by_id_resolver: ObjectByIdResolver
-    ownership_resolver: OwnershipGraphqlResolver = field(default_factory=OwnershipGraphqlResolver)
+    ownership_resolver: OwnershipGraphqlResolver
     service: InfrahubServices | None = None
     at: Timestamp | None = None
     related_node_ids: set | None = None

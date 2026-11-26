@@ -146,7 +146,7 @@ description: "Task list for owner and source metadata, Community side, storage o
 - [X] T067 [US5] Mark `is_protected` and its filter as deprecated, without a change of behaviour, in backend/infrahub/graphql/manager.py (FR-039)
   - The change is in `graphql/types/attribute.py` (`AttributeInterface`) and `types.py` (the filters), as research.md says, not in `manager.py`. The mutation inputs and `RelationshipProperty.is_protected` stay as they are.
 - [X] T068 [US5] Run the existing permission tests in backend/tests/unit/permissions and backend/tests/component/permissions without changes, and fix every difference (SC-007)
-  - The permission checker tests in backend/tests/component/graphql/auth failed without changes, because `GraphqlContext` needed `ownership_resolver`. The field now has a default, and the three test files are back to their content before the feature.
+  - The permission tests run with no change to what they check. The three permission checker tests in backend/tests/component/graphql/auth build `GraphqlContext` themselves, so they pass the new required `ownership_resolver`. dev/guidelines/backend/component-design.md requires every collaborator as a required parameter, so the field has no default.
 
 **Checkpoint**: stories 1 and 5 work together (delivery step 1).
 
