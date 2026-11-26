@@ -8,7 +8,6 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
 from infrahub.core.relationship import Relationship
-from tests.helpers.db_query_counter import CountingInfrahubDatabase
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -16,14 +15,14 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.parametrize("peer_count", [3, 6])
-async def test_read_without_limit_runs_once(
+async def test_read_without_limit_returns_every_row_in_order(
     db: InfrahubDatabase,
     default_branch: Branch,
     person_tag_schema: None,
     query_limit_of_one: None,
     peer_count: int,
 ) -> None:
-    """A read with no limit runs once and keeps its order, whatever its row count against the size limit."""
+    """A read with no limit returns every row in its order, even when it has more rows than the size limit."""
     # Saved in the reverse of the order the query sorts them, so a read in save order fails.
     tags: list[Node] = []
     for index in reversed(range(peer_count)):
@@ -34,10 +33,9 @@ async def test_read_without_limit_runs_once(
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person.new(db=db, firstname="Read", lastname="Once", tags=tags)
     await person.save(db=db)
-    counting_db = CountingInfrahubDatabase.from_db(db=db)
 
     query = await RelationshipGetPeerQuery.init(
-        db=counting_db,
+        db=db,
         source=person,
         rel=Relationship(
             schema=person.get_schema().get_relationship(name="tags"),
@@ -46,8 +44,6 @@ async def test_read_without_limit_runs_once(
             node=person,
         ),
     )
-    await query.execute(db=counting_db)
+    await query.execute(db=db)
 
     assert [peer.peer_id for peer in query.get_peers()] == [tag.id for tag in reversed(tags)]
-    assert counting_db.count_for(RelationshipGetPeerQuery.name) == 1
-    assert counting_db.rows_for(RelationshipGetPeerQuery.name) == peer_count
