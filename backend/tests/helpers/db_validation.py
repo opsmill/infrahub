@@ -239,24 +239,6 @@ async def active_value_labels(
     return [sorted(record["value_labels"]) for record in results]
 
 
-OPEN_ACTIVE_ATTRIBUTE_UUIDS_QUERY = """
-MATCH (node:%(label)s {uuid: $node_id})-[has_attribute:HAS_ATTRIBUTE {status: "active"}]->(attribute:Attribute {name: $attribute_name})
-WHERE has_attribute.branch = $branch_name AND has_attribute.to IS NULL
-RETURN attribute.uuid AS attribute_id
-"""
-
-
-async def open_active_attribute_uuids(
-    db: InfrahubDatabase, node_label: str, node_id: str, attribute_name: str, branch_name: str
-) -> list[str]:
-    """Return the uuid of every attribute with a name that has an open active edge to a node on a branch."""
-    results = await db.execute_query(
-        query=OPEN_ACTIVE_ATTRIBUTE_UUIDS_QUERY % {"label": node_label},
-        params={"node_id": node_id, "attribute_name": attribute_name, "branch_name": branch_name},
-    )
-    return sorted(record["attribute_id"] for record in results)
-
-
 OPEN_RELATIONSHIP_EDGES_QUERY = """
 MATCH (node:%(label)s {uuid: $node_id})-[is_related:IS_RELATED]-(:Relationship {name: $identifier})
 WHERE is_related.branch = $branch_name AND is_related.to IS NULL

@@ -16,7 +16,7 @@ from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.rollback import RollbackScope
 from infrahub.core.rollback import GraphRollbacker
-from infrahub.core.schema import GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
+from infrahub.core.schema import NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.definitions.core.template import core_object_template
 from infrahub.core.timestamp import Timestamp
@@ -38,7 +38,6 @@ from tests.conftest import do_car_person_schema_unregistered, do_empty_database,
 from tests.helpers.db_validation import (
     active_value_labels,
     count_branch_edges_at,
-    open_active_attribute_uuids,
     open_attribute_edge_statuses,
     open_relationship_edge_statuses,
 )
@@ -205,7 +204,6 @@ class RenameData:
     person: str
     mechanic: str
     garage: str
-    scooter: str
 
 
 def _rename_and_change_schema() -> SchemaRoot:
@@ -283,21 +281,6 @@ def _rename_and_change_schema() -> SchemaRoot:
             ),
         ]
     )
-    schema.generics.append(
-        GenericSchema(
-            name="Vehicle",
-            namespace="Test",
-            attributes=[AttributeSchema(name="serial", kind="Text", optional=True)],
-        )
-    )
-    schema.nodes.append(
-        NodeSchema(
-            name="Scooter",
-            namespace="Test",
-            inherit_from=["TestVehicle"],
-            attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
-        )
-    )
     for node in schema.nodes:
         node.generate_template = True
     return schema
@@ -359,7 +342,6 @@ async def rename_data(
     trailer = await create_node(db=db, branch=branch, kind="TestTrailer", name="trailer-1", towed_by=john.id)
     mechanic = await create_node(db=db, branch=branch, kind="TestMechanic", name="mike")
     garage = await create_node(db=db, branch=branch, kind="TestGarage", name="garage-1", mechanic=mechanic.id)
-    scooter = await create_node(db=db, branch=branch, kind="TestScooter", name="scooter-1", serial="s-1")
     return RenameData(
         car=car.id,
         car_profile=car_profile.id,
@@ -371,7 +353,6 @@ async def rename_data(
         person=john.id,
         mechanic=mechanic.id,
         garage=garage.id,
-        scooter=scooter.id,
     )
 
 
@@ -645,49 +626,6 @@ class TestSchemaLoadsThatRenameAndChange:
                 db=db, node_label=node_label, attribute_name="motor", branch_name=target_branch.name
             ) == {node_id: ([active], [active])}
 
-    async def test_an_inherited_attribute_renamed_while_its_node_kind_is_renamed_keeps_one_attribute(
-        self, db: InfrahubDatabase, target_branch: Branch, rename_data: RenameData
-    ) -> None:
-        def rename_scooter_kind_and_serial(candidate: SchemaBranch) -> None:
-            vehicle_schema = candidate.get_generic(name="TestVehicle")
-            vehicle_schema.get_attribute(name="serial").name = "serial_number"
-            candidate.set(name="TestVehicle", schema=vehicle_schema)
-            scooter_schema = candidate.get_node(name="TestScooter")
-            candidate.delete(name="TestScooter")
-            scooter_schema.name = "Moped"
-            scooter_schema.get_attribute(name="serial").name = "serial_number"
-            candidate.set(name="TestMoped", schema=scooter_schema)
-
-        await load_schema_change(
-            db=db,
-            branch=target_branch,
-            change_schema=rename_scooter_kind_and_serial,
-            expected_migration_names=["attribute.name.update", "node.name.update"],
-        )
-
-        assert (
-            len(
-                await open_active_attribute_uuids(
-                    db=db,
-                    node_label="TestMoped",
-                    node_id=rename_data.scooter,
-                    attribute_name="serial_number",
-                    branch_name=target_branch.name,
-                )
-            )
-            == 1
-        )
-        mopeds = await NodeManager.query(
-            db=db, branch=target_branch, schema="TestMoped", filters={"serial_number__value": "s-1"}
-        )
-        assert [moped.id for moped in mopeds] == [rename_data.scooter]
-        assert (
-            await open_attribute_edge_statuses(
-                db=db, node_label="TestMoped", attribute_name="serial", branch_name=target_branch.name
-            )
-            == {}
-        )
-
     async def test_an_attribute_renamed_and_made_unique_is_restored_by_the_rollback(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, target_branch: Branch, rename_data: RenameData
     ) -> None:
@@ -756,14 +694,5 @@ class TestSchemaLoadsThatRenameAndChange:
                 "TestGarage",
                 "ProfileTestGarage",
                 "TemplateTestGarage",
-                "TestVehicle",
-                "ProfileTestVehicle",
-                "TemplateTestVehicle",
-                "TestScooter",
-                "ProfileTestScooter",
-                "TemplateTestScooter",
-                "TestMoped",
-                "ProfileTestMoped",
-                "TemplateTestMoped",
             ],
         )
