@@ -15,7 +15,7 @@ first line of `04-review.md`.
 |---|---|---|
 | 1. Tidy | `emil-ui-polish`, then `emil-surfaces` | the *Tidy* list |
 | 2. Stress | `break-ui` | `break-ui` |
-| 3. Critique | `emil-ui-review` | `emil-design-eng`, then the *Critique* list |
+| 3. Critique | `emil-ui-review`, then the *Usability* list | `emil-design-eng`, then the *Critique* and *Usability* lists |
 | 4. Readiness | `emil-prep-for-prod`, without its marketing and SEO checks (say so) | the *Readiness* list |
 | 5. By hand | the list below | the list below |
 

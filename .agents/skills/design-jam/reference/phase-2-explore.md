@@ -24,7 +24,9 @@ happens. If they differ only in spacing and colour, they are one direction.
   count) on a knob. Keep knobs few: each one says "not decided yet".
 
 Write `02-directions.md`: one section per direction, saying what it bets on, what it costs
-and who it suits. Do not recommend one yet.
+and who it suits. When a bet rests on a law from the *Usability* list in
+[`review-checklist.md`](review-checklist.md), name it ("groups by readiness: Law of Common
+Region"). Do not recommend one yet.
 
 Before the checkpoint, open the draft design PR (see
 [`design-pr.md`](design-pr.md)), pass its URL to the panel as
