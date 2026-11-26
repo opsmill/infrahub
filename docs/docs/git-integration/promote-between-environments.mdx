@@ -169,8 +169,10 @@ Infrahub runs the conversion only on the `main` branch. Follow these steps on ea
    <TabItem value="Via the Infrahub SDK">
 
      ```python
+     from infrahub_sdk import InfrahubClientSync
      from infrahub_sdk.convert_object_type import ConversionFieldInput, ConversionFieldValue
 
+     client = InfrahubClientSync(address="http://localhost:8000")
      repository = client.get("CoreReadOnlyRepository", name__value="infra")
      new_repository = client.convert_object_type(
          node_id=repository.id,
