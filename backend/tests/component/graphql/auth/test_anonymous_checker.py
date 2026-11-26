@@ -109,7 +109,7 @@ async def test_anonymous_checker_rejects_mutation_hidden_in_fragment(
     """
     account_session = AccountSession(account_id="anonymous", auth_type=AuthType.JWT, authenticated=False)
 
-    with pytest.raises(AuthorizationError):
+    with pytest.raises(AuthorizationError, match=r"^Authentication is required to perform this operation$"):
         await anonymous_checker.check(
             db=db,
             account_session=account_session,
