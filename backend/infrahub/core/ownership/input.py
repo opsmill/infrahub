@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
@@ -66,9 +67,31 @@ class OwnerLookup(Protocol):
         """Return the labels of each node that is active."""
         ...
 
-    async def find_ids_by_hfid(self, kind: str, hfid: list[str]) -> list[str]:
-        """Return the IDs of the active nodes of a kind that have this human-friendly ID."""
+    async def find_ids_by_hfids(self, kind: str, hfids: list[tuple[str, ...]]) -> dict[tuple[str, ...], list[str]]:
+        """Return the IDs of the active nodes of a kind that have each of these human-friendly IDs."""
         ...
+
+
+@dataclass(frozen=True)
+class HfidReference:
+    """A node that an input gives by its kind and its human-friendly ID."""
+
+    kind: str
+    hfid: tuple[str, ...]
+
+
+@dataclass
+class GivenOwners:
+    """The owner list that an input gives to one holder, before the lookups in the database.
+
+    Each reference is an ID or a kind with an HFID. A name without a kind refers to an account group, and must not
+    also be the name of an account.
+    """
+
+    path: str
+    rule: ReferenceRule
+    references: list[str | HfidReference]
+    group_names: list[str]
 
 
 async def check_owner_kinds(
@@ -97,14 +120,22 @@ async def check_field_owner_kinds(
         ValidationError: When a node is not found, or is not of a kind of the rule.
 
     """
-    all_ids = list(dict.fromkeys(owner_id for ids in owner_ids.values() for owner_id in ids))
-    labels = await lookup.read_labels(node_ids=all_ids) if all_ids else {}
+    labels = await _read_labels(lookup=lookup, owner_ids=[owner_id for ids in owner_ids.values() for owner_id in ids])
     for path, ids in owner_ids.items():
-        for owner_id in ids:
-            if owner_id not in labels:
-                raise ValidationError({path: f"{rule.name.capitalize()} not found: {owner_id}"})
-            if not rule.kinds & labels[owner_id]:
-                raise ValidationError({path: f"{rule.refusal}, not: {owner_id}"})
+        _refuse_kinds(labels=labels, owner_ids=ids, path=path, rule=rule)
+
+
+async def _read_labels(lookup: OwnerLookup, owner_ids: list[str]) -> dict[str, set[str]]:
+    unique_ids = list(dict.fromkeys(owner_ids))
+    return await lookup.read_labels(node_ids=unique_ids) if unique_ids else {}
+
+
+def _refuse_kinds(labels: Mapping[str, set[str]], owner_ids: list[str], path: str, rule: ReferenceRule) -> None:
+    for owner_id in owner_ids:
+        if owner_id not in labels:
+            raise ValidationError({path: f"{rule.name.capitalize()} not found: {owner_id}"})
+        if not rule.kinds & labels[owner_id]:
+            raise ValidationError({path: f"{rule.refusal}, not: {owner_id}"})
 
 
 class OwnerInputParser:
@@ -135,13 +166,16 @@ class OwnerInputParser:
                 does not have.
 
         """
-        states: dict[HolderKey, StoredOwnerState] = {}
+        given: list[tuple[HolderKey, GivenOwners | None]] = []
         if OWNERS_KEY in node_metadata:
-            owner_ids = await self._owner_ids(value=node_metadata[OWNERS_KEY], path=OWNERS_PATH)
-            states[NODE_HOLDER] = StoredOwnerState(owner_ids=owner_ids)
+            given.append((NODE_HOLDER, self._given_owners(value=node_metadata[OWNERS_KEY], path=OWNERS_PATH)))
         if SOURCES_KEY in node_metadata:
-            source_ids = await self._owner_ids(value=node_metadata[SOURCES_KEY], path=SOURCES_PATH, rule=SOURCE_RULE)
-            states[NODE_SOURCES_HOLDER] = StoredOwnerState(owner_ids=source_ids or None)
+            given.append(
+                (
+                    NODE_SOURCES_HOLDER,
+                    self._given_owners(value=node_metadata[SOURCES_KEY], path=SOURCES_PATH, rule=SOURCE_RULE),
+                )
+            )
         gives = [key for key in (TARGET_OWNERS_KEY, TARGET_FIELD_OWNERS_KEY) if key in node_metadata]
         if gives and not (schema.is_profile_schema or schema.is_template_schema):
             raise ValidationError(
@@ -152,88 +186,76 @@ class OwnerInputParser:
                 }
             )
         if TARGET_OWNERS_KEY in node_metadata:
-            owner_ids = await self._owner_ids(value=node_metadata[TARGET_OWNERS_KEY], path=TARGET_OWNERS_PATH)
-            states[NODE_TARGET_HOLDER] = StoredOwnerState(owner_ids=owner_ids)
-        for name, value in (data or {}).items():
-            if name in schema.attribute_names and isinstance(value, Mapping) and OWNERS_KEY in value:
-                await self._add_field(states=states, schema=schema, field=name, value=value, path=name, target=False)
-        for item in node_metadata.get(FIELD_OWNERS_KEY) or []:
-            await self._add_field(
-                states=states,
-                schema=schema,
-                field=item.get("field"),
-                value=item,
-                path=f"node_metadata.{FIELD_OWNERS_KEY}",
-                target=False,
+            given.append(
+                (
+                    NODE_TARGET_HOLDER,
+                    self._given_owners(value=node_metadata[TARGET_OWNERS_KEY], path=TARGET_OWNERS_PATH),
+                )
             )
-        for item in node_metadata.get(TARGET_FIELD_OWNERS_KEY) or []:
-            # A profile or an object template gives owners to the fields of the kind that it is for.
-            await self._add_field(
-                states=states,
+        given.extend(
+            self._given_field(schema=schema, field=name, value=value, path=name)
+            for name, value in (data or {}).items()
+            if name in schema.attribute_names and isinstance(value, Mapping) and OWNERS_KEY in value
+        )
+        given.extend(
+            self._given_field(
+                schema=schema, field=item.get("field"), value=item, path=f"node_metadata.{FIELD_OWNERS_KEY}"
+            )
+            for item in node_metadata.get(FIELD_OWNERS_KEY) or []
+        )
+        # A profile or an object template gives owners to the fields of the kind that it is for.
+        given.extend(
+            self._given_field(
                 schema=self.schema_branch.get(name=schema.name, duplicate=False),
                 field=item.get("field"),
                 value=item,
                 path=f"node_metadata.{TARGET_FIELD_OWNERS_KEY}",
                 target=True,
             )
+            for item in node_metadata.get(TARGET_FIELD_OWNERS_KEY) or []
+        )
+        resolved = iter(await self._resolve(given_lists=[owners for _, owners in given if owners is not None]))
+        states: dict[HolderKey, StoredOwnerState] = {}
+        for holder, owners in given:
+            owner_ids = next(resolved) if owners is not None else None
+            if holder == NODE_SOURCES_HOLDER:
+                owner_ids = owner_ids or None
+            states[holder] = StoredOwnerState(owner_ids=owner_ids)
         return states
 
-    async def _add_field(
-        self,
-        states: dict[HolderKey, StoredOwnerState],
-        schema: MainSchemaTypes,
-        field: Any,
-        value: Mapping[str, Any],
-        path: str,
-        target: bool,
-    ) -> None:
+    def _given_field(
+        self, schema: MainSchemaTypes, field: Any, value: Mapping[str, Any], path: str, target: bool = False
+    ) -> tuple[HolderKey, GivenOwners | None]:
         holder = field_holder(schema=schema, field_name=field, target=target) if isinstance(field, str) else None
         if holder is None:
             raise ValidationError({path: f"{field} is not an attribute or a relationship of {schema.kind}"})
-        owner_ids = await self._owner_ids(value=value.get(OWNERS_KEY), path=f"{path}.{OWNERS_KEY}")
-        states[holder] = StoredOwnerState(owner_ids=owner_ids)
+        return holder, self._given_owners(value=value.get(OWNERS_KEY), path=f"{path}.{OWNERS_KEY}")
 
-    async def _owner_ids(self, value: Any, path: str, rule: ReferenceRule = OWNER_RULE) -> tuple[str, ...] | None:
+    def _given_owners(self, value: Any, path: str, rule: ReferenceRule = OWNER_RULE) -> GivenOwners | None:
         if value is None:
             return None
         if not isinstance(value, list | tuple):
             raise ValidationError({path: f"{rule.name.capitalize()}s must be a list"})
-        owner_ids: list[str] = []
-        given_ids: list[str] = []
+        given = GivenOwners(path=path, rule=rule, references=[], group_names=[])
         for item in value:
             owner = item if isinstance(item, Mapping) else {}
             owner_id, kind, hfid, name = owner.get("id"), owner.get("kind"), owner.get("hfid"), owner.get("name")
             if isinstance(owner_id, str) and owner_id:
-                given_ids.append(owner_id)
-                owner_ids.append(owner_id)
+                given.references.append(owner_id)
             elif isinstance(kind, str) and kind and isinstance(hfid, list | tuple) and hfid:
-                owner_ids.append(
-                    await self._find_by_hfid(kind=kind, hfid=[str(part) for part in hfid], path=path, rule=rule)
+                given.references.append(
+                    self._hfid_reference(kind=kind, hfid=[str(part) for part in hfid], path=path, rule=rule)
                 )
+            elif isinstance(kind, str) and kind and isinstance(name, str) and name:
+                given.references.append(self._hfid_reference(kind=kind, hfid=[name], path=path, rule=rule))
             elif isinstance(name, str) and name:
-                owner_ids.append(await self._find_by_name(kind=kind, name=name, path=path, rule=rule))
+                given.references.append(HfidReference(kind=InfrahubKind.ACCOUNTGROUP, hfid=(name,)))
+                given.group_names.append(name)
             else:
                 raise ValidationError({path: f"Each {rule.name} must have an id, a kind and an hfid, or a name"})
-        await self._check_given_ids(owner_ids=given_ids, path=path, rule=rule)
-        return tuple(dict.fromkeys(owner_ids))
+        return given
 
-    async def _find_by_name(self, kind: Any, name: str, path: str, rule: ReferenceRule) -> str:
-        """Return the node of the kind that has this name as its HFID. A name without a kind is an account group.
-
-        Raises:
-            ValidationError: When a name without a kind is the name of an account and of an account group.
-
-        """
-        if isinstance(kind, str) and kind:
-            return await self._find_by_hfid(kind=kind, hfid=[name], path=path, rule=rule)
-        group_id = await self._find_by_hfid(kind=InfrahubKind.ACCOUNTGROUP, hfid=[name], path=path, rule=rule)
-        if await self.lookup.find_ids_by_hfid(kind=InfrahubKind.GENERICACCOUNT, hfid=[name]):
-            raise ValidationError(
-                {path: f"{name} is the name of an account and of an account group. Give the kind with the name"}
-            )
-        return group_id
-
-    async def _find_by_hfid(self, kind: str, hfid: list[str], path: str, rule: ReferenceRule) -> str:
+    def _hfid_reference(self, kind: str, hfid: list[str], path: str, rule: ReferenceRule) -> HfidReference:
         try:
             schema = self.schema_branch.get(name=kind, duplicate=False)
         except SchemaNotFoundError as exc:
@@ -244,10 +266,53 @@ class OwnerInputParser:
         hfid_length = len(schema.human_friendly_id or [])
         if hfid_length != len(hfid):
             raise ValidationError({path: f"The hfid of {kind} must have {hfid_length} value(s), not {len(hfid)}"})
-        node_ids = await self.lookup.find_ids_by_hfid(kind=schema.kind, hfid=hfid)
-        if len(node_ids) != 1:
-            raise ValidationError({path: f"{rule.name.capitalize()} not found: {kind} {hfid}"})
-        return node_ids[0]
+        return HfidReference(kind=schema.kind, hfid=tuple(hfid))
 
-    async def _check_given_ids(self, owner_ids: list[str], path: str, rule: ReferenceRule = OWNER_RULE) -> None:
-        await check_owner_kinds(lookup=self.lookup, owner_ids=owner_ids, path=path, rule=rule)
+    async def _resolve(self, given_lists: list[GivenOwners]) -> list[tuple[str, ...]]:
+        """Return the owner IDs of each list, with one read of the given IDs and one HFID read for each kind.
+
+        Raises:
+            ValidationError: When a node is not found, has a kind that the rule of its list refuses, or when a name
+                without a kind is the name of an account and of an account group.
+
+        """
+        hfids_by_kind: dict[str, set[tuple[str, ...]]] = defaultdict(set)
+        for given in given_lists:
+            for reference in given.references:
+                if isinstance(reference, HfidReference):
+                    hfids_by_kind[reference.kind].add(reference.hfid)
+            hfids_by_kind[InfrahubKind.GENERICACCOUNT].update((name,) for name in given.group_names)
+        found: dict[str, dict[tuple[str, ...], list[str]]] = {}
+        for kind, hfids in hfids_by_kind.items():
+            if hfids:
+                found[kind] = await self.lookup.find_ids_by_hfids(kind=kind, hfids=sorted(hfids))
+        labels = await _read_labels(
+            lookup=self.lookup,
+            owner_ids=[
+                reference for given in given_lists for reference in given.references if isinstance(reference, str)
+            ],
+        )
+        resolved: list[tuple[str, ...]] = []
+        for given in given_lists:
+            owner_ids: list[str] = []
+            for reference in given.references:
+                if isinstance(reference, str):
+                    owner_ids.append(reference)
+                    continue
+                node_ids = found[reference.kind].get(reference.hfid, [])
+                if len(node_ids) != 1:
+                    message = f"{given.rule.name.capitalize()} not found: {reference.kind} {list(reference.hfid)}"
+                    raise ValidationError({given.path: message})
+                owner_ids.append(node_ids[0])
+            for name in given.group_names:
+                if found[InfrahubKind.GENERICACCOUNT].get((name,)):
+                    message = f"{name} is the name of an account and of an account group. Give the kind with the name"
+                    raise ValidationError({given.path: message})
+            _refuse_kinds(
+                labels=labels,
+                owner_ids=[reference for reference in given.references if isinstance(reference, str)],
+                path=given.path,
+                rule=given.rule,
+            )
+            resolved.append(tuple(dict.fromkeys(owner_ids)))
+        return resolved

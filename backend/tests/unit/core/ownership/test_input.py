@@ -69,8 +69,8 @@ class InMemoryOwnerLookup:
     async def read_labels(self, node_ids: list[str]) -> dict[str, set[str]]:
         return {node_id: self.labels[node_id] for node_id in node_ids if node_id in self.labels}
 
-    async def find_ids_by_hfid(self, kind: str, hfid: list[str]) -> list[str]:
-        return self.ids_by_hfid.get((kind, tuple(hfid)), [])
+    async def find_ids_by_hfids(self, kind: str, hfids: list[tuple[str, ...]]) -> dict[tuple[str, ...], list[str]]:
+        return {hfid: self.ids_by_hfid[kind, hfid] for hfid in hfids if (kind, hfid) in self.ids_by_hfid}
 
 
 @pytest.fixture(scope="module")

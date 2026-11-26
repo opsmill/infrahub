@@ -26,10 +26,11 @@ async def test_parse_finds_accounts_and_account_groups_in_the_database(
     states = await parser.parse(
         node_metadata={
             "owners": [
-                {"id": group.id},
+                {"kind": InfrahubKind.ACCOUNTGROUP, "hfid": ["dc-emea"]},
                 {"kind": InfrahubKind.ACCOUNTGROUP, "hfid": ["network-emea"]},
                 {"id": account.id},
                 {"kind": InfrahubKind.ACCOUNT, "hfid": ["jane"]},
+                {"id": group.id},
             ]
         },
         schema=register_core_models_schema.get(name=InfrahubKind.TAG, duplicate=False),

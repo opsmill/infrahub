@@ -180,8 +180,10 @@ class OwnershipRepository:
         await query.execute(db=self.db)
         return query.get_labels()
 
-    async def find_ids_by_hfid(self, kind: str, hfid: list[str]) -> list[str]:
-        """Return the IDs of the active nodes of a kind that have this human-friendly ID."""
-        query = await NodeGetByHFIDQuery.init(db=self.db, branch=self.branch, at=self.at, node_kind=kind, hfids=[hfid])
+    async def find_ids_by_hfids(self, kind: str, hfids: list[tuple[str, ...]]) -> dict[tuple[str, ...], list[str]]:
+        """Return the IDs of the active nodes of a kind that have each of these human-friendly IDs."""
+        query = await NodeGetByHFIDQuery.init(
+            db=self.db, branch=self.branch, at=self.at, node_kind=kind, hfids=[list(hfid) for hfid in hfids]
+        )
         await query.execute(db=self.db)
-        return query.get_node_uuids()
+        return query.get_node_uuids_by_hfid()

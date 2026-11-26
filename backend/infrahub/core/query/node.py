@@ -1919,6 +1919,14 @@ class NodeGetByHFIDQuery(Query):
         """Get the list of node UUIDs from the query results."""
         return [result.get_as_type(label="node_uuid", return_type=str) for result in self.get_results()]
 
+    def get_node_uuids_by_hfid(self) -> dict[tuple[str, ...], list[str]]:
+        """Get the node UUIDs that each HFID of the query results matches."""
+        uuids: dict[tuple[str, ...], list[str]] = defaultdict(list)
+        for result in self.get_results():
+            hfid = tuple(ujson.loads(result.get_as_type(label="hfid", return_type=str)))
+            uuids[hfid].append(result.get_as_type(label="node_uuid", return_type=str))
+        return dict(uuids)
+
 
 class NodeGetListQuery(Query):
     name = "node_get_list"
