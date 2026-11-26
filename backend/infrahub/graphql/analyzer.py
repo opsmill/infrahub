@@ -989,8 +989,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         if len(sorted_fragments) != len(self._fragment_dependencies):
             raise ValueError("Circular fragment dependency detected.")
 
-        fragment_name_to_definition = {frag.name.value: frag for frag in self._fragment_definitions}
-        return [fragment_name_to_definition[name] for name in sorted_fragments]
+        return [self._fragment_definition_by_name[name] for name in sorted_fragments]
 
     def _populate_fragment_dependency(self, name: str, selection_set: SelectionSetNode | None) -> None:
         if selection_set:
