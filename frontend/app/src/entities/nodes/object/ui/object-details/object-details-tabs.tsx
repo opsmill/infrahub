@@ -90,6 +90,8 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
             variant="outline"
             size="xs"
             shape="circle"
+            // The tabs are reachable with the Tab key, and an arrow unmounts at its end, which would drop focus.
+            excludeFromTabOrder
             aria-label="Scroll tabs left"
             onPress={() => scrollTabs(-1)}
           >
@@ -103,6 +105,7 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
             variant="outline"
             size="xs"
             shape="circle"
+            excludeFromTabOrder
             aria-label="Scroll tabs right"
             onPress={() => scrollTabs(1)}
           >

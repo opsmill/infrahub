@@ -228,6 +228,16 @@ describe("ObjectDetailsTabs", () => {
       .toBeGreaterThanOrEqual(lines * lineHeight);
   });
 
+  test("keeps the scroll arrows out of the keyboard tab order", async () => {
+    // WHEN
+    const component = await renderOverflowingTabs();
+
+    // THEN
+    await expect
+      .element(component.getByRole("button", { name: "Scroll tabs right" }))
+      .toHaveAttribute("tabindex", "-1");
+  });
+
   test("keeps a deep-linked tab clear of the edge fade", async () => {
     // GIVEN
     const firstRender = await renderOverflowingTabs();
