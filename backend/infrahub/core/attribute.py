@@ -676,6 +676,13 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 response[field_name] = self._owner_reference_for_graphql()
                 continue
 
+            if field_name == "ownership":
+                response[field_name] = {
+                    "node_id": self.node.get_id(),
+                    "holder": HolderKey(kind=HolderKind.ATTRIBUTE, attribute=self.name),
+                }
+                continue
+
             if field_name.startswith("_"):
                 field = getattr(self, field_name[1:])
             else:

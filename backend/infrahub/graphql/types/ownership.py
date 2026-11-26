@@ -40,6 +40,14 @@ class InfrahubOwnership(ObjectType):
     )
 
 
+class InfrahubFieldOwnership(ObjectType):
+    field = String(required=True)
+    ownership = Field(InfrahubOwnership, required=True)
+
+
+OWNERS_INPUT_DESCRIPTION = "Left out: no change. null: inherit. []: no owner. List: own owners"
+
+
 class MetadataNodeInput(InputObjectType):
     """An owner or a source. Give `id`, `hfid` with `kind`, or `name`."""
 
@@ -52,11 +60,19 @@ class MetadataNodeInput(InputObjectType):
     )
 
 
+class FieldOwnersInput(InputObjectType):
+    field = String(required=True, description="Name of an attribute or a relationship")
+    owners = List(NonNull(MetadataNodeInput), description="null: inherit. []: no owner. List: own owners")
+
+
 class NodeMetadataInput(InputObjectType):
-    owners = List(
-        NonNull(MetadataNodeInput), description="Left out: no change. null: inherit. []: no owner. List: own owners"
-    )
+    owners = List(NonNull(MetadataNodeInput), description=OWNERS_INPUT_DESCRIPTION)
+    field_owners = List(NonNull(FieldOwnersInput), description="The owners of attributes and relationships, by name")
     target_owners = List(
         NonNull(MetadataNodeInput),
         description="Profiles and object templates only: the owners given to their nodes. null: gives nothing",
+    )
+    target_field_owners = List(
+        NonNull(FieldOwnersInput),
+        description="Profiles and object templates only: the owners given to one field of their nodes",
     )

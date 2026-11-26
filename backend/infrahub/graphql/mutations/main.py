@@ -100,21 +100,21 @@ async def emit_node_mutation_events(
 
 
 async def parse_owner_input(
-    db: InfrahubDatabase, branch: Branch, node_metadata: Mapping[str, Any] | None, schema: MainSchemaTypes
+    db: InfrahubDatabase, branch: Branch, data: Mapping[str, Any], schema: MainSchemaTypes
 ) -> dict[HolderKey, StoredOwnerState]:
-    """Return the owner states that the `node_metadata` input of a mutation gives to a node of the schema.
+    """Return the owner states that the input of a mutation gives to a node of the schema.
+
+    The input gives owners in `node_metadata` and next to the value of an attribute.
 
     Raises:
         ValidationError: When an owner of the input is not valid.
 
     """
-    if not node_metadata:
-        return {}
     parser = OwnerInputParser(
         schema_branch=db.schema.get_schema_branch(name=branch.name),
         lookup=OwnershipRepository(db=db, branch=branch, at=None),
     )
-    return await parser.parse(node_metadata=node_metadata, schema=schema)
+    return await parser.parse(node_metadata=data.get(NODE_METADATA_PREFIX) or {}, schema=schema, data=data)
 
 
 async def create_node_with_owners(
@@ -130,9 +130,7 @@ async def create_node_with_owners(
         ValidationError: When an owner of the input is not valid. Nothing is created then.
 
     """
-    owner_states = await parse_owner_input(
-        db=db, branch=branch, node_metadata=data.get(NODE_METADATA_PREFIX), schema=schema
-    )
+    owner_states = await parse_owner_input(db=db, branch=branch, data=data, schema=schema)
 
     async def store_owners(dbt: InfrahubDatabase, node: Node) -> None:
         await store_owner_states(
@@ -420,9 +418,7 @@ class InfrahubMutationMixin:
         graphql_context: GraphqlContext = info.context
         component_registry = get_component_registry()
         node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
-        owner_states = await parse_owner_input(
-            db=db, branch=branch, node_metadata=data.get(NODE_METADATA_PREFIX), schema=obj.get_schema()
-        )
+        owner_states = await parse_owner_input(db=db, branch=branch, data=data, schema=obj.get_schema())
 
         await obj.from_graphql(
             db=db,

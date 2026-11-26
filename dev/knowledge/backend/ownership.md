@@ -262,8 +262,15 @@ The owners that apply to a node come from the first level that has a state:
 4. Its parent, with the same order on the parent (`PARENT`). The parent is the peer of the relationship of kind
    `Parent`, otherwise the peer of the hierarchy relationship `parent`.
 
-The resolver does not resolve the owners that apply to a field, or the owners that a profile or an object template
-gives.
+`OwnershipResolver.resolve_fields` gives the owners that apply to a field: its own state, its profiles by priority,
+its copy from an object template, then the owners of its node (`NODE`, with the node as origin node). The owners
+that a profile or an object template gives come from `resolve_target_ownership`, as the profile or the template
+stores them.
+
+The GraphQL `ownership` field of an attribute and of a relationship reads the owners of the field with one data
+loader for the request (`graphql/resolvers/ownership.py`). A relationship of cardinality many gives one reference
+for the field and its edges, so the owners are read once for the field. A relationship of cardinality one that asks
+only for `ownership` reads no peer.
 
 - The walk stops after `MAX_INHERITANCE_DEPTH` parents. A node with more parents and no state below the limit
   gets no inherited owner.
@@ -410,7 +417,9 @@ the owner edges of the default branch under the new kind.
   combined diff shows no change, while a full diff of the same time range shows an update. The merge copies the
   edges of the branch, not the values of the diff, so the merge result does not change.
 - An event stores the owners of an attribute as the `owner` or the `owners` property of the attribute, in its payload
-  only.
+  only. The activity log query (`graphql/queries/event.py`) adds one `<attribute>__owners` entry to `attributes` for
+  the `owners` property, with the display labels. An automation trigger cannot match this entry, because the event has
+  no related resource for it.
 - The owner of one link (the `HAS_OWNER` edge of a `Relationship` vertex) keeps the behavior before owner lists at a merge.
   Three tests in `test_ownership_scenarios.py` mark these cases as expected failures:
   - The changelog of the merge records the owner of a link also when the default branch already holds the same

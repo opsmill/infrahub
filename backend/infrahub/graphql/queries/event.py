@@ -6,6 +6,8 @@ from graphene import Argument, Boolean, DateTime, Enum, Field, Int, List, NonNul
 
 from infrahub.core.constants import GlobalPermissions
 from infrahub.core.ownership.fields import (
+    ATTRIBUTE_OWNERS_PROPERTY,
+    FIELD_OWNERS_SUFFIX,
     NODE_SOURCES_FIELD,
     OWNER_LABEL_SEPARATOR,
     OWNERS_CHANGELOG_KIND,
@@ -33,11 +35,33 @@ InfrahubEventSortOrder = Enum.from_enum(EventSortOrder)
 OWNER_VALUE_KEYS = ("value", "value_previous")
 
 
+def _attribute_owner_changes(node: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return one change under `<attribute>__owners` for each attribute of a mutated node whose owner list changed.
+
+    The event stores the owner list of an attribute as a property in its payload only.
+    """
+    changelog = ((node.get("payload") or {}).get("data") or {}).get("changelog") or {}
+    return [
+        {
+            "name": f"{name}{FIELD_OWNERS_SUFFIX}",
+            "kind": OWNERS_CHANGELOG_KIND,
+            "value": owners["value"],
+            "value_previous": owners["value_previous"],
+            "action": owners["value_update_status"],
+        }
+        for name, attribute in (changelog.get("attributes") or {}).items()
+        if (owners := (attribute.get("properties") or {}).get(ATTRIBUTE_OWNERS_PROPERTY))
+    ]
+
+
 async def _show_owner_labels(graphql_context: GraphqlContext, edges: list[dict[str, Any]]) -> None:
     """Replace the IDs of each change of an owner list or a source list with the display labels that the nodes have now.
 
     The event stores the IDs, so that a rename of an owner shows in the log of all its earlier changes.
     """
+    for edge in edges:
+        if "attributes" in edge["node"]:
+            edge["node"]["attributes"].extend(_attribute_owner_changes(node=edge["node"]))
     changes = [
         attribute
         for edge in edges

@@ -175,6 +175,7 @@ async def test_generate_object_types(
     assert sorted(nested_edged_car._meta.fields.keys()) == [
         "node",
         "node_metadata",
+        "ownership",
         "properties",
         "relationship_metadata",
     ]
@@ -198,6 +199,7 @@ async def test_generate_object_types(
     assert sorted(nested_edged_person._meta.fields.keys()) == [
         "node",
         "node_metadata",
+        "ownership",
         "properties",
         "relationship_metadata",
     ]

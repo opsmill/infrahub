@@ -144,3 +144,54 @@ async def test_activity_log_shows_the_display_labels_that_the_owners_have_when_t
     assert changes[removed_id]["attributes"][0]["value_previous"] == labels
     stored = changes[set_id]["payload"]["data"]["changelog"]["attributes"]["node_metadata__owners"]
     assert stored["value"] == f'["{first.id}","{second.id}"]'
+
+
+async def test_activity_log_shows_the_display_labels_of_the_owners_of_an_attribute(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    session_admin: AccountSession,
+    prefect_client: PrefectClient,
+) -> None:
+    registry.schema.register_schema(schema=OWNERSHIP_SCHEMA, branch=default_branch.name)
+    default_branch.update_schema_hash()
+    emea = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="dc-emea")
+    network = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="network-emea")
+    tenant = await add_node(db=db, kind="TestTenant", name="tenant-log")
+    first, second = sorted([emea, network], key=lambda group: group.id)
+
+    event_service = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=event_service, workflow=WorkflowLocalExecution())
+    gql_params = await prepare_graphql_params(
+        db=db, branch=default_branch, service=service, account_session=session_admin
+    )
+    result = await graphql(
+        schema=gql_params.schema,
+        source="""
+        mutation($id: String!, $owners: [MetadataNodeInput!]) {
+            TestTenantUpdate(data: {id: $id, name: {owners: $owners}}) { ok }
+        }
+        """,
+        context_value=gql_params.context,
+        variable_values={"id": tenant.id, "owners": [{"id": emea.id}, {"id": network.id}]},
+    )
+    assert result.errors is None, result.errors
+    assert gql_params.context.background
+    await gql_params.context.background()
+    await send_events(client=prefect_client, events=event_service.events)
+
+    changes = await read_changes(db=db, branch=default_branch, session=session_admin, node_id=tenant.id)
+
+    change = changes[str(event_service.events[0].meta.id)]
+    assert change["attributes"] == [
+        {"action": "UNCHANGED", "kind": "Text", "name": "name", "value": "tenant-log", "value_previous": "tenant-log"},
+        {
+            "action": "ADDED",
+            "kind": "List",
+            "name": "name__owners",
+            "value": f"{first.name.value}, {second.name.value}",
+            "value_previous": None,
+        },
+    ]
+    stored = change["payload"]["data"]["changelog"]["attributes"]["name"]["properties"]["owners"]
+    assert (stored["value"], stored["value_previous"]) == (f'["{first.id}","{second.id}"]', None)

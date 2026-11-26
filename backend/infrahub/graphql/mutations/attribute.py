@@ -1,16 +1,19 @@
 from typing import Any
 
-from graphene import BigInt, Boolean, InputObjectType, Int, String
+from graphene import BigInt, Boolean, InputObjectType, Int, List, NonNull, String
 from graphene.types.generic import GenericScalar
 
 from infrahub.core import registry
+from infrahub.graphql.constants import OWNER_DEPRECATION_REASON
 from infrahub.graphql.types.attribute import GenericPoolInput
+from infrahub.graphql.types.ownership import OWNERS_INPUT_DESCRIPTION, MetadataNodeInput
 
 
 class BaseAttributeCreate(InputObjectType):
     is_protected = Boolean(required=False)
     source = String(required=False)
-    owner = String(required=False)
+    owner = String(required=False, deprecation_reason=OWNER_DEPRECATION_REASON)
+    owners = List(NonNull(MetadataNodeInput), required=False, description=OWNERS_INPUT_DESCRIPTION)
 
     @classmethod
     def __init_subclass__(cls, **kwargs: Any) -> None:
@@ -22,7 +25,8 @@ class BaseAttributeUpdate(InputObjectType):
     is_default = Boolean(required=False)
     is_protected = Boolean(required=False)
     source = String(required=False)
-    owner = String(required=False)
+    owner = String(required=False, deprecation_reason=OWNER_DEPRECATION_REASON)
+    owners = List(NonNull(MetadataNodeInput), required=False, description=OWNERS_INPUT_DESCRIPTION)
 
     @classmethod
     def __init_subclass__(cls, **kwargs: Any) -> None:

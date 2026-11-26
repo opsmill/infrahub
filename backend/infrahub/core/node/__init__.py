@@ -1667,10 +1667,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             if meta_field == "ownership":
                 data["ownership"] = {"node_id": self.get_id()}
 
-            if meta_field == "target_ownership" and (
+            if meta_field in {"target_ownership", "target_field_ownership"} and (
                 self.get_schema().is_profile_schema or self.get_schema().is_template_schema
             ):
-                data["target_ownership"] = {"node_id": self.get_id()}
+                # A profile or an object template gives owners to the nodes of the kind that its schema names.
+                data[meta_field] = {"node_id": self.get_id(), "target_kind": self.get_schema().name}
         return data
 
     async def from_graphql(
