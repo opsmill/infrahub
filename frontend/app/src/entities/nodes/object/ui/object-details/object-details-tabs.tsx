@@ -40,7 +40,15 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
 
   return (
     <div className="relative shrink-0">
-      <ScrollArea ref={viewportRef} type="auto" scrollX scrollY={false}>
+      <ScrollArea
+        ref={viewportRef}
+        type="auto"
+        scrollX
+        scrollY={false}
+        // A mask fades the tabs into whatever surface is behind them, so the fade fits
+        // the light and dark card gradients alike.
+        style={{ maskImage: getEdgeFadeMask(canScrollLeft, canScrollRight) }}
+      >
         <nav aria-label="Tabs" className="pb-1">
           <Row className="items-end gap-4 px-4" data-testid="object-details-tabs">
             <LinkTab to={getObjectDetailsUrl(objectKind, objectId)} scrollIntoViewOnActive>
@@ -67,11 +75,11 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
         </nav>
       </ScrollArea>
       {canScrollLeft && (
-        <div className="absolute top-0 bottom-1 left-0 flex items-center bg-linear-to-r from-background via-background to-transparent pr-6 pl-1">
+        <div className="absolute top-0 bottom-1 left-1 flex items-center">
           <Button
-            variant="ghost"
-            size="sm"
-            shape="square"
+            variant="outline"
+            size="xs"
+            shape="circle"
             aria-label="Scroll tabs left"
             onPress={() => scrollTabs(-1)}
           >
@@ -80,11 +88,11 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
         </div>
       )}
       {canScrollRight && (
-        <div className="absolute top-0 right-0 bottom-1 flex items-center bg-linear-to-l from-background via-background to-transparent pr-1 pl-6">
+        <div className="absolute top-0 right-1 bottom-1 flex items-center">
           <Button
-            variant="ghost"
-            size="sm"
-            shape="square"
+            variant="outline"
+            size="xs"
+            shape="circle"
             aria-label="Scroll tabs right"
             onPress={() => scrollTabs(1)}
           >
@@ -94,6 +102,15 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
       )}
     </div>
   );
+}
+
+const EDGE_FADE = "4rem";
+
+function getEdgeFadeMask(fadeLeft: boolean, fadeRight: boolean): string | undefined {
+  if (!(fadeLeft || fadeRight)) return undefined;
+  const start = fadeLeft ? `transparent, black ${EDGE_FADE}` : "black";
+  const end = fadeRight ? `black calc(100% - ${EDGE_FADE}), transparent` : "black";
+  return `linear-gradient(to right, ${start}, ${end})`;
 }
 
 // Tracks which sides of a horizontal scroll container hide content, and lets a vertical
