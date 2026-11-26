@@ -255,7 +255,7 @@ All tasks in this phase change the SDK repository and use `httpx_mock` for the H
 - [X] T051 [P] Add the Infrahub changelog fragments in `changelog/` (plan, section Changelog fragments; use the `creating-changelog-entries` skill): `added` for `GET /api/schema/export` with the `BRIEF` and `FULL` modes, and `changed` for the schema load accepting and ignoring `infrahub_version`
 - [ ] T052 Open the SDK pull request on `infrahub-develop` with T006, T008 and T038 to T045, and wait for it to merge (plan, delivery order). The generated `contract.py` must hold the final `keep_in_export` marks, so regenerate it after T028
 - [ ] T053 Bump the `python_sdk` submodule to the merged SDK commit in the same commit as the `SchemaLoadAPI.build_internal_schema` change from T007 (plan, delivery order). The Infrahub pull request also carries the `tasks/backend.py` change from T005, so the generated-file check in CI agrees with the submodule
-- [ ] T054 Run `uv run invoke format`, `uv run invoke lint`, `uv run invoke docs.lint` and `uv run invoke docs.validate`, and fix every error
+- [X] T054 Run `uv run invoke format`, `uv run invoke lint`, `uv run invoke docs.lint` and `uv run invoke docs.validate`, and fix every error
 - [ ] T055 Run the automated checks and manual scenarios in [quickstart.md](quickstart.md) and record the export time and pass count for `models/base/` from the functional test output in the Infrahub pull request description
 
 ---
