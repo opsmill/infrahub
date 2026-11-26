@@ -230,8 +230,9 @@ description: "Task list for owner and source metadata, Community side, storage o
 ### Tests for User Story 3
 
 - [X] T105 [P] [US3] Write unit tests for the order of sources of a field (own state, profile field owners by priority, template copy, node) in backend/tests/unit/core/ownership/test_resolution.py (FR-005)
-- [ ] T106 [P] [US3] Write GraphQL tests for scenarios 1 to 4 and 9 to 11 of user story 3 in backend/tests/component/graphql/metadata/test_graphql_field_owners.py (FR-010, FR-011). The tests assert no count of database queries (decision of 2026-11-18)
-- [ ] T107 [P] [US3] Write GraphQL tests for scenarios 5 to 8 of user story 3 (read and write of the deprecated `owner` field with zero, one and two own owners, and `properties { owner }` on links) in backend/tests/component/graphql/metadata/test_graphql_owner_field.py (FR-014, FR-015, FR-007)
+- [X] T106 [P] [US3] Write GraphQL tests for scenarios 1 to 4 and 9 to 11 of user story 3 in backend/tests/component/graphql/metadata/test_graphql_field_owners.py (FR-010, FR-011). The tests assert no count of database queries (decision of 2026-11-18)
+- [X] T107 [P] [US3] Write GraphQL tests for scenarios 5 to 8 of user story 3 (read and write of the deprecated `owner` field with zero, one and two own owners, and `properties { owner }` on links) in backend/tests/component/graphql/metadata/test_graphql_owner_field.py (FR-014, FR-015, FR-007)
+  - Scenarios 6 and 7 (read and write of `owner` with two own owners) are not repeated here: `test_deprecated_owner_gives_the_one_own_owner_and_a_write_replaces_the_own_owners` in test_graphql_field_owner_inputs.py covers them.
 - [X] T108 [P] [US3] Write migration tests that rename and remove an attribute and a relationship that have owners, on the default branch and on a branch that is then merged, in backend/tests/component/core/migrations/schema/test_owner_field_migrations.py (FR-041)
 - [X] T109 [P] [US3] Write a merge test for two branches that each set the first owners of the same relationship field in backend/tests/component/core/diff/merge/test_ownership_merge.py (FR-032, E-12)
 - [ ] T110 [P] [US3] Add a case to backend/tests/integration_docker/test_schema_migration.py that renames an attribute with owners and changes the kind of a node with owners on the full stack, then reads the owners (FR-040, FR-041)

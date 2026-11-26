@@ -30,11 +30,15 @@ from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.ownership.resolver import OwnershipResolver
 from infrahub.core.ownership.writer import OwnershipWriter
 from infrahub.core.timestamp import Timestamp
+from infrahub.services import InfrahubServices
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from tests.helpers.graphql import graphql_query
 from tests.helpers.schema.ownership import OWNERSHIP_SCHEMA
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from infrahub.auth.session import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
@@ -255,3 +259,59 @@ async def wait_for_the_other_write(
                 await asyncio.sleep(SECONDS_BETWEEN_POLLS)
     except TimeoutError:
         pytest.fail(f"The other write neither waited for a lock nor ended within {SECONDS_TO_WAIT} seconds")
+
+
+async def run(
+    db: InfrahubDatabase,
+    branch: Branch,
+    query: str,
+    variables: dict[str, Any] | None = None,
+    session: AccountSession | None = None,
+) -> dict[str, Any]:
+    # The mutations of a profile start a workflow for the account of the request.
+    service = await InfrahubServices.new(workflow=WorkflowLocalExecution())
+    result = await graphql_query(
+        query=query, db=db, branch=branch, variables=variables, service=service, account_session=session
+    )
+    assert result.errors is None, result.errors
+    assert result.data
+    return result.data
+
+
+async def create(
+    db: InfrahubDatabase,
+    branch: Branch,
+    query: str,
+    kind: str,
+    session: AccountSession | None = None,
+    **variables: Any,
+) -> str:
+    data = await run(db=db, branch=branch, query=query, variables=variables, session=session)
+    return data[f"{kind}Create"]["object"]["id"]
+
+
+async def read_node(db: InfrahubDatabase, branch: Branch, query: str, kind: str, node_id: str) -> dict[str, Any]:
+    data = await run(db=db, branch=branch, query=query, variables={"ids": [node_id]})
+    edges = data[kind]["edges"]
+    assert len(edges) == 1
+    return edges[0]["node"]
+
+
+def own(holder_id: str, *owner_ids: str) -> dict[str, Any]:
+    """Return the short `ownership` of a holder with own owners, or with "no owner" when no owner is given."""
+    return {
+        "state": "OWNERS" if owner_ids else "NO_OWNER",
+        "origin": "SELF",
+        "origin_node": {"id": holder_id},
+        "owners": [{"id": owner_id} for owner_id in sorted(owner_ids)],
+    }
+
+
+def from_node(node_id: str, *owner_ids: str) -> dict[str, Any]:
+    """Return the short `ownership` of a field that takes the owners of its node."""
+    return {
+        "state": "INHERIT",
+        "origin": "NODE",
+        "origin_node": {"id": node_id},
+        "owners": [{"id": owner_id} for owner_id in sorted(owner_ids)],
+    }

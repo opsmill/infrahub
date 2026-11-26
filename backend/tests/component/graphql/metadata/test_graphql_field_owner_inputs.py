@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 
 from infrahub.core import registry
-from infrahub.services import InfrahubServices
-from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.helpers.graphql import graphql_query
-from tests.helpers.ownership import create_groups
+from tests.helpers.ownership import create, create_groups, from_node, own, read_node, run
 from tests.helpers.schema.ownership import OWNERSHIP_SCHEMA
 
 if TYPE_CHECKING:
@@ -100,60 +98,6 @@ query {
     __type(name: "TextAttribute") { fields(includeDeprecated: true) { name isDeprecated } }
 }
 """
-
-
-async def run(
-    db: InfrahubDatabase,
-    branch: Branch,
-    query: str,
-    variables: dict[str, Any] | None = None,
-    session: AccountSession | None = None,
-) -> dict[str, Any]:
-    # The mutations of a profile start a workflow for the account of the request.
-    service = await InfrahubServices.new(workflow=WorkflowLocalExecution())
-    result = await graphql_query(
-        query=query, db=db, branch=branch, variables=variables, service=service, account_session=session
-    )
-    assert result.errors is None, result.errors
-    assert result.data
-    return result.data
-
-
-async def create(
-    db: InfrahubDatabase,
-    branch: Branch,
-    query: str,
-    kind: str,
-    session: AccountSession | None = None,
-    **variables: Any,
-) -> str:
-    data = await run(db=db, branch=branch, query=query, variables=variables, session=session)
-    return data[f"{kind}Create"]["object"]["id"]
-
-
-async def read_node(db: InfrahubDatabase, branch: Branch, query: str, kind: str, node_id: str) -> dict[str, Any]:
-    data = await run(db=db, branch=branch, query=query, variables={"ids": [node_id]})
-    edges = data[kind]["edges"]
-    assert len(edges) == 1
-    return edges[0]["node"]
-
-
-def own(holder_id: str, *owner_ids: str) -> dict[str, Any]:
-    return {
-        "state": "OWNERS" if owner_ids else "NO_OWNER",
-        "origin": "SELF",
-        "origin_node": {"id": holder_id},
-        "owners": [{"id": owner_id} for owner_id in sorted(owner_ids)],
-    }
-
-
-def from_node(node_id: str, *owner_ids: str) -> dict[str, Any]:
-    return {
-        "state": "INHERIT",
-        "origin": "NODE",
-        "origin_node": {"id": node_id},
-        "owners": [{"id": owner_id} for owner_id in sorted(owner_ids)],
-    }
 
 
 class TestFieldOwnerInputs:
