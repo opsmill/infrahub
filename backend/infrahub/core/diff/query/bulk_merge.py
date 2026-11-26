@@ -1050,7 +1050,8 @@ CALL (field, src, child, edge_type, prop_from_user_id) {
                 field_label="Relationship",
                 # The owner of one link is a property edge of the link, not a set of owners of a holder
                 edge_types=sorted(
-                    (VERSIONED_VALUE_EDGE_TYPES - {DatabaseEdgeType.HAS_VALUE.value}) | {DatabaseEdgeType.HAS_OWNER.value}
+                    (VERSIONED_VALUE_EDGE_TYPES - {DatabaseEdgeType.HAS_VALUE.value})
+                    | {DatabaseEdgeType.HAS_OWNER.value}
                 ),
             )
         }
