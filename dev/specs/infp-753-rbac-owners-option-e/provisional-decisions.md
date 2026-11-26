@@ -129,11 +129,11 @@ Guillaume Mazoyer, maintainer, made these decisions on 2026-11-26, before pull r
 - Task T031 is dropped. Two tests of `backend/tests/component/core/ownership/test_owner_sets.py` already run two first writes of owners in two open transactions on one node. Task T021 was closed on 2026-11-20 for the same reason.
 - No test asserts a count of database queries (decision of 2026-11-18, commit `259305a5c8`). Tasks T044 and T106 follow this rule: the benchmarks of T061 measure FR-009.
 - An owner or a source given by `name` must also give `kind`. Infrahub refuses `{name}` without `kind`, and the error says to give the kind. `{kind, name}`, `{id}` and `{kind, hfid}` do not change.
-  - Reason: not recorded with the decision. Before, a name without a kind was read as an account group, and refused only when an account had the same name. The object file loader of the SDK must send a plain name with the kind of an account group.
+  - Reason, from the option the maintainer chose: it is the simplest rule, and a name without a kind cannot point to the wrong kind. Before, a name without a kind was read as an account group, and refused only when an account had the same name. The object file loader of the SDK must send a plain name with the kind of an account group.
 - A `field_owners` or `target_field_owners` entry that leaves out `owners` changes nothing. `owners: null` still gives inherit, and `[]` gives no owner.
-  - Reason: not recorded with the decision. Before, an entry without `owners` was read like `owners: null` and set the field to inherit. A key left out at the node level already changes nothing (D-5).
+  - Reason, from the option the maintainer chose: the rule of D-5 applies the same way everywhere. Before, an entry without `owners` was read like `owners: null` and set the field to inherit. A key left out at the node level already changes nothing (D-5).
 - `target_field_ownership(fields: [...])` refuses a name that is not an attribute or a relationship of the nodes, with an error that names the field.
-  - Reason: not recorded with the decision. Before, the query skipped the name and gave no error. The `field_owners` input already refused an unknown field name.
+  - Reason, from the option the maintainer chose: the read follows the rule of the inputs, so a typo in a field name does not pass without an error. Before, the query skipped the name and gave no error. The `field_owners` input already refused an unknown field name.
 - When one attribute input gives both `owner` and `owners`, `owners` is written and `owner` is ignored. The owners are written once.
   - Reason: the save wrote `owner` and then `owners`, so the owners changed twice and the changelog showed the ignored owner (commit `b0ee2e28e4`).
 - `ownership` is null on `ancestors` and `descendants`.

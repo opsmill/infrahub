@@ -3,9 +3,9 @@
 - **Feature**: owners and sources of nodes, attributes and relationships (advanced RBAC, phase P1), storage option E
 - **Jira**: [IFC-3627](https://opsmill.atlassian.net/browse/IFC-3627), in the epic [IFC-3625](https://opsmill.atlassian.net/browse/IFC-3625)
 - **Spec directory**: `dev/specs/infp-753-rbac-owners-option-e`
-- **Branch**: `rbac-phase-1-implementation-ifc3627-enevw`, based on pull request 1 ([#11620](https://github.com/opsmill/infrahub/pull/11620), branch `gma-20261117-ifc3626`, head `b77bcf2fb9`)
-- **Base commit**: `0c44f461d3` (the task list update for pull request 2, on top of `b77bcf2fb9`)
-- **Head commit**: the commit of this report, on top of `5f37e5265e`
+- **Branch**: `rbac-phase-1-implementation-ifc3627-enevw`, based on pull request 1 ([#11620](https://github.com/opsmill/infrahub/pull/11620), branch `gma-20261117-ifc3626`, head `21927113bc`)
+- **Base commit**: `2d4971d38f` (the task list update for pull request 2, on top of `21927113bc`). The branch was rebased on 2026-11-26 from `b77bcf2fb9` to `21927113bc`, so the commit SHAs in this report from before that day's rebase are the SHAs before the rebase.
+- **Head commit**: see the branch head; the last code commit is `dbe9c56502`
 - **Wall-clock time**: about 6 hours, 2026-11-26 10:15Z to 16:15Z
 - **Status**: DONE. Every task of "2. GraphQL API" in tasks.md is ticked. The review ran with `/code-review`.
 
