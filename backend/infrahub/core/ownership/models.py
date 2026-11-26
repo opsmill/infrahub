@@ -21,6 +21,7 @@ class OwnerOrigin(StrEnum):
     PROFILE = "profile"
     TEMPLATE = "template"
     PARENT = "parent"
+    NODE = "node"
 
 
 class HolderKind(StrEnum):
@@ -158,3 +159,12 @@ class ResolvedOwnership:
 
     origin_node_id: str | None
     """The profile, the template, the parent or the node that holds the owners."""
+
+
+@dataclass(frozen=True)
+class OwnerReference:
+    id: str
+    kind: str | None
+    display_label: str | None
+    hfid: tuple[str, ...] | None
+    is_deleted: bool

@@ -7,6 +7,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.ownership.constants import OWNERS_IDS_FILTER
 from infrahub.core.ownership.models import (
     NODE_HOLDER,
     NODE_SOURCES_HOLDER,
@@ -225,7 +226,7 @@ async def test_global_write_that_adds_back_a_removed_state_is_read_on_all_branch
     await verify_graph(db=db)
 
 
-async def test_resolver_of_a_branch_made_before_a_global_write_gives_the_new_owners(
+async def test_resolver_and_owner_filter_of_a_branch_made_before_a_global_write_give_the_new_owners(
     db: InfrahubDatabase, default_branch: Branch, groups: list[str]
 ) -> None:
     thing = await add_node(db=db, kind="TestPerson", name="shared-a")
@@ -252,3 +253,8 @@ async def test_resolver_of_a_branch_made_before_a_global_write_gives_the_new_own
     resolver = OwnershipResolver(repository=OwnershipRepository(db=db, branch=branch, at=None))
     resolved = (await resolver.resolve(node_ids=[thing.id]))[thing.id]
     assert resolved.owner_ids == (groups[1],)
+    for owner_id, expected in ((groups[0], 0), (groups[1], 1)):
+        count = await NodeManager.count(
+            db=db, schema="TestPerson", branch=branch, filters={OWNERS_IDS_FILTER: [owner_id]}
+        )
+        assert count == expected

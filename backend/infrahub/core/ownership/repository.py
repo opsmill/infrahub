@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core.constants.database import DatabaseEdgeType
-from infrahub.core.query.node import NodeUpdateMetadataQuery
+from infrahub.core.query.node import NodeGetByHFIDQuery, NodeUpdateMetadataQuery
 
 from .constants import NO_OWNER_VERTEX_UUID
 from .models import NODE_HOLDER, NODE_SOURCES_HOLDER, HolderKey, StoredNodeOwnership, StoredOwnerState
@@ -179,3 +179,9 @@ class OwnershipRepository:
         query = await NodeLabelsReadQuery.init(db=self.db, branch=self.branch, at=self.at, node_ids=node_ids)
         await query.execute(db=self.db)
         return query.get_labels()
+
+    async def find_ids_by_hfid(self, kind: str, hfid: list[str]) -> list[str]:
+        """Return the IDs of the active nodes of a kind that have this human-friendly ID."""
+        query = await NodeGetByHFIDQuery.init(db=self.db, branch=self.branch, at=self.at, node_kind=kind, hfids=[hfid])
+        await query.execute(db=self.db)
+        return query.get_node_uuids()

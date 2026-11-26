@@ -10,7 +10,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
-from infrahub.core.ownership.constants import MAX_NODES_FOR_LINEAGE_WALK
+from infrahub.core.ownership.constants import MAX_NODES_FOR_LINEAGE_WALK, OWNERS_IDS_FILTER
 from infrahub.core.ownership.models import (
     NODE_HOLDER,
     NODE_TARGET_HOLDER,
@@ -28,7 +28,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
-from tests.helpers.ownership import TARGET_OWNERS_FIELD, USER_ID, add_node
+from tests.helpers.ownership import TARGET_OWNERS_FIELD, USER_ID, add_node, assert_filter_agrees_with_resolver
 from tests.helpers.schema.ownership import OWNERSHIP_SCHEMA
 
 DEFAULT_BRANCH = "main"
@@ -554,6 +554,43 @@ class TestProfileOwnersRead:
                 ),
                 ids["device-without-profile"]: [],
             },
+        }
+
+    @pytest.mark.parametrize("branch_name", [DEFAULT_BRANCH, OTHER_BRANCH])
+    @pytest.mark.parametrize("kind", ["TestDevice", "TestRack", "TestSite", DEVICE_PROFILE])
+    async def test_filter_agrees_with_the_owners_that_apply_to_each_node(
+        self, db: InfrahubDatabase, dataset: ProfileDataset, branch_name: str, kind: str
+    ) -> None:
+        live_groups = {dataset.ids[name]: name for name in GROUPS if name != "deleted-group"}
+        await assert_filter_agrees_with_resolver(
+            db=db, branch=dataset.branches[branch_name], kind=kind, live_groups=live_groups
+        )
+
+    async def test_filter_lists_the_nodes_that_take_the_owner_from_a_profile(
+        self, db: InfrahubDatabase, dataset: ProfileDataset
+    ) -> None:
+        names_by_id = {node_id: name for name, node_id in dataset.ids.items()}
+        listed: dict[str, list[str]] = {}
+        for branch_name, branch in dataset.branches.items():
+            devices = await NodeManager.query(
+                db=db, schema="TestDevice", branch=branch, filters={OWNERS_IDS_FILTER: [dataset.ids["dc-emea"]]}
+            )
+            listed[branch_name] = sorted(names_by_id[device.id] for device in devices)
+
+        assert listed == {
+            DEFAULT_BRANCH: [
+                "device-first-profile-gives-nothing",
+                "device-one-profile",
+                "device-profile-removed-on-branch",
+                "device-profile-without-priority",
+            ],
+            OTHER_BRANCH: [
+                "device-first-profile-gives-nothing",
+                "device-one-profile",
+                "device-profile-deleted-on-branch",
+                "device-profile-without-priority",
+                "device-two-profiles",
+            ],
         }
 
     async def test_graph_stays_valid_after_the_writes(self, db: InfrahubDatabase, dataset: ProfileDataset) -> None:

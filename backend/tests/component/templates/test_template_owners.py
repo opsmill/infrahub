@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -9,6 +9,7 @@ from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node.create import create_node
+from infrahub.core.ownership.constants import OWNERS_IDS_FILTER, OWNERS_ISNULL_FILTER
 from infrahub.core.ownership.models import (
     NODE_HOLDER,
     NODE_TARGET_HOLDER,
@@ -119,6 +120,19 @@ async def _stored(db: InfrahubDatabase, dataset: TemplateDataset, node_id: str) 
     return dict(stored[node_id].holders)
 
 
+async def _devices_owned_by(db: InfrahubDatabase, dataset: TemplateDataset) -> dict[str, list[str]]:
+    """Return the IDs of the devices that the owner filter lists for each account group, and for no owner."""
+    filters: dict[str, dict[str, Any]] = {
+        name: {OWNERS_IDS_FILTER: [group_id]} for name, group_id in dataset.groups.items()
+    }
+    filters["no owner"] = {OWNERS_ISNULL_FILTER: True}
+    listed: dict[str, list[str]] = {}
+    for name, owner_filter in filters.items():
+        devices = await NodeManager.query(db=db, schema=TestKind.DEVICE, branch=dataset.branch, filters=owner_filter)
+        listed[name] = sorted(device.id for device in devices)
+    return listed
+
+
 def _from_template(template: Node, owner_ids: tuple[str, ...]) -> ResolvedOwnership:
     return ResolvedOwnership(
         state=OwnerState.INHERIT, owner_ids=owner_ids, origin=OwnerOrigin.TEMPLATE, origin_node_id=template.id
@@ -143,6 +157,12 @@ async def test_node_created_from_a_template_gets_a_copy_of_the_owners_that_the_t
         None,
         f'["{owner_ids[0]}","{owner_ids[1]}"]',
     )
+    assert await _devices_owned_by(db, dataset) == {
+        "dc-emea": [device.id],
+        "dc-security": [],
+        "network-emea": [device.id],
+        "no owner": [],
+    }
     await verify_graph(db=db, kinds=[TestKind.DEVICE, DEVICE_TEMPLATE])
 
 
@@ -169,6 +189,7 @@ async def test_node_created_from_a_template_that_gives_no_owners(
         )
     }
     assert (OWNERS_FIELD in device.node_changelog.attributes) is (given is not None)
+    assert (await _devices_owned_by(db, dataset))["no owner"] == [device.id]
 
 
 @pytest.mark.parametrize(
@@ -230,12 +251,14 @@ async def test_profile_replaces_the_owners_that_came_from_a_template(
         owner_ids=dataset.owners("dc-security"),
     )
     resolved: dict[str, ResolvedOwnership] = {}
+    listed: dict[str, dict[str, list[str]]] = {}
 
     for step, profiles in (("profile attached", [profile]), ("profile removed", [])):
         stored_device = await NodeManager.get_one(db=db, branch=dataset.branch, id=device.id, raise_on_error=True)
         await stored_device.profiles.update(db=db, data=profiles)
         await stored_device.save(db=db)
         resolved[step] = (await _resolve(db, dataset, device.id))[device.id]
+        listed[step] = await _devices_owned_by(db, dataset)
 
     assert resolved == {
         "profile attached": ResolvedOwnership(
@@ -245,6 +268,10 @@ async def test_profile_replaces_the_owners_that_came_from_a_template(
             origin_node_id=profile.id,
         ),
         "profile removed": _from_template(template, template_owners),
+    }
+    assert listed == {
+        "profile attached": {"dc-emea": [], "dc-security": [device.id], "network-emea": [], "no owner": []},
+        "profile removed": {"dc-emea": [device.id], "dc-security": [], "network-emea": [], "no owner": []},
     }
 
 
