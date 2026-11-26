@@ -1322,6 +1322,90 @@
                 }
             }
         },
+        "/api/schema/export": {
+            "get": {
+                "summary": "Export Schema",
+                "operationId": "export_schema_api_schema_export_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    },
+                    {
+                        "APIKeyHeader": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "mode",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/SchemaExportMode",
+                            "default": "BRIEF"
+                        }
+                    },
+                    {
+                        "name": "namespaces",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Namespaces"
+                        }
+                    },
+                    {
+                        "name": "branch",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Name of the branch to use for the query",
+                            "title": "Branch"
+                        },
+                        "description": "Name of the branch to use for the query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SchemaExportDocument"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/schema/{schema_kind}": {
             "get": {
                 "summary": "Get Schema By Kind",
@@ -3543,7 +3627,278 @@
                 ],
                 "title": "GenericAttributeRead"
             },
-            "GenericAttributeWrite": {
+            "GenericAttributeWrite-Input": {
+                "properties": {
+                    "id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Id",
+                        "description": "The ID of the attribute"
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 64,
+                        "minLength": 3,
+                        "pattern": "^[a-z0-9\\_]+$",
+                        "title": "Name",
+                        "description": "Attribute name, must be unique within a model and must be all lowercase."
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "ID",
+                            "Dropdown",
+                            "DateTime",
+                            "Email",
+                            "Password",
+                            "HashedPassword",
+                            "URL",
+                            "File",
+                            "MacAddress",
+                            "Color",
+                            "Bandwidth",
+                            "IPHost",
+                            "IPNetwork",
+                            "IPAddress",
+                            "Boolean",
+                            "Checkbox",
+                            "JSON",
+                            "Any"
+                        ],
+                        "title": "Kind",
+                        "description": "Defines the type of the attribute."
+                    },
+                    "enum": {
+                        "anyOf": [
+                            {
+                                "items": {},
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Enum",
+                        "description": "Define a list of valid values for the attribute."
+                    },
+                    "computed_attribute": {
+                        "anyOf": [
+                            {
+                                "oneOf": [
+                                    {
+                                        "$ref": "#/components/schemas/ComputedAttributeUserWrite"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/ComputedAttributeJinja2Write"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/ComputedAttributeTransformPythonWrite"
+                                    }
+                                ],
+                                "discriminator": {
+                                    "propertyName": "kind",
+                                    "mapping": {
+                                        "Jinja2": "#/components/schemas/ComputedAttributeJinja2Write",
+                                        "TransformPython": "#/components/schemas/ComputedAttributeTransformPythonWrite",
+                                        "User": "#/components/schemas/ComputedAttributeUserWrite"
+                                    }
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Computed Attribute",
+                        "description": "Defines how the value of this attribute will be populated."
+                    },
+                    "choices": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/DropdownChoiceWrite"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Choices",
+                        "description": "Define a list of valid choices for a dropdown attribute."
+                    },
+                    "regex": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Regex",
+                        "description": "Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)"
+                    },
+                    "max_length": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Length",
+                        "description": "Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)"
+                    },
+                    "min_length": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Min Length",
+                        "description": "Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)"
+                    },
+                    "label": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 64
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Label",
+                        "description": "Human friendly representation of the name. Will be autogenerated if not provided"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 128
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Short description of the attribute."
+                    },
+                    "read_only": {
+                        "type": "boolean",
+                        "title": "Read Only",
+                        "description": "Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.",
+                        "default": false
+                    },
+                    "unique": {
+                        "type": "boolean",
+                        "title": "Unique",
+                        "description": "Indicate if the value of this attribute must be unique in the database for a given model.",
+                        "default": false
+                    },
+                    "optional": {
+                        "type": "boolean",
+                        "title": "Optional",
+                        "description": "Indicate if this attribute is mandatory or optional.",
+                        "default": false
+                    },
+                    "branch": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/BranchSupportType"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Type of branch support for the attribute, if not defined it will be inherited from the node."
+                    },
+                    "order_weight": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Order Weight",
+                        "description": "Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first."
+                    },
+                    "ordered": {
+                        "type": "boolean",
+                        "title": "Ordered",
+                        "description": "Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.",
+                        "default": true
+                    },
+                    "default_value": {
+                        "anyOf": [
+                            {},
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Value",
+                        "description": "Default value of the attribute."
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/SchemaState",
+                        "description": "Expected state of the attribute after loading the schema",
+                        "default": "present"
+                    },
+                    "allow_override": {
+                        "$ref": "#/components/schemas/AllowOverrideType",
+                        "description": "Type of allowed override for the attribute.",
+                        "default": "any"
+                    },
+                    "deprecation": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 128
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Deprecation",
+                        "description": "Mark attribute as deprecated and provide a user-friendly message to display"
+                    },
+                    "display": {
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
+                        "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
+                        "default": "default"
+                    },
+                    "parameters": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AttributeParametersWrite"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Extra parameters specific to this kind of attribute"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "kind"
+                ],
+                "title": "GenericAttributeWrite"
+            },
+            "GenericAttributeWrite-Output": {
                 "properties": {
                     "id": {
                         "anyOf": [
@@ -4137,7 +4492,7 @@
                 ],
                 "title": "GenericSchemaRead"
             },
-            "GenericSchemaWrite": {
+            "GenericSchemaWrite-Input": {
                 "properties": {
                     "id": {
                         "anyOf": [
@@ -4343,47 +4698,344 @@
                         "items": {
                             "oneOf": [
                                 {
-                                    "$ref": "#/components/schemas/TextAttributeWrite"
+                                    "$ref": "#/components/schemas/TextAttributeWrite-Input"
                                 },
                                 {
-                                    "$ref": "#/components/schemas/NumberAttributeWrite"
+                                    "$ref": "#/components/schemas/NumberAttributeWrite-Input"
                                 },
                                 {
-                                    "$ref": "#/components/schemas/ListAttributeWrite"
+                                    "$ref": "#/components/schemas/ListAttributeWrite-Input"
                                 },
                                 {
-                                    "$ref": "#/components/schemas/NumberPoolAttributeWrite"
+                                    "$ref": "#/components/schemas/NumberPoolAttributeWrite-Input"
                                 },
                                 {
-                                    "$ref": "#/components/schemas/GenericAttributeWrite"
+                                    "$ref": "#/components/schemas/GenericAttributeWrite-Input"
                                 }
                             ],
                             "discriminator": {
                                 "propertyName": "kind",
                                 "mapping": {
-                                    "Any": "#/components/schemas/GenericAttributeWrite",
-                                    "Bandwidth": "#/components/schemas/GenericAttributeWrite",
-                                    "Boolean": "#/components/schemas/GenericAttributeWrite",
-                                    "Checkbox": "#/components/schemas/GenericAttributeWrite",
-                                    "Color": "#/components/schemas/GenericAttributeWrite",
-                                    "DateTime": "#/components/schemas/GenericAttributeWrite",
-                                    "Dropdown": "#/components/schemas/GenericAttributeWrite",
-                                    "Email": "#/components/schemas/GenericAttributeWrite",
-                                    "File": "#/components/schemas/GenericAttributeWrite",
-                                    "HashedPassword": "#/components/schemas/GenericAttributeWrite",
-                                    "ID": "#/components/schemas/GenericAttributeWrite",
-                                    "IPAddress": "#/components/schemas/GenericAttributeWrite",
-                                    "IPHost": "#/components/schemas/GenericAttributeWrite",
-                                    "IPNetwork": "#/components/schemas/GenericAttributeWrite",
-                                    "JSON": "#/components/schemas/GenericAttributeWrite",
-                                    "List": "#/components/schemas/ListAttributeWrite",
-                                    "MacAddress": "#/components/schemas/GenericAttributeWrite",
-                                    "Number": "#/components/schemas/NumberAttributeWrite",
-                                    "NumberPool": "#/components/schemas/NumberPoolAttributeWrite",
-                                    "Password": "#/components/schemas/GenericAttributeWrite",
-                                    "Text": "#/components/schemas/TextAttributeWrite",
-                                    "TextArea": "#/components/schemas/TextAttributeWrite",
-                                    "URL": "#/components/schemas/GenericAttributeWrite"
+                                    "Any": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Bandwidth": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Boolean": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Checkbox": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Color": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "DateTime": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Dropdown": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Email": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "File": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "HashedPassword": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "ID": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "IPAddress": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "IPHost": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "IPNetwork": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "JSON": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "List": "#/components/schemas/ListAttributeWrite-Input",
+                                    "MacAddress": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Number": "#/components/schemas/NumberAttributeWrite-Input",
+                                    "NumberPool": "#/components/schemas/NumberPoolAttributeWrite-Input",
+                                    "Password": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Text": "#/components/schemas/TextAttributeWrite-Input",
+                                    "TextArea": "#/components/schemas/TextAttributeWrite-Input",
+                                    "URL": "#/components/schemas/GenericAttributeWrite-Input"
+                                }
+                            }
+                        },
+                        "type": "array",
+                        "title": "Attributes",
+                        "description": "Node attributes"
+                    },
+                    "relationships": {
+                        "items": {
+                            "$ref": "#/components/schemas/RelationshipSchemaWrite"
+                        },
+                        "type": "array",
+                        "title": "Relationships",
+                        "description": "Node Relationships"
+                    },
+                    "hierarchical": {
+                        "type": "boolean",
+                        "title": "Hierarchical",
+                        "description": "Defines if the Generic support the hierarchical mode.",
+                        "default": false
+                    },
+                    "generate_profile": {
+                        "type": "boolean",
+                        "title": "Generate Profile",
+                        "description": "Indicate if a profile schema should be generated for this schema",
+                        "default": true
+                    },
+                    "restricted_namespaces": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Restricted Namespaces",
+                        "description": "Nodes inheriting from this Generic schema must belong to one of the listed namespaces"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "namespace"
+                ],
+                "title": "GenericSchemaWrite"
+            },
+            "GenericSchemaWrite-Output": {
+                "properties": {
+                    "id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Id",
+                        "description": "The ID of the node"
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 32,
+                        "minLength": 2,
+                        "pattern": "^[A-Z][a-zA-Z0-9]+$",
+                        "title": "Name",
+                        "description": "Node name, must be unique within a namespace and must start with an uppercase letter."
+                    },
+                    "namespace": {
+                        "type": "string",
+                        "maxLength": 64,
+                        "minLength": 3,
+                        "pattern": "^[A-Z][a-z0-9]+$",
+                        "title": "Namespace",
+                        "description": "Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions."
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 128
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Short description of the model, will be visible in the frontend."
+                    },
+                    "label": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 64
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Label",
+                        "description": "Human friendly representation of the name/kind"
+                    },
+                    "branch": {
+                        "$ref": "#/components/schemas/BranchSupportType",
+                        "description": "Type of branch support for the model.",
+                        "default": "aware"
+                    },
+                    "default_filter": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "pattern": "^[a-z0-9\\_]*$"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Filter",
+                        "description": "Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)"
+                    },
+                    "human_friendly_id": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Human Friendly Id",
+                        "description": "Human friendly and unique identifier for the object."
+                    },
+                    "display_label": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Label",
+                        "description": "Attribute or Jinja2 template to use to generate the display label"
+                    },
+                    "display_labels": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Labels",
+                        "description": "List of attributes to use to generate the display label (deprecated)"
+                    },
+                    "include_in_menu": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Include In Menu",
+                        "description": "Defines if objects of this kind should be included in the menu."
+                    },
+                    "menu_placement": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Menu Placement",
+                        "description": "Defines where in the menu this object should be placed."
+                    },
+                    "icon": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Icon",
+                        "description": "Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/"
+                    },
+                    "order_by": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Order By",
+                        "description": "List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc."
+                    },
+                    "uniqueness_constraints": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Uniqueness Constraints",
+                        "description": "List of multi-element uniqueness constraints that can combine relationships and attributes"
+                    },
+                    "documentation": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Documentation",
+                        "description": "Link to a documentation associated with this object, can be internal or external."
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/SchemaState",
+                        "description": "Expected state of the node/generic after loading the schema",
+                        "default": "present"
+                    },
+                    "attributes": {
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "$ref": "#/components/schemas/TextAttributeWrite-Output"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/NumberAttributeWrite-Output"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/ListAttributeWrite-Output"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/NumberPoolAttributeWrite-Output"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/GenericAttributeWrite-Output"
+                                }
+                            ],
+                            "discriminator": {
+                                "propertyName": "kind",
+                                "mapping": {
+                                    "Any": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "Bandwidth": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "Boolean": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "Checkbox": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "Color": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "DateTime": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "Dropdown": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "Email": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "File": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "HashedPassword": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "ID": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "IPAddress": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "IPHost": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "IPNetwork": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "JSON": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "List": "#/components/schemas/ListAttributeWrite-Output",
+                                    "MacAddress": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "Number": "#/components/schemas/NumberAttributeWrite-Output",
+                                    "NumberPool": "#/components/schemas/NumberPoolAttributeWrite-Output",
+                                    "Password": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "Text": "#/components/schemas/TextAttributeWrite-Output",
+                                    "TextArea": "#/components/schemas/TextAttributeWrite-Output",
+                                    "URL": "#/components/schemas/GenericAttributeWrite-Output"
                                 }
                             }
                         },
@@ -5020,7 +5672,259 @@
                 ],
                 "title": "ListAttributeRead"
             },
-            "ListAttributeWrite": {
+            "ListAttributeWrite-Input": {
+                "properties": {
+                    "id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Id",
+                        "description": "The ID of the attribute"
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 64,
+                        "minLength": 3,
+                        "pattern": "^[a-z0-9\\_]+$",
+                        "title": "Name",
+                        "description": "Attribute name, must be unique within a model and must be all lowercase."
+                    },
+                    "kind": {
+                        "type": "string",
+                        "const": "List",
+                        "title": "Kind",
+                        "description": "Defines the type of the attribute."
+                    },
+                    "enum": {
+                        "anyOf": [
+                            {
+                                "items": {},
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Enum",
+                        "description": "Define a list of valid values for the attribute."
+                    },
+                    "computed_attribute": {
+                        "anyOf": [
+                            {
+                                "oneOf": [
+                                    {
+                                        "$ref": "#/components/schemas/ComputedAttributeUserWrite"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/ComputedAttributeJinja2Write"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/ComputedAttributeTransformPythonWrite"
+                                    }
+                                ],
+                                "discriminator": {
+                                    "propertyName": "kind",
+                                    "mapping": {
+                                        "Jinja2": "#/components/schemas/ComputedAttributeJinja2Write",
+                                        "TransformPython": "#/components/schemas/ComputedAttributeTransformPythonWrite",
+                                        "User": "#/components/schemas/ComputedAttributeUserWrite"
+                                    }
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Computed Attribute",
+                        "description": "Defines how the value of this attribute will be populated."
+                    },
+                    "choices": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/DropdownChoiceWrite"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Choices",
+                        "description": "Define a list of valid choices for a dropdown attribute."
+                    },
+                    "regex": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Regex",
+                        "description": "Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)"
+                    },
+                    "max_length": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Length",
+                        "description": "Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)"
+                    },
+                    "min_length": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Min Length",
+                        "description": "Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)"
+                    },
+                    "label": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 64
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Label",
+                        "description": "Human friendly representation of the name. Will be autogenerated if not provided"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 128
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Short description of the attribute."
+                    },
+                    "read_only": {
+                        "type": "boolean",
+                        "title": "Read Only",
+                        "description": "Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.",
+                        "default": false
+                    },
+                    "unique": {
+                        "type": "boolean",
+                        "title": "Unique",
+                        "description": "Indicate if the value of this attribute must be unique in the database for a given model.",
+                        "default": false
+                    },
+                    "optional": {
+                        "type": "boolean",
+                        "title": "Optional",
+                        "description": "Indicate if this attribute is mandatory or optional.",
+                        "default": false
+                    },
+                    "branch": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/BranchSupportType"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Type of branch support for the attribute, if not defined it will be inherited from the node."
+                    },
+                    "order_weight": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Order Weight",
+                        "description": "Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first."
+                    },
+                    "ordered": {
+                        "type": "boolean",
+                        "title": "Ordered",
+                        "description": "Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.",
+                        "default": true
+                    },
+                    "default_value": {
+                        "anyOf": [
+                            {},
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Value",
+                        "description": "Default value of the attribute."
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/SchemaState",
+                        "description": "Expected state of the attribute after loading the schema",
+                        "default": "present"
+                    },
+                    "allow_override": {
+                        "$ref": "#/components/schemas/AllowOverrideType",
+                        "description": "Type of allowed override for the attribute.",
+                        "default": "any"
+                    },
+                    "deprecation": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 128
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Deprecation",
+                        "description": "Mark attribute as deprecated and provide a user-friendly message to display"
+                    },
+                    "display": {
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
+                        "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
+                        "default": "default"
+                    },
+                    "parameters": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ListAttributeParametersWrite"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Extra parameters specific to this kind of attribute"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "kind"
+                ],
+                "title": "ListAttributeWrite"
+            },
+            "ListAttributeWrite-Output": {
                 "properties": {
                     "id": {
                         "anyOf": [
@@ -5519,47 +6423,47 @@
                         "items": {
                             "oneOf": [
                                 {
-                                    "$ref": "#/components/schemas/TextAttributeWrite"
+                                    "$ref": "#/components/schemas/TextAttributeWrite-Input"
                                 },
                                 {
-                                    "$ref": "#/components/schemas/NumberAttributeWrite"
+                                    "$ref": "#/components/schemas/NumberAttributeWrite-Input"
                                 },
                                 {
-                                    "$ref": "#/components/schemas/ListAttributeWrite"
+                                    "$ref": "#/components/schemas/ListAttributeWrite-Input"
                                 },
                                 {
-                                    "$ref": "#/components/schemas/NumberPoolAttributeWrite"
+                                    "$ref": "#/components/schemas/NumberPoolAttributeWrite-Input"
                                 },
                                 {
-                                    "$ref": "#/components/schemas/GenericAttributeWrite"
+                                    "$ref": "#/components/schemas/GenericAttributeWrite-Input"
                                 }
                             ],
                             "discriminator": {
                                 "propertyName": "kind",
                                 "mapping": {
-                                    "Any": "#/components/schemas/GenericAttributeWrite",
-                                    "Bandwidth": "#/components/schemas/GenericAttributeWrite",
-                                    "Boolean": "#/components/schemas/GenericAttributeWrite",
-                                    "Checkbox": "#/components/schemas/GenericAttributeWrite",
-                                    "Color": "#/components/schemas/GenericAttributeWrite",
-                                    "DateTime": "#/components/schemas/GenericAttributeWrite",
-                                    "Dropdown": "#/components/schemas/GenericAttributeWrite",
-                                    "Email": "#/components/schemas/GenericAttributeWrite",
-                                    "File": "#/components/schemas/GenericAttributeWrite",
-                                    "HashedPassword": "#/components/schemas/GenericAttributeWrite",
-                                    "ID": "#/components/schemas/GenericAttributeWrite",
-                                    "IPAddress": "#/components/schemas/GenericAttributeWrite",
-                                    "IPHost": "#/components/schemas/GenericAttributeWrite",
-                                    "IPNetwork": "#/components/schemas/GenericAttributeWrite",
-                                    "JSON": "#/components/schemas/GenericAttributeWrite",
-                                    "List": "#/components/schemas/ListAttributeWrite",
-                                    "MacAddress": "#/components/schemas/GenericAttributeWrite",
-                                    "Number": "#/components/schemas/NumberAttributeWrite",
-                                    "NumberPool": "#/components/schemas/NumberPoolAttributeWrite",
-                                    "Password": "#/components/schemas/GenericAttributeWrite",
-                                    "Text": "#/components/schemas/TextAttributeWrite",
-                                    "TextArea": "#/components/schemas/TextAttributeWrite",
-                                    "URL": "#/components/schemas/GenericAttributeWrite"
+                                    "Any": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Bandwidth": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Boolean": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Checkbox": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Color": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "DateTime": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Dropdown": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Email": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "File": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "HashedPassword": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "ID": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "IPAddress": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "IPHost": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "IPNetwork": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "JSON": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "List": "#/components/schemas/ListAttributeWrite-Input",
+                                    "MacAddress": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Number": "#/components/schemas/NumberAttributeWrite-Input",
+                                    "NumberPool": "#/components/schemas/NumberPoolAttributeWrite-Input",
+                                    "Password": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Text": "#/components/schemas/TextAttributeWrite-Input",
+                                    "TextArea": "#/components/schemas/TextAttributeWrite-Input",
+                                    "URL": "#/components/schemas/GenericAttributeWrite-Input"
                                 }
                             }
                         },
@@ -5926,7 +6830,7 @@
                 ],
                 "title": "NodeSchemaRead"
             },
-            "NodeSchemaWrite": {
+            "NodeSchemaWrite-Input": {
                 "properties": {
                     "id": {
                         "anyOf": [
@@ -6132,47 +7036,361 @@
                         "items": {
                             "oneOf": [
                                 {
-                                    "$ref": "#/components/schemas/TextAttributeWrite"
+                                    "$ref": "#/components/schemas/TextAttributeWrite-Input"
                                 },
                                 {
-                                    "$ref": "#/components/schemas/NumberAttributeWrite"
+                                    "$ref": "#/components/schemas/NumberAttributeWrite-Input"
                                 },
                                 {
-                                    "$ref": "#/components/schemas/ListAttributeWrite"
+                                    "$ref": "#/components/schemas/ListAttributeWrite-Input"
                                 },
                                 {
-                                    "$ref": "#/components/schemas/NumberPoolAttributeWrite"
+                                    "$ref": "#/components/schemas/NumberPoolAttributeWrite-Input"
                                 },
                                 {
-                                    "$ref": "#/components/schemas/GenericAttributeWrite"
+                                    "$ref": "#/components/schemas/GenericAttributeWrite-Input"
                                 }
                             ],
                             "discriminator": {
                                 "propertyName": "kind",
                                 "mapping": {
-                                    "Any": "#/components/schemas/GenericAttributeWrite",
-                                    "Bandwidth": "#/components/schemas/GenericAttributeWrite",
-                                    "Boolean": "#/components/schemas/GenericAttributeWrite",
-                                    "Checkbox": "#/components/schemas/GenericAttributeWrite",
-                                    "Color": "#/components/schemas/GenericAttributeWrite",
-                                    "DateTime": "#/components/schemas/GenericAttributeWrite",
-                                    "Dropdown": "#/components/schemas/GenericAttributeWrite",
-                                    "Email": "#/components/schemas/GenericAttributeWrite",
-                                    "File": "#/components/schemas/GenericAttributeWrite",
-                                    "HashedPassword": "#/components/schemas/GenericAttributeWrite",
-                                    "ID": "#/components/schemas/GenericAttributeWrite",
-                                    "IPAddress": "#/components/schemas/GenericAttributeWrite",
-                                    "IPHost": "#/components/schemas/GenericAttributeWrite",
-                                    "IPNetwork": "#/components/schemas/GenericAttributeWrite",
-                                    "JSON": "#/components/schemas/GenericAttributeWrite",
-                                    "List": "#/components/schemas/ListAttributeWrite",
-                                    "MacAddress": "#/components/schemas/GenericAttributeWrite",
-                                    "Number": "#/components/schemas/NumberAttributeWrite",
-                                    "NumberPool": "#/components/schemas/NumberPoolAttributeWrite",
-                                    "Password": "#/components/schemas/GenericAttributeWrite",
-                                    "Text": "#/components/schemas/TextAttributeWrite",
-                                    "TextArea": "#/components/schemas/TextAttributeWrite",
-                                    "URL": "#/components/schemas/GenericAttributeWrite"
+                                    "Any": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Bandwidth": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Boolean": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Checkbox": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Color": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "DateTime": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Dropdown": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Email": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "File": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "HashedPassword": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "ID": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "IPAddress": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "IPHost": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "IPNetwork": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "JSON": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "List": "#/components/schemas/ListAttributeWrite-Input",
+                                    "MacAddress": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Number": "#/components/schemas/NumberAttributeWrite-Input",
+                                    "NumberPool": "#/components/schemas/NumberPoolAttributeWrite-Input",
+                                    "Password": "#/components/schemas/GenericAttributeWrite-Input",
+                                    "Text": "#/components/schemas/TextAttributeWrite-Input",
+                                    "TextArea": "#/components/schemas/TextAttributeWrite-Input",
+                                    "URL": "#/components/schemas/GenericAttributeWrite-Input"
+                                }
+                            }
+                        },
+                        "type": "array",
+                        "title": "Attributes",
+                        "description": "Node attributes"
+                    },
+                    "relationships": {
+                        "items": {
+                            "$ref": "#/components/schemas/RelationshipSchemaWrite"
+                        },
+                        "type": "array",
+                        "title": "Relationships",
+                        "description": "Node Relationships"
+                    },
+                    "inherit_from": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Inherit From",
+                        "description": "List of Generic Kind that this node is inheriting from"
+                    },
+                    "generate_profile": {
+                        "type": "boolean",
+                        "title": "Generate Profile",
+                        "description": "Indicate if a profile schema should be generated for this schema",
+                        "default": true
+                    },
+                    "generate_template": {
+                        "type": "boolean",
+                        "title": "Generate Template",
+                        "description": "Indicate if an object template schema should be generated for this schema",
+                        "default": false
+                    },
+                    "parent": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Parent",
+                        "description": "Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined."
+                    },
+                    "children": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Children",
+                        "description": "Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "namespace"
+                ],
+                "title": "NodeSchemaWrite"
+            },
+            "NodeSchemaWrite-Output": {
+                "properties": {
+                    "id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Id",
+                        "description": "The ID of the node"
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 32,
+                        "minLength": 2,
+                        "pattern": "^[A-Z][a-zA-Z0-9]+$",
+                        "title": "Name",
+                        "description": "Node name, must be unique within a namespace and must start with an uppercase letter."
+                    },
+                    "namespace": {
+                        "type": "string",
+                        "maxLength": 64,
+                        "minLength": 3,
+                        "pattern": "^[A-Z][a-z0-9]+$",
+                        "title": "Namespace",
+                        "description": "Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions."
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 128
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Short description of the model, will be visible in the frontend."
+                    },
+                    "label": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 64
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Label",
+                        "description": "Human friendly representation of the name/kind"
+                    },
+                    "branch": {
+                        "$ref": "#/components/schemas/BranchSupportType",
+                        "description": "Type of branch support for the model.",
+                        "default": "aware"
+                    },
+                    "default_filter": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "pattern": "^[a-z0-9\\_]*$"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Filter",
+                        "description": "Default filter used to search for a node in addition to its ID. (deprecated: please use human_friendly_id instead)"
+                    },
+                    "human_friendly_id": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Human Friendly Id",
+                        "description": "Human friendly and unique identifier for the object."
+                    },
+                    "display_label": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Label",
+                        "description": "Attribute or Jinja2 template to use to generate the display label"
+                    },
+                    "display_labels": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Display Labels",
+                        "description": "List of attributes to use to generate the display label (deprecated)"
+                    },
+                    "include_in_menu": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Include In Menu",
+                        "description": "Defines if objects of this kind should be included in the menu."
+                    },
+                    "menu_placement": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Menu Placement",
+                        "description": "Defines where in the menu this object should be placed."
+                    },
+                    "icon": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Icon",
+                        "description": "Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/"
+                    },
+                    "order_by": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Order By",
+                        "description": "List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc."
+                    },
+                    "uniqueness_constraints": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Uniqueness Constraints",
+                        "description": "List of multi-element uniqueness constraints that can combine relationships and attributes"
+                    },
+                    "documentation": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Documentation",
+                        "description": "Link to a documentation associated with this object, can be internal or external."
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/SchemaState",
+                        "description": "Expected state of the node/generic after loading the schema",
+                        "default": "present"
+                    },
+                    "attributes": {
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "$ref": "#/components/schemas/TextAttributeWrite-Output"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/NumberAttributeWrite-Output"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/ListAttributeWrite-Output"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/NumberPoolAttributeWrite-Output"
+                                },
+                                {
+                                    "$ref": "#/components/schemas/GenericAttributeWrite-Output"
+                                }
+                            ],
+                            "discriminator": {
+                                "propertyName": "kind",
+                                "mapping": {
+                                    "Any": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "Bandwidth": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "Boolean": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "Checkbox": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "Color": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "DateTime": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "Dropdown": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "Email": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "File": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "HashedPassword": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "ID": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "IPAddress": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "IPHost": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "IPNetwork": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "JSON": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "List": "#/components/schemas/ListAttributeWrite-Output",
+                                    "MacAddress": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "Number": "#/components/schemas/NumberAttributeWrite-Output",
+                                    "NumberPool": "#/components/schemas/NumberPoolAttributeWrite-Output",
+                                    "Password": "#/components/schemas/GenericAttributeWrite-Output",
+                                    "Text": "#/components/schemas/TextAttributeWrite-Output",
+                                    "TextArea": "#/components/schemas/TextAttributeWrite-Output",
+                                    "URL": "#/components/schemas/GenericAttributeWrite-Output"
                                 }
                             }
                         },
@@ -6584,7 +7802,259 @@
                 ],
                 "title": "NumberAttributeRead"
             },
-            "NumberAttributeWrite": {
+            "NumberAttributeWrite-Input": {
+                "properties": {
+                    "id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Id",
+                        "description": "The ID of the attribute"
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 64,
+                        "minLength": 3,
+                        "pattern": "^[a-z0-9\\_]+$",
+                        "title": "Name",
+                        "description": "Attribute name, must be unique within a model and must be all lowercase."
+                    },
+                    "kind": {
+                        "type": "string",
+                        "const": "Number",
+                        "title": "Kind",
+                        "description": "Defines the type of the attribute."
+                    },
+                    "enum": {
+                        "anyOf": [
+                            {
+                                "items": {},
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Enum",
+                        "description": "Define a list of valid values for the attribute."
+                    },
+                    "computed_attribute": {
+                        "anyOf": [
+                            {
+                                "oneOf": [
+                                    {
+                                        "$ref": "#/components/schemas/ComputedAttributeUserWrite"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/ComputedAttributeJinja2Write"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/ComputedAttributeTransformPythonWrite"
+                                    }
+                                ],
+                                "discriminator": {
+                                    "propertyName": "kind",
+                                    "mapping": {
+                                        "Jinja2": "#/components/schemas/ComputedAttributeJinja2Write",
+                                        "TransformPython": "#/components/schemas/ComputedAttributeTransformPythonWrite",
+                                        "User": "#/components/schemas/ComputedAttributeUserWrite"
+                                    }
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Computed Attribute",
+                        "description": "Defines how the value of this attribute will be populated."
+                    },
+                    "choices": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/DropdownChoiceWrite"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Choices",
+                        "description": "Define a list of valid choices for a dropdown attribute."
+                    },
+                    "regex": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Regex",
+                        "description": "Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)"
+                    },
+                    "max_length": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Length",
+                        "description": "Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)"
+                    },
+                    "min_length": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Min Length",
+                        "description": "Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)"
+                    },
+                    "label": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 64
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Label",
+                        "description": "Human friendly representation of the name. Will be autogenerated if not provided"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 128
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Short description of the attribute."
+                    },
+                    "read_only": {
+                        "type": "boolean",
+                        "title": "Read Only",
+                        "description": "Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.",
+                        "default": false
+                    },
+                    "unique": {
+                        "type": "boolean",
+                        "title": "Unique",
+                        "description": "Indicate if the value of this attribute must be unique in the database for a given model.",
+                        "default": false
+                    },
+                    "optional": {
+                        "type": "boolean",
+                        "title": "Optional",
+                        "description": "Indicate if this attribute is mandatory or optional.",
+                        "default": false
+                    },
+                    "branch": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/BranchSupportType"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Type of branch support for the attribute, if not defined it will be inherited from the node."
+                    },
+                    "order_weight": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Order Weight",
+                        "description": "Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first."
+                    },
+                    "ordered": {
+                        "type": "boolean",
+                        "title": "Ordered",
+                        "description": "Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.",
+                        "default": true
+                    },
+                    "default_value": {
+                        "anyOf": [
+                            {},
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Value",
+                        "description": "Default value of the attribute."
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/SchemaState",
+                        "description": "Expected state of the attribute after loading the schema",
+                        "default": "present"
+                    },
+                    "allow_override": {
+                        "$ref": "#/components/schemas/AllowOverrideType",
+                        "description": "Type of allowed override for the attribute.",
+                        "default": "any"
+                    },
+                    "deprecation": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 128
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Deprecation",
+                        "description": "Mark attribute as deprecated and provide a user-friendly message to display"
+                    },
+                    "display": {
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
+                        "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
+                        "default": "default"
+                    },
+                    "parameters": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/NumberAttributeParametersWrite"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Extra parameters specific to this kind of attribute"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "kind"
+                ],
+                "title": "NumberAttributeWrite"
+            },
+            "NumberAttributeWrite-Output": {
                 "properties": {
                     "id": {
                         "anyOf": [
@@ -7094,7 +8564,259 @@
                 ],
                 "title": "NumberPoolAttributeRead"
             },
-            "NumberPoolAttributeWrite": {
+            "NumberPoolAttributeWrite-Input": {
+                "properties": {
+                    "id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Id",
+                        "description": "The ID of the attribute"
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 64,
+                        "minLength": 3,
+                        "pattern": "^[a-z0-9\\_]+$",
+                        "title": "Name",
+                        "description": "Attribute name, must be unique within a model and must be all lowercase."
+                    },
+                    "kind": {
+                        "type": "string",
+                        "const": "NumberPool",
+                        "title": "Kind",
+                        "description": "Defines the type of the attribute."
+                    },
+                    "enum": {
+                        "anyOf": [
+                            {
+                                "items": {},
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Enum",
+                        "description": "Define a list of valid values for the attribute."
+                    },
+                    "computed_attribute": {
+                        "anyOf": [
+                            {
+                                "oneOf": [
+                                    {
+                                        "$ref": "#/components/schemas/ComputedAttributeUserWrite"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/ComputedAttributeJinja2Write"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/ComputedAttributeTransformPythonWrite"
+                                    }
+                                ],
+                                "discriminator": {
+                                    "propertyName": "kind",
+                                    "mapping": {
+                                        "Jinja2": "#/components/schemas/ComputedAttributeJinja2Write",
+                                        "TransformPython": "#/components/schemas/ComputedAttributeTransformPythonWrite",
+                                        "User": "#/components/schemas/ComputedAttributeUserWrite"
+                                    }
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Computed Attribute",
+                        "description": "Defines how the value of this attribute will be populated."
+                    },
+                    "choices": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/DropdownChoiceWrite"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Choices",
+                        "description": "Define a list of valid choices for a dropdown attribute."
+                    },
+                    "regex": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Regex",
+                        "description": "Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)"
+                    },
+                    "max_length": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Length",
+                        "description": "Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)"
+                    },
+                    "min_length": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Min Length",
+                        "description": "Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)"
+                    },
+                    "label": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 64
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Label",
+                        "description": "Human friendly representation of the name. Will be autogenerated if not provided"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 128
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Short description of the attribute."
+                    },
+                    "read_only": {
+                        "type": "boolean",
+                        "title": "Read Only",
+                        "description": "Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.",
+                        "default": false
+                    },
+                    "unique": {
+                        "type": "boolean",
+                        "title": "Unique",
+                        "description": "Indicate if the value of this attribute must be unique in the database for a given model.",
+                        "default": false
+                    },
+                    "optional": {
+                        "type": "boolean",
+                        "title": "Optional",
+                        "description": "Indicate if this attribute is mandatory or optional.",
+                        "default": false
+                    },
+                    "branch": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/BranchSupportType"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Type of branch support for the attribute, if not defined it will be inherited from the node."
+                    },
+                    "order_weight": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Order Weight",
+                        "description": "Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first."
+                    },
+                    "ordered": {
+                        "type": "boolean",
+                        "title": "Ordered",
+                        "description": "Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.",
+                        "default": true
+                    },
+                    "default_value": {
+                        "anyOf": [
+                            {},
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Value",
+                        "description": "Default value of the attribute."
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/SchemaState",
+                        "description": "Expected state of the attribute after loading the schema",
+                        "default": "present"
+                    },
+                    "allow_override": {
+                        "$ref": "#/components/schemas/AllowOverrideType",
+                        "description": "Type of allowed override for the attribute.",
+                        "default": "any"
+                    },
+                    "deprecation": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 128
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Deprecation",
+                        "description": "Mark attribute as deprecated and provide a user-friendly message to display"
+                    },
+                    "display": {
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
+                        "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
+                        "default": "default"
+                    },
+                    "parameters": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/NumberPoolParametersWrite"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Extra parameters specific to this kind of attribute"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "kind"
+                ],
+                "title": "NumberPoolAttributeWrite"
+            },
+            "NumberPoolAttributeWrite-Output": {
                 "properties": {
                     "id": {
                         "anyOf": [
@@ -8560,6 +10282,51 @@
                 "type": "object",
                 "title": "SchemaDiff"
             },
+            "SchemaExportDocument": {
+                "properties": {
+                    "version": {
+                        "type": "string",
+                        "title": "Version"
+                    },
+                    "infrahub_version": {
+                        "type": "string",
+                        "title": "Infrahub Version"
+                    },
+                    "nodes": {
+                        "items": {
+                            "$ref": "#/components/schemas/NodeSchemaWrite-Output"
+                        },
+                        "type": "array",
+                        "title": "Nodes"
+                    },
+                    "generics": {
+                        "items": {
+                            "$ref": "#/components/schemas/GenericSchemaWrite-Output"
+                        },
+                        "type": "array",
+                        "title": "Generics"
+                    },
+                    "extensions": {
+                        "type": "null",
+                        "title": "Extensions"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "version",
+                    "infrahub_version"
+                ],
+                "title": "SchemaExportDocument",
+                "description": "Schema file built from the running schema, valid as a schema load payload."
+            },
+            "SchemaExportMode": {
+                "type": "string",
+                "enum": [
+                    "BRIEF",
+                    "FULL"
+                ],
+                "title": "SchemaExportMode"
+            },
             "SchemaExtensionWrite": {
                 "properties": {
                     "nodes": {
@@ -8580,16 +10347,27 @@
                         "type": "string",
                         "title": "Version"
                     },
+                    "infrahub_version": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Infrahub Version"
+                    },
                     "nodes": {
                         "items": {
-                            "$ref": "#/components/schemas/NodeSchemaWrite"
+                            "$ref": "#/components/schemas/NodeSchemaWrite-Input"
                         },
                         "type": "array",
                         "title": "Nodes"
                     },
                     "generics": {
                         "items": {
-                            "$ref": "#/components/schemas/GenericSchemaWrite"
+                            "$ref": "#/components/schemas/GenericSchemaWrite-Input"
                         },
                         "type": "array",
                         "title": "Generics"
@@ -9517,7 +11295,262 @@
                 ],
                 "title": "TextAttributeRead"
             },
-            "TextAttributeWrite": {
+            "TextAttributeWrite-Input": {
+                "properties": {
+                    "id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Id",
+                        "description": "The ID of the attribute"
+                    },
+                    "name": {
+                        "type": "string",
+                        "maxLength": 64,
+                        "minLength": 3,
+                        "pattern": "^[a-z0-9\\_]+$",
+                        "title": "Name",
+                        "description": "Attribute name, must be unique within a model and must be all lowercase."
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "Text",
+                            "TextArea"
+                        ],
+                        "title": "Kind",
+                        "description": "Defines the type of the attribute."
+                    },
+                    "enum": {
+                        "anyOf": [
+                            {
+                                "items": {},
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Enum",
+                        "description": "Define a list of valid values for the attribute."
+                    },
+                    "computed_attribute": {
+                        "anyOf": [
+                            {
+                                "oneOf": [
+                                    {
+                                        "$ref": "#/components/schemas/ComputedAttributeUserWrite"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/ComputedAttributeJinja2Write"
+                                    },
+                                    {
+                                        "$ref": "#/components/schemas/ComputedAttributeTransformPythonWrite"
+                                    }
+                                ],
+                                "discriminator": {
+                                    "propertyName": "kind",
+                                    "mapping": {
+                                        "Jinja2": "#/components/schemas/ComputedAttributeJinja2Write",
+                                        "TransformPython": "#/components/schemas/ComputedAttributeTransformPythonWrite",
+                                        "User": "#/components/schemas/ComputedAttributeUserWrite"
+                                    }
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Computed Attribute",
+                        "description": "Defines how the value of this attribute will be populated."
+                    },
+                    "choices": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/DropdownChoiceWrite"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Choices",
+                        "description": "Define a list of valid choices for a dropdown attribute."
+                    },
+                    "regex": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Regex",
+                        "description": "Regex uses to limit the characters allowed in for the attributes. (deprecated: please use parameters.regex instead)"
+                    },
+                    "max_length": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Length",
+                        "description": "Set a maximum number of characters allowed for a given attribute. (deprecated: please use parameters.max_length instead)"
+                    },
+                    "min_length": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Min Length",
+                        "description": "Set a minimum number of characters allowed for a given attribute. (deprecated: please use parameters.min_length instead)"
+                    },
+                    "label": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 64
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Label",
+                        "description": "Human friendly representation of the name. Will be autogenerated if not provided"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 128
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Short description of the attribute."
+                    },
+                    "read_only": {
+                        "type": "boolean",
+                        "title": "Read Only",
+                        "description": "Set the attribute as Read-Only, users won't be able to change its value. Mainly relevant for internal object.",
+                        "default": false
+                    },
+                    "unique": {
+                        "type": "boolean",
+                        "title": "Unique",
+                        "description": "Indicate if the value of this attribute must be unique in the database for a given model.",
+                        "default": false
+                    },
+                    "optional": {
+                        "type": "boolean",
+                        "title": "Optional",
+                        "description": "Indicate if this attribute is mandatory or optional.",
+                        "default": false
+                    },
+                    "branch": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/BranchSupportType"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Type of branch support for the attribute, if not defined it will be inherited from the node."
+                    },
+                    "order_weight": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Order Weight",
+                        "description": "Number used to order the attribute in the frontend (table and view). Lowest value will be ordered first."
+                    },
+                    "ordered": {
+                        "type": "boolean",
+                        "title": "Ordered",
+                        "description": "Whether element order is significant. When False, reordering a List or JSON-array attribute is not a merge/rebase conflict.",
+                        "default": true
+                    },
+                    "default_value": {
+                        "anyOf": [
+                            {},
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Default Value",
+                        "description": "Default value of the attribute."
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/SchemaState",
+                        "description": "Expected state of the attribute after loading the schema",
+                        "default": "present"
+                    },
+                    "allow_override": {
+                        "$ref": "#/components/schemas/AllowOverrideType",
+                        "description": "Type of allowed override for the attribute.",
+                        "default": "any"
+                    },
+                    "deprecation": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 128
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Deprecation",
+                        "description": "Mark attribute as deprecated and provide a user-friendly message to display"
+                    },
+                    "display": {
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
+                        "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
+                        "default": "default"
+                    },
+                    "parameters": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/TextAttributeParametersWrite"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Extra parameters specific to this kind of attribute"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "kind"
+                ],
+                "title": "TextAttributeWrite"
+            },
+            "TextAttributeWrite-Output": {
                 "properties": {
                     "id": {
                         "anyOf": [
