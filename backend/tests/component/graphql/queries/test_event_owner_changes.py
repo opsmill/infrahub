@@ -47,6 +47,11 @@ query($ids: [String!]) {
 }
 """
 
+SET_NAME_OWNERS = """
+mutation($id: String!, $owners: [MetadataNodeInput!]) {
+    TestTenantUpdate(data: {id: $id, name: {owners: $owners}}) { ok }
+}
+"""
 
 SET_SOURCES = """
 mutation($id: String!, $sources: [MetadataNodeInput!]) {
@@ -64,7 +69,12 @@ query($ids: [String!], $branches: [String!]) {
 
 
 async def set_owners(
-    db: InfrahubDatabase, branch: Branch, session: AccountSession, node_id: str, owner_ids: list[str]
+    db: InfrahubDatabase,
+    branch: Branch,
+    session: AccountSession,
+    node_id: str,
+    owner_ids: list[str],
+    mutation: str = SET_OWNERS,
 ) -> list[InfrahubEvent]:
     """Change the owners of a tenant through its update mutation, and return the events that the mutation sends."""
     event_service = MemoryInfrahubEvent()
@@ -72,7 +82,7 @@ async def set_owners(
     gql_params = await prepare_graphql_params(db=db, branch=branch, service=service, account_session=session)
     result = await graphql(
         schema=gql_params.schema,
-        source=SET_OWNERS,
+        source=mutation,
         context_value=gql_params.context,
         variable_values={"id": node_id, "owners": [{"id": owner_id} for owner_id in owner_ids]},
     )
@@ -177,29 +187,19 @@ async def test_activity_log_shows_the_display_labels_of_the_owners_of_an_attribu
     tenant = await add_node(db=db, kind="TestTenant", name="tenant-log")
     first, second = sorted([emea, network], key=lambda group: group.id)
 
-    event_service = MemoryInfrahubEvent()
-    service = await InfrahubServices.new(event=event_service, workflow=WorkflowLocalExecution())
-    gql_params = await prepare_graphql_params(
-        db=db, branch=default_branch, service=service, account_session=session_admin
+    events = await set_owners(
+        db=db,
+        branch=default_branch,
+        session=session_admin,
+        node_id=tenant.id,
+        owner_ids=[emea.id, network.id],
+        mutation=SET_NAME_OWNERS,
     )
-    result = await graphql(
-        schema=gql_params.schema,
-        source="""
-        mutation($id: String!, $owners: [MetadataNodeInput!]) {
-            TestTenantUpdate(data: {id: $id, name: {owners: $owners}}) { ok }
-        }
-        """,
-        context_value=gql_params.context,
-        variable_values={"id": tenant.id, "owners": [{"id": emea.id}, {"id": network.id}]},
-    )
-    assert result.errors is None, result.errors
-    assert gql_params.context.background
-    await gql_params.context.background()
-    await send_events(client=prefect_client, events=event_service.events)
+    await send_events(client=prefect_client, events=events)
 
     changes = await read_changes(db=db, branch=default_branch, session=session_admin, node_id=tenant.id)
 
-    change = changes[str(event_service.events[0].meta.id)]
+    change = changes[str(events[0].meta.id)]
     assert change["attributes"] == [
         {"action": "UNCHANGED", "kind": "Text", "name": "name", "value": "tenant-log", "value_previous": "tenant-log"},
         {
@@ -212,6 +212,50 @@ async def test_activity_log_shows_the_display_labels_of_the_owners_of_an_attribu
     ]
     stored = change["payload"]["data"]["changelog"]["attributes"]["name"]["properties"]["owners"]
     assert (stored["value"], stored["value_previous"]) == (f'["{first.id}","{second.id}"]', None)
+
+
+async def test_activity_log_shows_the_label_of_the_single_owner_of_an_attribute(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    session_admin: AccountSession,
+    prefect_client: PrefectClient,
+) -> None:
+    registry.schema.register_schema(schema=OWNERSHIP_SCHEMA, branch=default_branch.name)
+    default_branch.update_schema_hash()
+    emea = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="dc-emea")
+    network = await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name="network-emea")
+    tenant = await add_node(db=db, kind="TestTenant", name="tenant-log")
+
+    events = []
+    for owner in (emea, network):
+        events += await set_owners(
+            db=db,
+            branch=default_branch,
+            session=session_admin,
+            node_id=tenant.id,
+            owner_ids=[owner.id],
+            mutation=SET_NAME_OWNERS,
+        )
+    await send_events(client=prefect_client, events=events)
+
+    changes = await read_changes(db=db, branch=default_branch, session=session_admin, node_id=tenant.id)
+
+    added, updated = (changes[str(event.meta.id)] for event in events)
+    assert added["attributes"][1:] == [
+        {"action": "ADDED", "kind": "List", "name": "name__owners", "value": "dc-emea", "value_previous": None}
+    ]
+    assert updated["attributes"][1:] == [
+        {
+            "action": "UPDATED",
+            "kind": "List",
+            "name": "name__owners",
+            "value": "network-emea",
+            "value_previous": "dc-emea",
+        }
+    ]
+    stored = updated["payload"]["data"]["changelog"]["attributes"]["name"]["properties"]["owner"]
+    assert (stored["value"], stored["value_previous"]) == (network.id, emea.id)
 
 
 async def test_activity_log_reads_the_label_of_a_source_on_the_branch_of_the_event(

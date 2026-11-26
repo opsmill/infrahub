@@ -418,8 +418,9 @@ the owner edges of the default branch under the new kind.
   edges of the branch, not the values of the diff, so the merge result does not change.
 - An event stores the owners of an attribute as the `owner` or the `owners` property of the attribute, in its payload
   only. The activity log query (`graphql/queries/event.py`) adds one `<attribute>__owners` entry to `attributes` for
-  the `owners` property, with the display labels. An automation trigger cannot match this entry, because the event has
-  no related resource for it.
+  either property, with the display labels. It reads the single owner ID of the `owner` property as a list of one
+  owner. An event from before owner lists also holds the `owner` property. An automation trigger cannot match this
+  entry, because the event has no related resource for it.
 - The activity log reads the display labels of the owners and the sources on the branch of each event, with one read
   for each branch. A source can exist on one branch only. A global event, or an event of a deleted branch, reads them
   on the branch of the request.

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 from graphene import Argument, Boolean, DateTime, Enum, Field, Int, List, NonNull, ObjectType, String
 
 from infrahub.core import registry
-from infrahub.core.constants import GlobalPermissions
+from infrahub.core.constants import GlobalPermissions, NodeProperty
 from infrahub.core.ownership.fields import (
     ATTRIBUTE_OWNERS_PROPERTY,
     FIELD_OWNERS_SUFFIX,
@@ -17,6 +17,7 @@ from infrahub.core.ownership.fields import (
     deleted_label,
     is_owners_field_name,
     owner_ids_from_value,
+    owner_list_value,
 )
 from infrahub.events.constants import ACCOUNT_EVENT_PREFIX, EventSortOrder
 from infrahub.exceptions import BranchNotFoundError, PermissionDeniedError, ValidationError
@@ -39,23 +40,36 @@ InfrahubEventSortOrder = Enum.from_enum(EventSortOrder)
 OWNER_VALUE_KEYS = ("value", "value_previous")
 
 
-def _attribute_owner_changes(node: dict[str, Any]) -> list[dict[str, Any]]:
-    """Return one change under `<attribute>__owners` for each attribute of a mutated node whose owner list changed.
+def _single_owner_list(owner_id: str | None) -> str | None:
+    return owner_list_value(owner_ids=(owner_id,)) if owner_id else None
 
-    The event stores the owner list of an attribute as a property in its payload only.
+
+def _attribute_owner_changes(node: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return one change under `<attribute>__owners` for each attribute of a mutated node whose owners changed.
+
+    The event stores the owners of an attribute as a property in its payload only: the `owners` property with the
+    owner lists, or the `owner` property with one owner ID for a change between no owner and one owner.
     """
     changelog = ((node.get("payload") or {}).get("data") or {}).get("changelog") or {}
-    return [
-        {
-            "name": f"{name}{FIELD_OWNERS_SUFFIX}",
-            "kind": OWNERS_CHANGELOG_KIND,
-            "value": owners["value"],
-            "value_previous": owners["value_previous"],
-            "action": owners["value_update_status"],
-        }
-        for name, attribute in (changelog.get("attributes") or {}).items()
-        if (owners := (attribute.get("properties") or {}).get(ATTRIBUTE_OWNERS_PROPERTY))
-    ]
+    changes: list[dict[str, Any]] = []
+    for name, attribute in (changelog.get("attributes") or {}).items():
+        properties = attribute.get("properties") or {}
+        if owners := properties.get(ATTRIBUTE_OWNERS_PROPERTY):
+            value, value_previous = owners["value"], owners["value_previous"]
+        elif owners := properties.get(NodeProperty.OWNER.value):
+            value, value_previous = _single_owner_list(owners["value"]), _single_owner_list(owners["value_previous"])
+        else:
+            continue
+        changes.append(
+            {
+                "name": f"{name}{FIELD_OWNERS_SUFFIX}",
+                "kind": OWNERS_CHANGELOG_KIND,
+                "value": value,
+                "value_previous": value_previous,
+                "action": owners["value_update_status"],
+            }
+        )
+    return changes
 
 
 async def _show_owner_labels(graphql_context: GraphqlContext, edges: list[dict[str, Any]]) -> None:
