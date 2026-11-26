@@ -12,7 +12,7 @@ An index belongs to one label or one edge type. An index on `HAS_ATTRIBUTE(from)
 
 ## Add a missing index
 
-1. Declare the index in `node_indexes` or `rel_indexes`. Do not add a graph migration: when the API server starts, it sends `CREATE ... INDEX ... IF NOT EXISTS` for every declared index, so the first start after an upgrade creates the new index in an existing database.
+1. Declare the index in `node_indexes` or `rel_indexes`. Do not add a graph migration: when the API server starts, it sends `CREATE ... INDEX ... IF NOT EXISTS` for every declared index, so the first start after an upgrade creates the new index in an existing database. Do not copy the index step of the migrations in `backend/infrahub/core/migrations/graph/` that create one, because each creates it as part of a larger change: `m037_index_attr_vals.py` drops an index while it relabels the attribute values and then creates it again, `m079_range_diff_indexes.py` replaces two TEXT indexes with RANGE indexes and creates two new ones in the same step, and `m084_index_attribute_value_keys.py` computes the property that its index covers before it creates the index.
 2. Ask the maintainers before you add it: new database indexes are listed under "Ask First" in `backend/AGENTS.md`. Every write to that label or edge type updates the index, so an index is worth its cost only for a read that runs often.
 
 Neo4j builds a new index in the background and the API server does not wait for it. Until the index is online, a query that needs it returns the same result without it, and reads every vertex of the label or every edge of the type. `infrahub upgrade` does not create indexes. `infrahub db index add` creates the declared indexes without starting the API server.
