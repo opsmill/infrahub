@@ -60,15 +60,17 @@ Rows are keyed by workflow name, never by run name: a run name can contain a nam
 
 - `features.CoreArtifactDefinition`, `CoreCheckDefinition` and `CoreGeneratorDefinition` count the
   objects that exist on the default branch. The other `features` keys count graph vertices with the
-  label, on every branch and with deleted objects included, so they never go down.
+  label, on every branch and with deleted objects included, so they do not go down when an object
+  is deleted. They go down when a branch is deleted and the vertices that only it used go with it.
 - `database.node_count.artifact_target`, `with_artifact`, `with_generated_artifact`,
   `generated_artifact` and `with_generator_instance` also count on the default branch only.
   Artifacts and generator instances are stored per branch, so one generated on another branch is
   not counted. `with_generated_artifact` needs a `storage_id` on the artifact, because the artifact
   exists before its first generation stores content. A generator instance exists from the start of
   the first run, so `with_generator_instance` includes an object whose only run failed. A generator
-  definition with `execute_after_merge: false` runs only inside proposed changes, so its instances
-  stay on the source branches and its objects are never counted.
+  definition with `execute_after_merge: false` does not run after a merge, so the instances of its
+  runs inside proposed changes stay on the source branches, and its objects are counted only when
+  the generator is run on the default branch by hand.
 
 ## CPU and memory figures
 
@@ -195,6 +197,12 @@ Prefect keeps events and flow-runs for ~7 days. The windowed metrics only ever l
 so they are safe as long as the daily flow runs within retention (it runs every day, well inside
 7 days). If the flow were down for several days, days beyond retention could not be recovered —
 the metrics are a live daily sample, not a backfillable ledger.
+
+`workflow_runs` has a shorter limit: deleting a branch deletes the ended flow runs tagged with it.
+The runs of a branch that is deleted before the daily flow runs are in no row. Every reported
+workflow except `proposed-changed-pipeline` tags its run with the branch, so the rows of the
+workflows that run inside a proposed change are a lower bound when branches are deleted after the
+merge. Events are not deleted with the branch.
 
 ## Graceful degradation
 

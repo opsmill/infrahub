@@ -58,6 +58,7 @@ A list of rows `{workflow, state, runs, run_seconds}` for the previous full UTC 
 - `runs` is the number of runs that ended in the state. `run_seconds` is the time those runs spent running, in whole seconds.
 - A run belongs to the UTC day it was expected to start.
 - A run that has not ended when the report is produced is in no row, in that report or a later one.
+- The ended runs of a branch that is deleted before the report is produced are in no row either: Infrahub deletes them with the branch. Seven of the 8 workflows are affected; `proposed-changed-pipeline` is not. The rows of the three workflows that run inside a proposed change are therefore a lower bound when branches are deleted after the merge.
 - An empty list means that no named workflow had a run in an end state.
 - A row with `state`, `runs` and `run_seconds` all `null` means that the read for that workflow failed.
 - A `null` list means that the report could not read the activity of the day at all.
@@ -81,7 +82,7 @@ Which rows make one figure:
 Figures that the reader computes:
 
 - Average run time: `run_seconds` divided by `runs`.
-- The largest possible number of artifact generations that left the content unchanged: the `COMPLETED` runs of the two artifact generation workflows, minus `activity_24h.artifacts_created`, minus `activity_24h.artifacts_updated`. The result also contains the artifact generations that failed inside a proposed change, because those runs end in `COMPLETED` and send no event. A run that crosses midnight UTC can move one count to the next day.
+- The largest possible number of artifact generations that left the content unchanged: the `COMPLETED` runs of the two artifact generation workflows, minus `activity_24h.artifacts_created`, minus `activity_24h.artifacts_updated`. The result also contains the artifact generations that failed inside a proposed change, because those runs end in `COMPLETED` and send no event. A run that crosses midnight UTC can move one count to the next day, and the result can be below zero when a branch was deleted, because the events are kept and the runs are not.
 
 The deliveries of webhooks are not in the list. `activity_24h.webhooks_fired_success` and `activity_24h.webhooks_fired_failure` stay as they are.
 
@@ -111,7 +112,7 @@ Five new keys, all for the default branch:
 - `with_artifact`: the nodes with at least one artifact node
 - `with_generated_artifact`: the nodes with at least one artifact that has stored content
 - `generated_artifact`: the artifacts that have stored content
-- `with_generator_instance`: the nodes with at least one generator instance. A node whose only generator run failed or has not finished is counted. Generator instances stay on the branch where the run created them, so a node is counted only after a generator has run for it on the default branch. The nodes of a generator definition with `execute_after_merge: false` are never counted, because such a generator runs only inside proposed changes.
+- `with_generator_instance`: the nodes with at least one generator instance. A node whose only generator run failed or has not finished is counted. Generator instances stay on the branch where the run created them, so a node is counted only after a generator has run for it on the default branch. A generator definition with `execute_after_merge: false` does not run after a merge, so its nodes are counted only when the generator is run on the default branch by hand.
 
 Each key is `0` when there is nothing to count and `null` when its read failed. `with_artifact`, `with_generated_artifact` and `generated_artifact` are `null` together.
 

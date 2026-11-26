@@ -113,7 +113,7 @@ The Technical Context of the plan has no open clarification.
   - Infrahub keeps one generator instance per generator definition and target and creates it the first time the generator runs for that target (`generators/tasks.py::_define_instance`), so the instance marks the nodes a generator has run for.
 - **Checked**: the query was run on a test Neo4j and returned the expected counts in 16 checks: two artifacts on one node, an artifact with no stored content, a deleted artifact, a deleted generator instance, a deleted node, a node with instances of two generator definitions, an instance in status `Pending` or `Error`, and an artifact or instance created on another branch. A first version of the query, for artifacts only, also passed checks for stored content that a later generation replaced, for content stored after the artifact was created, and for an artifact deleted on another branch only.
 - **Not measured**: the time on a large graph. The read starts from the artifact nodes or the generator instance nodes by label, so its cost follows their number and not the number of all nodes.
-- **Consequence**: artifacts and generator instances are branch-local (`BranchSupportType.LOCAL`), so only the ones created on the default branch are counted, and a merge does not copy them. The total of nodes with a generator instance includes a node whose only run failed or has not finished. It leaves out the nodes of a generator definition with `execute_after_merge: false`: such a generator runs only inside proposed changes (`generators/tasks.py::run_generator_definition` skips it after a merge), so its instances stay on the source branches. This was read in the code and not run.
+- **Consequence**: artifacts and generator instances are branch-local (`BranchSupportType.LOCAL`), so only the ones created on the default branch are counted, and a merge does not copy them. The total of nodes with a generator instance includes a node whose only run failed or has not finished. A generator definition with `execute_after_merge: false` does not run after a merge (`generators/tasks.py::run_generator_definition` skips it for a run that a merge starts), so the instances of its runs inside proposed changes stay on the source branches, and its nodes are counted only when the generator is run on the default branch by hand. This was read in the code and not run.
 - **Alternatives considered**:
   - One row per concrete kind with the kind name: needs names that a customer defined.
   - Fixed counts for named device kinds: customers can name these kinds differently.
@@ -177,6 +177,19 @@ How to make one read fail without a mock:
 - For the task manager: a unit test in `backend/tests/unit/telemetry/test_task_manager.py` builds a real `PrefectClient` with `httpx_settings={"transport": httpx.MockTransport(handler)}`. The handler answers `GET /csrf-token` with status 404, answers status 500 for one workflow name or one kind label, and answers a valid body for the others. The handler uses status 500 because the client tries a request again after status 408, 429, 502 or 503. A script run during the critique of 2026-11-26 built such a client and showed that the code in the working tree already returns the row with null figures for the failed workflow and `None` for the failed kind, so acceptance scenarios 1 and 3 of User Story 4 lack a test and not code.
 - For the graph database: `tests/helpers/db_query_failer.py::FailingQueryInfrahubDatabase` fails a query by name. The definition counts use the query name `count-nodes-by-kinds`. To fail the artifact read alone, a subclass in the test module fails `count-nodes-with-output` only when the parameters contain `content_attribute`.
 
+## R17. The ended runs of a deleted branch are missing from the run rows
+
+Found by the review of the pull request on 2026-11-26. Read in the code, not run.
+
+- **Fact**: when a branch is deleted, the trigger `branch/triggers.py::TRIGGER_BRANCH_DELETED_PURGE_TASKS` starts a workflow that deletes every ended flow run tagged with that branch (`task_manager/flow_run/branch_cleanup.py::BranchFlowRunPurger.purge_for_branch`). The run history reads the stored flow runs, so a deleted run is not counted.
+- **Which workflows**: seven of the 8 reported workflows tag their run with the branch. `proposed-changed-pipeline` adds no branch tag.
+- **Consequence**: the runs of a branch that is deleted before the report for that day runs are in no row. A proposed change whose branch is deleted after the merge, by a person or by the setting `delete_branch_after_merge` (off by default), loses its rows of `run-generator-as-check`, `git-repository-check-artifact-create` and `git-repository-run-user-check`. The counts from events are kept, so the computed number of unchanged artifact generations can be below zero.
+- **Decision in this change**: none. The specification, the contract and the knowledge doc state the limit.
+- **Options for the owner of the telemetry code** [CLAUDE RECOMMENDED – based on the facts above]:
+  - Accept the limit for the patch release, and read the activity inside proposed changes from `validators_started` and `proposed-changed-pipeline`, which are not affected.
+  - Count the runs inside proposed changes from events in a later change. Events are not deleted with the branch.
+  - Keep the purge from deleting the runs of the 8 workflows until the report has read them. This changes the purge and is not a telemetry-only change.
+
 ## Checks before the pull request is merged
 
 [CLAUDE RECOMMENDED – based on the critique of 2026-11-26, `tasks.py::send_telemetry_push` and principle V of `dev/constitution.md`]
@@ -187,6 +200,7 @@ How to make one read fail without a mock:
 
 ## Questions for the owner of the telemetry code
 
+- Is it acceptable for the patch release that the runs of a deleted branch are missing from the run rows (R17)? If not, the design needs a new decision.
 - Does the 1.12 change need the number of failed generators, failed artifact generations and failed checks inside a proposed change? None of the 8 run history reads returns them (R5). The existing `checks_failed` counts failed validators, and one validator covers every target of one definition. If the answer is yes, the design needs a new decision.
 - The public FAQ entry about what telemetry Infrahub sends says: "This information is used as aggregated analysis to better understand what and how to improve the project." Does the sentence still describe how the new counts are used? FR-031 covers the list of values and not this sentence.
 - Does Infrahub Enterprise call `task_manager.py::gather_activity_24h`, build its own activity gatherer, or run generators, artifact generations or checks through a flow with another name? `gather_activity_24h` gains a required parameter. No checkout of the Enterprise repository was available to check.
@@ -195,4 +209,4 @@ How to make one read fail without a mock:
 ## Open items that block nothing in this change
 
 - Whether the 1.13 framework keeps the paths `activity_24h.workflow_runs` and `activity_24h.validators_started` and the new keys in `database.node_count`. If it moves a value, the data warehouse reads two paths for it.
-- How long the task manager keeps flow runs. The knowledge doc says about 7 days; the only code found that deletes flow runs is the manual `infrahub tasks flush` command, which keeps 30 days by default. The report reads one day.
+- How long the task manager keeps flow runs. The knowledge doc says about 7 days. Two things delete flow runs: the manual `infrahub tasks flush` command, which keeps 30 days by default, and the deletion of a branch (R17). The report reads one day.

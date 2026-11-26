@@ -244,5 +244,6 @@ Phases 1 to 6 are built in the working tree: the four groups of values, their te
 - [P] tasks change different files and depend on no open task
 - A checked task records what exists in the working tree; its test was not run again for this list
 - The questions for the owner of the telemetry code are in [research.md](research.md); none of them is a task
+- The review of the pull request on 2026-11-26 found that the ended runs of a deleted branch are missing from the run rows. [Research R17](research.md) states the limit and the options; the specification, the contract and the knowledge doc state the limit
 - Cite a place in a file by its function or symbol, never by a line number
 - Commit the code of the checked tasks before the open tasks are started, so that their changes can be reviewed apart
