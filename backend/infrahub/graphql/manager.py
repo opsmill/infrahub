@@ -816,7 +816,8 @@ class GraphQLSchemaManager:
                 resolver=target_field_ownership_resolver,
                 description=(
                     "Profiles and object templates only: the owners given to fields of their nodes. "
-                    "Without `fields`, all attributes and relationships of the nodes"
+                    "Without `fields`, all attributes and relationships of the nodes. "
+                    "A name in `fields` that is not an attribute or a relationship of the nodes is refused"
                 ),
             ),
             "sources": graphene.Field(

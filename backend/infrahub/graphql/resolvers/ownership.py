@@ -19,6 +19,7 @@ from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.ownership.resolution import resolve_target_ownership
 from infrahub.core.ownership.resolver import OwnershipResolver
 from infrahub.database import retry_db_transaction
+from infrahub.exceptions import ValidationError
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -209,22 +210,32 @@ class OwnershipGraphqlResolver:
             info: The GraphQL execution info.
             fields: The names of the fields to return. None gives all attributes and relationships of the nodes.
 
+        Raises:
+            ValidationError: When a name in `fields` is not an attribute or a relationship of the nodes.
+
         """
         reference = parent.get(info.field_name)
         if not reference:
             return None
         context: GraphqlContext = info.context
-        stored = await self._stored_loader(context=context).load(reference["node_id"])
-        if stored is None:
-            return None
         schema = context.db.schema.get_schema_branch(name=context.branch.name).get(
             name=reference["target_kind"], duplicate=False
         )
         names = fields if fields is not None else [*schema.attribute_names, *schema.relationship_names]
+        holders: list[tuple[str, HolderKey]] = []
+        for name in names:
+            holder = field_holder(schema=schema, field_name=name)
+            if holder is None:
+                raise ValidationError(
+                    {f"{info.field_name}.fields": f"{name} is not an attribute or a relationship of {schema.kind}"}
+                )
+            holders.append((name, holder))
+        stored = await self._stored_loader(context=context).load(reference["node_id"])
+        if stored is None:
+            return None
         return [
             {"field": name, "ownership": _to_graphql(resolved=resolve_target_ownership(node=stored, holder=holder))}
-            for name in names
-            if (holder := field_holder(schema=schema, field_name=name)) is not None
+            for name, holder in holders
         ]
 
     async def load_metadata_nodes(

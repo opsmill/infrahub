@@ -342,6 +342,32 @@ class TestFieldOwnerInputs:
             "owners": [{"id": groups["network-emea"]}],
         }
 
+    async def test_target_field_ownership_refuses_an_unknown_field(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        groups: dict[str, str],
+        session_admin_scope_class: AccountSession,
+    ) -> None:
+        branch = default_branch_scope_class
+        profile_id = await create(
+            db,
+            branch,
+            CREATE_PROFILE,
+            "ProfileTestTenant",
+            session=session_admin_scope_class,
+            name="profile-unknown-field",
+            metadata={"target_field_owners": [{"field": "name", "owners": [{"id": groups["network-emea"]}]}]},
+        )
+
+        result = await graphql_query(
+            query=READ_PROFILE, db=db, branch=branch, variables={"ids": [profile_id], "fields": ["name", "unknown"]}
+        )
+
+        assert [error.message for error in result.errors or []] == [
+            "unknown is not an attribute or a relationship of TestTenant at target_field_ownership.fields"
+        ]
+
     async def test_attribute_owner_and_is_protected_fields_are_deprecated(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, groups: dict[str, str]
     ) -> None:

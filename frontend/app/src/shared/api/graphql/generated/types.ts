@@ -18850,7 +18850,7 @@ export type InfrahubNodeMetadata = {
   ownership: Maybe<InfrahubOwnership>;
   /** Sources of the node. A deleted source has is_deleted: true */
   sources: Array<InfrahubMetadataNode>;
-  /** Profiles and object templates only: the owners given to fields of their nodes. Without `fields`, all attributes and relationships of the nodes */
+  /** Profiles and object templates only: the owners given to fields of their nodes. Without `fields`, all attributes and relationships of the nodes. A name in `fields` that is not an attribute or a relationship of the nodes is refused */
   target_field_ownership: Maybe<Array<InfrahubFieldOwnership>>;
   /** Profiles and object templates only: the owners given to their nodes */
   target_ownership: Maybe<InfrahubOwnership>;
