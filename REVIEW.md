@@ -17,6 +17,7 @@ Report at most five Nits. Put any further small points in one list at the end of
 ## Always check
 
 - Name in the summary any change that `AGENTS.md` says needs agreement first: database schema or migrations, the GraphQL schema, new dependencies, CI workflows, and authentication or permissions.
+- Report a graph migration whose only step is to create an index that `backend/infrahub/core/graph/index.py` declares. The API server creates every declared index when it starts, so neither the migration nor its `GRAPH_VERSION` bump is needed. See [Database Indexes](dev/knowledge/backend/database-indexes.md#add-a-missing-index).
 
 ## Product and user impact
 
