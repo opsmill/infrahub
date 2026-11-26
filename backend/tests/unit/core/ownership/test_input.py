@@ -184,6 +184,17 @@ ACCEPTED_INPUT_TEST_CASES: list[AcceptedInputTestCase] = [
         expected={NODE_SOURCES_HOLDER: StoredOwnerState(owner_ids=None)},
     ),
     AcceptedInputTestCase(
+        name="field_owners_entry_without_owners_gives_no_state",
+        node_metadata={"field_owners": [{"field": "name"}]},
+        expected={},
+    ),
+    AcceptedInputTestCase(
+        name="target_field_owners_entry_without_owners_gives_no_state",
+        kind="TemplateTestDevice",
+        node_metadata={"target_field_owners": [{"field": "name"}]},
+        expected={},
+    ),
+    AcceptedInputTestCase(
         name="owner_of_an_attribute_gives_no_state",
         node_metadata={},
         data={"name": {"owner": GROUP_ID}},
@@ -344,6 +355,12 @@ REFUSED_INPUT_TEST_CASES: list[RefusedInputTestCase] = [
         key="sources",
         owners=GROUP_ID,
         expected_message="Sources must be a list at node_metadata.sources",
+    ),
+    RefusedInputTestCase(
+        name="field_owners_entry_without_owners_for_an_unknown_field",
+        key="field_owners",
+        owners=[{"field": "unknown"}],
+        expected_message="unknown is not an attribute or a relationship of BuiltinTag at node_metadata.field_owners",
     ),
     RefusedInputTestCase(
         name="profile_gives_an_owner_of_another_kind",

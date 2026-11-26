@@ -188,6 +188,29 @@ class TestFieldOwnerInputs:
         assert site["name"]["ownership"] == from_node(site_id, groups["dc-emea"])
         assert site["parent"] == {"ownership": from_node(site_id, groups["dc-emea"])}
 
+    async def test_field_owners_entry_without_owners_changes_nothing(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, groups: dict[str, str]
+    ) -> None:
+        branch = default_branch_scope_class
+        site_id = await create(
+            db,
+            branch,
+            CREATE_TOP_SITE,
+            "TestSite",
+            name="site-entry-without-owners",
+            metadata={"field_owners": [{"field": "parent", "owners": [{"id": groups["network-emea"]}]}]},
+        )
+
+        await run(
+            db=db,
+            branch=branch,
+            query=UPDATE_SITE,
+            variables={"id": site_id, "metadata": {"field_owners": [{"field": "parent"}]}},
+        )
+
+        site = await read_node(db=db, branch=branch, query=READ_SITE, kind="TestSite", node_id=site_id)
+        assert site["parent"] == {"ownership": own(site_id, groups["network-emea"])}
+
     async def test_owners_next_to_the_value_set_own_owners_no_owner_and_inherit(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, groups: dict[str, str]
     ) -> None:

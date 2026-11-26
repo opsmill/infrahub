@@ -148,7 +148,8 @@ class OwnerInputParser:
     ) -> dict[HolderKey, StoredOwnerState]:
         """Return the owner state that the input gives to each holder. A key that is left out gives no state.
 
-        The sources of the input are the state of the holder of the sources.
+        A field entry that leaves out `owners` gives no state either. The sources of the input are the state of
+        the holder of the sources.
 
         Args:
             node_metadata: The `node_metadata` input of the mutation.
@@ -158,9 +159,9 @@ class OwnerInputParser:
         Raises:
             ValidationError: When an owner is not found, is not an account or an account group, has an unknown
                 kind, has neither an ID, a kind with an HFID, nor a kind with a name, has a name without a kind,
-                or has an HFID of the wrong length. The same checks apply to a source, with the kinds that can be a source. Also when the input gives owners
-                to the nodes of a kind that is not a profile or an object template, or to a field that the kind
-                does not have.
+                or has an HFID of the wrong length. The same checks apply to a source, with the kinds that can be
+                a source. Also when the input gives owners to the nodes of a kind that is not a profile or an
+                object template, or names a field that the kind does not have.
 
         """
         given: list[tuple[HolderKey, GivenOwners | None]] = []
@@ -190,26 +191,35 @@ class OwnerInputParser:
                 )
             )
         given.extend(
-            self._given_field(schema=schema, field=name, value=value, path=name)
+            entry
             for name, value in (data or {}).items()
-            if name in schema.attribute_names and isinstance(value, Mapping) and OWNERS_KEY in value
+            if name in schema.attribute_names and isinstance(value, Mapping)
+            if (entry := self._given_field(schema=schema, field=name, value=value, path=name)) is not None
         )
         given.extend(
-            self._given_field(
-                schema=schema, field=item.get("field"), value=item, path=f"node_metadata.{FIELD_OWNERS_KEY}"
-            )
+            entry
             for item in node_metadata.get(FIELD_OWNERS_KEY) or []
+            if (
+                entry := self._given_field(
+                    schema=schema, field=item.get("field"), value=item, path=f"node_metadata.{FIELD_OWNERS_KEY}"
+                )
+            )
+            is not None
         )
         # A profile or an object template gives owners to the fields of the kind that it is for.
         given.extend(
-            self._given_field(
-                schema=self.schema_branch.get(name=schema.name, duplicate=False),
-                field=item.get("field"),
-                value=item,
-                path=f"node_metadata.{TARGET_FIELD_OWNERS_KEY}",
-                target=True,
-            )
+            entry
             for item in node_metadata.get(TARGET_FIELD_OWNERS_KEY) or []
+            if (
+                entry := self._given_field(
+                    schema=self.schema_branch.get(name=schema.name, duplicate=False),
+                    field=item.get("field"),
+                    value=item,
+                    path=f"node_metadata.{TARGET_FIELD_OWNERS_KEY}",
+                    target=True,
+                )
+            )
+            is not None
         )
         resolved = iter(await self._resolve(given_lists=[owners for _, owners in given if owners is not None]))
         states: dict[HolderKey, StoredOwnerState] = {}
@@ -222,10 +232,12 @@ class OwnerInputParser:
 
     def _given_field(
         self, schema: MainSchemaTypes, field: Any, value: Mapping[str, Any], path: str, target: bool = False
-    ) -> tuple[HolderKey, GivenOwners | None]:
+    ) -> tuple[HolderKey, GivenOwners | None] | None:
         holder = field_holder(schema=schema, field_name=field, target=target) if isinstance(field, str) else None
         if holder is None:
             raise ValidationError({path: f"{field} is not an attribute or a relationship of {schema.kind}"})
+        if OWNERS_KEY not in value:
+            return None
         return holder, self._given_owners(value=value.get(OWNERS_KEY), path=f"{path}.{OWNERS_KEY}")
 
     def _given_owners(self, value: Any, path: str, rule: ReferenceRule = OWNER_RULE) -> GivenOwners | None:

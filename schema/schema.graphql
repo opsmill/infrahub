@@ -8928,7 +8928,7 @@ type Events {
 input FieldOwnersInput {
   """Name of an attribute or a relationship"""
   field: String!
-  """null: inherit. []: no owner. List: own owners"""
+  """Left out: no change. null: inherit. []: no owner. List: own owners"""
   owners: [MetadataNodeInput!]
 }
 

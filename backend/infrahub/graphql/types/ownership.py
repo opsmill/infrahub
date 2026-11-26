@@ -62,7 +62,7 @@ class MetadataNodeInput(InputObjectType):
 
 class FieldOwnersInput(InputObjectType):
     field = String(required=True, description="Name of an attribute or a relationship")
-    owners = List(NonNull(MetadataNodeInput), description="null: inherit. []: no owner. List: own owners")
+    owners = List(NonNull(MetadataNodeInput), description=OWNERS_INPUT_DESCRIPTION)
 
 
 class NodeMetadataInput(InputObjectType):

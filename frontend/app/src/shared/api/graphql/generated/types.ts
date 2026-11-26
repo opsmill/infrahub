@@ -18307,7 +18307,7 @@ export type Events = {
 export type FieldOwnersInput = {
   /** Name of an attribute or a relationship */
   field: Scalars['String']['input'];
-  /** null: inherit. []: no owner. List: own owners */
+  /** Left out: no change. null: inherit. []: no owner. List: own owners */
   owners?: InputMaybe<Array<MetadataNodeInput>>;
 };
 
