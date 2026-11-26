@@ -13,6 +13,7 @@ from infrahub.schema.export.exporter import (
     normalize_element_for_comparison,
 )
 from infrahub.schema.export.models import SchemaExportDocument, SchemaExportMode
+from tests.helpers.schema.export_variations import VARIATION_SCHEMAS, VariationSchema, merge_variation_schemas
 
 if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
@@ -31,6 +32,18 @@ def schema_exporter() -> SchemaExporter:
 def core_schema_kinds() -> frozenset[str]:
     baseline = build_core_schema_baseline(ROUND_TRIP_BRANCH_NAME)
     return frozenset(baseline.nodes) | frozenset(baseline.generics)
+
+
+@pytest.fixture(params=[pytest.param(variation, id=variation.name) for variation in VARIATION_SCHEMAS])
+def variation_schema(request: pytest.FixtureRequest) -> VariationSchema:
+    """Each test schema that gives the export one shape to handle."""
+    return request.param
+
+
+@pytest.fixture
+def all_variation_schemas() -> dict[str, Any]:
+    """One schema file that holds every variation schema."""
+    return merge_variation_schemas(VARIATION_SCHEMAS)
 
 
 def load_on_new_baseline(schema: Mapping[str, Any]) -> SchemaBranch:
