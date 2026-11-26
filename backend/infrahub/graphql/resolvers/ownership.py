@@ -157,10 +157,11 @@ class OwnershipGraphqlResolver:
             self._stored_loaders[key] = StoredOwnershipLoader(db=context.db, branch=context.branch, at=context.at)
         return self._stored_loaders[key]
 
-    def _metadata_node_loader(self, context: GraphqlContext) -> MetadataNodeLoader:
-        key = self._loader_key(context=context)
+    def _metadata_node_loader(self, context: GraphqlContext, branch: Branch | None = None) -> MetadataNodeLoader:
+        branch = branch or context.branch
+        key = (branch.name, context.at.to_string() if context.at else "")
         if key not in self._metadata_node_loaders:
-            self._metadata_node_loaders[key] = MetadataNodeLoader(db=context.db, branch=context.branch, at=context.at)
+            self._metadata_node_loaders[key] = MetadataNodeLoader(db=context.db, branch=branch, at=context.at)
         return self._metadata_node_loaders[key]
 
     async def resolve_ownership(self, parent: dict[str, Any], info: GraphQLResolveInfo) -> dict[str, Any] | None:
@@ -223,9 +224,16 @@ class OwnershipGraphqlResolver:
             if (holder := field_holder(schema=schema, field_name=name)) is not None
         ]
 
-    async def load_metadata_nodes(self, context: GraphqlContext, node_ids: list[str]) -> list[OwnerReference]:
-        """Return the kind and the labels that each node has now, or mark it as deleted."""
-        return await self._metadata_node_loader(context=context).load_many(node_ids)
+    async def load_metadata_nodes(
+        self, context: GraphqlContext, node_ids: list[str], branch: Branch | None = None
+    ) -> list[OwnerReference]:
+        """Return the kind and the labels that each node has now on the branch, or mark it as deleted.
+
+        Args:
+            branch: The branch to read the nodes on. Defaults to the branch of the request.
+
+        """
+        return await self._metadata_node_loader(context=context, branch=branch).load_many(node_ids)
 
     async def resolve_metadata_node_field(self, parent: dict[str, Any], info: GraphQLResolveInfo) -> Any:
         reference = await self._metadata_node_loader(context=info.context).load(parent["id"])

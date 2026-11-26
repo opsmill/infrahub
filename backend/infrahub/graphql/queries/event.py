@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import asyncio
+from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
 from graphene import Argument, Boolean, DateTime, Enum, Field, Int, List, NonNull, ObjectType, String
 
+from infrahub.core import registry
 from infrahub.core.constants import GlobalPermissions
 from infrahub.core.ownership.fields import (
     ATTRIBUTE_OWNERS_PROPERTY,
@@ -16,7 +19,7 @@ from infrahub.core.ownership.fields import (
     owner_ids_from_value,
 )
 from infrahub.events.constants import ACCOUNT_EVENT_PREFIX, EventSortOrder
-from infrahub.exceptions import PermissionDeniedError, ValidationError
+from infrahub.exceptions import BranchNotFoundError, PermissionDeniedError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types.event import EventNodes, EventTypeFilter
 from infrahub.permissions import define_global_permission_from_branch
@@ -28,6 +31,7 @@ if TYPE_CHECKING:
 
     from graphql import GraphQLResolveInfo
 
+    from infrahub.core.branch import Branch
     from infrahub.graphql.initialization import GraphqlContext
 
 
@@ -62,12 +66,40 @@ async def _show_owner_labels(graphql_context: GraphqlContext, edges: list[dict[s
     for edge in edges:
         if "attributes" in edge["node"]:
             edge["node"]["attributes"].extend(_attribute_owner_changes(node=edge["node"]))
-    changes = [
-        attribute
-        for edge in edges
-        for attribute in edge["node"].get("attributes") or []
-        if attribute["kind"] == OWNERS_CHANGELOG_KIND and is_owners_field_name(field_name=attribute["name"])
-    ]
+    # A source can exist on one branch only, so the labels of the changes of an event come from the branch of the event.
+    branches: dict[str, Branch] = {}
+    changes_by_branch: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for edge in edges:
+        changes = [
+            attribute
+            for attribute in edge["node"].get("attributes") or []
+            if attribute["kind"] == OWNERS_CHANGELOG_KIND and is_owners_field_name(field_name=attribute["name"])
+        ]
+        if changes:
+            branch = _event_branch(graphql_context=graphql_context, branch_name=edge["node"]["branch"])
+            branches[branch.name] = branch
+            changes_by_branch[branch.name].extend(changes)
+    await asyncio.gather(
+        *(
+            _show_labels_on_branch(graphql_context=graphql_context, branch=branches[name], changes=changes)
+            for name, changes in changes_by_branch.items()
+        )
+    )
+
+
+def _event_branch(graphql_context: GraphqlContext, branch_name: str | None) -> Branch:
+    """Return the branch of an event, or the branch of the request for a global event or a deleted branch."""
+    if branch_name is None:
+        return graphql_context.branch
+    try:
+        return registry.get_branch_from_registry(branch=branch_name)
+    except BranchNotFoundError:
+        return graphql_context.branch
+
+
+async def _show_labels_on_branch(
+    graphql_context: GraphqlContext, branch: Branch, changes: list[dict[str, Any]]
+) -> None:
     node_ids = sorted(
         {
             node_id
@@ -79,7 +111,7 @@ async def _show_owner_labels(graphql_context: GraphqlContext, edges: list[dict[s
     if not node_ids:
         return
     references = await graphql_context.ownership_resolver.load_metadata_nodes(
-        context=graphql_context, node_ids=node_ids
+        context=graphql_context, node_ids=node_ids, branch=branch
     )
     labels = {
         reference.id: reference.display_label or reference.id for reference in references if not reference.is_deleted

@@ -420,6 +420,9 @@ the owner edges of the default branch under the new kind.
   only. The activity log query (`graphql/queries/event.py`) adds one `<attribute>__owners` entry to `attributes` for
   the `owners` property, with the display labels. An automation trigger cannot match this entry, because the event has
   no related resource for it.
+- The activity log reads the display labels of the owners and the sources on the branch of each event, with one read
+  for each branch. A source can exist on one branch only. A global event, or an event of a deleted branch, reads them
+  on the branch of the request.
 - The owner of one link (the `HAS_OWNER` edge of a `Relationship` vertex) keeps the behavior before owner lists at a merge.
   Three tests in `test_ownership_scenarios.py` mark these cases as expected failures:
   - The changelog of the merge records the owner of a link also when the default branch already holds the same

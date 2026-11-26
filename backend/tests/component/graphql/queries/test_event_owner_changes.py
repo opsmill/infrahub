@@ -4,7 +4,9 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
@@ -41,6 +43,21 @@ query($ids: [String!]) {
                 }
             }
         }
+    }
+}
+"""
+
+
+SET_SOURCES = """
+mutation($id: String!, $sources: [MetadataNodeInput!]) {
+    TestTenantUpdate(data: {id: $id, node_metadata: {sources: $sources}}) { ok }
+}
+"""
+
+QUERY_BRANCH_CHANGES = """
+query($ids: [String!], $branches: [String!]) {
+    InfrahubEvent(primary_node__ids: $ids, branches: $branches) {
+        edges { node { id ... on NodeMutatedEvent { attributes { name value } } } }
     }
 }
 """
@@ -195,3 +212,47 @@ async def test_activity_log_shows_the_display_labels_of_the_owners_of_an_attribu
     ]
     stored = change["payload"]["data"]["changelog"]["attributes"]["name"]["properties"]["owners"]
     assert (stored["value"], stored["value_previous"]) == (f'["{first.id}","{second.id}"]', None)
+
+
+async def test_activity_log_reads_the_label_of_a_source_on_the_branch_of_the_event(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    session_admin: AccountSession,
+    prefect_client: PrefectClient,
+) -> None:
+    registry.schema.register_schema(schema=OWNERSHIP_SCHEMA, branch=default_branch.name)
+    default_branch.update_schema_hash()
+    tenant = await add_node(db=db, kind="TestTenant", name="tenant-log")
+    branch = await create_branch(db=db, branch_name="feat")
+    profile = await Node.init(db=db, branch=branch, schema="ProfileTestTenant")
+    await profile.new(db=db, profile_name="profile-on-branch")
+    await profile.save(db=db)
+
+    event_service = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=event_service, workflow=WorkflowLocalExecution())
+    gql_params = await prepare_graphql_params(db=db, branch=branch, service=service, account_session=session_admin)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=SET_SOURCES,
+        context_value=gql_params.context,
+        variable_values={"id": tenant.id, "sources": [{"id": profile.id}]},
+    )
+    assert result.errors is None, result.errors
+    assert gql_params.context.background
+    await gql_params.context.background()
+    await send_events(client=prefect_client, events=event_service.events)
+
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch, account_session=session_admin)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=QUERY_BRANCH_CHANGES,
+        context_value=gql_params.context,
+        variable_values={"ids": [tenant.id], "branches": [branch.name]},
+    )
+
+    assert result.errors is None, result.errors
+    assert result.data
+    assert [edge["node"]["attributes"] for edge in result.data["InfrahubEvent"]["edges"]] == [
+        [{"name": "node_metadata__sources", "value": "profile-on-branch"}]
+    ]
