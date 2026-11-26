@@ -48,7 +48,10 @@ describe("MermaidDiagram", () => {
     const component = await render(<MermaidDiagram code={"gitGraph\n  commit"} />);
 
     // THEN
-    await expect.poll(() => component.container.querySelector("svg.pele")).toBeTruthy();
+    // The file's first diagram also loads the renderer itself, which outlasts the default poll under a full coverage run.
+    await expect
+      .poll(() => component.container.querySelector("svg.pele"), { timeout: 15_000 })
+      .toBeTruthy();
     expect(consoleError).not.toHaveBeenCalled();
   });
 

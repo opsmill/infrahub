@@ -1,4 +1,5 @@
 import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
+import type { ContextParams } from "@/shared/api/types";
 
 const GET_POOL_UTILIZATION = graphql(`
   query GET_POOL_UTILIZATION($poolId: String!) {
@@ -22,13 +23,23 @@ const GET_POOL_UTILIZATION = graphql(`
   }
 `);
 
-export interface GetPoolUtilizationFromApiParams extends VariablesOf<typeof GET_POOL_UTILIZATION> {}
+export interface GetPoolUtilizationFromApiParams
+  extends VariablesOf<typeof GET_POOL_UTILIZATION>,
+    ContextParams {}
 
-export function getPoolUtilizationFromApi({ poolId }: GetPoolUtilizationFromApiParams) {
+export function getPoolUtilizationFromApi({
+  poolId,
+  branchName,
+  atDate,
+}: GetPoolUtilizationFromApiParams) {
   return graphqlClient.query({
     query: GET_POOL_UTILIZATION,
     variables: {
       poolId,
+    },
+    context: {
+      branch: branchName,
+      date: atDate,
     },
   });
 }

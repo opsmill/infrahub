@@ -1,7 +1,10 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
+import { useAtomValue } from "jotai";
 
-import type { QueryConfig } from "@/shared/api/types";
+import type { ContextParams, QueryConfig } from "@/shared/api/types";
+import { datetimeAtom } from "@/shared/stores/time.atom";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type GetPoolUtilizationParams,
   getPoolUtilization,
@@ -16,11 +19,18 @@ export function getPoolUtilizationQueryOptions(params: GetPoolUtilizationParams)
 }
 
 export function useGetPoolUtilization(
-  params: GetPoolUtilizationParams,
+  params: Omit<GetPoolUtilizationParams, keyof ContextParams>,
   config?: QueryConfig<typeof getPoolUtilizationQueryOptions>
 ) {
+  const { currentBranch } = useCurrentBranch();
+  const timeMachineDate = useAtomValue(datetimeAtom);
+
   return useQuery({
-    ...getPoolUtilizationQueryOptions(params),
+    ...getPoolUtilizationQueryOptions({
+      ...params,
+      branchName: currentBranch.name,
+      atDate: timeMachineDate,
+    }),
     ...config,
   });
 }
