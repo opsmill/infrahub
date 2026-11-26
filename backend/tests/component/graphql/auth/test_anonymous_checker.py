@@ -5,11 +5,13 @@ import pytest
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.core.branch import Branch
+from infrahub.core.registry import registry
+from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import AuthorizationError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.anonymous_checker import AnonymousGraphQLPermissionChecker
-from infrahub.graphql.initialization import GraphqlParams
+from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
 from infrahub.graphql.schema import QUERIES_REQUIRING_AUTHENTICATION
 
 
@@ -82,3 +84,67 @@ class TestAnonymousAuthChecker:
             query_parameters=self.query_parameters,
             branch=branch,
         )
+
+
+@pytest.mark.parametrize(
+    "wrapped_mutation",
+    [
+        pytest.param(
+            'query A { __typename } mutation B { ... on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } } }',
+            id="inline-fragment",
+        ),
+        pytest.param(
+            'query A { __typename } mutation B { ... { TestPersonCreate(data: {name: {value: "x"}}) { ok } } }',
+            id="inline-fragment-without-type-condition",
+        ),
+        pytest.param(
+            "query A { __typename } mutation B { ...Hidden }"
+            ' fragment Hidden on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } }',
+            id="fragment-spread",
+        ),
+    ],
+)
+async def test_anonymous_checker_rejects_mutation_hidden_in_fragment(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+    wrapped_mutation: str,
+) -> None:
+    """An anonymous caller cannot slip a mutation past the checker by wrapping it in a fragment.
+
+    The checker is driven by a real analyzer here, so this exercises the whole analyzer-to-checker
+    seam rather than a mocked ``contains_mutation`` value.
+    """
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    checker = AnonymousGraphQLPermissionChecker(
+        anonymous_access_allowed_func=lambda: True,
+        operations_requiring_authentication=QUERIES_REQUIRING_AUTHENTICATION,
+    )
+    account_session = AccountSession(account_id="anonymous", auth_type=AuthType.JWT, authenticated=False)
+
+    exploit = InfrahubGraphQLQueryAnalyzer(
+        query=wrapped_mutation, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+    with pytest.raises(AuthorizationError):
+        await checker.check(
+            db=db,
+            account_session=account_session,
+            analyzed_query=exploit,
+            query_parameters=MagicMock(spec=GraphqlParams),
+            branch=default_branch,
+        )
+
+    # Control: a genuine anonymous read is still allowed, so the rejection above is specific to the
+    # hidden mutation and not a blanket refusal.
+    control = InfrahubGraphQLQueryAnalyzer(
+        query="query A { __typename }", schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+    await checker.check(
+        db=db,
+        account_session=account_session,
+        analyzed_query=control,
+        query_parameters=MagicMock(spec=GraphqlParams),
+        branch=default_branch,
+    )

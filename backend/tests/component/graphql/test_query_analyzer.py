@@ -1208,6 +1208,22 @@ async def test_query_report_single_target_complex_constraints(
             """,
             id="fragment-spread",
         ),
+        pytest.param(
+            """
+            query Harmless { __typename }
+            mutation Hidden { ... { TestPersonCreate(data: {name: {value: "x"}}) { ok } } }
+            """,
+            id="inline-fragment-without-type-condition",
+        ),
+        pytest.param(
+            """
+            query Harmless { __typename }
+            mutation Hidden { ...Outer }
+            fragment Outer on Mutation { ...Inner }
+            fragment Inner on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } }
+            """,
+            id="nested-fragment-spread",
+        ),
     ],
 )
 async def test_operation_wrapped_in_fragment_counts_as_mutation(
@@ -1232,3 +1248,45 @@ async def test_operation_wrapped_in_fragment_counts_as_mutation(
     assert gqa.contains_mutation is True
     assert "TestPersonCreate" in gqa.operation_names
     assert "TestPerson" in gqa.query_report.impacted_models
+    assert gqa.query_report.kind_action_map["TestPerson"] == {MutateAction.CREATE}
+
+
+async def test_plain_query_is_not_reported_as_mutation(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+    query_01: str,
+) -> None:
+    """Resolving fragments must not reclassify an ordinary field-only query as a mutation."""
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    gqa = InfrahubGraphQLQueryAnalyzer(
+        query=query_01, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+
+    assert gqa.contains_mutation is False
+    assert gqa.query_report.impacted_models == ["TestCar", "TestElectricCar", "TestGazCar", "TestPerson"]
+
+
+async def test_operations_resolution_stops_on_self_referential_fragment(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+) -> None:
+    """A fragment spread that references itself must not loop while operations are resolved."""
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    query = """
+    mutation Hidden { ...Cycle }
+    fragment Cycle on Mutation { ...Cycle }
+    """
+
+    gqa = InfrahubGraphQLQueryAnalyzer(
+        query=query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+
+    assert gqa.operations == []
+    assert gqa.contains_mutation is False
