@@ -9,11 +9,17 @@ from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.node import Node
+from infrahub.core.registry import registry
 from infrahub.dependencies.registry import build_component_registry
+from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.initialization import prepare_graphql_params
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreAccount
+    from infrahub.core.schema import SchemaRoot
     from infrahub.database import InfrahubDatabase
 
 
@@ -412,3 +418,20 @@ async def account_bill(db: InfrahubDatabase, default_branch: Branch) -> Node:
     await bill.new(db=db, name="bill", password=str(uuid4()))
     await bill.save(db=db)
     return bill
+
+
+@pytest.fixture
+async def build_analyzer(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot
+) -> Callable[[str], InfrahubGraphQLQueryAnalyzer]:
+    """Return a factory that builds an analyzer for a query against the car/person schema."""
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    def _build(query: str) -> InfrahubGraphQLQueryAnalyzer:
+        return InfrahubGraphQLQueryAnalyzer(
+            query=query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+        )
+
+    return _build
