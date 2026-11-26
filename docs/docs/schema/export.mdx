@@ -1,0 +1,265 @@
+---
+title: Export a schema
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Export a schema
+
+A schema export is a schema file that Infrahub builds from the schema an instance runs. It holds the nodes and generics you defined, in the same format as the files you load with `infrahubctl schema load`, and it loads into an empty instance with no edits.
+
+Export the schema to copy it from one instance to another, for example from a test instance to a new production instance, or to recover schema files that you no longer have outside Infrahub.
+
+## Export the schema of a branch
+
+<Tabs groupId="method" queryString>
+  <TabItem value="infrahubctl" label="infrahubctl" default>
+
+`infrahubctl schema export` writes the export of the default branch to a new directory, one file per namespace:
+
+```shell
+infrahubctl schema export --directory schemas/
+```
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `--directory` | `infrahub-schema-export-<timestamp>` | Directory the files are written to |
+| `--branch` | The default branch | Branch whose schema is exported |
+| `--namespaces` | Every namespace you defined | Namespace to export. Repeat the option to export several namespaces |
+| `--mode` | `BRIEF` | `BRIEF` or `FULL`, see [Choose between `BRIEF` and `FULL`](#choose-between-brief-and-full) |
+| `--single-file` | Off | Write one file, `schema.yml`, that holds every exported namespace |
+
+Without `--single-file`, each file is named after its namespace in lower case, such as `network.yml` for the `Network` namespace. When the branch has no nodes or generics you defined, the command writes no file and prints `No user-defined schema found to export.`
+
+  </TabItem>
+  <TabItem value="api" label="REST API">
+
+`GET /api/schema/export` returns the export as one JSON document:
+
+```shell
+curl -H "X-INFRAHUB-KEY: $INFRAHUB_API_TOKEN" \
+  "http://localhost:8000/api/schema/export?branch=main&mode=BRIEF&namespaces=Network&namespaces=Location"
+```
+
+| Parameter | Default | Effect |
+| --- | --- | --- |
+| `branch` | The default branch | Branch whose schema is exported |
+| `namespaces` | Every namespace you defined | Namespace to export. Repeat the parameter to export several namespaces |
+| `mode` | `BRIEF` | `BRIEF` or `FULL`, see [Choose between `BRIEF` and `FULL`](#choose-between-brief-and-full) |
+
+Any account that can read the schema with `GET /api/schema` can call the export. A load of the document needs the permission to manage the schema on the target instance.
+
+  </TabItem>
+</Tabs>
+
+An export holds the schema file format version, the Infrahub version of the instance that produced it, then the generics and the nodes. The example below is the `BRIEF` export of a `Network` namespace with one generic and two nodes:
+
+```yaml
+version: '1.0'
+infrahub_version: <version of the source instance>
+generics:
+  - name: Interface
+    namespace: Network
+    human_friendly_id: [device__name__value, name__value]
+    display_label: name__value
+    uniqueness_constraints: [[device, name__value]]
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+    relationships:
+      - name: device
+        peer: NetworkDevice
+        kind: Parent
+        identifier: networkdevice__networkinterface
+        cardinality: one
+        optional: false
+nodes:
+  - name: Device
+    namespace: Network
+    icon: mdi:server
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+    relationships:
+      - name: interfaces
+        peer: NetworkInterface
+        kind: Component
+        identifier: networkdevice__networkinterface
+        on_delete: cascade
+  - name: PhysicalInterface
+    namespace: Network
+    inherit_from: [NetworkInterface]
+    human_friendly_id: [device__name__value, name__value]
+    display_label: name__value
+    uniqueness_constraints: [[device, name__value]]
+    attributes:
+      - name: speed
+        kind: Number
+        label: Speed (Mbps)
+```
+
+Load the export with the same command as any other schema file. Load every file of the directory in one command, because a node in one namespace can refer to a node or a generic in another:
+
+```shell
+infrahubctl schema load schemas/
+```
+
+The schema load accepts the `infrahub_version` field and ignores it.
+
+### Export selected namespaces
+
+With the `namespaces` filter, the export holds only the nodes and generics of the namespaces you choose. Each node and generic is written with the same values as in an export without the filter. A relationship to a peer in another namespace stays in the export, so the target instance must already have that peer before you load the file. A reserved namespace in the filter is ignored, because the export never holds a reserved namespace.
+
+## Choose between `BRIEF` and `FULL`
+
+The schema an instance stores holds two kinds of values: the values you wrote in your schema files, and the values Infrahub derived when it processed them, such as a `label` built from the attribute name or an `order_weight`. The stored schema does not record which is which. The two modes handle the derived values differently.
+
+`BRIEF`, the default, leaves out every value that Infrahub derives again when the export is loaded. To find these values, Infrahub loads the export into a copy of the schema of an empty instance, and writes back each value that would otherwise differ from the stored value. The result is close to the files you wrote, and the target gets the same values as the source. In the example above, the `Device` node has no `label`, no `order_weight` and no `human_friendly_id`, because Infrahub derives them from the name of the node, the order of the attributes and the `unique: true` attribute.
+
+`FULL` writes every value of the nodes, generics, attributes and relationships you defined, including the derived ones, such as `label`, `branch`, `order_weight` and a `human_friendly_id` taken from a unique attribute.
+
+Choose the mode by the instance you load the export into:
+
+- An empty instance: use `BRIEF`. Both modes give the same schema on the target, and the `BRIEF` file is shorter to review.
+- An instance that already has an earlier version of the same nodes: use `FULL`. A value that `BRIEF` leaves out does not replace a different value on the target. For example, when you set a `label` back to the derived value on the source, a `BRIEF` export leaves it out and the target keeps its own label.
+
+## What an export leaves out
+
+Both modes leave out:
+
+- Nodes and generics in the reserved namespaces, such as `Core` and `Builtin`. See [Namespaces](./namespaces#reserved-namespaces) for the list.
+- Nodes and generics that Infrahub defines in a namespace that is not reserved. Today this is `IpamNamespace`, in the `Ipam` namespace. Nodes and generics you defined in `Ipam` are exported.
+- Profile and template schemas, which Infrahub generates for your nodes.
+- Relationships that Infrahub adds to your nodes, such as `member_of_groups`, `subscriber_of_groups`, `profiles`, `object_template`, `parent` and `children`.
+- IDs, which match nothing on another instance.
+- An attribute or a relationship that a node takes from its generic. It is written only on the generic.
+- Extensions to a node in a reserved namespace or to `IpamNamespace`. An attribute or a relationship you added with an extension to one of your own nodes is written on that node, not in an `extensions` section.
+
+The export also writes deprecated settings in their current form:
+
+- On a `Text` or `TextArea` attribute, `regex`, `min_length` and `max_length` are written under `parameters`. On a `List` attribute, `regex` is written under `parameters`, and `min_length` and `max_length` stay at the top level of the attribute.
+- On a `NumberPool` attribute, `start_range` and `end_range` are written as one entry of `ranges` with the same bounds. A bound that was not set stays unset.
+
+A load of the export gives the same validation settings and pool ranges on the target.
+
+## Known limitations
+
+- **Extensions to reserved nodes are not exported.** An attribute or a relationship you added to a node in a reserved namespace, such as `CoreStandardGroup`, is left out with no warning. Load the extension file on the target as well.
+- **`IpamNamespace` is not exported.** A change or an extension you made to `IpamNamespace` is left out with no warning.
+- **A value you wrote that equals the derived value is left out in `BRIEF`.** The stored schema does not record which values you wrote, so the export cannot tell them apart from derived values. For example, when you wrote `label: Name` on the attribute `name`, a `BRIEF` export leaves the label out, and the schema files you keep from the export no longer show it. Infrahub derives the same label on the target.
+- **A derived value can be written in `BRIEF` next to the value it comes from.** When leaving out a derived value and its source together gives a different result on load, the export writes both. The export can then be longer than the files you wrote, and it loads to the same schema.
+- **Properties that a node takes from its generic are written on the node.** These are the [node-level properties](./generics-and-inheritance#inherited-properties), such as `human_friendly_id`, `display_label`, `uniqueness_constraints`, `icon` and `order_by`. On the target, as on the source, Infrahub does not apply a later change of the property on the generic to that node.
+- **The load gives a deprecation warning for each node that takes `display_labels` or `default_filter` from a generic.** The export writes these properties on each of those nodes, so the load gives the warning for each node as well as for the generic.
+
+## Load an export into an instance that has some of the same nodes
+
+A load of an export adds to the schema of the target and changes the nodes and generics it holds. It removes nothing, in both modes:
+
+- Nodes, generics, attributes and relationships that the target has and the source does not stay on the target. To remove one, load a schema file that sets `state: absent` on it, see [Schema migration](./migration#state-absent-or-present).
+- A value the source does not set, such as a `description` you removed on the source, is not written in the export, so the target keeps its own value.
+
+The target matches nodes and generics by kind, and attributes and relationships by name. A rename on the source therefore reaches the target as a new element. For example, when you renamed the attribute `name` to `hostname` on the source and then added a new `name` attribute, the load keeps the values of the existing `name` attribute on the target and creates `hostname` with no values. The load reports no error for this.
+
+## Errors when you load an export
+
+An export can still fail to load on the target in the cases below. `infrahubctl schema load` prints `Unable to load the schema:`, then the error that the target returns.
+
+### The target runs an earlier release
+
+A release that does not have the schema export rejects the `infrahub_version` field, and also any schema setting it does not know. `infrahubctl schema load` then prints only the first line, with no detail:
+
+```text
+Unable to load the schema:
+```
+
+The response of `POST /api/schema/load` names the field in `loc`. The response below is shortened:
+
+```json
+{
+  "detail": [
+    {
+      "type": "value_error",
+      "loc": ["body", "schemas", 0, "infrahub_version"],
+      "msg": "Unknown field, it is not part of the schema"
+    }
+  ]
+}
+```
+
+Load the export into an instance on the same release as the source, or on a later one.
+
+### The export refers to a node or a generic the target does not have
+
+This happens most often with a namespace filter, when a relationship or an `inherit_from` refers to a kind in a namespace you did not export:
+
+```text
+Unable to load the schema:
+  Unable to find the schema 'LocationSite' in the registry
+```
+
+```text
+Unable to load the schema:
+  NetworkPort Unable to find the generic NetworkInterface
+```
+
+Load the missing namespaces first, or export them together.
+
+### The same kind is a node on one instance and a generic on the other
+
+```text
+Unable to load the schema:
+  TestThing already exist in the schema as a Generic. Either rename it or delete the existing one.
+```
+
+When the target holds the kind as a node and the export holds it as a generic, the error ends with `as a Node` instead.
+
+### A setting that cannot be changed differs
+
+Some settings cannot be changed after the first load, such as `branch` on an attribute, see [Schema migration](./migration#restrictions). When the export holds a different `branch` value for an attribute, the load fails and the target keeps its value:
+
+```text
+Unable to load the schema:
+  'not_supported': TestCar color None
+```
+
+The error names the kind and the attribute or relationship, not the setting.
+
+### The data on the target does not meet a constraint in the export
+
+A new mandatory attribute with no default value fails when the target already has objects of that kind:
+
+```text
+Unable to load the schema:
+  Node-level 'attribute' constraint violation on schema 'TestRack'. Node (TestRack(ID: 18eba688-a3d1-bf01-392e-271debe94a79)) is not compliant.
+```
+
+An attribute that becomes unique fails when several objects on the target have the same value. The error lists each object and each constraint it breaks:
+
+```text
+Unable to load the schema:
+  Node-level 'uniqueness_constraints' constraint violation on schema 'TestCable'. Node (TestCable(ID: 18eba689-4b5b-f6cc-392a-271d315e862b)) is not compliant. The error relates to field label.value='same'.,
+Attribute-level 'unique' constraint violation on schema 'TestCable'. Node (TestCable(ID: 18eba689-4b5b-f6cc-392a-271d315e862b)) is not compliant. The error relates to field label='same'.,
+```
+
+Update or remove the objects that break the constraint, or set a `default_value` on the new attribute, then load the export again.
+
+### Your account cannot manage the schema on the target
+
+```text
+Unable to load the schema:
+  You are not allowed to manage the schema
+```
+
+Ask an administrator of the target instance for a role with the permission to manage the schema. See [Permissions](../reference/permissions).
+
+## Related concepts
+
+- [Create and load schema](./create-and-load): the schema file format and the `infrahubctl schema load` command
+- [Generics & inheritance](./generics-and-inheritance): the properties a node takes from its generic
+- [Schema migration](./migration): how a load changes the schema and data of an instance, and the settings that cannot be changed
+- [Namespaces](./namespaces): the reserved namespaces that an export leaves out
