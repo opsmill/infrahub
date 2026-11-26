@@ -270,9 +270,10 @@ that a profile or an object template gives come from `resolve_target_ownership`,
 stores them.
 
 The GraphQL `ownership` field of an attribute and of a relationship reads the owners of the field with one data
-loader for the request (`graphql/resolvers/ownership.py`). A relationship of cardinality many gives one reference
-for the field and its edges, so the owners are read once for the field. A relationship of cardinality one that asks
-only for `ownership` reads no peer. The `ancestors` and `descendants` fields of a hierarchical node share their
+loader for the request (`graphql/resolvers/ownership.py`). A relationship of cardinality many gives each edge the
+reference of the node that holds its link. Without `include_descendants`, that node is the node of the field, so the
+owners are read once for the field. With `include_descendants`, the owners are read for each node that holds a link,
+in the same batch as the field. A relationship of cardinality one that asks only for `ownership` reads no peer. The `ancestors` and `descendants` fields of a hierarchical node share their
 GraphQL types with `children`, but they are not relationships and have no owners, so their `ownership` is always
 null.
 
