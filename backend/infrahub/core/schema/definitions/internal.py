@@ -679,7 +679,11 @@ attribute_schema = SchemaNode(
             description="Define a list of valid choices for a dropdown attribute.",
             optional=True,
             ordered=False,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
+            extra={
+                "update": UpdateSupport.VALIDATE_CONSTRAINT,
+                "visibility": Visibility.WRITE,
+                "keep_in_export": True,
+            },
         ),
         SchemaAttribute(
             name="regex",
@@ -725,7 +729,11 @@ attribute_schema = SchemaNode(
             "Mainly relevant for internal object.",
             default_value=False,
             optional=True,
-            extra={"update": UpdateSupport.MIGRATION_REQUIRED, "visibility": Visibility.WRITE},
+            extra={
+                "update": UpdateSupport.MIGRATION_REQUIRED,
+                "visibility": Visibility.WRITE,
+                "keep_in_export": True,
+            },
         ),
         SchemaAttribute(
             name="unique",
@@ -733,7 +741,11 @@ attribute_schema = SchemaNode(
             description="Indicate if the value of this attribute must be unique in the database for a given model.",
             default_value=False,
             optional=True,
-            extra={"update": UpdateSupport.MIGRATION_REQUIRED, "visibility": Visibility.WRITE},
+            extra={
+                "update": UpdateSupport.MIGRATION_REQUIRED,
+                "visibility": Visibility.WRITE,
+                "keep_in_export": True,
+            },
         ),
         SchemaAttribute(
             name="optional",
@@ -928,7 +940,11 @@ relationship_schema = SchemaNode(
             regex=str(NAME_REGEX),
             max_length=DEFAULT_REL_IDENTIFIER_LENGTH,
             optional=True,
-            extra={"update": UpdateSupport.NOT_SUPPORTED, "visibility": Visibility.WRITE},
+            extra={
+                "update": UpdateSupport.NOT_SUPPORTED,
+                "visibility": Visibility.WRITE,
+                "keep_in_export": True,
+            },
         ),
         SchemaAttribute(
             name="cardinality",
@@ -939,7 +955,11 @@ relationship_schema = SchemaNode(
             enum_class="RelationshipCardinality",
             default_value=RelationshipCardinality.MANY,
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
+            extra={
+                "update": UpdateSupport.VALIDATE_CONSTRAINT,
+                "visibility": Visibility.WRITE,
+                "keep_in_export": True,
+            },
         ),
         SchemaAttribute(
             name="min_count",
@@ -986,7 +1006,11 @@ relationship_schema = SchemaNode(
             default_value=False,
             override_default_value=True,
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
+            extra={
+                "update": UpdateSupport.VALIDATE_CONSTRAINT,
+                "visibility": Visibility.WRITE,
+                "keep_in_export": True,
+            },
         ),
         SchemaAttribute(
             name="branch",

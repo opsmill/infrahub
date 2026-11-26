@@ -25,7 +25,7 @@ Response model of `GET /api/schema/export`, in `backend/infrahub/schema/export/m
 | `nodes` | `list[NodeSchemaWrite]` | User-defined nodes in the selected namespaces, sorted by kind. |
 | `extensions` | not written | Extensions of user nodes are written as attributes and relationships of the node. Extensions of kinds in restricted namespaces and of other kinds Infrahub defines, such as `IpamNamespace`, are never exported (D2, research R2). |
 
-Sorting by kind makes two exports of the same schema identical apart from `infrahub_version` (SC-003). Attributes and relationships keep the order of the stored schema.
+Sorting by kind makes two exports of the same schema identical apart from `infrahub_version` (SC-003). Attributes and relationships are sorted by `order_weight`, then by name, because a schema read back from the database does not keep the order in which they were loaded (found by the `models/base/` functional test on 2026-11-26).
 
 ## Element fields
 

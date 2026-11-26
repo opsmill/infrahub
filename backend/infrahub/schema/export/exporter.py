@@ -154,6 +154,12 @@ def _field_values(element: Mapping[str, Any]) -> dict[str, Any]:
     return values
 
 
+def _display_order(item: Mapping[str, Any]) -> tuple[bool, int, str]:
+    """Sort key that orders attributes or relationships by order weight, then by name."""
+    order_weight = item.get("order_weight")
+    return (order_weight is None, order_weight or 0, item["name"])
+
+
 def _find_item(element: Mapping[str, Any], collection: str, name: str) -> dict[str, Any] | None:
     for item in element.get(collection, []):
         if item["name"] == name:
@@ -254,19 +260,30 @@ class SchemaExporter:
     def _export_element(
         element: NodeSchema | GenericSchema, write_model: type[NodeSchemaWrite | GenericSchemaWrite]
     ) -> dict[str, Any]:
-        """Return the write-visible values of a stored node or generic, read from a dump so the element never changes."""
+        """Return the write-visible values of a stored node or generic, read from a dump so the element never changes.
+
+        Attributes and relationships are written in display order, because the order a schema read back from the
+        database holds them in can change between reads.
+        """
         is_node = isinstance(element, NodeSchema)
         dump = element.model_dump()
-        dump[ATTRIBUTES_FIELD] = [
-            convert_deprecated_attribute_fields(attribute)
-            for attribute in dump[ATTRIBUTES_FIELD]
-            if not (is_node and attribute["inherited"])
-        ]
-        dump[RELATIONSHIPS_FIELD] = [
-            relationship
-            for relationship in dump[RELATIONSHIPS_FIELD]
-            if not (is_node and relationship["inherited"]) and relationship["kind"] not in GENERATED_RELATIONSHIP_KINDS
-        ]
+        dump[ATTRIBUTES_FIELD] = sorted(
+            (
+                convert_deprecated_attribute_fields(attribute)
+                for attribute in dump[ATTRIBUTES_FIELD]
+                if not (is_node and attribute["inherited"])
+            ),
+            key=_display_order,
+        )
+        dump[RELATIONSHIPS_FIELD] = sorted(
+            (
+                relationship
+                for relationship in dump[RELATIONSHIPS_FIELD]
+                if not (is_node and relationship["inherited"])
+                and relationship["kind"] not in GENERATED_RELATIONSHIP_KINDS
+            ),
+            key=_display_order,
+        )
         exported = write_model.model_validate(dump).model_dump(exclude_none=True)
         exported.pop(ID_FIELD, None)
         for collection in ELEMENT_COLLECTIONS:

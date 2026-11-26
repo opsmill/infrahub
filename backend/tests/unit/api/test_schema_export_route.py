@@ -59,8 +59,6 @@ def test_export_route_returns_only_the_keys_the_export_kept(schema_api_client: T
             {
                 "name": "Device",
                 "namespace": "Testing",
-                "human_friendly_id": ["name__value"],
-                "uniqueness_constraints": [["name__value"]],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text", "optional": True},

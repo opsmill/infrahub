@@ -10,10 +10,12 @@ from infrahub_sdk.schema.generated.write import NodeSchemaWrite
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.schema.export.exporter import (
+    SchemaExporter,
     build_core_schema_baseline,
     convert_deprecated_attribute_fields,
     normalize_element_for_comparison,
 )
+from infrahub.schema.export.models import SchemaExportMode
 
 from .conftest import load_on_new_baseline
 
@@ -241,3 +243,47 @@ def test_stored_deprecated_and_current_forms_compare_equal() -> None:
     assert normalize_element_for_comparison(
         deprecated_dump, write_model=NodeSchemaWrite
     ) == normalize_element_for_comparison(current_dump, write_model=NodeSchemaWrite)
+
+
+@pytest.mark.parametrize("mode", [SchemaExportMode.FULL, SchemaExportMode.BRIEF])
+def test_export_writes_attributes_and_relationships_by_order_weight(
+    schema_exporter: SchemaExporter, mode: SchemaExportMode
+) -> None:
+    source = load_on_new_baseline(
+        {
+            "version": "1.0",
+            "nodes": [
+                {
+                    "name": "Rack",
+                    "namespace": "Ordered",
+                    "attributes": [
+                        {"name": "name", "kind": "Text", "unique": True, "order_weight": 3000},
+                        {"name": "height", "kind": "Number", "optional": True, "order_weight": 1000},
+                        {"name": "width", "kind": "Number", "optional": True, "order_weight": 1000},
+                    ],
+                    "relationships": [
+                        {
+                            "name": "row",
+                            "peer": "OrderedRack",
+                            "cardinality": "one",
+                            "identifier": "rack__row",
+                            "order_weight": 5000,
+                        },
+                        {
+                            "name": "site",
+                            "peer": "OrderedRack",
+                            "cardinality": "one",
+                            "identifier": "rack__site",
+                            "order_weight": 4000,
+                        },
+                    ],
+                }
+            ],
+        }
+    )
+
+    document = schema_exporter.export(schema_branch=source, mode=mode, namespaces=None)
+
+    rack = document.nodes[0]
+    assert [attribute.name for attribute in rack.attributes] == ["height", "width", "name"]
+    assert [relationship.name for relationship in rack.relationships] == ["site", "row"]
