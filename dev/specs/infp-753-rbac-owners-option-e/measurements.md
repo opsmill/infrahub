@@ -176,7 +176,9 @@ This section compares the code of pull request 2 with the code of pull request 1
 
 ### Runs and data set
 
-- Head: the code of pull request 2. The backend code has no change after commit `3bf19c4c1b`.
+- Head: the backend code of commit `3bf19c4c1b`. The commits after it up to `14eab625d7` change no code in
+  `backend/infrahub`. The later commits `3d0b3395a9`, `1e2ce01f82`, `7525979eae`, `5f37e5265e` and `b310d33b82` to
+  `9a5a17b1f5` change the backend code, and this benchmark did not run on them.
   - Run: 2026-11-26, from 12:36:27 to 13:20:40 UTC. Result of the test runner: `4 passed, 1 warning in 2653.39s (0:44:13)`.
 - Base: commit `0c44f461d3`, the start of pull request 2. It holds the code of pull request 1 only. Two runs on this commit give the ten rows:
   - Object file load, delete of one device and generator run: 2026-11-26, from 14:06:38 to 14:50:32 UTC. Result of the test runner: `2 passed, 1 warning in 2623.79s (0:43:43)`.

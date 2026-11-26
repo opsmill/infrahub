@@ -42,7 +42,7 @@ None of the tasks of pull request 2. Tasks of pull request 3 and T149 (the conso
 
 ## 4. Local-pass evidence
 
-Environment for all rows: local Linux VM, the uv venv of the repository, Docker 29.10.1. "testcontainers" means Neo4j 2026.10.1 started by testcontainers. "image" means `registry.opsmill.io/opsmill/infrahub:e2e-ifc3627`, built from `3bf19c4c1b`; the backend code did not change between that commit and `8faaabf5a9`.
+Environment for all rows: local Linux VM, the uv venv of the repository, Docker 29.10.1. "testcontainers" means Neo4j 2026.10.1 started by testcontainers. "image" means `registry.opsmill.io/opsmill/infrahub:e2e-ifc3627`. The rows before the review fixes ran on the image built from `3bf19c4c1b`; the code in `backend/infrahub` did not change between that commit and `14eab625d7`. The later commits change the backend code, so the image was built again from `da39eede02` for the last two rows.
 
 | Test id | Type | Run command | Passed at | Environment | Verbatim pass line |
 |---|---|---|---|---|---|
@@ -66,6 +66,8 @@ Environment for all rows: local Linux VM, the uv venv of the repository, Docker 
 | backend/tests/component/graphql/mutations/test_ipam.py::test_ipaddress_create_writes_its_owners_as_the_account_of_the_request | component | `uv run pytest <file>` | 2026-11-26T16:00Z | testcontainers | `32 passed, 1 warning in 83.16s` |
 | All component suites above after the review fixes | component | `uv run pytest -n 4 backend/tests/component/graphql/metadata backend/tests/component/graphql/queries/test_event*.py backend/tests/component/core/ownership backend/tests/component/core/test_node_get_list_query*.py backend/tests/component/graphql/mutations/test_ipam.py backend/tests/component/graphql/mutations/test_repository.py -q -p no:randomly` | 2026-11-26T16:01:47Z | testcontainers | `547 passed, 5 warnings in 241.11s (0:04:01)` |
 | backend/tests/unit/graphql, backend/tests/unit/core/ownership after the review fixes | unit | `uv run pytest -n 4 backend/tests/unit/graphql backend/tests/unit/core/ownership -q -p no:randomly` | 2026-11-26T16:01:49Z | n/a | `383 passed, 5 warnings in 6.66s` |
+| tests/e2e/ownership on the image built from `da39eede02` | e2e | `INFRAHUB_TESTING_IMAGE_VER=e2e-ifc3627 INFRAHUB_TESTING_DOCKER_PULL=false uv run pytest -c tests/e2e/pytest.ini tests/e2e/ownership -p no:randomly` | 2026-11-26T21:47:30Z | image | `4 passed in 131.29s (0:02:11)` |
+| backend/tests/integration_docker/test_schema_migration.py on the image built from `da39eede02` | integration | `INFRAHUB_TESTING_IMAGE_VER=e2e-ifc3627 INFRAHUB_TESTING_DOCKER_PULL=false uv run pytest <file> -p no:cacheprovider` | 2026-11-26T21:49:43Z | image | `3 passed, 1 xfailed, 1 warning in 122.48s (0:02:02)` |
 | backend/tests/query_benchmark/ownership/test_no_owner_overhead.py (head) | benchmark | `uv run pytest <file> -s -p no:cacheprovider --no-cov -q --session-timeout=10800` | 2026-11-26T13:20:40Z (end) | testcontainers, no other test stack | `4 passed, 1 warning in 2653.39s (0:44:13)` |
 
 Quickstart scenarios of user stories 1 to 5 ran on the same image with a scratch test that is not committed: `5 passed in 131.09s (0:02:11)`, 2026-11-26T14:55:58Z. Scenario 6 (the upgrade) ran by hand: data on release 1.12.3, then `infrahub db ownership-report` and `infrahub upgrade` with the image, 2026-11-26T15:32:19Z to 15:35:44Z, `Upgrade complete SUCCESS`.
