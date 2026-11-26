@@ -27,6 +27,13 @@ export const AllVariants: StoryObj = {
         </CardContent>
       </Card>
 
+      <Card className="max-w-sm">
+        <CardHeader variant="ghost">Section title</CardHeader>
+        <CardContent className="text-foreground-muted text-sm">
+          The ghost header keeps the divider but has no background or shadow.
+        </CardContent>
+      </Card>
+
       <Card variant="secondary" className="max-w-sm">
         <CardContent className="text-foreground-muted text-sm">
           The secondary surface is for app chrome — header, sidebar, content shell.
