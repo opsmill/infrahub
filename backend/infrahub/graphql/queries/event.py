@@ -38,6 +38,7 @@ if TYPE_CHECKING:
 
 InfrahubEventSortOrder = Enum.from_enum(EventSortOrder)
 OWNER_VALUE_KEYS = ("value", "value_previous")
+OWNER_LABEL_PARALLEL_READS = 4
 
 
 def _single_owner_list(owner_id: str | None) -> str | None:
@@ -93,11 +94,15 @@ async def _show_owner_labels(graphql_context: GraphqlContext, edges: list[dict[s
             branch = _event_branch(graphql_context=graphql_context, branch_name=edge["node"]["branch"])
             branches[branch.name] = branch
             changes_by_branch[branch.name].extend(changes)
+    # Each read opens its own session, so the reads can run together whatever the session of the request.
+    semaphore = asyncio.Semaphore(OWNER_LABEL_PARALLEL_READS)
+
+    async def show_labels(branch: Branch, changes: list[dict[str, Any]]) -> None:
+        async with semaphore:
+            await _show_labels_on_branch(graphql_context=graphql_context, branch=branch, changes=changes)
+
     await asyncio.gather(
-        *(
-            _show_labels_on_branch(graphql_context=graphql_context, branch=branches[name], changes=changes)
-            for name, changes in changes_by_branch.items()
-        )
+        *(show_labels(branch=branches[name], changes=changes) for name, changes in changes_by_branch.items())
     )
 
 
