@@ -1,0 +1,20 @@
+backend/infrahub/graphql/analyzer.py
+  s_6cf9025f3dcfd8::t_0db9ed9458fe41 844-845
+  s_6cf9025f3dcfd8::t_407190fb4316d8 798,812,814-820,826,828-829,833
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9406391905f180c017458f43aa8e08ad1ee7ee70",
+  "prompts": {},
+  "sessions": {
+    "s_6cf9025f3dcfd8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3af1dfcc-e45f-4a6e-8b9a-ae53989039d0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
