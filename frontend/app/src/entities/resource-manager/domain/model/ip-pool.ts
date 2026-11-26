@@ -38,7 +38,6 @@ export interface IpAddressPoolData extends IpPoolBase {
 
 export type IpPoolData = IpPrefixPoolData | IpAddressPoolData;
 
-// percentages from 0 to 100; utilizationBranches is the share the viewing branch adds to the default branch
 export interface IpPoolResourceUsage {
   utilization: number;
   utilizationDefaultBranch: number;
