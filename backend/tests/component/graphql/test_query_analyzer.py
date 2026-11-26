@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
 
@@ -1190,6 +1191,23 @@ async def test_query_report_single_target_complex_constraints(
     assert analyze(hfid_optional).query_report.only_has_unique_targets is False
 
 
+@pytest.fixture
+async def build_analyzer(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot
+) -> Callable[[str], InfrahubGraphQLQueryAnalyzer]:
+    """Return a factory that builds an analyzer for a query against the car/person schema."""
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    def _build(query: str) -> InfrahubGraphQLQueryAnalyzer:
+        return InfrahubGraphQLQueryAnalyzer(
+            query=query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+        )
+
+    return _build
+
+
 @dataclass
 class HiddenMutationCase:
     name: str
@@ -1236,19 +1254,10 @@ HIDDEN_MUTATION_CASES = [
 
 @pytest.mark.parametrize("case", HIDDEN_MUTATION_CASES, ids=lambda case: case.name)
 async def test_mutation_hidden_in_fragment_is_reported(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    car_person_schema_generics: SchemaRoot,
-    case: HiddenMutationCase,
+    build_analyzer: Callable[[str], InfrahubGraphQLQueryAnalyzer], case: HiddenMutationCase
 ) -> None:
     """A mutation hidden in a top-level fragment is reported as a create of its kind, in single- and multi-operation documents."""
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
-
-    gqa = InfrahubGraphQLQueryAnalyzer(
-        query=case.query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
-    )
+    gqa = build_analyzer(case.query)
 
     assert gqa.contains_mutation is True
     assert "TestPersonCreate" in gqa.operation_names
@@ -1257,41 +1266,20 @@ async def test_mutation_hidden_in_fragment_is_reported(
 
 
 async def test_plain_query_is_not_reported_as_mutation(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    car_person_schema_generics: SchemaRoot,
-    query_01: str,
+    build_analyzer: Callable[[str], InfrahubGraphQLQueryAnalyzer], query_01: str
 ) -> None:
     """Resolving fragments must not reclassify an ordinary field-only query as a mutation."""
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
-
-    gqa = InfrahubGraphQLQueryAnalyzer(
-        query=query_01, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
-    )
+    gqa = build_analyzer(query_01)
 
     assert gqa.contains_mutation is False
     assert gqa.query_report.impacted_models == ["TestCar", "TestElectricCar", "TestGazCar", "TestPerson"]
 
 
 async def test_operations_resolution_stops_on_self_referential_fragment(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    car_person_schema_generics: SchemaRoot,
+    build_analyzer: Callable[[str], InfrahubGraphQLQueryAnalyzer],
 ) -> None:
     """A fragment spread that references itself must not loop while operations are resolved."""
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
-    query = """
-    mutation Hidden { ...Cycle }
-    fragment Cycle on Mutation { ...Cycle }
-    """
-
-    gqa = InfrahubGraphQLQueryAnalyzer(
-        query=query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
-    )
+    gqa = build_analyzer("mutation Hidden { ...Cycle } fragment Cycle on Mutation { ...Cycle }")
 
     assert gqa.operations == []
     assert gqa.contains_mutation is False
