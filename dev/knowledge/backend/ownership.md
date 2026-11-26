@@ -198,6 +198,10 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
 The save of an attribute with a new `owner` property calls the same write with one owner, so it replaces all own
 owners of the attribute. A cleared `owner` property gives the inherit state.
 
+The read of the `owner` property (`NodeListGetAttributeQuery`) gives the own owner of the attribute when it has
+exactly one. It gives nothing when the attribute has several owners, no owner, or a copy from an object template: a
+copy reads as inherit, so it is not an own owner.
+
 `Node.delete` closes the owner edges of the node, of its attributes and of its sets, and the edges to those sets,
 with `NodeOwnerEdgesCloseQuery`. The query closes a `HAS_SOURCE` edge only when the edge starts at the node vertex:
 the delete of an attribute closes the source edge of the attribute. The query also closes each `HAS_OWNER_SOURCE`

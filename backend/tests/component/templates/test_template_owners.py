@@ -5,13 +5,14 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node.create import create_node
 from infrahub.core.ownership.models import (
     NODE_HOLDER,
     NODE_TARGET_HOLDER,
+    HolderKey,
     HolderKind,
     OwnerOrigin,
     OwnerState,
@@ -43,7 +44,6 @@ from tests.helpers.schema import DEVICE_SCHEMA, load_schema
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
-    from infrahub.core.ownership.models import HolderKey
     from infrahub.database import InfrahubDatabase
 
 DEVICE_TEMPLATE = f"Template{TestKind.DEVICE}"
@@ -464,3 +464,38 @@ async def test_attribute_owner_given_at_the_create_replaces_the_copy_from_the_te
         HolderKind.ATTRIBUTE: (dataset.owners(("network-emea",)), None),
     }
     await verify_graph(db=db)
+
+
+async def test_attribute_owner_field_gives_no_owner_for_a_copy_from_the_template(
+    db: InfrahubDatabase, default_branch: Branch, owner_dataset: OwnerDataset
+) -> None:
+    dataset = owner_dataset
+    name_holder = HolderKey(kind=HolderKind.ATTRIBUTE, attribute="name")
+    template = await site_template(db=db, default_branch=default_branch, dataset=dataset)
+    site_id = await site_from(db=db, branch=default_branch, template=template, name="site-c")
+
+    async def name_owner_id() -> str | None:
+        site = await NodeManager.get_one(
+            db=db, branch=default_branch, id=site_id, include_metadata=MetadataOptions.OWNER, raise_on_error=True
+        )
+        return site.name.owner_id
+
+    assert (await template_copies(db=db, branch=default_branch, node_id=site_id))[HolderKind.ATTRIBUTE] == (
+        dataset.owners(("dc-emea",)),
+        template.id,
+    )
+    assert await name_owner_id() is None
+
+    await set_owners(
+        db=db,
+        branch=default_branch,
+        node_id=site_id,
+        owner_ids=dataset.owners(("network-emea",)),
+        holder=name_holder,
+    )
+
+    assert (await template_copies(db=db, branch=default_branch, node_id=site_id))[HolderKind.ATTRIBUTE] == (
+        dataset.owners(("network-emea",)),
+        None,
+    )
+    assert await name_owner_id() == dataset.ids["network-emea"]

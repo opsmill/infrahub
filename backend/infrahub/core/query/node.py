@@ -863,7 +863,8 @@ WITH *,
     def _add_owner_to_query(self, branch_filter_str: str) -> None:
         if not self._include_owner:
             return
-        # An attribute with several own owners, or with none, has no single owner to give.
+        # An attribute with several own owners, or with none, has no single owner to give, and a copy from an
+        # object template is not an own owner.
         owner_query = """
 CALL (a) {
     MATCH (a)-[rel_owner:HAS_OWNER]->(owner)
@@ -873,8 +874,17 @@ CALL (a) {
     WITH owner, head(collect(rel_owner)) AS rel_owner
     WHERE rel_owner.status = "active"
     WITH collect([owner, rel_owner]) AS own_owners
-    RETURN CASE WHEN size(own_owners) = 1 THEN own_owners[0][0] ELSE NULL END AS owner,
-        CASE WHEN size(own_owners) = 1 THEN own_owners[0][1] ELSE NULL END AS rel_owner
+    CALL (a) {
+        OPTIONAL MATCH (a)-[mark:HAS_OWNER_SOURCE]->(template)
+        WHERE all(r IN [mark] WHERE ( %(branch_filter)s ))
+        WITH template, mark
+        ORDER BY mark.branch_level DESC, mark.from DESC, mark.status ASC
+        WITH template, head(collect(mark)) AS mark
+        RETURN any(latest IN collect(mark) WHERE latest.status = "active") AS is_template_copy
+    }
+    WITH own_owners, size(own_owners) = 1 AND NOT is_template_copy AS has_single_owner
+    RETURN CASE WHEN has_single_owner THEN own_owners[0][0] ELSE NULL END AS owner,
+        CASE WHEN has_single_owner THEN own_owners[0][1] ELSE NULL END AS rel_owner
 }
         """ % {"branch_filter": branch_filter_str}
         self.add_to_query(owner_query)
