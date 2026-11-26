@@ -10,6 +10,8 @@ pipeline; repository build and test workflows have separate concerns.
   background work when it shares the behavior being changed.
 - Trace the shared schema, API, execution, and UI paths before adding a type-specific path. Check
   whether inputs, result states, permissions, and lifecycle semantics support the same behavior.
+  When extending a shared GraphQL field, check its generic interface and concrete types together.
+  For opt-in flags, preserve existing behavior when the flag is omitted or false.
 - Implement common behavior at the shared layer when it fits. Keep type-specific behavior where
   its contract differs; shared presentation does not establish shared execution or retry semantics.
 - Record which cases benefit and why any remain excluded in the design or PR description. Test

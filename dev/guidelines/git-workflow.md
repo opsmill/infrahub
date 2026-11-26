@@ -152,6 +152,10 @@ Add changelog fragments to `changelog/` using Towncrier. Use the `creating-chang
 - Any notable implementation details
 - Testing performed
 
+Before resolving conflicts, fetch the PR's current target branch and verify that the local base
+ref matches the remote tip. A limited fetch configuration can leave a remote-tracking ref stale.
+After pushing, recheck GitHub's mergeability for the current PR head.
+
 **Scope to match the change.** A trivial, code-only fix with no behavior change ships as just the
 code diff — no spec-kit design record (`dev/specs/<feature>/`, see
 [Repository Organization](repository-organization.md)), no changelog fragment (see the
