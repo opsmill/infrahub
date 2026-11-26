@@ -36,6 +36,7 @@ from graphql.language.ast import (
     ValueNode,
     VariableNode,
 )
+from infrahub_sdk.analyzer import GraphQLOperation as SdkGraphQLOperation
 from infrahub_sdk.analyzer import GraphQLQueryAnalyzer
 from infrahub_sdk.utils import extract_fields
 
@@ -794,11 +795,49 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
     def operation_names(self) -> list[str]:
         return [operation.name for operation in self.operations if operation.name is not None]
 
+    @property
+    def operations(self) -> list[SdkGraphQLOperation]:
+        """The top-level operation fields, resolved through inline fragments and fragment spreads.
+
+        graphql-core executes a field written as ``... on Mutation { field }`` or pulled in by a
+        fragment spread at the top of an operation, so a classifier that reads only the direct
+        field children of an operation would miss it and let a hidden mutation past the permission
+        checkers that key off ``contains_mutation`` and ``operation_names``.
+        """
+        operations: list[SdkGraphQLOperation] = []
+        for definition in self._operation_definitions:
+            for field_node in self._iter_operation_fields(selection_set=definition.selection_set):
+                operations.append(SdkGraphQLOperation(operation_type=definition.operation, name=field_node.name.value))
+        return operations
+
+    def _iter_operation_fields(
+        self, selection_set: SelectionSetNode, seen_fragments: frozenset[str] = frozenset()
+    ) -> Iterator[FieldNode]:
+        """Yield the field nodes of a selection set, descending into inline fragments and fragment spreads."""
+        for selection in selection_set.selections:
+            if isinstance(selection, FieldNode):
+                yield selection
+            elif isinstance(selection, InlineFragmentNode):
+                yield from self._iter_operation_fields(
+                    selection_set=selection.selection_set, seen_fragments=seen_fragments
+                )
+            elif isinstance(selection, FragmentSpreadNode) and selection.name.value not in seen_fragments:
+                fragment = self._fragment_definition_by_name.get(selection.name.value)
+                if fragment is not None:
+                    yield from self._iter_operation_fields(
+                        selection_set=fragment.selection_set,
+                        seen_fragments=seen_fragments | {selection.name.value},
+                    )
+
     @cached_property
     def _fragment_definitions(self) -> list[FragmentDefinitionNode]:
         return [
             definition for definition in self.document.definitions if isinstance(definition, FragmentDefinitionNode)
         ]
+
+    @cached_property
+    def _fragment_definition_by_name(self) -> dict[str, FragmentDefinitionNode]:
+        return {definition.name.value: definition for definition in self._fragment_definitions}
 
     @cached_property
     def _operation_definitions(self) -> list[OperationDefinitionNode]:
@@ -865,9 +904,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
     def _get_operations(self) -> list[GraphQLQueryNode]:
         operations: list[GraphQLQueryNode] = []
         for operation_definition in self._operation_definitions:
-            selections = self._get_selections(selection_set=operation_definition.selection_set)
-
-            for field_node in selections.field_nodes:
+            for field_node in self._iter_operation_fields(selection_set=operation_definition.selection_set):
                 schema_model: MainSchemaTypes
                 infrahub_node_models: list[MainSchemaTypes] = []
                 model_name = self._get_model_name(node=field_node, operation_definition=operation_definition)

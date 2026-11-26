@@ -315,7 +315,7 @@ class InfrahubGraphQLApp:
             "type": "mutation" if query.contains_mutation else "query",
             "branch": branch.name,
             "operation": query.operation_name if query.operation_name is not None else "",
-            "name": query.operations[0].name,
+            "name": query.operations[0].name if query.operations else "",
             "query_id": "",
         }
 
