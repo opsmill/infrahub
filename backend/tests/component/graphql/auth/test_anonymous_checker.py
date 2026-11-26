@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from unittest.mock import AsyncMock, MagicMock
 
@@ -99,9 +100,19 @@ HIDDEN_MUTATION_CASES = [
         query='mutation { ... on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } } }',
     ),
     HiddenMutationCase(
+        name="single_operation_inline_fragment_without_type_condition",
+        query='mutation { ... { TestPersonCreate(data: {name: {value: "x"}}) { ok } } }',
+    ),
+    HiddenMutationCase(
         name="single_operation_fragment_spread",
         query="mutation { ...Hidden }"
         ' fragment Hidden on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } }',
+    ),
+    HiddenMutationCase(
+        name="multi_operation_nested_fragment_spread",
+        query="query A { __typename } mutation B { ...Outer }"
+        " fragment Outer on Mutation { ...Inner }"
+        ' fragment Inner on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } }',
     ),
     HiddenMutationCase(
         name="multi_operation_inline_fragment",
@@ -120,11 +131,28 @@ HIDDEN_MUTATION_CASES = [
 ]
 
 
+@pytest.fixture
+async def build_analyzer(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot
+) -> Callable[[str], InfrahubGraphQLQueryAnalyzer]:
+    """Return a factory that builds an analyzer for a query against the car/person schema."""
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    def _build(query: str) -> InfrahubGraphQLQueryAnalyzer:
+        return InfrahubGraphQLQueryAnalyzer(
+            query=query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+        )
+
+    return _build
+
+
 @pytest.mark.parametrize("case", HIDDEN_MUTATION_CASES, ids=lambda case: case.name)
 async def test_anonymous_checker_rejects_mutation_hidden_in_fragment(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_person_schema_generics: SchemaRoot,
+    build_analyzer: Callable[[str], InfrahubGraphQLQueryAnalyzer],
     case: HiddenMutationCase,
 ) -> None:
     """An anonymous caller cannot slip a mutation past the checker by wrapping it in a fragment.
@@ -132,36 +160,28 @@ async def test_anonymous_checker_rejects_mutation_hidden_in_fragment(
     The checker is driven by a real analyzer here, so this exercises the whole analyzer-to-checker
     seam rather than a mocked value.
     """
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     checker = AnonymousGraphQLPermissionChecker(
         anonymous_access_allowed_func=lambda: True,
         operations_requiring_authentication=QUERIES_REQUIRING_AUTHENTICATION,
     )
     account_session = AccountSession(account_id="anonymous", auth_type=AuthType.JWT, authenticated=False)
+    query_parameters = MagicMock(spec=GraphqlParams)
 
-    exploit = InfrahubGraphQLQueryAnalyzer(
-        query=case.query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
-    )
     with pytest.raises(AuthorizationError):
         await checker.check(
             db=db,
             account_session=account_session,
-            analyzed_query=exploit,
-            query_parameters=MagicMock(spec=GraphqlParams),
+            analyzed_query=build_analyzer(case.query),
+            query_parameters=query_parameters,
             branch=default_branch,
         )
 
     # Control: a genuine anonymous read is still allowed, so the rejection above is specific to the
     # hidden mutation and not a blanket refusal.
-    control = InfrahubGraphQLQueryAnalyzer(
-        query="query A { __typename }", schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
-    )
     await checker.check(
         db=db,
         account_session=account_session,
-        analyzed_query=control,
-        query_parameters=MagicMock(spec=GraphqlParams),
+        analyzed_query=build_analyzer("query A { __typename }"),
+        query_parameters=query_parameters,
         branch=default_branch,
     )
