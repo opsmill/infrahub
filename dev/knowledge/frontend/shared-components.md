@@ -35,6 +35,7 @@ The dependency rule still applies: `app → pages → entities → shared`. Cros
 | Need | Use | Location |
 |------|-----|----------|
 | Combobox (single value) | `Combobox` | `shared/components/ui/combobox.tsx` |
+| "Load more" option that fetches the next page at the end of a paginated `Combobox` or `Command` list | `ComboboxLoadMoreItem` — pass the infinite query's state as `hasNextPage={hasNextPage}`, `isFetchingNextPage={isFetchingNextPage}` and `onLoadMore={fetchNextPage}`. A react-aria `ListBox` uses `ListBoxLoadMoreItem` from `@infrahub/ui` instead | `shared/components/ui/combobox.tsx` |
 | Command palette pattern | `Command` | `shared/components/ui/command.tsx` |
 | Dropdown menu | `Menu`, `MenuTrigger` | `@infrahub/ui` |
 | Date picker | `DatePicker` | `shared/components/inputs/date-picker.tsx` |

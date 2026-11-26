@@ -11,6 +11,7 @@ import {
   ComboboxEmpty,
   ComboboxItem,
   ComboboxList,
+  ComboboxLoadMoreItem,
 } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
@@ -156,16 +157,11 @@ export const PermissionComboboxList = ({ ref, value, onSelect }: RelationshipCom
         </>
       )}
 
-      {hasNextPage && (
-        <ComboboxItem
-          value="Load more"
-          onSelect={() => fetchNextPage()}
-          disabled={!hasNextPage || isFetchingNextPage}
-          className="justify-center text-custom-blue-700"
-        >
-          {isFetchingNextPage ? "Loading more..." : "Load more"}
-        </ComboboxItem>
-      )}
+      <ComboboxLoadMoreItem
+        hasNextPage={hasNextPage}
+        isFetchingNextPage={isFetchingNextPage}
+        onLoadMore={fetchNextPage}
+      />
     </ComboboxList>
   );
 };

@@ -1,0 +1,1 @@
+Fixed the low-contrast dark blue "Load more" option in dark mode in object form fields that select a hierarchical node and in the permissions selector of the account role form; it now uses the same accent color as other selectors.
