@@ -413,11 +413,13 @@ sets the branch back to `syncing` after the first one set it to `in-sync`.
   without the mark a clone that takes the lock in between reads the new commit next to the earlier
   status, `unknown` for a new repository, and imports it too.
 - **Check before the flow's own write.** Both flows clone without recording and record the commit
-  after the check. For the seed import this holds for a re-cloned copy and for the fallback clone after
-  a failed `init()`.
+  after the check. For both flows this holds for a re-cloned copy and for the fallback clone after a
+  failed `init()`.
 - **Keep a copy that this worker holds already.** The add flow reuses a usable copy instead of cloning
   over it, because the seed import that cloned it may still read its files and would then import too
-  few objects or fail after the add flow skipped.
+  few objects or fail after the add flow skipped. A copy that fails validation, left by a clone that
+  stopped before it created the worktree of its commit, is cloned over again, as in the seed import,
+  because the add flow cannot import from it.
 - **Send the commit event from a seed import of a first commit.** The add flow skips a commit the seed
   imported, so a seed import that records the first commit of a repository sends `CommitUpdatedEvent`
   itself once it succeeds (`InfrahubRepositoryIntegrator.announce_commit_update`).

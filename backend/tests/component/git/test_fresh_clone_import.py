@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -401,6 +402,38 @@ class TestFreshCloneImport(TestInfrahubApp):
         assert added.import_error is None
         assert in_the_copy.exists()
         assert await recorded_state(client=client, node=node) == (head, RepositorySyncStatus.SYNCING.value)
+
+    async def test_the_add_flow_clones_again_over_a_copy_that_cannot_be_opened(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """A clone on this worker can stop after it created the copy's directories and before its commit worktree."""
+        name = "broken-copy-on-this-worker"
+        remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=[])
+        head = remote.commit(branch_name=TRUNK, files=CONFIG_FILES)
+        node = await create_node(db=db, remote=remote, name=name)
+        cloned = await InfrahubRepository.init(
+            id=node.id, name=name, location=str(remote.directory), client=client, infrahub_branch_name=TRUNK
+        )
+        shutil.rmtree(cloned.directory_commits / head)
+        with pytest.raises(RepositoryError, match=rf"^The directory for the main commit is missing for {name}$"):
+            await InfrahubRepository.init(
+                id=node.id, name=name, location=str(remote.directory), client=client, infrahub_branch_name=TRUNK
+            )
+        adder = RepositoryAdder(lock_registry=lock.registry, importer=RepositoryFileImporter(), client=client)
+        cache = RecordingCache()
+
+        async with activity_run(repository_id=node.id, operation=RepositoryActivityOperation.ADD, cache=cache) as run:
+            added = await adder.add(add_model(node=node, name=name, remote=remote), activity=run)
+
+        assert added.import_error is None
+        assert (added.repository.directory_commits / head).is_dir()
+        assert run_record_writes(cache=cache, repository_id=node.id) == ONE_IMPORT
+        assert await recorded_state(client=client, node=node) == (head, RepositorySyncStatus.IN_SYNC.value)
 
     async def test_the_add_flow_marks_the_branch_syncing_before_it_releases_the_lock(
         self,

@@ -253,13 +253,28 @@ class RepositoryAdder:
         async with self._lock_registry.get(name=model.repository_name, namespace="repository"):
             await activity.set_phase(phase=RepositoryActivityPhase.FETCHING)
             # A copy that another flow on this worker cloned is kept, because that flow's import may still read it.
-            repo = await InfrahubRepository.init(
-                id=model.repository_id,
-                name=model.repository_name,
-                location=model.location,
-                client=self._client,
-                infrahub_branch_name=model.infrahub_branch_name,
-            )
+            try:
+                repo = await InfrahubRepository.init(
+                    id=model.repository_id,
+                    name=model.repository_name,
+                    location=model.location,
+                    client=self._client,
+                    infrahub_branch_name=model.infrahub_branch_name,
+                )
+            except RepositoryError as exc:
+                log.warning(
+                    f"Cloning repository {model.repository_name} again, because its local copy could not be "
+                    f"initialized: {exc.message}"
+                )
+                repo = await InfrahubRepository.new(
+                    id=model.repository_id,
+                    name=model.repository_name,
+                    location=model.location,
+                    client=self._client,
+                    infrahub_branch_name=model.infrahub_branch_name,
+                    # Recorded below, once the graph is known not to hold or import the commit already.
+                    update_commit_value=False,
+                )
             # The repository is new, so its imports send their commit events, unlike those of a re-cloned copy.
             repo.reinitialized = False
             default_commit = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
