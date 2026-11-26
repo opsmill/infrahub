@@ -1,0 +1,23 @@
+frontend/app/src/entities/branches/ui/hooks/use-refresh-branch-git-status-on-task-end.test.ts
+  s_49a598f6f7d7da::t_59bb6109267d13 10,18,21-23,68-79
+frontend/app/src/entities/branches/ui/hooks/use-refresh-branch-git-status-on-task-end.ts
+  s_49a598f6f7d7da::t_ef43d8b1417a4e 6,9,17
+changelog/+refresh-branch-list-after-merge-task.fixed.md
+  s_49a598f6f7d7da::t_673483a2fb22e6 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f6b6635e0ae78fd69461fd6da88d43ba720e5834",
+  "prompts": {},
+  "sessions": {
+    "s_49a598f6f7d7da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44888993-5569-4e01-921a-27a12292b06e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
