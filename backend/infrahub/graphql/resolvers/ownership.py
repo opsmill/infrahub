@@ -30,6 +30,9 @@ if TYPE_CHECKING:
     from infrahub.graphql.initialization import GraphqlContext
 
 
+MetadataNodeValue = str | tuple[str, ...] | bool | None
+
+
 class NodeOwnershipLoader(DataLoader[str, ResolvedOwnership | None]):
     """Load the owners that apply to the nodes that the fields of one request ask for, with one batch."""
 
@@ -235,9 +238,25 @@ class OwnershipGraphqlResolver:
         """
         return await self._metadata_node_loader(context=context, branch=branch).load_many(node_ids)
 
-    async def resolve_metadata_node_field(self, parent: dict[str, Any], info: GraphQLResolveInfo) -> Any:
+    async def resolve_metadata_node_field(self, parent: dict[str, Any], info: GraphQLResolveInfo) -> MetadataNodeValue:
+        """Resolve one field of a node that metadata refers to.
+
+        Raises:
+            ValueError: When the field is not a field that the reference of the node holds.
+
+        """
         reference = await self._metadata_node_loader(context=info.context).load(parent["id"])
-        return getattr(reference, info.field_name)
+        match info.field_name:
+            case "kind":
+                return reference.kind
+            case "display_label":
+                return reference.display_label
+            case "hfid":
+                return reference.hfid
+            case "is_deleted":
+                return reference.is_deleted
+            case _:
+                raise ValueError(f"A node that metadata refers to has no field {info.field_name}")
 
 
 @retry_db_transaction(name="ownership_resolver")
@@ -269,6 +288,6 @@ async def target_field_ownership_resolver(
 
 
 @retry_db_transaction(name="metadata_node_resolver")
-async def metadata_node_resolver(parent: dict[str, Any], info: GraphQLResolveInfo) -> Any:
+async def metadata_node_resolver(parent: dict[str, Any], info: GraphQLResolveInfo) -> MetadataNodeValue:
     graphql_context: GraphqlContext = info.context
     return await graphql_context.ownership_resolver.resolve_metadata_node_field(parent=parent, info=info)
