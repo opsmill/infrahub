@@ -226,11 +226,11 @@ class ManyRelationshipResolver:
                     fields=node_fields,
                     related_node_ids=graphql_context.related_node_ids,
                 )
-                # The owners of the field apply to each of its links.
+                # The owners of the field apply to each of its links, and a descendant holds its own links.
                 entry: dict[str, Any] = {
                     "node": {},
                     "properties": {},
-                    "ownership": response["ownership"],
+                    "ownership": response["ownership"] and {**response["ownership"], "node_id": rel.node_id},
                 }
                 for key, mapped in RELATIONS_PROPERTY_MAP_REVERSED.items():
                     value = node.pop(key, None)

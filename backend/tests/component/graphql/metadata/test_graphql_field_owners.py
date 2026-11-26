@@ -12,6 +12,7 @@ from tests.helpers.ownership import add_node, create, create_groups, from_node, 
 if TYPE_CHECKING:
     from infrahub.auth.session import AccountSession
     from infrahub.core.branch import Branch
+    from infrahub.core.node import Node
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
@@ -301,3 +302,50 @@ class TestFieldOwners:
                 },
             }
         }
+
+
+READ_THINGS_WITH_DESCENDANTS = """
+query($name: String!) {
+    LocationRegion(name__value: $name) {
+        edges { node { things(include_descendants: true) { edges { %(ownership)s node { name { value } } } } } }
+    }
+}
+""" % {"ownership": OWNERSHIP}
+
+
+async def test_links_of_descendants_give_the_owners_of_the_field_of_the_node_that_holds_them(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_thing: dict[str, Node]
+) -> None:
+    groups = await create_groups(db=db, names=GROUP_NAMES)
+    europe_id = hierarchical_location_data_thing["europe"].id
+    paris_id = hierarchical_location_data_thing["paris"].id
+    for kind, node_id, group in (
+        ("LocationRegion", europe_id, "server-team"),
+        ("LocationSite", paris_id, "network-team"),
+    ):
+        await run(
+            db=db,
+            branch=default_branch,
+            query="""
+            mutation($id: String!, $field_owners: [FieldOwnersInput!]) {
+                %sUpdate(data: {id: $id, node_metadata: {field_owners: $field_owners}}) { ok }
+            }
+            """
+            % kind,
+            variables={"id": node_id, "field_owners": [{"field": "things", "owners": [{"id": groups[group]}]}]},
+        )
+
+    data = await run(db=db, branch=default_branch, query=READ_THINGS_WITH_DESCENDANTS, variables={"name": "europe"})
+
+    edges = data["LocationRegion"]["edges"][0]["node"]["things"]["edges"]
+    no_owner_anywhere = {"state": "INHERIT", "origin": None, "origin_node": None, "owners": []}
+    ownership_by_thing = {edge["node"]["name"]["value"]: edge["ownership"] for edge in edges}
+    assert ownership_by_thing == {
+        "thing-europe": own(europe_id, groups["server-team"]),
+        "thing-paris": own(paris_id, groups["network-team"]),
+        "thing-london": no_owner_anywhere,
+        "thing-paris-r1": no_owner_anywhere,
+        "thing-paris-r2": no_owner_anywhere,
+        "thing-london-r1": no_owner_anywhere,
+        "thing-london-r2": no_owner_anywhere,
+    }
