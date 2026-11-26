@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { userEvent } from "vitest/browser";
 
 import { store } from "@/shared/stores";
 
@@ -273,6 +274,30 @@ describe("ObjectRelationshipRow", () => {
       const linkTwo = component.getByRole("link", { name: "Tag Two" });
       await expect.element(linkTwo).toBeVisible();
       await expect.element(linkTwo).toHaveAttribute("href", "/objects/TestPeer/tag-2");
+    });
+
+    it("shows only the metadata icon of the hovered related node", async () => {
+      // GIVEN
+      const component = await render(
+        <ObjectRelationshipRow
+          relationshipSchema={relationshipSchemaMany}
+          relationshipData={relationshipDataWithEdges}
+          permission={allowedPermission}
+          objectKind="TestDevice"
+        />
+      );
+      const item = component.getByRole("link", { name: "Tag One" }).element().parentElement;
+      if (!item) throw new Error("Missing related node item");
+      const icons = component.container.querySelectorAll(
+        '[data-testid="view-metadata-button"] iconify-icon'
+      );
+      const opacities = () => Array.from(icons, (icon) => getComputedStyle(icon).opacity);
+
+      // WHEN
+      await userEvent.hover(item, { position: { x: item.clientWidth - 5, y: 5 } });
+
+      // THEN
+      await expect.poll(opacities).toEqual(["1", "0"]);
     });
   });
 });
