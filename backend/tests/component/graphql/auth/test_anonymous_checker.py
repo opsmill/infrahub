@@ -1,5 +1,4 @@
 from collections.abc import Callable
-from dataclasses import dataclass
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -7,14 +6,13 @@ import pytest
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.core.branch import Branch
-from infrahub.core.registry import registry
-from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import AuthorizationError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.anonymous_checker import AnonymousGraphQLPermissionChecker
-from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
+from infrahub.graphql.initialization import GraphqlParams
 from infrahub.graphql.schema import QUERIES_REQUIRING_AUTHENTICATION
+from tests.component.graphql.hidden_mutation_cases import HIDDEN_MUTATION_CASES, HiddenMutationCase
 
 
 class TestAnonymousAuthChecker:
@@ -86,66 +84,6 @@ class TestAnonymousAuthChecker:
             query_parameters=self.query_parameters,
             branch=branch,
         )
-
-
-@dataclass
-class HiddenMutationCase:
-    name: str
-    query: str
-
-
-HIDDEN_MUTATION_CASES = [
-    HiddenMutationCase(
-        name="single_operation_inline_fragment",
-        query='mutation { ... on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } } }',
-    ),
-    HiddenMutationCase(
-        name="single_operation_inline_fragment_without_type_condition",
-        query='mutation { ... { TestPersonCreate(data: {name: {value: "x"}}) { ok } } }',
-    ),
-    HiddenMutationCase(
-        name="single_operation_fragment_spread",
-        query="mutation { ...Hidden }"
-        ' fragment Hidden on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } }',
-    ),
-    HiddenMutationCase(
-        name="multi_operation_nested_fragment_spread",
-        query="query A { __typename } mutation B { ...Outer }"
-        " fragment Outer on Mutation { ...Inner }"
-        ' fragment Inner on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } }',
-    ),
-    HiddenMutationCase(
-        name="multi_operation_inline_fragment",
-        query="query A { __typename }"
-        ' mutation B { ... on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } } }',
-    ),
-    HiddenMutationCase(
-        name="multi_operation_inline_fragment_without_type_condition",
-        query='query A { __typename } mutation B { ... { TestPersonCreate(data: {name: {value: "x"}}) { ok } } }',
-    ),
-    HiddenMutationCase(
-        name="multi_operation_fragment_spread",
-        query="query A { __typename } mutation B { ...Hidden }"
-        ' fragment Hidden on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } }',
-    ),
-]
-
-
-@pytest.fixture
-async def build_analyzer(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot
-) -> Callable[[str], InfrahubGraphQLQueryAnalyzer]:
-    """Return a factory that builds an analyzer for a query against the car/person schema."""
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
-
-    def _build(query: str) -> InfrahubGraphQLQueryAnalyzer:
-        return InfrahubGraphQLQueryAnalyzer(
-            query=query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
-        )
-
-    return _build
 
 
 @pytest.fixture

@@ -13,6 +13,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.analyzer import GraphQLVariable, InfrahubGraphQLQueryAnalyzer, MutateAction
 from infrahub.graphql.initialization import prepare_graphql_params
+from tests.component.graphql.hidden_mutation_cases import HIDDEN_MUTATION_CASES, HiddenMutationCase
 from tests.helpers.schema.color import COLOR
 from tests.helpers.schema.tshirt import TSHIRT
 
@@ -1191,67 +1192,6 @@ async def test_query_report_single_target_complex_constraints(
     assert analyze(hfid_optional).query_report.only_has_unique_targets is False
 
 
-@pytest.fixture
-async def build_analyzer(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics: SchemaRoot
-) -> Callable[[str], InfrahubGraphQLQueryAnalyzer]:
-    """Return a factory that builds an analyzer for a query against the car/person schema."""
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
-
-    def _build(query: str) -> InfrahubGraphQLQueryAnalyzer:
-        return InfrahubGraphQLQueryAnalyzer(
-            query=query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
-        )
-
-    return _build
-
-
-@dataclass
-class HiddenMutationCase:
-    name: str
-    query: str
-
-
-HIDDEN_MUTATION_CASES = [
-    HiddenMutationCase(
-        name="single_operation_inline_fragment",
-        query='mutation { ... on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } } }',
-    ),
-    HiddenMutationCase(
-        name="single_operation_inline_fragment_without_type_condition",
-        query='mutation { ... { TestPersonCreate(data: {name: {value: "x"}}) { ok } } }',
-    ),
-    HiddenMutationCase(
-        name="single_operation_fragment_spread",
-        query="mutation { ...Hidden }"
-        ' fragment Hidden on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } }',
-    ),
-    HiddenMutationCase(
-        name="multi_operation_inline_fragment",
-        query="query Harmless { __typename }"
-        ' mutation Hidden { ... on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } } }',
-    ),
-    HiddenMutationCase(
-        name="multi_operation_inline_fragment_without_type_condition",
-        query="query Harmless { __typename }"
-        ' mutation Hidden { ... { TestPersonCreate(data: {name: {value: "x"}}) { ok } } }',
-    ),
-    HiddenMutationCase(
-        name="multi_operation_fragment_spread",
-        query="query Harmless { __typename } mutation Hidden { ...HiddenMutation }"
-        ' fragment HiddenMutation on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } }',
-    ),
-    HiddenMutationCase(
-        name="multi_operation_nested_fragment_spread",
-        query="query Harmless { __typename } mutation Hidden { ...Outer }"
-        " fragment Outer on Mutation { ...Inner }"
-        ' fragment Inner on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } }',
-    ),
-]
-
-
 @pytest.mark.parametrize("case", HIDDEN_MUTATION_CASES, ids=lambda case: case.name)
 async def test_mutation_hidden_in_fragment_is_reported(
     build_analyzer: Callable[[str], InfrahubGraphQLQueryAnalyzer], case: HiddenMutationCase
@@ -1283,3 +1223,17 @@ async def test_operations_resolution_stops_on_self_referential_fragment(
 
     assert gqa.operations == []
     assert gqa.contains_mutation is False
+
+
+async def test_operations_do_not_repeat_a_diamond_fragment(
+    build_analyzer: Callable[[str], InfrahubGraphQLQueryAnalyzer],
+) -> None:
+    """A fragment reached through two spreads contributes its field once, matching what executes."""
+    gqa = build_analyzer(
+        "mutation { ...A ...B }"
+        " fragment A on Mutation { ...Shared }"
+        " fragment B on Mutation { ...Shared }"
+        ' fragment Shared on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } }'
+    )
+
+    assert gqa.operation_names == ["TestPersonCreate"]
