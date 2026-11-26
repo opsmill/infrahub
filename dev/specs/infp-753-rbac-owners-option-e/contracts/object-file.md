@@ -17,7 +17,7 @@ Decision of 2026-11-16 ([provisional-decisions.md](../provisional-decisions.md),
 - `sources` left out: no change. `null` and `[]`: no sources.
 - A plain name is an account group.
 - An account, or a source of another kind, uses the typed form `{kind, name}`.
-- Infrahub refuses a plain name that matches both an account and an account group.
+- A plain name cannot match an account, because the SDK sends it with the kind of an account group (see [What the Python SDK sends](#what-the-python-sdk-sends)).
 
 ## Field owners
 
@@ -51,10 +51,12 @@ Decision of 2026-11-16 ([provisional-decisions.md](../provisional-decisions.md),
 Decisions of the implementation (tasks T139 and T140):
 
 - The SDK sends the keys inside the `data` input of the upsert mutation of each node, as `node_metadata`.
-- A plain name goes as `{name: "dc-emea"}`. The typed form goes as `{kind: "CoreAccount", name: "jdoe"}`. Infrahub resolves both.
+- Each owner and each source goes as `{kind, name}`. Infrahub refuses a name without a kind (decision of 2026-11-26).
+  - A plain name is an account group, so it goes as `{kind: "CoreAccountGroup", name: "dc-emea"}`.
+  - The typed form goes as `{kind: "CoreAccount", name: "jdoe"}`.
   - `MetadataNodeInput` of the GraphQL contract got the field `name` for this: `name: String`, next to `id`, `hfid` and `kind`.
-  - With a kind, the name is the HFID of the node. This works for a kind whose HFID has one value.
-  - Without a kind, the name is the name of an account group. Infrahub refuses it when an account has the same name.
+  - The name is the HFID of the node. This works for a kind whose HFID has one value.
+  - Before this decision, this contract said that the SDK sends a plain name as `{name: "dc-emea"}`. The SDK change of task T139 must send the kind instead.
 - The owners of a field go as `node_metadata.field_owners`. On a profile or an object template, they go as `node_metadata.target_field_owners`.
 - A field that has only `owners` sends no value and no peers.
 - The SDK refuses these files before the load:

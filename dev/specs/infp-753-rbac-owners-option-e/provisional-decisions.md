@@ -128,3 +128,17 @@ Guillaume Mazoyer, maintainer, made these decisions on 2026-11-26, before pull r
   - The origin node does not change: it is the node of the field.
 - Task T031 is dropped. Two tests of `backend/tests/component/core/ownership/test_owner_sets.py` already run two first writes of owners in two open transactions on one node. Task T021 was closed on 2026-11-20 for the same reason.
 - No test asserts a count of database queries (decision of 2026-11-18, commit `259305a5c8`). Tasks T044 and T106 follow this rule: the benchmarks of T061 measure FR-009.
+- An owner or a source given by `name` must also give `kind`. Infrahub refuses `{name}` without `kind`, and the error says to give the kind. `{kind, name}`, `{id}` and `{kind, hfid}` do not change.
+  - Reason: not recorded with the decision. Before, a name without a kind was read as an account group, and refused only when an account had the same name. The object file loader of the SDK must send a plain name with the kind of an account group.
+- A `field_owners` or `target_field_owners` entry that leaves out `owners` changes nothing. `owners: null` still gives inherit, and `[]` gives no owner.
+  - Reason: not recorded with the decision. Before, an entry without `owners` was read like `owners: null` and set the field to inherit. A key left out at the node level already changes nothing (D-5).
+- `target_field_ownership(fields: [...])` refuses a name that is not an attribute or a relationship of the nodes, with an error that names the field.
+  - Reason: not recorded with the decision. Before, the query skipped the name and gave no error. The `field_owners` input already refused an unknown field name.
+- When one attribute input gives both `owner` and `owners`, `owners` is written and `owner` is ignored. The owners are written once.
+  - Reason: the save wrote `owner` and then `owners`, so the owners changed twice and the changelog showed the ignored owner (commit `b0ee2e28e4`).
+- `ownership` is null on `ancestors` and `descendants`.
+  - Reason: these fields share their types with `children`, but they are not relationships and have no owners. Separate types would add GraphQL types for each hierarchy (commit `cb2ee07f8b`).
+- Decisions of pull request 1 on the same day:
+  - The deprecated `owner` gives null for an owner that an object template copied. Reason: the owner code reads a copy as inherit, not as an own owner (commit `fb920e333d`).
+  - The label of a deleted owner stays "deleted owner". Reason: an owner can be an account or an account group, so "deleted group" was not correct (commit `21927113bc`).
+  - The test of a create from a template no longer asserts a count of owner reads. Reason: a count of queries fails when the query plan changes for a good reason (commit `1afb9166a7`).
