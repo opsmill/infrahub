@@ -165,6 +165,88 @@ uv run pytest backend/tests/query_benchmark/ownership/test_no_owner_overhead.py 
 - In each round, the median of the head minus the median of `develop` is between 3.61 ms less and 0.70 ms more. The medians of one code differ by up to 4.31 ms between runs (the update on the head). So the run shows no added time, and it cannot show a difference smaller than this noise.
 - No query count was measured.
 
+## Pull request 2: cost for a customer with no owners (2026-11-26)
+
+This section compares the code of pull request 2 with the code of pull request 1 alone, for a customer who has no owners (FR-009, SC-001 and SC-002, task T044).
+
+- The runs show no added time that is larger than the change between two runs on this machine. Eight of the ten operations differ by 5.0% or less.
+- The object file load takes 10.3% more time on the head, and the delete of one interface takes 8.9% less. The code check below finds no owner query in these two operations when the input gives no owners.
+- The code check finds that a query that does not ask for an owner field or a source field, and uses no owner filter or source filter, reads no owners and no sources.
+- Each value is the median of one run. So a difference of a few percent is not significant.
+
+### Runs and data set
+
+- Head: the code of pull request 2. The backend code has no change after commit `3bf19c4c1b`.
+  - Run: 2026-11-26, from 12:36:27 to 13:20:40 UTC. Result of the test runner: `4 passed, 1 warning in 2653.39s (0:44:13)`.
+- Base: commit `0c44f461d3`, the start of pull request 2. It holds the code of pull request 1 only. Two runs on this commit give the ten rows:
+  - Object file load, delete of one device and generator run: 2026-11-26, from 14:06:38 to 14:50:32 UTC. Result of the test runner: `2 passed, 1 warning in 2623.79s (0:43:43)`.
+  - List queries and create, update and delete of one interface: 2026-11-26, from 14:58:30 to 15:29:36 UTC. Result of the test runner: `2 passed, 1 warning in 1859.79s (0:30:59)`.
+- Test: [test_no_owner_overhead.py](../../../backend/tests/query_benchmark/ownership/test_no_owner_overhead.py), the same file on the two commits. Each run loads the data set again.
+- Real size of the data set: 10,000 devices, 480,000 interfaces, 363 locations in a hierarchy 5 levels deep and 50 account groups. No node has an owner.
+- Each value is the median of 20 calls (list queries, create, update and delete of one interface) or of 5 calls (the other rows), in one run.
+- Each number comes from a run with no other test stack on the machine.
+  - The base runs: a check every 2 minutes found no other test stack. In the second base run, the same check found no other pytest process.
+  - The first base run loaded its data set while an E2E test stack ran, from 14:08:30 to 14:10:49 UTC. Its measured calls of the object file load and of the delete of one device (5 loads, and 5 deletes of about 155 seconds) ended at 14:49:47 UTC, so they started at about 14:36 UTC. The generator run printed its row at 14:50:22 UTC.
+  - The load average of the last minute was between 1.0 and 2.4 from 14:37 to 14:49 UTC in the first base run, and between 2.3 and 3.2 in the second base run.
+  - The head run: the logs of this work show no other test stack during the run.
+- Machine: the shared VM, 16 CPUs (AMD EPYC 9R45) and 61 GiB of memory. Database: Neo4j `2026.10.1-enterprise` in a test container. Python 3.12.13.
+
+### Results
+
+| Operation | Criterion | Runs | Median on the base | Median on the head | Difference |
+|---|---|---|---|---|---|
+| List query: first page of 50 devices, with the count | SC-001 | 20 | 1,104.1 ms | 1,130.4 ms | 2.4% more |
+| List query: first page of 50 interfaces, with the count | SC-001 | 20 | 2,136.8 ms | 2,095.6 ms | 1.9% less |
+| List query: the interfaces of one device (filter `device__ids`) | SC-001 | 20 | 23.9 ms | 25.0 ms | 4.6% more |
+| List query: one device by name (filter `name__value`) | SC-001 | 20 | 10.6 ms | 10.4 ms | 1.9% less |
+| Create one interface | SC-002 | 20 | 39.5 ms | 38.0 ms | 3.8% less |
+| Update the description of one interface | SC-002 | 20 | 26.7 ms | 26.6 ms | 0.4% less |
+| Delete one interface | SC-002 | 20 | 31.5 ms | 28.7 ms | 8.9% less |
+| Delete one device with 4 interfaces | SC-002 | 5 | 155,384.6 ms | 147,674.2 ms | 5.0% less |
+| Object file load: 10 devices with 4 interfaces each | SC-002 | 5 | 1,226.2 ms | 1,352.7 ms | 10.3% more |
+| Generator run: 1 target, 1 node written | SC-002 | 5 | 503.7 ms | 502.2 ms | 0.3% less |
+
+- The delete of one device takes more than 2 minutes on the two commits. It was slow before pull request 2. See "Limits of these numbers" of the "today" run.
+- The list queries take other times than in the tables of 2026-11-12. For example, the first page of devices took 73.9 ms then. The cause was not examined. This section compares only the runs of this section.
+
+### Code check: a query without owner fields and owner filters reads no owners (FR-009)
+
+All references are to the code of pull request 2.
+
+- graphql-core runs the resolver of a field only when the request selects that field. Each owner field and source field has its own resolver:
+  - `ownership`, `target_ownership`, `target_field_ownership` and `sources` of `node_metadata`: `backend/infrahub/graphql/manager.py:801-828`
+  - `ownership` of an attribute or a relationship: `backend/infrahub/graphql/manager.py:142-148`
+  - `kind`, `display_label`, `hfid` and `is_deleted` of an owner or a source: `backend/infrahub/graphql/types/ownership.py:16-19`. These fields exist only under the owner fields and the source fields above.
+- The node, the attribute and the relationship put only a reference into the response, with no database read:
+  - `backend/infrahub/core/node/__init__.py:1648` loops over the requested fields of `node_metadata` only. Lines 1667 to 1674 add the reference when the request asks for an owner field or a source field.
+  - `backend/infrahub/core/attribute.py:679` adds the reference only when the request asks for `ownership`.
+  - `backend/infrahub/graphql/resolvers/single_relationship.py:129` adds the reference only when the request asks for `ownership`.
+  - `backend/infrahub/graphql/resolvers/many_relationship.py:135-140` always adds the reference to the response. This is a dictionary. It reads nothing.
+- The resolvers return without a database read when the reference is missing: `backend/infrahub/graphql/resolvers/ownership.py:171-173`, `183-185`, `192-194` and `209-211`. The data loaders of that file read the database only for the keys that these resolvers give: lines 42-46, 61-65, 77-80 and 92-111.
+- The only other caller of these loaders is the event query. It reads the labels of owners only when an event holds a change of owners: `backend/infrahub/graphql/queries/event.py:57-81`.
+- The list query adds the owner filter and the source filter only when the request gives one:
+  - `backend/infrahub/core/query/node.py:2155` calls `has_owner_filter`, which is true only when `node_metadata__owners__ids` or `node_metadata__owners__isnull` has a value: `backend/infrahub/core/ownership/filter.py:16` and `20-21`.
+  - `backend/infrahub/core/query/node.py:2167` adds the source filter only when `node_metadata__sources__ids` has a value.
+  - `backend/infrahub/core/query/node.py:1994` and `backend/infrahub/core/query/node_get_list_filters.py:214` skip these filter names in the filters on fields. They add no Cypher.
+- Result: a query that does not ask for `ownership`, `target_ownership`, `target_field_ownership` or `sources`, and uses no owner filter or source filter, reaches no owner read and no source read.
+- Mutations, which the table also measures: a create, an update or an upsert whose input gives no owners and no sources reads and writes no owners.
+  - `backend/infrahub/core/ownership/input.py:139-179` reads the database only for an owner key or a source key of the input.
+  - `backend/infrahub/core/ownership/writer.py:155` returns before any query when the input gives no owner state.
+  - Pull request 2 does not change the delete mutation. The query that closes the owner edges of a deleted node comes from pull request 1, so the base and the head both run it.
+
+### How to run the measure again
+
+On each commit:
+
+```bash
+uv run pytest backend/tests/query_benchmark/ownership/test_no_owner_overhead.py -s -p no:cacheprovider --no-cov -q --session-timeout=10800
+```
+
+### Limits of these numbers
+
+- One run on each commit gives each value. It is not known how many runs give a stable comparison with a limit of 5%.
+- The base and the head ran at different times of the day, on a shared VM.
+
 ## Spike on the storage of option E (tasks T022 and T023)
 
 The spike measures SC-003 to SC-006, SC-009 and SC-010 of [spec.md](spec.md) with plain Cypher queries on the storage of this branch. It also measures the index on the branch of `HAS_NO_OWNER` and the lookup of an `OwnerSet` vertex.

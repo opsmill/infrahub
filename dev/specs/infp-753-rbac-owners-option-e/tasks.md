@@ -102,7 +102,8 @@ description: "Task list for owner and source metadata, Community side, storage o
   - The create mutations of IP addresses, IP prefixes and repositories do not call `mutate_create`, so they also apply the `node_metadata.owners` input, through the same function as `mutate_create`. Without this change, they ignore the input.
 - [X] T042 [US1] Close the owner edges of a node when the node is deleted in `backend/infrahub/core/node/__init__.py` (E-11)
 - [X] T043 [US1] Implement the owner filter and the "no owner" filter in backend/infrahub/core/ownership/filter.py, with the approach that the spike chose, and call it from `NodeGetListQuery` in backend/infrahub/core/query/node.py so that it applies before pagination (FR-018 to FR-020) (moved to pull request 2 on 2026-11-19: commit `f3b47495d9` removed the code from pull request 1, and T152 adds it back)
-- [ ] T044 [US1] Check that a query without owners in its fields or filters runs no owner query (FR-009). Since 2026-11-18, no test asserts a count of queries (commit `259305a5c8`): the benchmarks of T061 measure FR-009, and the pull request text gives their result
+- [X] T044 [US1] Check that a query without owners in its fields or filters runs no owner query (FR-009). Since 2026-11-18, no test asserts a count of queries (commit `259305a5c8`): the benchmarks of T061 measure FR-009, and the pull request text gives their result
+  - Done on 2026-11-26. The code check finds no owner read and no source read for such a query. On the reference data set, 8 of the 10 benchmark rows differ from pull request 1 by 5.0% or less, the object file load by 10.3% more and the delete of one interface by 8.9% less, with one run on each commit. See "Pull request 2: cost for a customer with no owners" in [measurements.md](measurements.md).
 - [X] T045 [US1] Write the diff query for owner edges with one pattern for each edge type in backend/infrahub/core/diff/query/ownership.py
 - [X] T046 [US1] Build one diff property for each holder, with the sorted list of owner IDs as value, in backend/infrahub/core/diff/ownership_differ.py, and the reserved field names in backend/infrahub/core/diff/ownership_fields.py (now in backend/infrahub/core/ownership/fields.py)
 - [X] T047 [US1] Call the owner differ from backend/infrahub/core/diff/calculator.py and backend/infrahub/core/diff/query_parser.py
@@ -370,7 +371,8 @@ description: "Task list for owner and source metadata, Community side, storage o
   - A rebase stops on a conflict of an owner list or a source list until both branches hold the same list.
 - [X] T150 Regenerate schema/schema.graphql, schema/openapi.json, the backend generated files and the frontend GraphQL types, and run `uv run invoke docs.validate`
   - Pull request 2 changed only `schema/schema.graphql` and the frontend GraphQL types. The backend generated files, `schema/openapi.json` and the reference docs had no change, and `uv run invoke docs.validate` passed.
-- [ ] T151 Run `uv run invoke format` and `uv run invoke lint`, then run the E2E tests of tests/e2e/ownership and the scenarios of dev/specs/infp-753-rbac-owners-option-e/quickstart.md on a local stack
+- [X] T151 Run `uv run invoke format` and `uv run invoke lint`, then run the E2E tests of tests/e2e/ownership and the scenarios of dev/specs/infp-753-rbac-owners-option-e/quickstart.md on a local stack
+  - Done on 2026-11-26 for pull request 2. Format and lint passed with no change. The E2E tests of tests/e2e/ownership gave `4 passed in 137.39s (0:02:17)`. The scenarios 1 to 6 of quickstart.md (user stories 1 to 5) passed, 6 of 6. A test file that is not committed ran the scenarios 1 to 5 on the E2E stack: `5 passed in 131.09s (0:02:11)`. The scenario 6 ran by hand: data with owners on release 1.12.3, then `infrahub db ownership-report` and `infrahub upgrade` with the image of pull request 2. The scenarios 7 and 8 (user stories 6 and 7) belong to pull request 3.
 
 ---
 
