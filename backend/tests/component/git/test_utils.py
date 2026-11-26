@@ -78,7 +78,7 @@ async def test_get_repositories_commit_per_branch_main(
         "repository_name": "repo01",
         "location": "location01",
         "branches": {"main": "commit01"},
-        "branch_info": {"main": {"internal_status": "inactive", "ref": None}},
+        "branch_info": {"main": {"internal_status": "inactive", "ref": None, "sync_status": "unknown"}},
     }
     assert repositories["repo02"].repository.id == repository_02.id
     assert repositories["repo02"].model_dump(exclude=["repository"]) == {
@@ -86,7 +86,7 @@ async def test_get_repositories_commit_per_branch_main(
         "repository_name": "repo02",
         "location": "location02",
         "branches": {"main": "commit02"},
-        "branch_info": {"main": {"internal_status": "inactive", "ref": "main"}},
+        "branch_info": {"main": {"internal_status": "inactive", "ref": "main", "sync_status": "unknown"}},
     }
 
 
@@ -131,9 +131,9 @@ async def test_get_repositories_commit_per_branch_branches(
             "main": "commit01",
         },
         "branch_info": {
-            "branch2": {"internal_status": "staging", "ref": None},
-            "branch3": {"internal_status": "inactive", "ref": None},
-            "main": {"internal_status": "inactive", "ref": None},
+            "branch2": {"internal_status": "staging", "ref": None, "sync_status": "unknown"},
+            "branch3": {"internal_status": "inactive", "ref": None, "sync_status": "unknown"},
+            "main": {"internal_status": "inactive", "ref": None, "sync_status": "unknown"},
         },
     }
     assert repositories["repo02"].repository.id == repository_02.id
@@ -147,9 +147,9 @@ async def test_get_repositories_commit_per_branch_branches(
             "main": "commit02",
         },
         "branch_info": {
-            "branch2": {"internal_status": "inactive", "ref": "main"},
-            "branch3": {"internal_status": "inactive", "ref": "main"},
-            "main": {"internal_status": "inactive", "ref": "main"},
+            "branch2": {"internal_status": "inactive", "ref": "main", "sync_status": "unknown"},
+            "branch3": {"internal_status": "inactive", "ref": "main", "sync_status": "unknown"},
+            "main": {"internal_status": "inactive", "ref": "main", "sync_status": "unknown"},
         },
     }
 
@@ -190,8 +190,8 @@ async def test_get_repositories_commit_per_branch_repository_created_on_a_branch
             "main": "commit-on-branch",
         },
         "branch_info": {
-            "branch-that-adds-a-repository": {"internal_status": "staging", "ref": None},
-            "main": {"internal_status": "inactive", "ref": None},
+            "branch-that-adds-a-repository": {"internal_status": "staging", "ref": None, "sync_status": "unknown"},
+            "main": {"internal_status": "inactive", "ref": None, "sync_status": "unknown"},
         },
     }
 
@@ -216,8 +216,8 @@ async def test_get_repositories_commit_per_branch_without_a_commit_on_a_branch(
             "main": "commit01",
         },
         "branch_info": {
-            "branch-without-commit": {"internal_status": "inactive", "ref": None},
-            "main": {"internal_status": "inactive", "ref": None},
+            "branch-without-commit": {"internal_status": "inactive", "ref": None, "sync_status": "unknown"},
+            "main": {"internal_status": "inactive", "ref": None, "sync_status": "unknown"},
         },
     }
 
