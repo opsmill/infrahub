@@ -270,7 +270,9 @@ stores them.
 The GraphQL `ownership` field of an attribute and of a relationship reads the owners of the field with one data
 loader for the request (`graphql/resolvers/ownership.py`). A relationship of cardinality many gives one reference
 for the field and its edges, so the owners are read once for the field. A relationship of cardinality one that asks
-only for `ownership` reads no peer.
+only for `ownership` reads no peer. The `ancestors` and `descendants` fields of a hierarchical node share their
+GraphQL types with `children`, but they are not relationships and have no owners, so their `ownership` is always
+null.
 
 - The walk stops after `MAX_INHERITANCE_DEPTH` parents. A node with more parents and no state below the limit
   gets no inherited owner.

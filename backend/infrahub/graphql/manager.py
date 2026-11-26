@@ -96,6 +96,10 @@ if TYPE_CHECKING:
 
 
 STATIC_EDGES_WITH_NODE_METADATA = (InfrahubBranchEdge, InfrahubRepositoryBranchStatusEdge)
+ATTRIBUTE_OWNERSHIP_DESCRIPTION = "Owners of this field of the node, own or inherited"
+RELATIONSHIP_OWNERSHIP_DESCRIPTION = (
+    "Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners"
+)
 """Statically defined edges whose `node_metadata` field must be repointed at the dynamic type."""
 
 
@@ -139,13 +143,8 @@ def get_attr_kind(node_schema: MainSchemaTypes, attr_schema: AttributeSchema) ->
     return get_enum_attribute_type_name(node_schema=node_schema, attr_schema=attr_schema)
 
 
-def field_ownership_field() -> graphene.Field:
-    return graphene.Field(
-        InfrahubOwnership,
-        required=False,
-        resolver=ownership_resolver,
-        description="Owners of this field of the node, own or inherited",
-    )
+def field_ownership_field(description: str = RELATIONSHIP_OWNERSHIP_DESCRIPTION) -> graphene.Field:
+    return graphene.Field(InfrahubOwnership, required=False, resolver=ownership_resolver, description=description)
 
 
 def build_edge_fields(
@@ -434,7 +433,7 @@ class GraphQLSchemaManager:
             gql_type._meta.fields["owner"] = graphene.Field(
                 data_owner, resolver=object_by_id_resolver, deprecation_reason=OWNER_DEPRECATION_REASON
             )
-            gql_type._meta.fields["ownership"] = field_ownership_field()
+            gql_type._meta.fields["ownership"] = field_ownership_field(description=ATTRIBUTE_OWNERSHIP_DESCRIPTION)
             gql_type._meta.fields["updated_by"] = graphene.Field(
                 account_type, required=False, resolver=account_metadata_resolver
             )

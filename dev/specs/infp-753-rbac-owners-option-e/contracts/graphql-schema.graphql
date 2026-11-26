@@ -59,6 +59,8 @@ type InfrahubFieldOwnership {
 #
 # Added to every attribute type and every relationship field type:
 #   ownership: InfrahubOwnership
+#   The `ancestors` and `descendants` fields of a hierarchical node share their types with `children`.
+#   They are not relationships, so their `ownership` is always null.
 #
 # Removed from the earlier drafts: `from_template`, and the `field_owners` output of `node_metadata`.
 

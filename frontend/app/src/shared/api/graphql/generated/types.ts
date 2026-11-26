@@ -22751,7 +22751,7 @@ export type NestedEdgedBuiltinIpAddress = {
   __typename: 'NestedEdgedBuiltinIPAddress';
   node: Maybe<BuiltinIpAddress>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22762,7 +22762,7 @@ export type NestedEdgedBuiltinIpNamespace = {
   __typename: 'NestedEdgedBuiltinIPNamespace';
   node: Maybe<BuiltinIpNamespace>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22773,7 +22773,7 @@ export type NestedEdgedBuiltinIpPrefix = {
   __typename: 'NestedEdgedBuiltinIPPrefix';
   node: Maybe<BuiltinIpPrefix>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22784,7 +22784,7 @@ export type NestedEdgedBuiltinTag = {
   __typename: 'NestedEdgedBuiltinTag';
   node: Maybe<BuiltinTag>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22795,7 +22795,7 @@ export type NestedEdgedCoreAccount = {
   __typename: 'NestedEdgedCoreAccount';
   node: Maybe<CoreAccount>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22806,7 +22806,7 @@ export type NestedEdgedCoreAccountGroup = {
   __typename: 'NestedEdgedCoreAccountGroup';
   node: Maybe<CoreAccountGroup>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22817,7 +22817,7 @@ export type NestedEdgedCoreAccountRole = {
   __typename: 'NestedEdgedCoreAccountRole';
   node: Maybe<CoreAccountRole>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22828,7 +22828,7 @@ export type NestedEdgedCoreAction = {
   __typename: 'NestedEdgedCoreAction';
   node: Maybe<CoreAction>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22839,7 +22839,7 @@ export type NestedEdgedCoreArtifact = {
   __typename: 'NestedEdgedCoreArtifact';
   node: Maybe<CoreArtifact>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22850,7 +22850,7 @@ export type NestedEdgedCoreArtifactCheck = {
   __typename: 'NestedEdgedCoreArtifactCheck';
   node: Maybe<CoreArtifactCheck>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22861,7 +22861,7 @@ export type NestedEdgedCoreArtifactDefinition = {
   __typename: 'NestedEdgedCoreArtifactDefinition';
   node: Maybe<CoreArtifactDefinition>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22872,7 +22872,7 @@ export type NestedEdgedCoreArtifactTarget = {
   __typename: 'NestedEdgedCoreArtifactTarget';
   node: Maybe<CoreArtifactTarget>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22883,7 +22883,7 @@ export type NestedEdgedCoreArtifactThread = {
   __typename: 'NestedEdgedCoreArtifactThread';
   node: Maybe<CoreArtifactThread>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22894,7 +22894,7 @@ export type NestedEdgedCoreArtifactValidator = {
   __typename: 'NestedEdgedCoreArtifactValidator';
   node: Maybe<CoreArtifactValidator>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22905,7 +22905,7 @@ export type NestedEdgedCoreBasePermission = {
   __typename: 'NestedEdgedCoreBasePermission';
   node: Maybe<CoreBasePermission>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22916,7 +22916,7 @@ export type NestedEdgedCoreChangeComment = {
   __typename: 'NestedEdgedCoreChangeComment';
   node: Maybe<CoreChangeComment>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22927,7 +22927,7 @@ export type NestedEdgedCoreChangeThread = {
   __typename: 'NestedEdgedCoreChangeThread';
   node: Maybe<CoreChangeThread>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22938,7 +22938,7 @@ export type NestedEdgedCoreCheck = {
   __typename: 'NestedEdgedCoreCheck';
   node: Maybe<CoreCheck>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22949,7 +22949,7 @@ export type NestedEdgedCoreCheckDefinition = {
   __typename: 'NestedEdgedCoreCheckDefinition';
   node: Maybe<CoreCheckDefinition>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22960,7 +22960,7 @@ export type NestedEdgedCoreComment = {
   __typename: 'NestedEdgedCoreComment';
   node: Maybe<CoreComment>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22971,7 +22971,7 @@ export type NestedEdgedCoreCredential = {
   __typename: 'NestedEdgedCoreCredential';
   node: Maybe<CoreCredential>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22982,7 +22982,7 @@ export type NestedEdgedCoreCustomWebhook = {
   __typename: 'NestedEdgedCoreCustomWebhook';
   node: Maybe<CoreCustomWebhook>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -22993,7 +22993,7 @@ export type NestedEdgedCoreDataCheck = {
   __typename: 'NestedEdgedCoreDataCheck';
   node: Maybe<CoreDataCheck>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23004,7 +23004,7 @@ export type NestedEdgedCoreDataValidator = {
   __typename: 'NestedEdgedCoreDataValidator';
   node: Maybe<CoreDataValidator>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23015,7 +23015,7 @@ export type NestedEdgedCoreEnvKeyValue = {
   __typename: 'NestedEdgedCoreEnvKeyValue';
   node: Maybe<CoreEnvKeyValue>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23026,7 +23026,7 @@ export type NestedEdgedCoreFileCheck = {
   __typename: 'NestedEdgedCoreFileCheck';
   node: Maybe<CoreFileCheck>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23037,7 +23037,7 @@ export type NestedEdgedCoreFileObject = {
   __typename: 'NestedEdgedCoreFileObject';
   node: Maybe<CoreFileObject>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23048,7 +23048,7 @@ export type NestedEdgedCoreFileThread = {
   __typename: 'NestedEdgedCoreFileThread';
   node: Maybe<CoreFileThread>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23059,7 +23059,7 @@ export type NestedEdgedCoreGeneratorAction = {
   __typename: 'NestedEdgedCoreGeneratorAction';
   node: Maybe<CoreGeneratorAction>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23070,7 +23070,7 @@ export type NestedEdgedCoreGeneratorAwareGroup = {
   __typename: 'NestedEdgedCoreGeneratorAwareGroup';
   node: Maybe<CoreGeneratorAwareGroup>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23081,7 +23081,7 @@ export type NestedEdgedCoreGeneratorCheck = {
   __typename: 'NestedEdgedCoreGeneratorCheck';
   node: Maybe<CoreGeneratorCheck>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23092,7 +23092,7 @@ export type NestedEdgedCoreGeneratorDefinition = {
   __typename: 'NestedEdgedCoreGeneratorDefinition';
   node: Maybe<CoreGeneratorDefinition>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23103,7 +23103,7 @@ export type NestedEdgedCoreGeneratorGroup = {
   __typename: 'NestedEdgedCoreGeneratorGroup';
   node: Maybe<CoreGeneratorGroup>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23114,7 +23114,7 @@ export type NestedEdgedCoreGeneratorInstance = {
   __typename: 'NestedEdgedCoreGeneratorInstance';
   node: Maybe<CoreGeneratorInstance>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23125,7 +23125,7 @@ export type NestedEdgedCoreGeneratorValidator = {
   __typename: 'NestedEdgedCoreGeneratorValidator';
   node: Maybe<CoreGeneratorValidator>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23136,7 +23136,7 @@ export type NestedEdgedCoreGenericAccount = {
   __typename: 'NestedEdgedCoreGenericAccount';
   node: Maybe<CoreGenericAccount>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23147,7 +23147,7 @@ export type NestedEdgedCoreGenericRepository = {
   __typename: 'NestedEdgedCoreGenericRepository';
   node: Maybe<CoreGenericRepository>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23158,7 +23158,7 @@ export type NestedEdgedCoreGlobalPermission = {
   __typename: 'NestedEdgedCoreGlobalPermission';
   node: Maybe<CoreGlobalPermission>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23169,7 +23169,7 @@ export type NestedEdgedCoreGraphQlQuery = {
   __typename: 'NestedEdgedCoreGraphQLQuery';
   node: Maybe<CoreGraphQlQuery>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23180,7 +23180,7 @@ export type NestedEdgedCoreGraphQlQueryGroup = {
   __typename: 'NestedEdgedCoreGraphQLQueryGroup';
   node: Maybe<CoreGraphQlQueryGroup>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23191,7 +23191,7 @@ export type NestedEdgedCoreGroup = {
   __typename: 'NestedEdgedCoreGroup';
   node: Maybe<CoreGroup>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23202,7 +23202,7 @@ export type NestedEdgedCoreGroupAction = {
   __typename: 'NestedEdgedCoreGroupAction';
   node: Maybe<CoreGroupAction>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23213,7 +23213,7 @@ export type NestedEdgedCoreGroupTriggerRule = {
   __typename: 'NestedEdgedCoreGroupTriggerRule';
   node: Maybe<CoreGroupTriggerRule>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23224,7 +23224,7 @@ export type NestedEdgedCoreIpAddressPool = {
   __typename: 'NestedEdgedCoreIPAddressPool';
   node: Maybe<CoreIpAddressPool>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23235,7 +23235,7 @@ export type NestedEdgedCoreIpPool = {
   __typename: 'NestedEdgedCoreIPPool';
   node: Maybe<CoreIpPool>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23246,7 +23246,7 @@ export type NestedEdgedCoreIpPrefixPool = {
   __typename: 'NestedEdgedCoreIPPrefixPool';
   node: Maybe<CoreIpPrefixPool>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23257,7 +23257,7 @@ export type NestedEdgedCoreKeyValue = {
   __typename: 'NestedEdgedCoreKeyValue';
   node: Maybe<CoreKeyValue>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23268,7 +23268,7 @@ export type NestedEdgedCoreMenu = {
   __typename: 'NestedEdgedCoreMenu';
   node: Maybe<CoreMenu>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23279,7 +23279,7 @@ export type NestedEdgedCoreMenuItem = {
   __typename: 'NestedEdgedCoreMenuItem';
   node: Maybe<CoreMenuItem>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23290,7 +23290,7 @@ export type NestedEdgedCoreNode = {
   __typename: 'NestedEdgedCoreNode';
   node: Maybe<CoreNode>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23301,7 +23301,7 @@ export type NestedEdgedCoreNodeTriggerAttributeMatch = {
   __typename: 'NestedEdgedCoreNodeTriggerAttributeMatch';
   node: Maybe<CoreNodeTriggerAttributeMatch>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23312,7 +23312,7 @@ export type NestedEdgedCoreNodeTriggerMatch = {
   __typename: 'NestedEdgedCoreNodeTriggerMatch';
   node: Maybe<CoreNodeTriggerMatch>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23323,7 +23323,7 @@ export type NestedEdgedCoreNodeTriggerRelationshipMatch = {
   __typename: 'NestedEdgedCoreNodeTriggerRelationshipMatch';
   node: Maybe<CoreNodeTriggerRelationshipMatch>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23334,7 +23334,7 @@ export type NestedEdgedCoreNodeTriggerRule = {
   __typename: 'NestedEdgedCoreNodeTriggerRule';
   node: Maybe<CoreNodeTriggerRule>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23345,7 +23345,7 @@ export type NestedEdgedCoreNumberPool = {
   __typename: 'NestedEdgedCoreNumberPool';
   node: Maybe<CoreNumberPool>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23356,7 +23356,7 @@ export type NestedEdgedCoreNumberPoolRange = {
   __typename: 'NestedEdgedCoreNumberPoolRange';
   node: Maybe<CoreNumberPoolRange>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23367,7 +23367,7 @@ export type NestedEdgedCoreObjectComponentTemplate = {
   __typename: 'NestedEdgedCoreObjectComponentTemplate';
   node: Maybe<CoreObjectComponentTemplate>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23378,7 +23378,7 @@ export type NestedEdgedCoreObjectPermission = {
   __typename: 'NestedEdgedCoreObjectPermission';
   node: Maybe<CoreObjectPermission>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23389,7 +23389,7 @@ export type NestedEdgedCoreObjectTemplate = {
   __typename: 'NestedEdgedCoreObjectTemplate';
   node: Maybe<CoreObjectTemplate>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23400,7 +23400,7 @@ export type NestedEdgedCoreObjectThread = {
   __typename: 'NestedEdgedCoreObjectThread';
   node: Maybe<CoreObjectThread>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23411,7 +23411,7 @@ export type NestedEdgedCorePasswordCredential = {
   __typename: 'NestedEdgedCorePasswordCredential';
   node: Maybe<CorePasswordCredential>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23422,7 +23422,7 @@ export type NestedEdgedCoreProfile = {
   __typename: 'NestedEdgedCoreProfile';
   node: Maybe<CoreProfile>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23433,7 +23433,7 @@ export type NestedEdgedCoreProposedChange = {
   __typename: 'NestedEdgedCoreProposedChange';
   node: Maybe<CoreProposedChange>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23444,7 +23444,7 @@ export type NestedEdgedCoreReadOnlyRepository = {
   __typename: 'NestedEdgedCoreReadOnlyRepository';
   node: Maybe<CoreReadOnlyRepository>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23455,7 +23455,7 @@ export type NestedEdgedCoreRepository = {
   __typename: 'NestedEdgedCoreRepository';
   node: Maybe<CoreRepository>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23466,7 +23466,7 @@ export type NestedEdgedCoreRepositoryGroup = {
   __typename: 'NestedEdgedCoreRepositoryGroup';
   node: Maybe<CoreRepositoryGroup>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23477,7 +23477,7 @@ export type NestedEdgedCoreRepositoryValidator = {
   __typename: 'NestedEdgedCoreRepositoryValidator';
   node: Maybe<CoreRepositoryValidator>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23488,7 +23488,7 @@ export type NestedEdgedCoreResourcePool = {
   __typename: 'NestedEdgedCoreResourcePool';
   node: Maybe<CoreResourcePool>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23499,7 +23499,7 @@ export type NestedEdgedCoreSchemaCheck = {
   __typename: 'NestedEdgedCoreSchemaCheck';
   node: Maybe<CoreSchemaCheck>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23510,7 +23510,7 @@ export type NestedEdgedCoreSchemaValidator = {
   __typename: 'NestedEdgedCoreSchemaValidator';
   node: Maybe<CoreSchemaValidator>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23521,7 +23521,7 @@ export type NestedEdgedCoreStandardCheck = {
   __typename: 'NestedEdgedCoreStandardCheck';
   node: Maybe<CoreStandardCheck>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23532,7 +23532,7 @@ export type NestedEdgedCoreStandardGroup = {
   __typename: 'NestedEdgedCoreStandardGroup';
   node: Maybe<CoreStandardGroup>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23543,7 +23543,7 @@ export type NestedEdgedCoreStandardWebhook = {
   __typename: 'NestedEdgedCoreStandardWebhook';
   node: Maybe<CoreStandardWebhook>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23554,7 +23554,7 @@ export type NestedEdgedCoreStaticKeyValue = {
   __typename: 'NestedEdgedCoreStaticKeyValue';
   node: Maybe<CoreStaticKeyValue>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23565,7 +23565,7 @@ export type NestedEdgedCoreTaskTarget = {
   __typename: 'NestedEdgedCoreTaskTarget';
   node: Maybe<CoreTaskTarget>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23576,7 +23576,7 @@ export type NestedEdgedCoreThread = {
   __typename: 'NestedEdgedCoreThread';
   node: Maybe<CoreThread>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23587,7 +23587,7 @@ export type NestedEdgedCoreThreadComment = {
   __typename: 'NestedEdgedCoreThreadComment';
   node: Maybe<CoreThreadComment>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23598,7 +23598,7 @@ export type NestedEdgedCoreTransformJinja2 = {
   __typename: 'NestedEdgedCoreTransformJinja2';
   node: Maybe<CoreTransformJinja2>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23609,7 +23609,7 @@ export type NestedEdgedCoreTransformPython = {
   __typename: 'NestedEdgedCoreTransformPython';
   node: Maybe<CoreTransformPython>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23620,7 +23620,7 @@ export type NestedEdgedCoreTransformation = {
   __typename: 'NestedEdgedCoreTransformation';
   node: Maybe<CoreTransformation>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23631,7 +23631,7 @@ export type NestedEdgedCoreTriggerRule = {
   __typename: 'NestedEdgedCoreTriggerRule';
   node: Maybe<CoreTriggerRule>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23642,7 +23642,7 @@ export type NestedEdgedCoreUserValidator = {
   __typename: 'NestedEdgedCoreUserValidator';
   node: Maybe<CoreUserValidator>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23653,7 +23653,7 @@ export type NestedEdgedCoreValidator = {
   __typename: 'NestedEdgedCoreValidator';
   node: Maybe<CoreValidator>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23664,7 +23664,7 @@ export type NestedEdgedCoreWebhook = {
   __typename: 'NestedEdgedCoreWebhook';
   node: Maybe<CoreWebhook>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23675,7 +23675,7 @@ export type NestedEdgedCoreWeightedPoolResource = {
   __typename: 'NestedEdgedCoreWeightedPoolResource';
   node: Maybe<CoreWeightedPoolResource>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23686,7 +23686,7 @@ export type NestedEdgedInternalAccountToken = {
   __typename: 'NestedEdgedInternalAccountToken';
   node: Maybe<InternalAccountToken>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23697,7 +23697,7 @@ export type NestedEdgedInternalExternalIdentity = {
   __typename: 'NestedEdgedInternalExternalIdentity';
   node: Maybe<InternalExternalIdentity>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23708,7 +23708,7 @@ export type NestedEdgedInternalIpPrefixAvailable = {
   __typename: 'NestedEdgedInternalIPPrefixAvailable';
   node: Maybe<InternalIpPrefixAvailable>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23719,7 +23719,7 @@ export type NestedEdgedInternalIpRangeAvailable = {
   __typename: 'NestedEdgedInternalIPRangeAvailable';
   node: Maybe<InternalIpRangeAvailable>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23730,7 +23730,7 @@ export type NestedEdgedInternalRefreshToken = {
   __typename: 'NestedEdgedInternalRefreshToken';
   node: Maybe<InternalRefreshToken>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23741,7 +23741,7 @@ export type NestedEdgedIpamNamespace = {
   __typename: 'NestedEdgedIpamNamespace';
   node: Maybe<IpamNamespace>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23752,7 +23752,7 @@ export type NestedEdgedLineageOwner = {
   __typename: 'NestedEdgedLineageOwner';
   node: Maybe<LineageOwner>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23763,7 +23763,7 @@ export type NestedEdgedLineageSource = {
   __typename: 'NestedEdgedLineageSource';
   node: Maybe<LineageSource>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23774,7 +23774,7 @@ export type NestedEdgedProfileBuiltinIpAddress = {
   __typename: 'NestedEdgedProfileBuiltinIPAddress';
   node: Maybe<ProfileBuiltinIpAddress>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23785,7 +23785,7 @@ export type NestedEdgedProfileBuiltinIpPrefix = {
   __typename: 'NestedEdgedProfileBuiltinIPPrefix';
   node: Maybe<ProfileBuiltinIpPrefix>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23796,7 +23796,7 @@ export type NestedEdgedProfileBuiltinTag = {
   __typename: 'NestedEdgedProfileBuiltinTag';
   node: Maybe<ProfileBuiltinTag>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23807,7 +23807,7 @@ export type NestedEdgedProfileIpamNamespace = {
   __typename: 'NestedEdgedProfileIpamNamespace';
   node: Maybe<ProfileIpamNamespace>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
@@ -23818,7 +23818,7 @@ export type NestedPaginatedBuiltinIpAddress = {
   __typename: 'NestedPaginatedBuiltinIPAddress';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedBuiltinIpAddress>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -23827,7 +23827,7 @@ export type NestedPaginatedBuiltinIpNamespace = {
   __typename: 'NestedPaginatedBuiltinIPNamespace';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedBuiltinIpNamespace>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -23836,7 +23836,7 @@ export type NestedPaginatedBuiltinIpPrefix = {
   __typename: 'NestedPaginatedBuiltinIPPrefix';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedBuiltinIpPrefix>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -23845,7 +23845,7 @@ export type NestedPaginatedBuiltinTag = {
   __typename: 'NestedPaginatedBuiltinTag';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedBuiltinTag>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -23855,7 +23855,7 @@ export type NestedPaginatedCoreAccount = {
   __typename: 'NestedPaginatedCoreAccount';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreAccount>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -23865,7 +23865,7 @@ export type NestedPaginatedCoreAccountGroup = {
   __typename: 'NestedPaginatedCoreAccountGroup';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreAccountGroup>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -23875,7 +23875,7 @@ export type NestedPaginatedCoreAccountRole = {
   __typename: 'NestedPaginatedCoreAccountRole';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreAccountRole>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -23885,7 +23885,7 @@ export type NestedPaginatedCoreAction = {
   __typename: 'NestedPaginatedCoreAction';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreAction>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -23894,7 +23894,7 @@ export type NestedPaginatedCoreArtifact = {
   __typename: 'NestedPaginatedCoreArtifact';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreArtifact>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -23904,7 +23904,7 @@ export type NestedPaginatedCoreArtifactCheck = {
   __typename: 'NestedPaginatedCoreArtifactCheck';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreArtifactCheck>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -23914,7 +23914,7 @@ export type NestedPaginatedCoreArtifactDefinition = {
   __typename: 'NestedPaginatedCoreArtifactDefinition';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreArtifactDefinition>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -23924,7 +23924,7 @@ export type NestedPaginatedCoreArtifactTarget = {
   __typename: 'NestedPaginatedCoreArtifactTarget';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreArtifactTarget>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -23933,7 +23933,7 @@ export type NestedPaginatedCoreArtifactThread = {
   __typename: 'NestedPaginatedCoreArtifactThread';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreArtifactThread>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -23943,7 +23943,7 @@ export type NestedPaginatedCoreArtifactValidator = {
   __typename: 'NestedPaginatedCoreArtifactValidator';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreArtifactValidator>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -23953,7 +23953,7 @@ export type NestedPaginatedCoreBasePermission = {
   __typename: 'NestedPaginatedCoreBasePermission';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreBasePermission>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -23962,7 +23962,7 @@ export type NestedPaginatedCoreChangeComment = {
   __typename: 'NestedPaginatedCoreChangeComment';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreChangeComment>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -23972,7 +23972,7 @@ export type NestedPaginatedCoreChangeThread = {
   __typename: 'NestedPaginatedCoreChangeThread';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreChangeThread>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -23982,7 +23982,7 @@ export type NestedPaginatedCoreCheck = {
   __typename: 'NestedPaginatedCoreCheck';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreCheck>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -23991,7 +23991,7 @@ export type NestedPaginatedCoreCheckDefinition = {
   __typename: 'NestedPaginatedCoreCheckDefinition';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreCheckDefinition>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24001,7 +24001,7 @@ export type NestedPaginatedCoreComment = {
   __typename: 'NestedPaginatedCoreComment';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreComment>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24010,7 +24010,7 @@ export type NestedPaginatedCoreCredential = {
   __typename: 'NestedPaginatedCoreCredential';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreCredential>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24019,7 +24019,7 @@ export type NestedPaginatedCoreCustomWebhook = {
   __typename: 'NestedPaginatedCoreCustomWebhook';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreCustomWebhook>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24029,7 +24029,7 @@ export type NestedPaginatedCoreDataCheck = {
   __typename: 'NestedPaginatedCoreDataCheck';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreDataCheck>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24039,7 +24039,7 @@ export type NestedPaginatedCoreDataValidator = {
   __typename: 'NestedPaginatedCoreDataValidator';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreDataValidator>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24049,7 +24049,7 @@ export type NestedPaginatedCoreEnvKeyValue = {
   __typename: 'NestedPaginatedCoreEnvKeyValue';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreEnvKeyValue>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24059,7 +24059,7 @@ export type NestedPaginatedCoreFileCheck = {
   __typename: 'NestedPaginatedCoreFileCheck';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreFileCheck>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24069,7 +24069,7 @@ export type NestedPaginatedCoreFileObject = {
   __typename: 'NestedPaginatedCoreFileObject';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreFileObject>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24078,7 +24078,7 @@ export type NestedPaginatedCoreFileThread = {
   __typename: 'NestedPaginatedCoreFileThread';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreFileThread>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24088,7 +24088,7 @@ export type NestedPaginatedCoreGeneratorAction = {
   __typename: 'NestedPaginatedCoreGeneratorAction';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGeneratorAction>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24098,7 +24098,7 @@ export type NestedPaginatedCoreGeneratorAwareGroup = {
   __typename: 'NestedPaginatedCoreGeneratorAwareGroup';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGeneratorAwareGroup>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24108,7 +24108,7 @@ export type NestedPaginatedCoreGeneratorCheck = {
   __typename: 'NestedPaginatedCoreGeneratorCheck';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGeneratorCheck>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24118,7 +24118,7 @@ export type NestedPaginatedCoreGeneratorDefinition = {
   __typename: 'NestedPaginatedCoreGeneratorDefinition';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGeneratorDefinition>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24128,7 +24128,7 @@ export type NestedPaginatedCoreGeneratorGroup = {
   __typename: 'NestedPaginatedCoreGeneratorGroup';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGeneratorGroup>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24138,7 +24138,7 @@ export type NestedPaginatedCoreGeneratorInstance = {
   __typename: 'NestedPaginatedCoreGeneratorInstance';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGeneratorInstance>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24148,7 +24148,7 @@ export type NestedPaginatedCoreGeneratorValidator = {
   __typename: 'NestedPaginatedCoreGeneratorValidator';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGeneratorValidator>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24158,7 +24158,7 @@ export type NestedPaginatedCoreGenericAccount = {
   __typename: 'NestedPaginatedCoreGenericAccount';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreGenericAccount>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24167,7 +24167,7 @@ export type NestedPaginatedCoreGenericRepository = {
   __typename: 'NestedPaginatedCoreGenericRepository';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreGenericRepository>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24176,7 +24176,7 @@ export type NestedPaginatedCoreGlobalPermission = {
   __typename: 'NestedPaginatedCoreGlobalPermission';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGlobalPermission>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24186,7 +24186,7 @@ export type NestedPaginatedCoreGraphQlQuery = {
   __typename: 'NestedPaginatedCoreGraphQLQuery';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGraphQlQuery>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24196,7 +24196,7 @@ export type NestedPaginatedCoreGraphQlQueryGroup = {
   __typename: 'NestedPaginatedCoreGraphQLQueryGroup';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGraphQlQueryGroup>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24206,7 +24206,7 @@ export type NestedPaginatedCoreGroup = {
   __typename: 'NestedPaginatedCoreGroup';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreGroup>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24215,7 +24215,7 @@ export type NestedPaginatedCoreGroupAction = {
   __typename: 'NestedPaginatedCoreGroupAction';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGroupAction>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24225,7 +24225,7 @@ export type NestedPaginatedCoreGroupTriggerRule = {
   __typename: 'NestedPaginatedCoreGroupTriggerRule';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGroupTriggerRule>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24235,7 +24235,7 @@ export type NestedPaginatedCoreIpAddressPool = {
   __typename: 'NestedPaginatedCoreIPAddressPool';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreIpAddressPool>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24245,7 +24245,7 @@ export type NestedPaginatedCoreIpPool = {
   __typename: 'NestedPaginatedCoreIPPool';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreIpPool>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24254,7 +24254,7 @@ export type NestedPaginatedCoreIpPrefixPool = {
   __typename: 'NestedPaginatedCoreIPPrefixPool';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreIpPrefixPool>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24264,7 +24264,7 @@ export type NestedPaginatedCoreKeyValue = {
   __typename: 'NestedPaginatedCoreKeyValue';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreKeyValue>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24273,7 +24273,7 @@ export type NestedPaginatedCoreMenu = {
   __typename: 'NestedPaginatedCoreMenu';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreMenu>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24282,7 +24282,7 @@ export type NestedPaginatedCoreMenuItem = {
   __typename: 'NestedPaginatedCoreMenuItem';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreMenuItem>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24292,7 +24292,7 @@ export type NestedPaginatedCoreNode = {
   __typename: 'NestedPaginatedCoreNode';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreNode>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24301,7 +24301,7 @@ export type NestedPaginatedCoreNodeTriggerAttributeMatch = {
   __typename: 'NestedPaginatedCoreNodeTriggerAttributeMatch';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreNodeTriggerAttributeMatch>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24311,7 +24311,7 @@ export type NestedPaginatedCoreNodeTriggerMatch = {
   __typename: 'NestedPaginatedCoreNodeTriggerMatch';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreNodeTriggerMatch>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24320,7 +24320,7 @@ export type NestedPaginatedCoreNodeTriggerRelationshipMatch = {
   __typename: 'NestedPaginatedCoreNodeTriggerRelationshipMatch';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreNodeTriggerRelationshipMatch>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24330,7 +24330,7 @@ export type NestedPaginatedCoreNodeTriggerRule = {
   __typename: 'NestedPaginatedCoreNodeTriggerRule';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreNodeTriggerRule>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24340,7 +24340,7 @@ export type NestedPaginatedCoreNumberPool = {
   __typename: 'NestedPaginatedCoreNumberPool';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreNumberPool>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24350,7 +24350,7 @@ export type NestedPaginatedCoreNumberPoolRange = {
   __typename: 'NestedPaginatedCoreNumberPoolRange';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreNumberPoolRange>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24360,7 +24360,7 @@ export type NestedPaginatedCoreObjectComponentTemplate = {
   __typename: 'NestedPaginatedCoreObjectComponentTemplate';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreObjectComponentTemplate>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24369,7 +24369,7 @@ export type NestedPaginatedCoreObjectPermission = {
   __typename: 'NestedPaginatedCoreObjectPermission';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreObjectPermission>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24379,7 +24379,7 @@ export type NestedPaginatedCoreObjectTemplate = {
   __typename: 'NestedPaginatedCoreObjectTemplate';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreObjectTemplate>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24388,7 +24388,7 @@ export type NestedPaginatedCoreObjectThread = {
   __typename: 'NestedPaginatedCoreObjectThread';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreObjectThread>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24398,7 +24398,7 @@ export type NestedPaginatedCorePasswordCredential = {
   __typename: 'NestedPaginatedCorePasswordCredential';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCorePasswordCredential>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24408,7 +24408,7 @@ export type NestedPaginatedCoreProfile = {
   __typename: 'NestedPaginatedCoreProfile';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreProfile>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24417,7 +24417,7 @@ export type NestedPaginatedCoreProposedChange = {
   __typename: 'NestedPaginatedCoreProposedChange';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreProposedChange>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24427,7 +24427,7 @@ export type NestedPaginatedCoreReadOnlyRepository = {
   __typename: 'NestedPaginatedCoreReadOnlyRepository';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreReadOnlyRepository>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24437,7 +24437,7 @@ export type NestedPaginatedCoreRepository = {
   __typename: 'NestedPaginatedCoreRepository';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreRepository>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24447,7 +24447,7 @@ export type NestedPaginatedCoreRepositoryGroup = {
   __typename: 'NestedPaginatedCoreRepositoryGroup';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreRepositoryGroup>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24457,7 +24457,7 @@ export type NestedPaginatedCoreRepositoryValidator = {
   __typename: 'NestedPaginatedCoreRepositoryValidator';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreRepositoryValidator>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24467,7 +24467,7 @@ export type NestedPaginatedCoreResourcePool = {
   __typename: 'NestedPaginatedCoreResourcePool';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreResourcePool>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24476,7 +24476,7 @@ export type NestedPaginatedCoreSchemaCheck = {
   __typename: 'NestedPaginatedCoreSchemaCheck';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreSchemaCheck>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24486,7 +24486,7 @@ export type NestedPaginatedCoreSchemaValidator = {
   __typename: 'NestedPaginatedCoreSchemaValidator';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreSchemaValidator>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24496,7 +24496,7 @@ export type NestedPaginatedCoreStandardCheck = {
   __typename: 'NestedPaginatedCoreStandardCheck';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreStandardCheck>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24506,7 +24506,7 @@ export type NestedPaginatedCoreStandardGroup = {
   __typename: 'NestedPaginatedCoreStandardGroup';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreStandardGroup>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24516,7 +24516,7 @@ export type NestedPaginatedCoreStandardWebhook = {
   __typename: 'NestedPaginatedCoreStandardWebhook';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreStandardWebhook>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24526,7 +24526,7 @@ export type NestedPaginatedCoreStaticKeyValue = {
   __typename: 'NestedPaginatedCoreStaticKeyValue';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreStaticKeyValue>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24536,7 +24536,7 @@ export type NestedPaginatedCoreTaskTarget = {
   __typename: 'NestedPaginatedCoreTaskTarget';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreTaskTarget>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24545,7 +24545,7 @@ export type NestedPaginatedCoreThread = {
   __typename: 'NestedPaginatedCoreThread';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreThread>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24554,7 +24554,7 @@ export type NestedPaginatedCoreThreadComment = {
   __typename: 'NestedPaginatedCoreThreadComment';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreThreadComment>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24564,7 +24564,7 @@ export type NestedPaginatedCoreTransformJinja2 = {
   __typename: 'NestedPaginatedCoreTransformJinja2';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreTransformJinja2>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24574,7 +24574,7 @@ export type NestedPaginatedCoreTransformPython = {
   __typename: 'NestedPaginatedCoreTransformPython';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreTransformPython>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24584,7 +24584,7 @@ export type NestedPaginatedCoreTransformation = {
   __typename: 'NestedPaginatedCoreTransformation';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreTransformation>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24593,7 +24593,7 @@ export type NestedPaginatedCoreTriggerRule = {
   __typename: 'NestedPaginatedCoreTriggerRule';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreTriggerRule>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24602,7 +24602,7 @@ export type NestedPaginatedCoreUserValidator = {
   __typename: 'NestedPaginatedCoreUserValidator';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreUserValidator>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24612,7 +24612,7 @@ export type NestedPaginatedCoreValidator = {
   __typename: 'NestedPaginatedCoreValidator';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreValidator>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24621,7 +24621,7 @@ export type NestedPaginatedCoreWebhook = {
   __typename: 'NestedPaginatedCoreWebhook';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreWebhook>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24630,7 +24630,7 @@ export type NestedPaginatedCoreWeightedPoolResource = {
   __typename: 'NestedPaginatedCoreWeightedPoolResource';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreWeightedPoolResource>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24639,7 +24639,7 @@ export type NestedPaginatedInternalAccountToken = {
   __typename: 'NestedPaginatedInternalAccountToken';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedInternalAccountToken>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24649,7 +24649,7 @@ export type NestedPaginatedInternalExternalIdentity = {
   __typename: 'NestedPaginatedInternalExternalIdentity';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedInternalExternalIdentity>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24659,7 +24659,7 @@ export type NestedPaginatedInternalIpPrefixAvailable = {
   __typename: 'NestedPaginatedInternalIPPrefixAvailable';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedInternalIpPrefixAvailable>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24669,7 +24669,7 @@ export type NestedPaginatedInternalIpRangeAvailable = {
   __typename: 'NestedPaginatedInternalIPRangeAvailable';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedInternalIpRangeAvailable>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24679,7 +24679,7 @@ export type NestedPaginatedInternalRefreshToken = {
   __typename: 'NestedPaginatedInternalRefreshToken';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedInternalRefreshToken>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24689,7 +24689,7 @@ export type NestedPaginatedIpamNamespace = {
   __typename: 'NestedPaginatedIpamNamespace';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedIpamNamespace>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24699,7 +24699,7 @@ export type NestedPaginatedLineageOwner = {
   __typename: 'NestedPaginatedLineageOwner';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedLineageOwner>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24708,7 +24708,7 @@ export type NestedPaginatedLineageSource = {
   __typename: 'NestedPaginatedLineageSource';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedLineageSource>>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
 };
 
@@ -24717,7 +24717,7 @@ export type NestedPaginatedProfileBuiltinIpAddress = {
   __typename: 'NestedPaginatedProfileBuiltinIPAddress';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedProfileBuiltinIpAddress>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24727,7 +24727,7 @@ export type NestedPaginatedProfileBuiltinIpPrefix = {
   __typename: 'NestedPaginatedProfileBuiltinIPPrefix';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedProfileBuiltinIpPrefix>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24737,7 +24737,7 @@ export type NestedPaginatedProfileBuiltinTag = {
   __typename: 'NestedPaginatedProfileBuiltinTag';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedProfileBuiltinTag>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
@@ -24747,7 +24747,7 @@ export type NestedPaginatedProfileIpamNamespace = {
   __typename: 'NestedPaginatedProfileIpamNamespace';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedProfileIpamNamespace>;
-  /** Owners of this field of the node, own or inherited */
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
   ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
