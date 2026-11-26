@@ -7,6 +7,9 @@ services:
       - "NEO4J_AUTH=neo4j/admin"
       - "NEO4J_dbms_security_procedures_unrestricted=apoc.*"
       - "NEO4J_dbms_security_auth__minimum__password__length=4"
+      # Turns off the JVM's accelerated Base64 routine, which the Java build in the default image
+      # decodes unsafely (CVE-2026-114938); remove it once the image bundles a Java build with the fix.
+      - "NEO4J_server_jvm_additional=-XX:-UseBASE64Intrinsics"
     volumes:
       - "./plugins:/plugins"
       - "database_data:/data"

@@ -1,0 +1,1 @@
+Added the same temporary mitigation for CVE-2026-114938 to the Neo4j service that `uv run invoke demo.start` and the other `invoke` tasks start, so the local development database also runs with `-XX:-UseBASE64Intrinsics`.
