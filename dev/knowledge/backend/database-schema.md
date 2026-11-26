@@ -377,7 +377,7 @@ A writer ends an edge in one or both of two ways:
 
 The two are not exclusive. Which a writer does depends on the writer:
 
-- **Close and add a `deleted` edge, on every branch**: the data delete queries and the migrations that remove data. The `deleted` edge exists even when the closed edge is on the same branch.
+- **Close and add a `deleted` edge, on every branch**: the data delete queries and the migrations that remove data. The `deleted` edge exists even when the closed edge is on the same branch, except for node and attribute removal over an edge that starts at the migration's timestamp (see below).
   - `NodeDeleteQuery` for the node's `IS_PART_OF` edge
   - `AttributeDeleteQuery` for the `HAS_ATTRIBUTE`, `HAS_VALUE`, `IS_PROTECTED`, `HAS_SOURCE` and `HAS_OWNER` edges of an attribute
   - `RelationshipDeleteAllQuery` for the `IS_RELATED`, `IS_PROTECTED`, `HAS_SOURCE` and `HAS_OWNER` edges of a relationship
