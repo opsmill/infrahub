@@ -795,7 +795,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
     def operation_names(self) -> list[str]:
         return [operation.name for operation in self.operations if operation.name is not None]
 
-    @property
+    @cached_property
     def operations(self) -> list[SdkGraphQLOperation]:
         """Every top-level operation field, resolved through inline fragments and fragment spreads.
 
@@ -809,22 +809,28 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         return operations
 
     def _iter_operation_fields(
-        self, selection_set: SelectionSetNode, seen_fragments: frozenset[str] = frozenset()
+        self, selection_set: SelectionSetNode, visited_fragments: set[str] | None = None
     ) -> Iterator[FieldNode]:
-        """Yield the field nodes of a selection set, descending into inline fragments and fragment spreads."""
+        """Yield the field nodes of a selection set, descending into inline fragments and fragment spreads.
+
+        A fragment is expanded once per operation, so a fragment reached through two paths -- a cycle or
+        a diamond -- neither loops nor repeats its fields.
+        """
+        if visited_fragments is None:
+            visited_fragments = set()
         for selection in selection_set.selections:
             if isinstance(selection, FieldNode):
                 yield selection
             elif isinstance(selection, InlineFragmentNode):
                 yield from self._iter_operation_fields(
-                    selection_set=selection.selection_set, seen_fragments=seen_fragments
+                    selection_set=selection.selection_set, visited_fragments=visited_fragments
                 )
-            elif isinstance(selection, FragmentSpreadNode) and selection.name.value not in seen_fragments:
+            elif isinstance(selection, FragmentSpreadNode) and selection.name.value not in visited_fragments:
+                visited_fragments.add(selection.name.value)
                 fragment = self._fragment_definition_by_name.get(selection.name.value)
                 if fragment is not None:
                     yield from self._iter_operation_fields(
-                        selection_set=fragment.selection_set,
-                        seen_fragments=seen_fragments | {selection.name.value},
+                        selection_set=fragment.selection_set, visited_fragments=visited_fragments
                     )
 
     @cached_property
@@ -835,6 +841,8 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
 
     @cached_property
     def _fragment_definition_by_name(self) -> dict[str, FragmentDefinitionNode]:
+        # Resolved from the raw definitions so operation classification works before the named-fragment
+        # tree (`_named_fragments`) is built, which only happens on the `query_report` path.
         return {definition.name.value: definition for definition in self._fragment_definitions}
 
     @cached_property
