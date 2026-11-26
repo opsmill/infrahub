@@ -797,12 +797,10 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
 
     @property
     def operations(self) -> list[SdkGraphQLOperation]:
-        """The top-level operation fields, resolved through inline fragments and fragment spreads.
+        """Every top-level operation field, resolved through inline fragments and fragment spreads.
 
-        graphql-core executes a field written as ``... on Mutation { field }`` or pulled in by a
-        fragment spread at the top of an operation, so a classifier that reads only the direct
-        field children of an operation would miss it and let a hidden mutation past the permission
-        checkers that key off ``contains_mutation`` and ``operation_names``.
+        A field selected through ``... on Type { field }``, ``... { field }`` or a fragment spread
+        is executed as if it were a direct child of the operation, so it is reported here too.
         """
         operations: list[SdkGraphQLOperation] = []
         for definition in self._operation_definitions:
