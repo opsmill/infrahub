@@ -1188,3 +1188,47 @@ async def test_query_report_single_target_complex_constraints(
     # Filtering by a required human-friendly id pins a single target
     assert analyze(hfid_pinned).query_report.only_has_unique_targets is True
     assert analyze(hfid_optional).query_report.only_has_unique_targets is False
+
+
+@pytest.mark.parametrize(
+    "wrapped_mutation",
+    [
+        pytest.param(
+            """
+            query Harmless { __typename }
+            mutation Hidden { ... on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } } }
+            """,
+            id="inline-fragment",
+        ),
+        pytest.param(
+            """
+            query Harmless { __typename }
+            mutation Hidden { ...HiddenMutation }
+            fragment HiddenMutation on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } }
+            """,
+            id="fragment-spread",
+        ),
+    ],
+)
+async def test_operation_wrapped_in_fragment_counts_as_mutation(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+    wrapped_mutation: str,
+) -> None:
+    """A mutation reached through a top-level inline fragment or fragment spread is still a mutation.
+
+    graphql-core executes such a field, so the permission checkers that key off ``contains_mutation``,
+    ``operation_names`` and ``query_report`` must see it rather than classify the document as a plain query.
+    """
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    gqa = InfrahubGraphQLQueryAnalyzer(
+        query=wrapped_mutation, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+
+    assert gqa.contains_mutation is True
+    assert "TestPersonCreate" in gqa.operation_names
+    assert "TestPerson" in gqa.query_report.impacted_models
