@@ -59,7 +59,7 @@ The export has no other error response. When processing a `BRIEF` candidate fail
 
 An empty schema (no user-defined nodes or generics) returns 200 with `nodes` and `generics` empty. This includes an empty instance, whose `IpamNamespace` is not exported.
 
-A server without the endpoint answers this URL with 422 and the message `Unable to find the schema export in the database.`, because the request reaches `GET /api/schema/{schema_kind}`. The SDK reads only that response as "endpoint missing" (research R7).
+A server without the endpoint answers this URL with 422 and the message `Unable to find the schema 'export' in the registry`, because the request reaches `GET /api/schema/{schema_kind}`. The SDK reads only that response as "endpoint missing" (research R7).
 
 ## Route order
 

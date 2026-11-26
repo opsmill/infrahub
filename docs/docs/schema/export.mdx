@@ -32,6 +32,12 @@ infrahubctl schema export --directory schemas/
 
 Without `--single-file`, each file is named after its namespace in lower case, such as `network.yml` for the `Network` namespace. When the branch has no nodes or generics you defined, the command writes no file and prints `No user-defined schema found to export.`
 
+The command needs an Infrahub server on release 1.13.0 or later. Against an earlier release, it writes no file and prints:
+
+```text
+Error: The schema export requires Infrahub 1.13.0 or later.
+```
+
   </TabItem>
   <TabItem value="api" label="REST API">
 
@@ -49,6 +55,8 @@ curl -H "X-INFRAHUB-KEY: $INFRAHUB_API_TOKEN" \
 | `mode` | `BRIEF` | `BRIEF` or `FULL`, see [Choose between `BRIEF` and `FULL`](#choose-between-brief-and-full) |
 
 Any account that can read the schema with `GET /api/schema` can call the export. A load of the document needs the permission to manage the schema on the target instance.
+
+A release earlier than 1.13.0 does not have the endpoint. It answers `GET /api/schema/export` with HTTP 422 and the message `Unable to find the schema 'export' in the registry`.
 
   </TabItem>
 </Tabs>

@@ -129,7 +129,7 @@ The exporter runs on the request's event loop, as `POST /api/schema/load` and `P
 **Decision**:
 
 - `GET /api/schema/export` is declared in `backend/infrahub/api/schema.py` before `get_schema_by_kind`. FastAPI matches routes in the order they are declared, and `/{schema_kind}` would otherwise match `export`.
-- On a server without the endpoint, `GET /api/schema/export` reaches `/{schema_kind}`, which raises `SchemaNotFoundError` (`backend/infrahub/exceptions.py::SchemaNotFoundError`, HTTP 422, message `Unable to find the schema export in the database.`). The SDK treats only a 422 whose error message names the schema `export` as not found as "endpoint missing", and raises an error that names the first release with the endpoint (FR-016). Any other error response is reported as the server returned it.
+- On a server without the endpoint, `GET /api/schema/export` reaches `/{schema_kind}`, which raises `SchemaNotFoundError` (`backend/infrahub/exceptions.py::SchemaNotFoundError`, HTTP 422) from the schema registry lookup (`backend/infrahub/core/schema/manager.py` and `schema_branch.py`) with the message `Unable to find the schema 'export' in the registry`. Every release since 0.16 sends this message; the `in the database.` text is only the default of the exception and never reaches this route. The SDK treats only a 422 whose error message names the schema `export` as not found as "endpoint missing", and raises an error that names the first release with the endpoint (FR-016). Any other error response is reported as the server returned it.
 - A server with the endpoint never returns that response from this URL. The export has no error responses of its own (R3): it returns the errors `GET /api/schema` returns for an unknown branch or a missing login, and FastAPI's request validation error for an unknown `mode`, whose body has a different shape.
 - The release is held in one SDK constant. Its value is set to the release that ships the endpoint. The design document example uses `1.13.0`; the release is not confirmed by the sources.
 
@@ -164,7 +164,7 @@ The exporter runs on the request's event loop, as `POST /api/schema/load` and `P
   - `export` returns the endpoint's document as a `SchemaExportDocument`, and `split_by_namespace` gives one document per namespace with the same `version` and `infrahub_version`;
   - the CLI options and the file split by namespace;
   - a file written by the CLI holds only the keys of the endpoint's response, and no field the response left out appears with its default value (R3);
-  - a 422 with the message `Unable to find the schema export in the database.` gives the error that names the first release with the endpoint (R7);
+  - a 422 with the message `Unable to find the schema 'export' in the registry` gives the error that names the first release with the endpoint (R7);
   - a 422 with any other message, and a 500, are reported as the server returned them and do not mention the release.
 - **SDK integration test** (`python_sdk/tests/integration/`): runs `infrahubctl schema export` against an Infrahub container. It can only pass against a released image that has the endpoint, so it is added after that release (plan, delivery order). Until then the functional tests in this repository cover the export end to end.
 
