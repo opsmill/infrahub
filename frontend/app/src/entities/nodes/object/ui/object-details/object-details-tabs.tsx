@@ -131,10 +131,14 @@ function useHorizontalOverflow(viewportRef: RefObject<HTMLDivElement | null>) {
 
     const update = () => {
       const maxScrollLeft = viewport.scrollWidth - viewport.clientWidth;
-      setOverflow({
-        canScrollLeft: viewport.scrollLeft > 1,
-        canScrollRight: viewport.scrollLeft < maxScrollLeft - 1,
-      });
+      const canScrollLeft = viewport.scrollLeft > 1;
+      const canScrollRight = viewport.scrollLeft < maxScrollLeft - 1;
+      // Returning the previous state skips a re-render on scroll events that change neither side.
+      setOverflow((previous) =>
+        previous.canScrollLeft === canScrollLeft && previous.canScrollRight === canScrollRight
+          ? previous
+          : { canScrollLeft, canScrollRight }
+      );
     };
 
     const onWheel = (event: WheelEvent) => {
