@@ -218,8 +218,7 @@
     ),
     linear-gradient(rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.05));
   --selected-foreground: var(--foreground);
-  --selected-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.08), 0 1px 2px rgb(0 0 0 / 0.6);
+  --selected-shadow: 0 1px 2px rgb(0 0 0 / 0.6);
 
   --card: linear-gradient(180deg, #201d1c 0%, #191716 55%, #141312 100%);
   --card-shadow:

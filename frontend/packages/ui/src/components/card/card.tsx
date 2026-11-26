@@ -25,26 +25,27 @@ export function Card({ className, ref, variant, ...props }: CardProps) {
   return <div ref={ref} className={cardVariants({ variant, class: className })} {...props} />;
 }
 
-export interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+const cardHeaderVariants = tv({
+  base: "rounded-t-[inherit] px-3 py-2 font-medium text-card-header-foreground text-sm tracking-tight",
+  variants: {
+    variant: {
+      default: "border-b bg-card-header shadow-card-header",
+      ghost: "border-b",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+  },
+});
+
+export interface CardHeaderProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof cardHeaderVariants> {
   ref?: React.Ref<HTMLDivElement>;
 }
 
-export function CardHeader({ className, ref, ...props }: CardHeaderProps) {
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        "rounded-t-[inherit]",
-        "border-b",
-        "bg-card-header",
-        "px-3 py-2",
-        "font-medium text-card-header-foreground text-sm tracking-tight",
-        "shadow-card-header",
-        className
-      )}
-      {...props}
-    />
-  );
+export function CardHeader({ className, ref, variant, ...props }: CardHeaderProps) {
+  return <div ref={ref} className={cardHeaderVariants({ variant, class: className })} {...props} />;
 }
 
 export interface CardContentProps extends React.HTMLAttributes<HTMLDivElement> {
