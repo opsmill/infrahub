@@ -29,6 +29,7 @@ We document significant architectural decisions using ADRs.
 | [0021](0021-resource-allocation-telemetry.md) | Resource-allocation Telemetry: Container Limits, Stored by Each Process, in New Blocks | Accepted | 2026-10-08 |
 | [0022](0022-experimental-flag-gates-pre-release-ui.md) | A Pre-Release UI Feature Is Gated by an Experimental Settings Flag, Not by the Running Version | Deprecated | 2026-08-24 |
 | [0023](0023-application-owned-theme-resolution.md) | The Application Resolves the Theme Once and Hands the Answer Down | Accepted | 2026-08-24 |
+| [0024](0024-merge-and-rebase-refresh-replayed-profiles.md) | The Merge and the Rebase Refresh the Profiles They Replay | Accepted | 2026-10-28 |
 
 ## Creating a New ADR
 

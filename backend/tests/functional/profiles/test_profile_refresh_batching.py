@@ -303,6 +303,59 @@ class TestProfileRefreshBatching(TestInfrahubApp):
             chunks=[interface_ids[:2], interface_ids[2:], [interface_dataset.template_id]],
         )
 
+    async def test_profile_refresh_leaves_out_the_nodes_that_hold_the_profile_value(
+        self, dataset: ProfileDataset, default_branch: Branch, client: InfrahubClient, context: EventContext
+    ) -> None:
+        """Only the linked device with its own part number is submitted, the others hold the profile value."""
+        user_set = await client.create(
+            kind=TestKind.DEVICE,
+            name="user-set-device",
+            manufacturer="manufacturer",
+            weight=1,
+            airflow="Front to rear",
+            part_number="user-part",
+            profiles=[dataset.profile_id],
+        )
+        await user_set.save()
+
+        recorder = WorkflowRecorder()
+        with override_workflow(recorder, dependency_provider=dependency_provider):
+            await profile_refresh_process(
+                branch_name=default_branch.name,
+                profile_kind=DEVICE_PROFILE_KIND,
+                profile_id=dataset.profile_id,
+                context=context,
+                attribute_names=["part_number"],
+            )
+        # The other tests of the class read the linked devices of the shared dataset.
+        await user_set.delete()
+
+        assert _submitted_calls(recorder) == _refresh_calls(
+            branch_name=default_branch.name, profile_id=dataset.profile_id, context=context, chunks=[[user_set.id]]
+        )
+
+    async def test_profile_refresh_of_a_deleted_profile_submits_nothing(
+        self, load_schema: None, default_branch: Branch, client: InfrahubClient, context: EventContext
+    ) -> None:
+        """A profile deleted before the run has no value to check, so the run ends without a refresh or an error."""
+        profile = await client.create(
+            kind=DEVICE_PROFILE_KIND, profile_name="deleted-profile", profile_priority=1000, part_number="part-1"
+        )
+        await profile.save()
+        await profile.delete()
+
+        recorder = WorkflowRecorder()
+        with override_workflow(recorder, dependency_provider=dependency_provider):
+            await profile_refresh_process(
+                branch_name=default_branch.name,
+                profile_kind=DEVICE_PROFILE_KIND,
+                profile_id=profile.id,
+                context=context,
+                attribute_names=["part_number"],
+            )
+
+        assert recorder.submit_calls == []
+
     async def test_send_profile_refresh_workflows_submits_one_flow_per_chunk(
         self,
         db: InfrahubDatabase,

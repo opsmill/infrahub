@@ -92,6 +92,8 @@ await query.execute(db=db)  # Execute when ready
 
 Neo4j routing is selected by the **database session**, not by `QueryType`: `db.start_session(read_only=True)` opens a session with `READ_ACCESS` (which a clustered deployment can route to any replica), while a normal session uses `WRITE_ACCESS` (the primary). `QueryType.READ` / `QueryType.WRITE` drives Query execution behavior and metrics, not server selection.
 
+The sessions share no bookmark, so a read-only session has no causal link to a commit made in another session or process. When a read decides to skip work after such a commit, for example a flow that runs after a merge, use a normal session so that the read goes to the primary. The profile refresh after a merge or a rebase is an example ([merge-recompute.md](merge-recompute.md#profile-refresh-after-a-merge-or-a-rebase)).
+
 Because a read-shaped operation may run inside a read-only session, it must never write. This is a separate invariant that holds at every layer: a method named `get_*` (or any read-shaped accessor) must not create or mutate as a side effect — e.g. a `get_global()` that lazily materializes a missing row. Return a "not set" sentinel or `None`, and let the dedicated write path (a mutation, a `Repository.save`) be the only thing that creates.
 
 ## Core Patterns

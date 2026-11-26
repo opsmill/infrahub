@@ -41,6 +41,7 @@ from infrahub.core.registry import registry
 from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.events.schema_action import ChangedElementsPayload, SchemaUpdatedEvent
 from infrahub.git.writeback.store import WritebackIntentStore
+from infrahub.profiles.replay import ProfileReplayRefresher
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
@@ -422,6 +423,7 @@ class TestCoalescedRecomputePython(CoalescedPythonTestBase):
             default_branch=default_branch,
             python_resolver=await build_python_target_resolver(db=db),
             barrier=regeneration_barrier(state=state, default_branch_name=default_branch.name),
+            profile_replay_refresher=ProfileReplayRefresher(workflow=workflow_recorder),
         )
         schema_diff, schema_hash = _person_name_schema_diff(default_branch)
 
