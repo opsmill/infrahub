@@ -50,6 +50,7 @@ from infrahub.types import ATTRIBUTE_KIND_LABELS
 class ExtraField(TypedDict):
     update: UpdateSupport
     visibility: NotRequired[Visibility]
+    keep_in_export: NotRequired[bool]
 
 
 class SchemaAttribute(BaseModel):
@@ -99,6 +100,11 @@ class SchemaAttribute(BaseModel):
     @property
     def visibility(self) -> Visibility:
         return self.extra.get("visibility", Visibility.INTERNAL)
+
+    @property
+    def keep_in_export(self) -> bool:
+        # Processing does not derive these fields, so a schema export without them fails to load.
+        return self.extra.get("keep_in_export", False)
 
     @property
     def optional_in_model(self) -> bool:
@@ -547,7 +553,11 @@ node_schema = SchemaNode(
             default_factory="list",
             description="List of Generic Kind that this node is inheriting from",
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
+            extra={
+                "update": UpdateSupport.VALIDATE_CONSTRAINT,
+                "visibility": Visibility.WRITE,
+                "keep_in_export": True,
+            },
         ),
         SchemaAttribute(
             name="generate_profile",
