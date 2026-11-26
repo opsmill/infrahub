@@ -31,7 +31,7 @@ from tests.adapters.event import MemoryInfrahubEvent
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.flow import call_in_flow
 from tests.helpers.git import LocalRemote
-from tests.helpers.repository_activity import activity_run, run_record_writes
+from tests.helpers.repository_activity import activity_run, last_run_branches, run_record_writes
 from tests.helpers.repository_sync import create_repository_node, run_add_flow
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -259,6 +259,52 @@ class TestFreshCloneImport(TestInfrahubApp):
         assert await cache.get(key=activity_last_run_key(repository_id=node.id, operation="add")) is None
         assert await recorded_state(client=client, node=node) == (head, RepositorySyncStatus.IN_SYNC.value)
         assert commit_events(events) == [(head, node.id)]
+
+    async def test_the_add_flow_that_skips_the_default_branch_records_its_other_branches(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        dependency_provider: Provider,
+        tmp_path: Path,
+        git_repos_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The flow that imports the default branch records it, and the add flow records the branches it synchronizes."""
+        name = "cloned-then-added-with-a-broken-branch"
+        broken = "broken"
+        remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=[])
+        remote.commit(branch_name=TRUNK, files=CONFIG_FILES)
+        remote.commit(branch_name=broken, files=MISSING_SCHEMA_FILES)
+        await create_branch(branch_name=broken, db=db, sync_with_git=True)
+        node = await create_node(db=db, remote=remote, name=name)
+        repository = await client.get(kind=CoreRepository, id=node.id)
+        delivery_state = await build_intent_store(db=db, lock_registry=lock.registry)
+        async with activity_run(repository_id=node.id) as run:
+            bootstrapped = await call_in_flow(
+                lambda: bootstrap_local_repository(
+                    repo_name=name,
+                    repository=repository,
+                    infrahub_branch=registry.default_branch,
+                    branch_accepts_commit=True,
+                    client=client,
+                    state=delivery_state,
+                    activity=run,
+                )
+            )
+        assert bootstrapped is not None
+        use_another_worker(tmp_path=tmp_path, monkeypatch=monkeypatch, worker="add-worker")
+        cache = RecordingCache()
+
+        with override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider):
+            state = await run_add_flow(node=node, name=name, location=str(remote.directory))
+
+        assert state.is_failed()
+        builds = [write for write in run_record_writes(cache=cache, repository_id=node.id) if write[0] == "building"]
+        assert builds == [("building", broken)]
+        assert last_run_branches(cache=cache, repository_id=node.id, operation="add") == [
+            {"branch_name": broken, "outcome": "failed"}
+        ]
 
     async def test_the_add_flow_sends_the_commit_event_of_the_commit_it_imports(
         self,

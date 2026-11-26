@@ -457,7 +457,9 @@ The design targets the Redis cache driver.
   reports collection and rewrite-record failures after its imports, so a branch whose commit was
   imported but whose rewrite record failed is reported as failed. A run that fails before any branch
   outcome, for example on a fetch that cannot reach the remote, is recorded with no branches. A run
-  whose work another run records calls `keep_last_run`, and the earlier last run stays in place.
+  whose work another run records calls `keep_last_run`, and the earlier last run stays in place unless
+  the run records a branch outcome anyway: an add flow that skips the default branch still records the
+  other branches that its syncer imports or fails on.
 - **Which flows write them.** The periodic sync writes one `sync` run per repository, created in
   `sync_remote_repository`. It covers the clone and default-branch import of the bootstrap and the
   syncer run in the `sync-git-repo-with-origin` subflow. Adding a read-write repository writes an
