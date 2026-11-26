@@ -64,6 +64,8 @@ from infrahub.events.schema_action import SchemaUpdatedEvent, build_changed_elem
 from infrahub.exceptions import BranchStatusError, ValidationError
 from infrahub.log import get_log_data, get_logger
 from infrahub.permissions import define_global_permission_from_branch
+from infrahub.schema.export.exporter import SchemaExporter, build_core_schema_baseline
+from infrahub.schema.export.models import SchemaExportDocument, SchemaExportMode
 from infrahub.schema.read_schema import build_read_schema
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
 from infrahub.worker import WORKER_IDENTITY
@@ -285,6 +287,21 @@ async def get_schema_summary(
     log.debug("schema_summary_request", branch=branch.name)
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
     return schema_branch.get_hash_full()
+
+
+def get_schema_exporter() -> SchemaExporter:
+    return SchemaExporter(baseline_factory=build_core_schema_baseline)
+
+
+@router.get("/export", response_model_exclude_unset=True)
+async def export_schema(
+    branch: Branch = Depends(get_branch_dep),
+    exporter: SchemaExporter = Depends(get_schema_exporter),
+    _: AccountSession = Depends(get_current_user),
+) -> SchemaExportDocument:
+    log.debug("schema_export_request", branch=branch.name)
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    return exporter.export(schema_branch=schema_branch, mode=SchemaExportMode.BRIEF, namespaces=None)
 
 
 @router.get("/{schema_kind}")
