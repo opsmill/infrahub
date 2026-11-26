@@ -62,6 +62,7 @@ describe("ObjectDetailsTabs", () => {
 
   afterEach(() => {
     vi.resetAllMocks();
+    window.history.pushState({}, "", "/");
   });
 
   test("shows the Commits tab for a repository", async () => {
@@ -180,6 +181,27 @@ describe("ObjectDetailsTabs", () => {
 
     // THEN
     await expect.poll(() => tabsViewport().scrollLeft).toBeGreaterThan(0);
+  });
+
+  test("keeps a deep-linked tab clear of the edge fade", async () => {
+    // GIVEN
+    const firstRender = await renderOverflowingTabs();
+    const tabUrl = firstRender
+      .getByRole("link", { name: /^Relationship number 5/ })
+      .element()
+      .getAttribute("href")!;
+    await firstRender.unmount();
+    window.history.pushState({}, "", tabUrl);
+
+    // WHEN
+    const component = await renderOverflowingTabs();
+
+    // THEN
+    const tab = component.getByRole("link", { name: /^Relationship number 5/ }).element();
+    await expect.poll(() => tabsViewport().scrollLeft).toBeGreaterThan(0);
+    await expect
+      .poll(() => tabsViewport().getBoundingClientRect().right - tab.getBoundingClientRect().right)
+      .toBeGreaterThanOrEqual(64);
   });
 
   test("shows no Commits tab for an object that is not a repository", async () => {

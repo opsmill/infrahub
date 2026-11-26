@@ -1,6 +1,6 @@
 import { Button, ScrollArea } from "@infrahub/ui";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { type RefObject, useEffect, useRef, useState } from "react";
+import { type CSSProperties, type RefObject, useEffect, useRef, useState } from "react";
 
 import { Row } from "@/shared/components/container";
 import { LinkTab } from "@/shared/components/ui/link";
@@ -45,9 +45,16 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
         type="auto"
         scrollX
         scrollY={false}
+        // Scroll padding keeps a tab scrolled into view out of the faded edges.
+        className="[&>[data-radix-scroll-area-viewport]]:scroll-px-(--edge-fade)"
         // A mask fades the tabs into whatever surface is behind them, so the fade fits
         // the light and dark card gradients alike.
-        style={{ maskImage: getEdgeFadeMask(canScrollLeft, canScrollRight) }}
+        style={
+          {
+            "--edge-fade": EDGE_FADE,
+            maskImage: getEdgeFadeMask(canScrollLeft, canScrollRight),
+          } as CSSProperties
+        }
       >
         <nav aria-label="Tabs" className="pb-1">
           <Row className="items-end gap-4 px-4" data-testid="object-details-tabs">
