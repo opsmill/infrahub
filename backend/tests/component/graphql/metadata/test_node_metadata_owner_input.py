@@ -155,7 +155,7 @@ class TestNodeMetadataOwnerInput:
             branch=branch,
             query="""
             mutation($group: String!) {
-                TestTenantUpsert(data: {name: {value: "tenant-upsert"}, node_metadata: {owners: [{name: $group}]}}) {
+                TestTenantUpsert(data: {name: {value: "tenant-upsert"}, node_metadata: {owners: [{kind: "CoreAccountGroup", name: $group}]}}) {
                     object { id }
                 }
             }
