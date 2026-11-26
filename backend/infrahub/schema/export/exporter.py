@@ -208,13 +208,19 @@ class SchemaExporter:
     def export(
         self, schema_branch: SchemaBranch, mode: SchemaExportMode, namespaces: list[str] | None
     ) -> SchemaExportDocument:
-        """Return the user-defined nodes and generics of `schema_branch`, never changing `schema_branch`."""
+        """Return the user-defined nodes and generics of `schema_branch`, never changing `schema_branch`.
+
+        With `namespaces`, the document holds only the nodes and generics of those namespaces, each with the values
+        it has in an export without the filter. A restricted namespace in `namespaces` selects nothing.
+        """
         started = time.monotonic()
         full_document = self._build_full_document(schema_branch=schema_branch)
         document = full_document
         passes = 0
         if mode == SchemaExportMode.BRIEF:
             document, passes = self._reduce(schema_branch=schema_branch, full_document=full_document)
+        if namespaces:
+            document = self._select_namespaces(document=document, namespaces=namespaces)
 
         log.debug(
             "Schema export built",
@@ -225,6 +231,16 @@ class SchemaExporter:
             duration_seconds=round(time.monotonic() - started, 3),
         )
         return document
+
+    @staticmethod
+    def _select_namespaces(document: SchemaExportDocument, namespaces: Iterable[str]) -> SchemaExportDocument:
+        selected = set(namespaces)
+        return document.model_copy(
+            update={
+                "generics": [generic for generic in document.generics if generic.namespace in selected],
+                "nodes": [node for node in document.nodes if node.namespace in selected],
+            }
+        )
 
     def _build_full_document(self, schema_branch: SchemaBranch) -> SchemaExportDocument:
         generics = [

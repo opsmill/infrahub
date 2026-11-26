@@ -71,6 +71,74 @@ def user_defined_elements(schema_branch: SchemaBranch, core_kinds: frozenset[str
     return elements
 
 
+SELECTED_NAMESPACE = "Network"
+OTHER_NAMESPACE = "Location"
+
+TWO_NAMESPACE_SCHEMA: dict[str, Any] = {
+    "version": "1.0",
+    "generics": [
+        {
+            "name": "Endpoint",
+            "namespace": SELECTED_NAMESPACE,
+            "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+        }
+    ],
+    "nodes": [
+        {
+            "name": "Device",
+            "namespace": SELECTED_NAMESPACE,
+            "inherit_from": [f"{SELECTED_NAMESPACE}Endpoint"],
+            "attributes": [{"name": "serial", "kind": "Text", "optional": True}],
+            "relationships": [
+                {
+                    "name": "site",
+                    "peer": f"{OTHER_NAMESPACE}Site",
+                    "identifier": "site__device",
+                    "cardinality": "one",
+                    "optional": True,
+                }
+            ],
+        },
+        {
+            "name": "Site",
+            "namespace": OTHER_NAMESPACE,
+            "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+            "relationships": [
+                {
+                    "name": "devices",
+                    "peer": f"{SELECTED_NAMESPACE}Device",
+                    "identifier": "site__device",
+                    "cardinality": "many",
+                }
+            ],
+        },
+    ],
+}
+"""A schema whose `Network` node has a relationship to a node in the `Location` namespace."""
+
+NamespaceFilterExports = Callable[[SchemaExportMode, list[str]], tuple[dict[str, Any], dict[str, Any]]]
+
+
+@pytest.fixture
+def export_with_and_without_filter(schema_exporter: SchemaExporter) -> NamespaceFilterExports:
+    """Return a function that exports the two-namespace schema with the given filter, then without one."""
+    source = load_on_new_baseline(TWO_NAMESPACE_SCHEMA)
+
+    def export(mode: SchemaExportMode, namespaces: list[str]) -> tuple[dict[str, Any], dict[str, Any]]:
+        filtered = schema_exporter.export(schema_branch=source, mode=mode, namespaces=namespaces)
+        unfiltered = schema_exporter.export(schema_branch=source, mode=mode, namespaces=None)
+        return filtered.model_dump(exclude_unset=True), unfiltered.model_dump(exclude_unset=True)
+
+    return export
+
+
+def elements_in_namespace(document: Mapping[str, Any], namespace: str) -> dict[str, list[dict[str, Any]]]:
+    return {
+        element_type: [element for element in document[element_type] if element["namespace"] == namespace]
+        for element_type in ("nodes", "generics")
+    }
+
+
 def document_without_infrahub_version(document: SchemaExportDocument) -> dict[str, Any]:
     return document.model_dump(exclude_unset=True, exclude={"infrahub_version"})
 

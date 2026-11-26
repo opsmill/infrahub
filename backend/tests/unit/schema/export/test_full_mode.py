@@ -21,7 +21,15 @@ from tests.helpers.schema.export_variations import (
     VariationSchema,
 )
 
-from .conftest import ROUND_TRIP_BRANCH_NAME, RoundTrip, load_on_new_baseline
+from .conftest import (
+    OTHER_NAMESPACE,
+    ROUND_TRIP_BRANCH_NAME,
+    SELECTED_NAMESPACE,
+    NamespaceFilterExports,
+    RoundTrip,
+    elements_in_namespace,
+    load_on_new_baseline,
+)
 
 if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
@@ -302,3 +310,29 @@ def test_full_export_writes_the_derived_values(
         (attribute["name"], attribute["label"], attribute["branch"], attribute["order_weight"])
         for attribute in device["attributes"]
     ] == [("name", "Hostname", "aware", 1000), ("serial_number", "Serial Number", "aware", 2000)]
+
+
+def test_full_export_of_one_namespace_holds_its_entries_as_in_the_unfiltered_export(
+    export_with_and_without_filter: NamespaceFilterExports,
+) -> None:
+    filtered, unfiltered = export_with_and_without_filter(SchemaExportMode.FULL, [SELECTED_NAMESPACE])
+
+    assert _exported_elements(unfiltered).keys() == {"NetworkDevice", "NetworkEndpoint", "LocationSite"}
+    assert _exported_elements(filtered).keys() == {"NetworkDevice", "NetworkEndpoint"}
+    assert {name: filtered[name] for name in ("nodes", "generics")} == elements_in_namespace(
+        unfiltered, SELECTED_NAMESPACE
+    )
+    assert [
+        relationship["peer"] for relationship in _exported_elements(filtered)["NetworkDevice"]["relationships"]
+    ] == [f"{OTHER_NAMESPACE}Site"]
+
+
+def test_full_export_ignores_a_restricted_namespace_in_the_filter(
+    export_with_and_without_filter: NamespaceFilterExports,
+) -> None:
+    with_restricted, _ = export_with_and_without_filter(SchemaExportMode.FULL, [SELECTED_NAMESPACE, "Core"])
+    without_restricted, _ = export_with_and_without_filter(SchemaExportMode.FULL, [SELECTED_NAMESPACE])
+    only_restricted, _ = export_with_and_without_filter(SchemaExportMode.FULL, ["Core"])
+
+    assert with_restricted == without_restricted
+    assert (only_restricted["nodes"], only_restricted["generics"]) == ([], [])

@@ -235,6 +235,7 @@ MAX_LENGTH_WARNING = "Use of 'max_length' on attributes is deprecated, use param
 MIN_LENGTH_WARNING = "Use of 'min_length' on attributes is deprecated, use parameters instead"
 LIST_ATTRIBUTE_KIND = "List"
 EXPORT_BRANCH_NAME = "schema-export"
+LOCATION_NAMESPACE = "Location"
 BRANCH_ONLY_SCHEMA: dict[str, Any] = {
     "version": "1.0",
     "nodes": [
@@ -268,11 +269,16 @@ class SchemaExportRoundTrip:
 
 
 async def fetch_export(
-    test_client: InfrahubTestClient, token: str, branch: str, mode: SchemaExportMode
+    test_client: InfrahubTestClient,
+    token: str,
+    branch: str,
+    mode: SchemaExportMode,
+    namespaces: list[str] | None = None,
 ) -> dict[str, Any]:
-    response = await test_client.get(
-        f"/api/schema/export?branch={branch}&mode={mode.value}", headers={"X-INFRAHUB-KEY": token}
-    )
+    params: dict[str, str | list[str]] = {"branch": branch, "mode": mode.value}
+    if namespaces is not None:
+        params["namespaces"] = namespaces
+    response = await test_client.get("/api/schema/export", params=params, headers={"X-INFRAHUB-KEY": token})
     assert response.status_code == 200, response.text
     return response.json()
 
@@ -575,6 +581,37 @@ class TestSchemaExportOfBaseModels(SchemaExportRoundTripTests):
         identifier = next(attribute for attribute in service["attributes"] if attribute["name"] == "service_identifier")
 
         assert identifier["parameters"]["ranges"] == [{"start": 100, "end": 10000, "weight": None}]
+
+    async def test_export_of_one_namespace_writes_its_entries_as_the_unfiltered_export(
+        self,
+        round_trip: SchemaExportRoundTrip,
+        test_client: InfrahubTestClient,
+        api_admin_token: str,
+        default_branch: Branch,
+    ) -> None:
+        location_export = await fetch_export(
+            test_client=test_client,
+            token=api_admin_token,
+            branch=default_branch.name,
+            mode=round_trip.mode,
+            namespaces=[LOCATION_NAMESPACE],
+        )
+
+        elements = location_export["nodes"] + location_export["generics"]
+        peers_outside_the_namespace = {
+            relationship["peer"]
+            for element in elements
+            for relationship in element.get("relationships", [])
+            if not relationship["peer"].startswith(LOCATION_NAMESPACE)
+        }
+        assert sorted({element["namespace"] for element in elements}) == [LOCATION_NAMESPACE]
+        assert peers_outside_the_namespace == {"InfraDevice", "InfraVLAN", "InfraCircuitEndpoint", "BuiltinTag"}
+        for element_type in ("nodes", "generics"):
+            assert location_export[element_type] == [
+                element
+                for element in round_trip.target_export[element_type]
+                if element["namespace"] == LOCATION_NAMESPACE
+            ]
 
 
 class TestSchemaExportOfVariationSchemas(SchemaExportRoundTripTests):

@@ -174,13 +174,13 @@ Write these first and check that they fail before the implementation tasks.
 
 ### Tests for User Story 3
 
-- [ ] T034 [P] [US3] In `backend/tests/unit/schema/export/test_brief_mode.py` and `backend/tests/unit/schema/export/test_full_mode.py`, add a test with two namespaces where a node in the first has a relationship to a node in the second. Export with a filter on the first namespace and assert, in both modes, that the document holds only that namespace and that each node and generic in it is identical to the same entry of the unfiltered export (FR-011). Add a case where the filter names a restricted namespace and assert that it is ignored
-- [ ] T035 [P] [US3] In `backend/tests/functional/api/test_schema_export.py`, add a test for `GET /api/schema/export?namespaces=Location` on `models/base/`: the namespaces in the document are `["Location"]`, and relationships to kinds in other namespaces are written as in the unfiltered export (quickstart.md, manual scenario 3)
+- [X] T034 [P] [US3] In `backend/tests/unit/schema/export/test_brief_mode.py` and `backend/tests/unit/schema/export/test_full_mode.py`, add a test with two namespaces where a node in the first has a relationship to a node in the second. Export with a filter on the first namespace and assert, in both modes, that the document holds only that namespace and that each node and generic in it is identical to the same entry of the unfiltered export (FR-011). Add a case where the filter names a restricted namespace and assert that it is ignored
+- [X] T035 [P] [US3] In `backend/tests/functional/api/test_schema_export.py`, add a test for `GET /api/schema/export?namespaces=Location` on `models/base/`: the namespaces in the document are `["Location"]`, and relationships to kinds in other namespaces are written as in the unfiltered export (quickstart.md, manual scenario 3)
 
 ### Implementation for User Story 3
 
-- [ ] T036 [US3] In `SchemaExporter.export` in `backend/infrahub/schema/export/exporter.py`, apply the `namespaces` filter after the reduction loop (or after the `FULL` build in `FULL` mode), keeping only nodes and generics in the selected namespaces. The loop always runs on all user namespaces (research R6). Restricted namespaces in the filter are ignored
-- [ ] T037 [US3] In `backend/infrahub/api/schema.py`, add the repeatable query parameter `namespaces` to `GET /api/schema/export` with the same declaration as on `get_schema`, and pass it to `export` (FR-001, FR-011)
+- [X] T036 [US3] In `SchemaExporter.export` in `backend/infrahub/schema/export/exporter.py`, apply the `namespaces` filter after the reduction loop (or after the `FULL` build in `FULL` mode), keeping only nodes and generics in the selected namespaces. The loop always runs on all user namespaces (research R6). Restricted namespaces in the filter are ignored
+- [X] T037 [US3] In `backend/infrahub/api/schema.py`, add the repeatable query parameter `namespaces` to `GET /api/schema/export` with the same declaration as on `get_schema`, and pass it to `export` (FR-001, FR-011)
 
 **Checkpoint**: User Stories 1, 2 and 3 work on their own.
 
