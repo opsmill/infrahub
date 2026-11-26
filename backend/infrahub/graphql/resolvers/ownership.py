@@ -108,6 +108,10 @@ class OwnershipGraphqlResolver:
         resolved = await self._node_loader(context=info.context).load(reference["node_id"])
         return _to_graphql(resolved=resolved) if resolved else None
 
+    async def load_metadata_nodes(self, context: GraphqlContext, node_ids: list[str]) -> list[OwnerReference]:
+        """Return the kind and the labels that each node has now, or mark it as deleted."""
+        return await self._metadata_node_loader(context=context).load_many(node_ids)
+
     async def resolve_metadata_node_field(self, parent: dict[str, Any], info: GraphQLResolveInfo) -> Any:
         reference = await self._metadata_node_loader(context=info.context).load(parent["id"])
         return getattr(reference, info.field_name)

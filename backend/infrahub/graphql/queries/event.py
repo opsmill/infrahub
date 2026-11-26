@@ -5,6 +5,14 @@ from typing import TYPE_CHECKING, Any
 from graphene import Argument, Boolean, DateTime, Enum, Field, Int, List, NonNull, ObjectType, String
 
 from infrahub.core.constants import GlobalPermissions
+from infrahub.core.ownership.fields import (
+    NODE_SOURCES_FIELD,
+    OWNER_LABEL_SEPARATOR,
+    OWNERS_CHANGELOG_KIND,
+    deleted_label,
+    is_owners_field_name,
+    owner_ids_from_value,
+)
 from infrahub.events.constants import ACCOUNT_EVENT_PREFIX, EventSortOrder
 from infrahub.exceptions import PermissionDeniedError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
@@ -22,6 +30,42 @@ if TYPE_CHECKING:
 
 
 InfrahubEventSortOrder = Enum.from_enum(EventSortOrder)
+OWNER_VALUE_KEYS = ("value", "value_previous")
+
+
+async def _show_owner_labels(graphql_context: GraphqlContext, edges: list[dict[str, Any]]) -> None:
+    """Replace the IDs of each change of an owner list or a source list with the display labels that the nodes have now.
+
+    The event stores the IDs, so that a rename of an owner shows in the log of all its earlier changes.
+    """
+    changes = [
+        attribute
+        for edge in edges
+        for attribute in edge["node"].get("attributes") or []
+        if attribute["kind"] == OWNERS_CHANGELOG_KIND and is_owners_field_name(field_name=attribute["name"])
+    ]
+    node_ids = sorted(
+        {
+            node_id
+            for change in changes
+            for key in OWNER_VALUE_KEYS
+            for node_id in owner_ids_from_value(value=change[key]) or []
+        }
+    )
+    if not node_ids:
+        return
+    references = await graphql_context.ownership_resolver.load_metadata_nodes(
+        context=graphql_context, node_ids=node_ids
+    )
+    labels = {
+        reference.id: reference.display_label or reference.id for reference in references if not reference.is_deleted
+    }
+    for change in changes:
+        deleted = deleted_label(is_source=change["name"] == NODE_SOURCES_FIELD)
+        for key in OWNER_VALUE_KEYS:
+            listed_ids = owner_ids_from_value(value=change[key])
+            if listed_ids is not None:
+                change[key] = OWNER_LABEL_SEPARATOR.join(labels.get(node_id, deleted) for node_id in listed_ids)
 
 
 class Events(ObjectType):
@@ -114,9 +158,11 @@ class Events(ObjectType):
             limit=limit,
             offset=offset,
         )
+        edges = prefect_tasks.get("edges", [])
+        await _show_owner_labels(graphql_context=info.context, edges=edges)
         return {
             "count": prefect_tasks.get("count", 0),
-            "edges": prefect_tasks.get("edges", []),
+            "edges": edges,
         }
 
 
