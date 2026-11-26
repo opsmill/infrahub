@@ -81,6 +81,12 @@ describe("ObjectDetailsTabs", () => {
         return scrollBar ? getComputedStyle(scrollBar).display : "absent";
       })
       .not.toMatch(/^(none|absent)$/);
+
+    const scrollBar = viewport.parentElement!.querySelector('[data-orientation="horizontal"]')!;
+    const detailsTab = component.getByRole("link", { name: "Details" }).element();
+    expect(scrollBar.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      detailsTab.getBoundingClientRect().bottom
+    );
   });
 
   test("shows no Commits tab for an object that is not a repository", async () => {

@@ -29,7 +29,7 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
 
   return (
     <ScrollArea type="auto" scrollX scrollY={false} className="shrink-0">
-      <nav aria-label="Tabs">
+      <nav aria-label="Tabs" className="pb-1">
         <Row className="items-end gap-4 px-4" data-testid="object-details-tabs">
           <LinkTab to={getObjectDetailsUrl(objectKind, objectId)} scrollIntoViewOnActive>
             Details
