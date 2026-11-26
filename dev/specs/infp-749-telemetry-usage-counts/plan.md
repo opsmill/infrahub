@@ -123,6 +123,8 @@ The change was written before this plan, in the working tree of the feature bran
 
 Some acceptance scenarios have no test of their own yet; [research R16](research.md) lists them. `tasks.md` marks what is built and what is open.
 
+Later on 2026-11-26 the three differences above and the missing tests were closed by tasks T010, T023 to T027, T029, T030 and T034. `tasks.md` has the current state.
+
 ## Complexity Tracking
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |

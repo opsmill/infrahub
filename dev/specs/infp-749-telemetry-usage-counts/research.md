@@ -159,6 +159,8 @@ The Technical Context of the plan has no open clarification.
 
 [CLAUDE RECOMMENDED – based on the acceptance scenarios of the specification and on the tests in the working tree]
 
+Closed on 2026-11-26, after this entry was written: tasks T010, T023 to T026, T029 and T030 added a test for each scenario below, and task T027 made the change of R8a. The entry is kept as the record of what was missing.
+
 The tests in the working tree cover the run rows, the window, the validator counts, the five node totals, the definition counts and two failure cases (every run history read fails; the read of artifacts and generator instances fails). These scenarios are not covered:
 
 - User Story 2, scenario 2: no test produces a report on a schema with customer-defined kinds and asserts that the serialized report contains none of their names.

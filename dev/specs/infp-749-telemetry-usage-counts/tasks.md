@@ -8,7 +8,7 @@
 
 **Organization**: Grouped by user story. User Story 4 (a failed read) and User Story 2 (existing models keep working) are checks across the values that the other stories add, so their phases come after those stories, although their priority is higher.
 
-**State of the tasks**: the change was written in the working tree of the feature branch before this list was generated. A checked task was compared with the working tree on 2026-11-26: the code or test it names exists there, uncommitted, and the telemetry tests passed before this list was written. An unchecked task is open. The critique of 2026-11-26 added T034 and T037 to T040 and changed T023 and T027.
+**State of the tasks**: the change was written in the working tree of the feature branch before this list was generated. A checked task was compared with the working tree on 2026-11-26: the code or test it names exists there, uncommitted, and the telemetry tests passed before this list was written. An unchecked task is open. The critique of 2026-11-26 added T034 and T037 to T040 and changed T023 and T027. T010, T023 to T027, T029, T030 and T034 were done later on 2026-11-26, also in the working tree and uncommitted.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -70,7 +70,7 @@ Single backend project. Source under `backend/infrahub/telemetry/`, tests under 
 
 - [x] T008 [P] [US3] Component test `test_gather_database_information_artifact_totals` in `backend/tests/component/telemetry/test_database.py`, with the fixtures `target_group` and `artifact_definition` and the helpers `_create_artifact`, `_create_generated_artifact` and `_delete`: every total is `0` before an artifact exists; two artifacts with stored content on one node count as one node and two artifacts; an artifact with no stored content counts in `with_artifact` only; a deleted artifact, an artifact on another branch only and a deleted node are not counted; `artifact_target` is the number of nodes whose kind inherits from `CoreArtifactTarget`
 - [x] T009 [P] [US3] Component test `test_gather_database_information_generator_instance_total` in `backend/tests/component/telemetry/test_database.py`, with the fixture `generator_definitions` and the helper `_create_generator_instance`: instances of two generator definitions for one node count as one node; an instance in status `Error` counts; a deleted instance and an instance on another branch only are not counted
-- [ ] T010 [US3] Add to `test_gather_database_information_artifact_totals` in `backend/tests/component/telemetry/test_database.py` an artifact in status `Error` whose `storage_id` is set, and assert that it is counted in `generated_artifact` and its node in `with_generated_artifact` (acceptance scenario 3 of User Story 3)
+- [x] T010 [US3] Add to `test_gather_database_information_artifact_totals` in `backend/tests/component/telemetry/test_database.py` an artifact in status `Error` whose `storage_id` is set, and assert that it is counted in `generated_artifact` and its node in `with_generated_artifact` (acceptance scenario 3 of User Story 3)
 
 ### Implementation for User Story 3
 
@@ -131,14 +131,14 @@ Single backend project. Source under `backend/infrahub/telemetry/`, tests under 
 
 - [x] T021 [P] [US4] Component test `test_gather_workflow_runs_reports_each_failed_read` in `backend/tests/component/telemetry/test_task_manager.py`: a window that ends before it starts makes every read fail, and the result is one row with `None` figures for each of the 8 workflows
 - [x] T022 [P] [US4] Component test `test_gather_database_information_survives_output_count_failure` in `backend/tests/component/telemetry/test_database.py`: with the query `count-nodes-with-output` failing, the four totals about artifacts and generator instances are `None`, and `artifact_target`, `corenode` and `user` keep their values
-- [ ] T023 [P] [US4] Unit tests in `backend/tests/unit/telemetry/test_task_manager.py` with a real `PrefectClient` built with `httpx_settings={"transport": httpx.MockTransport(handler)}`. The handler answers `GET /csrf-token` with status 404, answers status 500 for one workflow name or one kind label (the client tries again after 408, 429, 502 and 503), and answers a valid body for the others. `gather_workflow_runs` returns one row with `None` figures for the failed workflow and the rows of the others (acceptance scenario 1); `count_started_validators` returns `None` for the failed kind and the counts of the others (acceptance scenario 3). The code in the working tree already behaves this way; only the tests are missing
-- [ ] T024 [US4] Component test in `backend/tests/component/telemetry/test_task_manager.py`: `gather_activity_24h` with a reader of the validator kinds that raises returns `validators_started is None` and the seeded counts for the other fields, for example `checks_started` (acceptance scenario 4; depends on T027)
-- [ ] T025 [P] [US4] Component test in `backend/tests/component/telemetry/test_database.py`: the artifact read fails alone, with a subclass of `tests/helpers/db_query_failer.py::FailingQueryInfrahubDatabase` in the test module that fails `count-nodes-with-output` only when the parameters contain `content_attribute`; `with_artifact`, `with_generated_artifact` and `generated_artifact` are `None`, and `with_generator_instance` and `artifact_target` keep their values (acceptance scenario 5)
-- [ ] T026 [P] [US4] Component test in `backend/tests/component/telemetry/test_tasks.py`: with the query `count-nodes-by-kinds` failing, `gather_feature_information` returns `None` for the three definition keys and a count for an existing key such as `CoreRepository` (acceptance scenario 6). `gather_feature_information` takes its database from `workers/dependencies.py::get_database`, a process singleton, so the test registers a `FailingQueryInfrahubDatabase` as that singleton and restores it on teardown
+- [x] T023 [P] [US4] Unit tests in `backend/tests/unit/telemetry/test_task_manager.py` with a real `PrefectClient` built with `httpx_settings={"transport": httpx.MockTransport(handler)}`. The handler answers `GET /csrf-token` with status 404, answers status 500 for one workflow name or one kind label (the client tries again after 408, 429, 502 and 503), and answers a valid body for the others. `gather_workflow_runs` returns one row with `None` figures for the failed workflow and the rows of the others (acceptance scenario 1); `count_started_validators` returns `None` for the failed kind and the counts of the others (acceptance scenario 3). The code in the working tree already behaves this way; only the tests are missing
+- [x] T024 [US4] Component test in `backend/tests/component/telemetry/test_task_manager.py`: `gather_activity_24h` with a reader of the validator kinds that raises returns `validators_started is None` and the seeded counts for the other fields, for example `checks_started` (acceptance scenario 4; depends on T027)
+- [x] T025 [P] [US4] Component test in `backend/tests/component/telemetry/test_database.py`: the artifact read fails alone, with a subclass of `tests/helpers/db_query_failer.py::FailingQueryInfrahubDatabase` in the test module that fails `count-nodes-with-output` only when the parameters contain `content_attribute`; `with_artifact`, `with_generated_artifact` and `generated_artifact` are `None`, and `with_generator_instance` and `artifact_target` keep their values (acceptance scenario 5)
+- [x] T026 [P] [US4] Component test in `backend/tests/component/telemetry/test_tasks.py`: with the query `count-nodes-by-kinds` failing, `gather_feature_information` returns `None` for the three definition keys and a count for an existing key such as `CoreRepository` (acceptance scenario 6). `gather_feature_information` takes its database from `workers/dependencies.py::get_database`, a process singleton, so the test registers a `FailingQueryInfrahubDatabase` as that singleton and restores it on teardown
 
 ### Implementation for User Story 4
 
-- [ ] T027 [US4] Make a failed read of the validator kinds null only `validators_started` ([research R8a](research.md)). In `backend/infrahub/telemetry/task_manager.py`, `count_started_validators` takes `read_kinds: Callable[[], list[str]]` and calls it before it counts, and `gather_activity_24h` takes `read_validator_kinds: Callable[[], list[str]]` and runs `count_started_validators` through `safe_metric`. In `backend/infrahub/telemetry/tasks.py`, `list_validator_kinds` takes `db` and reads the schema with `db.schema.get_schema_branch(...)` instead of `registry.schema`, `DefaultActivityGatherer` takes `db` in its constructor and passes the reader instead of its result, and the factory `build_anonymous_telemetry_gatherer` passes the database. `AnonymousTelemetryGatherer` and its constructor stay as they are. Update the calls in `backend/tests/component/telemetry/test_task_manager.py` and `backend/tests/component/telemetry/test_tasks.py` (`_build_gatherer`, `test_list_validator_kinds`)
+- [x] T027 [US4] Make a failed read of the validator kinds null only `validators_started` ([research R8a](research.md)). In `backend/infrahub/telemetry/task_manager.py`, `count_started_validators` takes `read_kinds: Callable[[], list[str]]` and calls it before it counts, and `gather_activity_24h` takes `read_validator_kinds: Callable[[], list[str]]` and runs `count_started_validators` through `safe_metric`. In `backend/infrahub/telemetry/tasks.py`, `list_validator_kinds` takes `db` and reads the schema with `db.schema.get_schema_branch(...)` instead of `registry.schema`, `DefaultActivityGatherer` takes `db` in its constructor and passes the reader instead of its result, and the factory `build_anonymous_telemetry_gatherer` passes the database. `AnonymousTelemetryGatherer` and its constructor stay as they are. Update the calls in `backend/tests/component/telemetry/test_task_manager.py` and `backend/tests/component/telemetry/test_tasks.py` (`_build_gatherer`, `test_list_validator_kinds`)
 
 **Checkpoint**: Every failure case of the specification has a test, and a failed read of the validator kinds no longer removes the other values of `activity_24h`.
 
@@ -153,8 +153,8 @@ Single backend project. Source under `backend/infrahub/telemetry/`, tests under 
 ### Tests for User Story 2
 
 - [x] T028 [US2] In `backend/tests/component/telemetry/test_tasks.py`, add `validators_started` and `workflow_runs` to `_ACTIVITY_FIELDS`, so that `test_gather_full_payload_fields_present` asserts that both are set in the full report and the tests of a failed activity gather assert that both are `None`
-- [ ] T029 [US2] Extend `test_gather_full_payload_fields_present` in `backend/tests/component/telemetry/test_tasks.py`: the full report contains the five new `database.node_count` keys and the three new `features` keys, each set, and `workflow_runs` is a list (acceptance scenarios 1 and 3)
-- [ ] T030 [US2] Component test in `backend/tests/component/telemetry/test_tasks.py`: a full report gathered on a schema with customer-defined kinds (the car and person schema of the fixture `car_person_data_generic`) that have an artifact and a generator instance; the JSON of the report contains none of the names of those kinds and none of the names of their nodes (acceptance scenario 2, SC-004)
+- [x] T029 [US2] Extend `test_gather_full_payload_fields_present` in `backend/tests/component/telemetry/test_tasks.py`: the full report contains the five new `database.node_count` keys and the three new `features` keys, each set, and `workflow_runs` is a list (acceptance scenarios 1 and 3)
+- [x] T030 [US2] Component test in `backend/tests/component/telemetry/test_tasks.py`: a full report gathered on a schema with customer-defined kinds (the car and person schema of the fixture `car_person_data_generic`) that have an artifact and a generator instance; the JSON of the report contains none of the names of those kinds and none of the names of their nodes (acceptance scenario 2, SC-004). The fixtures `target_group`, `artifact_definition` and `generator_definitions` and the helpers that create an artifact or a generator instance moved from `test_database.py` to `backend/tests/component/telemetry/conftest.py`, so that both test modules use them
 
 **Checkpoint**: The contract in [contracts/telemetry-payload.md](contracts/telemetry-payload.md) is checked on the full report.
 
@@ -167,9 +167,9 @@ Single backend project. Source under `backend/infrahub/telemetry/`, tests under 
 - [x] T031 [P] Update `dev/knowledge/backend/telemetry.md`: the new values in the category table and the activity field table, the two ways of counting in `features` and `database.node_count`, the day a run belongs to, the exception to the `null` rule for run rows, and the key locations
 - [x] T032 [P] Update the size of a daily report in `docs/docs/deploy-manage/run-observe/telemetry.mdx` ("approximately 4-8 KB") and the daily activity line of the entry "What telemetry does Infrahub send?" in `docs/docs/faq/faq.mdx`
 - [x] T033 [P] Create the changelog fragment `changelog/+telemetry-usage-counts.added.md` with `uv run towncrier create`
-- [ ] T034 Correct `dev/knowledge/backend/telemetry.md`: in the row `workflow_runs` of the table "Activity (24h) field semantics", say that for the three workflows that run inside a proposed change a failed generator, artifact generation or check ends the run in `COMPLETED` ([research R5](research.md)); in the section "Two ways of counting in `features` and `database.node_count`", say that `with_generator_instance` leaves out the nodes of a generator definition with `execute_after_merge: false` ([research R10](research.md)); after T027, say in the degradation section what a failed read of the validator kinds does
-- [ ] T035 Run `uv run invoke format`, `uv run invoke backend.lint` and the telemetry tests of [quickstart.md](quickstart.md) after the open tasks are done
-- [ ] T036 Run `uv run invoke docs.lint` with Vale and `markdownlint-cli2` installed, and `uv run invoke docs.validate` on a tree with the docs changes committed
+- [x] T034 Correct `dev/knowledge/backend/telemetry.md`: in the row `workflow_runs` of the table "Activity (24h) field semantics", say that for the three workflows that run inside a proposed change a failed generator, artifact generation or check ends the run in `COMPLETED` ([research R5](research.md)); in the section "Two ways of counting in `features` and `database.node_count`", say that `with_generator_instance` leaves out the nodes of a generator definition with `execute_after_merge: false` ([research R10](research.md)); after T027, say in the degradation section what a failed read of the validator kinds does
+- [x] T035 Run `uv run invoke format`, `uv run invoke backend.lint` and the telemetry tests of [quickstart.md](quickstart.md) after the open tasks are done. Run on 2026-11-26: the formatter changed no file, `ruff`, `ty` and `mypy` reported no error, and the 140 telemetry tests passed
+- [x] T036 Run `uv run invoke docs.lint` with Vale and `markdownlint-cli2` installed, and `uv run invoke docs.validate` on a tree with the docs changes committed. Run on 2026-11-26: Vale 3.12.0 on the two public pages and the changelog fragment, and `markdownlint-cli2` 0.24.1 on the two public pages, with no issue; `docs.validate` passed on the committed tree. The two linters were run directly on the changed files and not through `docs.lint`, because neither is installed on the machine
 - [ ] T037 Run the workflows once for real on a local deployment, with work that succeeds and work that fails, inside and outside a proposed change, and record the rows in research R5 (step 5 of [quickstart.md](quickstart.md)); read a stored report and compare its new keys with [contracts/telemetry-payload.md](contracts/telemetry-payload.md) (step 4)
 - [ ] T038 Run the two reads of `database.py::count_nodes_with_output` and the read of `database.py::count_artifact_targets` with `PROFILE` on the largest dataset available, and record the time and the database hits in research R10. The owner of the telemetry code decides whether the reads get a time limit
 - [ ] T039 Before the pull request is merged, the owner of the telemetry code confirms that the telemetry endpoint accepts a report with the new values: a body with 32 run rows, a list and a map inside `activity_24h`, and `null` inside `features`
@@ -221,21 +221,21 @@ Task: "T026 component test of a failed definition read in backend/tests/componen
 
 Phases 1 to 6 are built in the working tree: the four groups of values, their tests on the main path, two failure tests, the documentation and the changelog fragment.
 
+### What was done after this list was generated
+
+1. T027: a failed read of the validator kinds nulls only `validators_started`, and the kinds are read through `db.schema`.
+2. T010, T023 to T026, T029 and T030: tests for the acceptance scenarios that had no test of their own. Seven of the eight new or extended tests were run against code with the behaviour removed, and each failed. The case added by T010 was not run against changed code.
+3. T034: three corrections to the knowledge doc.
+
 ### What is open
 
-1. T027: the one change to the code. A failed read of the validator kinds must null only `validators_started`, and the kinds are read through `db.schema`.
-2. T010, T023 to T026, T029 and T030: tests for the acceptance scenarios that have no test of their own.
-3. T034: three corrections to the knowledge doc.
-4. T035 and T036: the linters and the tests.
-5. T037 to T039: the checks before the pull request is merged. T040: the design doc page.
+1. T037 to T039: the checks before the pull request is merged.
+2. T040: the design doc page.
 
 ### Suggested order
 
-1. T027, then T024
-2. T023, T025, T026 and T010
-3. T029 and T030
-4. T034, then T035 and T036
-5. T037, T038 and T039 before the merge; T040 when the page can be written
+1. T037, T038 and T039 before the merge
+2. T040 when the page can be written
 
 ---
 

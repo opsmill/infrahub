@@ -17,20 +17,26 @@ uv run pytest backend/tests/unit/telemetry backend/tests/component/telemetry
 
 Expected: every test passes. The tests that cover the new values:
 
-- `backend/tests/unit/telemetry/test_task_manager.py::test_build_workflow_run_rows`: the rows per end state, the sum before rounding, the states that are left out, the order of the rows
+- `backend/tests/unit/telemetry/test_task_manager.py`:
+  - `test_build_workflow_run_rows`: the rows per end state, the sum before rounding, the states that are left out, the order of the rows
+  - `test_gather_workflow_runs_keeps_the_other_rows_when_one_read_fails` and `test_count_started_validators_keeps_the_other_kinds_when_one_count_fails`: one failed read among reads that succeed, with a task manager client on a scripted HTTP transport
 - `backend/tests/component/telemetry/test_task_manager.py`:
   - `test_gather_workflow_runs_rows_per_workflow_and_end_state`: rows against a real task manager, the window, a workflow that is not reported
   - `test_gather_workflow_runs_reports_each_failed_read`: one row with null figures per workflow when every read fails
   - `test_gather_activity_24h_validators_started_per_kind`: the count per kind and `0` for a kind with no event
   - `test_count_started_validators_reads_the_kind_of_the_validator_only`: an event is counted under the kind of its own resource
+  - `test_gather_activity_24h_unreadable_validator_kinds_nulls_only_the_count_per_kind`: a failed read of the validator kinds leaves the other activity values
 - `backend/tests/component/telemetry/test_database.py`:
   - `test_gather_database_information_artifact_totals`
   - `test_gather_database_information_generator_instance_total`
   - `test_gather_database_information_survives_output_count_failure`
+  - `test_gather_database_information_failed_artifact_read_nulls_only_the_artifact_totals`
 - `backend/tests/component/telemetry/test_tasks.py`:
   - `test_list_validator_kinds`: the six validator kinds
   - `test_gather_feature_information_counts_definitions_on_the_default_branch`
   - `test_gather_full_payload_fields_present`: the new fields are in the full report
+  - `test_gather_feature_information_failed_definition_read_nulls_only_the_definitions`
+  - `test_gather_full_report_contains_no_customer_defined_name`: a full report on customer-defined kinds with an artifact and a generator instance
 
 ## 2. Run the linters
 
@@ -79,9 +85,4 @@ To get rows in `workflow_runs`, run a generator or generate an artifact, then re
 
 ## 6. Confirm that a failed read does not stop the report
 
-The component tests of step 1 cover this without a deployment:
-
-- `test_gather_workflow_runs_reports_each_failed_read` for the run history
-- `test_gather_database_information_survives_output_count_failure` for the read of artifacts and generator instances
-
-[Research R16](research.md) lists the failure cases that have no test yet.
+The tests of step 1 cover this without a deployment: one test for each failure case of User Story 4 in [spec.md](spec.md).
