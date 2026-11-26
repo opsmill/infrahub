@@ -26,10 +26,10 @@ if TYPE_CHECKING:
 
 SCRIPT_DIRECTORY = Path(__file__).resolve().parents[3] / "development" / "grafana-mcp"
 SCRIPT_IN_CONTAINER = "/scripts/create-service-account.sh"
-TOKEN_FILE = "/tmp/grafana-mcp/token"
+TOKEN_FILE = "/tmp/grafana-mcp/token"  # noqa: S108 - a path inside the Grafana container, not on the host
 ACCOUNT_NAME = "infrahub-grafana-mcp"
 ADMIN_USER = "admin"
-ADMIN_PASSWORD = "component-test-admin"
+ADMIN_PASSWORD = "observability-test-admin"
 GRAFANA_PORT = 3000
 GRAFANA_START_TIMEOUT_SECONDS = 120
 REQUEST_TIMEOUT_SECONDS = 30

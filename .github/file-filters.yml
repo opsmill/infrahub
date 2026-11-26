@@ -136,6 +136,12 @@ observability_standalone_all:
   - "development/loki/**"
   - "development/tempo/**"
 
+# The Grafana version of the Compose stack is in docker-compose-observability.yml.
+grafana_mcp_service_account_all:
+  - "development/grafana-mcp/**"
+  - "development/docker-compose-observability.yml"
+  - "backend/tests/observability/**"
+
 e2e_all:
   - *backend_files
   - *frontend_files
