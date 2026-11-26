@@ -134,6 +134,7 @@
 
   --table-cell: var(--color-stone-50);
   --table-cell-pinned: var(--color-white);
+  --table-cell-raised: var(--color-stone-50);
   --table-frame: none;
 }
 
@@ -259,6 +260,7 @@
 
   --table-cell: rgb(255 255 255 / 0.02);
   --table-cell-pinned: rgb(18 18 18 / 0.94);
+  --table-cell-raised: #1e1c1b;
   --table-frame:
     radial-gradient(85% 60% at 10% 0%, rgb(255 244 230 / 0.11), transparent 55%),
     linear-gradient(0deg, rgb(255 244 230 / 0.09), transparent 160px),
@@ -349,6 +351,7 @@
 
   --color-table-cell: var(--table-cell);
   --color-table-cell-pinned: var(--table-cell-pinned);
+  --color-table-cell-raised: var(--table-cell-raised);
   --background-image-table-frame: var(--table-frame);
 }
 

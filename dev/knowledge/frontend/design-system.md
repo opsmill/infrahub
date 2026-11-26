@@ -24,6 +24,7 @@ Most components wrap `react-aria-components` primitives with Tailwind styling. C
 | `Breadcrumbs` (`Breadcrumb`, `BreadcrumbItem`, loading/error variants) | Trail of links/buttons with `/` separator. |
 | `Select` (`SelectTrigger`, `SelectList`, `SelectItem`) | Styled select built on `ListBox` + `Popover`. |
 | `ListBox` (`ListBoxItem`, `ListBoxLoadMoreItem`) | Virtualized option list with load-more support. |
+| `Table` (`TableHeader`, `TableColumn`, `TableBody`, `TableRow`, `TableCell`, `TableLink`, `TableLoadMoreItem`, `TableSkeleton`, `TableEmptyMessage`) | Virtualized react-aria table with a sticky header and load-more support. `TableBody` requires `renderEmptyState`; the caller returns `TableSkeleton` while loading and `TableEmptyMessage` once the data is empty. A cell truncates its content; when the user selects it (click, arrow keys or focus), it grows over its neighbours to show the full value, wrapping past `max-w-md`. See the table note below for its layout requirements. |
 | `Autocomplete` | Search field filtering a wrapped collection (react-aria `useFilter`). |
 | `Checkbox`, `CheckboxCard`, `Label` | Form field primitives; `CheckboxCard` is a card-style selectable choice. |
 | `Tree` (`TreeItem`, `TreeItemContent`, `TreeItemLoader`) | Expandable tree with lazy loading. |
@@ -74,6 +75,14 @@ If a component needs a slot the package doesn't expose yet, **extend the package
 `frontend/app/src/shared/components/ui/` contains primitives that have not yet been migrated. They are still the canonical implementation for now. Examples: `combobox`, `popover`, `badge`, `alert`, `accordion`, `pagination`, `command` (`tooltip` and `resizable` have already moved to `@infrahub/ui`).
 
 **Popover exists in both places.** `shared/components/ui/popover.tsx` is Radix-based (`@radix-ui/react-popover`), adds `PopoverAnchor` and `PopoverTabs*` subcomponents, and marks its content with `data-react-aria-top-layer` so clicking inside it does not count as an outside interaction for an enclosing react-aria overlay such as the package `Sheet`. `@infrahub/ui` exports a separate react-aria `Popover` / `PopoverDialog` / `PopoverTrigger`. Both are actively used in the app (roughly 23 vs 26 importing files); the dismiss guard itself lives in `@infrahub/ui` (`Sheet` + `useDismissGuard`), not in either popover.
+
+**Table exists in both places.** `shared/components/table/` holds the app's TanStack `DataTable` (with `PagedTableCard` and `TablePagination`) and an older `Table` and `TableCell` that share names with the package exports, so check the import path when an editor adds one. Use the package `Table` for a read-only list with single-line rows, especially one that loads more rows as the user scrolls. Use `DataTable` when the table needs row selection, column visibility, pinned columns or horizontal scrolling of schema-driven columns. The package `Table`:
+
+- is always virtualized with 36px rows, so a cell holds one line of text;
+- needs a parent with a bounded height; inside a flex column it fills the parent;
+- reserves the height of three rows when it has no rows; `TableSkeleton` and `TableEmptyMessage` fill exactly that height, so the table keeps its height when loading ends, and custom empty content should do the same;
+- accepts react-aria's selection and sorting props, but no style shows a selected row or a sort direction yet;
+- takes a cell's `textValue` from string or number content, which type-to-select uses; pass `textValue` on a row header cell whose content is a link or another element.
 
 **`PopoverDialog` gotcha: don't wrap content that auto-opens a nested combobox/dropdown.** `PopoverDialog` wraps react-aria's `Dialog`, which invokes `useDialog` and focuses itself on mount. If the popover's content renders a `defaultOpen` combobox or dropdown (e.g. an enum/relationship filter field), `useDialog`'s focus-on-mount can steal focus from that nested control and close it immediately. For content shaped like that, skip `PopoverDialog` and render the plain `Popover` instead — accepting the reduced dialog semantics for that one case.
 

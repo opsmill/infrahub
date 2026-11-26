@@ -224,9 +224,7 @@ describe("NumberPoolAllocationsTable", () => {
     const component = await renderTable();
 
     // THEN
-    await expect
-      .element(component.getByRole("status", { name: "Loading allocations" }))
-      .toBeVisible();
+    await expect.element(component.getByRole("status", { name: "Loading" })).toBeVisible();
   });
 
   it("keeps the loaded rows and offers a retry when loading the next page fails", async () => {
@@ -281,6 +279,24 @@ describe("NumberPoolAllocationsTable", () => {
       .element(component.getByRole("alert"))
       .toHaveTextContent("The allocations could not be refreshed.Retry");
     expect(refetch).toHaveBeenCalledOnce();
+  });
+
+  it("moves to the allocation whose number the user types", async () => {
+    // GIVEN
+    mockAllocations({
+      allocations: [
+        generateNumberPoolAllocation({ value: 7 }),
+        generateNumberPoolAllocation({ value: 42 }),
+      ],
+    });
+    const component = await renderTable();
+    await component.getByRole("rowheader", { name: "7" }).click();
+
+    // WHEN
+    await userEvent.keyboard("4");
+
+    // THEN
+    await expect.element(component.getByRole("rowheader", { name: "42" })).toHaveFocus();
   });
 
   it("marks a number a user provided", async () => {

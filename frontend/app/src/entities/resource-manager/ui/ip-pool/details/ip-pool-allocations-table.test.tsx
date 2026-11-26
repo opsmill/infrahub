@@ -210,9 +210,7 @@ describe("IpPoolAllocationsTable", () => {
     const component = await renderTable();
 
     // THEN
-    await expect
-      .element(component.getByRole("status", { name: "Loading allocations" }))
-      .toBeVisible();
+    await expect.element(component.getByRole("status", { name: "Loading" })).toBeVisible();
   });
 
   it("shows the error when the allocations cannot be read", async () => {

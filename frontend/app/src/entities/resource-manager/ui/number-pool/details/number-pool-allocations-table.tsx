@@ -1,21 +1,20 @@
-import { Spinner } from "@infrahub/ui";
 import {
-  Row as AriaRow,
-  Cell,
-  Collection,
-  Column,
   Table,
   TableBody,
+  TableCell,
+  TableColumn,
+  TableEmptyMessage,
   TableHeader,
-  TableLayout,
+  TableLink,
   TableLoadMoreItem,
-  Virtualizer,
-} from "react-aria-components";
+  TableRow,
+  TableSkeleton,
+} from "@infrahub/ui";
+import React from "react";
+import { Collection } from "react-aria-components";
 
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { Skeleton } from "@/shared/components/loading/skeleton";
-import { Link } from "@/shared/components/ui/link";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 import { formatNumberDisplay } from "@/shared/utils/number";
@@ -40,21 +39,6 @@ import { useGetNumberPoolAllocationCount } from "@/entities/resource-manager/ui/
 import { useGetNumberPoolAllocations } from "@/entities/resource-manager/ui/queries/get-number-pool-allocations.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-const ROW_HEIGHT = 36;
-const HEADING_HEIGHT = 32;
-const LOADER_HEIGHT = 44;
-const NUMBER_WIDTH = 108;
-const SKELETON_WIDTHS = ["w-40", "w-56", "w-32", "w-48", "w-64", "w-36", "w-52", "w-44"];
-
-const focusRing =
-  "outline-none data-focus-visible:ring-2 data-focus-visible:ring-ring-halo data-focus-visible:ring-inset";
-const columnStyle = classNames(
-  "flex h-full items-center px-3 text-left font-medium text-foreground-muted text-xs",
-  focusRing
-);
-const cellStyle = classNames("flex h-full min-w-0 items-center px-3 text-sm", focusRing);
-const plainLinkStyle = "no-underline decoration-solid underline-offset-2 hover:underline";
-
 const allocationKey = ({ value, branch, holder }: NumberPoolAllocation) =>
   `${value}:${branch}:${holder.id}`;
 
@@ -77,23 +61,6 @@ function SourceTag({ provenance }: SourceTagProps) {
   );
 }
 
-function SkeletonRows() {
-  return (
-    <div role="status" aria-busy="true" aria-label="Loading allocations">
-      {SKELETON_WIDTHS.map((width) => (
-        <Row key={width} className="gap-0 border-border/50 border-b" style={{ height: ROW_HEIGHT }}>
-          <div className="px-3" style={{ width: NUMBER_WIDTH }}>
-            <Skeleton className="h-3 w-12" />
-          </div>
-          <div className="px-3">
-            <Skeleton className={classNames("h-3", width)} />
-          </div>
-        </Row>
-      ))}
-    </div>
-  );
-}
-
 export interface NumberPoolAllocationsTableProps {
   poolId: string;
   nodeKind: string;
@@ -111,6 +78,7 @@ export function NumberPoolAllocationsTable({
   selectedRange,
   division,
 }: NumberPoolAllocationsTableProps) {
+  const titleId = React.useId();
   const [filters] = useNumberPoolAllocationFilters();
   const {
     data,
@@ -154,7 +122,9 @@ export function NumberPoolAllocationsTable({
   return (
     <Col className="min-h-0 min-w-0 flex-1 gap-0">
       <Row className="border-b px-3 py-2">
-        <h2 className="font-semibold text-sm">Allocations</h2>
+        <h2 id={titleId} className="font-semibold text-sm">
+          Allocations
+        </h2>
         {count !== undefined && (
           <span className="text-foreground-muted text-sm tabular-nums">
             {formatNumberDisplay(count)}
@@ -163,142 +133,79 @@ export function NumberPoolAllocationsTable({
         <NumberPoolAllocationFiltersBar />
       </Row>
 
-      <Virtualizer
-        layout={TableLayout}
-        layoutOptions={{
-          rowHeight: ROW_HEIGHT,
-          headingHeight: HEADING_HEIGHT,
-          loaderHeight: LOADER_HEIGHT,
-        }}
-      >
-        <Table
-          aria-label="Allocations"
-          className={classNames(
-            "relative min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden overscroll-contain bg-table-cell",
-            // the card sizes to its rows, so an empty body needs its own height to show the message
-            allocations.length === 0 && "min-h-52"
-          )}
-          style={{ scrollPaddingTop: HEADING_HEIGHT }}
+      <Table aria-labelledby={titleId}>
+        <TableHeader>
+          <TableColumn isRowHeader>{numberHeader}</TableColumn>
+          <TableColumn width="2fr">{objectHeader}</TableColumn>
+          <TableColumn>Kind</TableColumn>
+          <TableColumn>Branch</TableColumn>
+          {showRangeColumn && <TableColumn>Range</TableColumn>}
+          <TableColumn width={100}>Source</TableColumn>
+        </TableHeader>
+
+        <TableBody
+          renderEmptyState={() =>
+            isPending ? <TableSkeleton /> : <TableEmptyMessage>{emptyMessage}</TableEmptyMessage>
+          }
         >
-          {/* the virtualized header group has no height of its own, so without h-full its blur covers nothing */}
-          <TableHeader className="h-full border-border/50 border-b backdrop-blur-sm">
-            <Column isRowHeader width={NUMBER_WIDTH} className={columnStyle}>
-              {numberHeader}
-            </Column>
-            <Column width="2.5fr" minWidth={160} className={columnStyle}>
-              {objectHeader}
-            </Column>
-            <Column width="1fr" minWidth={120} className={columnStyle}>
-              Kind
-            </Column>
-            <Column width="1fr" minWidth={110} className={columnStyle}>
-              Branch
-            </Column>
-            {showRangeColumn && (
-              <Column width={150} className={columnStyle}>
-                Range
-              </Column>
-            )}
-            <Column width={104} className={columnStyle}>
-              Source
-            </Column>
-          </TableHeader>
-
-          <TableBody
-            renderEmptyState={() =>
-              isPending ? (
-                <SkeletonRows />
-              ) : (
-                <Row className="h-24 justify-center text-foreground-muted text-sm">
-                  {emptyMessage}
-                </Row>
-              )
-            }
+          <Collection
+            items={allocations}
+            dependencies={[showRangeColumn, defaultBranchName, ranges]}
           >
-            <Collection items={allocations} dependencies={[showRangeColumn, defaultBranchName]}>
-              {(allocation) => {
-                const isDefaultBranch = allocation.branch === defaultBranchName;
-                const range = rangeById.get(allocation.rangeId);
-                const holderLabel = allocation.holder.display_label ?? allocation.holder.id;
+            {(allocation) => {
+              const isDefaultBranch = allocation.branch === defaultBranchName;
+              const range = rangeById.get(allocation.rangeId);
+              const holderLabel = allocation.holder.display_label ?? allocation.holder.id;
 
-                return (
-                  <AriaRow
-                    id={allocationKey(allocation)}
-                    // the virtualizer leaves rows 1px tall and sets data-hovered only on rows with an action
-                    className={classNames(
-                      "h-full border-border/50 border-b transition-colors duration-100 hover:bg-content-muted data-focus-visible:bg-content-muted",
-                      focusRing
-                    )}
-                  >
-                    <Cell className={classNames(cellStyle, "font-medium tabular-nums")}>
-                      {formatNumberDisplay(allocation.value)}
-                    </Cell>
-                    <Cell className={cellStyle}>
-                      <Link
-                        to={getObjectDetailsUrl(
-                          allocation.holder.__typename,
-                          allocation.holder.id,
-                          [
-                            isDefaultBranch
-                              ? { name: QSP.BRANCH, exclude: true }
-                              : { name: QSP.BRANCH, value: allocation.branch },
-                          ]
-                        )}
-                        className={classNames("truncate text-foreground", plainLinkStyle)}
-                        title={holderLabel}
-                      >
-                        {holderLabel}
-                      </Link>
-                    </Cell>
-                    <Cell className={classNames(cellStyle, "text-foreground-muted")}>
-                      <KindLabel kind={allocation.holder.__typename} />
-                    </Cell>
-                    <Cell className={cellStyle}>
-                      <Link
-                        to={getBranchDetailsUrl(allocation.branch)}
-                        className={classNames(
-                          "truncate text-foreground-muted transition-colors duration-100 hover:text-foreground",
-                          plainLinkStyle
-                        )}
-                        title={allocation.branch}
-                      >
-                        {allocation.branch}
-                      </Link>
-                    </Cell>
-                    {showRangeColumn && (
-                      <Cell className={classNames(cellStyle, "text-foreground-muted tabular-nums")}>
-                        {range?.display_label ?? ""}
-                      </Cell>
-                    )}
-                    <Cell className={cellStyle}>
-                      <SourceTag provenance={allocation.provenance} />
-                    </Cell>
-                  </AriaRow>
-                );
-              }}
-            </Collection>
-            {hasNextPage && !isFetchNextPageError && (
-              <TableLoadMoreItem
-                onLoadMore={loadNextPage}
-                isLoading={isFetchingNextPage}
-                className="flex items-center justify-center gap-2 text-foreground-muted text-xs"
-              >
-                <Spinner className="size-3.5" /> Loading more
-              </TableLoadMoreItem>
-            )}
-          </TableBody>
-        </Table>
-      </Virtualizer>
+              return (
+                <TableRow id={allocationKey(allocation)}>
+                  <TableCell>{formatNumberDisplay(allocation.value)}</TableCell>
+                  <TableCell>
+                    <TableLink
+                      href={getObjectDetailsUrl(
+                        allocation.holder.__typename,
+                        allocation.holder.id,
+                        [
+                          isDefaultBranch
+                            ? { name: QSP.BRANCH, exclude: true }
+                            : { name: QSP.BRANCH, value: allocation.branch },
+                        ]
+                      )}
+                    >
+                      {holderLabel}
+                    </TableLink>
+                  </TableCell>
+                  <TableCell>
+                    <KindLabel kind={allocation.holder.__typename} />
+                  </TableCell>
+                  <TableCell>
+                    <TableLink href={getBranchDetailsUrl(allocation.branch)}>
+                      {allocation.branch}
+                    </TableLink>
+                  </TableCell>
+                  {showRangeColumn && <TableCell>{range?.display_label}</TableCell>}
+                  <TableCell>
+                    <SourceTag provenance={allocation.provenance} />
+                  </TableCell>
+                </TableRow>
+              );
+            }}
+          </Collection>
+          {hasNextPage && !isFetchNextPageError && (
+            <TableLoadMoreItem onLoadMore={loadNextPage} isLoading={isFetchingNextPage} />
+          )}
+        </TableBody>
+      </Table>
       {isFetchNextPageError && (
         <PoolAllocationsError
-          message={"More allocations could not be loaded."}
+          message="More allocations could not be loaded."
           isRetrying={isFetchingNextPage}
           onRetry={loadNextPage}
         />
       )}
       {isRefetchError && (
         <PoolAllocationsError
-          message={"The allocations could not be refreshed."}
+          message="The allocations could not be refreshed."
           isRetrying={isRefetching}
           onRetry={() => refetch()}
         />
