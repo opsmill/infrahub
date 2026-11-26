@@ -170,7 +170,7 @@ class ManyRelationshipResolver:
             )
             response["count"] = peer_count
 
-        if not node_fields:
+        if not edges:
             return response
 
         schema_branch = graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name)

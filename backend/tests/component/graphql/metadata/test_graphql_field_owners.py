@@ -75,6 +75,12 @@ query($ids: [ID]) {
 }
 """ % {"ownership": OWNERSHIP}
 
+READ_LINK_OWNERS = """
+query($ids: [ID]) {
+    TestServer(ids: $ids) { edges { node { ip_addresses { edges { ownership { owners { id } } } } } } }
+}
+"""
+
 CREATE_SERVER = """
 mutation($name: String!, $owners: [MetadataNodeInput!], $addresses: [RelatedNodeInput]) {
     TestServerCreate(data: {name: {value: $name}, ip_addresses: $addresses, node_metadata: {owners: $owners}}) {
@@ -209,6 +215,27 @@ class TestFieldOwners:
         edges = links["ip_addresses"]["edges"]
         assert sorted(edge["node"]["id"] for edge in edges) == sorted(address_ids)
         assert [edge["ownership"] for edge in edges] == [field_owners] * PEER_COUNT
+
+    async def test_links_give_their_owners_when_the_query_asks_for_no_field_of_the_peers(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, groups: dict[str, str]
+    ) -> None:
+        branch = default_branch_scope_class
+        server_team, network_team = groups["server-team"], groups["network-team"]
+        address_ids = [(await add_node(db=db, kind="TestAddress", name=f"10.1.0.{index}")).id for index in range(2)]
+        server_id = await create(
+            db,
+            branch,
+            CREATE_SERVER,
+            "TestServer",
+            name="srv-link-owners",
+            owners=owners_input(server_team),
+            addresses=owners_input(*address_ids),
+        )
+        await self.set_field_owners(db, branch, server_id, field="ip_addresses", owners=owners_input(network_team))
+
+        links = await read_node(db=db, branch=branch, query=READ_LINK_OWNERS, kind="TestServer", node_id=server_id)
+
+        assert links["ip_addresses"]["edges"] == [{"ownership": {"owners": [{"id": network_team}]}}] * 2
 
     async def test_profile_gives_owners_to_a_relationship_and_own_owners_of_the_relationship_win(
         self,
