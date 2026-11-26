@@ -1,0 +1,67 @@
+frontend/app/src/entities/branches/ui/hooks/use-navigate-after-branch-removal.ts
+  s_49a598f6f7d7da::t_5775c9b58a59f6 15
+frontend/app/src/shared/api/graphql/error-handling.test.ts
+  s_49a598f6f7d7da::t_5775c9b58a59f6 9
+frontend/app/src/entities/branches/ui/hooks/use-navigate-after-branch-removal.test.ts
+  s_49a598f6f7d7da::t_5775c9b58a59f6 37,52,67,82,96
+frontend/app/src/entities/branches/ui/hooks/use-refresh-branch-git-status-on-task-end.test.ts
+  s_49a598f6f7d7da::t_5775c9b58a59f6 17,20
+frontend/app/src/entities/events/ui/artifact-events/artifact-event-title.tsx
+  s_49a598f6f7d7da::t_4ac194aa7162ed 64
+  s_49a598f6f7d7da::t_d5c460daa92eeb 58
+frontend/app/src/entities/events/ui/proposed-change-events/proposed-change-event-title.tsx
+  s_49a598f6f7d7da::t_d5c460daa92eeb 42
+  s_49a598f6f7d7da::t_4ac194aa7162ed 56,67
+frontend/app/src/entities/events/ui/standard-events/standard-event-title.tsx
+  s_49a598f6f7d7da::t_d5c460daa92eeb 34
+  s_49a598f6f7d7da::t_4ac194aa7162ed 38
+frontend/app/src/entities/nodes/object/api/get-display-label-from-api.ts
+  s_49a598f6f7d7da::t_4ac194aa7162ed 42-43
+frontend/app/src/entities/nodes/object/ui/queries/get-display-label.query.ts
+  s_49a598f6f7d7da::t_4ac194aa7162ed 9,44,50,61,63,70-72
+frontend/app/src/entities/events/ui/account-events/account-logged-out-event-title.tsx
+  s_49a598f6f7d7da::t_a1384e58784c03 7
+frontend/app/src/entities/nodes/object/ui/node-label.failure.test.tsx
+  s_49a598f6f7d7da::t_d58aec67030fc3 1,9,35,46
+  s_49a598f6f7d7da::t_a1384e58784c03 2-8,10-18,29-34,36-45,47-48
+  s_49a598f6f7d7da::t_d5c460daa92eeb 19-28
+frontend/app/src/entities/events/ui/account-events/account-logged-in-event-title.test.tsx
+  s_49a598f6f7d7da::t_a1384e58784c03 1,5-6,8,11-13,73-86
+  s_49a598f6f7d7da::t_0015b8987d7e80 87
+frontend/app/src/entities/branches/ui/hooks/use-refresh-branch-git-status-on-task-end.ts
+  s_49a598f6f7d7da::t_5775c9b58a59f6 8
+frontend/app/src/entities/events/ui/group-events/group-event-title.tsx
+  s_49a598f6f7d7da::t_4ac194aa7162ed 99
+frontend/app/src/entities/events/ui/node-events/node-event-title.tsx
+  s_49a598f6f7d7da::t_4ac194aa7162ed 44
+  s_49a598f6f7d7da::t_d5c460daa92eeb 38
+frontend/app/src/entities/nodes/object/ui/node-label.test.tsx
+  s_49a598f6f7d7da::t_a1384e58784c03 55,57-63,118
+  s_49a598f6f7d7da::t_d5c460daa92eeb 56
+frontend/app/src/entities/events/ui/branch-events/branch-event-title.tsx
+  s_49a598f6f7d7da::t_4ac194aa7162ed 58
+  s_49a598f6f7d7da::t_d5c460daa92eeb 52
+changelog/10577.fixed.md
+  s_49a598f6f7d7da::t_a1384e58784c03 1
+frontend/app/src/entities/events/ui/account-events/account-event-layout.tsx
+  s_49a598f6f7d7da::t_a1384e58784c03 10
+  s_49a598f6f7d7da::t_4ac194aa7162ed 15
+frontend/app/src/entities/events/ui/account-events/account-logged-in-event-title.tsx
+  s_49a598f6f7d7da::t_a1384e58784c03 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5659088dbb6d2746aafc6582e36450e3557c9040",
+  "prompts": {},
+  "sessions": {
+    "s_49a598f6f7d7da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44888993-5569-4e01-921a-27a12292b06e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
