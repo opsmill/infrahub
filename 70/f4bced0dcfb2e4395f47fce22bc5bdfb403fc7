@@ -1,0 +1,21 @@
+frontend/app/src/entities/branches/ui/hooks/use-refresh-branch-git-status-on-task-end.test.ts
+  s_49a598f6f7d7da::t_59bb6109267d13 10,18,21-23,68-79
+frontend/app/src/entities/branches/ui/hooks/use-refresh-branch-git-status-on-task-end.ts
+  s_49a598f6f7d7da::t_ef43d8b1417a4e 6,9,17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "70f4bced0dcfb2e4395f47fce22bc5bdfb403fc7",
+  "prompts": {},
+  "sessions": {
+    "s_49a598f6f7d7da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44888993-5569-4e01-921a-27a12292b06e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
