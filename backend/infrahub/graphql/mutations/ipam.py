@@ -162,12 +162,14 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         db: InfrahubDatabase,
         ip_address: IPv4Interface | ipaddress.IPv6Interface,
         namespace_id: str,
+        owners_user_id: str,
     ) -> Node:
         address = await create_node_with_owners(
             data=dict(data),
             db=db,
             branch=branch,
             schema=cls._meta.active_schema,
+            owners_user_id=owners_user_id,
         )
 
         reconciler = IpamReconciler(db=db, branch=branch)
@@ -204,7 +206,12 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
             db.start_transaction() as dbt,
         ):
             reconciled_address = await cls._mutate_create_object_and_reconcile(
-                data=data, branch=branch, db=dbt, ip_address=ip_address, namespace_id=namespace_id
+                data=data,
+                branch=branch,
+                db=dbt,
+                ip_address=ip_address,
+                namespace_id=namespace_id,
+                owners_user_id=graphql_context.assigned_user_id,
             )
             graphql_response = await build_graphql_response(info=info, db=dbt, obj=reconciled_address)
 
@@ -346,12 +353,14 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
         db: InfrahubDatabase,
         namespace_id: str,
+        owners_user_id: str,
     ) -> Node:
         prefix = await create_node_with_owners(
             data=dict(data),
             db=db,
             branch=branch,
             schema=cls._meta.active_schema,
+            owners_user_id=owners_user_id,
         )
         return await cls._reconcile_prefix(
             branch=branch, db=db, prefix=prefix, namespace_id=namespace_id, is_delete=False
@@ -374,7 +383,11 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
             async with db.start_transaction() as dbt:
                 reconciled_prefix = await cls._mutate_create_object_and_reconcile(
-                    data=data, branch=branch, db=dbt, namespace_id=namespace_id
+                    data=data,
+                    branch=branch,
+                    db=dbt,
+                    namespace_id=namespace_id,
+                    owners_user_id=graphql_context.assigned_user_id,
                 )
 
             graphql_response = await build_graphql_response(info=info, db=dbt, obj=reconciled_prefix)

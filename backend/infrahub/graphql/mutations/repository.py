@@ -100,7 +100,13 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         db = database or graphql_context.db
         create_data = dict(data)
         create_data.update(override_data or {})
-        obj = await create_node_with_owners(data=create_data, db=db, branch=branch, schema=cls._meta.active_schema)
+        obj = await create_node_with_owners(
+            data=create_data,
+            db=db,
+            branch=branch,
+            schema=cls._meta.active_schema,
+            owners_user_id=graphql_context.assigned_user_id,
+        )
 
         await RepositoryFinalizer(
             account_session=graphql_context.active_account_session,

@@ -123,8 +123,12 @@ async def create_node_with_owners(
     branch: Branch,
     schema: MainSchemaTypes,
     user_id: str = SYSTEM_USER_ID,
+    owners_user_id: str | None = None,
 ) -> Node:
     """Create a node, and store the owners that its `node_metadata` input gives in the transaction of the create.
+
+    Args:
+        owners_user_id: The account that writes the owners and the sources. Defaults to `user_id`.
 
     Raises:
         ValidationError: When an owner of the input is not valid. Nothing is created then.
@@ -134,7 +138,12 @@ async def create_node_with_owners(
 
     async def store_owners(dbt: InfrahubDatabase, node: Node) -> None:
         await store_owner_states(
-            db=dbt, branch=branch, node=node, owner_states=owner_states, user_id=user_id, keep_deleted_owners=False
+            db=dbt,
+            branch=branch,
+            node=node,
+            owner_states=owner_states,
+            user_id=owners_user_id or user_id,
+            keep_deleted_owners=False,
         )
 
     return await create_node(
