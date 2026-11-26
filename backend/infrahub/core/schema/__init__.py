@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import uuid
 from enum import Enum
 from typing import Any
@@ -23,6 +24,9 @@ from .node_schema import NodeSchema
 from .profile_schema import ProfileSchema
 from .relationship_schema import RelationshipSchema
 from .template_schema import TemplateSchema
+
+# A namespace is a capital letter followed by lowercase letters or digits, so it ends where the node name's capital starts.
+_KIND_NAMESPACE_PATTERN = re.compile(r"[A-Z][a-z0-9]+")
 
 NonGenericSchemaTypes = NodeSchema | ProfileSchema | TemplateSchema
 MainSchemaTypes = NonGenericSchemaTypes | GenericSchema
@@ -112,6 +116,11 @@ class SchemaRoot(BaseModel):
         for model in models:
             if model.namespace in RESTRICTED_NAMESPACES:
                 errors.append(f"Restricted namespace '{model.namespace}' used on '{model.name}'")
+
+        for extension in self.extensions.nodes:
+            match = _KIND_NAMESPACE_PATTERN.match(extension.kind)
+            if match and match.group(0) in RESTRICTED_NAMESPACES:
+                errors.append(f"Restricted namespace '{match.group(0)}' used on extension of '{extension.kind}'")
 
         return errors
 
