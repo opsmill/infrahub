@@ -96,7 +96,7 @@ export const GroupEventTitle = (props: GroupEvent) => {
     <div className="flex w-full flex-wrap items-center gap-1 text-sm">
       {account_id ? (
         <span className="max-w-50 shrink-0 truncate">
-          <NodeLabel id={account_id} kind="CoreAccount" branch={props.branch} />
+          <NodeLabel id={account_id} kind="CoreAccount" />
         </span>
       ) : (
         "-"

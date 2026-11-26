@@ -39,7 +39,7 @@ interface ProposedChangeEventTitleProps {
 }
 
 export const ProposedChangeEventTitle = (props: ProposedChangeEventTitleProps) => {
-  const { event, account_id, branch } = props;
+  const { event, account_id } = props;
 
   if (event === PROPOSED_CHANGE_APPROVALS_REVOKED) {
     return (
@@ -53,7 +53,7 @@ export const ProposedChangeEventTitle = (props: ProposedChangeEventTitleProps) =
     return (
       <div className="flex flex-col gap-2">
         <div className="flex gap-1 text-sm">
-          <NodeLabel id={account_id} kind="CoreAccount" branch={branch} />{" "}
+          <NodeLabel id={account_id} kind="CoreAccount" />{" "}
           <span className="text-foreground-muted">created a thread</span>
         </div>
 
@@ -64,7 +64,7 @@ export const ProposedChangeEventTitle = (props: ProposedChangeEventTitleProps) =
 
   return (
     <div className="flex flex-wrap items-center gap-1 text-sm">
-      <NodeLabel id={account_id} kind="CoreAccount" branch={branch} />
+      <NodeLabel id={account_id} kind="CoreAccount" />
 
       {PROPOSED_CHANGE_EVENTS_MAPPING[event] && PROPOSED_CHANGE_EVENTS_MAPPING[event]()}
     </div>

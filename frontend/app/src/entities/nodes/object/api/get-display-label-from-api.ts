@@ -39,6 +39,8 @@ export function getNodeLabelFromApi({
     context: {
       branch: branchName,
       date: atDate,
+      // A label that fails to load shows the node id, so the failure needs no alert.
+      processErrorMessage: () => {},
     },
   });
 }

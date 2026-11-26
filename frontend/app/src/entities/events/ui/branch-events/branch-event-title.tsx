@@ -49,13 +49,13 @@ export const BRANCH_EVENTS_MAPPING: Record<string, (props: any) => ReactNode> = 
 };
 
 export const BranchEventTitle = (props: any) => {
-  const { event, account_id, branch } = props;
+  const { event, account_id } = props;
 
   return (
     <div className="flex w-full min-w-0 items-center gap-1 overflow-hidden text-sm">
       {account_id ? (
         <span className="max-w-50 shrink-0 truncate">
-          <NodeLabel id={account_id} kind="CoreAccount" branch={branch} />
+          <NodeLabel id={account_id} kind="CoreAccount" />
         </span>
       ) : (
         "-"

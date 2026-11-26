@@ -31,11 +31,11 @@ export const STANDARD_EVENTS_MAPPING: Record<string, (props: StandardEvent) => R
 };
 
 export const StandardEventTitle = (props: StandardEvent) => {
-  const { event, account_id, branch } = props;
+  const { event, account_id } = props;
 
   return (
     <div className="flex flex-wrap items-center gap-1 text-sm">
-      <NodeLabel id={account_id} kind="CoreAccount" branch={branch} />
+      <NodeLabel id={account_id} kind="CoreAccount" />
 
       <div className="text-foreground-muted">
         {STANDARD_EVENTS_MAPPING[event] && STANDARD_EVENTS_MAPPING[event](props)}
