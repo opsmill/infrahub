@@ -319,9 +319,12 @@ class TestFieldOwnerInputs:
             "owners": [{"id": groups["network-emea"]}],
         }
 
-    async def test_attribute_owner_field_is_deprecated(
+    async def test_attribute_owner_and_is_protected_fields_are_deprecated(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, groups: dict[str, str]
     ) -> None:
         data = await run(db=db, branch=default_branch_scope_class, query=READ_OWNER_DEPRECATION)
 
-        assert {field["name"] for field in data["__type"]["fields"] if field["isDeprecated"]} == {"owner"}
+        assert {field["name"] for field in data["__type"]["fields"] if field["isDeprecated"]} == {
+            "is_protected",
+            "owner",
+        }
