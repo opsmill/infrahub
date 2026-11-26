@@ -157,7 +157,12 @@ function useHorizontalOverflow(viewportRef: RefObject<HTMLDivElement | null>) {
       // Hand the wheel back to the page when the tabs fit or are already at that edge.
       if (maxScrollLeft <= 0 || atEdge) return;
       event.preventDefault();
-      viewport.scrollLeft += event.deltaY;
+      // Some mice report the wheel in lines, not pixels, so a line is scaled to the text size.
+      const pixelsPerUnit =
+        event.deltaMode === WheelEvent.DOM_DELTA_LINE
+          ? Number.parseFloat(getComputedStyle(viewport).fontSize)
+          : 1;
+      viewport.scrollLeft += event.deltaY * pixelsPerUnit;
     };
 
     update();

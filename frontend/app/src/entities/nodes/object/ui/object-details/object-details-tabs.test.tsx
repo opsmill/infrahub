@@ -203,6 +203,31 @@ describe("ObjectDetailsTabs", () => {
     expect(tabsViewport().scrollLeft).toBe(0);
   });
 
+  test("scrolls the tabs by whole lines for a mouse wheel that reports lines", async () => {
+    // GIVEN
+    const component = await renderOverflowingTabs();
+    await expect
+      .element(component.getByRole("button", { name: "Scroll tabs right" }))
+      .toBeVisible();
+    const lines = 3;
+
+    // WHEN
+    tabsViewport().dispatchEvent(
+      new WheelEvent("wheel", {
+        deltaY: lines,
+        deltaMode: WheelEvent.DOM_DELTA_LINE,
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+
+    // THEN
+    const lineHeight = Number.parseFloat(getComputedStyle(tabsViewport()).fontSize);
+    await expect
+      .poll(() => tabsViewport().scrollLeft)
+      .toBeGreaterThanOrEqual(lines * lineHeight);
+  });
+
   test("keeps a deep-linked tab clear of the edge fade", async () => {
     // GIVEN
     const firstRender = await renderOverflowingTabs();
