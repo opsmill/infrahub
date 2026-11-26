@@ -73,6 +73,8 @@ When you change `parent` or `children` on a node of a hierarchy, Infrahub refuse
 
 A node kind cannot leave a hierarchy. For this reason, Infrahub refuses `hierarchical: false` on a `Generic` while node kinds still use its hierarchy, and the error lists these node kinds. To stop using the hierarchy, remove these node kinds in the same schema load or in an earlier one.
 
+Infrahub checks these rules when it loads a schema. A branch merge does not check them again: when the default branch sets `hierarchical: false` on a `Generic` that no node kind uses, and a branch adds a node kind to that hierarchy, the merge succeeds and the node kind keeps a hierarchy that its `Generic` no longer has.
+
 ## Query data around a hierarchy in GraphQL
 
 In GraphQL queries, all nodes with hierarchical support will have 2 additional fields:
