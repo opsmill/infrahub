@@ -2,6 +2,7 @@ import hashlib
 import json
 import platform
 import time
+from functools import partial
 from typing import Any, Protocol
 
 from prefect import flow, task
@@ -23,7 +24,7 @@ from .constants import (
     TELEMETRY_VERSION,
     RemoteSendStatus,
 )
-from .database import gather_database_information
+from .database import DEFINITION_KINDS, count_definitions, gather_database_information
 from .models import (
     TelemetryAccountData,
     TelemetryActivity24hData,
@@ -53,10 +54,10 @@ async def gather_schema_information(branch: Branch) -> TelemetrySchemaData:
 
 
 @task(name="telemetry-feature-information", task_run_name="Gather Feature Information", cache_policy=NONE)
-async def gather_feature_information() -> dict[str, int]:
+async def gather_feature_information() -> dict[str, int | None]:
     database = await get_database()
     async with database.start_session(read_only=True) as db:
-        data = {}
+        data: dict[str, int | None] = {}
         features_to_count = [
             InfrahubKind.ARTIFACT,
             InfrahubKind.RESOURCEPOOL,
@@ -70,6 +71,10 @@ async def gather_feature_information() -> dict[str, int]:
         ]
         for kind in features_to_count:
             data[kind] = await utils.count_nodes(db=db, label=kind)
+
+        definition_counts = await safe_metric(count_definitions(db=db))
+        for kind in DEFINITION_KINDS:
+            data[kind] = definition_counts[kind] if definition_counts is not None else None
 
         return data
 
@@ -115,10 +120,22 @@ class DefaultAccountGatherer:
         return await gather_account_information(db=self.db)
 
 
+def list_validator_kinds(db: InfrahubDatabase) -> list[str]:
+    """Return the kinds that inherit from the validator generic in the schema of the default branch."""
+    default_branch = registry.get_branch_from_registry()
+    schema_branch = db.schema.get_schema_branch(name=default_branch.name)
+    return sorted(schema_branch.get_generic(name=InfrahubKind.VALIDATOR, duplicate=False).used_by)
+
+
 class DefaultActivityGatherer:
+    def __init__(self, db: InfrahubDatabase) -> None:
+        self.db = db
+
     async def gather(self) -> TelemetryActivity24hData:
         async with get_prefect_client(sync_client=False) as prefect_client:
-            return await gather_activity_24h(client=prefect_client)
+            return await gather_activity_24h(
+                client=prefect_client, read_validator_kinds=partial(list_validator_kinds, db=self.db)
+            )
 
 
 class DefaultTaskManagerDatabaseGatherer:
@@ -241,7 +258,7 @@ async def build_anonymous_telemetry_gatherer() -> AnonymousTelemetryGatherer:
         database=database,
         component=component,
         account_gatherer=DefaultAccountGatherer(db=database),
-        activity_gatherer=DefaultActivityGatherer(),
+        activity_gatherer=DefaultActivityGatherer(db=database),
         active_branch_counter=DefaultActiveBranchCounter(db=database),
         task_manager_database_gatherer=DefaultTaskManagerDatabaseGatherer(),
     )

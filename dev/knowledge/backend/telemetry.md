@@ -37,10 +37,10 @@ distinction that matters operationally is each category's **temporal model** (be
 | Branches | total and open (non-system) branch counts |
 | Accounts | active accounts, account groups |
 | Schema | node/generic kind counts, last schema change |
-| Features | how many objects of adoption-signalling kinds exist (artifacts, repos, generators, …) |
-| Database | database type, node/relationship counts, server versions, the CPU and memory Neo4j can use |
+| Features | how many objects of adoption-signalling kinds exist (artifacts, repos, generators, …), counted in two ways (below) |
+| Database | database type, node/relationship counts, objects that have an artifact or a generator instance, server versions, the CPU and memory Neo4j can use |
 | Prefect | event tally, automation counts, work-pool state, task manager database type and version |
-| Activity (24h) | logins, checks, artifacts, branch actions, webhook deliveries |
+| Activity (24h) | logins, checks, started validators per kind, artifacts, branch actions, webhook deliveries, runs of the workflows that execute generators, artifact generations, checks and Transformations |
 
 ### Activity (24h) field semantics
 
@@ -51,6 +51,24 @@ distinction that matters operationally is each category's **temporal model** (be
 | `artifacts_created` / `_updated` | Artifact lifecycle events. |
 | `branches_created` / `_merged` / `_deleted` | Branch lifecycle events. |
 | `webhooks_fired_success` / `_failure` | Terminal `webhook-process` flow-run states. |
+| `validators_started` | The `checks_started` event split by the kind of the validator: one key per kind that inherits from `CoreValidator`, `0` for a kind with no started validator. |
+| `workflow_runs` | One row per workflow and end state (`COMPLETED`, `FAILED`, `CRASHED`, `CANCELLED`) with the number of runs and their summed run time in whole seconds. Only the workflows in `REPORTED_WORKFLOW_NAMES` are read. A workflow with no ended run has no row. The end state is the state of the run, not the result of the work: the three workflows that run inside a proposed change (`run-generator-as-check`, `git-repository-check-artifact-create`, `git-repository-run-user-check`) record a failed generator, artifact generation or check as a failed check and end in `COMPLETED`. |
+
+Rows are keyed by workflow name, never by run name: a run name can contain a name the customer chose.
+
+### Two ways of counting in `features` and `database.node_count`
+
+- `features.CoreArtifactDefinition`, `CoreCheckDefinition` and `CoreGeneratorDefinition` count the
+  objects that exist on the default branch. The other `features` keys count graph vertices with the
+  label, on every branch and with deleted objects included, so they never go down.
+- `database.node_count.artifact_target`, `with_artifact`, `with_generated_artifact`,
+  `generated_artifact` and `with_generator_instance` also count on the default branch only.
+  Artifacts and generator instances are stored per branch, so one generated on another branch is
+  not counted. `with_generated_artifact` needs a `storage_id` on the artifact, because the artifact
+  exists before its first generation stores content. A generator instance exists from the start of
+  the first run, so `with_generator_instance` includes an object whose only run failed. A generator
+  definition with `execute_after_merge: false` runs only inside proposed changes, so its instances
+  stay on the source branches and its objects are never counted.
 
 ## CPU and memory figures
 
@@ -153,8 +171,10 @@ Not every number means the same thing over time. There are three kinds:
    day to day. This is the older, coarse signal.
 
 3. **Windowed — previous full UTC day** — every `activity_24h.*` metric counts only events (or
-   webhook flow-runs) that occurred within `[yesterday 00:00 UTC, today 00:00 UTC)`. This is the
-   precise daily signal that supersedes the coarse cumulative tally for activity.
+   flow runs) within `[yesterday 00:00 UTC, today 00:00 UTC)`. This is the
+   precise daily signal that supersedes the coarse cumulative tally for activity. An event is
+   placed by the time it occurred and a webhook run by its start time. A `workflow_runs` run is
+   placed by its expected start time, the only time the task manager's run history groups by.
 
 The contrast between (2) and (3) is deliberate: `prefect.events` answers "roughly how much of X
 is Prefect holding right now", while `activity_24h` answers "exactly how much X happened
@@ -190,6 +210,15 @@ the task worker during an upgrade, because an older task manager does not serve 
 among them the list of workers and the database block, including its CPU and memory figures: a
 failure in any of them stops the whole report.
 
+`workflow_runs` is the one place where a failed read is not a `null` field: a workflow whose run
+history cannot be read gets one row with `state`, `runs` and `run_seconds` set to `null`, so the rows
+of the other workflows are kept. In `features`, only the three definition counts are protected; a
+failure in one of the older counts stops the whole report.
+
+`validators_started` is read in two steps, the validator kinds from the schema and then one count
+per kind. When the kinds cannot be read, the whole map is `null`; when one count fails, only that
+kind is `null`. Neither failure changes another activity field.
+
 One caveat on the check metrics: `checks_started` counts every validator that starts, but
 `checks_passed`/`checks_failed` are only emitted for validators that run through the checks
 runner. A validator that concludes without executing checks (a trivial no-op) is counted in
@@ -208,7 +237,7 @@ both gated on the `READ_TELEMETRY` global permission.
 | Path | Purpose |
 |------|---------|
 | `backend/infrahub/telemetry/tasks.py` | Daily flow, payload assembly, remote send |
-| `backend/infrahub/telemetry/task_manager.py` | Windowed event / webhook-run counters, task manager database version |
+| `backend/infrahub/telemetry/task_manager.py` | Windowed event / webhook-run counters, run rows of the reported workflows, task manager database version |
 | `backend/infrahub/prefect_server/database_version.py` | Task manager route that reports its database type and version; the task worker has no connection to that database |
 | `backend/infrahub/telemetry/utils.py` | Degradation helper, 24h window functions, infrahub-type detection |
 | `backend/infrahub/telemetry/database.py` | Database and node-count metrics |

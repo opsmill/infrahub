@@ -27,6 +27,15 @@ class TelemetryAccountData(BaseModel):
     groups: int | None = Field(default=None)
 
 
+class TelemetryWorkflowRunData(BaseModel):
+    """The runs of one workflow that ended in one state; the three figures are null when they could not be read."""
+
+    workflow: str
+    state: str | None = None
+    runs: int | None = None
+    run_seconds: int | None = None
+
+
 class TelemetryActivity24hData(BaseModel):
     logins: int | None = Field(default=None)
     unique_logins: int | None = Field(default=None)
@@ -40,6 +49,8 @@ class TelemetryActivity24hData(BaseModel):
     branches_deleted: int | None = Field(default=None)
     webhooks_fired_success: int | None = Field(default=None)
     webhooks_fired_failure: int | None = Field(default=None)
+    validators_started: dict[str, int | None] | None = Field(default=None)
+    workflow_runs: list[TelemetryWorkflowRunData] | None = Field(default=None)
 
 
 class TelemetrySchemaData(BaseModel):
@@ -114,7 +125,7 @@ class TelemetryData(BaseModel):
     branches: TelemetryBranchData
     accounts: TelemetryAccountData = Field(default_factory=TelemetryAccountData)
     activity_24h: TelemetryActivity24hData = Field(default_factory=TelemetryActivity24hData)
-    features: dict[str, int]
+    features: dict[str, int | None]
     schema_info: TelemetrySchemaData
     database: TelemetryDatabaseData
     prefect: TelemetryPrefectData
