@@ -73,10 +73,6 @@ All `.field.tsx` files in `shared/components/form/fields/` wrap a primitive in t
 
 **Use `.field.tsx` only inside a `<Form>` from `shared/components/ui/form.tsx`.** Outside a form, use the underlying input from `shared/components/inputs/` or the primitive from `shared/components/ui/`.
 
-### Editing an object in a side sheet
-
-Open the edit form for one node with `ObjectEditSheet` in `entities/nodes/object/ui/object-edit/` instead of composing `Sheet`, `SlideOverTitle` and `ObjectEdit` again. `schema` sets the breadcrumb label and the help link, and `objectKind` sets the kind the form edits; `objectKind` defaults to `schema.kind`. The sheet shows the title `Edit <objectLabel>` under a breadcrumb of the schema label and the node label. Cancel closes it. A successful update refreshes the object queries (`objectQueryKeys.all`) and then closes it. Pass `subtitle` to show text under the title and `extraRelationshipNames` to also fetch relationships that are not form fields. Pass `objectKind` only when the form edits a node whose kind is not `schema.kind`: `RelationshipActionsCell` passes the parent schema and the peer kind, so the sheet edits the peer under the breadcrumb and help link of the parent. The caller keeps the trigger, the open state and the permission check.
-
 ### Tab bars
 
 | Need | Use | Location |
