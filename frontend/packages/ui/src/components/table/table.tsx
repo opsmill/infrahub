@@ -53,6 +53,7 @@ export function Table({ className, style, ...props }: TableProps) {
           cn(
             "relative min-h-0 w-full flex-1 overflow-auto overscroll-contain bg-table-cell",
             "has-data-empty:min-h-(--table-empty-height)",
+            "[&_[role=presentation]:has(>[role=rowgroup])]:overflow-visible!",
             "[&_[role=rowgroup]>[role=presentation]:has(>[role=row]:focus-within)]:z-1!",
             "[&_[role=row]>[role=presentation]:has(>:focus-within)]:z-2!"
           )
