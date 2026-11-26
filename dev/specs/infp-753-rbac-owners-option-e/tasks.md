@@ -85,7 +85,7 @@ description: "Task list for owner and source metadata, Community side, storage o
 - [X] T031 [P] [US1] Write a test that runs two first writes of owners on one node at the same time, and checks that the node has the complete state of one write, in backend/tests/component/core/ownership/test_concurrent_owner_writes.py (FR-032)
   - Dropped on 2026-11-26 by the maintainer, with no new file. `test_two_first_writes_in_open_transactions_create_one_set` and `test_two_writes_of_one_owner_in_open_transactions_create_one_edge` in backend/tests/component/core/ownership/test_owner_sets.py cover FR-032.
 - [X] T032 [P] [US1] Write a test that reads the activity log after a change of owners and again after a rename of the owner group, and compares the display labels of the owners, in backend/tests/component/graphql/queries/test_event_owner_changes.py (FR-031)
-- [ ] T033 [P] [US1] Write an E2E test that sets owners on a device, reads the inherited owners of an interface, filters by owner and reads the deprecated `owner` field of an attribute, through the `infrahub_client` fixture on the full stack, in tests/e2e/ownership/test_node_owners.py. The test opens no page (user stories 1 and 5)
+- [X] T033 [P] [US1] Write an E2E test that sets owners on a device, reads the inherited owners of an interface, filters by owner and reads the deprecated `owner` field of an attribute, through the `infrahub_client` fixture on the full stack, in tests/e2e/ownership/test_node_owners.py. The test opens no page (user stories 1 and 5)
 - [X] T034 [P] [US1] Write a component test that changes the kind of a node with owners and reads the owners after the change in backend/tests/component/core/migrations/schema/test_node_kind_update_owners.py (FR-040)
 
 ### Implementation for User Story 1
@@ -164,7 +164,7 @@ description: "Task list for owner and source metadata, Community side, storage o
 - [X] T070 [P] [US2] Write component tests for scenarios 1, 2 and 7 to 11 of user story 2 (profile owners, priority, a profile changed after nodes use it, a profile removed) in backend/tests/component/core/ownership/test_profile_owners.py
 - [X] T071 [P] [US2] Write component tests for scenarios 3 to 6 of user story 2 (template copy, subtemplates, a template changed after the create) and a test that counts the owner reads for a template with 2 and with 6 components in backend/tests/component/templates/test_template_owners.py (FR-026, FR-027)
 - [X] T072 [P] [US2] Write merge scenario tests for a profile changed on a branch and a template changed on a branch in backend/tests/component/core/diff/merge/test_ownership_merge.py (FR-030)
-- [ ] T073 [P] [US2] Write an E2E test that attaches a profile that gives owners to a device, and creates a device from an object template that gives owners, through the `infrahub_client` fixture, in tests/e2e/ownership/test_profile_template_owners.py. The test opens no page
+- [X] T073 [P] [US2] Write an E2E test that attaches a profile that gives owners to a device, and creates a device from an object template that gives owners, through the `infrahub_client` fixture, in tests/e2e/ownership/test_profile_template_owners.py. The test opens no page
 
 ### Implementation for User Story 2
 
@@ -238,9 +238,9 @@ description: "Task list for owner and source metadata, Community side, storage o
   - Scenarios 6 and 7 (read and write of `owner` with two own owners) are not repeated here: `test_deprecated_owner_gives_the_one_own_owner_and_a_write_replaces_the_own_owners` in test_graphql_field_owner_inputs.py covers them.
 - [X] T108 [P] [US3] Write migration tests that rename and remove an attribute and a relationship that have owners, on the default branch and on a branch that is then merged, in backend/tests/component/core/migrations/schema/test_owner_field_migrations.py (FR-041)
 - [X] T109 [P] [US3] Write a merge test for two branches that each set the first owners of the same relationship field in backend/tests/component/core/diff/merge/test_ownership_merge.py (FR-032, E-12)
-- [ ] T110 [P] [US3] Add a case to backend/tests/integration_docker/test_schema_migration.py that renames an attribute with owners and changes the kind of a node with owners on the full stack, then reads the owners (FR-040, FR-041)
+- [X] T110 [P] [US3] Add a case to backend/tests/integration_docker/test_schema_migration.py that renames an attribute with owners and changes the kind of a node with owners on the full stack, then reads the owners (FR-040, FR-041)
   - The case uses the manufacturer kind, whose relationships have an explicit identifier. A kind change with a generated identifier is not tested (open point of the spec).
-- [ ] T111 [P] [US3] Write an E2E test that sets own owners on a relationship field without peers, sets an attribute to no owner and resets a field to inherit, through the `infrahub_client` fixture, in tests/e2e/ownership/test_field_owners.py. The test opens no page
+- [X] T111 [P] [US3] Write an E2E test that sets own owners on a relationship field without peers, sets an attribute to no owner and resets a field to inherit, through the `infrahub_client` fixture, in tests/e2e/ownership/test_field_owners.py. The test opens no page
 
 ### Implementation for User Story 3
 
@@ -310,7 +310,7 @@ description: "Task list for owner and source metadata, Community side, storage o
   - Scenario 1 uses 12 nodes and a page of 5 nodes, not 2,000 devices. The count of 2,000 nodes is not tested.
   - A source that a user deletes on the default branch stays in the list of sources, with `is_deleted: true`. The spec does not set this result.
 - [X] T132 [P] [US4] Write a merge test that sets two sources on a branch and reads them on the default branch after the merge in backend/tests/component/core/diff/merge/test_sources_merge.py (FR-033)
-- [ ] T133 [P] [US4] Write an E2E test that creates a device with two sources and filters devices by one source, through the `infrahub_client` fixture, in tests/e2e/ownership/test_node_sources.py. The test opens no page
+- [X] T133 [P] [US4] Write an E2E test that creates a device with two sources and filters devices by one source, through the `infrahub_client` fixture, in tests/e2e/ownership/test_node_sources.py. The test opens no page
 
 ### Implementation for User Story 4
 
