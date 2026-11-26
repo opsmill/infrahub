@@ -28,7 +28,7 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
   const isRepository = isOfKind(GENERIC_REPOSITORY_KIND, objectSchema);
 
   return (
-    <ScrollArea scrollX scrollY={false} scrollBarClassName="hidden" className="shrink-0">
+    <ScrollArea type="auto" scrollX scrollY={false} className="shrink-0">
       <nav aria-label="Tabs">
         <Row className="items-end gap-4 px-4" data-testid="object-details-tabs">
           <LinkTab to={getObjectDetailsUrl(objectKind, objectId)} scrollIntoViewOnActive>
