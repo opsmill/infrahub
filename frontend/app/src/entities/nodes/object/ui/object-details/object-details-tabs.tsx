@@ -147,6 +147,8 @@ function useHorizontalOverflow(viewportRef: RefObject<HTMLDivElement | null>) {
     };
 
     const onWheel = (event: WheelEvent) => {
+      // Ctrl + wheel and trackpad pinch zoom the page, so they stay with the browser.
+      if (event.ctrlKey) return;
       if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
       const maxScrollLeft = viewport.scrollWidth - viewport.clientWidth;
       const atEdge =

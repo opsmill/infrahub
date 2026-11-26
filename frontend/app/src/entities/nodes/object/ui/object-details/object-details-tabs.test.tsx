@@ -182,6 +182,27 @@ describe("ObjectDetailsTabs", () => {
     expect(wheel.defaultPrevented).toBe(false);
   });
 
+  test("leaves a Ctrl + mouse wheel to the browser zoom", async () => {
+    // GIVEN
+    const component = await renderOverflowingTabs();
+    await expect
+      .element(component.getByRole("button", { name: "Scroll tabs right" }))
+      .toBeVisible();
+
+    // WHEN
+    const wheel = new WheelEvent("wheel", {
+      deltaY: 120,
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    tabsViewport().dispatchEvent(wheel);
+
+    // THEN
+    expect(wheel.defaultPrevented).toBe(false);
+    expect(tabsViewport().scrollLeft).toBe(0);
+  });
+
   test("keeps a deep-linked tab clear of the edge fade", async () => {
     // GIVEN
     const firstRender = await renderOverflowingTabs();
