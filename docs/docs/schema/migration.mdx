@@ -55,6 +55,8 @@ Removing a branch-agnostic attribute or relationship this way releases its value
 Removing an existing value for a text field of a schema node, like `description` or `label`, can be performed by specifying
 an empty string value for this field and re-loading the schema.
 
+The `parent` and `children` fields of a hierarchical node are an exception: an empty string is a value that allows no parent or no children, as described in [Hierarchy](./hierarchy#specify-the-structure-of-the-hierarchy).
+
 ## Rename existing elements
 
 All elements of the schema are identified by a human-readable identifier that allows schemas to be reused across environments:

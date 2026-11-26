@@ -60,6 +60,19 @@ nodes:
     children: ""
 ```
 
+When `parent` or `children` is not set, any node inheriting from the main `Generic` is allowed on that side. An empty string allows no node: in the example, a `Region` has no parent and a `City` has no children.
+
+## Change the hierarchy of an existing schema
+
+You can add a hierarchy to node kinds that already have objects, for example by setting `hierarchical: true` on a `Generic` they already inherit from. Infrahub checks the change against the stored objects and refuses it when:
+
+- A node kind defines its own `parent` or `children` relationship, because the hierarchy defines these two relationships itself.
+- A node kind, or the `Generic` that becomes hierarchical, defines its own attribute or relationship named `ancestors` or `descendants`, because the hierarchy reserves these names.
+
+When you change `parent` or `children` on a node of a hierarchy, Infrahub refuses the change if a stored object has a parent or a child of a kind that the new value does not allow.
+
+A node kind cannot leave a hierarchy. For this reason, Infrahub refuses `hierarchical: false` on a `Generic` while node kinds still use its hierarchy, and the error lists these node kinds. To stop using the hierarchy, remove these node kinds in the same schema load or in an earlier one.
+
 ## Query data around a hierarchy in GraphQL
 
 In GraphQL queries, all nodes with hierarchical support will have 2 additional fields:
