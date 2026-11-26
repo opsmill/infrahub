@@ -128,7 +128,7 @@ The Technical Context of the plan has no open "NEEDS CLARIFICATION" item. The op
   - `core/ownership/fields.py`: holders that are not attributes appear under reserved names: `node_metadata__owners`, `<relationship>__owners`, `node_metadata__target_owners`, `<field>__target_owners`.
   - `core/diff/calculator.py` and `core/diff/query_parser.py` call the differ.
   - `core/diff/query/bulk_merge.py`, `core/diff/merger/merger.py` and `core/diff/merger/exclusion_plan.py`: the merge copies owner edges as a set for each holder, edge type and owner. It adds what the branch added and closes what the branch removed.
-- The merge keeps the `HAS_OWNER` edges to an owner that the branch deleted, so the node shows "deleted group" (FR-008).
+- The merge keeps the `HAS_OWNER` edges to an owner that the branch deleted, so the node shows "deleted owner" (FR-008).
 - When a branch deletes a node, the merge closes the outgoing owner edges of the node and the edges of its `OwnerSet` vertices (E-11).
 - A conflict exists when the default branch and another branch change the owner state of the same holder, and the two changes cannot both apply (FR-030). Code: `core/diff/conflicts_extractor.py`.
   - Decision of 2026-11-16 (PD-1): a conflict exists when both sides change the owner state of the same holder to different values. The diff compares the whole list of owners of the holder.

@@ -122,10 +122,10 @@ A platform team gives an owner to 1,000 devices. The interfaces of those devices
 5. **Given** a node whose Parent relationship peer and hierarchy parent have different owners, **When** an engineer views the node, **Then** the node shows the owners of its Parent relationship peer.
 6. **Given** an interface whose device has owners, **When** an engineer sets the interface to "no owner", **Then** the interface shows no owner and matches the "no owner" filter.
 7. **Given** an interface set to "no owner", **When** an engineer sets the interface back to inherit, **Then** the interface shows the owners of its device again.
-8. **Given** a device owned only by the account group `dc-emea`, **When** an administrator deletes `dc-emea`, **Then** the device shows "deleted group", and the device and its interfaces match the "no owner" filter.
-9. **Given** the same deleted group, **When** an administrator creates a new account group with the name `dc-emea`, **Then** the device still shows "deleted group", and the new group does not own the device.
+8. **Given** a device owned only by the account group `dc-emea`, **When** an administrator deletes `dc-emea`, **Then** the device shows "deleted owner", and the device and its interfaces match the "no owner" filter.
+9. **Given** the same deleted group, **When** an administrator creates a new account group with the name `dc-emea`, **Then** the device still shows "deleted owner", and the new group does not own the device.
 10. **Given** a branch, **When** an engineer sets two owners on a device on that branch, **Then** the default branch shows no owners for the device. After the merge, the default branch shows both owners, and the interfaces of the device show them as inherited.
-11. **Given** a branch that deletes the account group `dc-emea`, **When** the branch is merged, **Then** a device that `dc-emea` owned shows "deleted group" on the default branch.
+11. **Given** a branch that deletes the account group `dc-emea`, **When** the branch is merged, **Then** a device that `dc-emea` owned shows "deleted owner" on the default branch.
 12. **Given** a repository, **When** an engineer gives the repository as the owner of a device, **Then** Infrahub refuses the whole change with an error that says that only an account or an account group can be an owner.
 13. **Given** a user without view permission on accounts and account groups, **When** the user views a node, **Then** the user views its owners.
 14. **Given** a user with update permission on the device kind, **When** the user changes the owners of a device that another team owns, **Then** Infrahub Community stores the change, because owners restrict nothing in Community.
@@ -263,7 +263,7 @@ A customer keeps its teams as a tree of account groups, for example `dc-emea` wi
 
 ### Edge Cases
 
-- E-1: a deleted owner stays in the list as "deleted group". It does not count as an owner. A new group with the same name does not get the data back.
+- E-1: a deleted owner stays in the list as "deleted owner". It does not count as an owner. A new group with the same name does not get the data back.
 - E-2: a node with both a Parent relationship and a hierarchy parent inherits through the Parent relationship.
 - E-3: a component moved to another parent on a branch gets the owners of the new parent. Only the relationship change appears in the diff. Infrahub Enterprise treats the move as an owner change when the owners that apply change.
 - E-4: a change to the owners of a device sends an event for the device only. Webhook consumers get no event for its interfaces.
@@ -323,7 +323,7 @@ The names of fields, filters and object file keys in this section follow the [en
 - **FR-007**: The owners of a relationship field MUST belong to the node, MUST exist when the field has no peers, and MUST apply to all links of the field (D-8). Owners on links MUST stay unchanged (D-9).
   - Check: set owners on a relationship without peers, add peers, and read `properties { owner }` on the links.
 - **FR-008**: A deleted owner MUST show as deleted and MUST NOT count as an owner. This MUST hold when the owner is deleted on the default branch, and when it is deleted on a branch that is then merged ([eng, section 2][eng]).
-  - Check: delete an account group on a branch, merge, and read a node that it owned. The node shows "deleted group" and matches the "no owner" filter.
+  - Check: delete an account group on a branch, merge, and read a node that it owned. The node shows "deleted owner" and matches the "no owner" filter.
 - **FR-009**: A query that does not request owners and does not filter by owner MUST NOT read owners.
   - Check: a query benchmark shows the same plan and time as before.
 
