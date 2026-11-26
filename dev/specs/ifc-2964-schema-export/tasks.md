@@ -24,9 +24,9 @@ description: "Task list for exporting the running schema (IFC-2964)"
 
 **Purpose**: create the packages and the SDK branch.
 
-- [ ] T001 Create the package `backend/infrahub/schema/export/` with empty files `__init__.py`, `models.py` and `exporter.py`, next to `backend/infrahub/schema/read_schema.py`
-- [ ] T002 [P] Create the test package `backend/tests/unit/schema/export/` with an empty `conftest.py`; add `__init__.py` files to `backend/tests/unit/schema/` and `backend/tests/unit/schema/export/` if sibling packages such as `backend/tests/unit/api/` have them
-- [ ] T003 [P] In `python_sdk/`, fetch `origin` and create a working branch from `origin/infrahub-develop` (not from the SDK `develop` branch, see `AGENTS.md`, section Submodules)
+- [X] T001 Create the package `backend/infrahub/schema/export/` with empty files `__init__.py`, `models.py` and `exporter.py`, next to `backend/infrahub/schema/read_schema.py`
+- [X] T002 [P] Create the test package `backend/tests/unit/schema/export/` with an empty `conftest.py`; add `__init__.py` files to `backend/tests/unit/schema/` and `backend/tests/unit/schema/export/` if sibling packages such as `backend/tests/unit/api/` have them
+- [X] T003 [P] In `python_sdk/`, fetch `origin` and create a working branch from `origin/infrahub-develop` (not from the SDK `develop` branch, see `AGENTS.md`, section Submodules)
 
 ---
 
