@@ -196,12 +196,12 @@ All tasks in this phase change the SDK repository and use `httpx_mock` for the H
 
 ### Tests for User Story 4
 
-- [ ] T038 [P] [US4] Rewrite `python_sdk/tests/unit/sdk/test_schema_export.py` for the endpoint response (research R8):
+- [X] T038 [P] [US4] Rewrite `python_sdk/tests/unit/sdk/test_schema_export.py` for the endpoint response (research R8):
   - `InfrahubSchema.export` and `InfrahubSchemaSync.export` send `GET /api/schema/export` with `branch`, each `namespaces` value and `mode`, and return the response as a `SchemaExportDocument` with the same content;
   - `split_by_namespace` returns one `SchemaExportDocument` per namespace, each with the `version` and `infrahub_version` of the input and the nodes and generics of that namespace in the input order;
   - a 422 with the message `Unable to find the schema export in the database.` raises the error that names the first release with the endpoint (FR-016);
   - a 422 with any other message, and a 500, are reported as the server returned them and do not mention the release
-- [ ] T039 [P] [US4] Add CLI tests to `python_sdk/tests/unit/ctl/schema/test_schema.py` for `infrahubctl schema export` (contracts/infrahubctl-schema-export.md):
+- [X] T039 [P] [US4] Add CLI tests to `python_sdk/tests/unit/ctl/schema/test_schema.py` for `infrahubctl schema export` (contracts/infrahubctl-schema-export.md):
   - without `--single-file`: one file per namespace named `<namespace in lower case>.yml`, each with `version` and `infrahub_version`, then `generics`, then `nodes` (FR-014);
   - with `--single-file`: one file `schema.yml` that holds the endpoint's document (FR-014);
   - each file holds only the keys of the mocked response; a field the response left out is not written with its default value (research R8);
@@ -211,20 +211,20 @@ All tasks in this phase change the SDK repository and use `httpx_mock` for the H
 
 ### Implementation for User Story 4
 
-- [ ] T040 [US4] In `python_sdk/infrahub_sdk/schema/export.py`, remove the client-side export rules and models: `schema_to_export_dict`, `RESTRICTED_NAMESPACES`, `_SCHEMA_EXPORT_EXCLUDE`, `_AUTO_GENERATED_REL_KINDS` and the other constants they use, `NamespaceExport` and `SchemaExport` (D8). Add (contracts/infrahubctl-schema-export.md, section SDK methods):
+- [X] T040 [US4] In `python_sdk/infrahub_sdk/schema/export.py`, remove the client-side export rules and models: `schema_to_export_dict`, `RESTRICTED_NAMESPACES`, `_SCHEMA_EXPORT_EXCLUDE`, `_AUTO_GENERATED_REL_KINDS` and the other constants they use, `NamespaceExport` and `SchemaExport` (D8). Add (contracts/infrahubctl-schema-export.md, section SDK methods):
   - `SchemaExportDocument`: a subclass of `InfrahubSchemaWrite` from `infrahub_sdk/schema/generated/write.py` with `infrahub_version: str` required;
   - `split_by_namespace(document: SchemaExportDocument) -> dict[str, SchemaExportDocument]`: one document per namespace, each with the input's `version` and `infrahub_version` and the nodes and generics of that namespace in the input order.
 
   `python_sdk/infrahub_sdk/ctl/schema_format.py` has its own `RESTRICTED_NAMESPACES` constant for the offline formatter; it is not part of the export, so leave it unchanged
-- [ ] T041 [US4] In `python_sdk/infrahub_sdk/schema/__init__.py`, remove the removed names from the imports and from `__all__`, export `SchemaExportDocument` and `split_by_namespace`, and add a module constant that holds the first Infrahub release with the endpoint. Its value is the release that ships the endpoint; the sources do not confirm it (research R7), so confirm it with the release owner before the SDK pull request merges
-- [ ] T042 [US4] In `python_sdk/infrahub_sdk/schema/__init__.py`, rewrite `InfrahubSchema.export` and `InfrahubSchemaSync.export` to call `GET /api/schema/export` with `branch`, `namespaces` and a new `mode` argument (default `BRIEF`), and return the response as a `SchemaExportDocument` (the return type changes from `SchemaExport`). Treat only a 422 whose error message is `Unable to find the schema export in the database.` as "endpoint missing" and raise an error that names the release constant from T041. Pass any other error response through unchanged (research R7, FR-016)
-- [ ] T043 [US4] In `python_sdk/infrahub_sdk/ctl/schema.py::export`, add `--mode [BRIEF|FULL]` (default `BRIEF`) and `--single-file` (default off), call the SDK `export` method, and write the files as contracts/infrahubctl-schema-export.md describes: the document itself with `--single-file`, otherwise one file per entry of `split_by_namespace`, with YAML written with `sort_keys=False` from `model_dump(exclude_unset=True)`, so a file holds only the keys of the response. Keep `--directory`, `--branch` and `--namespaces` as they are. On the older-server error and any other error response, print the message and exit with code 1
-- [ ] T044 [US4] Add the SDK changelog fragments in `python_sdk/changelog/` (plan, section Changelog fragments; use the `creating-changelog-entries` skill):
+- [X] T041 [US4] In `python_sdk/infrahub_sdk/schema/__init__.py`, remove the removed names from the imports and from `__all__`, export `SchemaExportDocument` and `split_by_namespace`, and add a module constant that holds the first Infrahub release with the endpoint. Its value is the release that ships the endpoint; the sources do not confirm it (research R7), so confirm it with the release owner before the SDK pull request merges
+- [X] T042 [US4] In `python_sdk/infrahub_sdk/schema/__init__.py`, rewrite `InfrahubSchema.export` and `InfrahubSchemaSync.export` to call `GET /api/schema/export` with `branch`, `namespaces` and a new `mode` argument (default `BRIEF`), and return the response as a `SchemaExportDocument` (the return type changes from `SchemaExport`). Treat only a 422 whose error message is `Unable to find the schema export in the database.` as "endpoint missing" and raise an error that names the release constant from T041. Pass any other error response through unchanged (research R7, FR-016)
+- [X] T043 [US4] In `python_sdk/infrahub_sdk/ctl/schema.py::export`, add `--mode [BRIEF|FULL]` (default `BRIEF`) and `--single-file` (default off), call the SDK `export` method, and write the files as contracts/infrahubctl-schema-export.md describes: the document itself with `--single-file`, otherwise one file per entry of `split_by_namespace`, with YAML written with `sort_keys=False` from `model_dump(exclude_unset=True)`, so a file holds only the keys of the response. Keep `--directory`, `--branch` and `--namespaces` as they are. On the older-server error and any other error response, print the message and exit with code 1
+- [X] T044 [US4] Add the SDK changelog fragments in `python_sdk/changelog/` (plan, section Changelog fragments; use the `creating-changelog-entries` skill):
   - `changed`: `infrahubctl schema export` uses the endpoint and needs a server that has it, and lists each difference in the files it writes: `branch` written when it differs from the derived value; derived values such as a `label` taken from the name left out; `IpamNamespace` no longer written; the generated `object_template` relationship no longer written; `regex`, `min_length` and `max_length` written under `parameters`; NumberPool `start_range` and `end_range` written as `ranges`; an `infrahub_version` field in each file;
   - `changed`: `InfrahubSchema.export` and `InfrahubSchemaSync.export` return a `SchemaExportDocument` instead of a `SchemaExport`, and `split_by_namespace` gives one document per namespace;
   - `added`: the `--mode` and `--single-file` options;
   - `removed`: `schema_to_export_dict`, `RESTRICTED_NAMESPACES`, `NamespaceExport` and `SchemaExport` from `infrahub_sdk.schema`, each named
-- [ ] T045 [US4] In `python_sdk/`, regenerate the `infrahubctl` reference documentation with the SDK `docs-generate` invoke task, which rewrites `python_sdk/docs/docs/infrahubctl/infrahubctl-schema.mdx`. Run the SDK lint and unit tests for the changed files
+- [X] T045 [US4] In `python_sdk/`, regenerate the `infrahubctl` reference documentation with the SDK `docs-generate` invoke task, which rewrites `python_sdk/docs/docs/infrahubctl/infrahubctl-schema.mdx`. Run the SDK lint and unit tests for the changed files
 
 **Checkpoint**: all four user stories work on their own.
 
