@@ -297,11 +297,12 @@ def get_schema_exporter() -> SchemaExporter:
 async def export_schema(
     branch: Branch = Depends(get_branch_dep),
     exporter: SchemaExporter = Depends(get_schema_exporter),
+    mode: SchemaExportMode = SchemaExportMode.BRIEF,
     _: AccountSession = Depends(get_current_user),
 ) -> SchemaExportDocument:
-    log.debug("schema_export_request", branch=branch.name)
+    log.debug("schema_export_request", branch=branch.name, mode=mode.value)
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
-    return exporter.export(schema_branch=schema_branch, mode=SchemaExportMode.BRIEF, namespaces=None)
+    return exporter.export(schema_branch=schema_branch, mode=mode, namespaces=None)
 
 
 @router.get("/{schema_kind}")

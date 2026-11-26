@@ -254,6 +254,7 @@ ExportedField = tuple[str, str | None, str]
 class SchemaExportRoundTrip:
     """What a schema load, an export, a reset and a load of the export returned, in that order."""
 
+    mode: SchemaExportMode
     source_schema: dict[str, Any]
     export: dict[str, Any]
     repeated_export: dict[str, Any]
@@ -266,8 +267,12 @@ class SchemaExportRoundTrip:
     target_export: dict[str, Any]
 
 
-async def fetch_export(test_client: InfrahubTestClient, token: str, branch: str) -> dict[str, Any]:
-    response = await test_client.get(f"/api/schema/export?branch={branch}", headers={"X-INFRAHUB-KEY": token})
+async def fetch_export(
+    test_client: InfrahubTestClient, token: str, branch: str, mode: SchemaExportMode
+) -> dict[str, Any]:
+    response = await test_client.get(
+        f"/api/schema/export?branch={branch}&mode={mode.value}", headers={"X-INFRAHUB-KEY": token}
+    )
     assert response.status_code == 200, response.text
     return response.json()
 
@@ -376,15 +381,66 @@ def _records(records: list[MutableMapping[str, Any]], event: str) -> list[Mutabl
     return [record for record in records if record["event"] == event]
 
 
+def _exported_items(document: dict[str, Any]) -> list[tuple[str, str | None, dict[str, Any]]]:
+    """Return each exported element, attribute and relationship with the kind and the name that locate it."""
+    items: list[tuple[str, str | None, dict[str, Any]]] = []
+    for element in document["nodes"] + document["generics"]:
+        items.append((_kind(element), None, element))
+        items.extend(
+            (_kind(element), item["name"], item)
+            for collection in ("attributes", "relationships")
+            for item in element.get(collection, [])
+        )
+    return items
+
+
+def _assert_brief_export_leaves_out_derived_labels_and_unneeded_default_values(
+    round_trip: SchemaExportRoundTrip,
+) -> None:
+    put_back = {
+        (record["kind"], record["element"], record["field"])
+        for record in _records(round_trip.export_logs, VALUE_PUT_BACK_EVENT)
+    }
+    derived_labels = [
+        (_kind(element), attribute["name"])
+        for element in round_trip.export["nodes"] + round_trip.export["generics"]
+        for attribute in element.get("attributes", [])
+        if attribute.get("label") == format_label(attribute["name"])
+    ]
+
+    assert derived_labels == []
+    assert sorted(_exported_default_values(round_trip.export) - put_back, key=str) == []
+
+
+def _assert_full_export_writes_the_label_and_state_of_each_item(round_trip: SchemaExportRoundTrip) -> None:
+    items = _exported_items(round_trip.export)
+
+    assert len(items) > len(round_trip.export["nodes"] + round_trip.export["generics"])
+    assert [(kind, name) for kind, name, item in items if "label" not in item] == []
+    assert {item["state"] for _, _, item in items} == {"present"}
+    assert _records(round_trip.export_logs, VALUE_PUT_BACK_EVENT) == []
+
+
+MODE_ASSERTIONS = {
+    SchemaExportMode.BRIEF: _assert_brief_export_leaves_out_derived_labels_and_unneeded_default_values,
+    SchemaExportMode.FULL: _assert_full_export_writes_the_label_and_state_of_each_item,
+}
+
+
 class SchemaExportRoundTripTests(TestInfrahubApp):
     """Loads a schema, exports it, returns the instance to an empty schema and loads the export.
 
-    A subclass gives the schema files to load with the class fixture `source_schemas`.
+    A subclass gives the schema files to load with the class fixture `source_schemas`. The round trip runs once
+    per export mode, and the second one starts from the schema that the first one loaded.
     """
 
     @pytest.fixture(scope="class")
     def source_schemas(self) -> list[dict[str, Any]]:
         raise NotImplementedError
+
+    @pytest.fixture(scope="class", params=[pytest.param(mode, id=mode.value) for mode in SchemaExportMode])
+    def export_mode(self, request: pytest.FixtureRequest) -> SchemaExportMode:
+        return request.param
 
     @pytest.fixture(scope="class")
     async def round_trip(
@@ -395,28 +451,34 @@ class SchemaExportRoundTripTests(TestInfrahubApp):
         test_client: InfrahubTestClient,
         api_admin_token: str,
         source_schemas: list[dict[str, Any]],
+        export_mode: SchemaExportMode,
     ) -> SchemaExportRoundTrip:
         branch = default_branch.name
         source_load = await client.schema.load(schemas=source_schemas, wait_until_converged=True)
         assert source_load.errors == {}
         source_schema = await fetch_schema(test_client=test_client, token=api_admin_token, branch=branch)
         with capture_logs() as export_logs:
-            export = await fetch_export(test_client=test_client, token=api_admin_token, branch=branch)
-        repeated_export = await fetch_export(test_client=test_client, token=api_admin_token, branch=branch)
+            export = await fetch_export(test_client=test_client, token=api_admin_token, branch=branch, mode=export_mode)
+        repeated_export = await fetch_export(
+            test_client=test_client, token=api_admin_token, branch=branch, mode=export_mode
+        )
 
         await reset_to_core_schema(db=db, branch=default_branch)
         await assert_holds_only_the_core_schema(test_client=test_client, token=api_admin_token, branch=branch)
         core_only_schema = await fetch_schema(test_client=test_client, token=api_admin_token, branch=branch)
         export_after_reset = await test_client.get(
-            f"/api/schema/export?branch={branch}", headers={"X-INFRAHUB-KEY": api_admin_token}
+            f"/api/schema/export?branch={branch}&mode={export_mode.value}", headers={"X-INFRAHUB-KEY": api_admin_token}
         )
 
         target_load = await client.schema.load(schemas=[export], wait_until_converged=True)
         assert target_load.errors == {}
         target_schema = await fetch_schema(test_client=test_client, token=api_admin_token, branch=branch)
-        target_export = await fetch_export(test_client=test_client, token=api_admin_token, branch=branch)
+        target_export = await fetch_export(
+            test_client=test_client, token=api_admin_token, branch=branch, mode=export_mode
+        )
 
         return SchemaExportRoundTrip(
+            mode=export_mode,
             source_schema=source_schema,
             export=export,
             repeated_export=repeated_export,
@@ -457,30 +519,39 @@ class SchemaExportRoundTripTests(TestInfrahubApp):
         assert round_trip.export_after_reset_status == 200
         assert (round_trip.export_after_reset["nodes"], round_trip.export_after_reset["generics"]) == ([], [])
 
-    def test_brief_export_leaves_out_derived_labels_and_unneeded_default_values(
-        self, round_trip: SchemaExportRoundTrip
-    ) -> None:
-        put_back = {
-            (record["kind"], record["element"], record["field"])
-            for record in _records(round_trip.export_logs, VALUE_PUT_BACK_EVENT)
-        }
-        derived_labels = [
-            (_kind(element), attribute["name"])
-            for element in round_trip.export["nodes"] + round_trip.export["generics"]
-            for attribute in element.get("attributes", [])
-            if attribute.get("label") == format_label(attribute["name"])
-        ]
-
-        assert derived_labels == []
-        assert sorted(_exported_default_values(round_trip.export) - put_back, key=str) == []
+    def test_export_holds_the_values_its_mode_writes(self, round_trip: SchemaExportRoundTrip) -> None:
+        MODE_ASSERTIONS[round_trip.mode](round_trip)
 
     def test_export_reports_its_time_and_pass_count(
         self, round_trip: SchemaExportRoundTrip, request: pytest.FixtureRequest
     ) -> None:
         built = _records(round_trip.export_logs, EXPORT_BUILT_EVENT)
 
-        assert [record["mode"] for record in built] == [SchemaExportMode.BRIEF.value]
-        print(f"{request.cls.__name__}: schema export in {built[0]['duration_seconds']} s, {built[0]['passes']} passes")
+        assert [record["mode"] for record in built] == [round_trip.mode.value]
+        print(
+            f"{request.cls.__name__} {round_trip.mode.value}: schema export in {built[0]['duration_seconds']} s, "
+            f"{built[0]['passes']} passes"
+        )
+
+    async def test_export_rejects_an_unknown_mode(
+        self, test_client: InfrahubTestClient, api_admin_token: str, default_branch: Branch
+    ) -> None:
+        response = await test_client.get(
+            f"/api/schema/export?branch={default_branch.name}&mode=OTHER", headers={"X-INFRAHUB-KEY": api_admin_token}
+        )
+
+        assert response.status_code == 422
+        assert response.json() == {
+            "detail": [
+                {
+                    "type": "enum",
+                    "loc": ["query", "mode"],
+                    "msg": "Input should be 'BRIEF' or 'FULL'",
+                    "input": "OTHER",
+                    "ctx": {"expected": "'BRIEF' or 'FULL'"},
+                }
+            ]
+        }
 
     async def test_account_with_the_default_read_access_can_export(
         self, test_client: InfrahubTestClient, api_unprivileged_token: str, default_branch: Branch
@@ -534,14 +605,17 @@ class TestSchemaExportOfVariationSchemas(SchemaExportRoundTripTests):
         api_admin_token: str,
         default_branch: Branch,
     ) -> None:
-        await client.branch.create(branch_name=EXPORT_BRANCH_NAME, sync_with_git=False)
-        load = await client.schema.load(
-            schemas=[BRANCH_ONLY_SCHEMA], branch=EXPORT_BRANCH_NAME, wait_until_converged=True
-        )
+        branch_name = f"{EXPORT_BRANCH_NAME}-{round_trip.mode.value.lower()}"
+        await client.branch.create(branch_name=branch_name, sync_with_git=False)
+        load = await client.schema.load(schemas=[BRANCH_ONLY_SCHEMA], branch=branch_name, wait_until_converged=True)
         assert load.errors == {}
 
-        branch_export = await fetch_export(test_client=test_client, token=api_admin_token, branch=EXPORT_BRANCH_NAME)
-        main_export = await fetch_export(test_client=test_client, token=api_admin_token, branch=default_branch.name)
+        branch_export = await fetch_export(
+            test_client=test_client, token=api_admin_token, branch=branch_name, mode=round_trip.mode
+        )
+        main_export = await fetch_export(
+            test_client=test_client, token=api_admin_token, branch=default_branch.name, mode=round_trip.mode
+        )
 
         branch_kinds = {_kind(element) for element in branch_export["nodes"] + branch_export["generics"]}
         main_kinds = {_kind(element) for element in main_export["nodes"] + main_export["generics"]}

@@ -68,6 +68,41 @@ def test_export_route_returns_only_the_keys_the_export_kept(schema_api_client: T
     }
 
 
+def test_export_route_writes_every_value_in_full_mode(schema_api_client: TestClient) -> None:
+    brief = schema_api_client.get("/api/schema/export", params={"mode": "BRIEF"})
+    full = schema_api_client.get("/api/schema/export", params={"mode": "FULL"})
+
+    assert (brief.status_code, full.status_code) == (200, 200)
+    assert brief.json() == schema_api_client.get("/api/schema/export").json()
+    device = full.json()["nodes"][0]
+    assert {name: device[name] for name in ("label", "branch", "human_friendly_id", "state")} == {
+        "label": "Device",
+        "branch": "aware",
+        "human_friendly_id": ["name__value"],
+        "state": "present",
+    }
+    assert [
+        (attribute["name"], attribute["label"], attribute["order_weight"]) for attribute in device["attributes"]
+    ] == [("name", "Name", 1000), ("description", "Description", 2000)]
+
+
+def test_export_route_rejects_an_unknown_mode(schema_api_client: TestClient) -> None:
+    response = schema_api_client.get("/api/schema/export", params={"mode": "OTHER"})
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": [
+            {
+                "type": "enum",
+                "loc": ["query", "mode"],
+                "msg": "Input should be 'BRIEF' or 'FULL'",
+                "input": "OTHER",
+                "ctx": {"expected": "'BRIEF' or 'FULL'"},
+            }
+        ]
+    }
+
+
 def test_schema_kind_route_still_serves_a_kind(schema_api_client: TestClient) -> None:
     response = schema_api_client.get("/api/schema/TestingDevice")
 

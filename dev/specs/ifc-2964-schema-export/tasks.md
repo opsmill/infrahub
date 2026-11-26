@@ -153,14 +153,14 @@ Write these first and check that they fail before the implementation tasks.
 
 ### Tests for User Story 2
 
-- [ ] T029 [P] [US2] In `backend/tests/unit/schema/export/test_full_mode.py`, add one round-trip test per variation schema from T013 in `FULL` mode (SC-001, SC-003), and the check that reads the exported document alone and finds every write-visible field that has a value on the stored element, except the ones FR-003 and FR-004 remove and the deprecated forms T022 converts (SC-005). This includes `state`, which every write model has, so a `FULL` export writes `state: present` on each element
-- [ ] T030 [P] [US2] In `backend/tests/unit/schema/export/test_full_mode.py`, add the label scenario (User Story 2): two in-memory schemas with the same nodes and different labels; the `FULL` export of the first holds its labels, and the `BRIEF` export of the first leaves out a label derived from the attribute name. Also assert that `FULL` writes `label`, `branch`, `order_weight` and a `human_friendly_id` taken from a unique attribute (FR-007)
-- [ ] T031 [P] [US2] In `backend/tests/functional/api/test_schema_export.py`, run both test classes from T020 in `FULL` mode as well as `BRIEF`, so each class resets the database once per mode (research R8). Add a test that `mode=OTHER` returns 422 with FastAPI's request validation error
+- [X] T029 [P] [US2] In `backend/tests/unit/schema/export/test_full_mode.py`, add one round-trip test per variation schema from T013 in `FULL` mode (SC-001, SC-003), and the check that reads the exported document alone and finds every write-visible field that has a value on the stored element, except the ones FR-003 and FR-004 remove and the deprecated forms T022 converts (SC-005). This includes `state`, which every write model has, so a `FULL` export writes `state: present` on each element
+- [X] T030 [P] [US2] In `backend/tests/unit/schema/export/test_full_mode.py`, add the label scenario (User Story 2): two in-memory schemas with the same nodes and different labels; the `FULL` export of the first holds its labels, and the `BRIEF` export of the first leaves out a label derived from the attribute name. Also assert that `FULL` writes `label`, `branch`, `order_weight` and a `human_friendly_id` taken from a unique attribute (FR-007)
+- [X] T031 [P] [US2] In `backend/tests/functional/api/test_schema_export.py`, run both test classes from T020 in `FULL` mode as well as `BRIEF`, so each class resets the database once per mode (research R8). Add a test that `mode=OTHER` returns 422 with FastAPI's request validation error
 
 ### Implementation for User Story 2
 
-- [ ] T032 [US2] In `SchemaExporter.export` in `backend/infrahub/schema/export/exporter.py`, return the `FULL` document from T021 and T022 without running the reduction loop when `mode` is `SchemaExportMode.FULL` (FR-007)
-- [ ] T033 [US2] In `backend/infrahub/api/schema.py`, add the query parameter `mode: SchemaExportMode = SchemaExportMode.BRIEF` to `GET /api/schema/export` and pass it to `export` (FR-001)
+- [X] T032 [US2] In `SchemaExporter.export` in `backend/infrahub/schema/export/exporter.py`, return the `FULL` document from T021 and T022 without running the reduction loop when `mode` is `SchemaExportMode.FULL` (FR-007)
+- [X] T033 [US2] In `backend/infrahub/api/schema.py`, add the query parameter `mode: SchemaExportMode = SchemaExportMode.BRIEF` to `GET /api/schema/export` and pass it to `export` (FR-001)
 
 **Checkpoint**: User Stories 1 and 2 both work on their own.
 
