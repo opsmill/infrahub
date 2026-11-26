@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -86,34 +87,50 @@ class TestAnonymousAuthChecker:
         )
 
 
-@pytest.mark.parametrize(
-    "wrapped_mutation",
-    [
-        pytest.param(
-            'query A { __typename } mutation B { ... on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } } }',
-            id="inline-fragment",
-        ),
-        pytest.param(
-            'query A { __typename } mutation B { ... { TestPersonCreate(data: {name: {value: "x"}}) { ok } } }',
-            id="inline-fragment-without-type-condition",
-        ),
-        pytest.param(
-            "query A { __typename } mutation B { ...Hidden }"
-            ' fragment Hidden on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } }',
-            id="fragment-spread",
-        ),
-    ],
-)
+@dataclass
+class HiddenMutationCase:
+    name: str
+    query: str
+
+
+HIDDEN_MUTATION_CASES = [
+    HiddenMutationCase(
+        name="single_operation_inline_fragment",
+        query='mutation { ... on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } } }',
+    ),
+    HiddenMutationCase(
+        name="single_operation_fragment_spread",
+        query="mutation { ...Hidden }"
+        ' fragment Hidden on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } }',
+    ),
+    HiddenMutationCase(
+        name="multi_operation_inline_fragment",
+        query="query A { __typename }"
+        ' mutation B { ... on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } } }',
+    ),
+    HiddenMutationCase(
+        name="multi_operation_inline_fragment_without_type_condition",
+        query='query A { __typename } mutation B { ... { TestPersonCreate(data: {name: {value: "x"}}) { ok } } }',
+    ),
+    HiddenMutationCase(
+        name="multi_operation_fragment_spread",
+        query="query A { __typename } mutation B { ...Hidden }"
+        ' fragment Hidden on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } }',
+    ),
+]
+
+
+@pytest.mark.parametrize("case", HIDDEN_MUTATION_CASES, ids=lambda case: case.name)
 async def test_anonymous_checker_rejects_mutation_hidden_in_fragment(
     db: InfrahubDatabase,
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
-    wrapped_mutation: str,
+    case: HiddenMutationCase,
 ) -> None:
     """An anonymous caller cannot slip a mutation past the checker by wrapping it in a fragment.
 
     The checker is driven by a real analyzer here, so this exercises the whole analyzer-to-checker
-    seam rather than a mocked ``contains_mutation`` value.
+    seam rather than a mocked value.
     """
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     default_branch.update_schema_hash()
@@ -125,7 +142,7 @@ async def test_anonymous_checker_rejects_mutation_hidden_in_fragment(
     account_session = AccountSession(account_id="anonymous", auth_type=AuthType.JWT, authenticated=False)
 
     exploit = InfrahubGraphQLQueryAnalyzer(
-        query=wrapped_mutation, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+        query=case.query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
     )
     with pytest.raises(AuthorizationError):
         await checker.check(
