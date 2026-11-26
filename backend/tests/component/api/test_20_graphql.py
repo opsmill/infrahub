@@ -18,6 +18,25 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
+# A mutation `B` hidden in a top-level fragment next to a harmless `query A`, selected with operationName=B.
+# The analyzer- and checker-tier tests cover every fragment shape; here one representative suffices.
+HIDDEN_MUTATION_EXPLOIT = (
+    'query A { __typename } mutation B { ... on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } } }'
+)
+
+
+@dataclass
+class HiddenMutationCallerCase:
+    name: str
+    authenticate: bool
+    expected_status: int
+
+
+HIDDEN_MUTATION_CALLER_CASES = [
+    HiddenMutationCallerCase(name="anonymous", authenticate=False, expected_status=401),
+    HiddenMutationCallerCase(name="authenticated_without_permission", authenticate=True, expected_status=403),
+]
+
 
 @dataclass
 class AtBeforeCreationCase:
@@ -246,3 +265,28 @@ async def test_download_graphql_schema_sorted(
         response = client.get("/schema.graphql?sorted=true")
         assert response.text
         assert response.status_code == 200 if allow_anonymous_access else 401
+
+
+@pytest.mark.parametrize("case", HIDDEN_MUTATION_CALLER_CASES, ids=lambda case: case.name)
+async def test_mutation_hidden_in_fragment_is_refused(
+    db: InfrahubDatabase,
+    client: TestClient,
+    default_permission_backend: None,
+    car_person_data: dict[str, Node],
+    case: HiddenMutationCallerCase,
+) -> None:
+    """A mutation wrapped in a fragment is refused for an anonymous caller and for an authenticated account lacking the create permission."""
+    config.SETTINGS.main.allow_anonymous_access = True
+
+    # Must execute in a with block to execute the startup/shutdown events
+    with client:
+        headers: dict[str, str] = {}
+        if case.authenticate:
+            login = client.post("/api/auth/login", json={"username": "First Account", "password": "FirstPassword123"})
+            headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+        response = client.post(
+            "/graphql", json={"query": HIDDEN_MUTATION_EXPLOIT, "operationName": "B"}, headers=headers
+        )
+
+    assert response.status_code == case.expected_status
