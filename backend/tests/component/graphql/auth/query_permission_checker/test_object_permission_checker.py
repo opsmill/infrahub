@@ -286,6 +286,50 @@ REPO_READ_THROUGH_A_SPREAD_INSIDE_A_FRAGMENT = [
 ]
 
 
+# A repository create hidden behind a top-level fragment, the shape the vulnerability used to hide a
+# mutation from the permission checker.
+MUTATION_REPOSITORY_IN_AN_INLINE_FRAGMENT = """
+mutation {
+  ... on Mutation {
+    CoreRepositoryCreate(data: {name: {value: "Test"}, location: {value: "/var/random"}}) {
+      ok
+    }
+  }
+}
+"""
+
+MUTATION_REPOSITORY_IN_AN_INLINE_FRAGMENT_WITHOUT_TYPE_CONDITION = """
+mutation {
+  ... {
+    CoreRepositoryCreate(data: {name: {value: "Test"}, location: {value: "/var/random"}}) {
+      ok
+    }
+  }
+}
+"""
+
+MUTATION_REPOSITORY_IN_A_FRAGMENT_SPREAD = """
+fragment HiddenCreate on Mutation {
+  CoreRepositoryCreate(data: {name: {value: "Test"}, location: {value: "/var/random"}}) {
+    ok
+  }
+}
+
+mutation {
+  ...HiddenCreate
+}
+"""
+
+REPO_CREATE_HIDDEN_IN_A_FRAGMENT = [
+    QueryCase(name="inline_fragment", query=MUTATION_REPOSITORY_IN_AN_INLINE_FRAGMENT),
+    QueryCase(
+        name="inline_fragment_without_type_condition",
+        query=MUTATION_REPOSITORY_IN_AN_INLINE_FRAGMENT_WITHOUT_TYPE_CONDITION,
+    ),
+    QueryCase(name="fragment_spread", query=MUTATION_REPOSITORY_IN_A_FRAGMENT_SPREAD),
+]
+
+
 class TestObjectPermissions:
     async def test_setup(
         self,
@@ -513,6 +557,39 @@ class TestObjectPermissions:
             "You do not have one of the following permissions: "
             "object:Core:GraphQLQuery:view:allow_default | object:Core:GenericRepository:view:allow_default | "
             "object:Core:ReadOnlyRepository:view:allow_default | object:Core:Repository:view:allow_default"
+        )
+
+    @pytest.mark.parametrize("case", REPO_CREATE_HIDDEN_IN_A_FRAGMENT, ids=lambda case: case.name)
+    async def test_first_account_mutation_hidden_in_a_fragment_needs_permission(
+        self, db: InfrahubDatabase, permissions_helper: PermissionsHelper, case: QueryCase
+    ) -> None:
+        """An authenticated account cannot escape the create permission by wrapping a mutation in a top-level fragment."""
+        checker = ObjectPermissionChecker()
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+
+        gql_params = await prepare_graphql_params(
+            db=db, include_mutation=True, branch=permissions_helper.default_branch, account_session=session
+        )
+        schema_branch = registry.schema.get_schema_branch(name=permissions_helper.default_branch.name)
+        analyzed_query = InfrahubGraphQLQueryAnalyzer(
+            query=case.query,
+            schema=gql_params.schema,
+            branch=permissions_helper.default_branch,
+            schema_branch=schema_branch,
+        )
+
+        with pytest.raises(PermissionDeniedError) as exc_info:
+            await checker.check(
+                db=db,
+                account_session=session,
+                analyzed_query=analyzed_query,
+                branch=permissions_helper.default_branch,
+                query_parameters=gql_params,
+            )
+        assert str(exc_info.value) == (
+            "You do not have one of the following permissions: object:Core:Repository:create:allow_default"
         )
 
 
