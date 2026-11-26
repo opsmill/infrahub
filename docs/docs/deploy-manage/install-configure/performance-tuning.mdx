@@ -42,7 +42,7 @@ Some operations process records in batches, and `INFRAHUB_DB_QUERY_SIZE_LIMIT` s
 - Changelog enrichment and the reads of stored display labels
 - Some database migrations during an upgrade
 
-Over a large dataset, each of these operations runs one query per batch. The setting has no effect on other read queries: each of them returns all of its records in one query.
+Over a large dataset, each of these operations runs one query per batch. The setting has no effect on other read queries: each of them runs once.
 
 Raise it when these operations are slow on a large number of objects and the server and workers have memory to spare:
 
