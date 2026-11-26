@@ -8,6 +8,7 @@ from aiodataloader import DataLoader
 
 from infrahub.core.manager import NodeManager
 from infrahub.core.ownership.models import (
+    NODE_SOURCES_HOLDER,
     HolderKey,
     OwnerReference,
     ResolvedOwnership,
@@ -177,6 +178,15 @@ class OwnershipGraphqlResolver:
             resolved = await self._node_loader(context=info.context).load(reference["node_id"])
         return _to_graphql(resolved=resolved) if resolved else None
 
+    async def resolve_sources(self, parent: dict[str, Any], info: GraphQLResolveInfo) -> list[dict[str, Any]]:
+        """Resolve the sources of a node from the `{"node_id": ...}` reference that the parent holds."""
+        reference = parent.get(info.field_name)
+        if not reference:
+            return []
+        stored = await self._stored_loader(context=info.context).load(reference["node_id"])
+        source_ids = stored.get(NODE_SOURCES_HOLDER).owner_ids if stored else None
+        return [{"id": source_id} for source_id in source_ids or ()]
+
     async def resolve_target_ownership(self, parent: dict[str, Any], info: GraphQLResolveInfo) -> dict[str, Any] | None:
         """Resolve the owners that a profile or an object template gives to its nodes, from its reference."""
         reference = parent.get(info.field_name)
@@ -226,6 +236,12 @@ class OwnershipGraphqlResolver:
 async def ownership_resolver(parent: dict[str, Any], info: GraphQLResolveInfo) -> dict[str, Any] | None:
     graphql_context: GraphqlContext = info.context
     return await graphql_context.ownership_resolver.resolve_ownership(parent=parent, info=info)
+
+
+@retry_db_transaction(name="sources_resolver")
+async def sources_resolver(parent: dict[str, Any], info: GraphQLResolveInfo) -> list[dict[str, Any]]:
+    graphql_context: GraphqlContext = info.context
+    return await graphql_context.ownership_resolver.resolve_sources(parent=parent, info=info)
 
 
 @retry_db_transaction(name="target_ownership_resolver")

@@ -306,7 +306,7 @@ description: "Task list for owner and source metadata, Community side, storage o
 
 ### Tests for User Story 4
 
-- [ ] T131 [P] [US4] Write GraphQL tests for scenarios 1 to 5 of user story 4 in backend/tests/component/graphql/metadata/test_graphql_node_sources.py (FR-033 to FR-035)
+- [X] T131 [P] [US4] Write GraphQL tests for scenarios 1 to 5 of user story 4 in backend/tests/component/graphql/metadata/test_graphql_node_sources.py (FR-033 to FR-035)
   - Scenario 1 uses 12 nodes and a page of 5 nodes, not 2,000 devices. The count of 2,000 nodes is not tested.
   - A source that a user deletes on the default branch stays in the list of sources, with `is_deleted: true`. The spec does not set this result.
 - [X] T132 [P] [US4] Write a merge test that sets two sources on a branch and reads them on the default branch after the merge in backend/tests/component/core/diff/merge/test_sources_merge.py (FR-033)
@@ -317,7 +317,8 @@ description: "Task list for owner and source metadata, Community side, storage o
 - [X] T134 [US4] Write the read, the write and the filter of node sources as `HAS_SOURCE` edges from the node vertex in backend/infrahub/core/ownership/sources.py. A source is an account, an account group, a repository, a resource pool, a profile or an object template (FR-033)
   - The read of the sources is part of the read of the stored owner states (`NodeOwnerStateReadQuery`). `sources.py` holds the write, the filter and the function that takes the sources out of the read.
   - The sources of a node are the state of one more holder, `NODE_SOURCES_HOLDER`. So the writer, the diff, the merge and the object conversion use the code of the owners.
-- [ ] T135 [US4] Add `sources` to `node_metadata`, the `sources` input, and the filter `node_metadata__sources__ids` in backend/infrahub/graphql/manager.py and backend/infrahub/graphql/types/ownership.py. A user with update permission on the kind can change sources (FR-034, D-10)
+- [X] T135 [US4] Add `sources` to `node_metadata`, the `sources` input, and the filter `node_metadata__sources__ids` in backend/infrahub/graphql/manager.py and backend/infrahub/graphql/types/ownership.py. A user with update permission on the kind can change sources (FR-034, D-10)
+  - The field also needs a reference in `_build_meta_response` of backend/infrahub/core/node/__init__.py and a resolver in backend/infrahub/graphql/resolvers/ownership.py. The existing update permission check of the mutation covers the change of sources, so no new check is added.
 - [X] T136 [US4] Apply the source filter before pagination in `NodeGetListQuery` of backend/infrahub/core/query/node.py (FR-020) (moved to pull request 2 on 2026-11-19: commit `f3b47495d9` removed the code from pull request 1, and T152 adds it back)
   - The filter needs the hint `USING INDEX SEEK source:Node(uuid)` to start from the source ([measurements.md](measurements.md), "Source filter and the list query").
 - [X] T137 [US4] Include node sources in the diff, the merge and the changelog under the reserved name `node_metadata__sources` in backend/infrahub/core/diff/ownership_differ.py, backend/infrahub/core/diff/query/bulk_merge.py and backend/infrahub/core/changelog/diff.py (FR-029, FR-031)

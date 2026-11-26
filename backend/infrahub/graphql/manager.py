@@ -9,7 +9,7 @@ import graphene
 from infrahub import config
 from infrahub.core.attribute import String
 from infrahub.core.constants import NODE_METADATA_PREFIX, InfrahubKind, RelationshipCardinality, RelationshipKind
-from infrahub.core.ownership.constants import OWNERS_IDS_FILTER, OWNERS_ISNULL_FILTER
+from infrahub.core.ownership.constants import OWNERS_IDS_FILTER, OWNERS_ISNULL_FILTER, SOURCES_IDS_FILTER
 from infrahub.core.schema import (
     AttributeSchema,
     GenericSchema,
@@ -48,7 +48,12 @@ from .registry import registry
 from .resolvers.account_metadata import account_metadata_resolver
 from .resolvers.ipam import ipam_paginated_list_resolver
 from .resolvers.object_by_id import object_by_id_resolver
-from .resolvers.ownership import ownership_resolver, target_field_ownership_resolver, target_ownership_resolver
+from .resolvers.ownership import (
+    ownership_resolver,
+    sources_resolver,
+    target_field_ownership_resolver,
+    target_ownership_resolver,
+)
 from .resolvers.resolver import (
     account_resolver,
     ancestors_resolver,
@@ -78,7 +83,7 @@ from .types.branch import InfrahubBranchEdge
 from .types.context import ContextInput
 from .types.event import EVENT_TYPES
 from .types.node import InfrahubObjectWithoutMeta
-from .types.ownership import InfrahubFieldOwnership, InfrahubOwnership, NodeMetadataInput
+from .types.ownership import InfrahubFieldOwnership, InfrahubMetadataNode, InfrahubOwnership, NodeMetadataInput
 from .types.repository_branch_status import InfrahubRepositoryBranchStatusEdge
 from .types.task import TASK_TYPES
 
@@ -815,6 +820,12 @@ class GraphQLSchemaManager:
                     "Without `fields`, all attributes and relationships of the nodes"
                 ),
             ),
+            "sources": graphene.Field(
+                graphene.List(graphene.NonNull(InfrahubMetadataNode)),
+                required=True,
+                resolver=sources_resolver,
+                description="Sources of the node. A deleted source has is_deleted: true",
+            ),
             "Meta": type("Meta", (object,), meta_attrs),
         }
 
@@ -1228,6 +1239,7 @@ class GraphQLSchemaManager:
         - created_at: Filter by creation timestamp
         - updated_at: Filter by last update timestamp
         - owners: Filter by the owners that apply to the node, own or inherited
+        - sources: Filter by the sources of the node
 
         Returns:
             dict: Filter definitions with names as keys and graphene types as values
@@ -1265,6 +1277,9 @@ class GraphQLSchemaManager:
             ),
             OWNERS_ISNULL_FILTER: graphene.Boolean(
                 description="Filter for objects without a live owner (true) or with one (false), own or inherited"
+            ),
+            SOURCES_IDS_FILTER: graphene.List(
+                graphene.ID, description="Filter for objects that have any of these sources"
             ),
         }
 

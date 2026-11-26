@@ -76,3 +76,4 @@ class NodeMetadataInput(InputObjectType):
         NonNull(FieldOwnersInput),
         description="Profiles and object templates only: the owners given to one field of their nodes",
     )
+    sources = List(NonNull(MetadataNodeInput), description="Left out: no change. null or []: no sources")

@@ -229,6 +229,7 @@ async def test_generate_filters(
         "node_metadata__created_by__ids",
         "node_metadata__owners__ids",
         "node_metadata__owners__isnull",
+        "node_metadata__sources__ids",
         "node_metadata__updated_at",
         "node_metadata__updated_at__after",
         "node_metadata__updated_at__before",

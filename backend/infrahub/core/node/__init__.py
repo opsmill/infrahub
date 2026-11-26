@@ -1664,8 +1664,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 updated_at = self._get_updated_at()
                 data["updated_at"] = updated_at.to_datetime() if updated_at else None
 
-            if meta_field == "ownership":
-                data["ownership"] = {"node_id": self.get_id()}
+            if meta_field in {"ownership", "sources"}:
+                data[meta_field] = {"node_id": self.get_id()}
 
             if meta_field in {"target_ownership", "target_field_ownership"} and (
                 self.get_schema().is_profile_schema or self.get_schema().is_template_schema
