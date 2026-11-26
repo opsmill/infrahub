@@ -83,7 +83,7 @@ _ACTIVITY_FIELDS = (
     "workflow_runs",
 )
 
-_NEW_NODE_TOTALS = (
+_ARTIFACT_AND_GENERATOR_TOTALS = (
     "artifact_target",
     "with_artifact",
     "with_generated_artifact",
@@ -268,8 +268,10 @@ async def test_gather_full_payload_fields_present(telemetry_environment: Infrahu
     ]
     assert isinstance(data.activity_24h.workflow_runs, list)
 
-    # With the core schema and no node, each new total is 0, not null.
-    assert {key: data.database.node_count[key] for key in _NEW_NODE_TOTALS} == dict.fromkeys(_NEW_NODE_TOTALS, 0)
+    # With the core schema and no node, each total is 0, not null.
+    assert {key: data.database.node_count[key] for key in _ARTIFACT_AND_GENERATOR_TOTALS} == dict.fromkeys(
+        _ARTIFACT_AND_GENERATOR_TOTALS, 0
+    )
     assert {kind: data.features[kind] for kind in _DEFINITION_KINDS} == dict.fromkeys(_DEFINITION_KINDS, 0)
 
 
@@ -306,7 +308,7 @@ async def test_gather_feature_information_counts_definitions_on_the_default_bran
     assert data[InfrahubKind.CHECKDEFINITION] == 1
     assert data[InfrahubKind.ARTIFACTDEFINITION] == 0
     assert data[InfrahubKind.GENERATORDEFINITION] == 0
-    # The existing keys keep the count of vertices with the label, on every branch and deleted ones included.
+    # The other keys count the vertices with the label, on every branch and deleted ones included.
     assert data[InfrahubKind.REPOSITORY] == 1
 
 
