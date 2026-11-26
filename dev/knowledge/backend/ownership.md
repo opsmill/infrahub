@@ -202,7 +202,9 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
 - `copy_from_template` gives a new node the owners that its object template gives, with the `HAS_OWNER_SOURCE` mark.
 
 The save of an attribute with a new `owner` property calls the same write with one owner, so it replaces all own
-owners of the attribute. A cleared `owner` property gives the inherit state.
+owners of the attribute. A cleared `owner` property gives the inherit state. When the input of an attribute gives
+`owners` and `owner` together, the attribute ignores `owner` (`Attribute.__init__` and `Attribute.from_graphql`), so
+the mutation writes the owners once.
 
 The read of the `owner` property (`NodeListGetAttributeQuery`) gives the own owner of the attribute when it has
 exactly one. It gives nothing when the attribute has several owners, no owner, or a copy from an object template: a

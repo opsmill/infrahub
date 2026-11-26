@@ -30,7 +30,7 @@ from infrahub.core.constants.schema import NodeProperty
 from infrahub.core.graph.schema import get_attribute_value_key
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
-from infrahub.core.ownership.input import check_owner_kinds
+from infrahub.core.ownership.input import OWNERS_KEY, check_owner_kinds
 from infrahub.core.ownership.models import HolderKey, HolderKind, StoredOwnerState
 from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.property import FlagPropertyMixin, NodePropertyData, NodePropertyMixin
@@ -191,6 +191,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
             fields_to_extract_from_data = ["id"] + self._flag_properties + self._node_properties
             for field_name in fields_to_extract_from_data:
+                if field_name == NodeProperty.OWNER.value and OWNERS_KEY in data:
+                    # The owner list of the input replaces the deprecated single owner, so the owners are written once.
+                    continue
                 setattr(self, field_name, data.get(field_name, None))
 
         elif data is None:
@@ -783,7 +786,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         if "source" in data and data["source"] != self.source_id:
             self.source = data["source"]
             changed = True
-        if "owner" in data and data["owner"] != self.owner_id:
+        if "owner" in data and OWNERS_KEY not in data and data["owner"] != self.owner_id:
             self.owner = data["owner"]
             changed = True
 

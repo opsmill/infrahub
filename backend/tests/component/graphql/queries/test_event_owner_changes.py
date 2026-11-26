@@ -53,6 +53,18 @@ mutation($id: String!, $owners: [MetadataNodeInput!]) {
 }
 """
 
+CREATE_WITH_NAME_OWNER_AND_OWNERS = """
+mutation($owner: String!, $owners: [MetadataNodeInput!]) {
+    TestTenantCreate(data: {name: {value: "tenant-log", owner: $owner, owners: $owners}}) { ok }
+}
+"""
+
+SET_NAME_OWNER_AND_OWNERS = """
+mutation($id: String!, $owner: String!, $owners: [MetadataNodeInput!]) {
+    TestTenantUpdate(data: {id: $id, name: {owner: $owner, owners: $owners}}) { ok }
+}
+"""
+
 SET_SOURCES = """
 mutation($id: String!, $sources: [MetadataNodeInput!]) {
     TestTenantUpdate(data: {id: $id, node_metadata: {sources: $sources}}) { ok }
@@ -75,6 +87,7 @@ async def set_owners(
     node_id: str,
     owner_ids: list[str],
     mutation: str = SET_OWNERS,
+    variables: dict[str, Any] | None = None,
 ) -> list[InfrahubEvent]:
     """Change the owners of a tenant through its update mutation, and return the events that the mutation sends."""
     event_service = MemoryInfrahubEvent()
@@ -84,7 +97,7 @@ async def set_owners(
         schema=gql_params.schema,
         source=mutation,
         context_value=gql_params.context,
-        variable_values={"id": node_id, "owners": [{"id": owner_id} for owner_id in owner_ids]},
+        variable_values={"id": node_id, "owners": [{"id": owner_id} for owner_id in owner_ids], **(variables or {})},
     )
     assert result.errors is None, result.errors
     assert gql_params.context.background
@@ -256,6 +269,57 @@ async def test_activity_log_shows_the_label_of_the_single_owner_of_an_attribute(
     ]
     stored = updated["payload"]["data"]["changelog"]["attributes"]["name"]["properties"]["owner"]
     assert (stored["value"], stored["value_previous"]) == (network.id, emea.id)
+
+
+async def test_owners_of_an_attribute_win_over_the_deprecated_owner_and_are_written_once(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    session_admin: AccountSession,
+    prefect_client: PrefectClient,
+) -> None:
+    registry.schema.register_schema(schema=OWNERSHIP_SCHEMA, branch=default_branch.name)
+    default_branch.update_schema_hash()
+    first, ignored, given = [
+        await add_node(db=db, kind=InfrahubKind.ACCOUNTGROUP, name=name) for name in ("dc-emea", "security", "dc-apac")
+    ]
+    created = await set_owners(
+        db=db,
+        branch=default_branch,
+        session=session_admin,
+        node_id="",
+        owner_ids=[first.id],
+        mutation=CREATE_WITH_NAME_OWNER_AND_OWNERS,
+        variables={"owner": ignored.id},
+    )
+    tenant_id = created[0].node_id
+    updated = await set_owners(
+        db=db,
+        branch=default_branch,
+        session=session_admin,
+        node_id=tenant_id,
+        owner_ids=[given.id],
+        mutation=SET_NAME_OWNER_AND_OWNERS,
+        variables={"owner": ignored.id},
+    )
+    await send_events(client=prefect_client, events=created + updated)
+
+    changes = await read_changes(db=db, branch=default_branch, session=session_admin, node_id=tenant_id)
+
+    stored = {
+        event_id: {
+            name: (value["value"], value["value_previous"])
+            for name, value in change["payload"]["data"]["changelog"]["attributes"]["name"]["properties"].items()
+        }
+        for event_id, change in changes.items()
+    }
+    assert stored == {
+        str(created[0].meta.id): {"is_protected": (False, None), "owner": (first.id, None)},
+        str(updated[0].meta.id): {"owner": (given.id, first.id)},
+    }
+    assert changes[str(updated[0].meta.id)]["attributes"][1:] == [
+        {"action": "UPDATED", "kind": "List", "name": "name__owners", "value": "dc-apac", "value_previous": "dc-emea"}
+    ]
 
 
 async def test_activity_log_reads_the_label_of_a_source_on_the_branch_of_the_event(
