@@ -1,4 +1,4 @@
-import { useParams } from "react-router";
+import { Navigate, useParams } from "react-router";
 
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -15,6 +15,7 @@ import {
 import { IpPoolResourcesCard } from "@/entities/resource-manager/ui/ip-pool/details/ip-pool-resources-card";
 import { useGetIpPool } from "@/entities/resource-manager/ui/queries/get-ip-pool.query";
 import { useGetIpPoolUtilization } from "@/entities/resource-manager/ui/queries/get-ip-pool-utilization.query";
+import { getIpPoolResourceUrl } from "@/entities/resource-manager/ui/routing/ip-pool-urls";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 export interface IpPoolDetailsPageProps {
@@ -60,8 +61,13 @@ function IpPoolBody({ poolId, poolKind }: IpPoolBodyProps) {
   if (error && !utilization) return <ErrorScreen message={error.message} />;
 
   const { usage, resources, areWeightsUnavailable } = utilization;
-  const onlyResourceId = resources.length === 1 ? resources[0]?.id : undefined;
-  const selectedResourceId = resourceId ?? onlyResourceId ?? null;
+  const [onlyResource] = resources;
+
+  if (!resourceId && resources.length === 1 && onlyResource) {
+    return <Navigate replace to={getIpPoolResourceUrl(poolId, onlyResource.id)} />;
+  }
+
+  const selectedResourceId = resourceId ?? null;
 
   return (
     <Row className="min-h-0 items-start px-2 pb-2">

@@ -186,6 +186,9 @@ describe("IpPoolDetailsPage", () => {
       .element(component.getByRole("option", { name: /^10\.10\.0\.0\/22/ }))
       .toHaveAttribute("aria-selected", "true");
     await expect.element(component.getByText(`Allocations of ${onlyResource?.id}`)).toBeVisible();
+    expect(window.location.pathname).toBe(
+      `/resource-manager/${pool.id}/resources/${onlyResource?.id}`
+    );
   });
 
   it("says the pool has no resource prefix", async () => {
