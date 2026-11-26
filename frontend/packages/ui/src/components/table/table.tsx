@@ -52,9 +52,7 @@ export function Table({ className, style, ...props }: TableProps) {
           className,
           cn(
             "relative min-h-0 w-full flex-1 overflow-auto overscroll-contain bg-table-cell",
-            // an empty virtualized body is as tall as the table, so the table needs a height of its own
             "has-data-empty:min-h-(--table-empty-height)",
-            // the virtualizer stacks every row and cell wrapper with an inline z-index, so a selected cell is lifted through them
             "[&_[role=rowgroup]>[role=presentation]:has(>[role=row]:focus-within)]:z-1!",
             "[&_[role=row]>[role=presentation]:has(>:focus-within)]:z-2!"
           )
@@ -75,7 +73,6 @@ export interface TableHeaderProps<T> extends AriaTableHeaderProps<T> {}
 export function TableHeader<T extends object>({ className, ...props }: TableHeaderProps<T>) {
   return (
     <AriaTableHeader
-      // the virtualized header group has no height of its own, so without h-full its blur covers nothing
       className={composeAriaClassName(
         className,
         "h-full border-border/50 border-b backdrop-blur-sm"
@@ -146,7 +143,6 @@ export interface TableRowProps<T> extends AriaRowProps<T> {}
 export function TableRow<T extends object>({ className, ...props }: TableRowProps<T>) {
   return (
     <AriaRow
-      // the virtualizer leaves rows 1px tall and sets data-hovered only on rows with an action
       className={composeAriaClassName(
         className,
         cn(
@@ -159,7 +155,6 @@ export function TableRow<T extends object>({ className, ...props }: TableRowProp
   );
 }
 
-// a selected cell grows over its neighbours to show its full value, so it needs an opaque background to hide them
 const expandedCellStyle = cn(
   "focus-within:h-auto focus-within:min-h-full focus-within:w-max focus-within:min-w-full focus-within:max-w-md focus-within:py-2",
   "focus-within:data-truncated:bg-table-cell-raised focus-within:data-truncated:shadow-lg",
