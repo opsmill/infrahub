@@ -182,6 +182,21 @@ describe("ObjectDetailsTabs", () => {
     expect(wheel.defaultPrevented).toBe(false);
   });
 
+  test("hands a vertical mouse wheel back to the page when the tabs are scrolled to the left end", async () => {
+    // GIVEN
+    const component = await renderOverflowingTabs();
+    await expect
+      .element(component.getByRole("button", { name: "Scroll tabs right" }))
+      .toBeVisible();
+
+    // WHEN
+    const wheel = new WheelEvent("wheel", { deltaY: -120, bubbles: true, cancelable: true });
+    tabsViewport().dispatchEvent(wheel);
+
+    // THEN
+    expect(wheel.defaultPrevented).toBe(false);
+  });
+
   test("leaves a Ctrl + mouse wheel to the browser zoom", async () => {
     // GIVEN
     const component = await renderOverflowingTabs();
@@ -223,9 +238,7 @@ describe("ObjectDetailsTabs", () => {
 
     // THEN
     const lineHeight = Number.parseFloat(getComputedStyle(tabsViewport()).fontSize);
-    await expect
-      .poll(() => tabsViewport().scrollLeft)
-      .toBeGreaterThanOrEqual(lines * lineHeight);
+    await expect.poll(() => tabsViewport().scrollLeft).toBeGreaterThanOrEqual(lines * lineHeight);
   });
 
   test("keeps the scroll arrows out of the keyboard tab order", async () => {
@@ -254,9 +267,11 @@ describe("ObjectDetailsTabs", () => {
     // THEN
     const tab = component.getByRole("link", { name: /^Relationship number 5/ }).element();
     await expect.poll(() => tabsViewport().scrollLeft).toBeGreaterThan(0);
+    const edgeFade = Number.parseFloat(getComputedStyle(tabsViewport()).scrollPaddingRight);
+    expect(edgeFade).toBeGreaterThan(0);
     await expect
       .poll(() => tabsViewport().getBoundingClientRect().right - tab.getBoundingClientRect().right)
-      .toBeGreaterThanOrEqual(64);
+      .toBeGreaterThanOrEqual(edgeFade);
   });
 
   test("shows no Commits tab for an object that is not a repository", async () => {
