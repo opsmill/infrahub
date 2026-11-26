@@ -60,7 +60,8 @@ function IpPoolBody({ poolId, poolKind }: IpPoolBodyProps) {
   if (error && !utilization) return <ErrorScreen message={error.message} />;
 
   const { usage, resources, areWeightsUnavailable } = utilization;
-  const selectedResourceId = resourceId ?? null;
+  const onlyResourceId = resources.length === 1 ? resources[0]?.id : undefined;
+  const selectedResourceId = resourceId ?? onlyResourceId ?? null;
 
   return (
     <Row className="min-h-0 items-start px-2 pb-2">

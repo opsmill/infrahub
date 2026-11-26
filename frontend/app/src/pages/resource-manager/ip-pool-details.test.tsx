@@ -137,7 +137,7 @@ describe("IpPoolDetailsPage", () => {
     await expect.element(component.getByText("IP pool not found")).toBeVisible();
   });
 
-  it("selects no resource prefix when the address names none", async () => {
+  it("leaves the choice to the user when the pool has several resource prefixes", async () => {
     // GIVEN
     mockPool();
     mockUtilization(utilization);
@@ -170,6 +170,22 @@ describe("IpPoolDetailsPage", () => {
       .element(component.getByRole("option", { name: /^10\.10\.4\.0\/22/ }))
       .toHaveAttribute("aria-selected", "true");
     await expect.element(component.getByText(`Allocations of ${secondResource?.id}`)).toBeVisible();
+  });
+
+  it("selects the only resource prefix of the pool", async () => {
+    // GIVEN
+    mockPool();
+    const [onlyResource] = utilization.resources;
+    mockUtilization(generateIpPoolUtilization({ resources: utilization.resources.slice(0, 1) }));
+
+    // WHEN
+    const component = await renderPage();
+
+    // THEN
+    await expect
+      .element(component.getByRole("option", { name: /^10\.10\.0\.0\/22/ }))
+      .toHaveAttribute("aria-selected", "true");
+    await expect.element(component.getByText(`Allocations of ${onlyResource?.id}`)).toBeVisible();
   });
 
   it("says the pool has no resource prefix", async () => {
