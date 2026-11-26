@@ -4,6 +4,17 @@ from .generic_schema import GenericSchema
 from .node_schema import NodeSchema
 from .order_by import is_metadata_order_by_entry
 
+PROPERTIES_INHERITED_FROM_GENERIC: tuple[str, ...] = (
+    "human_friendly_id",
+    "display_label",
+    "display_labels",
+    "default_filter",
+    "menu_placement",
+    "uniqueness_constraints",
+    "icon",
+    "order_by",
+)
+
 
 class NodeInheritanceHandler:
     def inherit_from_interface(self, node: NodeSchema, interface: GenericSchema) -> None:
@@ -14,17 +25,7 @@ class NodeInheritanceHandler:
             item.name: idx for idx, item in enumerate(node.relationships) if item.inherited
         }
 
-        properties_to_inherit = [
-            "human_friendly_id",
-            "display_label",
-            "display_labels",
-            "default_filter",
-            "menu_placement",
-            "uniqueness_constraints",
-            "icon",
-            "order_by",
-        ]
-        for prop_name in properties_to_inherit:
+        for prop_name in PROPERTIES_INHERITED_FROM_GENERIC:
             if getattr(interface, prop_name) and not getattr(node, prop_name):
                 setattr(node, prop_name, getattr(interface, prop_name))
 
