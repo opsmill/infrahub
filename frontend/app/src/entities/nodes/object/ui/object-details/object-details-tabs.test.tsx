@@ -12,7 +12,10 @@ import {
   generateCommitsApiResult,
   generateInSyncCommitsResponse,
 } from "../../../../../../tests/fake/repository-commit";
-import { generateNodeSchema } from "../../../../../../tests/fake/schema";
+import {
+  generateNodeSchema,
+  generateRelationshipSchema,
+} from "../../../../../../tests/fake/schema";
 import { ObjectDetailsTabs } from "./object-details-tabs";
 
 vi.mock("@/entities/repository/api/get-repository-commits-from-api");
@@ -43,6 +46,41 @@ describe("ObjectDetailsTabs", () => {
 
     // THEN
     await expect.element(component.getByRole("link", { name: /^Commits/ })).toBeVisible();
+  });
+
+  test("shows a horizontal scroll bar when the tabs do not fit", async () => {
+    // GIVEN
+    const relationships = Array.from({ length: 10 }, (_, index) =>
+      generateRelationshipSchema({
+        name: `relationship_${index}`,
+        identifier: `relationship_${index}`,
+        label: `Relationship number ${index}`,
+        kind: "Generic",
+        cardinality: "many",
+      })
+    );
+    const objectSchema = generateNodeSchema({ kind: "LocationSite", relationships });
+    const objectData: NodeObject = { id: "object-1", __typename: "LocationSite" };
+
+    // WHEN
+    const component = await render(
+      <div className="w-100">
+        <ObjectDetailsTabs objectSchema={objectSchema} objectData={objectData} />
+      </div>
+    );
+
+    // THEN
+    await expect.element(component.getByRole("link", { name: "Details" })).toBeVisible();
+    const tabs = component.getByTestId("object-details-tabs").element();
+    const viewport = tabs.closest("[data-radix-scroll-area-viewport]")!;
+    expect(viewport.scrollWidth).toBeGreaterThan(viewport.clientWidth);
+
+    await expect
+      .poll(() => {
+        const scrollBar = viewport.parentElement!.querySelector('[data-orientation="horizontal"]');
+        return scrollBar ? getComputedStyle(scrollBar).display : "absent";
+      })
+      .not.toMatch(/^(none|absent)$/);
   });
 
   test("shows no Commits tab for an object that is not a repository", async () => {
