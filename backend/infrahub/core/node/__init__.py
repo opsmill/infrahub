@@ -1663,6 +1663,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             if meta_field == "updated_at":
                 updated_at = self._get_updated_at()
                 data["updated_at"] = updated_at.to_datetime() if updated_at else None
+
+            if meta_field == "ownership":
+                data["ownership"] = {"node_id": self.get_id()}
         return data
 
     async def from_graphql(

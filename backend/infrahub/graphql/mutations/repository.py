@@ -54,9 +54,8 @@ from infrahub.workflows.catalogue import (
     GIT_REPOSITORY_DELIVERY_RETRY,
 )
 
-from ...core.node.create import create_node
 from ..types.task import TaskInfo
-from .main import InfrahubMutationMixin, InfrahubMutationOptions, build_graphql_response
+from .main import InfrahubMutationMixin, InfrahubMutationOptions, build_graphql_response, create_node_with_owners
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -101,7 +100,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         db = database or graphql_context.db
         create_data = dict(data)
         create_data.update(override_data or {})
-        obj = await create_node(data=create_data, db=db, branch=branch, schema=cls._meta.active_schema)
+        obj = await create_node_with_owners(data=create_data, db=db, branch=branch, schema=cls._meta.active_schema)
 
         await RepositoryFinalizer(
             account_session=graphql_context.active_account_session,

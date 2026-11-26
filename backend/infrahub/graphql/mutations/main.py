@@ -9,11 +9,21 @@ from infrahub_sdk.utils import extract_fields_first_node
 from opentelemetry import trace
 
 from infrahub import lock
-from infrahub.core.constants import PROFILES_RELATIONSHIP_NAME, InfrahubKind, MetadataOptions, MutationAction
+from infrahub.core.constants import (
+    NODE_METADATA_PREFIX,
+    PROFILES_RELATIONSHIP_NAME,
+    SYSTEM_USER_ID,
+    InfrahubKind,
+    MetadataOptions,
+    MutationAction,
+)
 from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.file_processor import FileUploadProcessor
 from infrahub.core.manager import NodeManager
 from infrahub.core.node.create import create_node, get_profile_ids
+from infrahub.core.ownership.input import OwnerInputParser
+from infrahub.core.ownership.repository import OwnershipRepository
+from infrahub.core.ownership.writer import store_owner_states
 from infrahub.core.schema import MainSchemaTypes, NodeSchema
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.profile_schema import ProfileSchema
@@ -36,12 +46,15 @@ from ...core.node.lock_utils import apply_payload_for_lock_names, get_lock_names
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from graphql import GraphQLResolveInfo
     from starlette.datastructures import UploadFile
 
     from infrahub.core.branch import Branch
     from infrahub.core.mutation_context import RecordedNode
     from infrahub.core.node import Node
+    from infrahub.core.ownership.models import HolderKey, StoredOwnerState
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.types.context import ContextInput
 
@@ -84,6 +97,56 @@ async def emit_node_mutation_events(
         span.set_attribute("changelog.event_count", len(events))
     for event in events:
         graphql_context.background.add_task(graphql_context.active_service.event.send, event)
+
+
+async def parse_owner_input(
+    db: InfrahubDatabase, branch: Branch, node_metadata: Mapping[str, Any] | None, schema: MainSchemaTypes
+) -> dict[HolderKey, StoredOwnerState]:
+    """Return the owner states that the `node_metadata` input of a mutation gives to a node of the schema.
+
+    Raises:
+        ValidationError: When an owner of the input is not valid.
+
+    """
+    if not node_metadata:
+        return {}
+    parser = OwnerInputParser(
+        schema_branch=db.schema.get_schema_branch(name=branch.name),
+        lookup=OwnershipRepository(db=db, branch=branch, at=None),
+    )
+    return await parser.parse(node_metadata=node_metadata, schema=schema)
+
+
+async def create_node_with_owners(
+    data: Mapping[str, Any],
+    db: InfrahubDatabase,
+    branch: Branch,
+    schema: MainSchemaTypes,
+    user_id: str = SYSTEM_USER_ID,
+) -> Node:
+    """Create a node, and store the owners that its `node_metadata` input gives in the transaction of the create.
+
+    Raises:
+        ValidationError: When an owner of the input is not valid. Nothing is created then.
+
+    """
+    owner_states = await parse_owner_input(
+        db=db, branch=branch, node_metadata=data.get(NODE_METADATA_PREFIX), schema=schema
+    )
+
+    async def store_owners(dbt: InfrahubDatabase, node: Node) -> None:
+        await store_owner_states(
+            db=dbt, branch=branch, node=node, owner_states=owner_states, user_id=user_id, keep_deleted_owners=False
+        )
+
+    return await create_node(
+        data={key: value for key, value in data.items() if key != NODE_METADATA_PREFIX},
+        db=db,
+        branch=branch,
+        schema=schema,
+        user_id=user_id,
+        after_save=store_owners if owner_states else None,
+    )
 
 
 @dataclass
@@ -267,7 +330,7 @@ class InfrahubMutationMixin:
         create_data = dict(data)
         create_data.update(override_data or {})
 
-        obj = await create_node(
+        obj = await create_node_with_owners(
             data=create_data,
             db=db,
             branch=branch,
@@ -357,6 +420,9 @@ class InfrahubMutationMixin:
         graphql_context: GraphqlContext = info.context
         component_registry = get_component_registry()
         node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
+        owner_states = await parse_owner_input(
+            db=db, branch=branch, node_metadata=data.get(NODE_METADATA_PREFIX), schema=obj.get_schema()
+        )
 
         await obj.from_graphql(
             db=db,
@@ -390,6 +456,14 @@ class InfrahubMutationMixin:
             updated_field_names = await node_profiles_applier.apply_profiles(node=obj)
             fields += updated_field_names
         await obj.save(db=db, fields=fields, user_id=graphql_context.assigned_user_id)
+        await store_owner_states(
+            db=db,
+            branch=branch,
+            node=obj,
+            owner_states=owner_states,
+            user_id=graphql_context.assigned_user_id,
+            keep_deleted_owners=False,
+        )
 
         return obj
 

@@ -8,7 +8,8 @@ import graphene
 
 from infrahub import config
 from infrahub.core.attribute import String
-from infrahub.core.constants import InfrahubKind, RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import NODE_METADATA_PREFIX, InfrahubKind, RelationshipCardinality, RelationshipKind
+from infrahub.core.ownership.constants import OWNERS_IDS_FILTER, OWNERS_ISNULL_FILTER
 from infrahub.core.schema import (
     AttributeSchema,
     GenericSchema,
@@ -47,6 +48,7 @@ from .registry import registry
 from .resolvers.account_metadata import account_metadata_resolver
 from .resolvers.ipam import ipam_paginated_list_resolver
 from .resolvers.object_by_id import object_by_id_resolver
+from .resolvers.ownership import ownership_resolver
 from .resolvers.resolver import (
     account_resolver,
     ancestors_resolver,
@@ -76,6 +78,7 @@ from .types.branch import InfrahubBranchEdge
 from .types.context import ContextInput
 from .types.event import EVENT_TYPES
 from .types.node import InfrahubObjectWithoutMeta
+from .types.ownership import InfrahubOwnership, NodeMetadataInput
 from .types.repository_branch_status import InfrahubRepositoryBranchStatusEdge
 from .types.task import TASK_TYPES
 
@@ -777,6 +780,12 @@ class GraphQLSchemaManager:
             "created_by": graphene.Field(account_type, required=False, resolver=account_metadata_resolver),
             "updated_at": graphene.DateTime(required=False),
             "updated_by": graphene.Field(account_type, required=False, resolver=account_metadata_resolver),
+            "ownership": graphene.Field(
+                InfrahubOwnership,
+                required=False,
+                resolver=ownership_resolver,
+                description="Owners of the node, own or inherited",
+            ),
             "Meta": type("Meta", (object,), meta_attrs),
         }
 
@@ -844,7 +853,10 @@ class GraphQLSchemaManager:
                 slug = InputField(StringAttributeCreate, required=True)
                 description = InputField(StringAttributeCreate, required=False)
         """
-        attrs: dict[str, graphene.String | graphene.InputField] = {"id": graphene.String(required=False)}
+        attrs: dict[str, graphene.String | graphene.InputField] = {
+            "id": graphene.String(required=False),
+            NODE_METADATA_PREFIX: graphene.InputField(NodeMetadataInput, required=False),
+        }
 
         for attr in schema.attributes:
             if attr.read_only:
@@ -902,6 +914,7 @@ class GraphQLSchemaManager:
         attrs: dict[str, graphene.String | graphene.InputField | graphene.List] = {
             "id": graphene.String(required=False),
             "hfid": graphene.List(of_type=graphene.String, required=False),
+            NODE_METADATA_PREFIX: graphene.InputField(NodeMetadataInput, required=False),
         }
 
         for attr in schema.attributes:
@@ -961,6 +974,7 @@ class GraphQLSchemaManager:
         attrs: dict[str, graphene.String | graphene.InputField | graphene.List] = {
             "id": graphene.String(required=False),
             "hfid": graphene.List(of_type=graphene.String, required=False),
+            NODE_METADATA_PREFIX: graphene.InputField(NodeMetadataInput, required=False),
         }
 
         for attr in schema.attributes:
@@ -1184,6 +1198,7 @@ class GraphQLSchemaManager:
         - updated_by: Filter by the account that last updated the node
         - created_at: Filter by creation timestamp
         - updated_at: Filter by last update timestamp
+        - owners: Filter by the owners that apply to the node, own or inherited
 
         Returns:
             dict: Filter definitions with names as keys and graphene types as values
@@ -1215,6 +1230,12 @@ class GraphQLSchemaManager:
             ),
             "node_metadata__updated_at__after": graphene.DateTime(
                 description="Filter for objects updated after this timestamp"
+            ),
+            OWNERS_IDS_FILTER: graphene.List(
+                graphene.ID, description="Filter for objects that any of these owners owns, directly or by inheritance"
+            ),
+            OWNERS_ISNULL_FILTER: graphene.Boolean(
+                description="Filter for objects without a live owner (true) or with one (false), own or inherited"
             ),
         }
 
