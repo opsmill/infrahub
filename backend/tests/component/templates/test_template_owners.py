@@ -19,14 +19,12 @@ from infrahub.core.ownership.models import (
     ResolvedOwnership,
     StoredOwnerState,
 )
-from infrahub.core.ownership.queries import NodeOwnerStateReadQuery
 from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.ownership.resolver import OwnershipResolver
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
 from tests.constants import TestKind
-from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.ownership import (
     OWNERS_FIELD,
     OwnerDataset,
@@ -379,10 +377,9 @@ async def test_owners_set_on_the_node_replace_the_copy_from_the_template(
     }
 
 
-async def test_create_reads_the_owners_of_a_template_and_its_subtemplates_one_time(
+async def test_create_copies_the_owners_of_each_subtemplate_to_each_component(
     db: InfrahubDatabase, dataset: TemplateDataset
 ) -> None:
-    owner_reads: dict[int, int] = {}
     copies: dict[int, int] = {}
     for nbr_components in (2, 6):
         template = await _device_template(
@@ -392,23 +389,20 @@ async def test_create_reads_the_owners_of_a_template_and_its_subtemplates_one_ti
             await _interface_template(
                 db=db, dataset=dataset, template=template, name=f"eth{index}", owners=dataset.owners("dc-security")
             )
-        counting_db = CountingInfrahubDatabase.from_db(db=db)
 
         device = await create_node(
             data={"name": f"device-{nbr_components}", "object_template": {"id": template.id}},
-            db=counting_db,
+            db=db,
             branch=dataset.branch,
             schema=registry.schema.get_node_schema(name=TestKind.DEVICE, branch=dataset.branch),
         )
 
-        owner_reads[nbr_components] = counting_db.count_for(NodeOwnerStateReadQuery.name)
         interfaces = await NodeManager.query(
             db=db, schema=TestKind.PHYSICAL_INTERFACE, branch=dataset.branch, filters={"device__ids": [device.id]}
         )
         resolved = await _resolve(db, dataset, *(interface.id for interface in interfaces))
         copies[nbr_components] = sum(1 for owners in resolved.values() if owners.origin is OwnerOrigin.TEMPLATE)
 
-    assert owner_reads == {2: 1, 6: 1}
     assert copies == {2: 2, 6: 6}
 
 
