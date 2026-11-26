@@ -39,7 +39,7 @@ The change needs no graph schema change, no migration, no new index, no GraphQL 
 - Additions only: no existing field is renamed, removed or changed, and `TELEMETRY_VERSION` stays `20260628`
 - Every new number is a whole number or `null`, because a float with a whole-number value fails the checksum check of the receiving endpoint
 - No name that a customer defined: rows are keyed by workflow name, never by run name, and the node values are totals
-- The largest request body stays below 8 KB (7,489 bytes measured, [research R13](research.md))
+- The change adds about 3.6 KB at most to the request body: 7,489 bytes for the largest body measured, against 3,892 bytes before the change ([research R13](research.md))
 - The report code keeps its structure: no change to `tasks.py::AnonymousTelemetryGatherer` or its constructor
 
 **Scale/Scope**: five source files, four test modules, one internal knowledge doc, two public pages and one changelog fragment. About 350 added lines of code
@@ -54,11 +54,13 @@ The change needs no graph schema change, no migration, no new index, no GraphQL 
 | II. Branch-Safe by Default | Pass | The three reads of the graph run on the default branch at the time of the report. The new query filters every edge with `Branch.get_query_filter_path` and resolves it with `branch_level DESC, from DESC, status ASC`. The reads write nothing. Counting only the default branch is a stated limit of the totals ([research R10](research.md)). |
 | III. Type Safety & Explicit Contracts | Pass | New payload values are typed Pydantic fields. The run history response is validated with Pydantic models. The new query exposes a frozen dataclass through `get_data()`. |
 | IV. Test Discipline | Pass | Unit test for the pure function, component tests against the real task manager and Neo4j for each acceptance scenario, with the failure cases. No end-to-end test: the change has no user-facing page. |
-| V. Query Performance & Efficiency | Pass | The new query is parameterized, returns three numbers, and starts from the artifact or generator instance nodes by label, so its cost follows their number. The three definition counts share one query. Not measured on a large deployment ([research R10](research.md)). |
+| V. Query Performance & Efficiency | Pass | The new query is parameterized, returns three numbers, and starts from the artifact or generator instance nodes by label, so its cost follows their number. The three definition counts share one query. The time on a large graph is not measured yet; the measurement is a check before the pull request is merged ([research R10](research.md)). |
 | VI. Security & Input Boundaries | Pass | No user input reaches the new reads. The kind label placed in the query text is a constant of Infrahub's own code; the relationship identifier, the attribute name and the values of the branch filter are parameters. The report sends no name that a customer defined. |
 | VII. Simplicity & Maintainability | Pass | Reuses `safe_metric`, the windowed event count, `CountNodesByKindsQuery` and `NodeManager.count`. One new query class with two callers. No new abstraction for the 1.13 framework. |
 
 **Governance Ask-First gates**: database schema or migration: none. GraphQL schema: none. New dependency: none. CI/CD workflow: none. Authentication or authorization: none.
+
+**Guideline that the design does not follow**: `dev/guidelines/backend/checklist.md`, section Telemetry, says to put new information in new blocks. The owner of the telemetry code decided to put the new values inside `activity_24h`, `features` and `database.node_count` (design doc D14). The cost is recorded in [research R9](research.md) and [research R11](research.md): `features` holds two ways of counting and can hold `null`, and `activity_24h` holds one list and one map beside its whole numbers.
 
 Post-design re-check: no change. The design adds no entity to the graph and no interface other than the payload keys in [contracts/telemetry-payload.md](contracts/telemetry-payload.md).
 
@@ -116,8 +118,13 @@ The change was written before this plan, in the working tree of the feature bran
 
 - Not built: the rule of FR-014 that a failed read of the validator kinds makes only `validators_started` `null`. In the working tree, `tasks.py::DefaultActivityGatherer.gather` reads the kinds before it gathers the activity, so a failed read makes every value of `activity_24h` `null`. [Research R8](research.md) gives the change that closes this.
 
+- Not built: `tasks.py::list_validator_kinds` reads the schema through `registry`. [Research R8a](research.md) moves the read to `db.schema`.
+- Not yet in the working tree: the sentences that the critique of 2026-11-26 asked for in `dev/knowledge/backend/telemetry.md`, about the end state of the three workflows that run inside a proposed change and about `with_generator_instance` ([research R5](research.md), [research R10](research.md)).
+
 Some acceptance scenarios have no test of their own yet; [research R16](research.md) lists them. `tasks.md` marks what is built and what is open.
 
 ## Complexity Tracking
 
-No constitution violation to justify.
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|--------------------------------------|
+| A change with a changelog fragment of type `added` targets `stable`. `dev/constitution.md` (Git Workflow) and `dev/guidelines/git-workflow.md` say that feature branches are created from `develop`. | The owner of the telemetry code decided that the counts ship in a 1.12 patch release (design doc D8). | A pull request to `develop` ships the counts in 1.13 at the earliest. |

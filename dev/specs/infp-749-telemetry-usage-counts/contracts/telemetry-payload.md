@@ -63,6 +63,13 @@ A list of rows `{workflow, state, runs, run_seconds}` for the previous full UTC 
 - A `null` list means that the report could not read the activity of the day at all.
 - A later Infrahub release can add a workflow name. It adds rows and changes no existing row.
 
+What the end state means:
+
+- `state` is the state of the workflow run.
+- For `generator-run`, `artifact-generate`, `transform_render_python` and `transform_render_jinja2_template`, a run whose work failed ends in `FAILED`.
+- For the three workflows that run inside a proposed change (`run-generator-as-check`, `git-repository-check-artifact-create` and `git-repository-run-user-check`), a failed generator, a failed artifact generation or a failed check is recorded as a check with the conclusion `failure`, and the run ends in `COMPLETED`. Their `FAILED` and `CRASHED` rows count only the runs in which the workflow itself stopped.
+- The report does not count the failed generators, artifact generations or checks inside a proposed change.
+
 Which rows make one figure:
 
 - Generator runs: `generator-run` plus `run-generator-as-check`
@@ -74,7 +81,7 @@ Which rows make one figure:
 Figures that the reader computes:
 
 - Average run time: `run_seconds` divided by `runs`.
-- Artifact generations that left the content unchanged: the `COMPLETED` runs of the two artifact generation workflows, minus `activity_24h.artifacts_created`, minus `activity_24h.artifacts_updated`. A run that crosses midnight UTC can move one count to the next day.
+- The largest possible number of artifact generations that left the content unchanged: the `COMPLETED` runs of the two artifact generation workflows, minus `activity_24h.artifacts_created`, minus `activity_24h.artifacts_updated`. The result also contains the artifact generations that failed inside a proposed change, because those runs end in `COMPLETED` and send no event. A run that crosses midnight UTC can move one count to the next day.
 
 The deliveries of webhooks are not in the list. `activity_24h.webhooks_fired_success` and `activity_24h.webhooks_fired_failure` stay as they are.
 
@@ -104,7 +111,7 @@ Five new keys, all for the default branch:
 - `with_artifact`: the nodes with at least one artifact node
 - `with_generated_artifact`: the nodes with at least one artifact that has stored content
 - `generated_artifact`: the artifacts that have stored content
-- `with_generator_instance`: the nodes with at least one generator instance. A node whose only generator run failed or has not finished is counted.
+- `with_generator_instance`: the nodes with at least one generator instance. A node whose only generator run failed or has not finished is counted. Generator instances stay on the branch where the run created them, so a node is counted only after a generator has run for it on the default branch. The nodes of a generator definition with `execute_after_merge: false` are never counted, because such a generator runs only inside proposed changes.
 
 Each key is `0` when there is nothing to count and `null` when its read failed. `with_artifact`, `with_generated_artifact` and `generated_artifact` are `null` together.
 
@@ -113,6 +120,7 @@ Each key is `0` when there is nothing to count and `null` when its read failed. 
 - A row per kind, a kind name that a customer defined, or a count of devices
 - API reads per day
 - A median or an average run time
+- The number of failed generators, failed artifact generations and failed checks inside a proposed change
 - A day earlier than the previous full UTC day
 
 ## What the data warehouse needs

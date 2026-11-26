@@ -69,7 +69,15 @@ Expected: no error. `docs.lint` needs Vale and `markdownlint-cli2`. `docs.valida
 
 To get rows in `workflow_runs`, run a generator or generate an artifact, then read the report of the next UTC day: a report covers the previous full UTC day only.
 
-## 5. Confirm that a failed read does not stop the report
+## 5. Run the workflows once for real
+
+[Research R5](research.md) says what one run means and which state a run ends in when the work fails. Both were read in the code. This step checks them on a deployment, without waiting for the next UTC day.
+
+1. On the local deployment, run one generator that succeeds and one that raises, and generate one artifact that succeeds and one whose transformation raises. Do each of the four outside a proposed change and inside a proposed change.
+2. In a Python shell in the task worker container, call `infrahub.telemetry.task_manager.gather_workflow_runs` with a task manager client and the window of the current UTC day.
+3. Compare the rows with the paragraph about end states in User Story 1 of [spec.md](spec.md), and record the rows in research R5.
+
+## 6. Confirm that a failed read does not stop the report
 
 The component tests of step 1 cover this without a deployment:
 

@@ -26,24 +26,30 @@ An analyst opens the report of one deployment for one day. For each of 8 named w
 - Transformations rendered on demand through the REST API: `transform_render_python` plus `transform_render_jinja2_template`.
 - Pipeline runs of proposed changes: `proposed-changed-pipeline`. The pipeline starts the next workflows without waiting for them, so its run seconds do not include theirs.
 
+The end state is the state of the workflow run, and for three workflows it is not the result of the work:
+
+- `generator-run`, `artifact-generate`, `transform_render_python` and `transform_render_jinja2_template`: when the generator, the artifact generation or the transformation fails, the run ends in `FAILED`.
+- `run-generator-as-check`, `git-repository-check-artifact-create` and `git-repository-run-user-check`, the three workflows that run inside a proposed change: a failed generator, a failed artifact generation or a failed check is recorded as a check with the conclusion `failure`, and the run ends in `COMPLETED`. Their `FAILED` and `CRASHED` rows count only the runs in which the workflow itself stopped. The report does not count the failed generators, artifact generations or checks inside a proposed change.
+
 The analyst computes two more figures in the data warehouse:
 
 - The average run time of a workflow in an end state: run seconds divided by runs.
-- The number of artifact generations that left the content unchanged: the completed runs of the two artifact generation workflows, minus `artifacts_created`, minus `artifacts_updated`.
+- The largest possible number of artifact generations that left the content unchanged: the completed runs of the two artifact generation workflows, minus `artifacts_created`, minus `artifacts_updated`. The result also contains the artifact generations that failed inside a proposed change, because those runs end in `COMPLETED` and send no event.
 
-**Why this priority**: These run counts are the reason for the change, and no other field of the report carries them. A report with only this list already answers the questions about generator runs, failed artifact generations, checks, transformations and pipeline runs.
+**Why this priority**: These run counts are the reason for the change, and no other field of the report carries them. A report with only this list already answers the questions about generator runs, artifact generations, checks, transformations and pipeline runs, and about the runs that failed outside a proposed change.
 
 **Independent Test**: Record runs of the named workflows in several end states on the previous UTC day, produce a report, and confirm that the report contains one row per workflow and end state with the expected number of runs and run seconds.
 
 **Acceptance Scenarios**:
 
 1. **Given** a deployment where `generator-run` had 120 completed runs and 2 failed runs on the previous UTC day, **When** the daily report is produced, **Then** it contains one row for `generator-run` and `COMPLETED` with 120 runs and one row for `generator-run` and `FAILED` with 2 runs, and each row carries the time its runs spent running in whole seconds.
-2. **Given** an artifact generation that failed on the previous UTC day, **When** the report is produced, **Then** the run is counted in the `FAILED`, `CRASHED` or `CANCELLED` row of its workflow, according to the state it ended in.
-3. **Given** a named workflow with no run in an end state on the previous UTC day, **When** the report is produced, **Then** the report contains no row for that workflow, and the list of rows is empty when no named workflow had such a run.
-4. **Given** a run that is still running, or is scheduled and not started, when the report is produced, **When** the report is produced, **Then** no row counts that run.
-5. **Given** one run that was expected to start on the previous UTC day and one run that was expected to start on the current UTC day, **When** the report is produced, **Then** only the first run is counted.
-6. **Given** two runs of one workflow that the task manager records under two names of the same end state, for example a failed run and a timed-out run, **When** the report is produced, **Then** both runs are counted in one `FAILED` row, and the run seconds are added up before they are rounded.
-7. **Given** a workflow that is not one of the 8 named workflows, for example `webhook-process`, **When** the report is produced, **Then** the report contains no row for it.
+2. **Given** a run of `artifact-generate` whose artifact generation failed on the previous UTC day, **When** the report is produced, **Then** the run is counted in the `FAILED` row of `artifact-generate`.
+3. **Given** a run of `git-repository-check-artifact-create` whose artifact generation failed on the previous UTC day, **When** the report is produced, **Then** the run is counted in the `COMPLETED` row of `git-repository-check-artifact-create`, and no row separates it from an artifact generation that succeeded.
+4. **Given** a named workflow with no run in an end state on the previous UTC day, **When** the report is produced, **Then** the report contains no row for that workflow, and the list of rows is empty when no named workflow had such a run.
+5. **Given** a run that is still running, or is scheduled and not started, when the report is produced, **When** the report is produced, **Then** no row counts that run.
+6. **Given** one run that was expected to start on the previous UTC day and one run that was expected to start on the current UTC day, **When** the report is produced, **Then** only the first run is counted.
+7. **Given** two runs of one workflow that the task manager records under two names of the same end state, for example a failed run and a timed-out run, **When** the report is produced, **Then** both runs are counted in one `FAILED` row, and the run seconds are added up before they are rounded.
+8. **Given** a workflow that is not one of the 8 named workflows, for example `webhook-process`, **When** the report is produced, **Then** the report contains no row for it.
 
 ---
 
@@ -76,7 +82,7 @@ An analyst reads five totals for the default branch of a deployment:
 
 The analyst uses the totals to compare the number of nodes that can have an artifact with the number that have one, and to find deployments that run generators and use no artifacts.
 
-**Why this priority**: The totals describe the size of what a deployment generates, which the run counts do not. They are independent of the run counts and need two reads of the graph database, so they come second.
+**Why this priority**: The totals describe the size of what a deployment generates, which the run counts do not. They are independent of the run counts and need three reads of the graph database, so they come second.
 
 **Independent Test**: On a test database, create nodes with artifacts and generator instances in the states listed in the scenarios, produce the database part of the report, and confirm the five totals.
 
@@ -151,12 +157,12 @@ An analyst reads how many artifact definitions, check definitions and generator 
 - **A run that has not ended when the report is produced**: the report runs between 02:00 and 02:59 UTC for the previous day. A run that has not ended by then is never counted, in that report or a later one.
 - **A run that crosses midnight UTC**: the task manager assigns a run to the day it was expected to start, and an event to the time it occurred. The number of unchanged artifact generations that the analyst computes can therefore be off by a few for one day.
 - **A day whose report does not run**: the counts of that day are lost. The next report covers only its own previous day.
-- **The task manager does not answer**: each failed read can wait 60 seconds, and retries add to that. The report is late by the wait of each read and is still stored and sent.
+- **The run history or the event count of the task manager does not answer**: with the default settings of the task manager client, one read waits up to 60 seconds and is tried 6 times, so one read takes about 7 minutes before it is reported as failed. The change adds 14 reads, so the report can be later by about 100 minutes. These times are computed from the settings and were not measured. The report is still stored and sent when the other calls to the task manager succeed. When the task manager answers no call at all, the report fails as it did before the change, because the work pools, the event totals and the automations are read with no protection.
 - **A workflow name that the task manager does not know**: the read returns no run, so the workflow gets no row. This is the case on a deployment where a named workflow has never run.
 - **A long run among short runs**: the report sends the sum of run seconds and no median, so a few long runs can distort the average that the analyst computes.
 - **An Infrahub release adds a validator kind**: the new kind appears as a new key of `validators_started` with no change to the report.
 - **No core kind inherits from `CoreArtifactTarget`**: `artifact_target` counts only nodes of kinds that a customer defined, and the report still sends only the total.
-- **A generator ran only on another branch**: generator instances and artifacts are stored per branch, so the node is not counted on the default branch.
+- **A generator ran only on another branch**: generator instances and artifacts are branch-local. They stay on the branch where the run created them, and a merge does not copy them to the default branch. A node is counted in `with_generator_instance` only after a generator has run for it on the default branch. A generator definition with `execute_after_merge: false` runs only inside proposed changes, so its nodes are never counted, although the merge brings the nodes that the generator created to the default branch. For such a deployment, the analyst reads the runs of `run-generator-as-check`.
 - **`features` holds two kinds of count**: the three new keys count the nodes that exist on the default branch. The existing keys count graph vertices on every branch, deleted nodes included.
 
 ## Requirements *(mandatory)*
@@ -228,19 +234,19 @@ An analyst reads how many artifact definitions, check definitions and generator 
 
 ### Measurable Outcomes
 
-- **SC-001**: From the report of one deployment for one day, an analyst computes each of these five figures per end state with no further data: generator runs, artifact generations, checks the customer wrote, transformations rendered through the REST API, and pipeline runs of proposed changes.
+- **SC-001**: From the report of one deployment for one day, an analyst computes the number of runs of each of these five figures per end state of the workflow run, with no further data: generator runs, artifact generations, checks the customer wrote, transformations rendered through the REST API, and pipeline runs of proposed changes. The report separates failed work from successful work for generator runs and artifact generations outside a proposed change and for transformations. It does not separate them inside a proposed change.
 - **SC-002**: From the same report, an analyst reads the number of nodes that can have an artifact, the number that have a generated artifact, and the number that have a generator instance.
 - **SC-003**: Every field that the report contained before the change is present after it with the same name, type and meaning, and the payload format version is the same. The existing data warehouse models read the reports of an upgraded deployment with no change.
 - **SC-004**: A report from a deployment with a customer-defined schema contains zero names that the customer defined.
 - **SC-005**: When any single new read fails, the report is still stored and sent, and only the values of that read are `null`.
-- **SC-006**: The request body of a daily report stays below 8 KB. The largest body measured with the new values is 7,489 bytes, against 3,892 bytes before the change.
-- **SC-007**: The report makes 8 reads of the run history, one read per validator kind, and at most four new reads of the graph database each day.
+- **SC-006**: The change adds about 3.6 KB at most to the request body of a daily report. Measured with made-up values, the largest body with the new values is 7,489 bytes, against 3,892 bytes before the change. The size of the existing blocks differs per deployment.
+- **SC-007**: Each day the report makes 8 new reads of the run history, one new event count per validator kind, and four new reads of the graph database.
 
 ## Assumptions
 
 - The change ships in a 1.12 patch release and targets the `stable` branch.
 - The owner of the data warehouse adds a table for the run rows and columns for the other new values. That work is outside this repository.
-- The telemetry endpoint accepts the larger request body. This is not yet confirmed.
+- The telemetry endpoint accepts a report with the new values: the larger request body, a list and a map inside `activity_24h`, and `null` inside `features`. This is not yet confirmed. A report that the endpoint rejects reaches the data warehouse with none of its values, so [research.md](research.md) lists the confirmation as a check before the pull request is merged.
 - The task manager keeps the runs of the previous UTC day until the report runs.
 - The schema accepts a kind that inherits from `CoreValidator` only in the Core namespace, so no validator kind has a name that a customer defined.
 - The report code keeps its structure: the new values are gathered beside the existing ones, with no new top-level block in the payload.
@@ -253,6 +259,7 @@ An analyst reads how many artifact definitions, check definitions and generator 
 - Fixed counts for named device kinds. A customer can name these kinds differently.
 - API reads per day.
 - A median or an average run time.
+- The number of failed generators, failed artifact generations and failed checks inside a proposed change. The three workflows that run inside a proposed change end in `COMPLETED` when the work fails, and the report adds no other count for them.
 - A backport to 1.11.
 - Rows for every Infrahub workflow.
 - A new payload format version.
