@@ -115,7 +115,8 @@ description: "Task list for owner and source metadata, Community side, storage o
 - [X] T053 [US1] Update `updated_at` and `updated_by` of the node vertex when a mutation changes only the owners or the sources of the node, with the rule of `NodeUpdateMetadataQuery` in backend/infrahub/core/query/node.py, in backend/infrahub/core/ownership/writer.py. The nodes that inherit do not change (FR-053)
 - [X] T054 [US1] Add the new edge types to `GraphNodeRelationships`, and declare `HAS_OWNER` and `HAS_SOURCE` in both directions, in backend/infrahub/core/graph/schema.py. Change `NodeDuplicateQuery` in backend/infrahub/core/migrations/query/node_duplicate.py so that it reads the latest edge for each edge type between the node and each other vertex when a node changes kind (FR-040, research R-11)
 - [X] T055 [US1] Keep the owners of a node in the object conversion in `ConvertObjectType.mutate` of backend/infrahub/graphql/mutations/convert_object_type.py (FR-040)
-- [ ] T056 [US1] Regenerate schema/schema.graphql with `uv run invoke schema.generate-graphqlschema` and the frontend GraphQL types with `pnpm codegen` in frontend/app
+- [X] T056 [US1] Regenerate schema/schema.graphql with `uv run invoke schema.generate-graphqlschema` and the frontend GraphQL types with `pnpm codegen` in frontend/app
+  - Also ran `pnpm codegen:graphql`, because CI checks the gql.tada files `graphql-env.d.ts` and `graphql-cache.d.ts`. `pnpm exec betterer ci` passed with no new type error.
 
 **Checkpoint**: user story 1 works on its own. A platform team can set, read and filter node owners.
 
@@ -367,7 +368,8 @@ description: "Task list for owner and source metadata, Community side, storage o
   - The graph migration `m086` ends the ownership of attributes by repositories, on every branch. It deletes nothing.
   - The new command `infrahub db ownership-report`.
   - A rebase stops on a conflict of an owner list or a source list until both branches hold the same list.
-- [ ] T150 Regenerate schema/schema.graphql, schema/openapi.json, the backend generated files and the frontend GraphQL types, and run `uv run invoke docs.validate`
+- [X] T150 Regenerate schema/schema.graphql, schema/openapi.json, the backend generated files and the frontend GraphQL types, and run `uv run invoke docs.validate`
+  - Pull request 2 changed only `schema/schema.graphql` and the frontend GraphQL types. The backend generated files, `schema/openapi.json` and the reference docs had no change, and `uv run invoke docs.validate` passed.
 - [ ] T151 Run `uv run invoke format` and `uv run invoke lint`, then run the E2E tests of tests/e2e/ownership and the scenarios of dev/specs/infp-753-rbac-owners-option-e/quickstart.md on a local stack
 
 ---
