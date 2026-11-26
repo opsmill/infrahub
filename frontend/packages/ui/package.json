@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "@rolldown/plugin-babel": "^0.3.1",
+    "@storybook/addon-themes": "^10.6.7",
     "@storybook/react-vite": "^10.6.7",
     "@tailwindcss/vite": "catalog:",
     "@types/node": "catalog:",
