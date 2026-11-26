@@ -35,7 +35,10 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
   const scrollTabs = (direction: -1 | 1) => {
     const viewport = viewportRef.current;
     if (!viewport) return;
-    viewport.scrollBy({ left: direction * viewport.clientWidth * 0.8, behavior: "smooth" });
+    viewport.scrollBy({
+      left: direction * viewport.clientWidth * ARROW_SCROLL_STEP,
+      behavior: "smooth",
+    });
   };
 
   return (
@@ -112,6 +115,8 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
 }
 
 const EDGE_FADE = "4rem";
+// Share of the visible width one arrow click scrolls, so a tab cut at the edge stays in view.
+const ARROW_SCROLL_STEP = 0.8;
 
 function getEdgeFadeMask(fadeLeft: boolean, fadeRight: boolean): string | undefined {
   if (!(fadeLeft || fadeRight)) return undefined;

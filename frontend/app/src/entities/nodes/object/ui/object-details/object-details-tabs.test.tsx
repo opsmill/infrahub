@@ -74,46 +74,25 @@ describe("ObjectDetailsTabs", () => {
   });
 
   test("shows a horizontal scroll bar when the tabs do not fit", async () => {
-    // GIVEN
-    const relationships = Array.from({ length: 10 }, (_, index) =>
-      generateRelationshipSchema({
-        name: `relationship_${index}`,
-        identifier: `relationship_${index}`,
-        label: `Relationship number ${index}`,
-        kind: "Generic",
-        cardinality: "many",
-      })
-    );
-    const objectSchema = generateNodeSchema({ kind: "LocationSite", relationships });
-    const objectData: NodeObject = { id: "object-1", __typename: "LocationSite" };
-
     // WHEN
-    const component = await render(
-      <div className="w-100">
-        <ObjectDetailsTabs objectSchema={objectSchema} objectData={objectData} />
-      </div>
-    );
+    const component = await renderOverflowingTabs();
 
     // THEN
     await expect.element(component.getByRole("link", { name: "Details" })).toBeVisible();
-    const tabs = component.getByTestId("object-details-tabs").element();
-    const viewport = tabs.closest("[data-radix-scroll-area-viewport]")!;
+    const viewport = tabsViewport();
     expect(viewport.scrollWidth).toBeGreaterThan(viewport.clientWidth);
 
+    const horizontalScrollBar = () =>
+      viewport.parentElement!.querySelector(':scope > [data-orientation="horizontal"]');
     await expect
       .poll(() => {
-        const scrollBar = viewport.parentElement!.querySelector(
-          ':scope > [data-orientation="horizontal"]'
-        );
+        const scrollBar = horizontalScrollBar();
         return scrollBar ? getComputedStyle(scrollBar).display : "absent";
       })
       .not.toMatch(/^(none|absent)$/);
 
-    const scrollBar = viewport.parentElement!.querySelector(
-      ':scope > [data-orientation="horizontal"]'
-    )!;
     const detailsTab = component.getByRole("link", { name: "Details" }).element();
-    expect(scrollBar.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+    expect(horizontalScrollBar()!.getBoundingClientRect().top).toBeGreaterThanOrEqual(
       detailsTab.getBoundingClientRect().bottom
     );
   });
@@ -181,6 +160,26 @@ describe("ObjectDetailsTabs", () => {
 
     // THEN
     await expect.poll(() => tabsViewport().scrollLeft).toBeGreaterThan(0);
+  });
+
+  test("hands a vertical mouse wheel back to the page when the tabs are scrolled to the right end", async () => {
+    // GIVEN
+    const component = await renderOverflowingTabs();
+    await expect
+      .element(component.getByRole("button", { name: "Scroll tabs right" }))
+      .toBeVisible();
+    const viewport = tabsViewport();
+    viewport.scrollLeft = viewport.scrollWidth;
+    await expect
+      .element(component.getByRole("button", { name: "Scroll tabs right" }))
+      .not.toBeInTheDocument();
+
+    // WHEN
+    const wheel = new WheelEvent("wheel", { deltaY: 120, bubbles: true, cancelable: true });
+    viewport.dispatchEvent(wheel);
+
+    // THEN
+    expect(wheel.defaultPrevented).toBe(false);
   });
 
   test("keeps a deep-linked tab clear of the edge fade", async () => {
