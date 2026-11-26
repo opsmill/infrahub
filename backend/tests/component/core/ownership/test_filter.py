@@ -8,7 +8,13 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.ownership.constants import MAX_INHERITANCE_DEPTH, OWNERS_IDS_FILTER, OWNERS_ISNULL_FILTER
+from infrahub.core.ownership.constants import (
+    MAX_INHERITANCE_DEPTH,
+    OWNERS_IDS_FILTER,
+    OWNERS_ISNULL_FILTER,
+    SOURCES_IDS_FILTER,
+)
+from infrahub.core.ownership.models import NODE_SOURCES_HOLDER
 from infrahub.core.query.node import NodeGetListQuery
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
@@ -44,7 +50,7 @@ class FilterTestCase:
     branch: str
     kind: str
     filters: dict[str, Any]
-    """A list of group names for the owner filter."""
+    """A list of group names for the owner filter and the source filter."""
 
     expected: tuple[str, ...]
 
@@ -175,6 +181,34 @@ FILTER_TEST_CASES: list[FilterTestCase] = [
         expected=("rack-no-owner",),
     ),
     FilterTestCase(
+        name="owner_filter_with_an_indexed_attribute_filter_on_a_node_without_the_owner",
+        branch=DEFAULT_BRANCH,
+        kind="TestRack",
+        filters={OWNERS_IDS_FILTER: ["dc-emea"], "name__value": "rack-a"},
+        expected=(),
+    ),
+    FilterTestCase(
+        name="owner_filter_with_an_indexed_attribute_filter_on_the_same_node",
+        branch=DEFAULT_BRANCH,
+        kind="TestRack",
+        filters={OWNERS_IDS_FILTER: ["dc-emea"], "name__value": "rack-own-owners"},
+        expected=("rack-own-owners",),
+    ),
+    FilterTestCase(
+        name="source_filter_with_an_indexed_attribute_filter_on_a_node_without_the_source",
+        branch=DEFAULT_BRANCH,
+        kind="TestRack",
+        filters={SOURCES_IDS_FILTER: ["security"], "name__value": "rack-a"},
+        expected=(),
+    ),
+    FilterTestCase(
+        name="source_filter_with_an_indexed_attribute_filter_on_the_same_node",
+        branch=DEFAULT_BRANCH,
+        kind="TestRack",
+        filters={SOURCES_IDS_FILTER: ["security"], "name__value": "rack-own-owners"},
+        expected=("rack-own-owners",),
+    ),
+    FilterTestCase(
         name="branch_removed_the_owner",
         branch=OTHER_BRANCH,
         kind="TestRack",
@@ -271,6 +305,14 @@ class TestOwnerFilter:
                 db=db, branch=branch, node_id=ids[name], owner_ids=tuple(ids[group] for group in group_names)
             )
 
+        await set_owners(
+            db=db,
+            branch=branch,
+            node_id=ids["rack-own-owners"],
+            owner_ids=(ids["security"],),
+            holder=NODE_SOURCES_HOLDER,
+        )
+
         await nodes["deleted-group"].delete(db=db)
 
         other_branch = await create_branch(branch_name=OTHER_BRANCH, db=db)
@@ -288,9 +330,10 @@ class TestOwnerFilter:
         self, db: InfrahubDatabase, dataset: FilterDataset, test_case: FilterTestCase
     ) -> None:
         branch = dataset.branches[test_case.branch]
-        filters = {key: value for key, value in test_case.filters.items() if key != OWNERS_IDS_FILTER}
-        if OWNERS_IDS_FILTER in test_case.filters:
-            filters[OWNERS_IDS_FILTER] = [dataset.ids[name] for name in test_case.filters[OWNERS_IDS_FILTER]]
+        filters = dict(test_case.filters)
+        for group_filter in (OWNERS_IDS_FILTER, SOURCES_IDS_FILTER):
+            if group_filter in filters:
+                filters[group_filter] = [dataset.ids[name] for name in filters[group_filter]]
         if "ids" in filters:
             filters["ids"] = [dataset.ids[name] for name in filters["ids"]]
 
