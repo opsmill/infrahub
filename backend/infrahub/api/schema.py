@@ -153,8 +153,11 @@ class SchemaLoadAPI(InfrahubSchemaWrite):
 
     @model_validator(mode="after")
     def build_internal_schema(self) -> Self:
-        # Built here to surface validation errors at construction.
-        self._internal_schema = SchemaRoot.model_validate(self.model_dump(exclude_none=True))
+        # Built here to surface validation errors at construction, without the Infrahub version so
+        # that processing, merging and hashing never see it.
+        self._internal_schema = SchemaRoot.model_validate(
+            self.model_dump(exclude_none=True, exclude={"infrahub_version"})
+        )
         return self
 
     @property
