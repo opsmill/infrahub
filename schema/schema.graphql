@@ -10091,14 +10091,14 @@ type MacAddress implements AttributeInterface {
   version: Int
 }
 
-"""An owner or a source. Give `id`, `hfid` with `kind`, or `name`."""
+"""
+An owner or a source. Give `id`, `hfid` with `kind`, or `name` with `kind`.
+"""
 input MetadataNodeInput {
   hfid: [String!]
   id: String
   kind: String
-  """
-  The HFID of a kind that has one HFID value. Without `kind`: the name of an account group
-  """
+  """The HFID of a kind that has one HFID value. Give it with `kind`"""
   name: String
 }
 

@@ -198,7 +198,7 @@ class TestFieldOwnerInputs:
             CREATE_TENANT,
             "TestTenant",
             name="tenant-owners",
-            owners=[{"name": "dc-emea"}, {"id": groups["network-emea"]}],
+            owners=[{"kind": "CoreAccountGroup", "name": "dc-emea"}, {"id": groups["network-emea"]}],
         )
 
         created = await read_node(db=db, branch=branch, query=READ_TENANT, kind="TestTenant", node_id=tenant_id)

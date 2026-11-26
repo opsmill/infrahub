@@ -84,14 +84,12 @@ class HfidReference:
 class GivenOwners:
     """The owner list that an input gives to one holder, before the lookups in the database.
 
-    Each reference is an ID or a kind with an HFID. A name without a kind refers to an account group, and must not
-    also be the name of an account.
+    Each reference is an ID or a kind with an HFID.
     """
 
     path: str
     rule: ReferenceRule
     references: list[str | HfidReference]
-    group_names: list[str]
 
 
 async def check_owner_kinds(
@@ -159,9 +157,8 @@ class OwnerInputParser:
 
         Raises:
             ValidationError: When an owner is not found, is not an account or an account group, has an unknown
-                kind, has neither an ID, a kind with an HFID, nor a name, or has an HFID of the wrong length. Also
-                when a name without a kind is the name of an account and of an account group. The same checks
-                apply to a source, with the kinds that can be a source. Also when the input gives owners
+                kind, has neither an ID, a kind with an HFID, nor a kind with a name, has a name without a kind,
+                or has an HFID of the wrong length. The same checks apply to a source, with the kinds that can be a source. Also when the input gives owners
                 to the nodes of a kind that is not a profile or an object template, or to a field that the kind
                 does not have.
 
@@ -236,7 +233,7 @@ class OwnerInputParser:
             return None
         if not isinstance(value, list | tuple):
             raise ValidationError({path: f"{rule.name.capitalize()}s must be a list"})
-        given = GivenOwners(path=path, rule=rule, references=[], group_names=[])
+        given = GivenOwners(path=path, rule=rule, references=[])
         for item in value:
             owner = item if isinstance(item, Mapping) else {}
             owner_id, kind, hfid, name = owner.get("id"), owner.get("kind"), owner.get("hfid"), owner.get("name")
@@ -249,10 +246,11 @@ class OwnerInputParser:
             elif isinstance(kind, str) and kind and isinstance(name, str) and name:
                 given.references.append(self._hfid_reference(kind=kind, hfid=[name], path=path, rule=rule))
             elif isinstance(name, str) and name:
-                given.references.append(HfidReference(kind=InfrahubKind.ACCOUNTGROUP, hfid=(name,)))
-                given.group_names.append(name)
+                raise ValidationError({path: f"Give the kind with the name of {rule.a_name}: {name}"})
             else:
-                raise ValidationError({path: f"Each {rule.name} must have an id, a kind and an hfid, or a name"})
+                raise ValidationError(
+                    {path: f"Each {rule.name} must have an id, a kind and an hfid, or a kind and a name"}
+                )
         return given
 
     def _hfid_reference(self, kind: str, hfid: list[str], path: str, rule: ReferenceRule) -> HfidReference:
@@ -272,8 +270,7 @@ class OwnerInputParser:
         """Return the owner IDs of each list, with one read of the given IDs and one HFID read for each kind.
 
         Raises:
-            ValidationError: When a node is not found, has a kind that the rule of its list refuses, or when a name
-                without a kind is the name of an account and of an account group.
+            ValidationError: When a node is not found, or has a kind that the rule of its list refuses.
 
         """
         hfids_by_kind: dict[str, set[tuple[str, ...]]] = defaultdict(set)
@@ -281,11 +278,9 @@ class OwnerInputParser:
             for reference in given.references:
                 if isinstance(reference, HfidReference):
                     hfids_by_kind[reference.kind].add(reference.hfid)
-            hfids_by_kind[InfrahubKind.GENERICACCOUNT].update((name,) for name in given.group_names)
         found: dict[str, dict[tuple[str, ...], list[str]]] = {}
         for kind, hfids in hfids_by_kind.items():
-            if hfids:
-                found[kind] = await self.lookup.find_ids_by_hfids(kind=kind, hfids=sorted(hfids))
+            found[kind] = await self.lookup.find_ids_by_hfids(kind=kind, hfids=sorted(hfids))
         labels = await _read_labels(
             lookup=self.lookup,
             owner_ids=[
@@ -304,10 +299,6 @@ class OwnerInputParser:
                     message = f"{given.rule.name.capitalize()} not found: {reference.kind} {list(reference.hfid)}"
                     raise ValidationError({given.path: message})
                 owner_ids.append(node_ids[0])
-            for name in given.group_names:
-                if found[InfrahubKind.GENERICACCOUNT].get((name,)):
-                    message = f"{name} is the name of an account and of an account group. Give the kind with the name"
-                    raise ValidationError({given.path: message})
             _refuse_kinds(
                 labels=labels,
                 owner_ids=[reference for reference in given.references if isinstance(reference, str)],

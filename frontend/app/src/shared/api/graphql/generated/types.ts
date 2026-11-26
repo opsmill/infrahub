@@ -20254,12 +20254,12 @@ export type MacAddress = AttributeInterface & {
   version: Maybe<Scalars['Int']['output']>;
 };
 
-/** An owner or a source. Give `id`, `hfid` with `kind`, or `name`. */
+/** An owner or a source. Give `id`, `hfid` with `kind`, or `name` with `kind`. */
 export type MetadataNodeInput = {
   hfid?: InputMaybe<Array<Scalars['String']['input']>>;
   id?: InputMaybe<Scalars['String']['input']>;
   kind?: InputMaybe<Scalars['String']['input']>;
-  /** The HFID of a kind that has one HFID value. Without `kind`: the name of an account group */
+  /** The HFID of a kind that has one HFID value. Give it with `kind` */
   name?: InputMaybe<Scalars['String']['input']>;
 };
 

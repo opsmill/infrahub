@@ -149,7 +149,7 @@ class TestTargetOwners:
             CREATE_PROFILE,
             TENANT_PROFILE,
             name="profile-gives",
-            metadata={"owners": [{"id": groups["security"]}], "target_owners": [{"name": "dc-emea"}]},
+            metadata={"owners": [{"id": groups["security"]}], "target_owners": [{"kind": "CoreAccountGroup", "name": "dc-emea"}]},
         )
         tenant_id = await create(
             db,

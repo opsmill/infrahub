@@ -49,14 +49,14 @@ OWNERS_INPUT_DESCRIPTION = "Left out: no change. null: inherit. []: no owner. Li
 
 
 class MetadataNodeInput(InputObjectType):
-    """An owner or a source. Give `id`, `hfid` with `kind`, or `name`."""
+    """An owner or a source. Give `id`, `hfid` with `kind`, or `name` with `kind`."""
 
     id = String(required=False)
     hfid = List(NonNull(String), required=False)
     kind = String(required=False)
     name = String(
         required=False,
-        description="The HFID of a kind that has one HFID value. Without `kind`: the name of an account group",
+        description="The HFID of a kind that has one HFID value. Give it with `kind`",
     )
 
 

@@ -113,14 +113,6 @@ ACCEPTED_INPUT_TEST_CASES: list[AcceptedInputTestCase] = [
         expected={NODE_HOLDER: StoredOwnerState(owner_ids=(GROUP_ID, ACCOUNT_ID))},
     ),
     AcceptedInputTestCase(
-        name="plain_name_is_an_account_group",
-        node_metadata={"owners": [{"name": "emea"}], "sources": [{"name": "emea"}]},
-        expected={
-            NODE_HOLDER: StoredOwnerState(owner_ids=(GROUP_ID,)),
-            NODE_SOURCES_HOLDER: StoredOwnerState(owner_ids=(GROUP_ID,)),
-        },
-    ),
-    AcceptedInputTestCase(
         name="name_with_a_kind_is_a_node_of_the_kind",
         node_metadata={
             "owners": [
@@ -246,16 +238,14 @@ REFUSED_INPUT_TEST_CASES: list[RefusedInputTestCase] = [
         expected_message="Unknown kind for an owner: CoreUnknown at node_metadata.owners",
     ),
     RefusedInputTestCase(
-        name="plain_name_of_an_account_and_of_an_account_group",
-        owners=[{"name": "ops"}],
-        expected_message=(
-            "ops is the name of an account and of an account group. Give the kind with the name at node_metadata.owners"
-        ),
+        name="name_of_an_account_group_without_kind",
+        owners=[{"name": "emea"}],
+        expected_message="Give the kind with the name of an owner: emea at node_metadata.owners",
     ),
     RefusedInputTestCase(
-        name="plain_name_of_an_account_only",
-        owners=[{"name": "admin"}],
-        expected_message="Owner not found: CoreAccountGroup ['admin'] at node_metadata.owners",
+        name="name_of_an_account_and_of_an_account_group_without_kind",
+        owners=[{"name": "ops"}],
+        expected_message="Give the kind with the name of an owner: ops at node_metadata.owners",
     ),
     RefusedInputTestCase(
         name="name_with_another_kind",
@@ -263,28 +253,25 @@ REFUSED_INPUT_TEST_CASES: list[RefusedInputTestCase] = [
         expected_message="Only an account or an account group can be an owner, not: BuiltinTag at node_metadata.owners",
     ),
     RefusedInputTestCase(
-        name="plain_source_name_of_an_account_and_of_an_account_group",
+        name="source_name_without_kind",
         key="sources",
-        owners=[{"name": "ops"}],
-        expected_message=(
-            "ops is the name of an account and of an account group. Give the kind with the name "
-            "at node_metadata.sources"
-        ),
+        owners=[{"name": "emea"}],
+        expected_message="Give the kind with the name of a source: emea at node_metadata.sources",
     ),
     RefusedInputTestCase(
         name="neither_id_nor_kind_with_hfid",
         owners=[{}],
-        expected_message="Each owner must have an id, a kind and an hfid, or a name at node_metadata.owners",
+        expected_message="Each owner must have an id, a kind and an hfid, or a kind and a name at node_metadata.owners",
     ),
     RefusedInputTestCase(
         name="kind_without_hfid",
         owners=[{"kind": "CoreAccountGroup"}],
-        expected_message="Each owner must have an id, a kind and an hfid, or a name at node_metadata.owners",
+        expected_message="Each owner must have an id, a kind and an hfid, or a kind and a name at node_metadata.owners",
     ),
     RefusedInputTestCase(
         name="hfid_without_kind",
         owners=[{"hfid": ["emea"]}],
-        expected_message="Each owner must have an id, a kind and an hfid, or a name at node_metadata.owners",
+        expected_message="Each owner must have an id, a kind and an hfid, or a kind and a name at node_metadata.owners",
     ),
     RefusedInputTestCase(
         name="hfid_of_the_wrong_length",
@@ -348,7 +335,9 @@ REFUSED_INPUT_TEST_CASES: list[RefusedInputTestCase] = [
         name="source_without_id_and_without_kind_with_hfid",
         key="sources",
         owners=[{}],
-        expected_message="Each source must have an id, a kind and an hfid, or a name at node_metadata.sources",
+        expected_message=(
+            "Each source must have an id, a kind and an hfid, or a kind and a name at node_metadata.sources"
+        ),
     ),
     RefusedInputTestCase(
         name="sources_that_are_not_a_list",
