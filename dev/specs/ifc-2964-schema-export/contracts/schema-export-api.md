@@ -7,7 +7,7 @@ Parameter names and mode values are working names (spec Assumptions).
 | Parameter | In | Type | Default | Meaning |
 | --- | --- | --- | --- | --- |
 | `branch` | query | string | default branch | Branch whose schema is exported. Same handling as `GET /api/schema` (`get_branch_dep`). |
-| `namespaces` | query, repeatable | list of strings | all user namespaces | Namespaces to export. A restricted namespace in the list is ignored, because the export never holds restricted namespaces (FR-003). `Ipam` returns the user kinds in `Ipam` and not `IpamNamespace`, which Infrahub defines (research R2). |
+| `namespaces` | query, repeatable | list of strings | all user namespaces | Namespaces to export. A namespace that does not exist on the branch, or a restricted namespace, returns 404 (see Errors), because the export never holds restricted namespaces (FR-003). `Ipam` returns the user kinds in `Ipam` and not `IpamNamespace`, which Infrahub defines (research R2). |
 | `mode` | query | `BRIEF` or `FULL` | `BRIEF` | How much the export includes ([data-model.md](../data-model.md#schemaexportmode)). |
 
 Authentication: any account that can call `GET /api/schema` (D10). No global permission is checked.
@@ -54,12 +54,15 @@ The document loads as one entry of `schemas` in `POST /api/schema/load` with no 
 | --- | --- | --- |
 | Same as `GET /api/schema` | Branch not found, or no valid session or token | Same as `GET /api/schema`. |
 | 422 | `mode` is not a known value | FastAPI request validation error. |
+| 404 | `namespaces` names a namespace that does not exist on the branch, or a restricted namespace | Infrahub error envelope, one error per such namespace, with the namespace in `extensions`: `{"message": "The namespace 'Locaton' does not exist on the branch 'main'", "extensions": {"namespace": "Locaton", "code": 404}}`. A restricted namespace has the message `The namespace '<name>' is reserved for Infrahub and cannot be exported`. |
+
+Infrahub answers an unknown `/api` URL with a 404 in the same envelope, with the message `The requested endpoint /api/<path> does not exist` and no `namespace` field. A client recognizes the namespace error by `extensions.namespace` on every error, not by the message text.
 
 The export has no other error response. When processing a `BRIEF` candidate fails validation, the response is the `FULL` document with status 200, and the server logs a warning (research R3).
 
 An empty schema (no user-defined nodes or generics) returns 200 with `nodes` and `generics` empty. This includes an empty instance, whose `IpamNamespace` is not exported.
 
-A server without the endpoint answers this URL with 422 and the message `Unable to find the schema export in the database.`, because the request reaches `GET /api/schema/{schema_kind}`. The SDK reads only that response as "endpoint missing" (research R7).
+A server without the endpoint answers this URL with 422 and the message `Unable to find the schema 'export' in the registry`, because the request reaches `GET /api/schema/{schema_kind}`. The SDK reads only that response as "endpoint missing" (research R7).
 
 ## Route order
 
@@ -68,4 +71,4 @@ The route is declared before `GET /api/schema/{schema_kind}` in `backend/infrahu
 ## Generated artifacts
 
 - `schema/openapi.json`: `uv run invoke schema.generate-jsonschema`
-- `frontend/app/src/shared/api/rest/types.generated.ts`: `cd frontend/app && pnpm codegen`
+- `frontend/app/src/shared/api/rest/types.generated.ts`: `cd frontend/app && pnpm codegen:openapi`

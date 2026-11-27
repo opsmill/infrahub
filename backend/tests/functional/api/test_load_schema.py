@@ -1015,3 +1015,78 @@ class TestLoadSchemaAPI(TestInfrahubApp):
         assert error_paths(response_invalid.json()["detail"]) == [
             (f"body.schemas[0].{offline_error.field}", offline_error.input, offline_error.reason)
         ]
+
+
+def _versioned_device_schema(infrahub_version: str | None) -> dict:
+    schema: dict = {
+        "version": "1.0",
+        "nodes": [
+            {
+                "name": "VersionedDevice",
+                "namespace": "Test",
+                "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+            }
+        ],
+    }
+    if infrahub_version is not None:
+        schema["infrahub_version"] = infrahub_version
+    return schema
+
+
+class TestLoadSchemaWithInfrahubVersion(TestInfrahubApp):
+    @pytest.fixture(scope="class")
+    async def initial_dataset(
+        self,
+        db: InfrahubDatabase,
+        initialize_registry: None,
+        client: InfrahubClient,
+        bus_simulator: BusSimulator,
+        prefect_test_fixture: None,
+    ) -> None:
+        pass
+
+    async def test_schema_check_ignores_infrahub_version(
+        self,
+        initial_dataset: str,
+        test_client: InfrahubTestClient,
+        api_admin_token: str,
+    ) -> None:
+        with_version = await test_client.post(
+            "/api/schema/check",
+            json={"schemas": [_versioned_device_schema(infrahub_version="1.0.0")]},
+            headers={"X-INFRAHUB-KEY": api_admin_token},
+        )
+        without_version = await test_client.post(
+            "/api/schema/check",
+            json={"schemas": [_versioned_device_schema(infrahub_version=None)]},
+            headers={"X-INFRAHUB-KEY": api_admin_token},
+        )
+
+        assert with_version.status_code == 202, with_version.text
+        assert without_version.status_code == 202, without_version.text
+        assert with_version.json()["warnings"] == []
+        assert with_version.json()["diff"] == without_version.json()["diff"]
+
+    async def test_schema_load_ignores_infrahub_version(
+        self,
+        initial_dataset: str,
+        test_client: InfrahubTestClient,
+        api_admin_token: str,
+    ) -> None:
+        with_version = await test_client.post(
+            "/api/schema/load",
+            json={"schemas": [_versioned_device_schema(infrahub_version="1.0.0")]},
+            headers={"X-INFRAHUB-KEY": api_admin_token},
+        )
+        without_version = await test_client.post(
+            "/api/schema/load",
+            json={"schemas": [_versioned_device_schema(infrahub_version=None)]},
+            headers={"X-INFRAHUB-KEY": api_admin_token},
+        )
+
+        assert with_version.status_code == 200, with_version.text
+        assert with_version.json()["warnings"] == []
+        assert with_version.json()["schema_updated"] is True
+        assert without_version.status_code == 200, without_version.text
+        assert without_version.json()["schema_updated"] is False
+        assert without_version.json()["hash"] == with_version.json()["hash"]

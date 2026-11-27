@@ -30,6 +30,27 @@ def test_single_relationship_uniqueness_constraint(car_person_schema_root: Schem
     assert processed_car_schema.human_friendly_id is None
 
 
+def test_duplicate_with_own_cache_reads_its_kinds_after_the_original_cache_is_purged(
+    car_person_schema_root: SchemaRoot,
+) -> None:
+    original = SchemaBranch(cache={}, name="main")
+    original.load_schema(schema=car_person_schema_root)
+    original.process()
+    expected = original.get(name="TestCar", duplicate=False).model_dump()
+
+    copy = original.duplicate_with_own_cache(name="main")
+    original._cache.clear()
+    copy.load_schema(
+        schema=SchemaRoot(
+            nodes=[{"name": "Bike", "namespace": "Test", "attributes": [{"name": "name", "kind": "Text"}]}]
+        )
+    )
+
+    assert copy.get(name="TestCar", duplicate=False).model_dump() == expected
+    assert original._cache == {}
+    assert "TestBike" not in original.nodes
+
+
 def test_validate_names_rejects_double_underscore_in_attribute_name() -> None:
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(

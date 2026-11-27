@@ -33,6 +33,8 @@ class Error(Exception):
     DESCRIPTION: str = "Unknown Error"
     message: str = ""
     errors: list | None = None
+    error_extensions: list[dict[str, str]] | None = None
+    """Fields added to the REST `extensions` of each entry of `errors`, in the same order."""
 
     def __reduce__(self) -> tuple[Any, ...]:
         # BaseException.__reduce__ rebuilds via cls(*self.args), dropping any additional required
@@ -400,6 +402,16 @@ class DivisionExhaustedError(PoolExhaustedError):
         self.division = division
         self.space_size = space_size
         super().__init__(message)
+
+
+class SchemaNamespaceNotFoundError(Error):
+    HTTP_CODE: int = 404
+
+    def __init__(self, namespace_messages: dict[str, str]) -> None:
+        self.errors = list(namespace_messages.values())
+        self.error_extensions = [{"namespace": namespace} for namespace in namespace_messages]
+        self.message = "; ".join(self.errors)
+        super().__init__(self.message)
 
 
 class SchemaNotFoundError(Error):

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -64,6 +65,8 @@ from infrahub.events.schema_action import SchemaUpdatedEvent, build_changed_elem
 from infrahub.exceptions import BranchStatusError, ValidationError
 from infrahub.log import get_log_data, get_logger
 from infrahub.permissions import define_global_permission_from_branch
+from infrahub.schema.export.exporter import SchemaExporter, copy_core_schema_baseline
+from infrahub.schema.export.models import SchemaExportDocument, SchemaExportMode
 from infrahub.schema.read_schema import build_read_schema
 from infrahub.types import ATTRIBUTE_PYTHON_TYPES
 from infrahub.worker import WORKER_IDENTITY
@@ -153,8 +156,11 @@ class SchemaLoadAPI(InfrahubSchemaWrite):
 
     @model_validator(mode="after")
     def build_internal_schema(self) -> Self:
-        # Built here to surface validation errors at construction.
-        self._internal_schema = SchemaRoot.model_validate(self.model_dump(exclude_none=True))
+        # Built here to surface validation errors at construction, without the Infrahub version so
+        # that processing, merging and hashing never see it.
+        self._internal_schema = SchemaRoot.model_validate(
+            self.model_dump(exclude_none=True, exclude={"infrahub_version"})
+        )
         return self
 
     @property
@@ -282,6 +288,24 @@ async def get_schema_summary(
     log.debug("schema_summary_request", branch=branch.name)
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
     return schema_branch.get_hash_full()
+
+
+def get_schema_exporter() -> SchemaExporter:
+    return SchemaExporter(baseline_factory=copy_core_schema_baseline)
+
+
+@router.get("/export", response_model_exclude_unset=True)
+async def export_schema(
+    branch: Branch = Depends(get_branch_dep),
+    exporter: SchemaExporter = Depends(get_schema_exporter),
+    mode: SchemaExportMode = SchemaExportMode.BRIEF,
+    namespaces: list[str] | None = Query(default=None),
+    _: AccountSession = Depends(get_current_user),
+) -> SchemaExportDocument:
+    log.debug("schema_export_request", branch=branch.name, mode=mode.value, namespaces=namespaces)
+    # The export runs in a thread for seconds, so it reads a copy whose cache a schema refresh cannot purge.
+    schema_branch = registry.schema.get_schema_branch(name=branch.name).duplicate_with_own_cache(name=branch.name)
+    return await asyncio.to_thread(exporter.export, schema_branch=schema_branch, mode=mode, namespaces=namespaces)
 
 
 @router.get("/{schema_kind}")

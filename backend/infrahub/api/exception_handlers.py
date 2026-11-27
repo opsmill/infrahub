@@ -31,11 +31,20 @@ def _graphql_envelope(exc: Exception, messages: list[str], http_code: int) -> di
     }
 
 
-def _rest_envelope(messages: list[str], http_code: int) -> dict[str, Any]:
-    """Preserve the legacy REST response shape (integer ``extensions.code``)."""
+def _rest_envelope(
+    messages: list[str], http_code: int, error_extensions: list[dict[str, str]] | None = None
+) -> dict[str, Any]:
+    """Preserve the legacy REST response shape (integer ``extensions.code``).
+
+    ``error_extensions`` adds fields to the ``extensions`` of each message, in the same order.
+    """
+    extra_fields = error_extensions or [{} for _ in messages]
     return {
         "data": None,
-        "errors": [{"message": message, "extensions": {"code": http_code}} for message in messages],
+        "errors": [
+            {"message": message, "extensions": {**extra, "code": http_code}}
+            for message, extra in zip(messages, extra_fields, strict=True)
+        ],
     }
 
 
@@ -54,11 +63,13 @@ async def generic_api_exception_handler(request: Request, exc: Exception, http_c
     GraphQL resolver are wrapped by graphql-core and formatted at the GraphQL layer, so
     they never reach this handler.
     """
+    error_extensions: list[dict[str, str]] | None = None
     if isinstance(exc, Error):
         if exc.HTTP_CODE:
             http_code = exc.HTTP_CODE
         if isinstance(exc.errors, list):
             messages = exc.errors
+            error_extensions = exc.error_extensions
         else:
             messages = [str(exc.message) if exc.message else exc.DESCRIPTION]
     elif isinstance(exc, ValidationError):
@@ -69,7 +80,7 @@ async def generic_api_exception_handler(request: Request, exc: Exception, http_c
     if request.url.path.startswith(GRAPHQL_PATH_PREFIX):
         body = _graphql_envelope(exc=exc, messages=messages, http_code=http_code)
     else:
-        body = _rest_envelope(messages=messages, http_code=http_code)
+        body = _rest_envelope(messages=messages, http_code=http_code, error_extensions=error_extensions)
 
     return JSONResponse(status_code=http_code, content=body)
 

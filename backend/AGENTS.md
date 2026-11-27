@@ -126,6 +126,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/database-schema.md` - Neo4j temporal graph (vertices, edges, branch/time metadata); read before writing Cypher
 - `dev/knowledge/backend/database-indexes.md` - Which indexes exist, how to add one (no migration needed) or drop one (migration needed), and the read shape that uses it; read before writing a query that selects vertices or edges by a property
 - `dev/knowledge/backend/schema-definitions.md` - Defining nodes/relationships (cardinality, `on_delete`, constraints); read before changing the core schema
+- `dev/knowledge/backend/schema-export.md` - How `GET /api/schema/export` builds a schema file (field visibility, the `BRIEF` reduction loop, `keep_in_export` marks, properties kept from generics); read before changing the exporter, schema processing, or a write-visible field definition
 - `dev/knowledge/backend/graphql-execution.md` - How graphql-core resolves fields and why each query resolver opens its own database session; read before adding a GraphQL query resolver or middleware
 - `dev/knowledge/backend/mutations.md` - GraphQL mutation flow, upsert and HFID derivation; read before adding or overriding a mutation
 - `dev/knowledge/backend/permissions.md` - Global/object permission model and checker pipeline; read before touching authorization

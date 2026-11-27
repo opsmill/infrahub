@@ -50,6 +50,7 @@ from infrahub.types import ATTRIBUTE_KIND_LABELS
 class ExtraField(TypedDict):
     update: UpdateSupport
     visibility: NotRequired[Visibility]
+    keep_in_export: NotRequired[bool]
 
 
 class SchemaAttribute(BaseModel):
@@ -99,6 +100,11 @@ class SchemaAttribute(BaseModel):
     @property
     def visibility(self) -> Visibility:
         return self.extra.get("visibility", Visibility.INTERNAL)
+
+    @property
+    def keep_in_export(self) -> bool:
+        # A shortened schema export without these fields fails validation, so the export writes every value.
+        return self.extra.get("keep_in_export", False)
 
     @property
     def optional_in_model(self) -> bool:
@@ -547,7 +553,11 @@ node_schema = SchemaNode(
             default_factory="list",
             description="List of Generic Kind that this node is inheriting from",
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
+            extra={
+                "update": UpdateSupport.VALIDATE_CONSTRAINT,
+                "visibility": Visibility.WRITE,
+                "keep_in_export": True,
+            },
         ),
         SchemaAttribute(
             name="generate_profile",
@@ -669,7 +679,11 @@ attribute_schema = SchemaNode(
             description="Define a list of valid choices for a dropdown attribute.",
             optional=True,
             ordered=False,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
+            extra={
+                "update": UpdateSupport.VALIDATE_CONSTRAINT,
+                "visibility": Visibility.WRITE,
+                "keep_in_export": True,
+            },
         ),
         SchemaAttribute(
             name="regex",
@@ -715,7 +729,11 @@ attribute_schema = SchemaNode(
             "Mainly relevant for internal object.",
             default_value=False,
             optional=True,
-            extra={"update": UpdateSupport.MIGRATION_REQUIRED, "visibility": Visibility.WRITE},
+            extra={
+                "update": UpdateSupport.MIGRATION_REQUIRED,
+                "visibility": Visibility.WRITE,
+                "keep_in_export": True,
+            },
         ),
         SchemaAttribute(
             name="unique",
@@ -723,7 +741,11 @@ attribute_schema = SchemaNode(
             description="Indicate if the value of this attribute must be unique in the database for a given model.",
             default_value=False,
             optional=True,
-            extra={"update": UpdateSupport.MIGRATION_REQUIRED, "visibility": Visibility.WRITE},
+            extra={
+                "update": UpdateSupport.MIGRATION_REQUIRED,
+                "visibility": Visibility.WRITE,
+                "keep_in_export": True,
+            },
         ),
         SchemaAttribute(
             name="optional",
@@ -918,7 +940,11 @@ relationship_schema = SchemaNode(
             regex=str(NAME_REGEX),
             max_length=DEFAULT_REL_IDENTIFIER_LENGTH,
             optional=True,
-            extra={"update": UpdateSupport.NOT_SUPPORTED, "visibility": Visibility.WRITE},
+            extra={
+                "update": UpdateSupport.NOT_SUPPORTED,
+                "visibility": Visibility.WRITE,
+                "keep_in_export": True,
+            },
         ),
         SchemaAttribute(
             name="cardinality",
@@ -929,7 +955,11 @@ relationship_schema = SchemaNode(
             enum_class="RelationshipCardinality",
             default_value=RelationshipCardinality.MANY,
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
+            extra={
+                "update": UpdateSupport.VALIDATE_CONSTRAINT,
+                "visibility": Visibility.WRITE,
+                "keep_in_export": True,
+            },
         ),
         SchemaAttribute(
             name="min_count",
@@ -976,7 +1006,11 @@ relationship_schema = SchemaNode(
             default_value=False,
             override_default_value=True,
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT, "visibility": Visibility.WRITE},
+            extra={
+                "update": UpdateSupport.VALIDATE_CONSTRAINT,
+                "visibility": Visibility.WRITE,
+                "keep_in_export": True,
+            },
         ),
         SchemaAttribute(
             name="branch",

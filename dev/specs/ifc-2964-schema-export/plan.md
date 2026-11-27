@@ -11,7 +11,7 @@ The schema owner downloads the running schema from `GET /api/schema/export` as o
 Infrahub builds the export in two steps:
 
 1. It writes every field of the user-defined nodes and generics that a schema file can set (the write-visible fields of the generated write models), leaving out IDs, inherited and generated elements, kinds the core schema defines in an unrestricted namespace (`IpamNamespace`), and deprecated forms of validation settings and NumberPool ranges. This is the `FULL` mode.
-2. In `BRIEF` mode it then removes values and checks the result: it loads the candidate into a copy of a schema that holds only the core schema, runs the same processing as a schema load, and compares the result with the stored schema. It writes back every value whose processed result differs, and repeats until a pass writes back no value. Differences that remain are logged as a warning (research R3). Properties a node took from its generic stay on the node (D4). Fields that processing does not derive and that the schema cannot be processed without, such as `inherit_from`, carry a mark in their definition and are never removed.
+2. In `BRIEF` mode it then removes values and checks the result: it loads the candidate into a copy of a schema that holds only the core schema, runs the same processing as a schema load, and compares the result with the stored schema. It writes back every value whose processed result differs, and repeats until a pass writes back no value. Differences that remain are logged as a warning (research R3). Properties a node took from its generic stay on the node (D4). Fields that the schema cannot be processed without, such as `inherit_from`, carry a mark in their definition and are removed only when they hold their default value.
 
 Because the second step uses the processing code itself, a new derived value or a change to processing does not need a new export rule. The tests in D12 check the result for every test schema, and that a test schema uses every field a schema file can set.
 
@@ -106,7 +106,7 @@ Part 2, Infrahub repository:
 backend/infrahub/
 ├── api/schema.py               # GET /api/schema/export, registered before /{schema_kind}
 ├── core/schema/node_inheritance_handler.py  # property list moved to a module-level constant
-├── core/schema/definitions/internal.py      # ExtraField gains keep_in_export; set on the fields the loop never removes
+├── core/schema/definitions/internal.py      # ExtraField gains keep_in_export; set on the fields the loop keeps unless they hold their default
 └── schema/export/
     ├── __init__.py
     ├── models.py               # SchemaExportMode, SchemaExportDocument
