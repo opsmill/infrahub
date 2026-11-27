@@ -18,8 +18,9 @@ versions and container configuration. Separate slow progress from a blocked oper
 work can reduce contention without fixing a deadlock.
 
 When a whole job reaches its limit with every test passing, measure what the job adds to the tests.
-Coverage measurement slows every test, most on Python versions before 3.14, where coverage.py traces
-each executed line. `uv run invoke backend.test-unit --no-coverage` runs the unit suite without it.
+Measuring code coverage (`--cov`) slows every test, most on Python versions before 3.14, where
+coverage.py traces each executed line by default. `uv run invoke backend.test-unit --no-coverage`
+runs the unit suite without that measurement.
 
 ## Reduce work without weakening coverage
 
@@ -45,5 +46,5 @@ investigating order dependence. Report executed passes, failures, and skips sepa
 the original timeout reproduced locally, what work was removed, and what remains unexplained.
 A faster local pass is evidence of an optimization, not proof that a CI-only stall is fixed.
 
-If the cause remains unknown, keep coverage enabled and submit diagnostics or investigation findings
-that will identify the blocked operation on its next failure.
+If the cause remains unknown, keep the test and its assertions enabled and submit diagnostics or
+investigation findings that will identify the blocked operation on its next failure.
