@@ -25,6 +25,7 @@ The files are YAML, written with `sort_keys=False` as today, from `model_dump(ex
 | --- | --- |
 | Success | One line per file written, then the directory. Unchanged. |
 | No user-defined schema | `No user-defined schema found to export.` Unchanged. |
+| `--namespaces` names a namespace that does not exist on the branch, or a restricted namespace | One `Error:` line per such namespace, with the server's message, exit code 1. The SDK raises `SchemaNamespaceNotFoundError`. |
 | Server without the endpoint | Error that names the first release with the endpoint, exit code 1 (FR-016, research R7). |
 | Any other error response | The error as the server returned it, with no mention of a release, exit code 1 (research R7). |
 

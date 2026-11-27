@@ -11,6 +11,27 @@ The endpoint is `backend/infrahub/api/schema.py::export_schema`. The work is in
 `backend/infrahub/schema/export/models.py::SchemaExportDocument`, a subclass of the SDK
 `InfrahubSchemaWrite`, so a document that validates as a response also validates as a load payload.
 
+## The route runs the export in a thread
+
+A `BRIEF` export processes the schema twice or more, about 2 to 3 seconds of CPU for `models/base/`. The
+route runs it with `asyncio.to_thread`, so the API worker keeps answering other requests. The thread reads
+`SchemaBranch.duplicate()` of the registry's branch schema, so a schema load that replaces a kind of the
+branch during the export does not change the kinds the export reads.
+
+The core baseline is built again for each pass, not built once and copied: processing changes the cached
+schema objects in place, so a baseline that several passes share is changed by the first pass. A deep copy of
+one baseline per pass is safe but saves only about 0.6 to 0.9 seconds per export.
+
+## A namespace the export cannot select returns 404
+
+`SchemaExporter.export` checks `namespaces` before any work and raises
+`backend/infrahub/exceptions.py::SchemaNamespaceNotFoundError` (HTTP 404) for each namespace that does not
+exist on the branch or is restricted. Each error names its namespace in `extensions.namespace`, through
+`Error.error_extensions`. Infrahub's catch-all route answers an unknown `/api` URL with a 404 in the same
+envelope (`backend/infrahub/api/__init__.py::not_found`), so clients recognize the namespace error by that
+field, not by the status or the message. A namespace that exists but holds only kinds Infrahub defines, such
+as `Ipam` on an instance with no user kinds in it, returns an empty document.
+
 ## A field's visibility decides whether the export can write it
 
 The export writes only the fields of the generated SDK write models (`NodeSchemaWrite`,

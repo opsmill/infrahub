@@ -15,7 +15,7 @@ from infrahub.core.schema.attribute_parameters import get_attribute_parameters_c
 from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.node_inheritance_handler import PROPERTIES_INHERITED_FROM_GENERIC
 from infrahub.core.schema.schema_branch import SchemaBranch
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import SchemaNamespaceNotFoundError, ValidationError
 from infrahub.log import get_logger
 from infrahub.schema.export.models import SCHEMA_FILE_FORMAT_VERSION, SchemaExportDocument, SchemaExportMode
 
@@ -212,8 +212,15 @@ class SchemaExporter:
         """Return the user-defined nodes and generics of `schema_branch`, never changing `schema_branch`.
 
         With `namespaces`, the document holds only the nodes and generics of those namespaces, each with the values
-        it has in an export without the filter. A restricted namespace in `namespaces` selects nothing.
+        it has in an export without the filter.
+
+        Raises:
+            SchemaNamespaceNotFoundError: When a namespace in `namespaces` does not exist on the branch, or is a
+                restricted namespace.
+
         """
+        if namespaces:
+            self._check_namespaces(schema_branch=schema_branch, namespaces=namespaces)
         started = time.monotonic()
         full_document = self._build_full_document(schema_branch=schema_branch)
         document = full_document
@@ -232,6 +239,28 @@ class SchemaExporter:
             duration_seconds=round(time.monotonic() - started, 3),
         )
         return document
+
+    @staticmethod
+    def _check_namespaces(schema_branch: SchemaBranch, namespaces: Iterable[str]) -> None:
+        """Raise one error that names every namespace of `namespaces` an export cannot select.
+
+        Raises:
+            SchemaNamespaceNotFoundError: When a namespace does not exist on the branch, or is a restricted namespace.
+
+        """
+        existing = {namespace.name for namespace in schema_branch.get_namespaces(include_internal=True)}
+        namespace_messages: dict[str, str] = {}
+        for namespace in dict.fromkeys(namespaces):
+            if namespace in RESTRICTED_NAMESPACES:
+                namespace_messages[namespace] = (
+                    f"The namespace '{namespace}' is reserved for Infrahub and cannot be exported"
+                )
+            elif namespace not in existing:
+                namespace_messages[namespace] = (
+                    f"The namespace '{namespace}' does not exist on the branch '{schema_branch.name}'"
+                )
+        if namespace_messages:
+            raise SchemaNamespaceNotFoundError(namespace_messages=namespace_messages)
 
     @staticmethod
     def _select_namespaces(document: SchemaExportDocument, namespaces: Iterable[str]) -> SchemaExportDocument:

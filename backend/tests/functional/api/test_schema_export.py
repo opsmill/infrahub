@@ -613,6 +613,46 @@ class TestSchemaExportOfBaseModels(SchemaExportRoundTripTests):
                 if element["namespace"] == LOCATION_NAMESPACE
             ]
 
+    async def test_export_of_an_unknown_namespace_names_the_namespace_unlike_an_unknown_url(
+        self,
+        round_trip: SchemaExportRoundTrip,
+        test_client: InfrahubTestClient,
+        api_admin_token: str,
+        default_branch: Branch,
+    ) -> None:
+        headers = {"X-INFRAHUB-KEY": api_admin_token}
+
+        export = await test_client.get(
+            "/api/schema/export",
+            params={"branch": default_branch.name, "namespaces": [LOCATION_NAMESPACE, "Locaton", "Core"]},
+            headers=headers,
+        )
+        unknown_url = await test_client.get("/api/schema/export/unknown", headers=headers)
+
+        assert (export.status_code, unknown_url.status_code) == (404, 404)
+        assert export.json() == {
+            "data": None,
+            "errors": [
+                {
+                    "message": f"The namespace 'Locaton' does not exist on the branch '{default_branch.name}'",
+                    "extensions": {"namespace": "Locaton", "code": 404},
+                },
+                {
+                    "message": "The namespace 'Core' is reserved for Infrahub and cannot be exported",
+                    "extensions": {"namespace": "Core", "code": 404},
+                },
+            ],
+        }
+        assert unknown_url.json() == {
+            "data": None,
+            "errors": [
+                {
+                    "message": "The requested endpoint /api/schema/export/unknown does not exist",
+                    "extensions": {"code": 404},
+                }
+            ],
+        }
+
 
 class TestSchemaExportOfVariationSchemas(SchemaExportRoundTripTests):
     @pytest.fixture(scope="class")

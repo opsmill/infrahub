@@ -154,7 +154,7 @@ Confirmed by test on 2026-11-20 (in memory, through `POST /api/schema/load`, and
 - **FR-008**: The export MUST write validation settings (`regex`, `min_length`, `max_length`) only in `parameters` (D5).
 - **FR-009**: The export MUST write NumberPool ranges only as `ranges`. It MUST convert the deprecated `start_range` and `end_range` into one range with the same bounds, and a bound that was not set stays unset (D5).
 - **FR-010**: The export MUST record the Infrahub version that produced it in a new field. The existing `version: "1.0"` field MUST stay as it is (D7).
-- **FR-011**: With a namespace filter, the export MUST contain only the selected namespaces. The values written for a node or generic MUST be the same as in an export without the filter.
+- **FR-011**: With a namespace filter, the export MUST contain only the selected namespaces. The values written for a node or generic MUST be the same as in an export without the filter. A namespace in the filter that does not exist on the branch, or a restricted namespace, MUST return HTTP 404 with one error message per such namespace, so every client reports it the same way (decided on 2026-11-27).
 
 **Schema load**
 

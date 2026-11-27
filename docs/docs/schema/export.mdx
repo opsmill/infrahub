@@ -121,7 +121,14 @@ The schema load accepts the `infrahub_version` field and ignores it.
 
 ### Export selected namespaces
 
-With the `namespaces` filter, the export holds only the nodes and generics of the namespaces you choose. Each node and generic is written with the same values as in an export without the filter. A relationship to a peer in another namespace stays in the export, so the target instance must already have that peer before you load the file. A reserved namespace in the filter is ignored, because the export never holds a reserved namespace.
+With the `namespaces` filter, the export holds only the nodes and generics of the namespaces you choose. Each node and generic is written with the same values as in an export without the filter. A relationship to a peer in another namespace stays in the export, so the target instance must already have that peer before you load the file.
+
+When the filter names a namespace that does not exist on the branch, or a reserved namespace such as `Core`, the export fails. The API returns HTTP 404 with one error per such namespace, and each error names its namespace in `extensions.namespace`. `infrahubctl schema export` prints each message and exits with code 1:
+
+```text
+Error: The namespace 'Locaton' does not exist on the branch 'main'
+Error: The namespace 'Core' is reserved for Infrahub and cannot be exported
+```
 
 ## Choose between `BRIEF` and `FULL`
 

@@ -341,14 +341,3 @@ def test_brief_export_of_one_namespace_holds_its_entries_as_in_the_unfiltered_ex
     assert [
         relationship["peer"] for relationship in _exported_elements(filtered)["NetworkDevice"]["relationships"]
     ] == [f"{OTHER_NAMESPACE}Site"]
-
-
-def test_brief_export_ignores_a_restricted_namespace_in_the_filter(
-    export_with_and_without_filter: NamespaceFilterExports,
-) -> None:
-    with_restricted, _ = export_with_and_without_filter(SchemaExportMode.BRIEF, [SELECTED_NAMESPACE, "Core"])
-    without_restricted, _ = export_with_and_without_filter(SchemaExportMode.BRIEF, [SELECTED_NAMESPACE])
-    only_restricted, _ = export_with_and_without_filter(SchemaExportMode.BRIEF, ["Core"])
-
-    assert with_restricted == without_restricted
-    assert (only_restricted["nodes"], only_restricted["generics"]) == ([], [])

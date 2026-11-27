@@ -9,6 +9,7 @@ from infrahub_sdk.schema.generated.write import NodeSchemaWrite
 
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
+from infrahub.exceptions import SchemaNamespaceNotFoundError
 from infrahub.schema.export.exporter import (
     SchemaExporter,
     build_core_schema_baseline,
@@ -17,7 +18,7 @@ from infrahub.schema.export.exporter import (
 )
 from infrahub.schema.export.models import SchemaExportMode
 
-from .conftest import load_on_new_baseline
+from .conftest import SELECTED_NAMESPACE, TWO_NAMESPACE_SCHEMA, load_on_new_baseline
 
 
 def _defined_kinds(element_type: str) -> set[str]:
@@ -287,3 +288,37 @@ def test_export_writes_attributes_and_relationships_by_order_weight(
     rack = document.nodes[0]
     assert [attribute.name for attribute in rack.attributes] == ["height", "width", "name"]
     assert [relationship.name for relationship in rack.relationships] == ["site", "row"]
+
+
+@pytest.mark.parametrize("mode", [SchemaExportMode.BRIEF, SchemaExportMode.FULL])
+def test_export_rejects_every_restricted_or_unknown_namespace_of_the_filter(
+    schema_exporter: SchemaExporter, mode: SchemaExportMode
+) -> None:
+    source = load_on_new_baseline(TWO_NAMESPACE_SCHEMA)
+
+    with pytest.raises(
+        SchemaNamespaceNotFoundError,
+        match=(
+            r"^The namespace 'Core' is reserved for Infrahub and cannot be exported; "
+            r"The namespace 'Netwrk' does not exist on the branch 'main'$"
+        ),
+    ) as error:
+        schema_exporter.export(
+            schema_branch=source, mode=mode, namespaces=[SELECTED_NAMESPACE, "Core", "Netwrk", "Core"]
+        )
+
+    assert error.value.errors == [
+        "The namespace 'Core' is reserved for Infrahub and cannot be exported",
+        "The namespace 'Netwrk' does not exist on the branch 'main'",
+    ]
+    assert error.value.error_extensions == [{"namespace": "Core"}, {"namespace": "Netwrk"}]
+
+
+def test_export_of_a_namespace_that_holds_only_kinds_infrahub_defines_is_empty(
+    schema_exporter: SchemaExporter,
+) -> None:
+    source = load_on_new_baseline(TWO_NAMESPACE_SCHEMA)
+
+    document = schema_exporter.export(schema_branch=source, mode=SchemaExportMode.FULL, namespaces=["Ipam"])
+
+    assert (document.nodes, document.generics) == ([], [])
