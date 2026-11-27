@@ -168,9 +168,9 @@ MATCH (h) (
         """Return the Cypher that binds `gp` to each profile of a node that gives owners or "no owner" to its nodes."""
         return f"""MATCH ({node})-[g1:IS_RELATED]-(gl:Relationship {{name: ${_PARAMS_PREFIX}profile_identifier}})
             -[g2:IS_RELATED]-(gp:{InfrahubKind.PROFILE})-[g3:HAS_TARGET_OWNER_SET]->(gs:OwnerSet)
-            -[g4:HAS_OWNER|HAS_NO_OWNER]->(g_peer)
+            -[g4:HAS_OWNER]->(g_peer)
         WHERE gs.attribute IS NULL AND gs.identifier IS NULL
         AND {self._active("g1", f"({node})-[%s:IS_RELATED]-(gl)")}
         AND {self._active("g2", "(gl)-[%s:IS_RELATED]-(gp)")}
         AND {self._active("g3", "(gp)-[%s:HAS_TARGET_OWNER_SET]->(gs)")}
-        AND {self._active("g4", "(gs)-[%s:HAS_OWNER|HAS_NO_OWNER]->(g_peer)")}"""
+        AND {self._active("g4", "(gs)-[%s:HAS_OWNER]->(g_peer)")}"""
