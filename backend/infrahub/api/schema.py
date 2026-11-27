@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -302,8 +303,9 @@ async def export_schema(
     _: AccountSession = Depends(get_current_user),
 ) -> SchemaExportDocument:
     log.debug("schema_export_request", branch=branch.name, mode=mode.value, namespaces=namespaces)
-    schema_branch = registry.schema.get_schema_branch(name=branch.name)
-    return exporter.export(schema_branch=schema_branch, mode=mode, namespaces=namespaces)
+    # The export runs in a thread for seconds, so it reads a copy in which a concurrent schema load replaces no kind.
+    schema_branch = registry.schema.get_schema_branch(name=branch.name).duplicate()
+    return await asyncio.to_thread(exporter.export, schema_branch=schema_branch, mode=mode, namespaces=namespaces)
 
 
 @router.get("/{schema_kind}")
