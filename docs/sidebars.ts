@@ -355,6 +355,8 @@ const sidebars: SidebarsConfig = {
           items: [
             { type: 'doc', id: 'webhooks/create', label: 'Create a webhook' },
             { type: 'doc', id: 'webhooks/custom-transformation', label: 'Webhook with custom Transformation' },
+            { type: 'doc', id: 'webhooks/receive-webhooks', label: 'Receive webhooks' },
+            { type: 'doc', id: 'webhooks/troubleshoot-deliveries', label: 'Troubleshoot deliveries' },
           ],
         },
         {

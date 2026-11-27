@@ -1,390 +1,94 @@
 ---
 title: Webhooks
 ---
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import CodeBlock from '@theme/CodeBlock';
-import FastapiWebhookReciever from '!!raw-loader!../media/fastapi_webhook_receiver.txt';
 
-# What are webhooks?
+# Webhooks
 
-Webhooks push data to external systems each time a matching [event](../events/event-system) occurs in Infrahub. Use them to:
+A webhook sends an HTTP `POST` request to a URL each time a matching [event](../events/event-system.mdx) occurs in Infrahub. The request body contains the event, so a system outside Infrahub can act on a change as soon as it happens, without querying Infrahub for changes:
 
-- Notify external systems about changes in your infrastructure (for example new configuration generated)
-- Trigger automated workflows in CI/CD pipelines
-- Keep other tools and services synchronized with your infrastructure data
-- Build custom integrations with your existing toolchain
+- Start a CI pipeline when a branch is merged into the default branch.
+- Post a message in a chat channel when a device is updated.
+- Update an external tool, such as a monitoring system or an Ansible inventory, when an object is created.
 
-:::info
-The [Activity Log](../deploy-manage/run-observe/activity-log) is built on the same webhook system.
-:::
+To change data in Infrahub when an event occurs, such as adding an object to a group or running a Generator, use an [event rule](../events/overview.mdx) instead. A webhook sends data to another system and does not change data in Infrahub.
 
-## Configuring webhooks
+## Standard and custom webhooks
 
-Infrahub supports two types of webhooks:
+- A **standard webhook** (`CoreStandardWebhook`) sends the event payload as JSON. It requires a shared key, which Infrahub uses to sign each request so that the receiver can check that the request comes from Infrahub.
+- A **custom webhook** (`CoreCustomWebhook`) can run a [Python Transformation](../transformations/overview.mdx) on the event first, and send the result instead of the event payload. Choose it when the receiver expects its own format, such as a Slack or Microsoft Teams message, or the body of a GitHub Actions workflow dispatch. Its shared key is optional. Without a Transformation, a custom webhook sends the same payload as a standard webhook.
 
-- `Standard Webhook` sends event information to an external endpoint. See [Create a webhook](./create.mdx) for setup.
-- `Custom Webhook` connects events to a [Transformation](../transformations/overview) so you can shape the payload sent to an external endpoint. See [Webhook with custom Transformation](./custom-transformation.mdx) for the full walkthrough.
+See [Create a webhook](./create.mdx) and [Webhook with custom Transformation](./custom-transformation.mdx).
 
-:::note
+## How a delivery works
 
-Custom webhooks might be useful in situations where the endpoint needs a specific payload to be successful. A use-case that might need this would be triggering external actions in platforms like GitHub and GitLab.
+When an event occurs, Infrahub compares it with each active webhook's event type, node kind, and branch scope. For each webhook that matches, Infrahub creates a delivery: a task that sends the request from a task worker and records the outcome. The delivery appears in the **Tasks** tab of the webhook.
 
-The data passed into a normal Python Transformation will typically be the result of the GraphQL query, but webhooks execute the Transformation by passing in the webhook data instead.
+A response with a `2xx` status completes the delivery. Any other result, such as an error status, a timeout, or a connection failure, fails the attempt, and Infrahub tries again: up to four attempts, 120 seconds apart. See [Receive webhooks](./receive-webhooks.mdx) for what the receiver gets and has to do, and [Troubleshoot webhook deliveries](./troubleshoot-deliveries.mdx) for failed deliveries.
 
-A Transformation **requires** a GraphQL query, even when only a custom webhook uses it and the query never runs. Removing this requirement is tracked in [GitHub issue #6650](https://github.com/opsmill/infrahub/issues/6650).
+Infrahub sets up a new or changed webhook in a background task. The webhook sends nothing for events that occur before that task finishes.
 
-:::
+## Choose the events a webhook receives
 
-Webhooks can be configured to trigger on specific event types, such as:
+A webhook receives an event when the event matches all three of its settings.
 
-- `infrahub.branch.merged`
-- `infrahub.node.updated`
+### Event type
 
-Tailor a webhook to a specific use case by choosing the events it triggers on.
-
-### Configuring branch types
-
-Webhooks can also be configured to trigger based on branch types:
-
-- **Other Branches** – All branches except the default branch.
-- **Default Branch** – Only the default branch.
-- **All Branches** – Every branch.
-
-A new webhook uses **Default Branch** unless you choose another scope.
-
-For example, choose **Default Branch** when an external system should receive events only for changes on the default branch.
-
-:::warning Branch scope for proposed change and branch events
-
-The branch scope is matched against the branch an event is emitted on. A [proposed change](../reference/infrahub-events/proposed.mdx) is a branch-agnostic object, so the events for its lifecycle are emitted on the **default branch**, regardless of the proposed change's source branch:
-
-- `infrahub.proposed_change.merged`
-- `infrahub.proposed_change.approved`
-- `infrahub.proposed_change.rejected`
-- `infrahub.proposed_change.approval_revoked`
-- `infrahub.proposed_change.rejection_revoked`
-
-Webhooks for these events must use the **Default Branch** or **All Branches** scope. Scoping them to **Other Branches** means the webhook will never fire.
-
-By contrast, events generated by activity *inside* a proposed change are emitted on its source branch, so they are caught by the **Other Branches** scope (or **All Branches**):
-
-- `infrahub.proposed_change_thread.created` (comments and threads)
-- validator and data-change events produced by the proposed change pipeline
-
-The same distinction applies to branch lifecycle events. `infrahub.branch.merged` is emitted on the **default branch**, so it requires the **Default Branch** or **All Branches** scope. `infrahub.branch.created` and `infrahub.branch.deleted` are emitted on the global branch, so their payload `branch` is `null` and they are caught by the **Other Branches** or **All Branches** scope, never by **Default Branch**.
-
-:::
-
-:::warning Branch scope for branch merge events
-
-Set webhooks for `infrahub.branch.merged` to the **Default Branch** scope, which is the default, or to **All Branches**. With **Other Branches**, the webhook never fires on a merge.
-
-To rebase open branches each time a branch merges, see [Parallel branches](../branches/parallel-branches.mdx).
-
-:::
-
-### Where webhooks are stored and read
-
-A webhook is the same on every branch. Its name, URL, event type, branch scope, node kind and headers do not differ between branches, so a change you make to them on any branch applies to every branch.
-
-Infrahub reads each webhook from the default branch, both when it sets up the events that fire the webhook and when it sends each delivery. The branch scope selects the branches whose events fire the webhook. It does not change which version of the webhook Infrahub uses.
-
-The Transformation on a custom webhook is the exception. Transformations are branch-aware, so the link between a webhook and its Transformation can differ between branches, and Infrahub uses only the link on the default branch. If you choose the Transformation while working on another branch, the webhook still fires, but Infrahub sends the standard event payload and the delivery's task log shows no error. Choose the Transformation while working on the default branch.
-
-The same applies to event rules: Infrahub reads trigger rules from the default branch only. See [Where trigger rules are stored and evaluated](../events/event-rules.mdx#where-trigger-rules-are-stored-and-evaluated).
+A webhook receives one event type, such as `infrahub.node.updated` or `infrahub.branch.merged`, or `all`, the default, which matches every event type. [Infrahub events](../reference/infrahub-events/overview.mdx) lists the event types.
 
 ### Node kind
 
-Node kinds can be configured to only trigger webhooks for specific nodes. For example only send webhooks for the node kind of `InfraDevice`.
+A node kind, such as `InfraDevice`, limits the webhook to the events of objects of that kind. You can set it when the event type is `all` or one of these event types:
 
-:::note
+- `infrahub.node.created`, `infrahub.node.updated`, `infrahub.node.deleted`
+- `infrahub.group.member_added`, `infrahub.group.member_removed`
+- `infrahub.artifact.created`, `infrahub.artifact.updated`
+- `infrahub.validator.started`, `infrahub.validator.passed`, `infrahub.validator.failed`
 
-Node kind can only be used where `node_kind` is `True` in [Infrahub events](../reference/infrahub-events/overview.mdx). Below are some example events that are enabled:
+With the event type `all` and a node kind, the webhook receives only the events of that node kind.
 
-- `infrahub.node.created`
-- `infrahub.node.updated`
-- `infrahub.node.deleted`
-- `infrahub.artifact.created`
-- `infrahub.artifact.deleted`
-- `infrahub.group.member_added`
-- `infrahub.group.member_removed`
+### Branch scope
+
+The branch scope selects events by the branch they were emitted on:
+
+- **Default Branch** (the default): Events on the default branch.
+- **Other Branches**: Events on every other branch, and events that have no branch.
+- **All Branches**: Every event.
+
+Some events are not emitted on the branch you worked on, so choose the scope from the branch each event is emitted on:
+
+| Events | Emitted on | Scopes that receive them |
+|---|---|---|
+| Node and group events from a change on a branch | That branch | Other Branches, All Branches |
+| `infrahub.branch.merged`, and the node events of the merged changes | The default branch | Default Branch, All Branches |
+| `infrahub.proposed_change.merged`, `approved`, `rejected`, `approval_revoked`, `rejection_revoked` | The default branch, whatever the source branch | Default Branch, All Branches |
+| `infrahub.proposed_change_thread.created`, and validator events from a Proposed Change | The source branch of the Proposed Change | Other Branches, All Branches |
+| `infrahub.branch.created`, `infrahub.branch.deleted` | No branch: `branch` is `null` in the payload | Other Branches, All Branches |
+
+:::warning Branch scope for merge, Proposed Change, and branch events
+
+With **Other Branches**, a webhook never receives `infrahub.branch.merged` or the `infrahub.proposed_change` events in the table, because Infrahub emits them on the default branch. With **Default Branch**, a webhook never receives `infrahub.branch.created` or `infrahub.branch.deleted`, because these events have no branch.
 
 :::
 
-### Webhook configuration details
+When a branch is merged, Infrahub emits the node events of the merged changes again on the default branch, and when a branch is rebased, it emits node events on that branch. With **All Branches**, a webhook therefore receives a change made on a branch twice: when the change is made, and when the branch is merged.
 
-- **Description**: A description can be set to identify the webhooks purpose.
-- **URL**: The destination URL can be configured, such as `http://ansible-eda:8080`.
-- **Transformation** (Custom Webhook only): The Python Transformation used to customize the webhook payload before being sent to the webhook receiver. Infrahub reads this link from the default branch only; see [Where webhooks are stored and read](#where-webhooks-are-stored-and-read).
+![An edit on the default branch, an edit on a branch, and the event the merge emits again on the default branch for the branch's change. Default Branch matches the first and the third, Other Branches matches the second, and All Branches matches all three.](../media/events/branch-scope-merge.svg)
 
-### Shared key for security
+To rebase open branches each time a branch is merged, see [Parallel branches](../branches/parallel-branches.mdx).
 
-A **shared key** can be configured to sign webhook requests. This key ensures the **authenticity** and **integrity** of the webhook message.
+## Where webhooks are stored and read
 
-When a webhook is sent:
+A webhook is the same on every branch. Its name, URL, event type, branch scope, node kind, and headers do not differ between branches, so a change you make to them on any branch applies to every branch.
 
-1. The sender generates a signature using the shared key.
-2. The signature is included in the request headers (`webhook-signature`).
-3. The message ID is included in the request headers (`webhook-id`).
-4. The timestamp is included in the request headers (`webhook-timestamp`).
+Infrahub reads each webhook from the default branch, both when it sets up the webhook in a background task and when it sends each delivery. The branch scope selects the branches whose events the webhook sends. It does not change which version of the webhook Infrahub uses.
 
-The receiver then uses the same shared key to verify the signature, confirming that the message has not been tampered with and that it is from a trusted source.
+The Transformation of a custom webhook is the exception. Transformations are branch-aware, so the link between a webhook and its Transformation can differ between branches, and Infrahub uses only the link on the default branch. If you choose the Transformation while working on another branch, Infrahub still sends a request for each matching event, but the request contains the standard event payload and the delivery's task log shows no error. Choose the Transformation while working on the default branch.
 
-<details>
-  <summary>Python FastAPI Example</summary>
-  <CodeBlock language="python" title="webhook-reciever.py">{FastapiWebhookReciever}</CodeBlock>
+The same applies to event rules: Infrahub reads trigger rules from the default branch only. See [Where trigger rules are stored and evaluated](../events/event-rules.mdx#where-trigger-rules-are-stored-and-evaluated).
 
-</details>
-<!-- vale off -->
-### Validating HTTPS certificates
-<!-- vale on -->
+## In this section
 
-When using webhooks over HTTPS, you can configure your system to validate certificates to ensure that the receiver has a valid HTTPS certificate, adding an extra layer of security.
-
-## Example payloads
-
-Here are some example payloads of some events that may be sent.
-<!-- vale off -->
-<Tabs groupId="event-type" queryString>
-  <TabItem value="infrahub.branch.created" label="infrahub.branch.created" default>
-
-```json
-{
-  "data": {
-    "branch_id": "182c6a84-4af4-736b-35a6-c514e640ca8b",
-    "branch_name": "test",
-    "sync_with_git": false
-  },
-  "id": "2ece726f-8574-488c-92f7-ee9a56485b46",
-  "branch": null,
-  "account_id": "182c6918-8880-5252-3611-c51ae7e0d6a5",
-  "occured_at": "2025-03-13 16:44:32.321142+00:00",
-  "event": "infrahub.branch.created"
-}
-```
-
-  </TabItem>
-  <TabItem value="infrahub.node.created" label="infrahub.node.created">
-
-```json
-{
-  "data": {
-    "kind": "OrganizationProvider",
-    "action": "created",
-    "fields": [
-      "name"
-    ],
-    "node_id": "182c69ca-75cc-dff2-39ba-c51db89f91bd",
-    "changelog": {
-      "node_id": "182c69ca-75cc-dff2-39ba-c51db89f91bd",
-      "node_kind": "OrganizationProvider",
-      "attributes": {
-        "name": {
-          "kind": "Text",
-          "name": "name",
-          "value": "Google Fibre",
-          "properties": {
-            "is_protected": {
-              "name": "is_protected",
-              "value": false,
-              "value_type": "Boolean",
-              "value_previous": null,
-              "value_update_status": "added"
-            }
-          },
-          "value_previous": null,
-          "value_update_status": "added"
-        },
-        "description": {
-          "kind": "Text",
-          "name": "description",
-          "value": "Google Fibre",
-          "properties": {
-            "is_protected": {
-              "name": "is_protected",
-              "value": false,
-              "value_type": "Boolean",
-              "value_previous": null,
-              "value_update_status": "added"
-            }
-          },
-          "value_previous": null,
-          "value_update_status": "added"
-        }
-      },
-      "display_label": "Google Fibre",
-      "hfid": [
-        "Google Fibre"
-      ],
-      "relationships": {}
-    }
-  },
-  "id": "bf569ddc-2a30-4491-82f1-0689f6cdb5e1",
-  "branch": "new-provider",
-  "account_id": "182c6918-8880-5252-3611-c51ae7e0d6a5",
-  "occured_at": "2025-03-13 16:31:14.566032+00:00",
-  "event": "infrahub.node.created"
-}
-```
-
-  </TabItem>
-
-  <TabItem value="infrahub.node.updated" label="infrahub.node.updated">
-
-```json
-{
-  "data": {
-    "kind": "InfraInterfaceL3",
-    "action": "updated",
-    "fields": [
-      "description",
-      "role",
-      "tags"
-    ],
-    "node_id": "182c697c-9915-aa00-39b7-c5181aeb3367",
-    "changelog": {
-      "node_id": "182c697c-9915-aa00-39b7-c5181aeb3367",
-      "node_kind": "InfraInterfaceL3",
-      "attributes": {
-        "role": {
-          "kind": "Dropdown",
-          "name": "role",
-          "value": "peering",
-          "properties": {},
-          "value_previous": "peer",
-          "value_update_status": "updated"
-        },
-        "description": {
-          "kind": "Text",
-          "name": "description",
-          "value": "Connected to IX",
-          "properties": {},
-          "value_previous": "Connected to atl1-edge2::Ethernet1",
-          "value_update_status": "updated"
-        }
-      },
-      "display_label": "Ethernet1",
-      "hfid": [
-        "atl1-edge1",
-        "Ethernet1"
-      ],
-      "relationships": {
-        "tags": {
-          "name": "tags",
-          "peers": [
-            {
-              "peer_id": "182c6980-3c4e-6a1d-39b0-c51f2e4d7a10",
-              "peer_kind": "BuiltinTag",
-              "peer_display_label": "peering",
-              "peer_hfid": [
-                "peering"
-              ],
-              "peer_status": "added",
-              "properties": {}
-            }
-          ],
-          "cardinality": "many"
-        }
-      }
-    }
-  },
-  "id": "67acc7ea-93b1-4175-a69b-801c869aea07",
-  "branch": "alter-interface",
-  "account_id": "182c6918-8880-5252-3611-c51ae7e0d6a5",
-  "occured_at": "2025-03-13 16:36:25.688038+00:00",
-  "event": "infrahub.node.updated"
-}
-```
-
-  </TabItem>
-</Tabs>
-<!-- vale on -->
-
-### Identifying objects in node events
-
-The `changelog` of a node event identifies every object it mentions in two ways: by ID and kind, and by the labels a person or an external system recognizes. With the labels, your receiver does not need to query Infrahub to resolve an ID.
-
-| Field | Where | Value |
-|-------|-------|-------|
-| `node_id`, `node_kind` | The changelog | The ID and kind of the node that changed |
-| `display_label` | The changelog | The node's [display label](../schema/display_label) |
-| `hfid` | The changelog | The node's [human-friendly ID](../schema/nodes-and-attributes#human-friendly-identifier-hfid), or `null` when its kind defines none |
-| `peer_id`, `peer_kind` | Each relationship peer | The ID and kind of the peer |
-| `peer_display_label`, `peer_hfid` | Each relationship peer | The peer's display label and human-friendly ID; `peer_hfid` is `null` when the peer's kind defines none |
-
-For a relationship that holds a single peer, only the current peer includes labels. When the peer changes, the previous one is identified by `peer_id_previous` and `peer_kind_previous` alone.
-
-Node events emitted by a branch merge or rebase contain the same fields as those emitted by a mutation.
-
-Treat the label fields as optional. A peer's labels are `null` when Infrahub could not read them, for example because the peer was deleted by the same operation, and the event is still delivered. The event Infrahub sends for such a peer has the placeholder `n/a` as its `display_label`. To match an object against your own records, use `hfid`, which follows the naming your schema defines. The `hfid` changes when the attributes it is built from change, while `node_id` never changes.
-
-## Custom headers
-
-Webhooks can include custom HTTP headers in every request they send. This is useful for authentication tokens, routing metadata, or any other headers the receiving system requires.
-
-### Key-value pair types
-
-Custom headers are defined as reusable **key-value pair** entities that can be shared across multiple webhooks:
-
-- **Static Key-Value** (`CoreStaticKeyValue`): The header value is stored as plain text and sent as-is. Use this for non-sensitive metadata like `X-Source-System: infrahub` or for authentication tokens like `Authorization: Bearer <token>`.
-- **Environment Variable Key-Value** (`CoreEnvKeyValue`): The stored value is the *name* of an environment variable. The actual value is resolved from the environment of the [task worker](../overview/architecture.mdx#task-workers) at the time the webhook request is sent. Use this when secrets are managed externally (for example, Kubernetes secrets or HashiCorp Vault).
-
-### Creating and associating headers
-
-1. Create a key-value pair via the UI or GraphQL API, specifying a **name** (human-friendly identifier), a **key** (the HTTP header field name), and a **value**.
-2. Associate the key-value pair with one or more webhooks using the **headers** relationship on the webhook.
-
-A single key-value pair can be linked to multiple webhooks (many-to-many relationship). When the key-value pair is updated, all linked webhooks use the new value on their next trigger.
-
-### Header merge behavior
-
-When a webhook fires, headers are merged in this order:
-
-1. **System defaults**: `Accept: application/json` and `Content-Type: application/json`
-2. **Custom headers**: Applied on top of defaults — a custom header with the same key as a system default will override it
-3. **HMAC signature headers** (if a shared key is configured): `webhook-id`, `webhook-timestamp`, and `webhook-signature` are added last and cannot be overridden by custom headers
-
-### Environment variable resolution
-
-For environment-variable-based headers, the value is resolved from `os.environ` on the task worker at send time:
-
-- If the environment variable exists, its value is used as the header value.
-- If the environment variable is **not found**, the delivery fails with a configuration error that names the webhook and the header, rather than sending the request without that header.
-
-:::note
-Authentication header values must include the full value including any type prefix. For example, for Bearer token authentication, set the value to `Bearer eyJhbGci...` (not only the token).
-:::
-
-### Header and payload logging
-
-Every delivery attempt is logged with the target URL, the request headers, and the payload, so you can see what was sent from the delivery's task logs. Secret-bearing header values are masked as `***` in that log: environment-sourced values, the `webhook-signature`, and well-known credential headers (`Authorization`, `Proxy-Authorization`, `Cookie`, `Set-Cookie`, `X-API-Key`) — matched case-insensitively, regardless of whether the header was configured as static or environment-sourced. The payload is truncated in the log, with the full body available only at debug level.
-
-:::warning
-A static header value is logged verbatim unless its name is one of the well-known credential headers listed above. To keep a secret out of the delivery logs when it is not sent under one of those names, store it as an **Environment Variable Key-Value** header — environment-sourced values are always masked.
-:::
-
-### When a delivery fails
-
-A failed delivery reports a short classified reason with a remediation hint in its task logs — a connection problem, a TLS problem, a timeout, a client-side 4xx, a server-side 5xx, or a configuration error — instead of a raw Python traceback. While retries remain, the log also records when the next attempt will run, so you can tell whether to wait for an automatic retry or step in. An unexpected error that is not a delivery failure still surfaces with its full traceback, so a genuine crash remains distinguishable from an expected failure.
-
-## Custom webhook transformation
-
-The `data` object from the payloads above is passed to the `transform` method of your custom Transformation. For the full setup walkthrough, see [Webhook with custom Transformation](./custom-transformation.mdx).
-
-## Retrying and cancelling deliveries
-
-Each webhook delivery runs as a task. Open a webhook and select a delivery from its related tasks to act on it from the task detail page.
-
-| Action | When it is available | What it does |
-|--------|----------------------|--------------|
-| Retry | The delivery has finished, or is being cancelled | Re-sends the original payload as a new delivery and leaves the original record unchanged. Useful when a delivery failed because the target was temporarily unavailable or misconfigured. |
-| Cancel | The delivery is still running or waiting to retry | Stops the delivery, including one waiting to be retried, so no further attempts are made. A request already in flight to the target cannot be recalled. |
-
-The Retry and Cancel actions appear only when they apply to the delivery's current state. Retrying creates a new delivery with the same settings and leaves the original unchanged; the new delivery re-computes its signature and uses the current settings of the webhook on the default branch. Retry is available on any finished delivery, including one that already succeeded, so you can re-deliver an event on demand.
-
-## Writing a reliable receiver
-
-- **Return a `2xx` status quickly.** The response acknowledges receipt; an endpoint slower than the delivery timeout is treated as a failed attempt.
-- **Make the receiver idempotent.** Transient failures — connection errors, timeouts, and `5xx` responses — are retried automatically, and a delivery can also be retried manually, so the same event can arrive more than once. Use the `webhook-id` header to detect duplicates.
-- **Verify the signature before trusting a payload.** When a shared key is configured, check the `webhook-signature` header against it — see [Shared key for security](#shared-key-for-security).
+- [Create a webhook](./create.mdx) — Choose the endpoint, the events, the shared key, and custom headers
+- [Webhook with custom Transformation](./custom-transformation.mdx) — Send a payload in the format the receiver expects
+- [Receive webhooks](./receive-webhooks.mdx) — Read the payload, verify the signature, and handle repeated deliveries
+- [Troubleshoot webhook deliveries](./troubleshoot-deliveries.mdx) — Read a delivery's log, retry or cancel it, and find why a webhook sent nothing

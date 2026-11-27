@@ -4,27 +4,136 @@ title: Event system
 
 # Event system
 
-Infrahub emits a structured event every time a significant mutation happens in the system: a node is created, updated, or deleted; a branch is created, merged, rebased, or deleted; a group gains or loses a member; and many more. Events are the foundation of every event-driven feature — automation, webhook delivery, the activity log, and external SIEM forwarding all consume them.
-
-## Example event types
-
-A few common ones:
-
-- `infrahub.node.created`
-- `infrahub.node.updated`
-- `infrahub.node.deleted`
-- `infrahub.group.member_added`
-- `infrahub.group.member_removed`
-- `infrahub.branch.created`
-- `infrahub.branch.deleted`
-
-For the exhaustive list, see [Infrahub events](../reference/infrahub-events/overview).
+An event is Infrahub's record of something that happened: an object was created, a branch was merged, a member was added to a group, or an account logged in. Infrahub emits events without any configuration, and the event-driven features of Infrahub all read them. Before you write a rule or a webhook receiver, check which events exist, what they contain, and on which branch each one is emitted.
 
 ## What events feed
 
-Each event is processed by several consumers:
+Infrahub sends each event to several consumers:
 
-- **Automation** — events drive [event rules](./event-rules) and [event actions](./event-actions) that you configure to react to specific conditions.
-- **[Activity log](../deploy-manage/run-observe/activity-log)** — every event lands in the chronological timeline of system changes.
-- **[Webhooks](../webhooks/overview)** — events can fire HTTP callbacks to external systems.
-- **[Log forwarding](../deploy-manage/run-observe/log-forwarding/overview)** — Enterprise deployments can stream events to external SIEM systems.
+- **Automation**: [Event rules](./event-rules.mdx) match events and run [event actions](./event-actions.mdx), such as adding an object to a group or running a Generator.
+- **[Activity log](../deploy-manage/run-observe/activity-log.mdx)**: Every event appears in the timeline of changes, globally and on the page of each object.
+- **[Webhooks](../webhooks/overview.mdx)**: A webhook sends the events it matches to an external system in an HTTP request.
+- **[Log forwarding](../deploy-manage/run-observe/log-forwarding/overview.mdx)**: Infrahub Enterprise can send events to a SIEM or a central logging system over syslog.
+
+## Event types
+
+Each event type has a name of the form `infrahub.<category>.<action>`. Some common types:
+
+| Category | Event types |
+|---|---|
+| Node | `infrahub.node.created`, `infrahub.node.updated`, `infrahub.node.deleted` |
+| Group | `infrahub.group.member_added`, `infrahub.group.member_removed` |
+| Branch | `infrahub.branch.created`, `infrahub.branch.merged`, `infrahub.branch.rebased`, `infrahub.branch.deleted` |
+| Proposed Change | `infrahub.proposed_change.merged`, `infrahub.proposed_change.approved`, `infrahub.proposed_change.rejected` |
+| Artifact | `infrahub.artifact.created`, `infrahub.artifact.updated` |
+| Validator | `infrahub.validator.started`, `infrahub.validator.passed`, `infrahub.validator.failed` |
+
+[Infrahub events](../reference/infrahub-events/overview.mdx) lists every event type with its payload fields.
+
+## What an event contains
+
+Every event has:
+
+- An ID and the event type.
+- The branch it was emitted on, or no branch for an event that concerns no single branch.
+- The account that made the change, and the time it happened.
+- A primary object, for example the object that was created or the group whose members changed, and related objects, for example the peers of a changed relationship.
+- A payload with the details of the change.
+
+For example, when Infrahub generates the `startup-config` artifact of a device again and the new content differs from the stored content, it emits `infrahub.artifact.updated`. A webhook receives this event as:
+
+```json
+{
+  "data": {
+    "node_id": "18e94a1c-2f1d-4c6a-2fc1-c51a3b7d9e02",
+    "artifact_definition_id": "18e94a10-7b2e-2d4c-2fc4-c51b6a0f3d11",
+    "artifact_definition_name": "startup-config",
+    "target_id": "18e949f8-1c3a-7e5b-2fc0-c51d8e2a4b73",
+    "target_kind": "InfraDevice",
+    "checksum": "5b8d3f2a9c1e4b7d6a0f8e2c3b9d1a47",
+    "checksum_previous": "0c7e2b9a4d1f6e3c8b5a2d9f7e4c1b03",
+    "storage_id": "18e94a1c-6d2b-3f8e-2fc3-c51e9a4b7c20",
+    "storage_id_previous": "18e93f02-4a7c-1b9d-2fc2-c51c2d8e6f15"
+  },
+  "id": "4b1f8c2e-9d3a-4e7b-8c5f-1a2b3c4d5e6f",
+  "branch": "main",
+  "account_id": "182c6918-8880-5252-3611-c51ae7e0d6a5",
+  "occured_at": "2026-11-18 10:15:42.118204+00:00",
+  "event": "infrahub.artifact.updated"
+}
+```
+
+- `id`, `event`, `branch`, `account_id`, and `occured_at` are the ID, the type, the branch, the account, and the time of the event.
+- `node_id` is the primary object: the artifact, of kind `CoreArtifact`. `target_id` and `target_kind` are the related object: the device the artifact was generated for. `artifact_definition_id` and `artifact_definition_name` identify the artifact definition.
+- `checksum` and `checksum_previous` are the MD5 checksums of the new and the previous content. They differ when the content changed. They are equal when Infrahub stored the same content again because the stored file was missing, so compare them before you act on a change. `storage_id` identifies the stored file of the new content, which you can download from `/api/storage/object/<storage_id>` (see [Access generated artifacts](../artifacts/use.mdx#access-generated-artifacts)), and `storage_id_previous` the file of the previous content.
+
+The payload of a node event contains a changelog: for each attribute and relationship that changed, the new value and the previous value, with the display label and the human-friendly ID of the object and of each peer. [Identifying objects in node events](../webhooks/receive-webhooks.mdx#identifying-objects-in-node-events) describes these fields.
+
+Events can have a parent. When a branch is merged, Infrahub emits `infrahub.branch.merged`, and the node events of the merged changes are its children. The activity log shows a parent event with its children.
+
+## One change can emit several events
+
+A single mutation can emit an event for each object it changes, not only for the object you edited:
+
+- An event for the object you created, updated, or deleted.
+- An `infrahub.node.updated` event for each peer whose relationship to that object was added or removed, when the peer's schema defines the relationship as well.
+- An `infrahub.node.deleted` event for each object that Infrahub deleted together with the object, through a relationship that cascades.
+- An `infrahub.group.member_added` or `infrahub.group.member_removed` event for each group whose members changed.
+
+A rule or a webhook on `infrahub.node.updated` can therefore match events for objects that nobody edited directly. Filter by node kind to receive only the events of the kinds you need.
+
+## Which branch an event is emitted on
+
+Rules and webhooks select events by the branch they were emitted on, so choose the branch scope from the branch each event is emitted on:
+
+| Events | Branch they are emitted on |
+|---|---|
+| Node and group events from a change you make | The branch where you made the change |
+| `infrahub.branch.merged`, and the node events of the merged changes | The default branch |
+| `infrahub.proposed_change.merged`, `approved`, `rejected`, `approval_revoked`, and `rejection_revoked` | The default branch, whatever the source branch of the Proposed Change |
+| `infrahub.branch.created`, `infrahub.branch.deleted` | No branch: the event's `branch` is `null` |
+
+## Merges and rebases emit events again
+
+When a branch is merged, Infrahub emits a node event on the default branch for each object the merge changes, with the same fields as the events emitted when the changes were first made on the branch. When a branch is rebased, Infrahub emits node events on the branch for its own changes and for the changes from the default branch that the rebase applies to the branch.
+
+A rule or a webhook therefore receives the same change more than once when its branch scope includes both branches: once when you make the change on the branch, and again when the branch is merged. The events have different IDs, and their payload does not say that they come from a merge or a rebase. [Where trigger rules are stored and evaluated](./event-rules.mdx#where-trigger-rules-are-stored-and-evaluated) shows which branch scopes receive which events.
+
+## Query events
+
+To browse events, open the [activity log](../deploy-manage/run-observe/activity-log.mdx), or the **Activities** panel of an object.
+
+To read events from a script, query `InfrahubEvent`. This query returns the two most recent `infrahub.node.created` events on `main`:
+
+```graphql
+query {
+  InfrahubEvent(event_type: ["infrahub.node.created"], branches: ["main"], limit: 2) {
+    count
+    edges {
+      node {
+        id
+        event
+        branch
+        account_id
+        occurred_at
+        primary_node {
+          id
+          kind
+        }
+      }
+    }
+  }
+}
+```
+
+`InfrahubEvent` also filters by account (`account__ids`), by primary or related object (`primary_node__ids`, `related_node__ids`), by parent event (`parent__ids`), and by time (`since`, `until`). Without `since`, it returns events from the last 180 days that the task manager still stores.
+
+## How long events are kept
+
+The task manager stores events, and deletes those older than its retention period: 7 days unless `PREFECT_SERVER_EVENTS_RETENTION_PERIOD` is set on the task manager. The activity log and `InfrahubEvent` return only the events that are still stored. To keep events longer, forward them to a SIEM with [log forwarding](../deploy-manage/run-observe/log-forwarding/overview.mdx) (Infrahub Enterprise).
+
+## Next
+
+- [Event rules](./event-rules.mdx) — Match events and choose the branches whose events a rule matches
+- [Event actions](./event-actions.mdx) — Add objects to a group or run a Generator when a rule matches
+- [Webhooks](../webhooks/overview.mdx) — Send events to an external system

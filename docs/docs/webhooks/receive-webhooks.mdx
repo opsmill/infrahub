@@ -1,0 +1,294 @@
+---
+title: Receive webhooks
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
+import FastapiWebhookReceiver from '!!raw-loader!../media/fastapi_webhook_receiver.txt';
+
+# Receive webhooks
+
+The service that receives a webhook gets one HTTP `POST` request per event, with the event in a JSON body. Write the receiver so that it checks the signature before it acts on a request, responds within the delivery timeout, and processes the same event only once, even when Infrahub sends it again.
+
+## What a request contains
+
+Each request has these headers:
+
+- `Accept: application/json` and `Content-Type: application/json`.
+- The webhook's [custom headers](./create.mdx#add-custom-headers), if any.
+- `webhook-id`, `webhook-timestamp`, and `webhook-signature`, when the webhook has a shared key. See [Verify the signature](#verify-the-signature).
+
+The body of a standard webhook, and of a custom webhook without a Transformation, is a JSON object with these fields:
+
+| Field | Content |
+|---|---|
+| `data` | The event payload. For a node event: `kind`, `node_id`, `action`, `fields`, and `changelog`. [Infrahub events](../reference/infrahub-events/overview.mdx) lists the payload of each event type. |
+| `id` | The event ID. It is the same on every attempt to deliver the event, and Infrahub returns the event with this ID from the `InfrahubEvent` query. |
+| `event` | The event type, such as `infrahub.node.updated`. |
+| `branch` | The branch the event was emitted on, or `null` for an event that has no branch, such as `infrahub.branch.created`. |
+| `account_id` | The ID of the account that made the change. |
+| `occured_at` | When the event occurred, as an ISO 8601 timestamp. The field name has one `r`. |
+
+A custom webhook with a Transformation sends what its Transformation returns. See [Webhook with custom Transformation](./custom-transformation.mdx).
+
+## Example payloads
+
+<!-- vale off -->
+<Tabs groupId="event-type" queryString>
+  <TabItem value="infrahub.branch.created" label="infrahub.branch.created" default>
+
+```json
+{
+  "data": {
+    "branch_id": "182c6a84-4af4-736b-35a6-c514e640ca8b",
+    "branch_name": "test",
+    "sync_with_git": false
+  },
+  "id": "2ece726f-8574-488c-92f7-ee9a56485b46",
+  "branch": null,
+  "account_id": "182c6918-8880-5252-3611-c51ae7e0d6a5",
+  "occured_at": "2025-03-13 16:44:32.321142+00:00",
+  "event": "infrahub.branch.created"
+}
+```
+
+  </TabItem>
+  <TabItem value="infrahub.node.created" label="infrahub.node.created">
+
+```json
+{
+  "data": {
+    "kind": "OrganizationProvider",
+    "action": "created",
+    "fields": [
+      "name"
+    ],
+    "node_id": "182c69ca-75cc-dff2-39ba-c51db89f91bd",
+    "changelog": {
+      "node_id": "182c69ca-75cc-dff2-39ba-c51db89f91bd",
+      "node_kind": "OrganizationProvider",
+      "attributes": {
+        "name": {
+          "kind": "Text",
+          "name": "name",
+          "value": "Google Fibre",
+          "properties": {
+            "is_protected": {
+              "name": "is_protected",
+              "value": false,
+              "value_type": "Boolean",
+              "value_previous": null,
+              "value_update_status": "added"
+            }
+          },
+          "value_previous": null,
+          "value_update_status": "added"
+        },
+        "description": {
+          "kind": "Text",
+          "name": "description",
+          "value": "Google Fibre",
+          "properties": {
+            "is_protected": {
+              "name": "is_protected",
+              "value": false,
+              "value_type": "Boolean",
+              "value_previous": null,
+              "value_update_status": "added"
+            }
+          },
+          "value_previous": null,
+          "value_update_status": "added"
+        }
+      },
+      "display_label": "Google Fibre",
+      "hfid": [
+        "Google Fibre"
+      ],
+      "relationships": {}
+    }
+  },
+  "id": "bf569ddc-2a30-4491-82f1-0689f6cdb5e1",
+  "branch": "new-provider",
+  "account_id": "182c6918-8880-5252-3611-c51ae7e0d6a5",
+  "occured_at": "2025-03-13 16:31:14.566032+00:00",
+  "event": "infrahub.node.created"
+}
+```
+
+  </TabItem>
+
+  <TabItem value="infrahub.node.updated" label="infrahub.node.updated">
+
+```json
+{
+  "data": {
+    "kind": "InfraInterfaceL3",
+    "action": "updated",
+    "fields": [
+      "description",
+      "role",
+      "tags"
+    ],
+    "node_id": "182c697c-9915-aa00-39b7-c5181aeb3367",
+    "changelog": {
+      "node_id": "182c697c-9915-aa00-39b7-c5181aeb3367",
+      "node_kind": "InfraInterfaceL3",
+      "attributes": {
+        "role": {
+          "kind": "Dropdown",
+          "name": "role",
+          "value": "peering",
+          "properties": {},
+          "value_previous": "peer",
+          "value_update_status": "updated"
+        },
+        "description": {
+          "kind": "Text",
+          "name": "description",
+          "value": "Connected to IX",
+          "properties": {},
+          "value_previous": "Connected to atl1-edge2::Ethernet1",
+          "value_update_status": "updated"
+        }
+      },
+      "display_label": "Ethernet1",
+      "hfid": [
+        "atl1-edge1",
+        "Ethernet1"
+      ],
+      "relationships": {
+        "tags": {
+          "name": "tags",
+          "peers": [
+            {
+              "peer_id": "182c6980-3c4e-6a1d-39b0-c51f2e4d7a10",
+              "peer_kind": "BuiltinTag",
+              "peer_display_label": "peering",
+              "peer_hfid": [
+                "peering"
+              ],
+              "peer_status": "added",
+              "properties": {}
+            }
+          ],
+          "cardinality": "many"
+        }
+      }
+    }
+  },
+  "id": "67acc7ea-93b1-4175-a69b-801c869aea07",
+  "branch": "alter-interface",
+  "account_id": "182c6918-8880-5252-3611-c51ae7e0d6a5",
+  "occured_at": "2025-03-13 16:36:25.688038+00:00",
+  "event": "infrahub.node.updated"
+}
+```
+
+  </TabItem>
+</Tabs>
+<!-- vale on -->
+
+## Identifying objects in node events
+
+The `changelog` of a node event identifies every object it mentions in two ways: by ID and kind, and by the labels a person or an external system recognizes. With the labels, your receiver does not need to query Infrahub to resolve an ID.
+
+| Field | Where | Value |
+|-------|-------|-------|
+| `node_id`, `node_kind` | The changelog | The ID and kind of the object that changed |
+| `display_label` | The changelog | The object's [display label](../schema/display_label) |
+| `hfid` | The changelog | The object's [human-friendly ID](../schema/nodes-and-attributes#human-friendly-identifier-hfid), or `null` when its kind defines none |
+| `peer_id`, `peer_kind` | Each relationship peer | The ID and kind of the peer |
+| `peer_display_label`, `peer_hfid` | Each relationship peer | The peer's display label and human-friendly ID; `peer_hfid` is `null` when the peer's kind defines none |
+
+For a relationship of cardinality `one`, only the current peer includes labels. When the peer changes, the previous one is identified by `peer_id_previous` and `peer_kind_previous` alone.
+
+Node events emitted by a branch merge or rebase contain the same fields as those emitted by a mutation.
+
+Treat the label fields as optional. A peer's labels are `null` when Infrahub could not read them, for example because the peer was deleted by the same operation, and the event is still delivered. In the event Infrahub sends for that peer itself, the `display_label` of the changelog is the placeholder `n/a`. To match an object against your own records, use `hfid`, which follows the naming your schema defines. The `hfid` changes when the attributes it is built from change, while `node_id` never changes.
+
+## Verify the signature
+
+When a webhook has a shared key, Infrahub signs each request, and the receiver can check that the request comes from Infrahub and that its body was not changed. Infrahub adds three headers:
+
+| Header | Value |
+|---|---|
+| `webhook-id` | A message ID, `msg_` followed by 32 hexadecimal characters |
+| `webhook-timestamp` | The time Infrahub signed the request, in seconds since the Unix epoch |
+| `webhook-signature` | `v1,` followed by the base64-encoded signature |
+
+The signature is an HMAC-SHA256 of `<webhook-id>.<webhook-timestamp>.<body>`, with the shared key as the key. Infrahub uses the shared key as UTF-8 bytes; it does not decode it from base64. To verify a request:
+
+1. Read the raw request body, before parsing it as JSON.
+2. Join the `webhook-id` header, the `webhook-timestamp` header, and the body with `.` between them.
+3. Compute the HMAC-SHA256 of that string with the shared key, and encode it in base64.
+4. Compare `v1,` followed by your result with the `webhook-signature` header, with a constant-time comparison. Reject the request if they differ.
+5. Reject the request if `webhook-timestamp` is more than a few minutes old. A request that someone recorded and sent again has an old timestamp. Infrahub signs each attempt again, so an automatic retry has a current timestamp.
+
+<details>
+  <summary>Example receiver in Python with FastAPI</summary>
+  <CodeBlock language="python" title="webhook_receiver.py">{FastapiWebhookReceiver}</CodeBlock>
+</details>
+
+### Known limitation: payloads with non-ASCII characters
+
+Infrahub computes the signature over a copy of the body in which every non-ASCII character is escaped, for example `ü` as `\u00fc`, but sends the body with the characters unescaped. For an event whose payload contains a non-ASCII character, such as an object named `Zürich`, a signature computed over the raw body does not match.
+
+In Python, verify such a request over the body serialized again with escaped characters, in the same order and without spaces:
+
+```python
+import json
+
+signed_body = json.dumps(json.loads(raw_body), separators=(",", ":"))
+```
+
+## Respond within the timeout
+
+Respond with a `2xx` status as soon as you have received the request, and do the work afterwards, for example from a queue. Infrahub waits for the response for the number of seconds in `INFRAHUB_HTTP_TIMEOUT`, 10 by default, which also applies to other HTTP requests Infrahub makes. An attempt fails when the receiver does not respond in time, and when it responds with any status other than `2xx`. Infrahub does not follow redirects, so a `3xx` response fails the attempt too.
+
+After a failed attempt, Infrahub tries again: up to four attempts, 120 seconds apart. See [Troubleshoot webhook deliveries](./troubleshoot-deliveries.mdx).
+
+## Process each event once
+
+The receiver can get the same event more than once:
+
+- When an attempt fails after the receiver has done its work, for example because the response came after the timeout, Infrahub sends the event again.
+- An operator can [retry a delivery](./troubleshoot-deliveries.mdx#retry-and-cancel-a-delivery), including one that succeeded.
+
+To process each event once, record the `id` of the body and skip a request whose `id` you have already processed. The `id` is the same on every attempt and on a retry.
+
+:::warning
+
+Do not use the `webhook-id` header to detect a repeated event: Infrahub generates a new one for each attempt.
+
+:::
+
+The receiver can also get two different events, with different IDs, for a change made on a branch, when the webhook's branch scope includes both the branch and the default branch: once when the change is made, and once when the branch is merged. Use the `branch` field to distinguish them. See [Branch scope](./overview.mdx#branch-scope).
+
+## Read the event from Infrahub
+
+The `id` of the body is the ID of the event in Infrahub. To read the event again, for example to show it in a ticket, query it by ID:
+
+```graphql
+query {
+  InfrahubEvent(ids: ["9d6213df-c5d0-42b0-8fe7-999c4565c345"]) {
+    edges {
+      node {
+        event
+        branch
+        occurred_at
+        primary_node {
+          id
+          kind
+        }
+      }
+    }
+  }
+}
+```
+
+## Next
+
+- [Troubleshoot webhook deliveries](./troubleshoot-deliveries.mdx) — Read a delivery's log, retry or cancel it
+- [Webhook with custom Transformation](./custom-transformation.mdx) — Send a payload in the format the receiver expects

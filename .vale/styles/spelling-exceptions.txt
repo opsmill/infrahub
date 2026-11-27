@@ -55,6 +55,7 @@ coroutine
 coroutines
 cosign
 Cosign
+create_circuit_endpoints
 created_at
 created_by
 customizable
@@ -205,6 +206,7 @@ pre
 prebuilt
 precomputed
 prefilled
+provisioning_circuits
 pseudocode
 pydantic
 Pydantic
@@ -282,6 +284,7 @@ tracebacks
 Traefik
 triages
 TypeScript
+unescaped
 uniqueness_constraints
 unoptimized
 untrusted
@@ -310,6 +313,7 @@ VRFs
 VSCode
 walkthrough
 walkthroughs
+webhook's
 whitespace
 widget's
 Widget's
