@@ -34,7 +34,7 @@ describe("buildNavigateToPage", () => {
     expect(constructPathMock).toHaveBeenCalledWith("/branches", [
       { name: "branch", exclude: true },
     ]);
-    expect(navigate).toHaveBeenCalledWith("/branches", undefined);
+    expect(navigate).toHaveBeenCalledWith("/branches", { replace: true });
   });
 
   it("should preserve branch QSP when deleted branch does not match current branch", () => {
@@ -49,7 +49,7 @@ describe("buildNavigateToPage", () => {
 
     // THEN
     expect(constructPathMock).toHaveBeenCalledWith("/branches");
-    expect(navigate).toHaveBeenCalledWith("/branches?branch=main", undefined);
+    expect(navigate).toHaveBeenCalledWith("/branches?branch=main", { replace: true });
   });
 
   it("should preserve branch QSP when deletedBranchName is undefined", () => {
@@ -64,7 +64,7 @@ describe("buildNavigateToPage", () => {
 
     // THEN
     expect(constructPathMock).toHaveBeenCalledWith("/branches");
-    expect(navigate).toHaveBeenCalledWith("/branches?branch=main", undefined);
+    expect(navigate).toHaveBeenCalledWith("/branches?branch=main", { replace: true });
   });
 
   it("should navigate when no branch QSP is set", () => {
@@ -79,7 +79,7 @@ describe("buildNavigateToPage", () => {
 
     // THEN
     expect(constructPathMock).toHaveBeenCalledWith("/branches");
-    expect(navigate).toHaveBeenCalledWith("/branches", undefined);
+    expect(navigate).toHaveBeenCalledWith("/branches", { replace: true });
   });
 
   it("should pass the navigation state to the target page", () => {
@@ -93,7 +93,10 @@ describe("buildNavigateToPage", () => {
     navigateToPage("/branches", "feature-1", { state: { taskId: "task-1" } });
 
     // THEN
-    expect(navigate).toHaveBeenCalledWith("/branches", { state: { taskId: "task-1" } });
+    expect(navigate).toHaveBeenCalledWith("/branches", {
+      state: { taskId: "task-1" },
+      replace: true,
+    });
   });
 });
 

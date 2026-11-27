@@ -12,7 +12,8 @@ export function buildNavigateToPage(navigate: NavigateFunction) {
         ? constructPath(listPath, [{ name: QSP.BRANCH, exclude: true }])
         : constructPath(listPath);
 
-    navigate(path, options);
+    // replace, not push: Back would otherwise land on a page of the removed branch.
+    navigate(path, { ...options, replace: true });
   };
 }
 
