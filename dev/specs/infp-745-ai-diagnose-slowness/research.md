@@ -349,7 +349,8 @@ the user name (commit `5a22997549`). Spans are masked (`backend/infrahub/masking
   (`message-queue`), Redis (`cache`), the Prefect server (`task-manager`) and its database
   (`task-manager-db`), Grafana, and the Grafana MCP server itself. The first pass below covers only the
   lines that Infrahub writes; the other streams are part of the full audit (spec FR-022, critique of
-  2026-11-04, X1). For Helm, which pods the chart's Alloy collects is not checked yet.
+  2026-11-04, X1). For Helm, the pods that the chart's Alloy collects are listed in `log-audit.md`
+  (task T045), and their logs hold no value that needs a `drop` rule (task T055, 2026-11-27).
 - `backend/infrahub/log.py::configure_logging` sets the structlog processors. None masks a value.
   `httpx` and `httpcore` log only at ERROR.
 - In production, the API server writes no access log (`serve/worker.py::InfrahubUvicorn` sends
