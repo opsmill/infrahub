@@ -1,8 +1,9 @@
 # Infrahub glossary
 
 This file is the glossary for Infrahub. Each entry gives the name to use for one domain concept, a
-definition, and the other names to avoid with the reason each one is ambiguous. Use these names in
-code, GraphQL schema, specs, ADRs, commit messages, pull request descriptions, and conversation.
+definition, and the other names to avoid, with a reason where the reason is not obvious. Use these
+names in code, GraphQL schema, specs, ADRs, commit messages, pull request descriptions, and
+conversation.
 
 The `grilling-ideas` and `creating-prd` skills use this file to choose domain terms. The
 `creating-issues`, `pr`, and `speckit-opsmill-implement` skills read it as project context. None of
@@ -10,8 +11,8 @@ these skills names `dev/knowledge/` as a place to look for `CONTEXT.md`, so the 
 points to this file.
 
 When a change adds a domain concept, renames one, or changes what one means, update this file in the
-same pull request. An entry that starts with "Not decided" records a question that the sources
-answer in different ways; do not treat either answer as the rule until the entry is updated.
+same pull request. An entry that includes "Not decided" records a question that the sources answer
+in different ways; do not treat either answer as the rule until the entry is updated.
 
 For the principles that every change follows, see [`dev/constitution.md`](../constitution.md). For
 how the system works, see [`dev/knowledge/`](.). For past decisions, see [`dev/adr/`](../adr/).
@@ -32,7 +33,7 @@ The identifier of a node or generic in the schema, made by joining its `namespac
 for example `InfraDevice`. Attributes and relationships also have a `kind`, which comes from
 Infrahub (for example `Text` or `Component`) and controls how the element appears in GraphQL and the
 web interface. Source: [Nodes & attributes](../../docs/docs/schema/nodes-and-attributes.mdx).
-_Avoid_: "type" and "model" for a node's kind (both are used in prose, but the schema, GraphQL and
+_Avoid_: "type" and "model" for a node's kind (both are used in prose, but the schema, GraphQL, and
 SDK use `kind`), "class".
 
 **Node**:
@@ -69,8 +70,10 @@ attribute has properties of its own, such as `value`, `source`, and `owner`).
 A typed link between two nodes in the schema, and between their objects in the data. A relationship
 has a cardinality (`one` or `many`) and a kind. Schema authors use the kinds `Generic`, `Attribute`,
 `Component`, and `Parent`; Infrahub also defines `Group`, `Hierarchy`, `Profile`, and `Template`.
-The kind controls how the relationship appears in the web interface and what happens on deletion.
-Sources: [Relationships](../../docs/docs/schema/relationships.mdx),
+The kind controls how the relationship appears in the web interface. What happens on deletion
+follows the relationship's `on_delete` value; when `on_delete` is not set, a `Component`
+relationship cascades and every other kind does nothing. Sources:
+[Relationships](../../docs/docs/schema/relationships.mdx),
 [`constants/__init__.py`](../../backend/infrahub/core/constants/__init__.py) (`RelationshipKind`).
 _Avoid_: "link", "reference", "foreign key", "edge" (an edge is an element of the graph database,
 not of the schema).
@@ -125,17 +128,19 @@ through its relationships, for example the device `core-router-01`. Source:
 [Objects](../../docs/docs/objects/overview.mdx).
 Not decided: whether to use "object" or "node" for this concept. See the entry for **node** for the
 two positions and where the product uses each word.
-_Avoid_: "instance" alone (also means an Infrahub installation), "record" and "entry" as separate
-terms, "item".
+_Avoid_: "instance" alone (also means an Infrahub installation), "entry", "item".
 
 **Profile**:
 An object that holds attribute and relationship values for many objects of one kind, or of every
 node that inherits from one generic. An object that has a Profile assigned takes the Profile's
 values unless the object sets its own value. When several Profiles apply, `profile_priority` decides
 which value wins. Infrahub creates a Profile kind named `Profile<Namespace><Name>` for each node and
-each generic that has `generate_profile` set, which is the default. Write "Profile" with a capital
-P. Sources: [Profiles](../../docs/docs/profiles/overview.mdx), [style
-guide](../../docs/docs/development/style-guide.mdx).
+each generic that has `generate_profile` set, which is the default, except for kinds in the
+namespaces that Infrahub reserves for itself, such as `Core` (the `Builtin` namespace does get
+Profile kinds). Write "Profile" with a capital P. Sources:
+[Profiles](../../docs/docs/profiles/overview.mdx), [style
+guide](../../docs/docs/development/style-guide.mdx),
+[`schema_branch.py`](../../backend/infrahub/core/schema/schema_branch.py).
 _Avoid_: "profile" in lowercase for the feature, "default values" (the schema `default_value` is a
 different feature), "object template" (a template sets structure for new objects; a Profile keeps
 values in sync on existing objects).
@@ -217,11 +222,13 @@ _Avoid_: "merge conflict" as a Git term (an Infrahub conflict is on data, not on
 **Rebase**:
 The operation that updates a branch with the current state of the default branch: it moves the
 branch's `branched_from` time forward, keeps the branch's own changes, and drops their history from
-before the new `branched_from`. Infrahub refuses a rebase that would break a constraint. An
-attribute value, owner, or source conflict blocks the rebase until it is resolved in favor of the
-branch; a relationship conflict, a delete-versus-modify conflict, or an attribute that the default
-branch removed blocks it until the data is updated so that both branches agree. Sources:
-[Rebase](../../docs/docs/branches/rebase.mdx), [backend knowledge page](backend/diff-conflicts.md).
+before the new `branched_from`. Infrahub refuses a rebase that would break a constraint. A conflict
+on a property of an attribute (its value, owner, source, or another property) blocks the rebase
+until it is resolved in favor of the branch or the data is updated so that both branches agree,
+unless the default branch removed the attribute. Every other conflict (a removed attribute, a
+relationship, a delete-versus-modify conflict) blocks the rebase until the data is updated so that
+both branches agree. Sources: [Rebase](../../docs/docs/branches/rebase.mdx), [backend knowledge
+page](backend/diff-conflicts.md), [`tasks.py`](../../backend/infrahub/core/branch/tasks.py).
 _Avoid_: "sync" (Git synchronization is a different operation), "refresh" (refreshing a diff is one
 step of a rebase), "pull".
 
@@ -280,9 +287,8 @@ guide](../../docs/docs/development/style-guide.mdx).
 Not decided: the noun "transform". The style guide says to never use "transform" as a noun, but the
 kind labels are "Transform Python" and "Transform Jinja2", and the [Tasks
 page](../../docs/docs/deploy-manage/run-observe/tasks.mdx) says "Transform functions".
-_Avoid_: "transform" and "transforms" as nouns, "template" alone (a Jinja2 Transformation is one
-kind of Transformation), "Generator" (a Generator changes objects; a Transformation produces
-content).
+_Avoid_: "transforms" as a noun, "template" alone (a Jinja2 Transformation is one kind of
+Transformation), "Generator" (a Generator changes objects; a Transformation produces content).
 
 **Artifact**:
 The stored output of a Transformation for one target object, such as the configuration of one
@@ -308,14 +314,16 @@ _Avoid_: "generator" in lowercase for the feature, "Transformation" (a Transform
 content and does not change objects), "script".
 
 **Check**:
-A validation that runs on a proposed change; a failed check blocks the merge, except the Data
-Integrity check. Infrahub runs built-in checks, such as Data Integrity and Schema Integrity, and
-user-defined checks: Python code from a repository, declared by a **check definition**
-(`CoreCheckDefinition`), that validates the result of a GraphQL query. A targeted check runs only
-against the members of a group. Sources: [Checks](../../docs/docs/checks/overview.mdx), [Proposed
-changes](../../docs/docs/proposed-changes/overview.mdx).
-_Avoid_: "validator" for a check (a validator, `CoreValidator`, is the record that holds the results
-of the checks of one type for one proposed change), "test", "CI job".
+A validation that runs on a proposed change; a failed check blocks the merge. The merge ignores the
+result of the Data Integrity check, but stops while a conflict has no branch selected or while a
+delete-versus-modify conflict remains. Infrahub runs built-in checks, such as Data Integrity and
+Schema Integrity, and user-defined checks: Python code from a repository, declared by a **check
+definition** (`CoreCheckDefinition`), that validates the result of a GraphQL query. A targeted check
+runs only against the members of a group. Sources: [Checks](../../docs/docs/checks/overview.mdx),
+[Proposed changes](../../docs/docs/proposed-changes/overview.mdx).
+_Avoid_: "validator" for a check (a validator is an object of a kind that inherits from the generic
+`CoreValidator`, such as `CoreDataValidator` or `CoreUserValidator`, and holds the results of a set
+of checks for one proposed change), "test", "CI job".
 
 ## Events and integrations
 
@@ -373,7 +381,8 @@ could be meant.
 - **"Template"**: can mean an object template, a Jinja2 Transformation, the Jinja2 template of a
   display label or computed attribute, or a template in a repository. Say which one.
 - **"Check"**: can mean a built-in check of a proposed change or a user-defined check. In the code,
-  a validator holds the results of one type of check for one proposed change.
+  a validator (a kind that inherits from `CoreValidator`) holds the results of a set of checks for
+  one proposed change.
 - **"Task"**: in the web interface and the GraphQL API, a task is a Prefect flow run; in backend
   code, `@task` marks a step inside a flow.
 - **"Label"**: the schema `label` property names a kind, an attribute, or a relationship; the
