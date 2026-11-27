@@ -17,7 +17,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreRepository as CoreRepositoryNode
 from infrahub.core.registry import registry
 from infrahub.events.repository_action import CommitUpdatedEvent
-from infrahub.exceptions import RepositoryError
+from infrahub.exceptions import RepositoryBrokenLocalCopyError, RepositoryConnectionError, RepositoryError
 from infrahub.git import InfrahubRepository
 from infrahub.git.activity.models import RepositoryActivityOperation
 from infrahub.git.constants import UPDATE_SYNC_STATUS_MUTATION
@@ -420,7 +420,9 @@ class TestFreshCloneImport(TestInfrahubApp):
             id=node.id, name=name, location=str(remote.directory), client=client, infrahub_branch_name=TRUNK
         )
         shutil.rmtree(cloned.directory_commits / head)
-        with pytest.raises(RepositoryError, match=rf"^The directory for the main commit is missing for {name}$"):
+        with pytest.raises(
+            RepositoryBrokenLocalCopyError, match=rf"^The directory for the main commit is missing for {name}$"
+        ):
             await InfrahubRepository.init(
                 id=node.id, name=name, location=str(remote.directory), client=client, infrahub_branch_name=TRUNK
             )
@@ -434,6 +436,38 @@ class TestFreshCloneImport(TestInfrahubApp):
         assert (added.repository.directory_commits / head).is_dir()
         assert run_record_writes(cache=cache, repository_id=node.id) == ONE_IMPORT
         assert await recorded_state(client=client, node=node) == (head, RepositorySyncStatus.IN_SYNC.value)
+
+    async def test_the_add_flow_keeps_a_usable_copy_when_it_cannot_fetch(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """A copy whose remote moved is fetched from the new location, and that fetch can fail on a network error."""
+        name = "unreachable-copy-on-this-worker"
+        remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=[])
+        remote.commit(branch_name=TRUNK, files=CONFIG_FILES)
+        node = await create_node(db=db, remote=remote, name=name)
+        cloned = await InfrahubRepository.init(
+            id=node.id, name=name, location=str(remote.directory), client=client, infrahub_branch_name=TRUNK
+        )
+        # A clone over the copy deletes the whole copy, this file included.
+        in_the_copy = cloned.directory_root / "in-the-copy"
+        in_the_copy.write_text("")
+        unreachable = tmp_path / "moved-away"
+        model = add_model(node=node, name=name, remote=remote).model_copy(update={"location": str(unreachable)})
+        adder = RepositoryAdder(lock_registry=lock.registry, importer=RepositoryFileImporter(), client=client)
+
+        with pytest.raises(
+            RepositoryConnectionError,
+            match=rf"^Unable to fetch from the remote of repository {name}, please check that the remote is reachable\.$",
+        ):
+            async with activity_run(repository_id=node.id, operation=RepositoryActivityOperation.ADD) as run:
+                await adder.add(model, activity=run)
+
+        assert in_the_copy.exists()
 
     async def test_the_add_flow_marks_the_branch_syncing_before_it_releases_the_lock(
         self,

@@ -419,7 +419,9 @@ sets the branch back to `syncing` after the first one set it to `in-sync`.
   over it, because the seed import that cloned it may still read its files and would then import too
   few objects or fail after the add flow skipped. A copy that fails validation, left by a clone that
   stopped before it created the worktree of its commit, is cloned over again, as in the seed import,
-  because the add flow cannot import from it.
+  because the add flow cannot import from it. Only that failure (`RepositoryBrokenLocalCopyError`) is
+  cloned over: when `init()` fails to read the graph or to fetch, the add flow fails and the copy
+  stays, because the clone would delete a usable copy.
 - **Send the commit event from a seed import of a first commit.** The add flow skips a commit the seed
   imported, so a seed import that records the first commit of a repository sends `CommitUpdatedEvent`
   itself once it succeeds (`InfrahubRepositoryIntegrator.announce_commit_update`).

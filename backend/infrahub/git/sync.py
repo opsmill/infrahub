@@ -6,7 +6,12 @@ from typing import TYPE_CHECKING
 
 from prefect import flow
 
-from infrahub.exceptions import RepositoryConnectionError, RepositoryCredentialsError, RepositoryError
+from infrahub.exceptions import (
+    RepositoryBrokenLocalCopyError,
+    RepositoryConnectionError,
+    RepositoryCredentialsError,
+    RepositoryError,
+)
 from infrahub.log import get_run_logger, suppress_traceback_in_logs
 
 from .activity.models import RepositoryActivityBranchOutcome, RepositoryActivityPhase
@@ -261,10 +266,10 @@ class RepositoryAdder:
                     client=self._client,
                     infrahub_branch_name=model.infrahub_branch_name,
                 )
-            except RepositoryError as exc:
+            except RepositoryBrokenLocalCopyError as exc:
                 log.warning(
-                    f"Cloning repository {model.repository_name} again, because its local copy could not be "
-                    f"initialized: {exc.message}"
+                    f"Cloning repository {model.repository_name} again, because its local copy cannot be "
+                    f"opened: {exc.message}"
                 )
                 repo = await InfrahubRepository.new(
                     id=model.repository_id,

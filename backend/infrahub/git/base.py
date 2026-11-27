@@ -23,6 +23,7 @@ from infrahub.exceptions import (
     BranchNotFoundError,
     CommitNotFoundError,
     FileOutOfRepositoryError,
+    RepositoryBrokenLocalCopyError,
     RepositoryConnectionError,
     RepositoryCredentialsError,
     RepositoryError,
@@ -428,8 +429,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         Raises:
             RepositoryInvalidFileSystemError: When one of the expected repository directories does not exist.
-            RepositoryError: When the on-disk data is not a valid Git repository, the initial commit is
-                missing or the main commit worktree directory is missing.
+            RepositoryBrokenLocalCopyError: When the on-disk data is not a valid Git repository, the initial
+                commit is missing or the main commit worktree directory is missing.
 
         """
         directories_to_validate = [
@@ -454,7 +455,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 self.has_origin = True
 
         except InvalidGitRepositoryError as exc:
-            raise RepositoryError(
+            raise RepositoryBrokenLocalCopyError(
                 identifier=self.name, message=f"The data on disk is not a valid Git repository for {self.name}."
             ) from exc
 
@@ -462,12 +463,12 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         try:
             commit = str(repo.head.commit)
         except ValueError as exc:
-            raise RepositoryError(
+            raise RepositoryBrokenLocalCopyError(
                 identifier=self.name, message="The initial commit is missing for {self.name}"
             ) from exc
 
         if not (self.directory_commits / commit).is_dir():
-            raise RepositoryError(
+            raise RepositoryBrokenLocalCopyError(
                 identifier=self.name, message=f"The directory for the main commit is missing for {self.name}"
             )
 
