@@ -1,0 +1,18 @@
+[
+  {
+    "sha": "d40beee736f648045309f538af278dc2e34cd3ca",
+    "commit": {
+      "author": {"name": "dependabot[bot]", "email": "49699333+dependabot[bot]@users.noreply.github.com", "date": "2026-09-19T01:53:44Z"},
+      "message": "Bump fastapi from 0.131.0 to 0.132.0"
+    },
+    "author": {"login": "dependabot[bot]", "id": 49699333, "type": "Bot"}
+  },
+  {
+    "sha": "e51cfff847f759156410f649bf389ed3f45de4db",
+    "commit": {
+      "author": {"name": "Unlinked Person", "email": "someone@example.com", "date": "2026-09-19T02:10:00Z"},
+      "message": "Adapt to fastapi 0.132.0"
+    },
+    "author": null
+  }
+]
