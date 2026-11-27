@@ -9,7 +9,6 @@ export type ArtifactEncryptionNotice =
   | { level: "warning"; message: string }
   | { level: "error"; message: string };
 
-// A missing file has its own notice, so it is the only reason of the API without a text here.
 const UNREADABLE_REASONS: Record<Exclude<UnreadableReason, "missing">, string> = {
   unknown_key: "It was not encrypted with the current key.",
   no_key: "No encryption key is configured.",
@@ -31,7 +30,7 @@ export function getArtifactEncryptionNotice({
   isEncryptionEnabled,
   isVerified,
 }: GetArtifactEncryptionNoticeParams): ArtifactEncryptionNotice | null {
-  // A missing file says nothing about its encryption: only an artifact already known as unreadable has a notice.
+  // A missing file says nothing about its encryption.
   if (reason === "missing") {
     return encryption === "unreadable"
       ? { level: "error", message: "The file of this artifact is missing from the storage." }

@@ -14,8 +14,7 @@ export function ArtifactEncryptionBadge({ artifact }: ArtifactEncryptionBadgePro
   const notice = useArtifactEncryptionNotice(artifact);
   const { isSettled, isNotServed } = useArtifactContentState(artifact);
 
-  // The check reads only the header of the file, so a file with changed content passes it while the content is refused.
-  // The badge waits for the content request, so it does not show for a moment on such a file.
+  // The check reads only the file header, so a file whose content was changed passes it until the content is refused.
   if (notice?.level !== "success" || !isSettled || isNotServed) return null;
 
   return (

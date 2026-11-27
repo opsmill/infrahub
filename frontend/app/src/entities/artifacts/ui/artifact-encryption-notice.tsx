@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React from "react";
 
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
@@ -15,7 +15,7 @@ interface ArtifactEncryptionNoticeProps {
 }
 
 export function ArtifactEncryptionNotice({ artifact }: ArtifactEncryptionNoticeProps) {
-  const [isDismissed, setIsDismissed] = useState(false);
+  const [isDismissed, setIsDismissed] = React.useState(false);
   const notice = useArtifactEncryptionNotice(artifact);
 
   // A confirmed encryption needs no action from the user, so it is a badge in the header and not a notice.
