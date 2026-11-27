@@ -43,7 +43,7 @@ The `display` property on attributes and relationships controls whether a field 
 
 The list view has a column only for some kinds of fields, whatever their `display` value:
 
-- Attributes, except some kinds. For example, attributes of kind `TextArea`, `JSON`, `List`, `Any`, `Password` or `HashedPassword` have no column.
+- Attributes, except some kinds. For example, attributes of kind `TextArea`, `Password` or `HashedPassword` have no column. Attributes of kind `JSON`, `List` or `Any` have no default column: a user turns them on in the column picker of an object list.
 - Relationships of kind `Attribute` or `Parent`, and the `parent` relationship of a hierarchical node.
 
 Relationships of kind `Generic`, which is the default kind, have no list view column. They appear in the detail view.

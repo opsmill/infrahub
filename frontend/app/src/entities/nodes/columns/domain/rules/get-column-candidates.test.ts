@@ -62,8 +62,7 @@ describe("getColumnCandidates", () => {
     const schema = generateNodeSchema({
       attributes: [
         generateAttributeSchema({ name: "name", kind: "Text" }),
-        generateAttributeSchema({ name: "config", kind: "JSON" }),
-        generateAttributeSchema({ name: "secret", kind: "Password" }),
+        generateAttributeSchema({ name: "notes", kind: "TextArea" }),
       ],
       relationships: [],
     });
@@ -73,6 +72,32 @@ describe("getColumnCandidates", () => {
 
     // THEN
     expect(fields.map(({ name }) => name)).toEqual(["name"]);
+  });
+
+  it("lists List, JSON and Any attributes as hidden by default, and never a password", () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      attributes: [
+        generateAttributeSchema({ name: "name", kind: "Text" }),
+        generateAttributeSchema({ name: "tags", kind: "List" }),
+        generateAttributeSchema({ name: "config", kind: "JSON" }),
+        generateAttributeSchema({ name: "anything", kind: "Any" }),
+        generateAttributeSchema({ name: "secret", kind: "Password" }),
+        generateAttributeSchema({ name: "hashed", kind: "HashedPassword" }),
+      ],
+      relationships: [],
+    });
+
+    // WHEN
+    const fields = getColumnCandidates(schema, OBJECT_COLUMN_SURFACE);
+
+    // THEN
+    expect(fields.map(({ name, isDefaultVisible }) => ({ name, isDefaultVisible }))).toEqual([
+      { name: "name", isDefaultVisible: true },
+      { name: "tags", isDefaultVisible: false },
+      { name: "config", isDefaultVisible: false },
+      { name: "anything", isDefaultVisible: false },
+    ]);
   });
 
   it("lists a cardinality-one `Attribute` relationship", () => {
