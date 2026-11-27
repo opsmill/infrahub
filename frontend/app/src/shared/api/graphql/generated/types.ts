@@ -211,8 +211,12 @@ export type AnyAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
+  /** @deprecated Owners replace `is_protected`. Use `ownership` to read the owners of the attribute. */
   is_protected: Maybe<Scalars['Boolean']['output']>;
+  /** @deprecated Use `ownership` to read and `owners` to write the owners of the attribute. `owner` gives the own owner of the attribute when it has exactly one, else null. A write of `owner` replaces the own owners of the attribute. */
   owner: Maybe<LineageOwner>;
+  /** Owners of this field of the node, own or inherited */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: Maybe<PermissionType>;
   source: Maybe<LineageSource>;
   /** Date/Time when the attribute was last modified by a user or a system task */
@@ -257,6 +261,7 @@ export type ArtifactEvent = EventNodeInterface & {
 
 export type AttributeInterface = {
   is_default: Maybe<Scalars['Boolean']['output']>;
+  /** @deprecated Owners replace `is_protected`. Use `ownership` to read the owners of the attribute. */
   is_protected: Maybe<Scalars['Boolean']['output']>;
   updated_at: Maybe<Scalars['DateTime']['output']>;
 };
@@ -612,6 +617,7 @@ export type BuiltinIpAddressUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   ip_namespace?: InputMaybe<RelatedNodeInput>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   profiles?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -822,6 +828,7 @@ export type BuiltinIpNamespaceUpdateInput = {
   ip_prefixes?: InputMaybe<Array<InputMaybe<RelatedIpPrefixNodeInput>>>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   profiles?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -1197,6 +1204,7 @@ export type BuiltinIpPrefixUpdateInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Whether this prefix contains other prefixes or IP addresses */
   member_type?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** The IP prefix in CIDR notation */
   prefix?: InputMaybe<TextAttributeUpdate>;
   profiles?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -1321,6 +1329,7 @@ export type BuiltinTagCreateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   profiles?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -1344,6 +1353,7 @@ export type BuiltinTagUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   profiles?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -1361,6 +1371,7 @@ export type BuiltinTagUpsertInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   profiles?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -1384,8 +1395,12 @@ export type CheckboxAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
+  /** @deprecated Owners replace `is_protected`. Use `ownership` to read the owners of the attribute. */
   is_protected: Maybe<Scalars['Boolean']['output']>;
+  /** @deprecated Use `ownership` to read and `owners` to write the owners of the attribute. `owner` gives the own owner of the attribute when it has exactly one, else null. A write of `owner` replaces the own owners of the attribute. */
   owner: Maybe<LineageOwner>;
+  /** Owners of this field of the node, own or inherited */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: Maybe<PermissionType>;
   source: Maybe<LineageSource>;
   /** Date/Time when the attribute was last modified by a user or a system task */
@@ -1396,7 +1411,10 @@ export type CheckboxAttribute = AttributeInterface & {
 
 export type CheckboxAttributeCreate = {
   is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  /** @deprecated Use `ownership` to read and `owners` to write the owners of the attribute. `owner` gives the own owner of the attribute when it has exactly one, else null. A write of `owner` replaces the own owners of the attribute. */
   owner?: InputMaybe<Scalars['String']['input']>;
+  /** Left out: no change. null: inherit. []: no owner. List: own owners */
+  owners?: InputMaybe<Array<MetadataNodeInput>>;
   source?: InputMaybe<Scalars['String']['input']>;
   value?: InputMaybe<Scalars['Boolean']['input']>;
 };
@@ -1404,7 +1422,10 @@ export type CheckboxAttributeCreate = {
 export type CheckboxAttributeUpdate = {
   is_default?: InputMaybe<Scalars['Boolean']['input']>;
   is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  /** @deprecated Use `ownership` to read and `owners` to write the owners of the attribute. `owner` gives the own owner of the attribute when it has exactly one, else null. A write of `owner` replaces the own owners of the attribute. */
   owner?: InputMaybe<Scalars['String']['input']>;
+  /** Left out: no change. null: inherit. []: no owner. List: own owners */
+  owners?: InputMaybe<Array<MetadataNodeInput>>;
   source?: InputMaybe<Scalars['String']['input']>;
   value?: InputMaybe<Scalars['Boolean']['input']>;
 };
@@ -1554,6 +1575,7 @@ export type CoreAccountCreateInput = {
   label?: InputMaybe<TextAttributeCreate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   password?: InputMaybe<TextAttributeCreate>;
   status?: InputMaybe<TextAttributeCreate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -1745,6 +1767,7 @@ export type CoreAccountGroupCreateInput = {
   label?: InputMaybe<TextAttributeCreate>;
   members?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   parent?: InputMaybe<RelatedNodeInput>;
   roles?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   subscribers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -1773,6 +1796,7 @@ export type CoreAccountGroupUpdateInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   members?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   parent?: InputMaybe<RelatedNodeInput>;
   roles?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   subscribers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -1795,6 +1819,7 @@ export type CoreAccountGroupUpsertInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   members?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   parent?: InputMaybe<RelatedNodeInput>;
   roles?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   subscribers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -1952,6 +1977,7 @@ export type CoreAccountRoleCreateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   permissions?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -1975,6 +2001,7 @@ export type CoreAccountRoleUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   permissions?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -1992,6 +2019,7 @@ export type CoreAccountRoleUpsertInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   permissions?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -2012,6 +2040,7 @@ export type CoreAccountUpdateInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   password?: InputMaybe<TextAttributeUpdate>;
   status?: InputMaybe<TextAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -2033,6 +2062,7 @@ export type CoreAccountUpsertInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   password?: InputMaybe<TextAttributeUpdate>;
   status?: InputMaybe<TextAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -2168,6 +2198,7 @@ export type CoreActionUpdateInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Short descriptive name */
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** The triggers that would execute this action once the triggering condition is met */
   triggers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -2396,6 +2427,7 @@ export type CoreArtifactCheckCreateInput = {
   /** Detailed message about the check result */
   message?: InputMaybe<TextAttributeCreate>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Source that created this check */
   origin?: InputMaybe<TextAttributeCreate>;
   /** Severity level of any issues found */
@@ -2441,6 +2473,7 @@ export type CoreArtifactCheckUpdateInput = {
   /** Detailed message about the check result */
   message?: InputMaybe<TextAttributeUpdate>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Source that created this check */
   origin?: InputMaybe<TextAttributeUpdate>;
   /** Severity level of any issues found */
@@ -2480,6 +2513,7 @@ export type CoreArtifactCheckUpsertInput = {
   /** Detailed message about the check result */
   message?: InputMaybe<TextAttributeUpdate>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Source that created this check */
   origin?: InputMaybe<TextAttributeUpdate>;
   /** Severity level of any issues found */
@@ -2506,6 +2540,7 @@ export type CoreArtifactCreateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   object?: InputMaybe<RelatedNodeInput>;
   /** Input parameters used to generate this artifact */
   parameters?: InputMaybe<JsonAttributeCreate>;
@@ -2709,6 +2744,7 @@ export type CoreArtifactDefinitionCreateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** GraphQL query parameters for the transformation */
   parameters?: InputMaybe<JsonAttributeCreate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -2743,6 +2779,7 @@ export type CoreArtifactDefinitionUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** GraphQL query parameters for the transformation */
   parameters?: InputMaybe<JsonAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -2771,6 +2808,7 @@ export type CoreArtifactDefinitionUpsertInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** GraphQL query parameters for the transformation */
   parameters?: InputMaybe<JsonAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -2918,6 +2956,7 @@ export type CoreArtifactTargetUpdateInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
@@ -3045,6 +3084,7 @@ export type CoreArtifactThreadCreateInput = {
   /** Line number in the artifact being discussed */
   line_number?: InputMaybe<NumberAttributeCreate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Whether the thread has been marked as resolved */
   resolved?: InputMaybe<CheckboxAttributeCreate>;
   /** ID of the artifact in the object store */
@@ -3076,6 +3116,7 @@ export type CoreArtifactThreadUpdateInput = {
   /** Line number in the artifact being discussed */
   line_number?: InputMaybe<NumberAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Whether the thread has been marked as resolved */
   resolved?: InputMaybe<CheckboxAttributeUpdate>;
   /** ID of the artifact in the object store */
@@ -3101,6 +3142,7 @@ export type CoreArtifactThreadUpsertInput = {
   /** Line number in the artifact being discussed */
   line_number?: InputMaybe<NumberAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Whether the thread has been marked as resolved */
   resolved?: InputMaybe<CheckboxAttributeUpdate>;
   /** ID of the artifact in the object store */
@@ -3125,6 +3167,7 @@ export type CoreArtifactUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   object?: InputMaybe<RelatedNodeInput>;
   /** Input parameters used to generate this artifact */
   parameters?: InputMaybe<JsonAttributeUpdate>;
@@ -3151,6 +3194,7 @@ export type CoreArtifactUpsertInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   object?: InputMaybe<RelatedNodeInput>;
   /** Input parameters used to generate this artifact */
   parameters?: InputMaybe<JsonAttributeUpdate>;
@@ -3320,6 +3364,7 @@ export type CoreArtifactValidatorCreateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeCreate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   proposed_change?: InputMaybe<RelatedNodeInput>;
   /** Timestamp when the validator started */
   started_at?: InputMaybe<TextAttributeCreate>;
@@ -3352,6 +3397,7 @@ export type CoreArtifactValidatorUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   proposed_change?: InputMaybe<RelatedNodeInput>;
   /** Timestamp when the validator started */
   started_at?: InputMaybe<TextAttributeUpdate>;
@@ -3378,6 +3424,7 @@ export type CoreArtifactValidatorUpsertInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   proposed_change?: InputMaybe<RelatedNodeInput>;
   /** Timestamp when the validator started */
   started_at?: InputMaybe<TextAttributeUpdate>;
@@ -3497,6 +3544,7 @@ export type CoreBasePermissionUpdateInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   roles?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -3593,6 +3641,7 @@ export type CoreChangeCommentCreateInput = {
   change?: InputMaybe<RelatedNodeInput>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Content of the comment */
   text?: InputMaybe<TextAttributeCreate>;
@@ -3616,6 +3665,7 @@ export type CoreChangeCommentUpdateInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Content of the comment */
   text?: InputMaybe<TextAttributeUpdate>;
@@ -3633,6 +3683,7 @@ export type CoreChangeCommentUpsertInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Content of the comment */
   text?: InputMaybe<TextAttributeUpdate>;
@@ -3752,6 +3803,7 @@ export type CoreChangeThreadCreateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeCreate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Whether the thread has been marked as resolved */
   resolved?: InputMaybe<CheckboxAttributeCreate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -3777,6 +3829,7 @@ export type CoreChangeThreadUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Whether the thread has been marked as resolved */
   resolved?: InputMaybe<CheckboxAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -3796,6 +3849,7 @@ export type CoreChangeThreadUpsertInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Whether the thread has been marked as resolved */
   resolved?: InputMaybe<CheckboxAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -4065,6 +4119,7 @@ export type CoreCheckDefinitionCreateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Additional parameters to pass to the check */
   parameters?: InputMaybe<JsonAttributeCreate>;
   query?: InputMaybe<RelatedNodeInput>;
@@ -4100,6 +4155,7 @@ export type CoreCheckDefinitionUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Additional parameters to pass to the check */
   parameters?: InputMaybe<JsonAttributeUpdate>;
   query?: InputMaybe<RelatedNodeInput>;
@@ -4129,6 +4185,7 @@ export type CoreCheckDefinitionUpsertInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Additional parameters to pass to the check */
   parameters?: InputMaybe<JsonAttributeUpdate>;
   query?: InputMaybe<RelatedNodeInput>;
@@ -4162,6 +4219,7 @@ export type CoreCheckUpdateInput = {
   /** Detailed message about the check result */
   message?: InputMaybe<TextAttributeUpdate>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Source that created this check */
   origin?: InputMaybe<TextAttributeUpdate>;
   /** Severity level of any issues found */
@@ -4260,6 +4318,7 @@ export type CoreCommentUpdateInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Content of the comment */
   text?: InputMaybe<TextAttributeUpdate>;
@@ -4359,6 +4418,7 @@ export type CoreCredentialUpdateInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
@@ -4513,6 +4573,7 @@ export type CoreCustomWebhookCreateInput = {
   name?: InputMaybe<TextAttributeCreate>;
   /** Only send node mutation events for nodes of this kind */
   node_kind?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Shared secret key for webhook authentication */
   shared_key?: InputMaybe<TextAttributeCreate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -4552,6 +4613,7 @@ export type CoreCustomWebhookUpdateInput = {
   name?: InputMaybe<TextAttributeUpdate>;
   /** Only send node mutation events for nodes of this kind */
   node_kind?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Shared secret key for webhook authentication */
   shared_key?: InputMaybe<TextAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -4585,6 +4647,7 @@ export type CoreCustomWebhookUpsertInput = {
   name?: InputMaybe<TextAttributeUpdate>;
   /** Only send node mutation events for nodes of this kind */
   node_kind?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Shared secret key for webhook authentication */
   shared_key?: InputMaybe<TextAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -4720,6 +4783,7 @@ export type CoreDataCheckCreateInput = {
   /** Detailed message about the check result */
   message?: InputMaybe<TextAttributeCreate>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Source that created this check */
   origin?: InputMaybe<TextAttributeCreate>;
   /** Severity level of any issues found */
@@ -4761,6 +4825,7 @@ export type CoreDataCheckUpdateInput = {
   /** Detailed message about the check result */
   message?: InputMaybe<TextAttributeUpdate>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Source that created this check */
   origin?: InputMaybe<TextAttributeUpdate>;
   /** Severity level of any issues found */
@@ -4796,6 +4861,7 @@ export type CoreDataCheckUpsertInput = {
   /** Detailed message about the check result */
   message?: InputMaybe<TextAttributeUpdate>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Source that created this check */
   origin?: InputMaybe<TextAttributeUpdate>;
   /** Severity level of any issues found */
@@ -4962,6 +5028,7 @@ export type CoreDataValidatorCreateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeCreate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   proposed_change?: InputMaybe<RelatedNodeInput>;
   /** Timestamp when the validator started */
   started_at?: InputMaybe<TextAttributeCreate>;
@@ -4993,6 +5060,7 @@ export type CoreDataValidatorUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   proposed_change?: InputMaybe<RelatedNodeInput>;
   /** Timestamp when the validator started */
   started_at?: InputMaybe<TextAttributeUpdate>;
@@ -5018,6 +5086,7 @@ export type CoreDataValidatorUpsertInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   proposed_change?: InputMaybe<RelatedNodeInput>;
   /** Timestamp when the validator started */
   started_at?: InputMaybe<TextAttributeUpdate>;
@@ -5128,6 +5197,7 @@ export type CoreEnvKeyValueCreateInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Unique name identifying this key-value pair */
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** The value portion of the key-value pair */
   value?: InputMaybe<TextAttributeCreate>;
@@ -5156,6 +5226,7 @@ export type CoreEnvKeyValueUpdateInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Unique name identifying this key-value pair */
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** The value portion of the key-value pair */
   value?: InputMaybe<TextAttributeUpdate>;
@@ -5178,6 +5249,7 @@ export type CoreEnvKeyValueUpsertInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Unique name identifying this key-value pair */
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** The value portion of the key-value pair */
   value?: InputMaybe<TextAttributeUpdate>;
@@ -5304,6 +5376,7 @@ export type CoreFileCheckCreateInput = {
   /** Detailed message about the check result */
   message?: InputMaybe<TextAttributeCreate>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Source that created this check */
   origin?: InputMaybe<TextAttributeCreate>;
   /** Severity level of any issues found */
@@ -5343,6 +5416,7 @@ export type CoreFileCheckUpdateInput = {
   /** Detailed message about the check result */
   message?: InputMaybe<TextAttributeUpdate>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Source that created this check */
   origin?: InputMaybe<TextAttributeUpdate>;
   /** Severity level of any issues found */
@@ -5376,6 +5450,7 @@ export type CoreFileCheckUpsertInput = {
   /** Detailed message about the check result */
   message?: InputMaybe<TextAttributeUpdate>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Source that created this check */
   origin?: InputMaybe<TextAttributeUpdate>;
   /** Severity level of any issues found */
@@ -5482,6 +5557,7 @@ export type CoreFileObjectUpdateInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
@@ -5612,6 +5688,7 @@ export type CoreFileThreadCreateInput = {
   /** Line number in the file being discussed */
   line_number?: InputMaybe<NumberAttributeCreate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   repository?: InputMaybe<RelatedNodeInput>;
   /** Whether the thread has been marked as resolved */
   resolved?: InputMaybe<CheckboxAttributeCreate>;
@@ -5644,6 +5721,7 @@ export type CoreFileThreadUpdateInput = {
   /** Line number in the file being discussed */
   line_number?: InputMaybe<NumberAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   repository?: InputMaybe<RelatedNodeInput>;
   /** Whether the thread has been marked as resolved */
   resolved?: InputMaybe<CheckboxAttributeUpdate>;
@@ -5670,6 +5748,7 @@ export type CoreFileThreadUpsertInput = {
   /** Line number in the file being discussed */
   line_number?: InputMaybe<NumberAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   repository?: InputMaybe<RelatedNodeInput>;
   /** Whether the thread has been marked as resolved */
   resolved?: InputMaybe<CheckboxAttributeUpdate>;
@@ -5809,6 +5888,7 @@ export type CoreGeneratorActionCreateInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Short descriptive name */
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** The triggers that would execute this action once the triggering condition is met */
   triggers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -5837,6 +5917,7 @@ export type CoreGeneratorActionUpdateInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Short descriptive name */
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** The triggers that would execute this action once the triggering condition is met */
   triggers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -5859,6 +5940,7 @@ export type CoreGeneratorActionUpsertInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Short descriptive name */
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** The triggers that would execute this action once the triggering condition is met */
   triggers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -6022,6 +6104,7 @@ export type CoreGeneratorAwareGroupCreateInput = {
   label?: InputMaybe<TextAttributeCreate>;
   members?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   parent?: InputMaybe<RelatedNodeInput>;
   subscribers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -6049,6 +6132,7 @@ export type CoreGeneratorAwareGroupUpdateInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   members?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   parent?: InputMaybe<RelatedNodeInput>;
   subscribers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -6070,6 +6154,7 @@ export type CoreGeneratorAwareGroupUpsertInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   members?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   parent?: InputMaybe<RelatedNodeInput>;
   subscribers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -6191,6 +6276,7 @@ export type CoreGeneratorCheckCreateInput = {
   /** Detailed message about the check result */
   message?: InputMaybe<TextAttributeCreate>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Source that created this check */
   origin?: InputMaybe<TextAttributeCreate>;
   /** Severity level of any issues found */
@@ -6228,6 +6314,7 @@ export type CoreGeneratorCheckUpdateInput = {
   /** Detailed message about the check result */
   message?: InputMaybe<TextAttributeUpdate>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Source that created this check */
   origin?: InputMaybe<TextAttributeUpdate>;
   /** Severity level of any issues found */
@@ -6259,6 +6346,7 @@ export type CoreGeneratorCheckUpsertInput = {
   /** Detailed message about the check result */
   message?: InputMaybe<TextAttributeUpdate>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Source that created this check */
   origin?: InputMaybe<TextAttributeUpdate>;
   /** Severity level of any issues found */
@@ -6462,6 +6550,7 @@ export type CoreGeneratorDefinitionCreateInput = {
   instances?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** GraphQL query parameters for the generator */
   parameters?: InputMaybe<JsonAttributeCreate>;
   query?: InputMaybe<RelatedNodeInput>;
@@ -6507,6 +6596,7 @@ export type CoreGeneratorDefinitionUpdateInput = {
   instances?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** GraphQL query parameters for the generator */
   parameters?: InputMaybe<JsonAttributeUpdate>;
   query?: InputMaybe<RelatedNodeInput>;
@@ -6546,6 +6636,7 @@ export type CoreGeneratorDefinitionUpsertInput = {
   instances?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** GraphQL query parameters for the generator */
   parameters?: InputMaybe<JsonAttributeUpdate>;
   query?: InputMaybe<RelatedNodeInput>;
@@ -6713,6 +6804,7 @@ export type CoreGeneratorGroupCreateInput = {
   label?: InputMaybe<TextAttributeCreate>;
   members?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   parent?: InputMaybe<RelatedNodeInput>;
   subscribers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -6740,6 +6832,7 @@ export type CoreGeneratorGroupUpdateInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   members?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   parent?: InputMaybe<RelatedNodeInput>;
   subscribers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -6761,6 +6854,7 @@ export type CoreGeneratorGroupUpsertInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   members?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   parent?: InputMaybe<RelatedNodeInput>;
   subscribers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -6861,6 +6955,7 @@ export type CoreGeneratorInstanceCreateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   object?: InputMaybe<RelatedNodeInput>;
   status?: InputMaybe<TextAttributeCreate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -6885,6 +6980,7 @@ export type CoreGeneratorInstanceUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   object?: InputMaybe<RelatedNodeInput>;
   status?: InputMaybe<TextAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -6903,6 +6999,7 @@ export type CoreGeneratorInstanceUpsertInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   object?: InputMaybe<RelatedNodeInput>;
   status?: InputMaybe<TextAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -7068,6 +7165,7 @@ export type CoreGeneratorValidatorCreateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeCreate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   proposed_change?: InputMaybe<RelatedNodeInput>;
   /** Timestamp when the validator started */
   started_at?: InputMaybe<TextAttributeCreate>;
@@ -7100,6 +7198,7 @@ export type CoreGeneratorValidatorUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   proposed_change?: InputMaybe<RelatedNodeInput>;
   /** Timestamp when the validator started */
   started_at?: InputMaybe<TextAttributeUpdate>;
@@ -7126,6 +7225,7 @@ export type CoreGeneratorValidatorUpsertInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   proposed_change?: InputMaybe<RelatedNodeInput>;
   /** Timestamp when the validator started */
   started_at?: InputMaybe<TextAttributeUpdate>;
@@ -7236,6 +7336,7 @@ export type CoreGenericAccountUpdateInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   password?: InputMaybe<TextAttributeUpdate>;
   status?: InputMaybe<TextAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -7656,6 +7757,7 @@ export type CoreGenericRepositoryUpdateInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Unique name identifier for the repository */
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Connectivity status of the repository */
   operational_status?: InputMaybe<TextAttributeUpdate>;
   queries?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -7787,6 +7889,7 @@ export type CoreGlobalPermissionCreateInput = {
   description?: InputMaybe<TextAttributeCreate>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   roles?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -7813,6 +7916,7 @@ export type CoreGlobalPermissionUpdateInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   roles?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -7833,6 +7937,7 @@ export type CoreGlobalPermissionUpsertInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   roles?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -8011,6 +8116,7 @@ export type CoreGraphQlQueryCreateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** The GraphQL query string */
   query?: InputMaybe<TextAttributeCreate>;
   query_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -8186,6 +8292,7 @@ export type CoreGraphQlQueryGroupCreateInput = {
   label?: InputMaybe<TextAttributeCreate>;
   members?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** GraphQL query parameters for the group */
   parameters?: InputMaybe<JsonAttributeCreate>;
   parent?: InputMaybe<RelatedNodeInput>;
@@ -8216,6 +8323,7 @@ export type CoreGraphQlQueryGroupUpdateInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   members?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** GraphQL query parameters for the group */
   parameters?: InputMaybe<JsonAttributeUpdate>;
   parent?: InputMaybe<RelatedNodeInput>;
@@ -8240,6 +8348,7 @@ export type CoreGraphQlQueryGroupUpsertInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   members?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** GraphQL query parameters for the group */
   parameters?: InputMaybe<JsonAttributeUpdate>;
   parent?: InputMaybe<RelatedNodeInput>;
@@ -8262,6 +8371,7 @@ export type CoreGraphQlQueryUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** The GraphQL query string */
   query?: InputMaybe<TextAttributeUpdate>;
   query_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -8285,6 +8395,7 @@ export type CoreGraphQlQueryUpsertInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** The GraphQL query string */
   query?: InputMaybe<TextAttributeUpdate>;
   query_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -8571,6 +8682,7 @@ export type CoreGroupActionCreateInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Short descriptive name */
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** The triggers that would execute this action once the triggering condition is met */
   triggers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -8601,6 +8713,7 @@ export type CoreGroupActionUpdateInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Short descriptive name */
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** The triggers that would execute this action once the triggering condition is met */
   triggers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -8625,6 +8738,7 @@ export type CoreGroupActionUpsertInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Short descriptive name */
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** The triggers that would execute this action once the triggering condition is met */
   triggers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -8744,6 +8858,7 @@ export type CoreGroupTriggerRuleCreateInput = {
   member_update?: InputMaybe<TextAttributeCreate>;
   /** The name of the trigger rule */
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
@@ -8778,6 +8893,7 @@ export type CoreGroupTriggerRuleUpdateInput = {
   member_update?: InputMaybe<TextAttributeUpdate>;
   /** The name of the trigger rule */
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
@@ -8806,6 +8922,7 @@ export type CoreGroupTriggerRuleUpsertInput = {
   member_update?: InputMaybe<TextAttributeUpdate>;
   /** The name of the trigger rule */
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
@@ -8826,6 +8943,7 @@ export type CoreGroupUpdateInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   members?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   parent?: InputMaybe<RelatedNodeInput>;
   subscribers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -8996,6 +9114,7 @@ export type CoreIpAddressPoolCreateInput = {
   ip_namespace?: InputMaybe<RelatedNodeInput>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   resources?: InputMaybe<Array<InputMaybe<RelatedIpPrefixNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -9024,6 +9143,7 @@ export type CoreIpAddressPoolUpdateInput = {
   ip_namespace?: InputMaybe<RelatedNodeInput>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   resources?: InputMaybe<Array<InputMaybe<RelatedIpPrefixNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -9046,6 +9166,7 @@ export type CoreIpAddressPoolUpsertInput = {
   ip_namespace?: InputMaybe<RelatedNodeInput>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   resources?: InputMaybe<Array<InputMaybe<RelatedIpPrefixNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -9138,6 +9259,7 @@ export type CoreIpPoolUpdateInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
@@ -9311,6 +9433,7 @@ export type CoreIpPrefixPoolCreateInput = {
   ip_namespace?: InputMaybe<RelatedNodeInput>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   resources?: InputMaybe<Array<InputMaybe<RelatedIpPrefixNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -9341,6 +9464,7 @@ export type CoreIpPrefixPoolUpdateInput = {
   ip_namespace?: InputMaybe<RelatedNodeInput>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   resources?: InputMaybe<Array<InputMaybe<RelatedIpPrefixNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -9365,6 +9489,7 @@ export type CoreIpPrefixPoolUpsertInput = {
   ip_namespace?: InputMaybe<RelatedNodeInput>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   resources?: InputMaybe<Array<InputMaybe<RelatedIpPrefixNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -9471,6 +9596,7 @@ export type CoreKeyValueUpdateInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Unique name identifying this key-value pair */
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** The value portion of the key-value pair */
   value?: InputMaybe<TextAttributeUpdate>;
@@ -10109,6 +10235,7 @@ export type CoreMenuItemCreateInput = {
   name?: InputMaybe<TextAttributeCreate>;
   /** Namespace for the menu item */
   namespace?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Ordering weight for menu item placement */
   order_weight?: InputMaybe<NumberAttributeCreate>;
   parent?: InputMaybe<RelatedNodeInput>;
@@ -10148,6 +10275,7 @@ export type CoreMenuItemUpdateInput = {
   name?: InputMaybe<TextAttributeUpdate>;
   /** Namespace for the menu item */
   namespace?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Ordering weight for menu item placement */
   order_weight?: InputMaybe<NumberAttributeUpdate>;
   parent?: InputMaybe<RelatedNodeInput>;
@@ -10181,6 +10309,7 @@ export type CoreMenuItemUpsertInput = {
   name?: InputMaybe<TextAttributeUpdate>;
   /** Namespace for the menu item */
   namespace?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Ordering weight for menu item placement */
   order_weight?: InputMaybe<NumberAttributeUpdate>;
   parent?: InputMaybe<RelatedNodeInput>;
@@ -10214,6 +10343,7 @@ export type CoreMenuUpdateInput = {
   name?: InputMaybe<TextAttributeUpdate>;
   /** Namespace for the menu item */
   namespace?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Ordering weight for menu item placement */
   order_weight?: InputMaybe<NumberAttributeUpdate>;
   parent?: InputMaybe<RelatedNodeInput>;
@@ -10402,6 +10532,7 @@ export type CoreNodeTriggerAttributeMatchCreateInput = {
   attribute_name?: InputMaybe<TextAttributeCreate>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** The node trigger that this match is connected to */
   trigger?: InputMaybe<RelatedNodeInput>;
@@ -10432,6 +10563,7 @@ export type CoreNodeTriggerAttributeMatchUpdateInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** The node trigger that this match is connected to */
   trigger?: InputMaybe<RelatedNodeInput>;
@@ -10456,6 +10588,7 @@ export type CoreNodeTriggerAttributeMatchUpsertInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** The node trigger that this match is connected to */
   trigger?: InputMaybe<RelatedNodeInput>;
@@ -10556,6 +10689,7 @@ export type CoreNodeTriggerMatchUpdateInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** The node trigger that this match is connected to */
   trigger?: InputMaybe<RelatedNodeInput>;
@@ -10658,6 +10792,7 @@ export type CoreNodeTriggerRelationshipMatchCreateInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Indicates if the relationship was added or removed or just updated in any way */
   modification_type?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** The node_id of the relationship peer to match against */
   peer?: InputMaybe<TextAttributeCreate>;
   /** The name of the relationship to match against */
@@ -10686,6 +10821,7 @@ export type CoreNodeTriggerRelationshipMatchUpdateInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Indicates if the relationship was added or removed or just updated in any way */
   modification_type?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** The node_id of the relationship peer to match against */
   peer?: InputMaybe<TextAttributeUpdate>;
   /** The name of the relationship to match against */
@@ -10708,6 +10844,7 @@ export type CoreNodeTriggerRelationshipMatchUpsertInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Indicates if the relationship was added or removed or just updated in any way */
   modification_type?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** The node_id of the relationship peer to match against */
   peer?: InputMaybe<TextAttributeUpdate>;
   /** The name of the relationship to match against */
@@ -10845,6 +10982,7 @@ export type CoreNodeTriggerRuleCreateInput = {
   name?: InputMaybe<TextAttributeCreate>;
   /** The kind of node to match against */
   node_kind?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
@@ -10881,6 +11019,7 @@ export type CoreNodeTriggerRuleUpdateInput = {
   name?: InputMaybe<TextAttributeUpdate>;
   /** The kind of node to match against */
   node_kind?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
@@ -10911,6 +11050,7 @@ export type CoreNodeTriggerRuleUpsertInput = {
   name?: InputMaybe<TextAttributeUpdate>;
   /** The kind of node to match against */
   node_kind?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
@@ -10925,6 +11065,7 @@ export type CoreNodeUpdateInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
@@ -11078,6 +11219,7 @@ export type CoreNumberPoolCreateInput = {
   node?: InputMaybe<TextAttributeCreate>;
   /** The attribute of the selected model */
   node_attribute?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   ranges?: InputMaybe<Array<NumberPoolRangeInput>>;
   /**
    * The start of the pool's single range. Null unless the pool holds exactly one range.
@@ -11192,6 +11334,7 @@ export type CoreNumberPoolRangeCreateInput = {
   end?: InputMaybe<NumberAttributeCreate>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   pool?: InputMaybe<RelatedNodeInput>;
   /** The first number of the range, included */
   start?: InputMaybe<NumberAttributeCreate>;
@@ -11219,6 +11362,7 @@ export type CoreNumberPoolRangeUpdateInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   pool?: InputMaybe<RelatedNodeInput>;
   /** The first number of the range, included */
   start?: InputMaybe<NumberAttributeUpdate>;
@@ -11240,6 +11384,7 @@ export type CoreNumberPoolRangeUpsertInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   pool?: InputMaybe<RelatedNodeInput>;
   /** The first number of the range, included */
   start?: InputMaybe<NumberAttributeUpdate>;
@@ -11270,6 +11415,7 @@ export type CoreNumberPoolUpdateInput = {
   node?: InputMaybe<TextAttributeUpdate>;
   /** The attribute of the selected model */
   node_attribute?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   ranges?: InputMaybe<Array<NumberPoolRangeInput>>;
   /**
    * The start of the pool's single range. Null unless the pool holds exactly one range.
@@ -11303,6 +11449,7 @@ export type CoreNumberPoolUpsertInput = {
   node?: InputMaybe<TextAttributeUpdate>;
   /** The attribute of the selected model */
   node_attribute?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   ranges?: InputMaybe<Array<NumberPoolRangeInput>>;
   /**
    * The start of the pool's single range. Null unless the pool holds exactly one range.
@@ -11402,6 +11549,7 @@ export type CoreObjectComponentTemplateUpdateInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Name identifier for the component template */
   template_name?: InputMaybe<TextAttributeUpdate>;
@@ -11533,6 +11681,7 @@ export type CoreObjectPermissionCreateInput = {
   name?: InputMaybe<TextAttributeCreate>;
   /** Namespace of the object type this permission applies to */
   namespace?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   roles?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -11562,6 +11711,7 @@ export type CoreObjectPermissionUpdateInput = {
   name?: InputMaybe<TextAttributeUpdate>;
   /** Namespace of the object type this permission applies to */
   namespace?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   roles?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -11585,6 +11735,7 @@ export type CoreObjectPermissionUpsertInput = {
   name?: InputMaybe<TextAttributeUpdate>;
   /** Namespace of the object type this permission applies to */
   namespace?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   roles?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -11679,6 +11830,7 @@ export type CoreObjectTemplateUpdateInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Unique name identifier for the template */
   template_name?: InputMaybe<TextAttributeUpdate>;
@@ -11800,6 +11952,7 @@ export type CoreObjectThreadCreateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeCreate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Path to the object being discussed */
   object_path?: InputMaybe<TextAttributeCreate>;
   /** Whether the thread has been marked as resolved */
@@ -11827,6 +11980,7 @@ export type CoreObjectThreadUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Path to the object being discussed */
   object_path?: InputMaybe<TextAttributeUpdate>;
   /** Whether the thread has been marked as resolved */
@@ -11848,6 +12002,7 @@ export type CoreObjectThreadUpsertInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Path to the object being discussed */
   object_path?: InputMaybe<TextAttributeUpdate>;
   /** Whether the thread has been marked as resolved */
@@ -11953,6 +12108,7 @@ export type CorePasswordCredentialCreateInput = {
   label?: InputMaybe<TextAttributeCreate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   password?: InputMaybe<TextAttributeCreate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   username?: InputMaybe<TextAttributeCreate>;
@@ -11978,6 +12134,7 @@ export type CorePasswordCredentialUpdateInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   password?: InputMaybe<TextAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   username?: InputMaybe<TextAttributeUpdate>;
@@ -11997,6 +12154,7 @@ export type CorePasswordCredentialUpsertInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   password?: InputMaybe<TextAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   username?: InputMaybe<TextAttributeUpdate>;
@@ -12094,6 +12252,7 @@ export type CoreProfileUpdateInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Unique name identifier for the profile */
   profile_name?: InputMaybe<TextAttributeUpdate>;
   /** Priority level for profile application (lower numbers have higher priority) */
@@ -12421,6 +12580,7 @@ export type CoreProposedChangeCreateInput = {
   is_draft?: InputMaybe<CheckboxAttributeCreate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   reviewers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Name of the branch containing the changes */
   source_branch?: InputMaybe<TextAttributeCreate>;
@@ -12455,6 +12615,7 @@ export type CoreProposedChangeUpdateInput = {
   is_draft?: InputMaybe<CheckboxAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   reviewers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Name of the branch containing the changes */
   source_branch?: InputMaybe<TextAttributeUpdate>;
@@ -12483,6 +12644,7 @@ export type CoreProposedChangeUpsertInput = {
   is_draft?: InputMaybe<CheckboxAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   reviewers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Name of the branch containing the changes */
   source_branch?: InputMaybe<TextAttributeUpdate>;
@@ -12910,6 +13072,7 @@ export type CoreReadOnlyRepositoryCreateInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Unique name identifier for the repository */
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Connectivity status of the repository */
   operational_status?: InputMaybe<TextAttributeCreate>;
   queries?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -12961,6 +13124,7 @@ export type CoreReadOnlyRepositoryUpdateInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Unique name identifier for the repository */
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Connectivity status of the repository */
   operational_status?: InputMaybe<TextAttributeUpdate>;
   queries?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -13006,6 +13170,7 @@ export type CoreReadOnlyRepositoryUpsertInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Unique name identifier for the repository */
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Connectivity status of the repository */
   operational_status?: InputMaybe<TextAttributeUpdate>;
   queries?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -13457,6 +13622,7 @@ export type CoreRepositoryCreateInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Unique name identifier for the repository */
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Connectivity status of the repository */
   operational_status?: InputMaybe<TextAttributeCreate>;
   queries?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -13638,6 +13804,7 @@ export type CoreRepositoryGroupCreateInput = {
   label?: InputMaybe<TextAttributeCreate>;
   members?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   parent?: InputMaybe<RelatedNodeInput>;
   repository?: InputMaybe<RelatedNodeInput>;
   subscribers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -13668,6 +13835,7 @@ export type CoreRepositoryGroupUpdateInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   members?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   parent?: InputMaybe<RelatedNodeInput>;
   repository?: InputMaybe<RelatedNodeInput>;
   subscribers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -13692,6 +13860,7 @@ export type CoreRepositoryGroupUpsertInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   members?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   parent?: InputMaybe<RelatedNodeInput>;
   repository?: InputMaybe<RelatedNodeInput>;
   subscribers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -13730,6 +13899,7 @@ export type CoreRepositoryUpdateInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Unique name identifier for the repository */
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Connectivity status of the repository */
   operational_status?: InputMaybe<TextAttributeUpdate>;
   queries?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -13775,6 +13945,7 @@ export type CoreRepositoryUpsertInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Unique name identifier for the repository */
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Connectivity status of the repository */
   operational_status?: InputMaybe<TextAttributeUpdate>;
   queries?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -13946,6 +14117,7 @@ export type CoreRepositoryValidatorCreateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeCreate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   proposed_change?: InputMaybe<RelatedNodeInput>;
   repository?: InputMaybe<RelatedNodeInput>;
   /** Timestamp when the validator started */
@@ -13978,6 +14150,7 @@ export type CoreRepositoryValidatorUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   proposed_change?: InputMaybe<RelatedNodeInput>;
   repository?: InputMaybe<RelatedNodeInput>;
   /** Timestamp when the validator started */
@@ -14004,6 +14177,7 @@ export type CoreRepositoryValidatorUpsertInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   proposed_change?: InputMaybe<RelatedNodeInput>;
   repository?: InputMaybe<RelatedNodeInput>;
   /** Timestamp when the validator started */
@@ -14105,6 +14279,7 @@ export type CoreResourcePoolUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
@@ -14229,6 +14404,7 @@ export type CoreSchemaCheckCreateInput = {
   /** Detailed message about the check result */
   message?: InputMaybe<TextAttributeCreate>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Source that created this check */
   origin?: InputMaybe<TextAttributeCreate>;
   /** Severity level of any issues found */
@@ -14268,6 +14444,7 @@ export type CoreSchemaCheckUpdateInput = {
   /** Detailed message about the check result */
   message?: InputMaybe<TextAttributeUpdate>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Source that created this check */
   origin?: InputMaybe<TextAttributeUpdate>;
   /** Severity level of any issues found */
@@ -14301,6 +14478,7 @@ export type CoreSchemaCheckUpsertInput = {
   /** Detailed message about the check result */
   message?: InputMaybe<TextAttributeUpdate>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Source that created this check */
   origin?: InputMaybe<TextAttributeUpdate>;
   /** Severity level of any issues found */
@@ -14467,6 +14645,7 @@ export type CoreSchemaValidatorCreateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeCreate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   proposed_change?: InputMaybe<RelatedNodeInput>;
   /** Timestamp when the validator started */
   started_at?: InputMaybe<TextAttributeCreate>;
@@ -14498,6 +14677,7 @@ export type CoreSchemaValidatorUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   proposed_change?: InputMaybe<RelatedNodeInput>;
   /** Timestamp when the validator started */
   started_at?: InputMaybe<TextAttributeUpdate>;
@@ -14523,6 +14703,7 @@ export type CoreSchemaValidatorUpsertInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   proposed_change?: InputMaybe<RelatedNodeInput>;
   /** Timestamp when the validator started */
   started_at?: InputMaybe<TextAttributeUpdate>;
@@ -14644,6 +14825,7 @@ export type CoreStandardCheckCreateInput = {
   /** Detailed message about the check result */
   message?: InputMaybe<TextAttributeCreate>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Source that created this check */
   origin?: InputMaybe<TextAttributeCreate>;
   /** Severity level of any issues found */
@@ -14679,6 +14861,7 @@ export type CoreStandardCheckUpdateInput = {
   /** Detailed message about the check result */
   message?: InputMaybe<TextAttributeUpdate>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Source that created this check */
   origin?: InputMaybe<TextAttributeUpdate>;
   /** Severity level of any issues found */
@@ -14708,6 +14891,7 @@ export type CoreStandardCheckUpsertInput = {
   /** Detailed message about the check result */
   message?: InputMaybe<TextAttributeUpdate>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Source that created this check */
   origin?: InputMaybe<TextAttributeUpdate>;
   /** Severity level of any issues found */
@@ -14874,6 +15058,7 @@ export type CoreStandardGroupCreateInput = {
   label?: InputMaybe<TextAttributeCreate>;
   members?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   parent?: InputMaybe<RelatedNodeInput>;
   subscribers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -14901,6 +15086,7 @@ export type CoreStandardGroupUpdateInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   members?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   parent?: InputMaybe<RelatedNodeInput>;
   subscribers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -14922,6 +15108,7 @@ export type CoreStandardGroupUpsertInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   members?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   parent?: InputMaybe<RelatedNodeInput>;
   subscribers?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -15076,6 +15263,7 @@ export type CoreStandardWebhookCreateInput = {
   name?: InputMaybe<TextAttributeCreate>;
   /** Only send node mutation events for nodes of this kind */
   node_kind?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Shared secret key for webhook authentication */
   shared_key?: InputMaybe<TextAttributeCreate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -15114,6 +15302,7 @@ export type CoreStandardWebhookUpdateInput = {
   name?: InputMaybe<TextAttributeUpdate>;
   /** Only send node mutation events for nodes of this kind */
   node_kind?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Shared secret key for webhook authentication */
   shared_key?: InputMaybe<TextAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -15146,6 +15335,7 @@ export type CoreStandardWebhookUpsertInput = {
   name?: InputMaybe<TextAttributeUpdate>;
   /** Only send node mutation events for nodes of this kind */
   node_kind?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Shared secret key for webhook authentication */
   shared_key?: InputMaybe<TextAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -15257,6 +15447,7 @@ export type CoreStaticKeyValueCreateInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Unique name identifying this key-value pair */
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** The value portion of the key-value pair */
   value?: InputMaybe<TextAttributeCreate>;
@@ -15285,6 +15476,7 @@ export type CoreStaticKeyValueUpdateInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Unique name identifying this key-value pair */
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** The value portion of the key-value pair */
   value?: InputMaybe<TextAttributeUpdate>;
@@ -15307,6 +15499,7 @@ export type CoreStaticKeyValueUpsertInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Unique name identifying this key-value pair */
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** The value portion of the key-value pair */
   value?: InputMaybe<TextAttributeUpdate>;
@@ -15400,6 +15593,7 @@ export type CoreTaskTargetUpdateInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
@@ -15594,6 +15788,7 @@ export type CoreThreadCommentCreate = {
 export type CoreThreadCommentCreateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Content of the comment */
   text?: InputMaybe<TextAttributeCreate>;
@@ -15617,6 +15812,7 @@ export type CoreThreadCommentUpdateInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Content of the comment */
   text?: InputMaybe<TextAttributeUpdate>;
@@ -15634,6 +15830,7 @@ export type CoreThreadCommentUpsertInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Content of the comment */
   text?: InputMaybe<TextAttributeUpdate>;
@@ -15654,6 +15851,7 @@ export type CoreThreadUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Whether the thread has been marked as resolved */
   resolved?: InputMaybe<CheckboxAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -15840,6 +16038,7 @@ export type CoreTransformJinja2CreateInput = {
   label?: InputMaybe<TextAttributeCreate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   query?: InputMaybe<RelatedNodeInput>;
   repository?: InputMaybe<RelatedNodeInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -15877,6 +16076,7 @@ export type CoreTransformJinja2UpdateInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   query?: InputMaybe<RelatedNodeInput>;
   repository?: InputMaybe<RelatedNodeInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -15908,6 +16108,7 @@ export type CoreTransformJinja2UpsertInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   query?: InputMaybe<RelatedNodeInput>;
   repository?: InputMaybe<RelatedNodeInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -16109,6 +16310,7 @@ export type CoreTransformPythonCreateInput = {
   label?: InputMaybe<TextAttributeCreate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   query?: InputMaybe<RelatedNodeInput>;
   repository?: InputMaybe<RelatedNodeInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -16150,6 +16352,7 @@ export type CoreTransformPythonUpdateInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   query?: InputMaybe<RelatedNodeInput>;
   repository?: InputMaybe<RelatedNodeInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -16185,6 +16388,7 @@ export type CoreTransformPythonUpsertInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   query?: InputMaybe<RelatedNodeInput>;
   repository?: InputMaybe<RelatedNodeInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -16372,6 +16576,7 @@ export type CoreTransformationUpdateInput = {
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   query?: InputMaybe<RelatedNodeInput>;
   repository?: InputMaybe<RelatedNodeInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -16487,6 +16692,7 @@ export type CoreTriggerRuleUpdateInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** The name of the trigger rule */
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
@@ -16651,6 +16857,7 @@ export type CoreUserValidatorCreateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeCreate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   proposed_change?: InputMaybe<RelatedNodeInput>;
   repository?: InputMaybe<RelatedNodeInput>;
   /** Timestamp when the validator started */
@@ -16684,6 +16891,7 @@ export type CoreUserValidatorUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   proposed_change?: InputMaybe<RelatedNodeInput>;
   repository?: InputMaybe<RelatedNodeInput>;
   /** Timestamp when the validator started */
@@ -16711,6 +16919,7 @@ export type CoreUserValidatorUpsertInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   proposed_change?: InputMaybe<RelatedNodeInput>;
   repository?: InputMaybe<RelatedNodeInput>;
   /** Timestamp when the validator started */
@@ -16878,6 +17087,7 @@ export type CoreValidatorUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   proposed_change?: InputMaybe<RelatedNodeInput>;
   /** Timestamp when the validator started */
   started_at?: InputMaybe<TextAttributeUpdate>;
@@ -17034,6 +17244,7 @@ export type CoreWebhookUpdateInput = {
   name?: InputMaybe<TextAttributeUpdate>;
   /** Only send node mutation events for nodes of this kind */
   node_kind?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Target URL to send webhook requests to */
   url?: InputMaybe<TextAttributeUpdate>;
@@ -17133,6 +17344,7 @@ export type CoreWeightedPoolResourceUpdateInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
@@ -17307,9 +17519,13 @@ export type Dropdown = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
+  /** @deprecated Owners replace `is_protected`. Use `ownership` to read the owners of the attribute. */
   is_protected: Maybe<Scalars['Boolean']['output']>;
   label: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `ownership` to read and `owners` to write the owners of the attribute. `owner` gives the own owner of the attribute when it has exactly one, else null. A write of `owner` replaces the own owners of the attribute. */
   owner: Maybe<LineageOwner>;
+  /** Owners of this field of the node, own or inherited */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: Maybe<PermissionType>;
   source: Maybe<LineageSource>;
   /** Date/Time when the attribute was last modified by a user or a system task */
@@ -18088,6 +18304,13 @@ export type Events = {
   edges: Array<EventNodes>;
 };
 
+export type FieldOwnersInput = {
+  /** Name of an attribute or a relationship */
+  field: Scalars['String']['input'];
+  /** Left out: no change. null: inherit. []: no owner. List: own owners */
+  owners?: InputMaybe<Array<MetadataNodeInput>>;
+};
+
 export type FieldsMapping = {
   __typename: 'FieldsMapping';
   mapping: Scalars['GenericScalar']['output'];
@@ -18297,8 +18520,12 @@ export type IpAddress = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
+  /** @deprecated Owners replace `is_protected`. Use `ownership` to read the owners of the attribute. */
   is_protected: Maybe<Scalars['Boolean']['output']>;
+  /** @deprecated Use `ownership` to read and `owners` to write the owners of the attribute. `owner` gives the own owner of the attribute when it has exactly one, else null. A write of `owner` replaces the own owners of the attribute. */
   owner: Maybe<LineageOwner>;
+  /** Owners of this field of the node, own or inherited */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: Maybe<PermissionType>;
   source: Maybe<LineageSource>;
   /** Date/Time when the attribute was last modified by a user or a system task */
@@ -18350,9 +18577,13 @@ export type IpHost = AttributeInterface & {
   ip: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
+  /** @deprecated Owners replace `is_protected`. Use `ownership` to read the owners of the attribute. */
   is_protected: Maybe<Scalars['Boolean']['output']>;
   netmask: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `ownership` to read and `owners` to write the owners of the attribute. `owner` gives the own owner of the attribute when it has exactly one, else null. A write of `owner` replaces the own owners of the attribute. */
   owner: Maybe<LineageOwner>;
+  /** Owners of this field of the node, own or inherited */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: Maybe<PermissionType>;
   prefixlen: Maybe<Scalars['Int']['output']>;
   source: Maybe<LineageSource>;
@@ -18373,10 +18604,14 @@ export type IpNetwork = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
+  /** @deprecated Owners replace `is_protected`. Use `ownership` to read the owners of the attribute. */
   is_protected: Maybe<Scalars['Boolean']['output']>;
   netmask: Maybe<Scalars['String']['output']>;
   num_addresses: Maybe<Scalars['Int']['output']>;
+  /** @deprecated Use `ownership` to read and `owners` to write the owners of the attribute. `owner` gives the own owner of the attribute when it has exactly one, else null. A write of `owner` replaces the own owners of the attribute. */
   owner: Maybe<LineageOwner>;
+  /** Owners of this field of the node, own or inherited */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: Maybe<PermissionType>;
   prefixlen: Maybe<Scalars['Int']['output']>;
   source: Maybe<LineageSource>;
@@ -18568,10 +18803,26 @@ export type InfrahubDisplayLabelUpdateInput = {
   value: Scalars['String']['input'];
 };
 
+export type InfrahubFieldOwnership = {
+  __typename: 'InfrahubFieldOwnership';
+  field: Scalars['String']['output'];
+  ownership: InfrahubOwnership;
+};
+
 export type InfrahubHfidUpdateInput = {
   id: Scalars['String']['input'];
   kind: Scalars['String']['input'];
   value: Array<Scalars['String']['input']>;
+};
+
+/** A node that metadata refers to: an owner, a source, or the origin of owners. */
+export type InfrahubMetadataNode = {
+  __typename: 'InfrahubMetadataNode';
+  display_label: Maybe<Scalars['String']['output']>;
+  hfid: Maybe<Array<Scalars['String']['output']>>;
+  id: Scalars['String']['output'];
+  is_deleted: Scalars['Boolean']['output'];
+  kind: Maybe<Scalars['String']['output']>;
 };
 
 export type InfrahubMutatedAttribute = {
@@ -18595,8 +18846,22 @@ export type InfrahubNodeMetadata = {
   __typename: 'InfrahubNodeMetadata';
   created_at: Maybe<Scalars['DateTime']['output']>;
   created_by: Maybe<CoreGenericAccount>;
+  /** Owners of the node, own or inherited */
+  ownership: Maybe<InfrahubOwnership>;
+  /** Sources of the node. A deleted source has is_deleted: true */
+  sources: Array<InfrahubMetadataNode>;
+  /** Profiles and object templates only: the owners given to fields of their nodes. Without `fields`, all attributes and relationships of the nodes. A name in `fields` that is not an attribute or a relationship of the nodes is refused */
+  target_field_ownership: Maybe<Array<InfrahubFieldOwnership>>;
+  /** Profiles and object templates only: the owners given to their nodes */
+  target_ownership: Maybe<InfrahubOwnership>;
   updated_at: Maybe<Scalars['DateTime']['output']>;
   updated_by: Maybe<CoreGenericAccount>;
+};
+
+
+/** Defines node metadata information */
+export type InfrahubNodeMetadataTarget_Field_OwnershipArgs = {
+  fields?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
 export type InfrahubNodeMetadataOrder = {
@@ -18604,6 +18869,19 @@ export type InfrahubNodeMetadataOrder = {
   created_at?: InputMaybe<OrderDirection>;
   /** Order by updated timestamp */
   updated_at?: InputMaybe<OrderDirection>;
+};
+
+/** Owner state of a node or a field, and the owners that apply to it. */
+export type InfrahubOwnership = {
+  __typename: 'InfrahubOwnership';
+  /** Where the owners that apply come from. Null when nothing applies */
+  origin: Maybe<OwnerOrigin>;
+  /** The profile, template, parent or node that holds the owners */
+  origin_node: Maybe<InfrahubMetadataNode>;
+  /** Owners that apply, own or inherited. A deleted owner has is_deleted: true */
+  owners: Array<InfrahubMetadataNode>;
+  /** What a user set on the item itself. A copy from an object template is INHERIT */
+  state: OwnerState;
 };
 
 export type InfrahubProfilesRefresh = {
@@ -19791,6 +20069,7 @@ export type IpamNamespaceCreateInput = {
   ip_prefixes?: InputMaybe<Array<InputMaybe<RelatedIpPrefixNodeInput>>>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   profiles?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -19816,6 +20095,7 @@ export type IpamNamespaceUpdateInput = {
   ip_prefixes?: InputMaybe<Array<InputMaybe<RelatedIpPrefixNodeInput>>>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   profiles?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -19835,6 +20115,7 @@ export type IpamNamespaceUpsertInput = {
   ip_prefixes?: InputMaybe<Array<InputMaybe<RelatedIpPrefixNodeInput>>>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   name?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   profiles?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
@@ -19845,8 +20126,12 @@ export type JsonAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
+  /** @deprecated Owners replace `is_protected`. Use `ownership` to read the owners of the attribute. */
   is_protected: Maybe<Scalars['Boolean']['output']>;
+  /** @deprecated Use `ownership` to read and `owners` to write the owners of the attribute. `owner` gives the own owner of the attribute when it has exactly one, else null. A write of `owner` replaces the own owners of the attribute. */
   owner: Maybe<LineageOwner>;
+  /** Owners of this field of the node, own or inherited */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: Maybe<PermissionType>;
   source: Maybe<LineageSource>;
   /** Date/Time when the attribute was last modified by a user or a system task */
@@ -19857,7 +20142,10 @@ export type JsonAttribute = AttributeInterface & {
 
 export type JsonAttributeCreate = {
   is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  /** @deprecated Use `ownership` to read and `owners` to write the owners of the attribute. `owner` gives the own owner of the attribute when it has exactly one, else null. A write of `owner` replaces the own owners of the attribute. */
   owner?: InputMaybe<Scalars['String']['input']>;
+  /** Left out: no change. null: inherit. []: no owner. List: own owners */
+  owners?: InputMaybe<Array<MetadataNodeInput>>;
   source?: InputMaybe<Scalars['String']['input']>;
   value?: InputMaybe<Scalars['GenericScalar']['input']>;
 };
@@ -19865,7 +20153,10 @@ export type JsonAttributeCreate = {
 export type JsonAttributeUpdate = {
   is_default?: InputMaybe<Scalars['Boolean']['input']>;
   is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  /** @deprecated Use `ownership` to read and `owners` to write the owners of the attribute. `owner` gives the own owner of the attribute when it has exactly one, else null. A write of `owner` replaces the own owners of the attribute. */
   owner?: InputMaybe<Scalars['String']['input']>;
+  /** Left out: no change. null: inherit. []: no owner. List: own owners */
+  owners?: InputMaybe<Array<MetadataNodeInput>>;
   source?: InputMaybe<Scalars['String']['input']>;
   value?: InputMaybe<Scalars['GenericScalar']['input']>;
 };
@@ -19894,8 +20185,12 @@ export type ListAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
+  /** @deprecated Owners replace `is_protected`. Use `ownership` to read the owners of the attribute. */
   is_protected: Maybe<Scalars['Boolean']['output']>;
+  /** @deprecated Use `ownership` to read and `owners` to write the owners of the attribute. `owner` gives the own owner of the attribute when it has exactly one, else null. A write of `owner` replaces the own owners of the attribute. */
   owner: Maybe<LineageOwner>;
+  /** Owners of this field of the node, own or inherited */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: Maybe<PermissionType>;
   source: Maybe<LineageSource>;
   /** Date/Time when the attribute was last modified by a user or a system task */
@@ -19906,7 +20201,10 @@ export type ListAttribute = AttributeInterface & {
 
 export type ListAttributeCreate = {
   is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  /** @deprecated Use `ownership` to read and `owners` to write the owners of the attribute. `owner` gives the own owner of the attribute when it has exactly one, else null. A write of `owner` replaces the own owners of the attribute. */
   owner?: InputMaybe<Scalars['String']['input']>;
+  /** Left out: no change. null: inherit. []: no owner. List: own owners */
+  owners?: InputMaybe<Array<MetadataNodeInput>>;
   source?: InputMaybe<Scalars['String']['input']>;
   value?: InputMaybe<Scalars['GenericScalar']['input']>;
 };
@@ -19914,7 +20212,10 @@ export type ListAttributeCreate = {
 export type ListAttributeUpdate = {
   is_default?: InputMaybe<Scalars['Boolean']['input']>;
   is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  /** @deprecated Use `ownership` to read and `owners` to write the owners of the attribute. `owner` gives the own owner of the attribute when it has exactly one, else null. A write of `owner` replaces the own owners of the attribute. */
   owner?: InputMaybe<Scalars['String']['input']>;
+  /** Left out: no change. null: inherit. []: no owner. List: own owners */
+  owners?: InputMaybe<Array<MetadataNodeInput>>;
   source?: InputMaybe<Scalars['String']['input']>;
   value?: InputMaybe<Scalars['GenericScalar']['input']>;
 };
@@ -19933,9 +20234,13 @@ export type MacAddress = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
+  /** @deprecated Owners replace `is_protected`. Use `ownership` to read the owners of the attribute. */
   is_protected: Maybe<Scalars['Boolean']['output']>;
   oui: Maybe<Scalars['String']['output']>;
+  /** @deprecated Use `ownership` to read and `owners` to write the owners of the attribute. `owner` gives the own owner of the attribute when it has exactly one, else null. A write of `owner` replaces the own owners of the attribute. */
   owner: Maybe<LineageOwner>;
+  /** Owners of this field of the node, own or inherited */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: Maybe<PermissionType>;
   /** Format used by UNIX based systems */
   semicolon_notation: Maybe<Scalars['String']['output']>;
@@ -19947,6 +20252,15 @@ export type MacAddress = AttributeInterface & {
   updated_by: Maybe<CoreGenericAccount>;
   value: Maybe<Scalars['String']['output']>;
   version: Maybe<Scalars['Int']['output']>;
+};
+
+/** An owner or a source. Give `id`, `hfid` with `kind`, or `name` with `kind`. */
+export type MetadataNodeInput = {
+  hfid?: InputMaybe<Array<Scalars['String']['input']>>;
+  id?: InputMaybe<Scalars['String']['input']>;
+  kind?: InputMaybe<Scalars['String']['input']>;
+  /** The HFID of a kind that has one HFID value. Give it with `kind` */
+  name?: InputMaybe<Scalars['String']['input']>;
 };
 
 /**
@@ -22437,6 +22751,8 @@ export type NestedEdgedBuiltinIpAddress = {
   __typename: 'NestedEdgedBuiltinIPAddress';
   node: Maybe<BuiltinIpAddress>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22446,6 +22762,8 @@ export type NestedEdgedBuiltinIpNamespace = {
   __typename: 'NestedEdgedBuiltinIPNamespace';
   node: Maybe<BuiltinIpNamespace>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22455,6 +22773,8 @@ export type NestedEdgedBuiltinIpPrefix = {
   __typename: 'NestedEdgedBuiltinIPPrefix';
   node: Maybe<BuiltinIpPrefix>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22464,6 +22784,8 @@ export type NestedEdgedBuiltinTag = {
   __typename: 'NestedEdgedBuiltinTag';
   node: Maybe<BuiltinTag>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22473,6 +22795,8 @@ export type NestedEdgedCoreAccount = {
   __typename: 'NestedEdgedCoreAccount';
   node: Maybe<CoreAccount>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22482,6 +22806,8 @@ export type NestedEdgedCoreAccountGroup = {
   __typename: 'NestedEdgedCoreAccountGroup';
   node: Maybe<CoreAccountGroup>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22491,6 +22817,8 @@ export type NestedEdgedCoreAccountRole = {
   __typename: 'NestedEdgedCoreAccountRole';
   node: Maybe<CoreAccountRole>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22500,6 +22828,8 @@ export type NestedEdgedCoreAction = {
   __typename: 'NestedEdgedCoreAction';
   node: Maybe<CoreAction>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22509,6 +22839,8 @@ export type NestedEdgedCoreArtifact = {
   __typename: 'NestedEdgedCoreArtifact';
   node: Maybe<CoreArtifact>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22518,6 +22850,8 @@ export type NestedEdgedCoreArtifactCheck = {
   __typename: 'NestedEdgedCoreArtifactCheck';
   node: Maybe<CoreArtifactCheck>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22527,6 +22861,8 @@ export type NestedEdgedCoreArtifactDefinition = {
   __typename: 'NestedEdgedCoreArtifactDefinition';
   node: Maybe<CoreArtifactDefinition>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22536,6 +22872,8 @@ export type NestedEdgedCoreArtifactTarget = {
   __typename: 'NestedEdgedCoreArtifactTarget';
   node: Maybe<CoreArtifactTarget>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22545,6 +22883,8 @@ export type NestedEdgedCoreArtifactThread = {
   __typename: 'NestedEdgedCoreArtifactThread';
   node: Maybe<CoreArtifactThread>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22554,6 +22894,8 @@ export type NestedEdgedCoreArtifactValidator = {
   __typename: 'NestedEdgedCoreArtifactValidator';
   node: Maybe<CoreArtifactValidator>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22563,6 +22905,8 @@ export type NestedEdgedCoreBasePermission = {
   __typename: 'NestedEdgedCoreBasePermission';
   node: Maybe<CoreBasePermission>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22572,6 +22916,8 @@ export type NestedEdgedCoreChangeComment = {
   __typename: 'NestedEdgedCoreChangeComment';
   node: Maybe<CoreChangeComment>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22581,6 +22927,8 @@ export type NestedEdgedCoreChangeThread = {
   __typename: 'NestedEdgedCoreChangeThread';
   node: Maybe<CoreChangeThread>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22590,6 +22938,8 @@ export type NestedEdgedCoreCheck = {
   __typename: 'NestedEdgedCoreCheck';
   node: Maybe<CoreCheck>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22599,6 +22949,8 @@ export type NestedEdgedCoreCheckDefinition = {
   __typename: 'NestedEdgedCoreCheckDefinition';
   node: Maybe<CoreCheckDefinition>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22608,6 +22960,8 @@ export type NestedEdgedCoreComment = {
   __typename: 'NestedEdgedCoreComment';
   node: Maybe<CoreComment>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22617,6 +22971,8 @@ export type NestedEdgedCoreCredential = {
   __typename: 'NestedEdgedCoreCredential';
   node: Maybe<CoreCredential>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22626,6 +22982,8 @@ export type NestedEdgedCoreCustomWebhook = {
   __typename: 'NestedEdgedCoreCustomWebhook';
   node: Maybe<CoreCustomWebhook>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22635,6 +22993,8 @@ export type NestedEdgedCoreDataCheck = {
   __typename: 'NestedEdgedCoreDataCheck';
   node: Maybe<CoreDataCheck>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22644,6 +23004,8 @@ export type NestedEdgedCoreDataValidator = {
   __typename: 'NestedEdgedCoreDataValidator';
   node: Maybe<CoreDataValidator>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22653,6 +23015,8 @@ export type NestedEdgedCoreEnvKeyValue = {
   __typename: 'NestedEdgedCoreEnvKeyValue';
   node: Maybe<CoreEnvKeyValue>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22662,6 +23026,8 @@ export type NestedEdgedCoreFileCheck = {
   __typename: 'NestedEdgedCoreFileCheck';
   node: Maybe<CoreFileCheck>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22671,6 +23037,8 @@ export type NestedEdgedCoreFileObject = {
   __typename: 'NestedEdgedCoreFileObject';
   node: Maybe<CoreFileObject>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22680,6 +23048,8 @@ export type NestedEdgedCoreFileThread = {
   __typename: 'NestedEdgedCoreFileThread';
   node: Maybe<CoreFileThread>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22689,6 +23059,8 @@ export type NestedEdgedCoreGeneratorAction = {
   __typename: 'NestedEdgedCoreGeneratorAction';
   node: Maybe<CoreGeneratorAction>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22698,6 +23070,8 @@ export type NestedEdgedCoreGeneratorAwareGroup = {
   __typename: 'NestedEdgedCoreGeneratorAwareGroup';
   node: Maybe<CoreGeneratorAwareGroup>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22707,6 +23081,8 @@ export type NestedEdgedCoreGeneratorCheck = {
   __typename: 'NestedEdgedCoreGeneratorCheck';
   node: Maybe<CoreGeneratorCheck>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22716,6 +23092,8 @@ export type NestedEdgedCoreGeneratorDefinition = {
   __typename: 'NestedEdgedCoreGeneratorDefinition';
   node: Maybe<CoreGeneratorDefinition>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22725,6 +23103,8 @@ export type NestedEdgedCoreGeneratorGroup = {
   __typename: 'NestedEdgedCoreGeneratorGroup';
   node: Maybe<CoreGeneratorGroup>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22734,6 +23114,8 @@ export type NestedEdgedCoreGeneratorInstance = {
   __typename: 'NestedEdgedCoreGeneratorInstance';
   node: Maybe<CoreGeneratorInstance>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22743,6 +23125,8 @@ export type NestedEdgedCoreGeneratorValidator = {
   __typename: 'NestedEdgedCoreGeneratorValidator';
   node: Maybe<CoreGeneratorValidator>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22752,6 +23136,8 @@ export type NestedEdgedCoreGenericAccount = {
   __typename: 'NestedEdgedCoreGenericAccount';
   node: Maybe<CoreGenericAccount>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22761,6 +23147,8 @@ export type NestedEdgedCoreGenericRepository = {
   __typename: 'NestedEdgedCoreGenericRepository';
   node: Maybe<CoreGenericRepository>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22770,6 +23158,8 @@ export type NestedEdgedCoreGlobalPermission = {
   __typename: 'NestedEdgedCoreGlobalPermission';
   node: Maybe<CoreGlobalPermission>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22779,6 +23169,8 @@ export type NestedEdgedCoreGraphQlQuery = {
   __typename: 'NestedEdgedCoreGraphQLQuery';
   node: Maybe<CoreGraphQlQuery>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22788,6 +23180,8 @@ export type NestedEdgedCoreGraphQlQueryGroup = {
   __typename: 'NestedEdgedCoreGraphQLQueryGroup';
   node: Maybe<CoreGraphQlQueryGroup>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22797,6 +23191,8 @@ export type NestedEdgedCoreGroup = {
   __typename: 'NestedEdgedCoreGroup';
   node: Maybe<CoreGroup>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22806,6 +23202,8 @@ export type NestedEdgedCoreGroupAction = {
   __typename: 'NestedEdgedCoreGroupAction';
   node: Maybe<CoreGroupAction>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22815,6 +23213,8 @@ export type NestedEdgedCoreGroupTriggerRule = {
   __typename: 'NestedEdgedCoreGroupTriggerRule';
   node: Maybe<CoreGroupTriggerRule>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22824,6 +23224,8 @@ export type NestedEdgedCoreIpAddressPool = {
   __typename: 'NestedEdgedCoreIPAddressPool';
   node: Maybe<CoreIpAddressPool>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22833,6 +23235,8 @@ export type NestedEdgedCoreIpPool = {
   __typename: 'NestedEdgedCoreIPPool';
   node: Maybe<CoreIpPool>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22842,6 +23246,8 @@ export type NestedEdgedCoreIpPrefixPool = {
   __typename: 'NestedEdgedCoreIPPrefixPool';
   node: Maybe<CoreIpPrefixPool>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22851,6 +23257,8 @@ export type NestedEdgedCoreKeyValue = {
   __typename: 'NestedEdgedCoreKeyValue';
   node: Maybe<CoreKeyValue>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22860,6 +23268,8 @@ export type NestedEdgedCoreMenu = {
   __typename: 'NestedEdgedCoreMenu';
   node: Maybe<CoreMenu>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22869,6 +23279,8 @@ export type NestedEdgedCoreMenuItem = {
   __typename: 'NestedEdgedCoreMenuItem';
   node: Maybe<CoreMenuItem>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22878,6 +23290,8 @@ export type NestedEdgedCoreNode = {
   __typename: 'NestedEdgedCoreNode';
   node: Maybe<CoreNode>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22887,6 +23301,8 @@ export type NestedEdgedCoreNodeTriggerAttributeMatch = {
   __typename: 'NestedEdgedCoreNodeTriggerAttributeMatch';
   node: Maybe<CoreNodeTriggerAttributeMatch>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22896,6 +23312,8 @@ export type NestedEdgedCoreNodeTriggerMatch = {
   __typename: 'NestedEdgedCoreNodeTriggerMatch';
   node: Maybe<CoreNodeTriggerMatch>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22905,6 +23323,8 @@ export type NestedEdgedCoreNodeTriggerRelationshipMatch = {
   __typename: 'NestedEdgedCoreNodeTriggerRelationshipMatch';
   node: Maybe<CoreNodeTriggerRelationshipMatch>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22914,6 +23334,8 @@ export type NestedEdgedCoreNodeTriggerRule = {
   __typename: 'NestedEdgedCoreNodeTriggerRule';
   node: Maybe<CoreNodeTriggerRule>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22923,6 +23345,8 @@ export type NestedEdgedCoreNumberPool = {
   __typename: 'NestedEdgedCoreNumberPool';
   node: Maybe<CoreNumberPool>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22932,6 +23356,8 @@ export type NestedEdgedCoreNumberPoolRange = {
   __typename: 'NestedEdgedCoreNumberPoolRange';
   node: Maybe<CoreNumberPoolRange>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22941,6 +23367,8 @@ export type NestedEdgedCoreObjectComponentTemplate = {
   __typename: 'NestedEdgedCoreObjectComponentTemplate';
   node: Maybe<CoreObjectComponentTemplate>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22950,6 +23378,8 @@ export type NestedEdgedCoreObjectPermission = {
   __typename: 'NestedEdgedCoreObjectPermission';
   node: Maybe<CoreObjectPermission>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22959,6 +23389,8 @@ export type NestedEdgedCoreObjectTemplate = {
   __typename: 'NestedEdgedCoreObjectTemplate';
   node: Maybe<CoreObjectTemplate>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22968,6 +23400,8 @@ export type NestedEdgedCoreObjectThread = {
   __typename: 'NestedEdgedCoreObjectThread';
   node: Maybe<CoreObjectThread>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22977,6 +23411,8 @@ export type NestedEdgedCorePasswordCredential = {
   __typename: 'NestedEdgedCorePasswordCredential';
   node: Maybe<CorePasswordCredential>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22986,6 +23422,8 @@ export type NestedEdgedCoreProfile = {
   __typename: 'NestedEdgedCoreProfile';
   node: Maybe<CoreProfile>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -22995,6 +23433,8 @@ export type NestedEdgedCoreProposedChange = {
   __typename: 'NestedEdgedCoreProposedChange';
   node: Maybe<CoreProposedChange>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23004,6 +23444,8 @@ export type NestedEdgedCoreReadOnlyRepository = {
   __typename: 'NestedEdgedCoreReadOnlyRepository';
   node: Maybe<CoreReadOnlyRepository>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23013,6 +23455,8 @@ export type NestedEdgedCoreRepository = {
   __typename: 'NestedEdgedCoreRepository';
   node: Maybe<CoreRepository>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23022,6 +23466,8 @@ export type NestedEdgedCoreRepositoryGroup = {
   __typename: 'NestedEdgedCoreRepositoryGroup';
   node: Maybe<CoreRepositoryGroup>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23031,6 +23477,8 @@ export type NestedEdgedCoreRepositoryValidator = {
   __typename: 'NestedEdgedCoreRepositoryValidator';
   node: Maybe<CoreRepositoryValidator>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23040,6 +23488,8 @@ export type NestedEdgedCoreResourcePool = {
   __typename: 'NestedEdgedCoreResourcePool';
   node: Maybe<CoreResourcePool>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23049,6 +23499,8 @@ export type NestedEdgedCoreSchemaCheck = {
   __typename: 'NestedEdgedCoreSchemaCheck';
   node: Maybe<CoreSchemaCheck>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23058,6 +23510,8 @@ export type NestedEdgedCoreSchemaValidator = {
   __typename: 'NestedEdgedCoreSchemaValidator';
   node: Maybe<CoreSchemaValidator>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23067,6 +23521,8 @@ export type NestedEdgedCoreStandardCheck = {
   __typename: 'NestedEdgedCoreStandardCheck';
   node: Maybe<CoreStandardCheck>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23076,6 +23532,8 @@ export type NestedEdgedCoreStandardGroup = {
   __typename: 'NestedEdgedCoreStandardGroup';
   node: Maybe<CoreStandardGroup>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23085,6 +23543,8 @@ export type NestedEdgedCoreStandardWebhook = {
   __typename: 'NestedEdgedCoreStandardWebhook';
   node: Maybe<CoreStandardWebhook>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23094,6 +23554,8 @@ export type NestedEdgedCoreStaticKeyValue = {
   __typename: 'NestedEdgedCoreStaticKeyValue';
   node: Maybe<CoreStaticKeyValue>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23103,6 +23565,8 @@ export type NestedEdgedCoreTaskTarget = {
   __typename: 'NestedEdgedCoreTaskTarget';
   node: Maybe<CoreTaskTarget>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23112,6 +23576,8 @@ export type NestedEdgedCoreThread = {
   __typename: 'NestedEdgedCoreThread';
   node: Maybe<CoreThread>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23121,6 +23587,8 @@ export type NestedEdgedCoreThreadComment = {
   __typename: 'NestedEdgedCoreThreadComment';
   node: Maybe<CoreThreadComment>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23130,6 +23598,8 @@ export type NestedEdgedCoreTransformJinja2 = {
   __typename: 'NestedEdgedCoreTransformJinja2';
   node: Maybe<CoreTransformJinja2>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23139,6 +23609,8 @@ export type NestedEdgedCoreTransformPython = {
   __typename: 'NestedEdgedCoreTransformPython';
   node: Maybe<CoreTransformPython>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23148,6 +23620,8 @@ export type NestedEdgedCoreTransformation = {
   __typename: 'NestedEdgedCoreTransformation';
   node: Maybe<CoreTransformation>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23157,6 +23631,8 @@ export type NestedEdgedCoreTriggerRule = {
   __typename: 'NestedEdgedCoreTriggerRule';
   node: Maybe<CoreTriggerRule>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23166,6 +23642,8 @@ export type NestedEdgedCoreUserValidator = {
   __typename: 'NestedEdgedCoreUserValidator';
   node: Maybe<CoreUserValidator>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23175,6 +23653,8 @@ export type NestedEdgedCoreValidator = {
   __typename: 'NestedEdgedCoreValidator';
   node: Maybe<CoreValidator>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23184,6 +23664,8 @@ export type NestedEdgedCoreWebhook = {
   __typename: 'NestedEdgedCoreWebhook';
   node: Maybe<CoreWebhook>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23193,6 +23675,8 @@ export type NestedEdgedCoreWeightedPoolResource = {
   __typename: 'NestedEdgedCoreWeightedPoolResource';
   node: Maybe<CoreWeightedPoolResource>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23202,6 +23686,8 @@ export type NestedEdgedInternalAccountToken = {
   __typename: 'NestedEdgedInternalAccountToken';
   node: Maybe<InternalAccountToken>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23211,6 +23697,8 @@ export type NestedEdgedInternalExternalIdentity = {
   __typename: 'NestedEdgedInternalExternalIdentity';
   node: Maybe<InternalExternalIdentity>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23220,6 +23708,8 @@ export type NestedEdgedInternalIpPrefixAvailable = {
   __typename: 'NestedEdgedInternalIPPrefixAvailable';
   node: Maybe<InternalIpPrefixAvailable>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23229,6 +23719,8 @@ export type NestedEdgedInternalIpRangeAvailable = {
   __typename: 'NestedEdgedInternalIPRangeAvailable';
   node: Maybe<InternalIpRangeAvailable>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23238,6 +23730,8 @@ export type NestedEdgedInternalRefreshToken = {
   __typename: 'NestedEdgedInternalRefreshToken';
   node: Maybe<InternalRefreshToken>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23247,6 +23741,8 @@ export type NestedEdgedIpamNamespace = {
   __typename: 'NestedEdgedIpamNamespace';
   node: Maybe<IpamNamespace>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23256,6 +23752,8 @@ export type NestedEdgedLineageOwner = {
   __typename: 'NestedEdgedLineageOwner';
   node: Maybe<LineageOwner>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23265,6 +23763,8 @@ export type NestedEdgedLineageSource = {
   __typename: 'NestedEdgedLineageSource';
   node: Maybe<LineageSource>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23274,6 +23774,8 @@ export type NestedEdgedProfileBuiltinIpAddress = {
   __typename: 'NestedEdgedProfileBuiltinIPAddress';
   node: Maybe<ProfileBuiltinIpAddress>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23283,6 +23785,8 @@ export type NestedEdgedProfileBuiltinIpPrefix = {
   __typename: 'NestedEdgedProfileBuiltinIPPrefix';
   node: Maybe<ProfileBuiltinIpPrefix>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23292,6 +23796,8 @@ export type NestedEdgedProfileBuiltinTag = {
   __typename: 'NestedEdgedProfileBuiltinTag';
   node: Maybe<ProfileBuiltinTag>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23301,6 +23807,8 @@ export type NestedEdgedProfileIpamNamespace = {
   __typename: 'NestedEdgedProfileIpamNamespace';
   node: Maybe<ProfileIpamNamespace>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   properties: Maybe<RelationshipProperty>;
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
@@ -23310,6 +23818,8 @@ export type NestedPaginatedBuiltinIpAddress = {
   __typename: 'NestedPaginatedBuiltinIPAddress';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedBuiltinIpAddress>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** A generic container for IP prefixes and IP addresses */
@@ -23317,6 +23827,8 @@ export type NestedPaginatedBuiltinIpNamespace = {
   __typename: 'NestedPaginatedBuiltinIPNamespace';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedBuiltinIpNamespace>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** IPv4 or IPv6 prefix also referred as network */
@@ -23324,6 +23836,8 @@ export type NestedPaginatedBuiltinIpPrefix = {
   __typename: 'NestedPaginatedBuiltinIPPrefix';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedBuiltinIpPrefix>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** Standard Tag object to attach to other objects to provide some context. */
@@ -23331,6 +23845,8 @@ export type NestedPaginatedBuiltinTag = {
   __typename: 'NestedPaginatedBuiltinTag';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedBuiltinTag>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23339,6 +23855,8 @@ export type NestedPaginatedCoreAccount = {
   __typename: 'NestedPaginatedCoreAccount';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreAccount>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23347,6 +23865,8 @@ export type NestedPaginatedCoreAccountGroup = {
   __typename: 'NestedPaginatedCoreAccountGroup';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreAccountGroup>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23355,6 +23875,8 @@ export type NestedPaginatedCoreAccountRole = {
   __typename: 'NestedPaginatedCoreAccountRole';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreAccountRole>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23363,6 +23885,8 @@ export type NestedPaginatedCoreAction = {
   __typename: 'NestedPaginatedCoreAction';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreAction>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** A file generated by a transformation, associated with a specific object */
@@ -23370,6 +23894,8 @@ export type NestedPaginatedCoreArtifact = {
   __typename: 'NestedPaginatedCoreArtifact';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreArtifact>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23378,6 +23904,8 @@ export type NestedPaginatedCoreArtifactCheck = {
   __typename: 'NestedPaginatedCoreArtifactCheck';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreArtifactCheck>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23386,6 +23914,8 @@ export type NestedPaginatedCoreArtifactDefinition = {
   __typename: 'NestedPaginatedCoreArtifactDefinition';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreArtifactDefinition>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23394,6 +23924,8 @@ export type NestedPaginatedCoreArtifactTarget = {
   __typename: 'NestedPaginatedCoreArtifactTarget';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreArtifactTarget>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** A thread related to an artifact on a proposed change */
@@ -23401,6 +23933,8 @@ export type NestedPaginatedCoreArtifactThread = {
   __typename: 'NestedPaginatedCoreArtifactThread';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreArtifactThread>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23409,6 +23943,8 @@ export type NestedPaginatedCoreArtifactValidator = {
   __typename: 'NestedPaginatedCoreArtifactValidator';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreArtifactValidator>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23417,6 +23953,8 @@ export type NestedPaginatedCoreBasePermission = {
   __typename: 'NestedPaginatedCoreBasePermission';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreBasePermission>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** A comment on proposed change */
@@ -23424,6 +23962,8 @@ export type NestedPaginatedCoreChangeComment = {
   __typename: 'NestedPaginatedCoreChangeComment';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreChangeComment>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23432,6 +23972,8 @@ export type NestedPaginatedCoreChangeThread = {
   __typename: 'NestedPaginatedCoreChangeThread';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreChangeThread>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23440,6 +23982,8 @@ export type NestedPaginatedCoreCheck = {
   __typename: 'NestedPaginatedCoreCheck';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreCheck>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** Defines a user-defined check that validates data in a proposed change */
@@ -23447,6 +23991,8 @@ export type NestedPaginatedCoreCheckDefinition = {
   __typename: 'NestedPaginatedCoreCheckDefinition';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreCheckDefinition>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23455,6 +24001,8 @@ export type NestedPaginatedCoreComment = {
   __typename: 'NestedPaginatedCoreComment';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreComment>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** A credential that could be referenced to access external services. */
@@ -23462,6 +24010,8 @@ export type NestedPaginatedCoreCredential = {
   __typename: 'NestedPaginatedCoreCredential';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreCredential>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** A webhook that connects to an external integration */
@@ -23469,6 +24019,8 @@ export type NestedPaginatedCoreCustomWebhook = {
   __typename: 'NestedPaginatedCoreCustomWebhook';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreCustomWebhook>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23477,6 +24029,8 @@ export type NestedPaginatedCoreDataCheck = {
   __typename: 'NestedPaginatedCoreDataCheck';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreDataCheck>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23485,6 +24039,8 @@ export type NestedPaginatedCoreDataValidator = {
   __typename: 'NestedPaginatedCoreDataValidator';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreDataValidator>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23493,6 +24049,8 @@ export type NestedPaginatedCoreEnvKeyValue = {
   __typename: 'NestedPaginatedCoreEnvKeyValue';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreEnvKeyValue>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23501,6 +24059,8 @@ export type NestedPaginatedCoreFileCheck = {
   __typename: 'NestedPaginatedCoreFileCheck';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreFileCheck>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23509,6 +24069,8 @@ export type NestedPaginatedCoreFileObject = {
   __typename: 'NestedPaginatedCoreFileObject';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreFileObject>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** A thread related to a file on a proposed change */
@@ -23516,6 +24078,8 @@ export type NestedPaginatedCoreFileThread = {
   __typename: 'NestedPaginatedCoreFileThread';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreFileThread>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23524,6 +24088,8 @@ export type NestedPaginatedCoreGeneratorAction = {
   __typename: 'NestedPaginatedCoreGeneratorAction';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGeneratorAction>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23532,6 +24098,8 @@ export type NestedPaginatedCoreGeneratorAwareGroup = {
   __typename: 'NestedPaginatedCoreGeneratorAwareGroup';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGeneratorAwareGroup>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23540,6 +24108,8 @@ export type NestedPaginatedCoreGeneratorCheck = {
   __typename: 'NestedPaginatedCoreGeneratorCheck';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGeneratorCheck>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23548,6 +24118,8 @@ export type NestedPaginatedCoreGeneratorDefinition = {
   __typename: 'NestedPaginatedCoreGeneratorDefinition';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGeneratorDefinition>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23556,6 +24128,8 @@ export type NestedPaginatedCoreGeneratorGroup = {
   __typename: 'NestedPaginatedCoreGeneratorGroup';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGeneratorGroup>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23564,6 +24138,8 @@ export type NestedPaginatedCoreGeneratorInstance = {
   __typename: 'NestedPaginatedCoreGeneratorInstance';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGeneratorInstance>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23572,6 +24148,8 @@ export type NestedPaginatedCoreGeneratorValidator = {
   __typename: 'NestedPaginatedCoreGeneratorValidator';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGeneratorValidator>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23580,6 +24158,8 @@ export type NestedPaginatedCoreGenericAccount = {
   __typename: 'NestedPaginatedCoreGenericAccount';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreGenericAccount>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** A Git Repository integrated with Infrahub */
@@ -23587,6 +24167,8 @@ export type NestedPaginatedCoreGenericRepository = {
   __typename: 'NestedPaginatedCoreGenericRepository';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreGenericRepository>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** A permission that grants global rights to perform actions in Infrahub */
@@ -23594,6 +24176,8 @@ export type NestedPaginatedCoreGlobalPermission = {
   __typename: 'NestedPaginatedCoreGlobalPermission';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGlobalPermission>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23602,6 +24186,8 @@ export type NestedPaginatedCoreGraphQlQuery = {
   __typename: 'NestedPaginatedCoreGraphQLQuery';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGraphQlQuery>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23610,6 +24196,8 @@ export type NestedPaginatedCoreGraphQlQueryGroup = {
   __typename: 'NestedPaginatedCoreGraphQLQueryGroup';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGraphQlQueryGroup>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23618,6 +24206,8 @@ export type NestedPaginatedCoreGroup = {
   __typename: 'NestedPaginatedCoreGroup';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreGroup>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** A group action that adds or removes members from a group once triggered */
@@ -23625,6 +24215,8 @@ export type NestedPaginatedCoreGroupAction = {
   __typename: 'NestedPaginatedCoreGroupAction';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGroupAction>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23633,6 +24225,8 @@ export type NestedPaginatedCoreGroupTriggerRule = {
   __typename: 'NestedPaginatedCoreGroupTriggerRule';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreGroupTriggerRule>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23641,6 +24235,8 @@ export type NestedPaginatedCoreIpAddressPool = {
   __typename: 'NestedPaginatedCoreIPAddressPool';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreIpAddressPool>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23649,6 +24245,8 @@ export type NestedPaginatedCoreIpPool = {
   __typename: 'NestedPaginatedCoreIPPool';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreIpPool>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** A pool of IP prefix resources */
@@ -23656,6 +24254,8 @@ export type NestedPaginatedCoreIpPrefixPool = {
   __typename: 'NestedPaginatedCoreIPPrefixPool';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreIpPrefixPool>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23664,6 +24264,8 @@ export type NestedPaginatedCoreKeyValue = {
   __typename: 'NestedPaginatedCoreKeyValue';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreKeyValue>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** Element of the Menu */
@@ -23671,6 +24273,8 @@ export type NestedPaginatedCoreMenu = {
   __typename: 'NestedPaginatedCoreMenu';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreMenu>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** Menu Item */
@@ -23678,6 +24282,8 @@ export type NestedPaginatedCoreMenuItem = {
   __typename: 'NestedPaginatedCoreMenuItem';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreMenuItem>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23686,6 +24292,8 @@ export type NestedPaginatedCoreNode = {
   __typename: 'NestedPaginatedCoreNode';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreNode>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** A trigger match that matches against attribute changes on a node */
@@ -23693,6 +24301,8 @@ export type NestedPaginatedCoreNodeTriggerAttributeMatch = {
   __typename: 'NestedPaginatedCoreNodeTriggerAttributeMatch';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreNodeTriggerAttributeMatch>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23701,6 +24311,8 @@ export type NestedPaginatedCoreNodeTriggerMatch = {
   __typename: 'NestedPaginatedCoreNodeTriggerMatch';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreNodeTriggerMatch>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** A trigger match that matches against relationship changes on a node */
@@ -23708,6 +24320,8 @@ export type NestedPaginatedCoreNodeTriggerRelationshipMatch = {
   __typename: 'NestedPaginatedCoreNodeTriggerRelationshipMatch';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreNodeTriggerRelationshipMatch>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23716,6 +24330,8 @@ export type NestedPaginatedCoreNodeTriggerRule = {
   __typename: 'NestedPaginatedCoreNodeTriggerRule';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreNodeTriggerRule>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23724,6 +24340,8 @@ export type NestedPaginatedCoreNumberPool = {
   __typename: 'NestedPaginatedCoreNumberPool';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreNumberPool>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23732,6 +24350,8 @@ export type NestedPaginatedCoreNumberPoolRange = {
   __typename: 'NestedPaginatedCoreNumberPoolRange';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreNumberPoolRange>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23740,6 +24360,8 @@ export type NestedPaginatedCoreObjectComponentTemplate = {
   __typename: 'NestedPaginatedCoreObjectComponentTemplate';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreObjectComponentTemplate>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** A permission that grants rights to perform actions on objects */
@@ -23747,6 +24369,8 @@ export type NestedPaginatedCoreObjectPermission = {
   __typename: 'NestedPaginatedCoreObjectPermission';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreObjectPermission>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23755,6 +24379,8 @@ export type NestedPaginatedCoreObjectTemplate = {
   __typename: 'NestedPaginatedCoreObjectTemplate';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreObjectTemplate>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** A thread related to an object on a proposed change */
@@ -23762,6 +24388,8 @@ export type NestedPaginatedCoreObjectThread = {
   __typename: 'NestedPaginatedCoreObjectThread';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreObjectThread>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23770,6 +24398,8 @@ export type NestedPaginatedCorePasswordCredential = {
   __typename: 'NestedPaginatedCorePasswordCredential';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCorePasswordCredential>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23778,6 +24408,8 @@ export type NestedPaginatedCoreProfile = {
   __typename: 'NestedPaginatedCoreProfile';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreProfile>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** Metadata related to a proposed change */
@@ -23785,6 +24417,8 @@ export type NestedPaginatedCoreProposedChange = {
   __typename: 'NestedPaginatedCoreProposedChange';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreProposedChange>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23793,6 +24427,8 @@ export type NestedPaginatedCoreReadOnlyRepository = {
   __typename: 'NestedPaginatedCoreReadOnlyRepository';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreReadOnlyRepository>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23801,6 +24437,8 @@ export type NestedPaginatedCoreRepository = {
   __typename: 'NestedPaginatedCoreRepository';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreRepository>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23809,6 +24447,8 @@ export type NestedPaginatedCoreRepositoryGroup = {
   __typename: 'NestedPaginatedCoreRepositoryGroup';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreRepositoryGroup>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23817,6 +24457,8 @@ export type NestedPaginatedCoreRepositoryValidator = {
   __typename: 'NestedPaginatedCoreRepositoryValidator';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreRepositoryValidator>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23825,6 +24467,8 @@ export type NestedPaginatedCoreResourcePool = {
   __typename: 'NestedPaginatedCoreResourcePool';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreResourcePool>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** A check related to the schema */
@@ -23832,6 +24476,8 @@ export type NestedPaginatedCoreSchemaCheck = {
   __typename: 'NestedPaginatedCoreSchemaCheck';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreSchemaCheck>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23840,6 +24486,8 @@ export type NestedPaginatedCoreSchemaValidator = {
   __typename: 'NestedPaginatedCoreSchemaValidator';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreSchemaValidator>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23848,6 +24496,8 @@ export type NestedPaginatedCoreStandardCheck = {
   __typename: 'NestedPaginatedCoreStandardCheck';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreStandardCheck>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23856,6 +24506,8 @@ export type NestedPaginatedCoreStandardGroup = {
   __typename: 'NestedPaginatedCoreStandardGroup';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreStandardGroup>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23864,6 +24516,8 @@ export type NestedPaginatedCoreStandardWebhook = {
   __typename: 'NestedPaginatedCoreStandardWebhook';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreStandardWebhook>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23872,6 +24526,8 @@ export type NestedPaginatedCoreStaticKeyValue = {
   __typename: 'NestedPaginatedCoreStaticKeyValue';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreStaticKeyValue>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23880,6 +24536,8 @@ export type NestedPaginatedCoreTaskTarget = {
   __typename: 'NestedPaginatedCoreTaskTarget';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreTaskTarget>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** A thread on a Proposed Change */
@@ -23887,6 +24545,8 @@ export type NestedPaginatedCoreThread = {
   __typename: 'NestedPaginatedCoreThread';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreThread>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** A comment on thread within a Proposed Change */
@@ -23894,6 +24554,8 @@ export type NestedPaginatedCoreThreadComment = {
   __typename: 'NestedPaginatedCoreThreadComment';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreThreadComment>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23902,6 +24564,8 @@ export type NestedPaginatedCoreTransformJinja2 = {
   __typename: 'NestedPaginatedCoreTransformJinja2';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreTransformJinja2>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23910,6 +24574,8 @@ export type NestedPaginatedCoreTransformPython = {
   __typename: 'NestedPaginatedCoreTransformPython';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreTransformPython>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23918,6 +24584,8 @@ export type NestedPaginatedCoreTransformation = {
   __typename: 'NestedPaginatedCoreTransformation';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreTransformation>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** A rule that allows you to define a trigger and map it to an action that runs once the trigger condition is met. */
@@ -23925,6 +24593,8 @@ export type NestedPaginatedCoreTriggerRule = {
   __typename: 'NestedPaginatedCoreTriggerRule';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreTriggerRule>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** A Validator related to a user defined checks in a repository */
@@ -23932,6 +24602,8 @@ export type NestedPaginatedCoreUserValidator = {
   __typename: 'NestedPaginatedCoreUserValidator';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedCoreUserValidator>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23940,6 +24612,8 @@ export type NestedPaginatedCoreValidator = {
   __typename: 'NestedPaginatedCoreValidator';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreValidator>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** A webhook that connects to an external integration */
@@ -23947,6 +24621,8 @@ export type NestedPaginatedCoreWebhook = {
   __typename: 'NestedPaginatedCoreWebhook';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreWebhook>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** Resource to be used in a pool, its weight is used to determine its priority on allocation. */
@@ -23954,6 +24630,8 @@ export type NestedPaginatedCoreWeightedPoolResource = {
   __typename: 'NestedPaginatedCoreWeightedPoolResource';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedCoreWeightedPoolResource>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** Token for User Account */
@@ -23961,6 +24639,8 @@ export type NestedPaginatedInternalAccountToken = {
   __typename: 'NestedPaginatedInternalAccountToken';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedInternalAccountToken>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23969,6 +24649,8 @@ export type NestedPaginatedInternalExternalIdentity = {
   __typename: 'NestedPaginatedInternalExternalIdentity';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedInternalExternalIdentity>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23977,6 +24659,8 @@ export type NestedPaginatedInternalIpPrefixAvailable = {
   __typename: 'NestedPaginatedInternalIPPrefixAvailable';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedInternalIpPrefixAvailable>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23985,6 +24669,8 @@ export type NestedPaginatedInternalIpRangeAvailable = {
   __typename: 'NestedPaginatedInternalIPRangeAvailable';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedInternalIpRangeAvailable>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23993,6 +24679,8 @@ export type NestedPaginatedInternalRefreshToken = {
   __typename: 'NestedPaginatedInternalRefreshToken';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedInternalRefreshToken>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -24001,6 +24689,8 @@ export type NestedPaginatedIpamNamespace = {
   __typename: 'NestedPaginatedIpamNamespace';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedIpamNamespace>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -24009,6 +24699,8 @@ export type NestedPaginatedLineageOwner = {
   __typename: 'NestedPaginatedLineageOwner';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedLineageOwner>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** Any Entities that stores or produces data. */
@@ -24016,6 +24708,8 @@ export type NestedPaginatedLineageSource = {
   __typename: 'NestedPaginatedLineageSource';
   count: Scalars['Int']['output'];
   edges: Maybe<Array<NestedEdgedLineageSource>>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
 };
 
 /** Profile for BuiltinIPAddress */
@@ -24023,6 +24717,8 @@ export type NestedPaginatedProfileBuiltinIpAddress = {
   __typename: 'NestedPaginatedProfileBuiltinIPAddress';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedProfileBuiltinIpAddress>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -24031,6 +24727,8 @@ export type NestedPaginatedProfileBuiltinIpPrefix = {
   __typename: 'NestedPaginatedProfileBuiltinIPPrefix';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedProfileBuiltinIpPrefix>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -24039,6 +24737,8 @@ export type NestedPaginatedProfileBuiltinTag = {
   __typename: 'NestedPaginatedProfileBuiltinTag';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedProfileBuiltinTag>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -24047,6 +24747,8 @@ export type NestedPaginatedProfileIpamNamespace = {
   __typename: 'NestedPaginatedProfileIpamNamespace';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedProfileIpamNamespace>;
+  /** Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -24067,6 +24769,19 @@ export type NodeEdges = {
   count: Scalars['Int']['output'];
   edges: Array<NodeEdge>;
   parent_prefixes: Maybe<Array<NodeEdge>>;
+};
+
+export type NodeMetadataInput = {
+  /** The owners of attributes and relationships, by name */
+  field_owners?: InputMaybe<Array<FieldOwnersInput>>;
+  /** Left out: no change. null: inherit. []: no owner. List: own owners */
+  owners?: InputMaybe<Array<MetadataNodeInput>>;
+  /** Left out: no change. null or []: no sources */
+  sources?: InputMaybe<Array<MetadataNodeInput>>;
+  /** Profiles and object templates only: the owners given to one field of their nodes */
+  target_field_owners?: InputMaybe<Array<FieldOwnersInput>>;
+  /** Profiles and object templates only: the owners given to their nodes. null: gives nothing */
+  target_owners?: InputMaybe<Array<MetadataNodeInput>>;
 };
 
 export type NodeMutatedEvent = EventNodeInterface & {
@@ -24117,8 +24832,12 @@ export type NumberAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
+  /** @deprecated Owners replace `is_protected`. Use `ownership` to read the owners of the attribute. */
   is_protected: Maybe<Scalars['Boolean']['output']>;
+  /** @deprecated Use `ownership` to read and `owners` to write the owners of the attribute. `owner` gives the own owner of the attribute when it has exactly one, else null. A write of `owner` replaces the own owners of the attribute. */
   owner: Maybe<LineageOwner>;
+  /** Owners of this field of the node, own or inherited */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: Maybe<PermissionType>;
   source: Maybe<LineageSource>;
   /** Date/Time when the attribute was last modified by a user or a system task */
@@ -24130,7 +24849,10 @@ export type NumberAttribute = AttributeInterface & {
 export type NumberAttributeCreate = {
   from_pool?: InputMaybe<GenericPoolInput>;
   is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  /** @deprecated Use `ownership` to read and `owners` to write the owners of the attribute. `owner` gives the own owner of the attribute when it has exactly one, else null. A write of `owner` replaces the own owners of the attribute. */
   owner?: InputMaybe<Scalars['String']['input']>;
+  /** Left out: no change. null: inherit. []: no owner. List: own owners */
+  owners?: InputMaybe<Array<MetadataNodeInput>>;
   source?: InputMaybe<Scalars['String']['input']>;
   value?: InputMaybe<Scalars['BigInt']['input']>;
 };
@@ -24139,7 +24861,10 @@ export type NumberAttributeUpdate = {
   from_pool?: InputMaybe<GenericPoolInput>;
   is_default?: InputMaybe<Scalars['Boolean']['input']>;
   is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  /** @deprecated Use `ownership` to read and `owners` to write the owners of the attribute. `owner` gives the own owner of the attribute when it has exactly one, else null. A write of `owner` replaces the own owners of the attribute. */
   owner?: InputMaybe<Scalars['String']['input']>;
+  /** Left out: no change. null: inherit. []: no owner. List: own owners */
+  owners?: InputMaybe<Array<MetadataNodeInput>>;
   source?: InputMaybe<Scalars['String']['input']>;
   value?: InputMaybe<Scalars['BigInt']['input']>;
 };
@@ -24345,6 +25070,24 @@ export type OrderInput = {
   node_metadata?: InputMaybe<InfrahubNodeMetadataOrder>;
 };
 
+/** An enumeration. */
+export const OwnerOrigin = {
+  NODE: 'NODE',
+  PARENT: 'PARENT',
+  PROFILE: 'PROFILE',
+  SELF: 'SELF',
+  TEMPLATE: 'TEMPLATE'
+} as const;
+
+export type OwnerOrigin = typeof OwnerOrigin[keyof typeof OwnerOrigin];
+/** An enumeration. */
+export const OwnerState = {
+  INHERIT: 'INHERIT',
+  NO_OWNER: 'NO_OWNER',
+  OWNERS: 'OWNERS'
+} as const;
+
+export type OwnerState = typeof OwnerState[keyof typeof OwnerState];
 /** IPv4 or IPv6 address */
 export type PaginatedBuiltinIpAddress = {
   __typename: 'PaginatedBuiltinIPAddress';
@@ -25410,6 +26153,7 @@ export type ProfileBuiltinIpAddressCreateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   ip_namespace?: InputMaybe<RelatedNodeInput>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Unique name identifier for the profile */
   profile_name?: InputMaybe<TextAttributeCreate>;
   /** Priority level for profile application (lower numbers have higher priority) */
@@ -25439,6 +26183,7 @@ export type ProfileBuiltinIpAddressUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   ip_namespace?: InputMaybe<RelatedNodeInput>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Unique name identifier for the profile */
   profile_name?: InputMaybe<TextAttributeUpdate>;
   /** Priority level for profile application (lower numbers have higher priority) */
@@ -25462,6 +26207,7 @@ export type ProfileBuiltinIpAddressUpsertInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   ip_namespace?: InputMaybe<RelatedNodeInput>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Unique name identifier for the profile */
   profile_name?: InputMaybe<TextAttributeUpdate>;
   /** Priority level for profile application (lower numbers have higher priority) */
@@ -25641,6 +26387,7 @@ export type ProfileBuiltinIpPrefixCreateInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Whether this prefix contains other prefixes or IP addresses */
   member_type?: InputMaybe<TextAttributeCreate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** The IP prefix in CIDR notation */
   prefix?: InputMaybe<TextAttributeCreate>;
   /** Unique name identifier for the profile */
@@ -25674,6 +26421,7 @@ export type ProfileBuiltinIpPrefixUpdateInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Whether this prefix contains other prefixes or IP addresses */
   member_type?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** The IP prefix in CIDR notation */
   prefix?: InputMaybe<TextAttributeUpdate>;
   /** Unique name identifier for the profile */
@@ -25701,6 +26449,7 @@ export type ProfileBuiltinIpPrefixUpsertInput = {
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Whether this prefix contains other prefixes or IP addresses */
   member_type?: InputMaybe<TextAttributeUpdate>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** The IP prefix in CIDR notation */
   prefix?: InputMaybe<TextAttributeUpdate>;
   /** Unique name identifier for the profile */
@@ -25830,6 +26579,7 @@ export type ProfileBuiltinTagCreateInput = {
   description?: InputMaybe<TextAttributeCreate>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Unique name identifier for the profile */
   profile_name?: InputMaybe<TextAttributeCreate>;
   /** Priority level for profile application (lower numbers have higher priority) */
@@ -25856,6 +26606,7 @@ export type ProfileBuiltinTagUpdateInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Unique name identifier for the profile */
   profile_name?: InputMaybe<TextAttributeUpdate>;
   /** Priority level for profile application (lower numbers have higher priority) */
@@ -25876,6 +26627,7 @@ export type ProfileBuiltinTagUpsertInput = {
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Unique name identifier for the profile */
   profile_name?: InputMaybe<TextAttributeUpdate>;
   /** Priority level for profile application (lower numbers have higher priority) */
@@ -26098,6 +26850,7 @@ export type ProfileIpamNamespaceCreateInput = {
   ip_addresses?: InputMaybe<Array<InputMaybe<RelatedIpAddressNodeInput>>>;
   ip_prefixes?: InputMaybe<Array<InputMaybe<RelatedIpPrefixNodeInput>>>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Unique name identifier for the profile */
   profile_name?: InputMaybe<TextAttributeCreate>;
   /** Priority level for profile application (lower numbers have higher priority) */
@@ -26126,6 +26879,7 @@ export type ProfileIpamNamespaceUpdateInput = {
   ip_addresses?: InputMaybe<Array<InputMaybe<RelatedIpAddressNodeInput>>>;
   ip_prefixes?: InputMaybe<Array<InputMaybe<RelatedIpPrefixNodeInput>>>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Unique name identifier for the profile */
   profile_name?: InputMaybe<TextAttributeUpdate>;
   /** Priority level for profile application (lower numbers have higher priority) */
@@ -26148,6 +26902,7 @@ export type ProfileIpamNamespaceUpsertInput = {
   ip_addresses?: InputMaybe<Array<InputMaybe<RelatedIpAddressNodeInput>>>;
   ip_prefixes?: InputMaybe<Array<InputMaybe<RelatedIpPrefixNodeInput>>>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  node_metadata?: InputMaybe<NodeMetadataInput>;
   /** Unique name identifier for the profile */
   profile_name?: InputMaybe<TextAttributeUpdate>;
   /** Priority level for profile application (lower numbers have higher priority) */
@@ -26646,6 +27401,9 @@ export type QueryBuiltinIpAddressArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -26797,6 +27555,9 @@ export type QueryBuiltinIpNamespaceArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -27000,6 +27761,9 @@ export type QueryBuiltinIpPrefixArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -27150,6 +27914,9 @@ export type QueryBuiltinTagArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -27243,6 +28010,9 @@ export type QueryCoreAccountArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -27347,6 +28117,9 @@ export type QueryCoreAccountGroupArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -27467,6 +28240,9 @@ export type QueryCoreAccountRoleArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -27545,6 +28321,9 @@ export type QueryCoreActionArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -27676,6 +28455,9 @@ export type QueryCoreArtifactArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -27809,6 +28591,9 @@ export type QueryCoreArtifactCheckArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -27976,6 +28761,9 @@ export type QueryCoreArtifactDefinitionArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -28162,6 +28950,9 @@ export type QueryCoreArtifactTargetArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -28280,6 +29071,9 @@ export type QueryCoreArtifactThreadArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -28443,6 +29237,9 @@ export type QueryCoreArtifactValidatorArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -28557,6 +29354,9 @@ export type QueryCoreBasePermissionArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -28660,6 +29460,9 @@ export type QueryCoreChangeCommentArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -28772,6 +29575,9 @@ export type QueryCoreChangeThreadArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -28867,6 +29673,9 @@ export type QueryCoreCheckArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -28987,6 +29796,9 @@ export type QueryCoreCheckDefinitionArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -29232,6 +30044,9 @@ export type QueryCoreCommentArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -29310,6 +30125,9 @@ export type QueryCoreCredentialArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -29425,6 +30243,9 @@ export type QueryCoreCustomWebhookArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -29605,6 +30426,9 @@ export type QueryCoreDataCheckArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -29763,6 +30587,9 @@ export type QueryCoreDataValidatorArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -29887,6 +30714,9 @@ export type QueryCoreEnvKeyValueArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -29994,6 +30824,9 @@ export type QueryCoreFileCheckArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -30110,6 +30943,9 @@ export type QueryCoreFileObjectArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -30240,6 +31076,9 @@ export type QueryCoreFileThreadArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -30482,6 +31321,9 @@ export type QueryCoreGeneratorActionArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -30599,6 +31441,9 @@ export type QueryCoreGeneratorAwareGroupArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -30708,6 +31553,9 @@ export type QueryCoreGeneratorCheckArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -30879,6 +31727,9 @@ export type QueryCoreGeneratorDefinitionArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -31142,6 +31993,9 @@ export type QueryCoreGeneratorGroupArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -31275,6 +32129,9 @@ export type QueryCoreGeneratorInstanceArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -31459,6 +32316,9 @@ export type QueryCoreGeneratorValidatorArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -31589,6 +32449,9 @@ export type QueryCoreGenericAccountArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -31848,6 +32711,9 @@ export type QueryCoreGenericRepositoryArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -32049,6 +32915,9 @@ export type QueryCoreGlobalPermissionArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -32149,6 +33018,9 @@ export type QueryCoreGraphQlQueryArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -32364,6 +33236,9 @@ export type QueryCoreGraphQlQueryGroupArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -32526,6 +33401,9 @@ export type QueryCoreGroupArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -32637,6 +33515,9 @@ export type QueryCoreGroupActionArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -32786,6 +33667,9 @@ export type QueryCoreGroupTriggerRuleArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -32879,6 +33763,9 @@ export type QueryCoreIpAddressPoolArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -32984,6 +33871,9 @@ export type QueryCoreIpPoolArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -33083,6 +33973,9 @@ export type QueryCoreIpPrefixPoolArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -33210,6 +34103,9 @@ export type QueryCoreKeyValueArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -33366,6 +34262,9 @@ export type QueryCoreMenuArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -33606,6 +34505,9 @@ export type QueryCoreMenuItemArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -33746,6 +34648,9 @@ export type QueryCoreNodeArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -33806,6 +34711,9 @@ export type QueryCoreNodeTriggerAttributeMatchArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -33909,6 +34817,9 @@ export type QueryCoreNodeTriggerMatchArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -34004,6 +34915,9 @@ export type QueryCoreNodeTriggerRelationshipMatchArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -34158,6 +35072,9 @@ export type QueryCoreNodeTriggerRuleArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -34248,6 +35165,9 @@ export type QueryCoreNumberPoolArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -34345,6 +35265,9 @@ export type QueryCoreNumberPoolRangeArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -34449,6 +35372,9 @@ export type QueryCoreObjectComponentTemplateArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -34545,6 +35471,9 @@ export type QueryCoreObjectPermissionArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -34609,6 +35538,9 @@ export type QueryCoreObjectTemplateArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -34721,6 +35653,9 @@ export type QueryCoreObjectThreadArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -34805,6 +35740,9 @@ export type QueryCorePasswordCredentialArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -34871,6 +35809,9 @@ export type QueryCoreProfileArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -35005,6 +35946,9 @@ export type QueryCoreProposedChangeArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -35387,6 +36331,9 @@ export type QueryCoreReadOnlyRepositoryArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -35823,6 +36770,9 @@ export type QueryCoreRepositoryArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -36044,6 +36994,9 @@ export type QueryCoreRepositoryGroupArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -36234,6 +37187,9 @@ export type QueryCoreRepositoryValidatorArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -36412,6 +37368,9 @@ export type QueryCoreResourcePoolArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -36513,6 +37472,9 @@ export type QueryCoreSchemaCheckArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -36671,6 +37633,9 @@ export type QueryCoreSchemaValidatorArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -36812,6 +37777,9 @@ export type QueryCoreStandardCheckArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -36946,6 +37914,9 @@ export type QueryCoreStandardGroupArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -37075,6 +38046,9 @@ export type QueryCoreStandardWebhookArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -37165,6 +38139,9 @@ export type QueryCoreStaticKeyValueArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -37221,6 +38198,9 @@ export type QueryCoreTaskTargetArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -37327,6 +38307,9 @@ export type QueryCoreThreadArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -37386,6 +38369,9 @@ export type QueryCoreThreadCommentArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -37529,6 +38515,9 @@ export type QueryCoreTransformJinja2Args = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -37809,6 +38798,9 @@ export type QueryCoreTransformPythonArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -38065,6 +39057,9 @@ export type QueryCoreTransformationArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -38289,6 +39284,9 @@ export type QueryCoreTriggerRuleArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -38440,6 +39438,9 @@ export type QueryCoreUserValidatorArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -38668,6 +39669,9 @@ export type QueryCoreValidatorArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -38835,6 +39839,9 @@ export type QueryCoreWebhookArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -38903,6 +39910,9 @@ export type QueryCoreWeightedPoolResourceArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -39240,6 +40250,9 @@ export type QueryIpamNamespaceArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -39292,6 +40305,9 @@ export type QueryLineageOwnerArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -39316,6 +40332,9 @@ export type QueryLineageSourceArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -39384,6 +40403,9 @@ export type QueryProfileBuiltinIpAddressArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -39498,6 +40520,9 @@ export type QueryProfileBuiltinIpPrefixArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -39631,6 +40656,9 @@ export type QueryProfileBuiltinTagArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -39788,6 +40816,9 @@ export type QueryProfileIpamNamespaceArgs = {
   node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
   node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__owners__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  node_metadata__sources__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
@@ -40602,8 +41633,12 @@ export type TextAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
+  /** @deprecated Owners replace `is_protected`. Use `ownership` to read the owners of the attribute. */
   is_protected: Maybe<Scalars['Boolean']['output']>;
+  /** @deprecated Use `ownership` to read and `owners` to write the owners of the attribute. `owner` gives the own owner of the attribute when it has exactly one, else null. A write of `owner` replaces the own owners of the attribute. */
   owner: Maybe<LineageOwner>;
+  /** Owners of this field of the node, own or inherited */
+  ownership: Maybe<InfrahubOwnership>;
   permissions: Maybe<PermissionType>;
   source: Maybe<LineageSource>;
   /** Date/Time when the attribute was last modified by a user or a system task */
@@ -40614,7 +41649,10 @@ export type TextAttribute = AttributeInterface & {
 
 export type TextAttributeCreate = {
   is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  /** @deprecated Use `ownership` to read and `owners` to write the owners of the attribute. `owner` gives the own owner of the attribute when it has exactly one, else null. A write of `owner` replaces the own owners of the attribute. */
   owner?: InputMaybe<Scalars['String']['input']>;
+  /** Left out: no change. null: inherit. []: no owner. List: own owners */
+  owners?: InputMaybe<Array<MetadataNodeInput>>;
   source?: InputMaybe<Scalars['String']['input']>;
   value?: InputMaybe<Scalars['String']['input']>;
 };
@@ -40622,7 +41660,10 @@ export type TextAttributeCreate = {
 export type TextAttributeUpdate = {
   is_default?: InputMaybe<Scalars['Boolean']['input']>;
   is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  /** @deprecated Use `ownership` to read and `owners` to write the owners of the attribute. `owner` gives the own owner of the attribute when it has exactly one, else null. A write of `owner` replaces the own owners of the attribute. */
   owner?: InputMaybe<Scalars['String']['input']>;
+  /** Left out: no change. null: inherit. []: no owner. List: own owners */
+  owners?: InputMaybe<Array<MetadataNodeInput>>;
   source?: InputMaybe<Scalars['String']['input']>;
   value?: InputMaybe<Scalars['String']['input']>;
 };

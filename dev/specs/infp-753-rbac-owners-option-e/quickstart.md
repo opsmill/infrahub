@@ -30,11 +30,7 @@ Expected: the owners follow a kind change and a field rename on the full stack (
 
 ## E2E tests
 
-```bash
-uv run pytest -c tests/e2e/pytest.ini tests/e2e/ownership -s --pdb
-```
-
-Expected: all tests pass. They run user stories 1 to 6 through the API on the full stack, and they open no page.
+None for these specs. The E2E tests in `tests/e2e/` open a page, and they come with the frontend work ([IFC-3638](https://opsmill.atlassian.net/browse/IFC-3638)). See [provisional-decisions.md](provisional-decisions.md), "Decision of 2026-11-27: E2E tests come with the frontend".
 
 ## Query benchmarks
 
@@ -90,7 +86,7 @@ Run each scenario as an administrator in the GraphQL sandbox, unless the step na
 ### 4. Field owners and the deprecated `owner` field (user story 3)
 
 1. Set `field_owners` on a relationship without peers.
-   - Expected: the relationship returns its `ownership` block with `origin: SELF`. The other fields return `origin: OBJECT`.
+   - Expected: the relationship returns its `ownership` block with `origin: SELF`. The other fields return `origin: NODE`.
 2. Read `owner` on an attribute with one own owner, then with two.
    - Expected: that owner, then null.
 

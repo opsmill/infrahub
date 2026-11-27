@@ -134,7 +134,7 @@ A deleted owner stays in the list with `is_deleted: true` and does not count as 
 | Type | Module | Fields |
 |---|---|---|
 | `OwnerState` | `core/ownership/models.py` | `INHERIT`, `OWNERS`, `NO_OWNER` |
-| `OwnerOrigin` | same | `SELF`, `PROFILE`, `TEMPLATE`, `PARENT`, `OBJECT` |
+| `OwnerOrigin` | same | `SELF`, `PROFILE`, `TEMPLATE`, `PARENT`, `NODE` |
 | `HolderKind` | same | `NODE`, `ATTRIBUTE`, `FIELD_SET`, `TARGET_SET` |
 | `HolderKey` | same | `kind`, `attribute`, `identifier`, `direction` |
 | `StoredOwnerState` | same | `owner_ids` (None is inherit, empty is no owner), `template_id` |

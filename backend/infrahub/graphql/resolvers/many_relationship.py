@@ -22,6 +22,7 @@ from infrahub.graphql.metadata import build_metadata_query_options, get_metadata
 from ..loaders.peers import PeerRelationshipsDataLoader, QueryPeerParams
 from ..order import deserialize_order_input
 from ..types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
+from .ownership import field_ownership_reference
 from .peer_filters import build_peer_filters
 
 if TYPE_CHECKING:
@@ -131,7 +132,13 @@ class ManyRelationshipResolver:
 
         filters = build_peer_filters(field_name=info.field_name, arguments=kwargs)
 
-        response: dict[str, Any] = {"edges": [], "count": None}
+        response: dict[str, Any] = {
+            "edges": [],
+            "count": None,
+            "ownership": field_ownership_reference(
+                schema=node_schema, node_id=parent["id"], field_name=info.field_name
+            ),
+        }
 
         # Extract the schema of the node on the other end of the relationship from the GQL Schema
         node_rel = node_schema.get_relationship(info.field_name)
@@ -163,7 +170,7 @@ class ManyRelationshipResolver:
             )
             response["count"] = peer_count
 
-        if not node_fields:
+        if not edges:
             return response
 
         schema_branch = graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name)
@@ -219,7 +226,12 @@ class ManyRelationshipResolver:
                     fields=node_fields,
                     related_node_ids=graphql_context.related_node_ids,
                 )
-                entry: dict[str, dict[str, Any]] = {"node": {}, "properties": {}}
+                # The owners of the field apply to each of its links, and a descendant holds its own links.
+                entry: dict[str, Any] = {
+                    "node": {},
+                    "properties": {},
+                    "ownership": response["ownership"] and {**response["ownership"], "node_id": rel.node_id},
+                }
                 for key, mapped in RELATIONS_PROPERTY_MAP_REVERSED.items():
                     value = node.pop(key, None)
                     if value:

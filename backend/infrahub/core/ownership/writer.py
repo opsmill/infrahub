@@ -138,9 +138,20 @@ class OwnershipWriter:
 
 
 async def store_owner_states(
-    db: InfrahubDatabase, branch: Branch, node: Node, owner_states: Mapping[HolderKey, StoredOwnerState], user_id: str
+    db: InfrahubDatabase,
+    branch: Branch,
+    node: Node,
+    owner_states: Mapping[HolderKey, StoredOwnerState],
+    user_id: str,
+    keep_deleted_owners: bool = True,
 ) -> None:
-    """Store a copy of stored owner states on a saved node, deleted owners included. Give the transaction of the save."""
+    """Store owner states on a saved node. Give the transaction of the save.
+
+    Args:
+        keep_deleted_owners: True for a copy of stored owner states, which keeps a deleted owner. False for the
+            owners that a user gives.
+
+    """
     if not owner_states:
         return
     repository = OwnershipRepository(db=db, branch=branch, at=None)
@@ -151,7 +162,13 @@ async def store_owner_states(
     )
     for holder, state in owner_states.items():
         await writer.apply(
-            node=node, holder=holder, state=state, at=at, user_id=user_id, stored=stored, keep_deleted_owners=True
+            node=node,
+            holder=holder,
+            state=state,
+            at=at,
+            user_id=user_id,
+            stored=stored,
+            keep_deleted_owners=keep_deleted_owners,
         )
 
 

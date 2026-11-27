@@ -9,7 +9,7 @@ from graphql import GraphQLResolveInfo
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind, MetadataOptions
+from infrahub.core.constants import NODE_METADATA_PREFIX, InfrahubKind, MetadataOptions
 from infrahub.core.file_processor import FileUploadProcessor
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.manager import NodeManager
@@ -20,13 +20,19 @@ from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.lock import InfrahubMultiLock
 from infrahub.log import get_logger
 
-from ...core.node.create import create_node
 from ...core.node.lock_utils import (
     apply_payload_for_lock_names,
     build_object_lock_name,
     get_lock_names_on_object_mutation,
 )
-from .main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions, UpsertResult, build_graphql_response
+from .main import (
+    DeleteResult,
+    InfrahubMutationMixin,
+    InfrahubMutationOptions,
+    UpsertResult,
+    build_graphql_response,
+    create_node_with_owners,
+)
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 
 if TYPE_CHECKING:
@@ -156,12 +162,14 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         db: InfrahubDatabase,
         ip_address: IPv4Interface | ipaddress.IPv6Interface,
         namespace_id: str,
+        owners_user_id: str,
     ) -> Node:
-        address = await create_node(
+        address = await create_node_with_owners(
             data=dict(data),
             db=db,
             branch=branch,
             schema=cls._meta.active_schema,
+            owners_user_id=owners_user_id,
         )
 
         reconciler = IpamReconciler(db=db, branch=branch)
@@ -183,7 +191,9 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
 
         schema = cls._meta.active_schema
         preview_obj = await registry.node.get(schema.kind, Node).init(db=db, schema=schema, branch=branch)
-        await preview_obj.new(db=db, process_pools=False, **dict(data))
+        await preview_obj.new(
+            db=db, process_pools=False, **{key: value for key, value in data.items() if key != NODE_METADATA_PREFIX}
+        )
         schema_branch = db.schema.get_schema_branch(name=branch.name)
         object_lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)
 
@@ -196,7 +206,12 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
             db.start_transaction() as dbt,
         ):
             reconciled_address = await cls._mutate_create_object_and_reconcile(
-                data=data, branch=branch, db=dbt, ip_address=ip_address, namespace_id=namespace_id
+                data=data,
+                branch=branch,
+                db=dbt,
+                ip_address=ip_address,
+                namespace_id=namespace_id,
+                owners_user_id=graphql_context.assigned_user_id,
             )
             graphql_response = await build_graphql_response(info=info, db=dbt, obj=reconciled_address)
 
@@ -338,12 +353,14 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
         db: InfrahubDatabase,
         namespace_id: str,
+        owners_user_id: str,
     ) -> Node:
-        prefix = await create_node(
+        prefix = await create_node_with_owners(
             data=dict(data),
             db=db,
             branch=branch,
             schema=cls._meta.active_schema,
+            owners_user_id=owners_user_id,
         )
         return await cls._reconcile_prefix(
             branch=branch, db=db, prefix=prefix, namespace_id=namespace_id, is_delete=False
@@ -366,7 +383,11 @@ class InfrahubIPPrefixMutation(InfrahubMutationMixin, Mutation):
         async with InfrahubMultiLock(lock_registry=lock.registry, locks=lock_names):
             async with db.start_transaction() as dbt:
                 reconciled_prefix = await cls._mutate_create_object_and_reconcile(
-                    data=data, branch=branch, db=dbt, namespace_id=namespace_id
+                    data=data,
+                    branch=branch,
+                    db=dbt,
+                    namespace_id=namespace_id,
+                    owners_user_id=graphql_context.assigned_user_id,
                 )
 
             graphql_response = await build_graphql_response(info=info, db=dbt, obj=reconciled_prefix)

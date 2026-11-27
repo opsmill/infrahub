@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
+from unittest.mock import patch
 
 import pytest
 import ujson
@@ -15,6 +16,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.create import create_node
+from infrahub.core.ownership.constants import OWNERS_IDS_FILTER, OWNERS_ISNULL_FILTER
 from infrahub.core.ownership.models import (
     NODE_HOLDER,
     NODE_TARGET_HOLDER,
@@ -28,9 +30,15 @@ from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.ownership.resolver import OwnershipResolver
 from infrahub.core.ownership.writer import OwnershipWriter
 from infrahub.core.timestamp import Timestamp
+from infrahub.services import InfrahubServices
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from tests.helpers.graphql import graphql_query
 from tests.helpers.schema.ownership import OWNERSHIP_SCHEMA
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from infrahub.auth.session import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
@@ -140,6 +148,44 @@ async def resolve_owners(db: InfrahubDatabase, branch: Branch, node_id: str) -> 
     return (await resolver.resolve(node_ids=[node_id]))[node_id]
 
 
+async def assert_filter_agrees_with_resolver(
+    db: InfrahubDatabase, branch: Branch, kind: str, live_groups: Mapping[str, str]
+) -> None:
+    """Check that the owner filters list each node of the kind with the owners that the resolver gives it.
+
+    The resolver runs with the walk to the parents in one query, and with one query for each level of parents.
+
+    Args:
+        live_groups: The name of each account group that is not deleted, by ID. A deleted owner does not count.
+
+    """
+    filters: dict[str, dict[str, Any]] = {
+        "no owner": {OWNERS_ISNULL_FILTER: True},
+        "an owner": {OWNERS_ISNULL_FILTER: False},
+        **{name: {OWNERS_IDS_FILTER: [group_id]} for group_id, name in live_groups.items()},
+    }
+    listed: dict[str, list[str]] = {}
+    for name, owner_filter in filters.items():
+        nodes = await NodeManager.query(db=db, schema=kind, branch=branch, filters=owner_filter)
+        listed[name] = sorted(node.id for node in nodes)
+    node_ids = sorted(node.id for node in await NodeManager.query(db=db, schema=kind, branch=branch))
+    assert len(node_ids) > 0
+
+    for walk_limit in (len(node_ids), 0):
+        with patch("infrahub.core.ownership.resolver.MAX_NODES_FOR_LINEAGE_WALK", walk_limit):
+            resolved = await OwnershipResolver(repository=OwnershipRepository(db=db, branch=branch, at=None)).resolve(
+                node_ids=node_ids
+            )
+        expected: dict[str, list[str]] = {name: [] for name in filters}
+        for node_id in node_ids:
+            groups = [live_groups[owner_id] for owner_id in resolved[node_id].owner_ids if owner_id in live_groups]
+            for name in groups or ["no owner"]:
+                expected[name].append(node_id)
+            if groups:
+                expected["an owner"].append(node_id)
+        assert listed == expected, f"walk limit {walk_limit}"
+
+
 async def site_template(db: InfrahubDatabase, default_branch: Branch, dataset: OwnerDataset) -> Node:
     """Create a site template that gives one owner to its sites, to their names and to their children."""
     schema = registry.schema.get_node_schema(name="TestSite", branch=default_branch)
@@ -213,3 +259,59 @@ async def wait_for_the_other_write(
                 await asyncio.sleep(SECONDS_BETWEEN_POLLS)
     except TimeoutError:
         pytest.fail(f"The other write neither waited for a lock nor ended within {SECONDS_TO_WAIT} seconds")
+
+
+async def run(
+    db: InfrahubDatabase,
+    branch: Branch,
+    query: str,
+    variables: dict[str, Any] | None = None,
+    session: AccountSession | None = None,
+) -> dict[str, Any]:
+    # The mutations of a profile start a workflow for the account of the request.
+    service = await InfrahubServices.new(workflow=WorkflowLocalExecution())
+    result = await graphql_query(
+        query=query, db=db, branch=branch, variables=variables, service=service, account_session=session
+    )
+    assert result.errors is None, result.errors
+    assert result.data
+    return result.data
+
+
+async def create(
+    db: InfrahubDatabase,
+    branch: Branch,
+    query: str,
+    kind: str,
+    session: AccountSession | None = None,
+    **variables: Any,
+) -> str:
+    data = await run(db=db, branch=branch, query=query, variables=variables, session=session)
+    return data[f"{kind}Create"]["object"]["id"]
+
+
+async def read_node(db: InfrahubDatabase, branch: Branch, query: str, kind: str, node_id: str) -> dict[str, Any]:
+    data = await run(db=db, branch=branch, query=query, variables={"ids": [node_id]})
+    edges = data[kind]["edges"]
+    assert len(edges) == 1
+    return edges[0]["node"]
+
+
+def own(holder_id: str, *owner_ids: str) -> dict[str, Any]:
+    """Return the short `ownership` of a holder with own owners, or with "no owner" when no owner is given."""
+    return {
+        "state": "OWNERS" if owner_ids else "NO_OWNER",
+        "origin": "SELF",
+        "origin_node": {"id": holder_id},
+        "owners": [{"id": owner_id} for owner_id in sorted(owner_ids)],
+    }
+
+
+def from_node(node_id: str, *owner_ids: str) -> dict[str, Any]:
+    """Return the short `ownership` of a field that takes the owners of its node."""
+    return {
+        "state": "INHERIT",
+        "origin": "NODE",
+        "origin_node": {"id": node_id},
+        "owners": [{"id": owner_id} for owner_id in sorted(owner_ids)],
+    }

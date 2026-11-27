@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from infrahub.core.ownership.constants import SOURCES_IDS_FILTER
+from infrahub.core.ownership.filter import has_owner_filter
 from infrahub.core.query.index_start import IndexStart, NodeGetListIndexStartQuery, get_index_starts
 from infrahub.core.query.node import NodeGetListQuery
 
@@ -34,10 +36,13 @@ class NodeGetListQueryBuilder:
         branch_agnostic: bool = False,
         order: OrderModel | None = None,
     ) -> NodeGetListQuery:
-        index_start = await self._select_index_start(
-            node_kind=schema.kind,
-            index_starts=get_index_starts(schema=schema, filters=filters, partial_match=partial_match),
-        )
+        index_start = None
+        # The owner and source filters bind the nodes before the start, and an index start would bind them again.
+        if not has_owner_filter(filters=filters) and (filters or {}).get(SOURCES_IDS_FILTER) is None:
+            index_start = await self._select_index_start(
+                node_kind=schema.kind,
+                index_starts=get_index_starts(schema=schema, filters=filters, partial_match=partial_match),
+            )
         return await NodeGetListQuery.init(
             db=self.db,
             schema=schema,

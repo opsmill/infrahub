@@ -8,7 +8,8 @@ import graphene
 
 from infrahub import config
 from infrahub.core.attribute import String
-from infrahub.core.constants import InfrahubKind, RelationshipCardinality, RelationshipKind
+from infrahub.core.constants import NODE_METADATA_PREFIX, InfrahubKind, RelationshipCardinality, RelationshipKind
+from infrahub.core.ownership.constants import OWNERS_IDS_FILTER, OWNERS_ISNULL_FILTER, SOURCES_IDS_FILTER
 from infrahub.core.schema import (
     AttributeSchema,
     GenericSchema,
@@ -24,7 +25,7 @@ from infrahub.graphql.mutations.profile import InfrahubProfileMutation
 from infrahub.graphql.types.metadata import OrderInput
 from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
 
-from .constants import NODE_METADATA_TYPE, RELATIONSHIP_METADATA_TYPE
+from .constants import NODE_METADATA_TYPE, OWNER_DEPRECATION_REASON, RELATIONSHIP_METADATA_TYPE
 from .directives import DIRECTIVES
 from .enums import generate_graphql_enum, get_enum_attribute_type_name
 from .metrics import SCHEMA_GENERATE_GRAPHQL_METRICS
@@ -47,6 +48,12 @@ from .registry import registry
 from .resolvers.account_metadata import account_metadata_resolver
 from .resolvers.ipam import ipam_paginated_list_resolver
 from .resolvers.object_by_id import object_by_id_resolver
+from .resolvers.ownership import (
+    ownership_resolver,
+    sources_resolver,
+    target_field_ownership_resolver,
+    target_ownership_resolver,
+)
 from .resolvers.resolver import (
     account_resolver,
     ancestors_resolver,
@@ -76,6 +83,7 @@ from .types.branch import InfrahubBranchEdge
 from .types.context import ContextInput
 from .types.event import EVENT_TYPES
 from .types.node import InfrahubObjectWithoutMeta
+from .types.ownership import InfrahubFieldOwnership, InfrahubMetadataNode, InfrahubOwnership, NodeMetadataInput
 from .types.repository_branch_status import InfrahubRepositoryBranchStatusEdge
 from .types.task import TASK_TYPES
 
@@ -88,6 +96,10 @@ if TYPE_CHECKING:
 
 
 STATIC_EDGES_WITH_NODE_METADATA = (InfrahubBranchEdge, InfrahubRepositoryBranchStatusEdge)
+ATTRIBUTE_OWNERSHIP_DESCRIPTION = "Owners of this field of the node, own or inherited"
+RELATIONSHIP_OWNERSHIP_DESCRIPTION = (
+    "Owners of this field of the node, own or inherited. Null on `ancestors` and `descendants`, which have no owners"
+)
 """Statically defined edges whose `node_metadata` field must be repointed at the dynamic type."""
 
 
@@ -131,6 +143,10 @@ def get_attr_kind(node_schema: MainSchemaTypes, attr_schema: AttributeSchema) ->
     return get_enum_attribute_type_name(node_schema=node_schema, attr_schema=attr_schema)
 
 
+def field_ownership_field(description: str = RELATIONSHIP_OWNERSHIP_DESCRIPTION) -> graphene.Field:
+    return graphene.Field(InfrahubOwnership, required=False, resolver=ownership_resolver, description=description)
+
+
 def build_edge_fields(
     node: type[graphene.Interface | InfrahubObject],
     node_metadata: type[InfrahubObject],
@@ -144,6 +160,7 @@ def build_edge_fields(
     }
     if relation_property:
         fields["properties"] = graphene.Field(relation_property, required=False)
+        fields["ownership"] = field_ownership_field()
     if relationship_metadata:
         fields["relationship_metadata"] = graphene.Field(relationship_metadata, required=False)
     return fields
@@ -413,7 +430,10 @@ class GraphQLSchemaManager:
         for data_type in ATTRIBUTE_TYPES.values():
             gql_type = self.get_type(name=data_type.get_graphql_type_name())
             gql_type._meta.fields["source"] = graphene.Field(data_source, resolver=object_by_id_resolver)
-            gql_type._meta.fields["owner"] = graphene.Field(data_owner, resolver=object_by_id_resolver)
+            gql_type._meta.fields["owner"] = graphene.Field(
+                data_owner, resolver=object_by_id_resolver, deprecation_reason=OWNER_DEPRECATION_REASON
+            )
+            gql_type._meta.fields["ownership"] = field_ownership_field(description=ATTRIBUTE_OWNERSHIP_DESCRIPTION)
             gql_type._meta.fields["updated_by"] = graphene.Field(
                 account_type, required=False, resolver=account_metadata_resolver
             )
@@ -777,6 +797,35 @@ class GraphQLSchemaManager:
             "created_by": graphene.Field(account_type, required=False, resolver=account_metadata_resolver),
             "updated_at": graphene.DateTime(required=False),
             "updated_by": graphene.Field(account_type, required=False, resolver=account_metadata_resolver),
+            "ownership": graphene.Field(
+                InfrahubOwnership,
+                required=False,
+                resolver=ownership_resolver,
+                description="Owners of the node, own or inherited",
+            ),
+            "target_ownership": graphene.Field(
+                InfrahubOwnership,
+                required=False,
+                resolver=target_ownership_resolver,
+                description="Profiles and object templates only: the owners given to their nodes",
+            ),
+            "target_field_ownership": graphene.Field(
+                graphene.List(graphene.NonNull(InfrahubFieldOwnership)),
+                required=False,
+                fields=graphene.List(graphene.NonNull(graphene.String)),
+                resolver=target_field_ownership_resolver,
+                description=(
+                    "Profiles and object templates only: the owners given to fields of their nodes. "
+                    "Without `fields`, all attributes and relationships of the nodes. "
+                    "A name in `fields` that is not an attribute or a relationship of the nodes is refused"
+                ),
+            ),
+            "sources": graphene.Field(
+                graphene.List(graphene.NonNull(InfrahubMetadataNode)),
+                required=True,
+                resolver=sources_resolver,
+                description="Sources of the node. A deleted source has is_deleted: true",
+            ),
             "Meta": type("Meta", (object,), meta_attrs),
         }
 
@@ -844,7 +893,10 @@ class GraphQLSchemaManager:
                 slug = InputField(StringAttributeCreate, required=True)
                 description = InputField(StringAttributeCreate, required=False)
         """
-        attrs: dict[str, graphene.String | graphene.InputField] = {"id": graphene.String(required=False)}
+        attrs: dict[str, graphene.String | graphene.InputField] = {
+            "id": graphene.String(required=False),
+            NODE_METADATA_PREFIX: graphene.InputField(NodeMetadataInput, required=False),
+        }
 
         for attr in schema.attributes:
             if attr.read_only:
@@ -902,6 +954,7 @@ class GraphQLSchemaManager:
         attrs: dict[str, graphene.String | graphene.InputField | graphene.List] = {
             "id": graphene.String(required=False),
             "hfid": graphene.List(of_type=graphene.String, required=False),
+            NODE_METADATA_PREFIX: graphene.InputField(NodeMetadataInput, required=False),
         }
 
         for attr in schema.attributes:
@@ -961,6 +1014,7 @@ class GraphQLSchemaManager:
         attrs: dict[str, graphene.String | graphene.InputField | graphene.List] = {
             "id": graphene.String(required=False),
             "hfid": graphene.List(of_type=graphene.String, required=False),
+            NODE_METADATA_PREFIX: graphene.InputField(NodeMetadataInput, required=False),
         }
 
         for attr in schema.attributes:
@@ -1184,6 +1238,8 @@ class GraphQLSchemaManager:
         - updated_by: Filter by the account that last updated the node
         - created_at: Filter by creation timestamp
         - updated_at: Filter by last update timestamp
+        - owners: Filter by the owners that apply to the node, own or inherited
+        - sources: Filter by the sources of the node
 
         Returns:
             dict: Filter definitions with names as keys and graphene types as values
@@ -1215,6 +1271,15 @@ class GraphQLSchemaManager:
             ),
             "node_metadata__updated_at__after": graphene.DateTime(
                 description="Filter for objects updated after this timestamp"
+            ),
+            OWNERS_IDS_FILTER: graphene.List(
+                graphene.ID, description="Filter for objects that any of these owners owns, directly or by inheritance"
+            ),
+            OWNERS_ISNULL_FILTER: graphene.Boolean(
+                description="Filter for objects without a live owner (true) or with one (false), own or inherited"
+            ),
+            SOURCES_IDS_FILTER: graphene.List(
+                graphene.ID, description="Filter for objects that have any of these sources"
             ),
         }
 
@@ -1292,6 +1357,8 @@ class GraphQLSchemaManager:
                 PaginatedObjectPermission, required=True, resolver=parent_field_name_resolver
             ),
         }
+        if nested:
+            main_attrs["ownership"] = field_ownership_field()
 
         graphql_paginated_object = registry.get_paginated_type(
             reference_hash=paginated_hash, schema_hash=self.schema_hash
@@ -1372,6 +1439,7 @@ class GraphQLSchemaManager:
             main_attrs: dict[str, Any] = {
                 "count": graphene.Int(required=True),
                 "edges": graphene.List(of_type=graphene.NonNull(base_interface)),
+                "ownership": field_ownership_field(),
                 "Meta": type("Meta", (object,), meta_attrs),
             }
 

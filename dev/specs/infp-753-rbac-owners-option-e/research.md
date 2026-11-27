@@ -61,7 +61,7 @@ The Technical Context of the plan has no open "NEEDS CLARIFICATION" item. The op
 - Code: `graphql/types/ownership.py::InfrahubOwnership`, `InfrahubMetadataNode`, wired in `graphql/manager.py`.
 - The deprecated `owner` field of attributes returns the own owner when the attribute has exactly one, else null (FR-014). `graphql/manager.py` sets the deprecation reason.
 - Open: product did not sign off on the names. An API review fixes them before the SDK change (spec, "Questions for engineering").
-- The origin value `OBJECT` and the values of `applies_to` (R-15) use "object", as the object permission does. The engineering design names this origin `NODE`, so the API review confirms the name.
+- The origin value `NODE` is the name of the engineering design. The plan first used `OBJECT`, as the object permission does. Decision of 2026-11-26: `NODE` ([provisional-decisions.md](provisional-decisions.md), "Decisions of 2026-11-26"). The values of `applies_to` (R-15) keep "object".
 
 ## R-5: Write contract
 
@@ -264,7 +264,7 @@ The Technical Context of the plan has no open "NEEDS CLARIFICATION" item. The op
 - Functional tests through GraphQL: the scenarios of the user stories. These are the tests of the user-facing API.
 - Query benchmarks in `backend/tests/query_benchmark/`: SC-001 to SC-006 and SC-008, on the reference data set.
 - Integration Docker test in `backend/tests/integration_docker/`: a kind change and a field rename on nodes with owners. The constitution asks for this level for schema migrations.
-- E2E tests in `tests/e2e/ownership/`: one scenario for each of user stories 1 to 6, through the SDK client fixture `infrahub_client` on the full stack. They open no page. User story 7 has none, because its setting needs its own stack.
+- No E2E test. Decision of 2026-11-27: `tests/e2e/` is the browser suite, and the E2E tests come with the frontend work ([IFC-3638](https://opsmill.atlassian.net/browse/IFC-3638)), which is not part of these specs. The first build had API tests in `tests/e2e/ownership/`; they are removed.
 - Spike, before the first pull request: SC-003 to SC-006, SC-009 and SC-010 with plain Cypher queries. A second measure of SC-009 and SC-010 uses a test implementation of the change check that reads owners.
 - Not measured so far: the kind migration, concurrent writes, and a build without the ownership code for comparison.
 - The existing permission tests must pass without changes (SC-007).

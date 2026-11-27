@@ -1,6 +1,7 @@
 import asyncio
 import time
 from pathlib import Path
+from typing import Any
 
 import pytest
 import yaml
@@ -10,6 +11,7 @@ from infrahub_sdk.schema.main import AttributeKind, AttributeSchema, NodeSchema,
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.schemas.car_person import (
     NAMESPACE,
+    TESTING_MANUFACTURER,
     TESTING_PERSON,
     SchemaCarPerson,
 )
@@ -39,6 +41,34 @@ query {
 """
 
 pytestmark = pytest.mark.shard_b
+
+SET_OWNERS = """
+mutation SetOwners($id: String!, $owners: [MetadataNodeInput!]) {
+  TestingManufacturerUpdate(
+    data: {
+      id: $id
+      description: { value: "kept", owners: $owners }
+      node_metadata: { owners: $owners, field_owners: [{ field: "customers", owners: $owners }] }
+    }
+  ) {
+    ok
+  }
+}
+"""
+
+OWNERS_QUERY = """
+query Owners($ids: [ID]) {
+  %(kind)s(ids: $ids) {
+    edges {
+      node {
+        %(attribute)s { value ownership { state owners { id } } }
+        customers { ownership { state owners { id } } }
+      }
+      node_metadata { ownership { state owners { id } } }
+    }
+  }
+}
+"""
 
 
 class TestSchemaMigrations(TestInfrahubDockerClient, SchemaCarPerson):
@@ -154,6 +184,63 @@ class TestSchemaMigrations(TestInfrahubDockerClient, SchemaCarPerson):
                 }
             },
         ]
+
+    async def test_owners_follow_a_renamed_attribute_and_a_changed_kind(
+        self, default_branch: str, client: InfrahubClient, schema_base: SchemaRoot
+    ) -> None:
+        async def read_owners(kind: str, attribute: str) -> dict[str, Any]:
+            response = await client.execute_graphql(
+                query=OWNERS_QUERY % {"kind": kind, "attribute": attribute},
+                variables={"ids": [manufacturer.id]},
+                branch_name=default_branch,
+            )
+            return response[kind]["edges"][0]
+
+        async def load(schema: dict[str, Any]) -> None:
+            response = await client.schema.load(schemas=[schema], branch=default_branch)
+            assert response.errors == {}
+            # A worker can refuse a query while it loads the new schema, and this wait tries again.
+            assert await self.schema_in_sync(client=client, branch=default_branch)
+
+        group = await client.create(kind="CoreAccountGroup", name="migration-owners", branch=default_branch)
+        await group.save()
+        manufacturer = await client.create(kind=TESTING_MANUFACTURER, name="Owned Maker", branch=default_branch)
+        await manufacturer.save()
+        owners = [{"id": group.id}]
+        response = await client.execute_graphql(
+            query=SET_OWNERS, variables={"id": manufacturer.id, "owners": owners}, branch_name=default_branch
+        )
+        assert response == {"TestingManufacturerUpdate": {"ok": True}}
+        ownership = {"ownership": {"state": "OWNERS", "owners": owners}}
+
+        def owned(attribute: str) -> dict[str, Any]:
+            return {
+                "node": {attribute: {"value": "kept"} | ownership, "customers": ownership},
+                "node_metadata": ownership,
+            }
+
+        assert await read_owners(kind=TESTING_MANUFACTURER, attribute="description") == owned("description")
+
+        # The ID of the attribute and of the node make the load a rename, and not a removal with an addition.
+        current = await client.schema.get(kind=TESTING_MANUFACTURER, branch=default_branch, refresh=True)
+        schema = schema_base.to_schema_dict()
+        manufacturer_schema = next(node for node in schema["nodes"] if node["name"] == "Manufacturer")
+        description = next(attr for attr in manufacturer_schema["attributes"] if attr["name"] == "description")
+        description["id"] = next(attr.id for attr in current.attributes if attr.name == "description")
+        description["name"] = "details"
+        await load(schema=schema)
+
+        assert await read_owners(kind=TESTING_MANUFACTURER, attribute="details") == owned("details")
+
+        manufacturer_schema["id"] = current.id
+        manufacturer_schema["name"] = "CarMaker"
+        for node in schema["nodes"]:
+            for relationship in node["relationships"]:
+                if relationship["peer"] == TESTING_MANUFACTURER:
+                    relationship["peer"] = f"{NAMESPACE}CarMaker"
+        await load(schema=schema)
+
+        assert await read_owners(kind=f"{NAMESPACE}CarMaker", attribute="details") == owned("details")
 
     @staticmethod
     async def schema_in_sync(client: InfrahubClient, branch: str | None, wait_for_seconds: int = 30) -> bool:

@@ -329,12 +329,13 @@ The names of fields, filters and object file keys in this section follow the [en
 
 #### Read and set owners through the API
 
-- **FR-010**: Users MUST be able to read an `ownership` block on a node, on each attribute and on each relationship field. The block MUST give the state (`OWNERS`, `NO_OWNER`, `INHERIT`), the origin (`SELF`, `PROFILE`, `TEMPLATE`, `PARENT`, `OBJECT`), the origin node, and the owners that apply. The origin node and each owner MUST give their ID, kind, display label and HFID. Each owner MUST say whether it is deleted.
+- **FR-010**: Users MUST be able to read an `ownership` block on a node, on each attribute and on each relationship field. The block MUST give the state (`OWNERS`, `NO_OWNER`, `INHERIT`), the origin (`SELF`, `PROFILE`, `TEMPLATE`, `PARENT`, `NODE`), the origin node, and the owners that apply. The origin node and each owner MUST give their ID, kind, display label and HFID. Each owner MUST say whether it is deleted.
   - Check: the examples of [eng, section 2][eng] return the documented responses.
 - **FR-011**: Infrahub MUST return the `ownership` block of a relationship also when the relationship has no peer. For a relationship with several peers, it MUST read the owners of the field once, not once for each peer. When a query asks only for the `ownership` of a relationship, Infrahub MUST NOT read the peers.
   - Check: count the database queries of a page of 50 devices with the `ownership` of `interfaces`.
 - **FR-012**: On a profile or an object template, users MUST be able to read the owners that it gives to its nodes and to each field of its nodes, separately from its own owners (E-7).
   - Check: read `target_ownership` and `target_field_ownership` on a profile that gives owners to its nodes and to one field.
+  - Decision of 2026-11-26: `target_field_ownership(fields:)` refuses a name that is not an attribute or a relationship of the nodes, with an error that names the field.
 - **FR-013**: Users MUST be able to set owners in the create, update and upsert mutations, with the values of D-5: on the node, on an attribute or a relationship field by name, on an attribute next to its value, and, on a profile or an object template, the owners that it gives. A mutation MUST accept each owner by ID, or by HFID with the kind.
   - Check: the mutation examples of [eng, section 2][eng].
 - **FR-014**: The `owner` field of today on attributes MUST return the own owner of the field when the field has exactly one own owner, and null in all other cases. A write to it MUST replace the own owners of the field. The field MUST be marked as deprecated (D-2).
@@ -368,7 +369,7 @@ The names of fields, filters and object file keys in this section follow the [en
 - **FR-027**: The creation of a node from an object template MUST read the owners of the template and of its subtemplates a fixed number of times, not once for each component.
   - Check: the number of owner reads is the same for a template with 2 components and with 6 components.
 - **FR-028**: Object files MUST set the owners and sources of a node under `node_metadata`, and the owners of a field on the field, with the values of D-5.
-  - A plain name is an account group. An account uses a typed form with its kind. Infrahub refuses a name that matches both an account and an account group.
+  - A plain name is an account group. An account uses a typed form with its kind. The SDK sends a plain name with the kind of an account group, because Infrahub refuses a name without a kind (decision of 2026-11-26).
   - In a profile or an object template, `node_metadata` also sets the owners that it gives to its nodes. A field can carry owners without a value.
   - Check: load files with each form and compare the stored states.
 
@@ -606,6 +607,7 @@ The spike measures two limits for Infrahub Enterprise on this storage:
   - Answer of 2026-11-16: the reference data set is the one of this spec (section "Reference data set"). For SC-003, the limit of the owner filter is accepted for this phase (PD-8).
 - Whether the `ownership` block must give the profile as origin node for a field whose node takes its owners from a profile (E-15).
   - Answer of 2026-11-16: E-15 stays as written. The field shows its own node as origin node. The API gives the origin value `OBJECT`.
+  - Answer of 2026-11-26: the origin value is `NODE`, as in the engineering design that Wim approved on 2026-11-19. The origin node stays the node of the field.
 
 Guillaume Mazoyer, maintainer, gave these four answers on 2026-11-16. They confirm the values of PD-7 in [provisional-decisions.md](provisional-decisions.md) ("Decisions of 2026-11-16").
 

@@ -19,12 +19,16 @@ from infrahub.graphql.metadata import build_metadata_query_options, get_metadata
 
 from ..loaders.node import GetManyParams, NodeDataLoader
 from ..types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
+from .ownership import field_ownership_reference
 from .peer_filters import build_peer_filters
 
 if TYPE_CHECKING:
     from infrahub.core.schema.node_schema import NodeSchema
 
     from ..initialization import GraphqlContext
+
+
+OWNERSHIP_ONLY_FIELDS = frozenset({"ownership", "__typename"})
 
 
 class SingleRelationshipResolver:
@@ -122,6 +126,13 @@ class SingleRelationshipResolver:
         node_rel = node_schema.get_relationship(info.field_name)
 
         response: dict[str, Any] = {"node": None, "properties": {}}
+        if "ownership" in fields:
+            response["ownership"] = field_ownership_reference(
+                schema=node_schema, node_id=parent["id"], field_name=info.field_name
+            )
+            # The owners of the field belong to the parent node, so a query that reads nothing else needs no peer.
+            if set(fields) <= OWNERSHIP_ONLY_FIELDS:
+                return response
 
         schema_branch = graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name)
         id_only_node = self._build_id_only_node(

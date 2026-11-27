@@ -6,6 +6,7 @@ from graphene import BigInt, Boolean, DateTime, Field, InputObjectType, Int, Lis
 from graphene.types.generic import GenericScalar
 
 from infrahub.core import registry
+from infrahub.graphql.constants import IS_PROTECTED_DEPRECATION_REASON
 
 from .enums import BranchRelativePermissionDecision
 from .interface import InfrahubInterface
@@ -72,7 +73,7 @@ class PermissionType(ObjectType):
 
 class AttributeInterface(InfrahubInterface):
     is_default = Field(Boolean)
-    is_protected = Field(Boolean)
+    is_protected = Field(Boolean, deprecation_reason=IS_PROTECTED_DEPRECATION_REASON)
     updated_at = Field(DateTime)
     # Since source and owner are using a Type that is generated dynamically
     # these 2 fields will be dynamically inserted when we generate the GraphQL Schema

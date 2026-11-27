@@ -1663,6 +1663,15 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             if meta_field == "updated_at":
                 updated_at = self._get_updated_at()
                 data["updated_at"] = updated_at.to_datetime() if updated_at else None
+
+            if meta_field in {"ownership", "sources"}:
+                data[meta_field] = {"node_id": self.get_id()}
+
+            if meta_field in {"target_ownership", "target_field_ownership"} and (
+                self.get_schema().is_profile_schema or self.get_schema().is_template_schema
+            ):
+                # A profile or an object template gives owners to the nodes of the kind that its schema names.
+                data[meta_field] = {"node_id": self.get_id(), "target_kind": self.get_schema().name}
         return data
 
     async def from_graphql(

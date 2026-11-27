@@ -202,7 +202,9 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
 - `copy_from_template` gives a new node the owners that its object template gives, with the `HAS_OWNER_SOURCE` mark.
 
 The save of an attribute with a new `owner` property calls the same write with one owner, so it replaces all own
-owners of the attribute. A cleared `owner` property gives the inherit state.
+owners of the attribute. A cleared `owner` property gives the inherit state. When the input of an attribute gives
+`owners` and `owner` together, the attribute ignores `owner` (`Attribute.__init__` and `Attribute.from_graphql`), so
+the mutation writes the owners once.
 
 The read of the `owner` property (`NodeListGetAttributeQuery`) gives the own owner of the attribute when it has
 exactly one. It gives nothing when the attribute has several owners, no owner, or a copy from an object template: a
@@ -262,8 +264,18 @@ The owners that apply to a node come from the first level that has a state:
 4. Its parent, with the same order on the parent (`PARENT`). The parent is the peer of the relationship of kind
    `Parent`, otherwise the peer of the hierarchy relationship `parent`.
 
-The resolver does not resolve the owners that apply to a field, or the owners that a profile or an object template
-gives.
+`OwnershipResolver.resolve_fields` gives the owners that apply to a field: its own state, its profiles by priority,
+its copy from an object template, then the owners of its node (`NODE`, with the node as origin node). The owners
+that a profile or an object template gives come from `resolve_target_ownership`, as the profile or the template
+stores them.
+
+The GraphQL `ownership` field of an attribute and of a relationship reads the owners of the field with one data
+loader for the request (`graphql/resolvers/ownership.py`). A relationship of cardinality many gives each edge the
+reference of the node that holds its link. Without `include_descendants`, that node is the node of the field, so the
+owners are read once for the field. With `include_descendants`, the owners are read for each node that holds a link,
+in the same batch as the field. A relationship of cardinality one that asks only for `ownership` reads no peer. The `ancestors` and `descendants` fields of a hierarchical node share their
+GraphQL types with `children`, but they are not relationships and have no owners, so their `ownership` is always
+null.
 
 - The walk stops after `MAX_INHERITANCE_DEPTH` parents. A node with more parents and no state below the limit
   gets no inherited owner.
@@ -410,7 +422,13 @@ the owner edges of the default branch under the new kind.
   combined diff shows no change, while a full diff of the same time range shows an update. The merge copies the
   edges of the branch, not the values of the diff, so the merge result does not change.
 - An event stores the owners of an attribute as the `owner` or the `owners` property of the attribute, in its payload
-  only.
+  only. The activity log query (`graphql/queries/event.py`) adds one `<attribute>__owners` entry to `attributes` for
+  either property, with the display labels. It reads the single owner ID of the `owner` property as a list of one
+  owner. An event from before owner lists also holds the `owner` property. An automation trigger cannot match this
+  entry, because the event has no related resource for it.
+- The activity log reads the display labels of the owners and the sources on the branch of each event, with one read
+  for each branch. A source can exist on one branch only. A global event, or an event of a deleted branch, reads them
+  on the branch of the request.
 - The owner of one link (the `HAS_OWNER` edge of a `Relationship` vertex) keeps the behavior before owner lists at a merge.
   Three tests in `test_ownership_scenarios.py` mark these cases as expected failures:
   - The changelog of the merge records the owner of a link also when the default branch already holds the same

@@ -2,6 +2,7 @@
 # The storage option does not change this contract.
 # Names are proposals. An API review fixes them before the SDK change (spec, "Open questions").
 # Decision of 2026-11-16 (../provisional-decisions.md, PD-6): these names are confirmed, with the field `name` on `MetadataNodeInput`.
+# Decision of 2026-11-26 (../provisional-decisions.md): the origin value of a field that takes the owners of its node is `NODE`, as in the engineering design.
 # Source of the owner shape: product meeting of 2026-11-09, engineering design section 2.
 # The shapes of `sources` and `permissions` are proposals of the plan (research R-8 and R-16).
 
@@ -18,7 +19,7 @@ enum OwnerOrigin {
   PROFILE
   TEMPLATE
   PARENT
-  OBJECT
+  NODE
 }
 
 """A node that metadata refers to: an owner, a source, or the origin of owners."""
@@ -55,16 +56,22 @@ type InfrahubFieldOwnership {
 # Added to InfrahubNodeMetadata of profiles and object templates only:
 #   target_ownership: InfrahubOwnership
 #   target_field_ownership(fields: [String!]): [InfrahubFieldOwnership!]
+#   Without `fields`: all attributes and relationships of the nodes. A name in `fields` that is not an attribute
+#   or a relationship of the nodes refuses the query with an error that names the field (decision of 2026-11-26).
 #
 # Added to every attribute type and every relationship field type:
 #   ownership: InfrahubOwnership
+#   The `ancestors` and `descendants` fields of a hierarchical node share their types with `children`.
+#   They are not relationships, so their `ownership` is always null.
 #
 # Removed from the earlier drafts: `from_template`, and the `field_owners` output of `node_metadata`.
 
 # ---------- Deprecations (behaviour does not change) ----------
 #
 # Attribute `owner`: deprecated. Returns the own owner when the attribute has exactly one, else null.
+#   A copy from an object template is not an own owner, so `owner` is null for it.
 #   A write replaces the own owners of the attribute.
+#   When one attribute input gives `owner` and `owners`, `owners` is written and `owner` is ignored (decision of 2026-11-26).
 # Attribute `is_protected` and its filter: deprecated.
 # `properties { owner }` on relationship links: unchanged, not deprecated.
 
@@ -88,26 +95,27 @@ type InfrahubNodePermissions {
 
 # ---------- Input types ----------
 
-"""An owner or a source. Give `id`, `hfid` with `kind`, or `name`."""
+"""An owner or a source. Give `id`, `hfid` with `kind`, or `name` with `kind`."""
 input MetadataNodeInput {
   id: String
   hfid: [String!]
   kind: String
-  """
-  The HFID of a kind that has one HFID value. Without `kind`: the name of an account group
-  """
+  """The HFID of a kind that has one HFID value. Give it with `kind`."""
   name: String
 }
 # `name` is an addition of the implementation (task T140). The earlier contract did not have it.
 # The decision of 2026-11-16 confirms it. Its form is the one of schema/schema.graphql.
-# The object file loader of the Python SDK sends a plain name as `{name}` and the typed form as `{kind, name}`.
+# Decision of 2026-11-26: `name` without `kind` is refused. The object file loader of the Python SDK must send
+# each owner and each source as `{kind, name}`, also a plain name of the object file.
 
 input FieldOwnersInput {
   """Name of an attribute or a relationship."""
   field: String!
-  """null: inherit. []: no owner. List: own owners."""
+  """Left out: no change. null: inherit. []: no owner. List: own owners."""
   owners: [MetadataNodeInput!]
 }
+# An entry that leaves out `owners` changes nothing (decision of 2026-11-26). Infrahub still refuses its field
+# name when the kind has no such attribute or relationship.
 
 input NodeMetadataInput {
   """Left out: no change. null: inherit. []: no owner. List: own owners."""
@@ -154,9 +162,13 @@ input NodeMetadataInput {
 #   the owner is not found
 #   the owner is of another kind than an account or an account group
 #   the kind is unknown
-#   the reference has neither an id, a kind with an hfid, nor a name
+#   the reference has neither an id, a kind with an hfid, nor a kind with a name
+#   the reference has a name without a kind
 #   the hfid has the wrong length
-#   a name without a kind is the name of an account and of an account group
+#   a field name in `field_owners` or `target_field_owners` is not an attribute or a relationship of the kind
+#
+# A name in `fields` of `target_field_ownership` that is not an attribute or a relationship of the nodes
+# refuses the query, with an error that names the field.
 #
 # A refusal of the change check gives one entry in `errors` for each refused item (FR-045):
 # {

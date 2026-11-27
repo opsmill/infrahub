@@ -118,3 +118,45 @@ Reasons. The evidence is in the scratch files of the review of 2026-11-20 (`revi
 - A Redis lock waits with no limit. `RedisLock.acquire` loops until it gets the key (`backend/infrahub/lock.py:188-209` on `origin/develop`), and a lock that is not an init lock gets no time to live (`lock.py:612-627` on `origin/develop`). The lock modes of pull request 11410 do not change this. Two writers that take two node locks in the reverse order wait without end. Neo4j finds a deadlock of database locks, and the mutation retries it (`retry_db_transaction`).
 
 Update time, changed after the review of 2026-11-23: `Node._update` reads the update time after the lock when the caller gives no time. With the time read before the lock, an owner update that waited behind another owner update wrote at an earlier time, did not see the owners of the other update, and left both lists active. A value update that waits behind a delete wrote an active `HAS_VALUE` edge on a deleted attribute: the same probe saw it in 7 of 160 pairs with the lock and in 28 of 80 pairs on `develop`. With the update time read after the lock, it saw 0 of 80, and the update fails. `NodeLockQuery` now also reads, after the lock, whether the node is active, so such an update raises `NodeNotFoundError`. A write of owners with a time from before the lock fails when the holder has an owner edge with a later time. `develop` has the `HAS_VALUE` bug without this change.
+
+## Decisions of 2026-11-26
+
+Guillaume Mazoyer, maintainer, made these decisions on 2026-11-26, before pull request 2 (GraphQL API).
+
+- The origin value of a field that takes the owners of its node is `NODE`, not `OBJECT`. This replaces the answer of 2026-11-16 to E-15 (spec.md) and the value of PD-6 for this one name.
+  - Reason: the engineering design names it `NODE` (sections 2 and 3, and the GraphQL examples of 2026-11-09). Wim approved this shape at the status meeting of 2026-11-19, after PD-6.
+  - The origin node does not change: it is the node of the field.
+- Task T031 is dropped. Two tests of `backend/tests/component/core/ownership/test_owner_sets.py` already run two first writes of owners in two open transactions on one node. Task T021 was closed on 2026-11-20 for the same reason.
+- No test asserts a count of database queries (decision of 2026-11-18, commit `259305a5c8`). Tasks T044 and T106 follow this rule: the benchmarks of T061 measure FR-009.
+- An owner or a source given by `name` must also give `kind`. Infrahub refuses `{name}` without `kind`, and the error says to give the kind. `{kind, name}`, `{id}` and `{kind, hfid}` do not change.
+  - Reason, from the option the maintainer chose: it is the simplest rule, and a name without a kind cannot point to the wrong kind. Before, a name without a kind was read as an account group, and refused only when an account had the same name. The object file loader of the SDK must send a plain name with the kind of an account group.
+- A `field_owners` or `target_field_owners` entry that leaves out `owners` changes nothing. `owners: null` still gives inherit, and `[]` gives no owner.
+  - Reason, from the option the maintainer chose: the rule of D-5 applies the same way everywhere. Before, an entry without `owners` was read like `owners: null` and set the field to inherit. A key left out at the node level already changes nothing (D-5).
+- `target_field_ownership(fields: [...])` refuses a name that is not an attribute or a relationship of the nodes, with an error that names the field.
+  - Reason, from the option the maintainer chose: the read follows the rule of the inputs, so a typo in a field name does not pass without an error. Before, the query skipped the name and gave no error. The `field_owners` input already refused an unknown field name.
+- When one attribute input gives both `owner` and `owners`, `owners` is written and `owner` is ignored. The owners are written once.
+  - Reason: the save wrote `owner` and then `owners`, so the owners changed twice and the changelog showed the ignored owner (commit `b0ee2e28e4`).
+- `ownership` is null on `ancestors` and `descendants`.
+  - Reason: these fields share their types with `children`, but they are not relationships and have no owners. Separate types would add GraphQL types for each hierarchy (commit `cb2ee07f8b`).
+- Decisions of pull request 1 on the same day:
+  - The deprecated `owner` gives null for an owner that an object template copied. Reason: the owner code reads a copy as inherit, not as an own owner (commit `fb920e333d`).
+  - The label of a deleted owner stays "deleted owner". Reason: an owner can be an account or an account group, so "deleted group" was not correct (commit `21927113bc`).
+  - The test of a create from a template no longer asserts a count of owner reads. Reason: a count of queries fails when the query plan changes for a good reason (commit `1afb9166a7`).
+
+## Decision of 2026-11-27: one edge type for owners
+
+Guillaume Mazoyer, maintainer, made this decision on 2026-11-27. Pull request 1 applies it in commit `d7ab34f699`.
+
+- "No owner" is a `HAS_OWNER` edge to the shared `NoOwner` vertex. The `HAS_NO_OWNER` edge type and its three indexes are removed.
+- Reason, from the commit: the graph has one edge type less, and the diff and the merge read half as many owner patterns. The `owner_branch`, `owner_from` and `owner_to` indexes serve the edges to `NoOwner`.
+- Rule for every read of owners: a Cypher read of the owners from a `HAS_OWNER` edge of a `Node`, `Attribute` or `OwnerSet` vertex ends the edge at `(:Node)`. `NoOwner` has no `Node` label. A check of whether a holder has its own state reads `HAS_OWNER` to any end vertex, so it also sees "no owner".
+
+## Decision of 2026-11-27: E2E tests come with the frontend
+
+Guillaume Mazoyer, maintainer, made this decision on 2026-11-27.
+
+- `tests/e2e/` is the browser suite (pytest-playwright, `tests/e2e/README.md`). Pull request 2 had four API tests in `tests/e2e/ownership/` that opened no page. They are removed.
+- The constitution asks for pytest-playwright E2E tests for each user-facing feature (principle IV). These specs have no frontend change, so they have no E2E test. This exception is accepted: the E2E tests come with the frontend work ([IFC-3638](https://opsmill.atlassian.net/browse/IFC-3638)), which is not part of these specs.
+- Reason: the component tests in `backend/tests/component/graphql/metadata/` and `backend/tests/component/core/ownership/` already test the same behavior through GraphQL with a real database. No owner behavior needs the deployed services or the task workers: an object template copies its owners inside the create, and the owners that a profile gives are read through the profile.
+- The runs on the full stack stay: the integration Docker test of T110 (schema migrations run through the workers) and the scenarios of quickstart.md.
+- Task T087 of pull request 3 asks for an API test in `tests/e2e/ownership/`. Pull request 3 chooses its level.

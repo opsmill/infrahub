@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 from graphql import ExecutionResult
 
+from infrahub.auth.session import AccountSession
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DEFAULT_IP_NAMESPACE, InfrahubKind
@@ -1604,4 +1605,57 @@ async def test_concurrent_ipaddress_creates_keep_address_unique(
     assert len(addresses) == 1
     assert [error.message for result in results for error in result.errors or []] == [
         "Violates uniqueness constraint 'address-ip_namespace'"
+    ]
+
+
+async def test_ipaddress_create_writes_its_owners_as_the_account_of_the_request(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_ipnamespace: Node,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+    session_admin: AccountSession,
+) -> None:
+    default_branch.update_schema_hash()
+    group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group.new(db=db, name="network-team")
+    await group.save(db=db)
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch, account_session=session_admin)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source="""
+        mutation($address: String!, $owners: [MetadataNodeInput!]) {
+            IpamIPAddressCreate(data: {address: {value: $address}, node_metadata: {owners: $owners}}) {
+                object { id }
+            }
+        }
+        """,
+        context_value=gql_params.context,
+        variable_values={"address": "192.0.2.1/24", "owners": [{"id": group.id}]},
+    )
+    assert result.errors is None, result.errors
+    assert result.data
+    address_id = result.data["IpamIPAddressCreate"]["object"]["id"]
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source="""
+        query($ids: [ID]) {
+            IpamIPAddress(ids: $ids) { edges { node_metadata { updated_by { id } ownership { owners { id } } } } }
+        }
+        """,
+        context_value=gql_params.context,
+        variable_values={"ids": [address_id]},
+    )
+
+    assert result.errors is None, result.errors
+    assert result.data
+    assert result.data["IpamIPAddress"]["edges"] == [
+        {
+            "node_metadata": {
+                "updated_by": {"id": session_admin.account_id},
+                "ownership": {"owners": [{"id": group.id}]},
+            }
+        }
     ]

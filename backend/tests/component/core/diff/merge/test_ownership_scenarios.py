@@ -30,9 +30,11 @@ from infrahub.core.ownership.models import (
     HolderKey,
     HolderKind,
     OwnerOrigin,
+    ResolvedOwnership,
     field_holder,
 )
 from infrahub.core.ownership.repository import OwnershipRepository
+from infrahub.core.ownership.resolution import resolve_field_ownership
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
 from infrahub.exceptions import MergeConflictsUnresolvedError, ValidationError
@@ -166,20 +168,37 @@ class ProfileHolder(OwnerListHolder):
         return profile_id
 
     async def read(self, db: InfrahubDatabase, branch: Branch, node_id: str) -> tuple[str, ...] | None:
-        """Return the owners that the profile gives, and check that its device takes its owners from the profile."""
+        """Return the owners that the profile gives, and check that its device takes the owners from the profile."""
         owner_ids = await super().read(db=db, branch=branch, node_id=node_id)
-        if owner_ids and isinstance(self._holder, HolderKey):
+        if owner_ids:
             devices = await NodeManager.query(
                 db=db, schema="TestDevice", branch=branch, filters={"name__value": PROFILE_DEVICE_NAME}
             )
             assert len(devices) == 1
-            resolved = await resolve_owners(db=db, branch=branch, node_id=devices[0].id)
+            resolved = await self._resolve_device(db=db, branch=branch, profile_id=node_id, device_id=devices[0].id)
             assert (resolved.owner_ids, resolved.origin, resolved.origin_node_id) == (
                 owner_ids,
                 OwnerOrigin.PROFILE,
                 node_id,
             )
         return owner_ids
+
+    async def _resolve_device(
+        self, db: InfrahubDatabase, branch: Branch, profile_id: str, device_id: str
+    ) -> ResolvedOwnership:
+        node_ownership = await resolve_owners(db=db, branch=branch, node_id=device_id)
+        if isinstance(self._holder, HolderKey):
+            return node_ownership
+        kind, field_name, _ = self._holder
+        stored = await OwnershipRepository(db=db, branch=branch, at=None).read(
+            node_ids=[device_id, profile_id], attributes=True
+        )
+        return resolve_field_ownership(
+            node=stored[device_id],
+            holder=_field(kind=kind, field_name=field_name),
+            profiles={profile_id: stored[profile_id]},
+            node_ownership=node_ownership,
+        )
 
 
 class TemplateCopyHolder(OwnerListHolder):

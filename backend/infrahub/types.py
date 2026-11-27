@@ -10,6 +10,8 @@ from graphene.types.generic import GenericScalar
 from pydantic import EmailStr, HttpUrl, IPvAnyAddress, Json
 
 from infrahub.core import registry
+from infrahub.core.constants import FlagProperty
+from infrahub.graphql.constants import IS_PROTECTED_DEPRECATION_REASON
 
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
@@ -89,7 +91,11 @@ class InfrahubDataType:
             filters[f"{name}__{node_prop}__id"] = graphene.ID()
 
         for flag_prop in attr_class._flag_properties:
-            filters[f"{name}__{flag_prop}"] = graphene.Boolean()
+            filters[f"{name}__{flag_prop}"] = graphene.Boolean(
+                deprecation_reason=IS_PROTECTED_DEPRECATION_REASON
+                if flag_prop == FlagProperty.IS_PROTECTED.value
+                else None
+            )
 
         return filters
 
