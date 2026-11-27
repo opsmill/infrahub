@@ -45,12 +45,15 @@ description: "Task list for owner and source metadata, Community side, storage o
 **CRITICAL**: no user story work can start until this phase is complete.
 
 - [X] T009 Add the edge types `HAS_NO_OWNER`, `HAS_OWNER_SET`, `HAS_TARGET_OWNER_SET` and `HAS_OWNER_SOURCE` to `DatabaseEdgeType` in backend/infrahub/core/constants/database.py
+  - Decision of 2026-11-27 ([provisional-decisions.md](provisional-decisions.md)): `HAS_NO_OWNER` is removed. "No owner" is a `HAS_OWNER` edge to the `NoOwner` vertex (pull request 1, commit `d7ab34f699`).
 - [X] T010 Declare the `OwnerSet` and `NoOwner` vertices and the new edges in backend/infrahub/core/graph/schema.py, next to `GraphNodeRelationships` and `GraphAttributeRelationships` (data-model.md, "Graph structure")
 - [X] T011 Add a range index on `HAS_NO_OWNER(branch)` in backend/infrahub/core/graph/index.py, next to `owner_branch`
+  - Decision of 2026-11-27 ([provisional-decisions.md](provisional-decisions.md)): the three `HAS_NO_OWNER` indexes are removed. The `owner_branch`, `owner_from` and `owner_to` indexes serve the edges to `NoOwner`.
 - [X] T012 [P] Create `OwnerState` (`INHERIT`, `OWNERS`, `NO_OWNER`), `OwnerOrigin` (`SELF`, `PROFILE`, `TEMPLATE`, `PARENT`, `NODE`), `HolderKind`, `HolderKey` (`kind`, `attribute`, `identifier`, `direction`), `StoredOwnerState`, `StoredNodeOwnership`, `ResolvedOwnership` and `OwnerReference` as frozen dataclasses and enums in backend/infrahub/core/ownership/models.py
   - `OwnerReference` and the origin value left pull request 1: commit `47ea980e82` (branch `gma-20261117-ifc3626-presquash`) and commit `f3b47495d9` removed them. T152 adds them back. The value is `NODE` since 2026-11-26.
 - [X] T013 [P] Create the constants (UUID of the `NoOwner` vertex, depth limit of the parent walk, filter names) in backend/infrahub/core/ownership/constants.py
 - [X] T014 Write the query that reads the stored owner state of the node holder for a list of node IDs, with the branch and time filters, in backend/infrahub/core/ownership/queries.py. No edge is inherit, only `HAS_NO_OWNER` is no owner, one or more `HAS_OWNER` are those owners
+  - Decision of 2026-11-27 ([provisional-decisions.md](provisional-decisions.md)): only a `HAS_OWNER` edge to `NoOwner` is no owner. A read of owners ends the `HAS_OWNER` edge at a `Node` vertex, so it never returns `NoOwner`.
 - [X] T015 Write the queries that set a holder to own owners, to no owner and to inherit in backend/infrahub/core/ownership/queries.py, with the edge changes of data-model.md ("State changes"). A write on a branch hides each owner edge that the branch inherits
 - [X] T016 Create the repository that runs the queries and returns frozen dataclasses in backend/infrahub/core/ownership/repository.py
 - [X] T017 Create the writer that applies a parsed owner input to one holder inside the transaction of the caller in backend/infrahub/core/ownership/writer.py
@@ -248,6 +251,7 @@ description: "Task list for owner and source metadata, Community side, storage o
 
 - [X] T112 [US3] Write the queries that read and write the `OwnerSet` of a relationship field, reached by `HAS_OWNER_SET` with the key `identifier` and `direction`, in backend/infrahub/core/ownership/queries.py. A write first reuses a set with the same key under the same node, created by any branch
 - [X] T113 [US3] Store several `HAS_OWNER` edges and the `HAS_NO_OWNER` edge on an attribute vertex in backend/infrahub/core/query/attribute.py and backend/infrahub/core/attribute.py
+  - Decision of 2026-11-27 ([provisional-decisions.md](provisional-decisions.md)): the attribute holds a `HAS_OWNER` edge to `NoOwner` for "no owner", not a `HAS_NO_OWNER` edge.
 - [X] T114 [US3] Implement the order of sources of a field in backend/infrahub/core/ownership/resolution.py, and read the field holders in the batch read of backend/infrahub/core/ownership/repository.py (FR-005)
   - `resolve_field_ownership` left pull request 1 with commit `f3b47495d9`, and `OwnershipResolver.resolve_fields` with the field read of the parents left it with commit `47ea980e82`. T152 adds them back.
 - [X] T115 [US3] Add `ownership` to every attribute type and every relationship field type in backend/infrahub/graphql/manager.py

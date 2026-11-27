@@ -142,3 +142,11 @@ Guillaume Mazoyer, maintainer, made these decisions on 2026-11-26, before pull r
   - The deprecated `owner` gives null for an owner that an object template copied. Reason: the owner code reads a copy as inherit, not as an own owner (commit `fb920e333d`).
   - The label of a deleted owner stays "deleted owner". Reason: an owner can be an account or an account group, so "deleted group" was not correct (commit `21927113bc`).
   - The test of a create from a template no longer asserts a count of owner reads. Reason: a count of queries fails when the query plan changes for a good reason (commit `1afb9166a7`).
+
+## Decision of 2026-11-27: one edge type for owners
+
+Guillaume Mazoyer, maintainer, made this decision on 2026-11-27. Pull request 1 applies it in commit `d7ab34f699`.
+
+- "No owner" is a `HAS_OWNER` edge to the shared `NoOwner` vertex. The `HAS_NO_OWNER` edge type and its three indexes are removed.
+- Reason, from the commit: the graph has one edge type less, and the diff and the merge read half as many owner patterns. The `owner_branch`, `owner_from` and `owner_to` indexes serve the edges to `NoOwner`.
+- Rule for every read of owners: a Cypher read of the owners from a `HAS_OWNER` edge of a `Node`, `Attribute` or `OwnerSet` vertex ends the edge at `(:Node)`. `NoOwner` has no `Node` label. A check of whether a holder has its own state reads `HAS_OWNER` to any end vertex, so it also sees "no owner".
