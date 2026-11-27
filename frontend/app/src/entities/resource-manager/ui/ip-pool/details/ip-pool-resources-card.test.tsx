@@ -68,10 +68,9 @@ describe("IpPoolResourcesCard", () => {
     const component = await renderCard(props);
 
     // THEN
-    await expect
-      .element(component.getByRole("heading", { level: 2, name: "Resource prefixes" }))
-      .toBeVisible();
-    await expect.element(component.getByText("2 resource prefixes")).toBeInTheDocument();
+    const heading = component.getByRole("heading", { level: 2, name: "Resource prefixes" });
+    await expect.element(heading).toBeVisible();
+    expect(heading.element().parentElement).toHaveTextContent("Resource prefixes2");
     const totalUsage = component.getByText("Total usage", { exact: true }).element().parentElement;
     expect(totalUsage).toHaveTextContent("Total usage30%");
     await expect

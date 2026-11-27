@@ -2,7 +2,7 @@ import { Card, CardHeader, ListBox, ListBoxItem, Tooltip } from "@infrahub/ui";
 import { Text } from "react-aria-components";
 
 import { Row } from "@/shared/components/container";
-import { formatNumberDisplay } from "@/shared/utils/number";
+import { CountBadge } from "@/shared/components/display/count-badge";
 
 import type {
   IpPoolResource,
@@ -31,19 +31,6 @@ function NoResourcesCard({ poolKind }: NoResourcesCardProps) {
       </p>
       <p className="text-foreground-muted">Edit the pool to add one.</p>
     </Card>
-  );
-}
-
-interface ResourceCountProps {
-  count: number;
-}
-
-function ResourceCount({ count }: ResourceCountProps) {
-  return (
-    <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-content-strong px-1.5 font-medium text-foreground-muted text-xxs tabular-nums">
-      {formatNumberDisplay(count)}
-      <span className="sr-only"> {count === 1 ? "resource prefix" : "resource prefixes"}</span>
-    </span>
   );
 }
 
@@ -88,7 +75,7 @@ export function IpPoolResourcesCard({
       <CardHeader variant="ghost" className="flex items-baseline justify-between">
         <Row className="gap-1">
           <h2>Resource prefixes</h2>
-          <ResourceCount count={resources.length} />
+          <CountBadge variant="pill" count={resources.length} />
         </Row>
         <TotalUsage usage={usage} />
       </CardHeader>

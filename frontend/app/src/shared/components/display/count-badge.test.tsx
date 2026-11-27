@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "vitest";
 
-import { CountBadge } from "@/shared/components/buttons/count-badge";
+import { CountBadge } from "@/shared/components/display/count-badge";
 
 import { render } from "../../../../tests/components/render";
 
@@ -60,5 +60,19 @@ describe("CountBadge raised highlight", () => {
 
     expect(dark).toBeDefined();
     expect(dark).not.toBe(light);
+  });
+});
+
+describe("CountBadge content", () => {
+  test("marks the count as partial while more items can still load", async () => {
+    const component = await render(<CountBadge variant="pill" count={20} hasMore />);
+
+    await expect.element(component.getByText("20+")).toBeVisible();
+  });
+
+  test("groups the thousands of a large count", async () => {
+    const component = await render(<CountBadge count={1250} />);
+
+    await expect.element(component.getByText("1,250")).toBeVisible();
   });
 });

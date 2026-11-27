@@ -2,6 +2,7 @@ import { Command, useCommandState } from "cmdk";
 import { useAtomValue } from "jotai";
 import React from "react";
 
+import { CountBadge } from "@/shared/components/display/count-badge";
 import { Icon } from "@/shared/components/display/icon";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Skeleton } from "@/shared/components/loading/skeleton";
@@ -98,11 +99,7 @@ interface SearchNodesHeadingProps {
 
 const SearchNodesHeading = ({ count, hasMore }: SearchNodesHeadingProps) => (
   <span className="flex items-center gap-1.5">
-    Objects{" "}
-    <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-content-strong px-1.5 font-medium text-foreground-muted text-xxs tabular-nums leading-none">
-      {formatNumberDisplay(count)}
-      {hasMore && "+"}
-    </span>
+    Objects <CountBadge variant="pill" count={count} hasMore={hasMore} />
   </span>
 );
 

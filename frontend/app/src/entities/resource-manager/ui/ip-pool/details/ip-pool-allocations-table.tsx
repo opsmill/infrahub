@@ -14,10 +14,10 @@ import React from "react";
 import { Collection } from "react-aria-components";
 
 import { Col, Row } from "@/shared/components/container";
+import { CountBadge } from "@/shared/components/display/count-badge";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Link } from "@/shared/components/ui/link";
 import { classNames } from "@/shared/utils/common";
-import { formatNumberDisplay } from "@/shared/utils/number";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { IpPoolResource } from "@/entities/resource-manager/domain/model/ip-pool";
@@ -69,11 +69,7 @@ export function IpPoolAllocationsTable({
         <h2 id={titleId} className="font-semibold text-sm">
           {title}
         </h2>
-        {count !== undefined && (
-          <span className="text-foreground-muted text-sm tabular-nums">
-            {formatNumberDisplay(count)}
-          </span>
-        )}
+        {count !== undefined && <CountBadge variant="pill" count={count} />}
         <span className="min-w-0 truncate text-foreground-muted text-sm">
           in{" "}
           <Link
