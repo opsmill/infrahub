@@ -433,14 +433,13 @@ async def test_get_many(
     assert len(nodes) == 2
 
 
-async def test_get_many_with_pagination(
+async def test_get_many_with_parallel_runtime(
     db: InfrahubDatabase,
     default_branch: Branch,
     criticality_schema: NodeSchema,
     criticality_low: Node,
     criticality_medium: Node,
     criticality_high: Node,
-    query_limit_of_one: None,
     neo4j_runtime_parallel: None,
 ) -> None:
     new_node_ids: list[str] = []

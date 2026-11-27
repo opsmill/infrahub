@@ -1303,10 +1303,10 @@ async def test_single_relationship_id_only_uses_preloaded_peer_id(
     assert gql_params.context.related_node_ids == {person.id, dog.id}
 
 
-async def test_query_many_relationship_with_a_shared_peer_across_pages(
-    db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None, query_limit_of_one: None
+async def test_query_many_relationship_with_a_shared_peer(
+    db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None
 ) -> None:
-    """Each person keeps its tag when the read of the tags of all the persons spans several pages."""
+    """Each person keeps its tag when all the persons share the same tag."""
     tag = await Node.init(db=db, schema=InfrahubKind.TAG)
     await tag.new(db=db, name="Blue")
     await tag.save(db=db)

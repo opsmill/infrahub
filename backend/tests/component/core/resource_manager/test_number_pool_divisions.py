@@ -457,8 +457,8 @@ class TestScopedPoolQueries:
 
         assert (utilization.figures.used_default_branch, utilization.figures.used_branches) == (2, 1)
 
-    async def test_divisions_read_one_row_at_a_time_are_each_counted_once(
-        self, db: InfrahubDatabase, dataset: DivisionsDataset, query_limit_of_one: None
+    async def test_divisions_on_the_other_branch_are_each_counted_once(
+        self, db: InfrahubDatabase, dataset: DivisionsDataset
     ) -> None:
         figures = await division_figures(db=db, pool=dataset.site_pool, branch=dataset.other_branch)
 

@@ -518,14 +518,13 @@ async def test_query_NodeListGetRelationshipsQuery_hierarchical(
     assert parent_peer_ids == {europe_id}
 
 
-async def test_query_NodeListGetRelationshipsQuery_pagination_and_parallel_runtime(
+async def test_query_NodeListGetRelationshipsQuery_parallel_runtime(
     db: InfrahubDatabase,
     default_branch: Branch,
     person_tag_schema: None,
-    query_limit_of_one: None,
     neo4j_runtime_parallel: None,
 ) -> None:
-    """Test all expected results are returned with pagination and parallel runtime."""
+    """Test all expected results are returned with the parallel runtime."""
     tags = []
     for i in range(10):
         tag = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)

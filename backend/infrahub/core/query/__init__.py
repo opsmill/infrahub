@@ -650,8 +650,6 @@ class Query:
         rendered = self.render()
 
         if self.type == QueryType.READ:
-            # One run: a page after the first runs the whole query again to skip the rows before it,
-            # and the driver already streams the rows in batches.
             results = await db.execute_query(
                 query=rendered.text,
                 params=rendered.params,

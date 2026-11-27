@@ -551,9 +551,7 @@ class TestNodeGetListQueryIndexStart:
 
         assert query.get_node_ids() == owned_by_john[1:]
 
-    async def test_list_read_one_row_at_a_time(
-        self, db: InfrahubDatabase, index_start_data: IndexStartData, query_limit_of_one: None
-    ) -> None:
+    async def test_list_filtered_by_owner(self, db: InfrahubDatabase, index_start_data: IndexStartData) -> None:
         query = await NodeGetListQueryBuilder(db=db).build(
             branch=index_start_data.branch,
             schema=db.schema.get_node_schema(name="TestCar", branch=index_start_data.branch),

@@ -183,7 +183,7 @@ class Branch(StandardNode):
 
         Args:
             db: Database connection instance.
-            limit: Page size, or None to read every match in one query.
+            limit: Page size, or None to read every match.
             offset: Number of matches to skip.
             ids: Restrict to these branch UUIDs, when `branch_filters` carries none.
             name: Restrict to this branch name, when `branch_filters` carries none.

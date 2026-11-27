@@ -544,7 +544,7 @@ async def test_get_list_with_offset(db: InfrahubDatabase, default_branch: Branch
 
 
 async def test_get_list_unpaged_reads_every_branch(db: InfrahubDatabase, default_branch: Branch) -> None:
-    """`limit=None` drops the LIMIT, so one query reads every branch."""
+    """`limit=None` reads every branch."""
     created_names = {f"unpaged-{index:02d}" for index in range(10)}
     for name in sorted(created_names):
         await Branch(name=name, branched_from=Timestamp().to_string()).save(db=db)
