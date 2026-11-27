@@ -24,6 +24,8 @@ from tests.helpers.schema import CAR_SCHEMA, TAG, TICKET, load_schema, save_sche
 from tests.helpers.schema.agnostic_retirement import AGNOSTIC_BEACON, BEACON_KIND
 
 if TYPE_CHECKING:
+    from graphql import ExecutionResult
+
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
@@ -464,8 +466,10 @@ async def test_search_parent_prefix_branch_effective_value(
 
 
 SEARCH_WITH_OPTIONS_QUERY = """
-query ($search: String!, $limit: Int, $partialMatch: Boolean, $caseSensitive: Boolean) {
-    InfrahubSearchAnywhere(q: $search, limit: $limit, partial_match: $partialMatch, case_sensitive: $caseSensitive) {
+query ($search: String!, $limit: Int, $offset: Int, $partialMatch: Boolean, $caseSensitive: Boolean) {
+    InfrahubSearchAnywhere(
+        q: $search, limit: $limit, offset: $offset, partial_match: $partialMatch, case_sensitive: $caseSensitive
+    ) {
         count
         edges {
             node {
@@ -546,6 +550,7 @@ class SearchTestCase:
     search: str | UuidOf
     expected: list[str]
     limit: int | None = None
+    offset: int | None = None
     partial_match: bool = True
     case_sensitive: bool = False
     branch: str = DEFAULT_BRANCH_KEY
@@ -559,16 +564,17 @@ def _uuid_fragment(uuid: str) -> str:
     return uuid[9:18]
 
 
-async def _search(
+async def _execute_search(
     db: InfrahubDatabase,
     dataset: SearchDataset,
     search: str,
     branch: str = DEFAULT_BRANCH_KEY,
     at: str | None = None,
     limit: int | None = None,
+    offset: int | None = None,
     partial_match: bool = True,
     case_sensitive: bool = False,
-) -> SearchResult:
+) -> ExecutionResult:
     searched_branch = dataset.branches[branch]
     searched_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
@@ -578,12 +584,38 @@ async def _search(
     # An explicit null limit lifts the limit, so the default is checked by leaving the variable out.
     if limit is not None:
         variables["limit"] = limit
-    result = await graphql(
+    if offset is not None:
+        variables["offset"] = offset
+    return await graphql(
         schema=gql_params.schema,
         source=SEARCH_WITH_OPTIONS_QUERY,
         context_value=gql_params.context,
         root_value=None,
         variable_values=variables,
+    )
+
+
+async def _search(
+    db: InfrahubDatabase,
+    dataset: SearchDataset,
+    search: str,
+    branch: str = DEFAULT_BRANCH_KEY,
+    at: str | None = None,
+    limit: int | None = None,
+    offset: int | None = None,
+    partial_match: bool = True,
+    case_sensitive: bool = False,
+) -> SearchResult:
+    result = await _execute_search(
+        db=db,
+        dataset=dataset,
+        search=search,
+        branch=branch,
+        at=at,
+        limit=limit,
+        offset=offset,
+        partial_match=partial_match,
+        case_sensitive=case_sensitive,
     )
     assert result.errors is None
     assert result.data
@@ -603,6 +635,7 @@ async def _search_case(db: InfrahubDatabase, dataset: SearchDataset, test_case: 
         branch=test_case.branch,
         at=test_case.at,
         limit=test_case.limit,
+        offset=test_case.offset,
         partial_match=test_case.partial_match,
         case_sensitive=test_case.case_sensitive,
     )
@@ -663,6 +696,31 @@ RANKING_TEST_CASES: list[SearchTestCase] = [
         expected=["Volt", "Volt-01", "VoLt-max", "Volt team"],
     ),
     SearchTestCase(name="limit_keeps_the_best", search="volt", limit=3, expected=["Volt", "Volt-01", "VoLt-max"]),
+    SearchTestCase(
+        name="offset_skips_the_best_matches",
+        search="volt",
+        limit=3,
+        offset=3,
+        expected=["Volt team", "Volt twins (first)", "Volt twins (second)"],
+    ),
+    SearchTestCase(
+        name="offset_without_a_limit_keeps_the_default_limit",
+        search="volt",
+        offset=2,
+        expected=[
+            "VoLt-max",
+            "Volt team",
+            "Volt twins (first)",
+            "Volt twins (second)",
+            "vOlt Oddity",
+            "Voltron blue",
+            "VOLT Bay North",
+            "Old Volt",
+            "Café Volta",
+            "Ampere",
+        ],
+    ),
+    SearchTestCase(name="offset_past_the_last_match_lists_nothing", search="volt", limit=3, offset=15, expected=[]),
 ]
 
 SEARCH_MODE_TEST_CASES: list[SearchTestCase] = [
@@ -746,6 +804,7 @@ PLAIN_TEXT_TEST_CASES: list[SearchTestCase] = [
 UUID_TEST_CASES: list[SearchTestCase] = [
     SearchTestCase(name="object", search=UuidOf(key="Volt"), expected=["Volt"]),
     SearchTestCase(name="group", search=UuidOf(key="Volt team"), expected=["Volt team"]),
+    SearchTestCase(name="object_skipped_by_an_offset", search=UuidOf(key="Volt"), offset=1, expected=[]),
     SearchTestCase(name="unknown_uuid", search=UNKNOWN_UUID, expected=[]),
 ]
 
@@ -812,6 +871,22 @@ class TestSearchRanking:
     ) -> None:
         result = await _search_case(db=db, dataset=dataset, test_case=test_case)
         _assert_found(result=result, dataset=dataset, expected=test_case.expected)
+
+    async def test_consecutive_pages_list_every_match_once(self, db: InfrahubDatabase, dataset: SearchDataset) -> None:
+        page_size = 4
+        pages = [
+            await _search(db=db, dataset=dataset, search="volt", limit=page_size, offset=offset)
+            for offset in range(0, len(VOLT_RANKING) + page_size, page_size)
+        ]
+
+        assert [len(page.keys) for page in pages] == [4, 4, 4, 3, 0]
+        assert [key for page in pages for key in page.keys] == VOLT_RANKING
+
+    async def test_rejects_a_negative_offset(self, db: InfrahubDatabase, dataset: SearchDataset) -> None:
+        result = await _execute_search(db=db, dataset=dataset, search="volt", offset=-1)
+
+        assert result.errors
+        assert [error.message for error in result.errors] == ["offset must be >= 0"]
 
     async def test_searches_a_partial_uuid_as_text(self, db: InfrahubDatabase, dataset: SearchDataset) -> None:
         result = await _search(db=db, dataset=dataset, search=_uuid_fragment(dataset.ids["Volt"]))
