@@ -2,7 +2,7 @@
 
 > Part of: `dev/guidelines/backend/` | Related: [Testing Standards](testing.md)
 
-Applies when creating a new backend component or making significant changes to an existing one. It also applies when a Prefect `@flow` or an endpoint gains a loop, a filter or a branch: that logic is a new component, even though no class existed before. Does not apply to small bug fixes, single-function tweaks, or other changes confined to existing code paths. When in doubt, follow this rule.
+Applies when creating a new backend component or making significant changes to an existing one. It also applies when a Prefect `@flow` or an endpoint gains a loop or a filter over its data: that logic is a new component, even though no class existed before. Does not apply to other small bug fixes, single-function tweaks, or changes confined to existing code paths; a guard or an early return added to a flow stays in the flow. When in doubt for anything that introduces a new class or reshapes responsibilities, follow this rule.
 
 ## Use modular components with dependency injection
 
@@ -82,14 +82,14 @@ A helper that digs through a context object to reach another component's data, o
 
 When more than one implementation of a component is required (e.g. real vs. in-memory adapter, different backends, A/B variants), define a `Protocol` or abstract base class. The correct implementation is selected at the wiring layer and injected to the constructor — the consumer codes against the interface, not a concrete class.
 
-A single implementation does not need an interface yet; introduce one when the second implementation arrives. The second implementation can be a testing version (an in-memory version of a component backed by the database) or a pass-through version, for an enterprise-only feature or for a step that only some runs need:
+A single implementation does not need an interface yet; introduce one when the second implementation arrives. The second implementation can be a testing version (an in-memory version of a component backed by the database) or a no-op version, for an enterprise-only feature or for a step that only some runs need:
 
 ```python
 # ❌ Bad - the step is optional, so every use checks for None (placeholder names)
 class PageProcessor:
-    def __init__(self, selector: NodeSelector | None) -> None: ...
+    def __init__(self, node_filter: NodeFilter | None) -> None: ...
 
-# ✅ Good - the entry point picks SelectAllNodes() or the real filter; the processor always calls it
+# ✅ Good - the entry point picks the no-op filter or the real one; the processor always calls it
 class PageProcessor:
     def __init__(self, node_filter: NodeFilter) -> None: ...
 ```

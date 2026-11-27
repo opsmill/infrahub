@@ -13,7 +13,7 @@ Infrahub's schema is defined in Python using Pydantic models in `backend/infrahu
 | `AttributeSchema` | Attribute on a node (scalar value) | `name`, `url`, `active` |
 | `RelationshipSchema` | Relationship between nodes | `headers`, `transformation` |
 
-`SchemaBranch.get_node()` raises `ValueError` for a generic, and `get_generic()` raises it for a node. When the kind can be either — the target of a profile, the peer of a relationship — call `get()` and check the type of the result.
+`SchemaBranch.get_node()` raises `ValueError` for a generic, and `get_generic()` raises it for a node. When the kind can be a node or a generic — the target of a profile, the peer of a relationship — call `get_node_or_generic_schema()`.
 
 ## Defining a Node
 
@@ -102,7 +102,7 @@ When `branch=None`, the branch support is resolved from both peers' settings. If
 
 All `AttributeSchema` entries must include a `description` field. This is enforced by `backend/tests/component/core/schema/test_schema_documentation.py`. Omitting `description` will cause a test failure.
 
-The value of an attribute of kind `Any` can be a list or a dict, so code that handles attribute values of every kind must not hash them: no set, no dict key. Compare with `value is None or value == NULL_VALUE`, not `value in {None, NULL_VALUE}`.
+The value of an attribute of kind `Any`, `JSON` or `List` can be a list or a dict, so code that handles attribute values of every kind must not hash them: no set, no dict key. Compare with `value is None or value == NULL_VALUE`, not `value in {None, NULL_VALUE}`.
 
 ## Read-only Attributes
 
