@@ -98,10 +98,12 @@ class TestIpPoolDetails:
         data_ipam_pools: IpamPoolsHandle,
         data_sites: SitesHandle,
     ) -> None:
+        pool_id = data_ipam_pools.pools[EXTERNAL_POOL]
         resource_id = data_ipam_pools.prefixes[EXTERNAL_PREFIX]
         allocated_count = await infrahub_client.count(kind="IpamIPPrefix", parent__ids=[resource_id])
 
-        await admin_page.goto(f"/resource-manager/{data_ipam_pools.pools[EXTERNAL_POOL]}")
+        await admin_page.goto(f"/resource-manager/{pool_id}")
+        await expect(admin_page).to_have_url(re.compile(rf"/resource-manager/{pool_id}/resources/{resource_id}$"))
 
         header = pool_header(admin_page)
         await expect(header.get_by_role("heading", level=1, name=EXTERNAL_POOL)).to_be_visible()
@@ -113,10 +115,6 @@ class TestIpPoolDetails:
         resources = admin_page.get_by_role("listbox", name="Resource prefixes")
         await expect(resources.get_by_role("option")).to_have_count(1)
         await expect(resources).not_to_contain_text("Weight")
-        await expect(admin_page.get_by_role("heading", level=2, name="Select a resource prefix")).to_be_visible()
-        await expect(admin_page.get_by_text("See all IP prefixes allocated from it.")).to_be_visible()
-
-        await resources.get_by_role("option", name=EXTERNAL_PREFIX).click()
         await expect(resources.get_by_role("option", name=EXTERNAL_PREFIX)).to_have_attribute("aria-selected", "true")
 
         title = allocations_title(admin_page, "Allocated prefixes")
@@ -146,8 +144,6 @@ class TestIpPoolDetails:
         await expect(header.get_by_role("definition")).to_have_text(["default", "IpamIPAddress", "/32"])
 
         resources = admin_page.get_by_role("listbox", name="Resource prefixes")
-        await expect(admin_page.get_by_text("See all IP addresses allocated from it.")).to_be_visible()
-        await resources.get_by_role("option", name=LOOPBACKS_PREFIX).click()
         await expect(resources.get_by_role("option", name=LOOPBACKS_PREFIX)).to_have_attribute("aria-selected", "true")
 
         await expect(allocations_title(admin_page, "Allocated addresses")).to_contain_text(f"in {LOOPBACKS_PREFIX}")
@@ -196,9 +192,8 @@ class TestIpPoolDetails:
             "aria-selected", "true"
         )
         await admin_page.get_by_role("link", name="View the pool").click()
-        await expect(admin_page).to_have_url(re.compile(rf"/resource-manager/{pool_id}$"))
-        await expect(resources.get_by_role("option", name=EXTERNAL_PREFIX)).to_have_attribute("aria-selected", "false")
-        await expect(admin_page.get_by_role("heading", level=2, name="Select a resource prefix")).to_be_visible()
+        await expect(admin_page).to_have_url(re.compile(rf"/resource-manager/{pool_id}/resources/{resource_id}$"))
+        await expect(resources.get_by_role("option", name=EXTERNAL_PREFIX)).to_have_attribute("aria-selected", "true")
 
     async def test_resource_prefix_without_allocation(self, admin_page: Page, empty_pool_id: str) -> None:
         await admin_page.goto(f"/resource-manager/{empty_pool_id}")
