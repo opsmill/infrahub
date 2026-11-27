@@ -65,7 +65,7 @@ CASES = [
     BulkMergeQueryCase(
         name="attribute-property-edges",
         query_class=BulkMergeAttributePropertyEdgesQuery,
-        source_branch_reads={"HAS_VALUE", "IS_PROTECTED", "HAS_OWNER", "HAS_SOURCE"},
+        source_branch_reads={"HAS_VALUE", "IS_PROTECTED", "HAS_SOURCE"},
         exclusions={"excluded_node_uuids": [], "excluded_attribute_property_paths": []},
     ),
     BulkMergeQueryCase(
