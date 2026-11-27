@@ -99,7 +99,13 @@ class CoreNode:
     async def new(self, db: InfrahubDatabase, id: str | None = None, **kwargs: Any) -> Self:
         raise NotImplementedError()
 
-    async def save(self, db: InfrahubDatabase, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID) -> Self:
+    async def save(
+        self,
+        db: InfrahubDatabase,
+        at: Timestamp | None = None,
+        user_id: str = SYSTEM_USER_ID,
+        fields: list[str] | None = None,
+    ) -> Self:
         raise NotImplementedError()
 
     async def delete(self, db: InfrahubDatabase, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID) -> None:

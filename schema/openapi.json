@@ -86,6 +86,90 @@
                 }
             }
         },
+        "/api/artifact/{artifact_id}/encryption": {
+            "post": {
+                "summary": "Check Artifact Encryption",
+                "description": "Check from its header whether the stored file of an artifact is encrypted and readable with the current key.\n\nThe check does not decrypt the file, so a file modified after it was stored still reports as encrypted until it\nis read. When the result differs from the encryption value stored on the artifact, the value is updated if the\ncaller may update artifacts and the branch accepts writes; otherwise the result is returned as it is.\n\nRaises:\n    NodeNotFoundError: If the artifact does not exist on the branch.",
+                "operationId": "check_artifact_encryption_api_artifact__artifact_id__encryption_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    },
+                    {
+                        "APIKeyHeader": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "artifact_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Artifact Id"
+                        }
+                    },
+                    {
+                        "name": "branch",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Name of the branch to use for the query",
+                            "title": "Branch"
+                        },
+                        "description": "Name of the branch to use for the query"
+                    },
+                    {
+                        "name": "at",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Time to use for the query, in absolute or relative format",
+                            "title": "At"
+                        },
+                        "description": "Time to use for the query, in absolute or relative format"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ArtifactEncryptionCheckResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/artifact/generate/{artifact_definition_id}": {
             "post": {
                 "summary": "Generate Artifact",
@@ -1919,6 +2003,292 @@
                 }
             }
         },
+        "/api/storage/objects": {
+            "get": {
+                "summary": "List Stored Objects",
+                "description": "List the stored objects in the order of their identifiers, without reading their content.\n\nNo object is changed, but a request for the first page also deletes the temporary files that an\ninterrupted replacement left in the local storage more than an hour ago, and nothing else.\n\nA page can hold fewer objects than the limit, or none, when an object was deleted while it was read. The\nlast page is the one whose `next_start_after` is null: until then, request the next page with it.",
+                "operationId": "list_stored_objects_api_storage_objects_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    },
+                    {
+                        "APIKeyHeader": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "start_after",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Return only the objects that sort after this one",
+                            "title": "Start After"
+                        },
+                        "description": "Return only the objects that sort after this one"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 5000,
+                            "minimum": 1,
+                            "default": 1000,
+                            "title": "Limit"
+                        }
+                    },
+                    {
+                        "name": "branch",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Name of the branch to use for the query",
+                            "title": "Branch"
+                        },
+                        "description": "Name of the branch to use for the query"
+                    },
+                    {
+                        "name": "at",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Time to use for the query, in absolute or relative format",
+                            "title": "At"
+                        },
+                        "description": "Time to use for the query, in absolute or relative format"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StoredObjectPage"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/storage/object/{identifier}/encrypt": {
+            "post": {
+                "summary": "Encrypt Stored Object Route",
+                "description": "Encrypt one object that was stored before storage encryption was enabled.\n\nRaises:\n    NoFreeMemoryError: With status 429 when this process has no free memory to hold the object.\n    HTTPException: With status 409 when storage encryption is disabled or this process has no storage key.",
+                "operationId": "encrypt_stored_object_route_api_storage_object__identifier__encrypt_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    },
+                    {
+                        "APIKeyHeader": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "identifier",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Identifier"
+                        }
+                    },
+                    {
+                        "name": "allow_unverified",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Encrypt the object even when no node records a checksum for it",
+                            "default": false,
+                            "title": "Allow Unverified"
+                        },
+                        "description": "Encrypt the object even when no node records a checksum for it"
+                    },
+                    {
+                        "name": "branch",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Name of the branch to use for the query",
+                            "title": "Branch"
+                        },
+                        "description": "Name of the branch to use for the query"
+                    },
+                    {
+                        "name": "at",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Time to use for the query, in absolute or relative format",
+                            "title": "At"
+                        },
+                        "description": "Time to use for the query, in absolute or relative format"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EncryptObjectResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/storage/objects/encrypt": {
+            "post": {
+                "summary": "Encrypt Stored Objects Route",
+                "description": "Encrypt several stored objects, with one lookup of their recorded checksums for the whole request.\n\nRaises:\n    NoFreeMemoryError: With status 429 when an object waited too long for free memory; the objects done by\n        then stay encrypted.\n    HTTPException: With status 422 when the list is too long or names a forbidden identifier, and with\n        status 409 when storage encryption is disabled or this process has no storage key.",
+                "operationId": "encrypt_stored_objects_route_api_storage_objects_encrypt_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    },
+                    {
+                        "APIKeyHeader": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "branch",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Name of the branch to use for the query",
+                            "title": "Branch"
+                        },
+                        "description": "Name of the branch to use for the query"
+                    },
+                    {
+                        "name": "at",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Time to use for the query, in absolute or relative format",
+                            "title": "At"
+                        },
+                        "description": "Time to use for the query, in absolute or relative format"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/EncryptBatchRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EncryptBatchResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/storage/object/{identifier}": {
             "get": {
                 "summary": "Get File",
@@ -2723,6 +3093,45 @@
                 "type": "object",
                 "title": "AnalyticsSettings"
             },
+            "ArtifactEncryption": {
+                "type": "string",
+                "enum": [
+                    "plaintext",
+                    "encrypted",
+                    "unreadable"
+                ],
+                "title": "ArtifactEncryption"
+            },
+            "ArtifactEncryptionCheckResponse": {
+                "properties": {
+                    "encryption": {
+                        "$ref": "#/components/schemas/ArtifactEncryption",
+                        "description": "Encryption of the stored file of the artifact, as found by this check"
+                    },
+                    "reason": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/UnreadableReason"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Why the file cannot be read with the current key, when it cannot"
+                    },
+                    "updated": {
+                        "type": "boolean",
+                        "title": "Updated",
+                        "description": "Whether this check changed the encryption value stored on the artifact"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "encryption",
+                    "updated"
+                ],
+                "title": "ArtifactEncryptionCheckResponse"
+            },
             "ArtifactGeneratePayload": {
                 "properties": {
                     "nodes": {
@@ -3218,6 +3627,90 @@
                     "name"
                 ],
                 "title": "DropdownChoiceWrite"
+            },
+            "EncryptBatchRequest": {
+                "properties": {
+                    "identifiers": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Identifiers"
+                    },
+                    "allow_unverified": {
+                        "type": "boolean",
+                        "title": "Allow Unverified",
+                        "default": false
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "identifiers"
+                ],
+                "title": "EncryptBatchRequest"
+            },
+            "EncryptBatchResponse": {
+                "properties": {
+                    "results": {
+                        "items": {
+                            "$ref": "#/components/schemas/EncryptObjectResponse"
+                        },
+                        "type": "array",
+                        "title": "Results"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "results"
+                ],
+                "title": "EncryptBatchResponse"
+            },
+            "EncryptObjectResponse": {
+                "properties": {
+                    "identifier": {
+                        "type": "string",
+                        "title": "Identifier"
+                    },
+                    "outcome": {
+                        "$ref": "#/components/schemas/EncryptOutcome"
+                    },
+                    "size": {
+                        "type": "integer",
+                        "title": "Size"
+                    },
+                    "reason": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Reason"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "identifier",
+                    "outcome",
+                    "size",
+                    "reason"
+                ],
+                "title": "EncryptObjectResponse"
+            },
+            "EncryptOutcome": {
+                "type": "string",
+                "enum": [
+                    "encrypted",
+                    "already_encrypted",
+                    "skipped_too_large",
+                    "skipped_unverified",
+                    "skipped_checksum_mismatch",
+                    "missing",
+                    "failed"
+                ],
+                "title": "EncryptOutcome"
             },
             "EnterpriseRequiredResponse": {
                 "properties": {
@@ -4505,6 +4998,12 @@
                     "version": {
                         "type": "string",
                         "title": "Version"
+                    },
+                    "storage_encryption_enabled": {
+                        "type": "boolean",
+                        "title": "Storage Encryption Enabled",
+                        "description": "Whether new artifacts and files are stored encrypted",
+                        "default": false
                     }
                 },
                 "type": "object",
@@ -8802,6 +9301,58 @@
                 ],
                 "title": "SchemasLoadAPI"
             },
+            "StoredObjectEntry": {
+                "properties": {
+                    "identifier": {
+                        "type": "string",
+                        "title": "Identifier"
+                    },
+                    "size": {
+                        "type": "integer",
+                        "title": "Size"
+                    },
+                    "last_modified": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Last Modified"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "identifier",
+                    "size",
+                    "last_modified"
+                ],
+                "title": "StoredObjectEntry"
+            },
+            "StoredObjectPage": {
+                "properties": {
+                    "objects": {
+                        "items": {
+                            "$ref": "#/components/schemas/StoredObjectEntry"
+                        },
+                        "type": "array",
+                        "title": "Objects"
+                    },
+                    "next_start_after": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Next Start After"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "objects",
+                    "next_start_after"
+                ],
+                "title": "StoredObjectPage"
+            },
             "TelemetrySnapshotListResponse": {
                 "properties": {
                     "count": {
@@ -9858,6 +10409,17 @@
                     "duration_seconds"
                 ],
                 "title": "TraceSampleRatioUpdateAPI"
+            },
+            "UnreadableReason": {
+                "type": "string",
+                "enum": [
+                    "no_key",
+                    "unknown_key",
+                    "unsupported_format",
+                    "truncated",
+                    "missing"
+                ],
+                "title": "UnreadableReason"
             },
             "UploadContentPayload": {
                 "properties": {

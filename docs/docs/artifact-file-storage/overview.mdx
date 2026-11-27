@@ -127,7 +127,7 @@ Unlike artifacts, which can be regenerated from their definitions, user-uploaded
 
 ### Encryption at rest
 
-By default, stored files are kept as they were uploaded or generated. Infrahub can encrypt the files it stores, and refuse to serve a stored file that was modified.
+By default, stored files are kept as they were uploaded or generated. Infrahub can encrypt the files it stores, and refuse to serve a stored file that was modified. Files stored before you enable encryption stay in plaintext until you encrypt them with `infrahubctl storage encrypt`.
 
 <ReferenceLink title="Encrypt stored files" url="./encryption" />
 

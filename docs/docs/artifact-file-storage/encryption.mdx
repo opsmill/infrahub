@@ -30,7 +30,157 @@ Set `INFRAHUB_STORAGE_ENCRYPTION_ENABLED=true` on every API server, optionally w
 From then on:
 
 - Every artifact generated and every file uploaded is stored encrypted, and Infrahub checks that it is unchanged each time it serves it.
-- A file stored before encryption was enabled stays as it is: enabling encryption does not encrypt existing files, and regenerating an artifact whose content did not change keeps its stored file. When the content of an artifact changes, Infrahub stores the new content encrypted. It does not delete the previous file, which stays in the storage in plaintext. Infrahub serves it only while it matches the checksum recorded when it was stored, even when `INFRAHUB_STORAGE_VERIFY_ARTIFACT_CHECKSUM` is `false`. A file for which no artifact or file object records a checksum is served as it is. This includes an encrypted upload that no artifact or file object refers to: someone who can write to the storage can replace it with plain content, and Infrahub serves that content.
+- A file stored before encryption was enabled stays as it is: enabling encryption does not encrypt existing files, and regenerating an artifact whose content did not change keeps its stored file. To encrypt these files, see [Encrypt files stored before encryption was enabled](#encrypt-files-stored-before-encryption-was-enabled). When the content of an artifact changes, Infrahub stores the new content encrypted. It does not delete the previous file, which stays in the storage in plaintext. Infrahub serves it only while it matches the checksum recorded when it was stored, even when `INFRAHUB_STORAGE_VERIFY_ARTIFACT_CHECKSUM` is `false`. A file for which no artifact or file object records a checksum is served as it is. This includes an encrypted upload that no artifact or file object refers to: someone who can write to the storage can replace it with plain content, and Infrahub serves that content.
+
+## Encrypt files stored before encryption was enabled
+
+Enabling encryption changes how Infrahub stores new and changed files. It does not read or rewrite the files that are already in the storage. You encrypt those files in a separate step, with the `infrahubctl storage encrypt` command.
+
+### State of these files until you encrypt them
+
+- They stay in plaintext in the storage. This includes the earlier file of an artifact whose content changed.
+- Infrahub serves one only while it matches the checksum that an artifact or file object records for it. It serves a file for which no artifact or file object records a checksum as it is.
+
+### Run the command
+
+The command lists the stored files and asks the API server to encrypt them. It sends only the identifiers of the files. The API server reads, encrypts and writes each file, so no file content goes through the machine that runs the command.
+
+Before you run it, check that:
+
+- Storage encryption is enabled on the API servers, and they have a key. Otherwise the server refuses the request with a `409` error and the command stops with a message.
+- The API servers run a version that has the storage routes `GET /api/storage/objects`, `POST /api/storage/objects/encrypt` and `POST /api/storage/object/{identifier}/encrypt`. Without them, the command stops with a message that the server does not have the routes.
+- The token belongs to an account that has the super admin permission. The command takes the address and the token from the same settings as every other `infrahubctl` command: `INFRAHUB_ADDRESS` and `INFRAHUB_API_TOKEN`, or `infrahubctl.toml`.
+
+For example:
+
+```shell
+export INFRAHUB_ADDRESS=https://infrahub.example.com
+export INFRAHUB_API_TOKEN=<token of a super admin account>
+
+# List the files and show how many there are and how large they are. No file is encrypted.
+infrahubctl storage encrypt --dry-run
+
+# Encrypt the files.
+infrahubctl storage encrypt
+```
+
+For each file, the API server:
+
+1. Reads the first bytes. A file that already starts with an encrypted header for the current key is left as it is.
+1. Looks up the checksums that artifacts and file objects recorded for the file. The lookup covers every branch and the whole history, so the file of an earlier artifact version, of a deleted artifact or of a branch that was never merged finds its checksum. Artifacts record an MD5 checksum and file objects a SHA-1 checksum.
+1. Reads the file and compares its content with the recorded checksums.
+1. Encrypts the content and replaces the file in one step, then reads the first bytes again to check that the stored file is encrypted. At any moment the file is either the previous plaintext file or the encrypted file.
+
+Running the command again is safe: it never encrypts a file twice.
+
+To limit a run, use `--before` (leave the files modified after a time), `--limit` (stop after a number of files) and `--dry-run`.
+
+### Files the command skips
+
+The command reports each file that it does not encrypt, with the reason, and leaves it unchanged. A skipped file does not make the command fail. Only the outcome `failed` does.
+
+| Outcome | When it happens | What the command does |
+| --- | --- | --- |
+| `already_encrypted` | The first bytes of the file name the current key. | Leaves the file as it is. It does not check the content. |
+| `skipped_unverified` | No artifact or file object records a checksum for the file, for example an orphan file that no artifact or file object refers to. | Leaves the file in plaintext. The command cannot compare its content with an original. Use `--allow-unverified` to encrypt these files as they are. |
+| `skipped_checksum_mismatch` | The content matches none of the recorded checksums, so the file was modified outside Infrahub. | Leaves the file in plaintext. Infrahub also refuses to serve it, as described in [Files that fail their integrity check](#files-that-fail-their-integrity-check). |
+| `skipped_too_large` | The file is larger than the limit that the server settings give. | Does not read the file. See [Server settings and memory](#server-settings-and-memory). |
+| `missing` | Nothing is stored under the identifier, for example because the file was removed after the listing. | Does nothing. |
+| `failed` | The file starts like an encrypted file but cannot be read with the current key (another key, an incomplete file or an unsupported format), or the storage refused the read or the write. | Leaves the file as it is and gives the reason. The command exits with code 1 at the end of the run. |
+
+The report file `infrahub-storage-encrypt.report.jsonl` in the current directory receives one JSON line for every file whose outcome is not `encrypted`, including `already_encrypted`. Every run appends to it. Use `--report` to choose another file. For example:
+
+```json
+{"identifier": "18e7b098-e7a8-cfaf-3137-c519f48e75ea", "outcome": "skipped_unverified", "size": 4096, "reason": "no checksum is recorded for this object"}
+```
+
+### Progress
+
+Unless you pass `--dry-run` or `--no-count`, the command first lists the files that it will process and prints how many there are and how large they are. On a very large installation, use `--no-count` to skip this listing. The progress then shows no total, percentage or remaining time.
+
+While it encrypts, the command shows one progress line. On a terminal the line updates in place. Otherwise the command prints a new line every 5 seconds. For example:
+
+```text
+12,400 / 157,000 objects (7.8%) | 160 objects/s | remaining 15m 04s | 2.1 GB / 28.9 GB | limit 6/8 | 429: 0 | retries: 0
+```
+
+The line shows the files done and the total, the rate of the last seconds, the estimated remaining time, the bytes done and the total, the number of requests in flight against its maximum, the number of HTTP 429 answers and the number of retries. At the end, the command prints a table with the number of files for each outcome, the bytes encrypted, the requests, the retries and the seconds of the run.
+
+### Stop and resume
+
+Press Ctrl-C, or send SIGTERM, to stop the command. The command stops the work in flight, prints the table and exits with code 130 (Ctrl-C) or 143 (SIGTERM). An error that stops the run exits with code 2. The table lists the files that the server confirmed in the page that was not complete in separate rows marked `interrupted page, not saved`. They are not in the state file.
+
+The command writes its position to the state file `infrahub-storage-encrypt.state.json` in the current directory after every page of the listing. To resume after a stop or an error, run the same command again from the same directory, or pass the same `--state-file`. Then: A listing of 5,000 files or fewer is one page with the default `--page-size`. A run that stops before that page is complete saves no position, and the next run starts from the first file. Use a smaller `--page-size`, for example 1000, to save the position more often.
+
+- The command repeats the page that was in progress. The files of that page that the server already encrypted show as `already_encrypted`, and nothing is counted twice.
+- A state file that belongs to another server address is refused. Use another `--state-file`, or `--restart`.
+- After a run that finished the whole listing, the next run starts from the first file.
+- `--restart` ignores the state file and starts from the first file.
+
+The server finishes the requests it accepted when the command is stopped or killed, so more files can be encrypted than the state file lists.
+
+In tests on local disk and on an S3-compatible service (Garage), the command was killed with SIGKILL and the server container was killed during a run. After the rerun, no file was lost, no file was encrypted twice and no file was half written under its real name. What a killed write leaves on other S3 services is not known.
+
+A resumed run can be slower than a first run. In the tests, a resumed run took 44 seconds against 19 seconds for a first run on S3, and ended with 1 request in flight. The cause was inferred from the algorithm and not isolated by a test.
+
+### Control the pace
+
+The command reads and rewrites every file through the API servers and the database, so it competes with other users. These options control it:
+
+- `--concurrency` (default 8): the most requests in flight at once. The command starts at half of this value, lowers the number when the server answers more slowly, and raises it again when the server is not slow.
+- `--batch-size` (default 50, at most 500): the number of files in one request.
+- `--rate` (no maximum by default): the most requests per second.
+- `--priority` (default `low`): `high`, `medium` or `low`. The command sends it in the `X-Priority` header. When the API backpressure of the server is enabled (`INFRAHUB_API_BACKPRESSURE_ENABLED`, on by default) and the server is under load, the server answers requests of lower priority with HTTP 429 first.
+
+When the server answers HTTP 429, the command holds its requests for the time that the server asks, or a short time that grows with each answer, and sends the request again. It has no limit on the number of waits, so a server that never stops answering 429 keeps it waiting until you stop it. After a network error or an HTTP 502, 503 or 504, it retries the request up to `--max-retries` times (default 10), then stops with exit code 2. `--timeout` (default 300) sets the seconds before one request times out, and `--page-size` (default 5000, at most 5000) sets the files in one listing request.
+
+The speed depends on the storage, the database, the number and size of the files and the load from other users. It is not specified. In one test with 157,000 files on an S3-compatible service (Garage) and 5 requests per second of other traffic, the 95th percentile of the response time of the other requests was about twice its value before the run. This was one run on one machine. The effect on your installation is not known: run `--dry-run` first, start with low values of `--concurrency` and `--rate`, and watch the response time of your users.
+
+### Server settings and memory
+
+The API server holds a whole file in memory while it encrypts it. Two settings limit this. Both are in megabytes of 1,048,576 bytes, and both apply to each API server process.
+
+- `INFRAHUB_STORAGE_ENCRYPTION_MIGRATION_MAX_SIZE` (default 100, at least 1): the largest file that the server reads to encrypt it. The command skips a larger file with the outcome `skipped_too_large`, without reading it.
+- `INFRAHUB_STORAGE_ENCRYPTION_MIGRATION_MEMORY_BUDGET` (default 600, at least 3): the memory that one process may use at the same time to encrypt files. A file takes three times its size from this budget, from the moment the server reads it until it has written the encrypted copy. A file larger than a third of the budget is skipped in the same way. The file limit that applies is therefore the smaller of the two values: with the defaults, 100 MB, because a third of 600 MB is 200 MB.
+
+When the budget has no room for the next file, the request waits. A request for one file waits 0.5 seconds. A request for several files, which is what the command sends, waits up to 60 seconds for each file. After that the server answers HTTP 429 with a `Retry-After` header of 1 second. Files encrypted before the answer stay encrypted. The command waits and sends the request again.
+
+The budget limits the memory that the files in progress hold. It does not limit the memory that the server process keeps after it finishes a file.
+
+While a process encrypts one file on local disk, it holds about three times the size of the file. In a test with one file at a time, the peak was 2.96 to 3.0 times the size, for files of 10, 30 and 90 MiB. On S3 (Garage) the peak was 3.0 times for 90 MiB, 3.2 to 3.3 times for 30 MiB and 3.6 to 3.75 times for 10 MiB, so the budget is a little low for files of 10 to 30 MiB on S3.
+
+The C library glibc, which the Infrahub images use, does not give the memory of a file of about 1 to 32 MiB back to the operating system by itself: it keeps the memory in an area of each thread, and the memory stays in the process. A thread that encrypted such a file keeps about twice its size. When a process receives its first request to encrypt files, the server therefore sets the size from which glibc gives a buffer its own block of memory to 1 MiB, once for that process. Before that request nothing changes, and a request to upload or download a file does not set it. The setting applies to every request that the process handles afterwards. If `MALLOC_MMAP_THRESHOLD_` or `GLIBC_TUNABLES` already sets this size in the environment of the API server, the server keeps that value. On a C library that is not glibc, the server sets nothing. When the size is not set at all, because the C library is not glibc or because the call failed (a warning in the log says so), the process keeps the memory as described above. Leave room for it in the memory of your API servers.
+
+In a test on Linux with the Infrahub image and local disk, with 4 API server processes, a budget of 90 MB and 24 requests in parallel for 24 files of 30 MiB, the memory of the container as `docker stats` shows was 4 to 5 MiB above its value before, 60 seconds after the last request. Without the setting it was 909 to 1,089 MiB above, almost all of it memory of the server processes. In a test on one machine, with 16 runs for each setting and other requests running during a migration, the median and the 95th percentile of their response times differed by less than 1% with the setting. The 99th percentile was 12 ms (17%) higher on average, which is less than the variation between runs of the same setting.
+
+Each API server process has its own budget, so the total multiplies with the number of processes and replicas: for example, 4 processes with the default budget claim up to 2.4 GB. Set the budget so that this total fits in the memory of your API servers.
+
+### The stored encryption value of artifacts
+
+When the server encrypts a file, or finds that the file is already encrypted for the current key, it also stores the `encryption` value `encrypted` on the artifacts whose current file it is. After the command, a read of the `encryption` attribute through GraphQL, a filter on it or a dashboard shows `encrypted` for these artifacts, without anyone opening the artifact page.
+
+The server does this for every request that contains the file, in the same request that encrypts it:
+
+- It finds the artifacts of all the files of a request with one query, and writes one change for each artifact whose stored value is not `encrypted`. An artifact whose stored value is already `encrypted` is not written again.
+- It looks at the file that the artifact points at now. A file that an artifact pointed at in an earlier version belongs to no artifact, so it changes no value.
+- It writes the value only when the user may update artifacts and the branch accepts writes, the same conditions as the check that the artifact page runs. A file that is missing, skipped or reported as `failed` changes no value, because the file is not known to be encrypted.
+- A file object and a file that no artifact refers to have no `encryption` value, so they change nothing.
+
+A failure to write the value does not change the outcome of the file: the file is encrypted, and the command reports `encrypted`. The server logs the failure with the identifier of the artifact and the message `Could not store the encryption of an artifact`, and the command shows nothing. To write the missing values, run the command again from the first file, with a new pass or with `--restart`: a file that is already encrypted is reported as `already_encrypted`, and the server stores the value for its artifact. A run that resumes from a saved position does not visit the files before that position.
+
+The storing of the values makes the command slower: each artifact whose value changes is one write to the database. In one test with 1,000 artifacts, 3,150 files of small size and local disk storage, the command took 4.2 to 4.9 seconds without storing the values and 8.3 to 8.9 seconds with it (three runs each), and the database ran about 3 more statements for each artifact. The effect on your installation is not known, because it depends on the number of artifacts and on the time that the file reads and writes take. See [Control the pace](#control-the-pace) to limit the effect on other users.
+
+Limit: the server looks for artifacts on the default branch only. An artifact that exists only on another branch, for example one that was generated on a branch that was never merged, keeps its stored value until a check runs for it on that branch: the artifact page runs it when it opens, as described in [Check the encryption of an artifact](#check-the-encryption-of-an-artifact), and `POST /api/artifact/{artifact_id}/encryption?branch=<name>` runs it for one artifact.
+
+### Temporary files
+
+With the local storage, the server writes the encrypted content to a temporary file in the storage directory, then renames it over the file. The temporary file is named `.<identifier>.<16 hexadecimal characters>.tmp`. Infrahub does not list files with this kind of name as stored files, so the command does not encrypt them.
+
+If the server stops during a write, for example because it was killed, it can leave the temporary file in the storage directory. In tests, a killed server left a temporary file that was half written in one case and complete in another. No file under its real name was half written.
+
+The server deletes a temporary file when a request for the first page of the listing arrives and the file was last written more than one hour earlier. It deletes only a regular file whose name has exactly this form. This request is the first listing request of a run that starts from the first file: a first run, a run after a finished run, a run with `--restart`, and a `--dry-run` without a state file. A resumed run lists from its saved position, so it does not delete temporary files. `--dry-run` encrypts no file, but it deletes these temporary files in the same way, because it sends the same listing request. Nothing else is deleted.
+
+With S3, the server replaces a file in one request and writes no temporary file. In the 157,000-file test on an S3-compatible service, the bucket had no file outside the expected ones afterwards. What a write that is interrupted leaves on S3 services other than the one tested is not known.
 
 ## Turn encryption off
 
@@ -48,13 +198,38 @@ Infrahub does not serve an encrypted file that was modified or that was encrypte
 
 To repair a file object, upload the file again. To repair an artifact, delete it and regenerate its artifact definition.
 
+## Check the encryption of an artifact
+
+Each artifact has a read-only `encryption` attribute with one of three values:
+
+- `plaintext`: Infrahub stored the file without encryption.
+- `encrypted`: Infrahub stored the file encrypted, and the current key can read it.
+- `unreadable`: the file is encrypted, but the current key cannot read it. For example, the key changed after Infrahub stored the file.
+
+Infrahub sets the value when it generates the artifact. The artifact page shows the value like this:
+
+- A warning when encryption is enabled and the artifact is `plaintext`.
+- A green `encrypted` badge with a lock next to the status badge, when a check of the file has just confirmed that the artifact is `encrypted` and the request for the content of the artifact has ended without a `409` or a `404` error.
+- An error when the artifact is `unreadable`. When the check ran, the error also gives the reason.
+
+Each time a signed-in user opens the artifact page, the UI sends a check request. The check reads only the first bytes of the stored file. These bytes name the key that encrypted the file, so the check finds a file that another key encrypted and a file that is incomplete. It does not decrypt the file, so it does not find a file whose content was modified: Infrahub refuses that file when it serves it. For such a file, the artifact page shows the message of the refused request, as described in [Files that fail their integrity check](#files-that-fail-their-integrity-check), and no `encrypted` badge. The page also shows no badge when the request for the content fails with a `404` error, because the file is not in the storage. A request that fails in another way, such as a `500` error or a network error, says nothing about the file, so the badge stays. The badge appears only after the request for the content has ended, so it shows at the same time as the content: on a large file or a slow connection, that is later than the check. When the result differs from the stored value, Infrahub updates the stored value if the user may update artifacts. A user who is not signed in sees the stored value and no `encrypted` badge.
+
+The check describes the file and the key as they are now. When a user views the artifact at a past date, the artifact page sends no check: it shows the warning or the error for the value stored at that date, without the reason of the error and without the `encrypted` badge.
+
+To check an artifact through the API, send `POST /api/artifact/{artifact_id}/encryption`. The response has these fields:
+
+- `encryption`: the value found by the check.
+- `reason`: why the file is `unreadable`: `no_key`, `unknown_key`, `unsupported_format` or `truncated`. When the file is missing from the storage, the reason is `missing` and the stored value stays as it is.
+- `updated`: whether the check changed the stored value.
+
 ## Limitations
 
 - Changing the key that applies makes the files encrypted with the previous value unreadable: they are refused until the previous value is restored. This includes setting `INFRAHUB_STORAGE_ENCRYPTION_KEY` after files were encrypted with a key derived from `INFRAHUB_SECURITY_SECRET_KEY`, and removing it again.
 - An older encrypted copy of a file, put back under the same storage identifier, is served: only the storage identifier is authenticated, not the version of the file.
 - Infrahub refuses a file stored before encryption when it looks like an encrypted file but does not decrypt. While encryption is on, that is any file that starts with the four bytes `IHSE`. While it is off, it is a file that starts with `IHSE`, has the format version byte `1` and is at least 41 bytes long.
 - The API server holds a whole file in memory while it encrypts or decrypts it: about twice the size of the file at the peak, for example about 100 MB for a 50 MB file. Without encryption, an upload is written in chunks and a download holds the file once.
-- Files stored before encryption was enabled stay in plaintext in the storage, and so do their copies outside Infrahub, such as older backups, S3 object versions and filesystem snapshots.
+- The stored `encryption` value of an artifact can be out of date until the next check. For example, after the key changes, an artifact stays `encrypted` until a check finds that the file is unreadable.
+- Files stored before encryption was enabled stay in plaintext in the storage until you [encrypt them](#encrypt-files-stored-before-encryption-was-enabled). Their copies outside Infrahub, such as older backups, S3 object versions and filesystem snapshots, stay in plaintext even after that.
 
 ## Back up and restore
 

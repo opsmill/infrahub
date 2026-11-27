@@ -149,6 +149,9 @@ def test_integrity_failure_is_logged_with_the_storage_id_the_reason_and_the_key_
 class RecordingCodec:
     """Writes content with a prefix and reads it back, keeping what the storage passed in."""
 
+    key = None
+    encryption_enabled = False
+
     def __init__(self) -> None:
         self.encoded: list[tuple[str, bytes]] = []
         self.decoded: list[tuple[str, bytes]] = []

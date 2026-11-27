@@ -8,6 +8,7 @@ import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
 import { assertArtifactObject } from "@/entities/artifacts/domain/rules/assert-artifact-object";
+import { ArtifactEncryptionNotice } from "@/entities/artifacts/ui/artifact-encryption-notice";
 import { ArtifactFile } from "@/entities/artifacts/ui/artifact-file";
 import { ArtifactHeader } from "@/entities/artifacts/ui/artifact-header";
 import { NodeEvents } from "@/entities/events/ui/node-details-events";
@@ -49,6 +50,8 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
       <Content.Card className="grow">
         <Col className="gap-3 p-4 pb-2">
           <ArtifactHeader artifact={artifact} />
+
+          <ArtifactEncryptionNotice artifact={artifact} />
 
           <Separator />
 

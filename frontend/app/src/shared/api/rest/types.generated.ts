@@ -21,6 +21,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/artifact/{artifact_id}/encryption": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check Artifact Encryption
+         * @description Check from its header whether the stored file of an artifact is encrypted and readable with the current key.
+         *
+         *     The check does not decrypt the file, so a file modified after it was stored still reports as encrypted until it
+         *     is read. When the result differs from the encryption value stored on the artifact, the value is updated if the
+         *     caller may update artifacts and the branch accepts writes; otherwise the result is returned as it is.
+         *
+         *     Raises:
+         *         NodeNotFoundError: If the artifact does not exist on the branch.
+         */
+        post: operations["check_artifact_encryption_api_artifact__artifact_id__encryption_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/artifact/generate/{artifact_definition_id}": {
         parameters: {
             query?: never;
@@ -481,6 +508,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/storage/objects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Stored Objects
+         * @description List the stored objects in the order of their identifiers, without reading their content.
+         *
+         *     No object is changed, but a request for the first page also deletes the temporary files that an
+         *     interrupted replacement left in the local storage more than an hour ago, and nothing else.
+         *
+         *     A page can hold fewer objects than the limit, or none, when an object was deleted while it was read. The
+         *     last page is the one whose `next_start_after` is null: until then, request the next page with it.
+         */
+        get: operations["list_stored_objects_api_storage_objects_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/storage/object/{identifier}/encrypt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Encrypt Stored Object Route
+         * @description Encrypt one object that was stored before storage encryption was enabled.
+         *
+         *     Raises:
+         *         NoFreeMemoryError: With status 429 when this process has no free memory to hold the object.
+         *         HTTPException: With status 409 when storage encryption is disabled or this process has no storage key.
+         */
+        post: operations["encrypt_stored_object_route_api_storage_object__identifier__encrypt_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/storage/objects/encrypt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Encrypt Stored Objects Route
+         * @description Encrypt several stored objects, with one lookup of their recorded checksums for the whole request.
+         *
+         *     Raises:
+         *         NoFreeMemoryError: With status 429 when an object waited too long for free memory; the objects done by
+         *             then stay encrypted.
+         *         HTTPException: With status 422 when the list is too long or names a forbidden identifier, and with
+         *             status 409 when storage encryption is disabled or this process has no storage key.
+         */
+        post: operations["encrypt_stored_objects_route_api_storage_objects_encrypt_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/storage/object/{identifier}": {
         parameters: {
             query?: never;
@@ -656,6 +759,23 @@ export interface components {
             address?: string | null;
             /** Api Key */
             api_key?: string | null;
+        };
+        /**
+         * ArtifactEncryption
+         * @enum {string}
+         */
+        ArtifactEncryption: "plaintext" | "encrypted" | "unreadable";
+        /** ArtifactEncryptionCheckResponse */
+        ArtifactEncryptionCheckResponse: {
+            /** @description Encryption of the stored file of the artifact, as found by this check */
+            encryption: components["schemas"]["ArtifactEncryption"];
+            /** @description Why the file cannot be read with the current key, when it cannot */
+            reason?: components["schemas"]["UnreadableReason"] | null;
+            /**
+             * Updated
+             * @description Whether this check changed the encryption value stored on the artifact
+             */
+            updated: boolean;
         };
         /** ArtifactGeneratePayload */
         ArtifactGeneratePayload: {
@@ -864,6 +984,36 @@ export interface components {
              */
             state: components["schemas"]["SchemaState"];
         };
+        /** EncryptBatchRequest */
+        EncryptBatchRequest: {
+            /** Identifiers */
+            identifiers: string[];
+            /**
+             * Allow Unverified
+             * @default false
+             */
+            allow_unverified: boolean;
+        };
+        /** EncryptBatchResponse */
+        EncryptBatchResponse: {
+            /** Results */
+            results: components["schemas"]["EncryptObjectResponse"][];
+        };
+        /** EncryptObjectResponse */
+        EncryptObjectResponse: {
+            /** Identifier */
+            identifier: string;
+            outcome: components["schemas"]["EncryptOutcome"];
+            /** Size */
+            size: number;
+            /** Reason */
+            reason: string | null;
+        };
+        /**
+         * EncryptOutcome
+         * @enum {string}
+         */
+        EncryptOutcome: "encrypted" | "already_encrypted" | "skipped_too_large" | "skipped_unverified" | "skipped_checksum_mismatch" | "missing" | "failed";
         /** EnterpriseRequiredResponse */
         EnterpriseRequiredResponse: {
             /**
@@ -1396,6 +1546,12 @@ export interface components {
             deployment_id: string;
             /** Version */
             version: string;
+            /**
+             * Storage Encryption Enabled
+             * @description Whether new artifacts and files are stored encrypted
+             * @default false
+             */
+            storage_encryption_enabled: boolean;
         };
         /** JSONSchema */
         JSONSchema: {
@@ -3380,6 +3536,25 @@ export interface components {
             /** Schemas */
             schemas: components["schemas"]["SchemaLoadAPI"][];
         };
+        /** StoredObjectEntry */
+        StoredObjectEntry: {
+            /** Identifier */
+            identifier: string;
+            /** Size */
+            size: number;
+            /**
+             * Last Modified
+             * Format: date-time
+             */
+            last_modified: string;
+        };
+        /** StoredObjectPage */
+        StoredObjectPage: {
+            /** Objects */
+            objects: components["schemas"]["StoredObjectEntry"][];
+            /** Next Start After */
+            next_start_after: string | null;
+        };
         /** TelemetrySnapshotListResponse */
         TelemetrySnapshotListResponse: {
             /** Count */
@@ -3834,6 +4009,11 @@ export interface components {
              */
             duration_seconds: number;
         };
+        /**
+         * UnreadableReason
+         * @enum {string}
+         */
+        UnreadableReason: "no_key" | "unknown_key" | "unsupported_format" | "truncated" | "missing";
         /** UploadContentPayload */
         UploadContentPayload: {
             /** Content */
@@ -3922,6 +4102,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_artifact_encryption_api_artifact__artifact_id__encryption_post: {
+        parameters: {
+            query?: {
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
+            };
+            header?: never;
+            path: {
+                artifact_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtifactEncryptionCheckResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4836,6 +5052,119 @@ export interface operations {
                 };
                 content: {
                     "*/*": string;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_stored_objects_api_storage_objects_get: {
+        parameters: {
+            query?: {
+                /** @description Return only the objects that sort after this one */
+                start_after?: string | null;
+                limit?: number;
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoredObjectPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    encrypt_stored_object_route_api_storage_object__identifier__encrypt_post: {
+        parameters: {
+            query?: {
+                /** @description Encrypt the object even when no node records a checksum for it */
+                allow_unverified?: boolean;
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
+            };
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EncryptObjectResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    encrypt_stored_objects_route_api_storage_objects_encrypt_post: {
+        parameters: {
+            query?: {
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EncryptBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EncryptBatchResponse"];
                 };
             };
             /** @description Validation Error */

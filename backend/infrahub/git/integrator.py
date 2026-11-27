@@ -53,6 +53,7 @@ from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
 
 from infrahub import config, lock
+from infrahub.artifacts.encryption import record_artifact_encryption
 from infrahub.auth.session import AnonymousSession
 from infrahub.context import InfrahubContext
 from infrahub.core.constants import ArtifactStatus, ContentType, InfrahubKind, RepositoryObjects, RepositorySyncStatus
@@ -2604,6 +2605,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         if artifact.name.value != message.artifact_name:
             artifact.name.value = message.artifact_name
         await artifact.save(request_context=message.context.to_request_context())
+        await record_artifact_encryption(sdk=self.sdk, artifact_id=artifact.id, branch_name=message.branch_name)
 
         event_class = ArtifactCreatedEvent if artifact_created else ArtifactUpdatedEvent
         event_context = message.context.to_event_context()

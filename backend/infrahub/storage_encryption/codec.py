@@ -50,12 +50,30 @@ class StoredContentCodec(Protocol):
         """Return the content that the bytes read from the object `identifier` stand for."""
         ...
 
+    @property
+    def key(self) -> StorageKey | None:
+        """The key this codec opens encrypted objects with, or None when it has none."""
+        ...
+
+    @property
+    def encryption_enabled(self) -> bool:
+        """Whether storage encryption is enabled for the process that uses this codec."""
+        ...
+
 
 class AesGcmCodec:
     """Encryption on: encrypts every write, and decrypts every object that starts with the marker."""
 
     def __init__(self, key: StorageKey) -> None:
         self._key = key
+
+    @property
+    def key(self) -> StorageKey:
+        return self._key
+
+    @property
+    def encryption_enabled(self) -> bool:
+        return True
 
     def encode(self, identifier: str, content: BinaryIO) -> BinaryIO:
         content.seek(0)
@@ -83,6 +101,14 @@ class DecryptOnlyCodec:
     def __init__(self, decrypter: AesGcmCodec) -> None:
         self._decrypter = decrypter
 
+    @property
+    def key(self) -> StorageKey:
+        return self._decrypter.key
+
+    @property
+    def encryption_enabled(self) -> bool:
+        return False
+
     def encode(self, identifier: str, content: BinaryIO) -> BinaryIO:  # noqa: ARG002
         return content
 
@@ -95,6 +121,14 @@ class DecryptOnlyCodec:
 
 class PlainCodec:
     """Encryption off, no usable key: writes the content as it is, and refuses encrypted files."""
+
+    @property
+    def key(self) -> None:
+        return None
+
+    @property
+    def encryption_enabled(self) -> bool:
+        return False
 
     def encode(self, identifier: str, content: BinaryIO) -> BinaryIO:  # noqa: ARG002
         return content
@@ -111,6 +145,14 @@ class PlainCodec:
 
 class NoKeyCodec:
     """Encryption on, but no key in this process: refuses to write, and to read an encrypted file."""
+
+    @property
+    def key(self) -> None:
+        return None
+
+    @property
+    def encryption_enabled(self) -> bool:
+        return True
 
     def encode(self, identifier: str, content: BinaryIO) -> BinaryIO:  # noqa: ARG002
         raise StorageEncryptionError(_ENABLED_WITHOUT_KEY)
