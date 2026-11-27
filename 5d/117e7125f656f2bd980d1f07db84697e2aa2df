@@ -1,0 +1,34 @@
+backend/tests/component/graphql/auth/test_anonymous_checker.py
+  s_6cf9025f3dcfd8::t_4197a27f79b84c 63-122
+  s_6cf9025f3dcfd8::t_518c9e849e280c 8-9,14-15
+changelog/+graphql-fragment-operation-permission.security.md
+  s_6cf9025f3dcfd8::t_29767046671889 1
+backend/tests/component/graphql/hidden_mutation_cases.py
+  s_6cf9025f3dcfd8::t_1abfc27895490a 1-40
+backend/tests/component/graphql/test_query_analyzer.py
+  s_6cf9025f3dcfd8::t_8bde786805ac75 3,14
+  s_6cf9025f3dcfd8::t_496a415c7723ec 925-962
+backend/infrahub/graphql/app.py
+  s_6cf9025f3dcfd8::t_50169b834062cf 318
+backend/infrahub/graphql/analyzer.py
+  s_6cf9025f3dcfd8::t_23353132737e76 39,49-50
+  s_6cf9025f3dcfd8::t_ad5084b43502ef 480-517,524-528
+  s_6cf9025f3dcfd8::t_1a7da3339b16ce 595
+  s_6cf9025f3dcfd8::t_b3bc3d1aa53eb3 529
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5d117e7125f656f2bd980d1f07db84697e2aa2df",
+  "prompts": {},
+  "sessions": {
+    "s_6cf9025f3dcfd8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3af1dfcc-e45f-4a6e-8b9a-ae53989039d0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
