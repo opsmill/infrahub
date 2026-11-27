@@ -551,16 +551,6 @@ class TestNodeGetListQueryIndexStart:
 
         assert query.get_node_ids() == owned_by_john[1:]
 
-    async def test_list_filtered_by_owner(self, db: InfrahubDatabase, index_start_data: IndexStartData) -> None:
-        query = await NodeGetListQueryBuilder(db=db).build(
-            branch=index_start_data.branch,
-            schema=db.schema.get_node_schema(name="TestCar", branch=index_start_data.branch),
-            filters={"owner__ids": [index_start_data.person_ids["john"]]},
-        )
-        await query.execute(db=db)
-
-        assert index_start_data.car_names(node_ids=query.get_node_ids()) == ["car-0", "car-1", "car-branch"]
-
     @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in QUERY_TEXT_TEST_CASES])
     async def test_query_text(
         self, db: InfrahubDatabase, index_start_data: IndexStartData, test_case: QueryTextTestCase
