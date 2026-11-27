@@ -1,0 +1,19 @@
+CHANGELOG.md
+  s_6cf9025f3dcfd8::t_a20b30a94da84d 14-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "395e675614c2e87d3ca5337e707f29c5e5c6f7d2",
+  "prompts": {},
+  "sessions": {
+    "s_6cf9025f3dcfd8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3af1dfcc-e45f-4a6e-8b9a-ae53989039d0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
