@@ -142,6 +142,7 @@ checkout.
 - Frontend: `frontend/app/AGENTS.md`
 - Docstrings and comments: `dev/guidelines/code-doc-style.md` — load before writing or reviewing a docstring or comment
 - Git workflow: `dev/guidelines/git-workflow.md`
+- Pull request title and description: `dev/guidelines/pull-requests.md` — load before writing or updating a PR description, by hand or with the `pr` skill; it takes precedence over a skill's own PR body template
 - Markdown formatting: `dev/guidelines/markdown.md`
 - Internal docs (`dev/`, the `AGENTS.md` files, `.agents/`): `dev/guidelines/documentation.md` — load *Writing Style → For Internal Docs* and the *Don't* list before writing, editing or reviewing one
 
