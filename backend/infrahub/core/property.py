@@ -119,7 +119,7 @@ class NodePropertyMixin:
         item = getattr(self, f"_{name}", None)
         if not item:
             raise LookupError(
-                f"The property {name} is not present locally, you must retrive it with get_{name}() instead."
+                f"The property {name} is not present locally, you must retrieve it with get_{name}() instead."
             )
 
         return item
