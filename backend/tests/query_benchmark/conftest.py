@@ -1,3 +1,4 @@
+from collections.abc import AsyncGenerator
 from pathlib import Path
 from typing import Any
 
@@ -111,7 +112,7 @@ async def graph_generator() -> GraphProfileGenerator:
 
 
 @pytest.fixture
-async def increase_query_size_limit() -> None:
+async def increase_query_size_limit() -> AsyncGenerator[None]:
     original_query_size_limit = config.SETTINGS.database.query_size_limit
     config.SETTINGS.database.query_size_limit = 1_000_000
     yield
