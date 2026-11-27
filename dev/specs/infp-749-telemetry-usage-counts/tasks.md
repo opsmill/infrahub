@@ -195,6 +195,18 @@ Single backend project. Source under `backend/infrahub/telemetry/`, tests under 
 
 ---
 
+## Phase 11: The three decisions of 2026-11-27
+
+**Purpose**: The owner of the telemetry code decided to apply the three findings that the review left open ([research R18](research.md)).
+
+- [x] T052 [US4] Name the failed read in the log line (FR-035): `utils.py::safe_metric` takes a required `metric` argument, and its 23 call sites in `database.py`, `tasks.py` and `task_manager.py` pass the path of the value in the report. Tests: `test_failure_is_logged_with_the_metric_and_the_exception_type` in `backend/tests/unit/telemetry/test_utils.py`, the log assertion in `test_gather_workflow_runs_keeps_the_other_rows_when_one_read_fails`, and the log assertion of `test_database_settings_read_failure_nulls_only_that_field` in `backend/tests/component/telemetry/test_resources.py`, which read the old text
+- [x] T053 [US4] Make a response of the event count route with an unexpected shape a failed read (FR-034): `task_manager.py::count_windowed_event` and `task_manager.py::count_windowed_unique_resources` validate the response as a list of `task_manager.py::EventCountBucket`. `task_manager.py::gather_prefect_events` keeps its reading. Test: `test_count_started_validators_reports_null_for_a_response_with_an_unexpected_shape` in `backend/tests/unit/telemetry/test_task_manager.py`
+- [x] T054 [US4] Give each new read of the task manager a deadline (FR-033): `task_manager.py::read_within_deadline` and `TASK_MANAGER_READ_DEADLINE_SECONDS`, 60 seconds, around the 8 run history reads and the count per validator kind. `gather_workflow_runs` and `count_started_validators` take the deadline as an argument. Tests: `test_gather_workflow_runs_gives_up_a_read_that_is_not_answered_within_the_deadline` and `test_read_within_deadline_keeps_a_timeout_that_the_read_raises` in `backend/tests/unit/telemetry/test_task_manager.py`
+- [x] T055 Update `dev/knowledge/backend/telemetry.md`, [spec.md](spec.md) (FR-033 to FR-035 and the edge case about a task manager that does not answer), [research.md](research.md) (R6 and R18), [data-model.md](data-model.md) and [contracts/telemetry-payload.md](contracts/telemetry-payload.md) for the three decisions
+- [x] T056 Run the checks. Run on 2026-11-27: the 152 telemetry unit and component tests pass, and `ruff`, `ty` and `mypy` on the backend report no error. Each of the four new guards fails when its behaviour is removed: the name of the read in the log line, the strict parse of the event count, the deadline of a run history read, and a timeout of the read that is passed on unchanged
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -245,6 +257,7 @@ Phases 1 to 6 are built in the working tree: the four groups of values, their te
 2. T010, T023 to T026, T029 and T030: tests for the acceptance scenarios that had no test of their own. Seven of the eight new or extended tests were run against code with the behaviour removed, and each failed. The case added by T010 was not run against changed code.
 3. T034: three corrections to the knowledge doc.
 4. T041 to T051: the fixes from the speckit review of 2026-11-27.
+5. T052 to T056: the three decisions of 2026-11-27.
 
 ### What is open
 

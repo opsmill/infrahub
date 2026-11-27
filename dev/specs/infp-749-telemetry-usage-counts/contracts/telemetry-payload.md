@@ -8,6 +8,7 @@ The report is the JSON body that a deployment stores every day and sends to the 
 
 - `payload_format` is `20260628`.
 - No existing key is renamed, removed, or changes type or meaning.
+- One case changes for the existing event counts of `activity_24h` (`logins`, `unique_logins`, and the check, artifact and branch counts): a response of the task manager with an unexpected shape is now a failed read and gives `null`. Before, it was counted as `0`.
 - `infrahub_version` tells which reports contain the new keys.
 - The report contains no name that a customer defined.
 
@@ -60,7 +61,7 @@ A list of rows `{workflow, state, runs, run_seconds}` for the previous full UTC 
 - A run that has not ended when the report is produced is in no row, in that report or a later one.
 - The ended runs of a branch that is deleted before the report is produced are in no row either: Infrahub deletes them with the branch. Seven of the 8 workflows are affected; `proposed-changed-pipeline` is not. The rows of the three workflows that run inside a proposed change are therefore a lower bound when branches are deleted after the merge.
 - An empty list means that no named workflow had a run in an end state.
-- A row with `state`, `runs` and `run_seconds` all `null` means that the read for that workflow failed.
+- A row with `state`, `runs` and `run_seconds` all `null` means that the read for that workflow failed or was not answered within 60 seconds.
 - A `null` list means that the report could not read the activity of the day at all.
 - A later Infrahub release can add a workflow name. It adds rows and changes no existing row.
 
@@ -92,7 +93,7 @@ A map from validator kind to the number of validators of that kind that started 
 
 - The keys are the kinds that inherit from `CoreValidator`. Today these are `CoreArtifactValidator`, `CoreDataValidator`, `CoreGeneratorValidator`, `CoreRepositoryValidator`, `CoreSchemaValidator` and `CoreUserValidator`.
 - A later Infrahub release can add a key.
-- `0` means that no validator of the kind started. `null` for one key means that its count failed. A `null` map means that the kinds could not be read.
+- `0` means that no validator of the kind started. `null` for one key means that its count failed, was not answered within 60 seconds, or got a response with an unexpected shape. A `null` map means that the kinds could not be read.
 - One started `CoreUserValidator` is one check definition in one pipeline run. A re-run counts again.
 - `activity_24h.checks_started` still counts every started validator of all kinds.
 

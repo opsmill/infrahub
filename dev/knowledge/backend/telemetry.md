@@ -209,7 +209,8 @@ merge. Events are not deleted with the branch.
 ## Graceful degradation
 
 Many metric sources are gathered through a single helper (`safe_metric`) that isolates failures:
-if a source raises, that field is reported as `null` (and the failure is logged) while the rest
+if a source raises, that field is reported as `null` (and the failure is logged with the name of
+the value and the type of the exception) while the rest
 of the payload is still built, stored, and sent. A source that succeeds with nothing to count
 reports `0`. So **`null` means "could not measure", `0` means "measured, nothing there"**.
 
@@ -234,10 +235,17 @@ kind is `null`. Neither failure changes another activity field.
 
 A read of the task manager that gets no answer does not fail at once. With the defaults of the
 Prefect client, a request waits 60 seconds for an answer and is tried 6 times, with waits of 2, 4,
-8, 16 and 32 seconds in between, so one unanswered read takes about 7 minutes. Infrahub sets no
-shorter limit. The 8 run history reads and the counts per validator kind run one after the other,
-so a task manager that accepts connections and does not answer delays the report by about 7 minutes
-for each of them.
+8, 16 and 32 seconds in between, so one unanswered read takes about 7 minutes. The 8 run history
+reads and the counts per validator kind have a deadline of their own,
+`TASK_MANAGER_READ_DEADLINE_SECONDS` (60 seconds): a read that has not returned by then is given up
+and reported as `null`, so a task manager that accepts connections and does not answer delays the
+report by at most 1 minute for each of them. The older reads of the task manager have no deadline.
+
+The event counts of `activity_24h` (`logins`, `unique_logins`, the check, artifact and branch
+counts, and each kind of `validators_started`) validate the response of the task manager. A
+response that is not a list of buckets with a count is a failed read and gives `null`. The
+`prefect.events` tally has no `null` value and is not read through `safe_metric`, so it counts
+such a response as no event.
 
 One caveat on the check metrics: `checks_started` counts every validator that starts, but
 `checks_passed`/`checks_failed` are only emitted for validators that run through the checks

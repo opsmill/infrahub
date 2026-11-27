@@ -20,7 +20,7 @@ The runs of one workflow that ended in one state on the previous UTC day.
 Rules:
 
 - `state`, `runs` and `run_seconds` are all set or all `None`. The model rejects a row that sets only some of them, and a negative `runs` or `run_seconds`.
-- A workflow has at most one row per end state, and exactly one row when its read failed.
+- A workflow has at most one row per end state, and exactly one row when its read failed or was not answered within 60 seconds.
 - A workflow with no run in an end state has no row.
 - Rows are ordered by workflow, in the order of `REPORTED_WORKFLOW_NAMES`, then by state, in the order `COMPLETED`, `FAILED`, `CRASHED`, `CANCELLED`.
 
@@ -35,7 +35,7 @@ Rules for `validators_started`:
 
 - The keys are the kinds that inherit from `CoreValidator` in the schema of the default branch, sorted by name.
 - A kind with no started validator has the value `0`.
-- A kind whose count failed has the value `None`.
+- A kind whose count failed, was not answered within 60 seconds, or got a response with an unexpected shape has the value `None`.
 - The map is `None` when the kinds could not be read from the schema, or when the whole activity gather failed.
 
 Rules for `workflow_runs`:
@@ -84,6 +84,10 @@ Pydantic models for the response of `POST /flow_runs/history`. The response is a
 | `RunHistoryInterval` | `states` | `list[RunHistoryState]` | `states` |
 
 A response that lacks one of these fields fails validation, and the read for that workflow counts as failed.
+
+### `EventCountBucket` (`task_manager.py`)
+
+Pydantic model for one bucket of the response of `POST /events/count-by/event` and `POST /events/count-by/resource`. It has one field, `count: int`. A response that is not a list of such buckets fails validation, and the event count that reads it counts as failed.
 
 ### `NodesWithOutputCount` (`queries.py`)
 

@@ -20,9 +20,11 @@ Expected: every test passes. The tests that cover the new values:
 - `backend/tests/unit/telemetry/test_task_manager.py`:
   - `test_build_workflow_run_rows`: the rows per end state, the sum before rounding, the states that are left out, the order of the rows
   - `test_gather_workflow_runs_keeps_the_other_rows_when_one_read_fails` and `test_count_started_validators_keeps_the_other_kinds_when_one_count_fails`: one failed read among reads that succeed, with a task manager client on a scripted HTTP transport
+  - `test_count_started_validators_reports_null_for_a_response_with_an_unexpected_shape`: a response of the event count route that is not a list of buckets with a count
+  - `test_gather_workflow_runs_gives_up_a_read_that_is_not_answered_within_the_deadline` and `test_read_within_deadline_keeps_a_timeout_that_the_read_raises`: the deadline of a read of the task manager
 - `backend/tests/unit/telemetry/test_models.py`: a run row that sets only some of `state`, `runs` and `run_seconds` is rejected, and the JSON of a row
 - `backend/tests/unit/telemetry/test_utils.py`:
-  - `test_failure_without_a_message_is_logged_with_its_exception_type`: the log line of a failed read
+  - `test_failure_is_logged_with_the_metric_and_the_exception_type`: the log line of a failed read
 - `backend/tests/component/telemetry/test_task_manager.py`:
   - `test_gather_workflow_runs_rows_per_workflow_and_end_state`: rows against a real task manager, the window, a workflow that is not reported
   - `test_gather_workflow_runs_reports_each_failed_read`: one row with null figures per workflow when every read fails

@@ -59,8 +59,8 @@ The Technical Context of the plan has no open clarification.
 
 - **Decision**: run the read of each workflow through `utils.py::safe_metric`. When it returns `None`, add one row with the workflow name and `state`, `runs` and `run_seconds` set to `None`. Make the read for all 8 workflows whatever the number of failures.
 - **Rationale**: the reader keeps the rows of the reads that worked and can tell which workflow could not be read. This is the one exception to the rule that a failed source is one `null` value.
-- **Consequence**: a read that gets no answer takes about 7 minutes: 6 attempts of 60 seconds and 62 seconds of waits between them (`request_timeout` of 60 seconds, `max_retries` of 5, and waits of 2, 4, 8, 16 and 32 seconds in the Prefect 3.8.6 client). These are Prefect's defaults; Infrahub sets no shorter limit. The 8 run history reads and the 6 validator counts can delay the report by about 100 minutes. The times are computed from the settings and were not measured. When the task manager answers no call at all, the report is not stored, as before the change: `tasks.py::AnonymousTelemetryGatherer.gather` reads the work pools, the event totals and the automations with no protection.
-- **For the owner to decide**: whether this delay is accepted, or whether the two new reads pass a shorter timeout to the client. A shorter timeout is not a limit on the number of failed reads, and it does not remove the waits between the attempts: 62 seconds for each unanswered read, so about 15 minutes for 14 of them. A limit on the wait needs a deadline around each read.
+- **Consequence**: a read that gets no answer takes about 7 minutes: 6 attempts of 60 seconds and 62 seconds of waits between them (`request_timeout` of 60 seconds, `max_retries` of 5, and waits of 2, 4, 8, 16 and 32 seconds in the Prefect 3.8.6 client). These are Prefect's defaults; Infrahub sets no shorter limit. Without a deadline, the 8 run history reads and the 6 validator counts could delay the report by about 100 minutes. The times are computed from the settings and were not measured. When the task manager answers no call at all, the report is not stored, as before the change: `tasks.py::AnonymousTelemetryGatherer.gather` reads the work pools, the event totals and the automations with no protection.
+- **Decided by the owner on 2026-11-27**: each of the 14 new reads has a deadline of 60 seconds (R18). A shorter timeout of the client was not chosen: it is not a limit on the number of failed reads, and it does not remove the waits between the attempts, 62 seconds for each unanswered read.
 - **Alternatives considered**:
   - `null` for the whole list when one call fails: one failed call discards the results of the others.
   - Stopping after 3 failed calls in a row: rejected by the owner of the telemetry code.
@@ -191,6 +191,22 @@ Found by the review of the pull request on 2026-11-26. Read in the code, not run
   - Count the runs inside proposed changes from events in a later change. Events are not deleted with the branch.
   - Keep the purge from deleting the runs of the 8 workflows until the report has read them. This changes the purge and is not a telemetry-only change.
 
+## R18. Decisions of 2026-11-27 after the speckit review
+
+The review left three findings open. The owner of the telemetry code decided to apply all three.
+
+- **The log line of a failed read names the read.**
+  - Built: `utils.py::safe_metric` takes a required `metric` argument and logs it with the type and the text of the exception. Each of its 23 call sites passes the path of the value in the report, for example `activity_24h.workflow_runs.generator-run`.
+  - Checked: a code search of the organization on GitHub finds `safe_metric` only in `opsmill/infrahub`. The search covers the default branch of the repositories that the token can read, so it does not prove that Infrahub Enterprise has no caller.
+- **A response of the event count route with an unexpected shape is a failed read.**
+  - Built: `task_manager.py::count_windowed_event` and `task_manager.py::count_windowed_unique_resources` validate the response as a list of `task_manager.py::EventCountBucket`. Every caller reads them through `safe_metric`, so such a response gives `null` for the 8 older event counts, for `unique_logins` and for each kind of `validators_started`. Before, it gave `0` and no log line.
+  - Left as it was: `task_manager.py::gather_prefect_events`. The `prefect.events` totals are typed as whole numbers with no `null`, and the read is outside `safe_metric`, so a strict parse there would stop the whole report.
+- **Each new read of the task manager has a deadline.**
+  - Built: `task_manager.py::read_within_deadline` stops waiting after `TASK_MANAGER_READ_DEADLINE_SECONDS`, 60 seconds, and the 8 run history reads and the count per validator kind go through it. A read that is given up is reported like any failed read. The 14 new reads delay the report by at most about 14 minutes when the task manager does not answer.
+  - The value: 60 seconds is the default request timeout of the Prefect client, so an unanswered read gets one full attempt and no retry. A read that the task manager answers takes far less.
+  - Not changed: the older reads of the task manager in `task_manager.py::gather_activity_24h` have no deadline, so each can still take about 7 minutes when it gets no answer.
+  - A timeout that the read raises by itself before the deadline is passed on unchanged, so the log does not report it as the deadline.
+
 ## Checks before the pull request is merged
 
 [CLAUDE RECOMMENDED – based on the critique of 2026-11-26, `tasks.py::send_telemetry_push` and principle V of `dev/constitution.md`]
@@ -204,11 +220,8 @@ Found by the review of the pull request on 2026-11-26. Read in the code, not run
 - Is it acceptable for the patch release that the runs of a deleted branch are missing from the run rows (R17)? If not, the design needs a new decision.
 - Does the 1.12 change need the number of failed generators, failed artifact generations and failed checks inside a proposed change? None of the 8 run history reads returns them (R5). The existing `checks_failed` counts failed validators, and one validator covers every target of one definition. If the answer is yes, the design needs a new decision.
 - The public FAQ entry about what telemetry Infrahub sends says: "This information is used as aggregated analysis to better understand what and how to improve the project." Does the sentence still describe how the new counts are used? FR-031 covers the list of values and not this sentence.
-- Does Infrahub Enterprise call `task_manager.py::gather_activity_24h`, build its own activity gatherer, or run generators, artifact generations or checks through a flow with another name? `gather_activity_24h` gains a required parameter. No checkout of the Enterprise repository was available to check.
+- Does Infrahub Enterprise call `task_manager.py::gather_activity_24h`, build its own activity gatherer, or run generators, artifact generations or checks through a flow with another name? `gather_activity_24h` gains a required parameter, and so does `utils.py::safe_metric` (R18). No checkout of the Enterprise repository was available to check.
 - Which of the two check figures does the analyst use: one run of `git-repository-run-user-check`, or one started `CoreUserValidator`? The report sends both.
-- Should the log line of a failed read name the read? `utils.py::safe_metric` logs the type and the text of the exception, and not the workflow or the validator kind that could not be read. The stored report names the workflow or the kind whose value is `null`. Naming the read in the log needs a new parameter on the helper and a change at its 23 call sites. Found by the review of 2026-11-27.
-- Should a response of the event count route with an unexpected shape be a failed read? `task_manager.py::_post_count_by` reads a body that is not a list as no bucket, and `task_manager.py::count_windowed_event` reads a bucket without `count` as `0`. Such a response gives `0` and no log line, for the 8 older event counts and for each kind of `validators_started`. A strict parse changes those values to `null` for such a response. `task_manager.py::gather_prefect_events` uses the same helper outside `safe_metric`, so a strict parse there would stop the whole report. Both lines existed before this change. Found by the review of 2026-11-27.
-- Should each new read of the task manager have a deadline (R6)? Without one, a task manager that accepts connections and does not answer delays the report by about 7 minutes for each read.
 
 ## Open items that block nothing in this change
 
