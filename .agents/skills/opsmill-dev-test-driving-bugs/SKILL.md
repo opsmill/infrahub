@@ -186,8 +186,8 @@ instead of forwarding it to the test runner.
   Flip them to assert what SHOULD happen.
 - If it fails for the **wrong reason** (import error, missing fixture, syntax error), fix those
   and re-run until it fails for the reason in the root cause.
-
-> **Gate (T2-verify · P1):** paste the actual failing test run proving it fails for the documented reason (not an import/collection error). See `../quality-gates/gates/primitives/evidence-before-done.md`.
+- Keep the failing run's output in your report -- it is the evidence that the test reproduces the
+  bug, not an import or collection error.
 
 ### Step 8: Format and lint
 
@@ -204,7 +204,7 @@ files would be committed by mistake. Commit message: `test: add failing test for
 
 ### Step 10: Open draft PR (only if `OPEN_PR=true`)
 
-> **Ship gate (T2 · P2 + P3) — before opening the draft PR or stamping `AGENT_TEST_COMPLETE`.** Run the ship gate per `../quality-gates/gates/primitives/independent-judge.md` (judge → on-FAIL STOP → R2 degrade → write receipt on PASS, all defined there). R1 criteria: the `.bug-analysis-<key>.md` verbatim (the root cause the test must prove — NOT your summary). Artifact: the test diff. Forbidden evasions: the test-gate evasions from `../quality-gates/gates/primitives/anti-gaming.md`. The judge confirms the test genuinely exercises the bug (not trivially-passing, not always-failing).
+> **Optional independent verdict:** run `/opsmill-dev-judging-changes .bug-analysis-<key>.md artifact: <the test diff>` (gate kind `test`) before opening the draft PR or stamping `AGENT_TEST_COMPLETE`. Only repos that enforce ship-gate receipts (`.claude/quality-gates/enabled`) require it.
 
 Push the branch and open a **draft** Pull Request against the repo's default branch:
 
@@ -270,15 +270,6 @@ the draft PR.
 If the test cannot be made to fail for the right reason after 3 attempts, inform the developer
 explaining what was tried and **STOP**. Do NOT open a PR or include the `AGENT_TEST_COMPLETE`
 marker.
-
-## Quality gates
-
-Gates for this skill follow `../quality-gates/gates/gate-model.md`. `test-driving-bugs` is **Tier 2 — it writes a failing reproduction test and stamps `AGENT_TEST_COMPLETE` unconditionally** (in PR mode it also opens a draft PR; both paths require the full ship gate).
-
-| Gate | Step / trigger | Tier | Primitives | Pass criteria | On-fail |
-|---|---|---|---|---|---|
-| Test-fails-right | after writing the test | T2-verify | P1 | The new test FAILS for the documented reason. Paste the failing run. | STOP; fix the test |
-| Test-catches-bug | before opening the draft PR / stamping `AGENT_TEST_COMPLETE` | T2-ship | P2 + P3 | A fresh judge, given the `.bug-analysis-<key>.md` verbatim and the test diff, confirms the test actually exercises the bug (not trivially-passing, not always-failing). | STOP; do not stamp; fix and re-judge |
 
 ## Common mistakes
 
