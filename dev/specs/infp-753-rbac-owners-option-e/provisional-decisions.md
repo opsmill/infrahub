@@ -91,3 +91,30 @@ Work to do before the first pull request merges, with its state on 2026-11-16:
 - A person reviews the owner merge queries. Not done.
 
 Not checked: no experiment ran at the full size of 10,000 devices. The files of the experiments are not in this repository.
+
+## Decision of 2026-11-20: the lock of two writes at the same time
+
+Guillaume Mazoyer, maintainer, made this decision on 2026-11-20. It replaces PD-2 for this build. The rows above keep the values of 2026-11-12 and 2026-11-16.
+
+- Two writes of the same node at the same time run one after the other because of a write lock in the database on the node vertex (`SET n.uuid = n.uuid`). The lock lasts until the commit.
+  - `Node._update` and `Node.delete` take it at their start (`NodeLockQuery`).
+  - The owner queries take it inside the query, before they write: `OwnerStateWriteQuery` and its subclasses `NodeSourcesWriteQuery` and `NodeOwnerEdgesCloseQuery`, and the attribute rename migration (`OwnerSetKeyMigrationQuery`).
+  - The cascade of `NodeManager.delete`, the profile refresh and the IPAM reconciler lock their nodes in the order of the node IDs.
+- No mutation takes `InfrahubMultiLock` for owners. Task T021 is closed.
+- The state of the last write stays, as in PD-2.
+- PD-5 ("through the node lock of PD-2") now means this database lock: the owner write query locks the node vertex before it looks for the set, so two branches reuse the same `OwnerSet` vertex.
+
+Reasons. The evidence is in the scratch files of the review of 2026-11-20 (`review8/lock-alternatives.md`, `probe3.jsonl`). Line numbers are at commit `7d2ce2969a`, unless the line says `origin/develop`.
+
+- Without the node lock, an owner write and a node delete deadlock, and a delete can leave an open owner edge on a deleted node.
+  - Probe of 2026-11-20: real GraphQL mutations, `TestPersonUpdate` that sets an owner on `height` (with or without a new value) and `TestPersonDelete` of the same node at the same time, 160 pairs on the default branch and on a branch. With the lock: 0 deadlocks and 0 open owner edges. Without `NodeLockQuery`: 9 `DeadlockDetected` retries and 1 open `HAS_OWNER` edge on a deleted node, which `verify_graph` reports.
+  - Runs that pause one transaction at a fixed step (36 cases): with the lock, 0 cases with bad owner data and 0 deadlocks. Without `NodeLockQuery`: 7 cases with bad owner data and 3 deadlocks.
+  - Cause: the owner write locks the node first (`backend/infrahub/core/ownership/queries.py:545`) and then the attribute (`:457-463`, on the default branch). Without `NodeLockQuery`, the delete locks the attribute first (`backend/infrahub/core/query/attribute.py:320`, on the default branch) and the node later (`NodeOwnerEdgesCloseQuery`, `queries.py:545`).
+  - On Neo4j 2026.10.1, the create of an edge does not wait for a `SET` on either end vertex. So only the `SET` on the node vertex orders two writes of one node. `Node.delete` reads its time after this lock (`backend/infrahub/core/node/__init__.py:1473-1475`), so it also closes the owner edges of a write that commits while the delete waits.
+- The writers that do not run through a mutation cannot take an application lock before they write. So the database lock in the owner queries must stay in all cases.
+  - The IPAM reconciler runs inside the transaction of the create mutation, after `create_node` wrote, and gets its nodes from a read (`backend/infrahub/graphql/mutations/ipam.py:157-173`, `backend/infrahub/core/ipam/reconciler.py:89-148`).
+  - The migrations write with Cypher over all the nodes of a kind (`backend/infrahub/core/migrations/query/owner_set_attribute.py:119` takes the node lock inside the Cypher).
+  - The merge deletes nodes with Cypher.
+- A Redis lock waits with no limit. `RedisLock.acquire` loops until it gets the key (`backend/infrahub/lock.py:188-209` on `origin/develop`), and a lock that is not an init lock gets no time to live (`lock.py:612-627` on `origin/develop`). The lock modes of pull request 11410 do not change this. Two writers that take two node locks in the reverse order wait without end. Neo4j finds a deadlock of database locks, and the mutation retries it (`retry_db_transaction`).
+
+Update time, changed after the review of 2026-11-23: `Node._update` reads the update time after the lock when the caller gives no time. With the time read before the lock, an owner update that waited behind another owner update wrote at an earlier time, did not see the owners of the other update, and left both lists active. A value update that waits behind a delete wrote an active `HAS_VALUE` edge on a deleted attribute: the same probe saw it in 7 of 160 pairs with the lock and in 28 of 80 pairs on `develop`. With the update time read after the lock, it saw 0 of 80, and the update fails. `NodeLockQuery` now also reads, after the lock, whether the node is active, so such an update raises `NodeNotFoundError`. A write of owners with a time from before the lock fails when the holder has an owner edge with a later time. `develop` has the `HAS_VALUE` bug without this change.

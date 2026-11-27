@@ -4,6 +4,7 @@ import ujson
 
 from infrahub.core.constants import NULL_VALUE, DiffAction, InfrahubKind, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.core.ownership.fields import is_list_property, stored_owner_ids
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import BranchNotFoundError, InitializationError, SchemaNotFoundError
 
@@ -185,6 +186,7 @@ class ConflictsEnricher:
                 base_property=base_property,
                 branch_property=branch_property,
                 ignore_order=value_order_insensitive,
+                is_list=is_list_property(field_name=branch_attribute.name, property_type=branch_property.property_type),
             )
             if same_value:
                 branch_property.conflict = None
@@ -313,12 +315,22 @@ class ConflictsEnricher:
         base_property: EnrichedDiffProperty,
         branch_property: EnrichedDiffProperty,
         ignore_order: bool = False,
+        is_list: bool = False,
     ) -> bool:
         if base_property.new_value == branch_property.new_value:
             return True
         if ignore_order and self._same_unordered_list(base_property.new_value, branch_property.new_value):
             return True
         if {base_property.new_value, branch_property.new_value} <= {NULL_VALUE, None}:
+            return True
+        if is_list and (
+            stored_owner_ids(value=base_property.new_value) == stored_owner_ids(value=branch_property.new_value)
+            # An update that keeps the value changes what the value does not show, such as the origin of a list of owners.
+            or any(
+                prop.action is DiffAction.UPDATED and prop.previous_value == prop.new_value
+                for prop in (base_property, branch_property)
+            )
+        ):
             return True
         if (
             base_property.action is DiffAction.UNCHANGED

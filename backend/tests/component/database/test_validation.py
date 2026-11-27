@@ -82,6 +82,21 @@ SET hae.status = "deleted"
     await db.execute_query(query=query, params={"node_id": car.id})
 
 
+async def _delete_attribute_edge_with_owner_state(db: InfrahubDatabase, car: Node, person: Node) -> None:
+    """Give the car's name a "no owner" state copied from a template, then mark its HAS_ATTRIBUTE edge deleted."""
+    query = """
+MATCH (:Node {uuid: $node_id})-[hae:HAS_ATTRIBUTE {status: "active"}]->(a:Attribute {name: "name"})
+WHERE hae.to IS NULL
+WITH hae, a LIMIT 1
+MATCH (no_owner:NoOwner)
+MATCH (template:Node {uuid: $template_id})
+CREATE (a)-[:HAS_OWNER {branch: hae.branch, branch_level: hae.branch_level, status: "active", from: hae.from}]->(no_owner)
+CREATE (a)-[:HAS_OWNER_SOURCE {branch: hae.branch, branch_level: hae.branch_level, status: "active", from: hae.from}]->(template)
+SET hae.status = "deleted"
+    """
+    await db.execute_query(query=query, params={"node_id": car.id, "template_id": person.id})
+
+
 async def _add_edge_after_node_delete(db: InfrahubDatabase, car: Node, person: Node) -> None:
     """Delete the car, then attach an edge to it afterwards."""
     query = """
@@ -94,6 +109,38 @@ WITH n, is_part_of, hae, a LIMIT 1
 CREATE (n)-[:HAS_ATTRIBUTE {branch: hae.branch, branch_level: hae.branch_level, status: "active", from: $at}]->(a)
     """
     await db.execute_query(query=query, params={"node_id": car.id, "at": Timestamp().to_string()})
+
+
+async def _add_link_owner_edge_after_node_delete(db: InfrahubDatabase, car: Node, person: Node) -> None:
+    """Delete the car, then make it the owner of its link to the person afterwards."""
+    query = """
+MATCH (n:Node {uuid: $car_id})-[is_part_of:IS_PART_OF]->(:Root)
+WITH n, is_part_of LIMIT 1
+SET is_part_of.status = "deleted"
+WITH n
+MATCH (n)-[e1:IS_RELATED]-(rel:Relationship)-[:IS_RELATED]-(:Node {uuid: $person_id})
+WITH n, e1, rel LIMIT 1
+CREATE (rel)-[:HAS_OWNER {branch: e1.branch, branch_level: e1.branch_level, status: "active", from: $at}]->(n)
+    """
+    await db.execute_query(
+        query=query, params={"car_id": car.id, "person_id": person.id, "at": Timestamp().to_string()}
+    )
+
+
+async def _add_attribute_source_edge_after_node_delete(db: InfrahubDatabase, car: Node, person: Node) -> None:
+    """Delete the car, then make it the source of the name of the person afterwards."""
+    query = """
+MATCH (n:Node {uuid: $car_id})-[is_part_of:IS_PART_OF]->(:Root)
+WITH n, is_part_of LIMIT 1
+SET is_part_of.status = "deleted"
+WITH n
+MATCH (:Node {uuid: $person_id})-[hae:HAS_ATTRIBUTE]->(a:Attribute {name: "name"})
+WITH n, hae, a LIMIT 1
+CREATE (a)-[:HAS_SOURCE {branch: hae.branch, branch_level: hae.branch_level, status: "active", from: $at}]->(n)
+    """
+    await db.execute_query(
+        query=query, params={"car_id": car.id, "person_id": person.id, "at": Timestamp().to_string()}
+    )
 
 
 async def _delete_attribute_cleanly(db: InfrahubDatabase, node_uuid: str, attr_name: str, at: str) -> None:
@@ -329,9 +376,36 @@ GRAPH_DAMAGE_CASES = [
         excluded_kinds=["TestPerson"],
     ),
     GraphDamageCase(
+        name="orphaned_active_owner_state_edges",
+        check=GraphCheck.ORPHANED_ACTIVE_EDGES,
+        damage=_delete_attribute_edge_with_owner_state,
+        expected_violations=4,
+        scoped_violations=4,
+        included_kinds=["TestCar"],
+        excluded_kinds=["TestPerson"],
+    ),
+    GraphDamageCase(
         name="edges_after_node_delete",
         check=GraphCheck.EDGES_AFTER_NODE_DELETE,
         damage=_add_edge_after_node_delete,
+        expected_violations=1,
+        scoped_violations=1,
+        included_kinds=["TestCar"],
+        excluded_kinds=["TestPerson"],
+    ),
+    GraphDamageCase(
+        name="link_owner_edge_after_node_delete",
+        check=GraphCheck.EDGES_AFTER_NODE_DELETE,
+        damage=_add_link_owner_edge_after_node_delete,
+        expected_violations=1,
+        scoped_violations=1,
+        included_kinds=["TestCar"],
+        excluded_kinds=["TestPerson"],
+    ),
+    GraphDamageCase(
+        name="attribute_source_edge_after_node_delete",
+        check=GraphCheck.EDGES_AFTER_NODE_DELETE,
+        damage=_add_attribute_source_edge_after_node_delete,
         expected_violations=1,
         scoped_violations=1,
         included_kinds=["TestCar"],
@@ -407,6 +481,27 @@ class TestVerifyGraph:
         assert [violation.check for violation in included] == [case.check] * case.scoped_violations
 
         assert await collect_graph_violations(db=db, kinds=case.excluded_kinds) == []
+
+    @pytest.mark.parametrize(
+        "damage",
+        [
+            pytest.param("MATCH (n:NoOwner) DELETE n", id="missing"),
+            pytest.param('CREATE (:NoOwner {uuid: "no-owner"})', id="duplicate"),
+        ],
+    )
+    async def test_graph_without_exactly_one_no_owner_vertex_is_reported(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        car_person_schema: SchemaBranch,
+        car_accord_main: Node,
+        damage: str,
+    ) -> None:
+        await db.execute_query(query=damage)
+
+        unfiltered = await collect_graph_violations(db=db)
+        assert [violation.check for violation in unfiltered] == [GraphCheck.NO_OWNER_VERTEX]
+        assert await collect_graph_violations(db=db, kinds=["TestCar"]) == []
 
     async def test_empty_kind_filter_behaves_like_no_filter(
         self,

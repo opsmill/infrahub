@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from functools import partial
 from typing import TYPE_CHECKING
@@ -20,6 +21,7 @@ from infrahub.core.merge.recompute_coalescing import (
     max_recompute_chain_depth,
 )
 from infrahub.core.node import Node
+from infrahub.core.recompute import bulk_write
 from infrahub.core.recompute.bulk_write import (
     AttributeValueWrite,
     BulkRecomputeWriter,
@@ -27,6 +29,7 @@ from infrahub.core.recompute.bulk_write import (
 )
 from infrahub.core.recompute.dispatch import BulkRecomputeDispatcher
 from infrahub.core.registry import registry
+from infrahub.database.validation import verify_graph
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.events.node_action import NodeUpdatedEvent
@@ -42,10 +45,13 @@ from tests.helpers.merge_recompute.dataset import (
     load_chain_schema,
     load_profile_schema,
 )
+from tests.helpers.ownership import wait_for_the_other_write
 from tests.helpers.regeneration_barrier import regeneration_barrier
 from tests.helpers.schema import CASCADE_NODE, CASCADE_SCHEMA, CYCLE_A, CYCLE_B, CYCLE_SCHEMA, load_schema
 
 if TYPE_CHECKING:
+    import pytest
+
     from infrahub.core.branch import Branch
     from infrahub.core.merge.regeneration_barrier import RegenerationBarrier
     from infrahub.core.schema.schema_branch import SchemaBranch
@@ -581,3 +587,48 @@ async def test_chain_bound_scales_with_the_schema_so_deep_chains_are_not_truncat
 
     assert submissions
     assert all(submission.family == COMPUTED_ATTRIBUTE for submission in submissions)
+
+
+async def test_two_bulk_writes_of_the_same_nodes_in_reverse_order_do_not_deadlock(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    node_ids: list[str] = []
+    for name in ("John", "Jane"):
+        person = await Node.init(db=db, schema="TestPerson")
+        await person.new(db=db, name=name)
+        await person.save(db=db)
+        node_ids.append(person.id)
+    is_saved = {"forward": asyncio.Event(), "backward": asyncio.Event()}
+    applied: dict[str, int] = {"forward": 0, "backward": 0}
+    original_apply = bulk_write._apply
+    tasks: dict[str, asyncio.Task[list[WrittenNode]]] = {}
+
+    async def pausing_apply(node: Node, write: AttributeValueWrite) -> None:
+        direction = "forward" if write.value and str(write.value).endswith("forward") else "backward"
+        if applied[direction]:
+            is_saved[direction].set()
+            other = "backward" if direction == "forward" else "forward"
+            await wait_for_the_other_write(db=db, other=tasks[other], event=is_saved[other])
+        applied[direction] += 1
+        await original_apply(node=node, write=write)
+
+    monkeypatch.setattr(bulk_write, "_apply", pausing_apply)
+
+    async def write(direction: str, ordered_ids: list[str]) -> list[WrittenNode]:
+        writer = BulkRecomputeWriter(db=db, event_service=MemoryInfrahubEvent())
+        return await writer.write(
+            branch=default_branch,
+            writes=[
+                AttributeValueWrite(node_id=node_id, field="name", value=f"{node_id}-{direction}")
+                for node_id in ordered_ids
+            ],
+            context=_event_context(),
+        )
+
+    # Both writes run to their end, so a failed one leaves no open transaction for the next test.
+    tasks["forward"] = asyncio.create_task(write("forward", node_ids))
+    tasks["backward"] = asyncio.create_task(write("backward", node_ids[::-1]))
+    results = await asyncio.gather(*tasks.values(), return_exceptions=True)
+
+    assert [type(result) for result in results] == [list, list]
+    await verify_graph(db=db, kinds=["TestPerson"])

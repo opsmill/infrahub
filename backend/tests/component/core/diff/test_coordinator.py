@@ -27,6 +27,7 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import SchemaNotFoundError
 from infrahub.proposed_change.constants import ProposedChangeState
 from tests.adapters.diff_repository import RecordingDiffRepository
+from tests.helpers.ownership import create_groups, set_owners
 
 
 class TestDiffCoordinator:
@@ -553,6 +554,29 @@ class TestDiffCoordinator:
         assert rel_diffs == {("cars", DiffAction.UPDATED)}
         attr_diffs = {(a.name, a.action) for a in updated_person_diff.attributes}
         assert attr_diffs == {("height", DiffAction.UPDATED)}
+
+    async def test_diff_on_default_branch_with_only_a_node_owner_change_saves_one_root(
+        self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node
+    ) -> None:
+        group_ids = await create_groups(db=db)
+        from_time = Timestamp()
+        await set_owners(db=db, branch=default_branch, node_id=person_john_main.id, owner_ids=(group_ids["security"],))
+        to_time = Timestamp()
+        diff_coordinator = await self.get_wrapped_diff_coordinator(db=db, branch=default_branch)
+
+        metadata = await diff_coordinator.create_or_update_arbitrary_timeframe_diff(
+            base_branch=default_branch,
+            diff_branch=default_branch,
+            from_time=from_time,
+            to_time=to_time,
+            name=str(uuid4()),
+        )
+
+        records = await db.execute_query(
+            query="MATCH (root:DiffRoot {base_branch: $branch, diff_branch: $branch}) RETURN root.uuid AS uuid",
+            params={"branch": default_branch.name},
+        )
+        assert [record["uuid"] for record in records] == [metadata.uuid]
 
     async def test_unstored_diff_on_default_branch_only(
         self,

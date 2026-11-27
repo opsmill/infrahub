@@ -1284,7 +1284,7 @@ async def test_node_update_local_attrs_with_metadata(
 
 @pytest.mark.parametrize("use_branch", [True, False])
 async def test_update_related_node(
-    db: InfrahubDatabase, data_schema: None, default_branch: Branch, use_branch: bool
+    db: InfrahubDatabase, data_schema: None, default_branch: Branch, first_account: Node, use_branch: bool
 ) -> None:
     """This test has been written to troubleshoot a specific issue.
 
@@ -1383,7 +1383,7 @@ async def test_update_related_node(
     t1_tag_rel = [tag_rel for tag_rel in tag_rels if tag_rel.peer_id == t1.id]
     assert len(t1_tag_rel) == 1
     t1_tag_rel[0].source = t2
-    t1_tag_rel[0].owner = t3
+    t1_tag_rel[0].owner = first_account
     t1_tag_rel[0].is_protected = True
     await p13.save(db=db)
     p14 = await NodeManager.get_one(db=db, branch=branch, id=p1.id)
@@ -1393,7 +1393,7 @@ async def test_update_related_node(
     t1_source = await t1_tag_rel[0].get_source(db=db)
     assert t1_source.get_id() == t2.id
     t1_owner = await t1_tag_rel[0].get_owner(db=db)
-    assert t1_owner.get_id() == t3.id
+    assert t1_owner.get_id() == first_account.id
     assert t1_tag_rel[0].is_protected is True
 
     # ----------------------------------------------------------------

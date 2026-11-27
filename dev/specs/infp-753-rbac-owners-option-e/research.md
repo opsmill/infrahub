@@ -17,7 +17,7 @@ The Technical Context of the plan has no open "NEEDS CLARIFICATION" item. The op
   - `(:Node)-[:HAS_OWNER]->(owner)` for the own owners of a node. `(:Attribute)-[:HAS_OWNER]->(owner)` for the own owners of an attribute, as today.
   - `(:Node)-[:HAS_OWNER_SET]->(:OwnerSet {identifier, direction})-[:HAS_OWNER]->(owner)` for a relationship field.
   - `(:Node)-[:HAS_TARGET_OWNER_SET]->(:OwnerSet {attribute?, identifier?, direction?})-[:HAS_OWNER]->(owner)` for the owners that a profile or an object template gives.
-  - `-[:HAS_NO_OWNER]->(:NoOwner)` from a node, an attribute or an `OwnerSet` for "no owner".
+  - `-[:HAS_OWNER]->(:NoOwner)` from a node, an attribute or an `OwnerSet` for "no owner". Decision of 2026-11-27: this was a separate `HAS_NO_OWNER` edge type before.
   - `-[:HAS_OWNER_SOURCE]->(template)` marks owners copied from an object template.
 - The edge types go into `core/constants/database.py::DatabaseEdgeType`. The vertices and edges go into `core/graph/schema.py`, next to `GraphNodeRelationships` and `GraphAttributeRelationships`.
 - Rationale: the request asks for one plan for each of options B and E. The team did not choose on 2026-11-09.
@@ -83,7 +83,7 @@ The Technical Context of the plan has no open "NEEDS CLARIFICATION" item. The op
 - Decision: two filters on list and count queries, computed in the database before pagination (FR-018 to FR-020):
   - `node_metadata__owners__ids`: a node matches if any owner that applies matches, own or inherited.
   - `node_metadata__owners__isnull`: `true` gives the nodes with no live owner.
-  - Code: `core/ownership/filter.py`, called from `core/query/node.py::NodeGetListQuery`. The names are in `core/ownership/constants.py`.
+  - Code: `core/ownership/filter.py`, called from `core/query/node.py::NodeGetListQuery`. The names are in `core/ownership/constants.py`. This code is in pull request 2.
 - SC-003 is not met with this filter: about 19 seconds for 480,000 interfaces in plain Cypher, and 6.7 seconds for 200,000 interfaces through GraphQL. Most of the cost is the walk to the parents and to the profiles.
 - Proposal for the spike, in this order:
   1. Start the query from the owner: find the nodes with the own owner (15.3 ms in the benchmark), then go down to the nodes that inherit. The earlier draft with option A met SC-003 for one owner group in this way, and missed it for all 50 groups.
@@ -125,22 +125,22 @@ The Technical Context of the plan has no open "NEEDS CLARIFICATION" item. The op
 - Decision: a separate path for owner edges, as in the prototype.
   - `core/diff/query/ownership.py`: the diff query, with one pattern for each edge type.
   - `core/diff/ownership_differ.py`: builds one property for each holder. Its value is the sorted list of owner IDs, and `[]` for no owner.
-  - `core/diff/ownership_fields.py`: holders that are not attributes appear under reserved names: `node_metadata__owners`, `<relationship>__owners`, `node_metadata__target_owners`, `<field>__target_owners`.
+  - `core/ownership/fields.py`: holders that are not attributes appear under reserved names: `node_metadata__owners`, `<relationship>__owners`, `node_metadata__target_owners`, `<field>__target_owners`.
   - `core/diff/calculator.py` and `core/diff/query_parser.py` call the differ.
   - `core/diff/query/bulk_merge.py`, `core/diff/merger/merger.py` and `core/diff/merger/exclusion_plan.py`: the merge copies owner edges as a set for each holder, edge type and owner. It adds what the branch added and closes what the branch removed.
-- The merge keeps the `HAS_OWNER` edges to an owner that the branch deleted, so the node shows "deleted group" (FR-008).
+- The merge keeps the `HAS_OWNER` edges to an owner that the branch deleted, so the node shows "deleted owner" (FR-008).
 - When a branch deletes a node, the merge closes the outgoing owner edges of the node and the edges of its `OwnerSet` vertices (E-11).
 - A conflict exists when the default branch and another branch change the owner state of the same holder, and the two changes cannot both apply (FR-030). Code: `core/diff/conflicts_extractor.py`.
   - Decision of 2026-11-16 (PD-1): a conflict exists when both sides change the owner state of the same holder to different values. The diff compares the whole list of owners of the holder.
   - The engineering design expects no conflict when two branches change different owners of one node. This was not tested.
   - The differ builds one property for each holder, with the list of owners as value. So a conflict exists when both sides change the list to different values. The option E prototype has a test for this rule (`test_owner_conflict_resolved_to_base_skips_merge`).
 - Display labels (FR-029): `core/diff/enricher/labels.py::DiffLabelsEnricher` already resolves labels for `HAS_OWNER` properties (`PROPERTY_TYPES_WITH_LABELS`). It must resolve each ID of the list, and mark a deleted owner.
-- Index: `core/graph/index.py` already has `owner_branch` on `HAS_OWNER(branch)`. The diff query needs the same index on `HAS_NO_OWNER(branch)`. The benchmark did not measure it (27.9 ms without it, against 14.3 ms for option B). The spike measured it on 2026-11-12, and the index stays ([measurements.md](measurements.md)).
+- Index: `core/graph/index.py` already has `owner_branch` on `HAS_OWNER(branch)`. The diff query needs the same index on `HAS_NO_OWNER(branch)`. The benchmark did not measure it (27.9 ms without it, against 14.3 ms for option B). The spike measured it on 2026-11-12, and the index stays ([measurements.md](measurements.md)). Decision of 2026-11-27: "no owner" is a `HAS_OWNER` edge to `NoOwner`, so the diff query reads it through `owner_branch`, and the index on `HAS_NO_OWNER(branch)` is removed. Nobody measured the diff query after this change.
 - Each case of FR-030 gets one scenario test with a read on the branch, in the diff and on the default branch after the merge.
 
 ## R-10: Upgrade
 
-- Decision: three graph migrations (`m084` to `m086`), and `GRAPH_VERSION = 86` in `core/graph/__init__.py`. Steps 1 and 2 below are `m085` and `m084`: the hide step runs first. `m086` creates the `NoOwner` vertex. The first start of a new database creates it too.
+- Decision: three graph migrations (`m085` to `m087`), and `GRAPH_VERSION = 87` in `core/graph/__init__.py`. Steps 1 and 2 below are `m086` and `m085`: the hide step runs first. `m087` creates the `NoOwner` vertex. The first start of a new database creates it too.
   1. Close the `HAS_OWNER` edges from attributes to repositories. Delete nothing, so a query at an earlier time still returns them (FR-036). Owners on links stay.
   2. Hide the attribute owner of the default branch that a branch replaced before the upgrade (FR-037). The prototype has this step (`m084_hide_replaced_branch_attribute_owners`).
 - An attribute that has an owner today is already in the own state, so its state needs no migration.
@@ -160,7 +160,7 @@ The Technical Context of the plan has no open "NEEDS CLARIFICATION" item. The op
 
 ## R-11: Kind change and schema migrations
 
-- Kind change (FR-040): `core/migrations/query/node_duplicate.py::NodeDuplicateQuery`, which `core/migrations/schema/node_kind_update.py::NodeKindUpdateMigrationQuery01` uses, copies the active edges of a node for each edge type of `GraphNodeRelationships`. It must copy the outgoing `HAS_OWNER` and `HAS_SOURCE` edges of the node, and the `HAS_OWNER_SET`, `HAS_TARGET_OWNER_SET`, `HAS_OWNER_SOURCE` and `HAS_NO_OWNER` edges.
+- Kind change (FR-040): `core/migrations/query/node_duplicate.py::NodeDuplicateQuery`, which `core/migrations/schema/node_kind_update.py::NodeKindUpdateMigrationQuery01` uses, copies the active edges of a node for each edge type of `GraphNodeRelationships`. It must copy the outgoing `HAS_OWNER` and `HAS_SOURCE` edges of the node, and the `HAS_OWNER_SET`, `HAS_TARGET_OWNER_SET` and `HAS_OWNER_SOURCE` edges.
   - Finding: the query reads only the latest edge between the node and each other vertex, of any edge type. When two edges of different types end at one vertex, it copies one. Two cases exist with node sources: an account group that is an owner and a source of the node (`HAS_OWNER` and `HAS_SOURCE`), and a template that is the origin of the owners and a source of the node (`HAS_OWNER_SOURCE` and `HAS_SOURCE`). This finding comes from a read of the query. No test proves it.
   - Finding: `GraphNodeRelationships` declares `HAS_OWNER` and `HAS_SOURCE` as incoming edges only, so the query does not copy the edges that start at the node.
   - Decision: add the new edge types to `GraphNodeRelationships`, declare `HAS_OWNER` and `HAS_SOURCE` in both directions, and change the query so that it reads the latest edge for each edge type between the node and each other vertex.
@@ -292,6 +292,7 @@ The Technical Context of the plan has no open "NEEDS CLARIFICATION" item. The op
 - The lock was a proposal. Decision of 2026-11-16 (PD-2): the lock for the node stays, and the state of the last write stays.
 - Decision of 2026-11-16 (PD-5), for two branches that create the same `OwnerSet` vertex: the design is confirmed as built. Two branches reuse the same vertex, through the lock for the node.
 - Guillaume Mazoyer, maintainer, made both decisions ([provisional-decisions.md](provisional-decisions.md), "Decisions of 2026-11-16").
+- Decision of 2026-11-20, which replaces the proposal above and PD-2: no mutation takes `InfrahubMultiLock` for owners. A write lock in the database on the node vertex (`SET n.uuid = n.uuid`) makes two writes of one node run one after the other. `Node._update` and `Node.delete` take it at their start, and the owner queries take it before they write. The reasons are in [provisional-decisions.md](provisional-decisions.md), "Decision of 2026-11-20".
 
 ## R-22: Open points that the tasks carry
 

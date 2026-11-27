@@ -1,8 +1,19 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.core.ownership.fields import (
+    field_owners_holder,
+    holder_from_field_name,
+    is_list_property,
+    is_owners_field_name,
+    stored_owner_ids,
+)
+from infrahub.core.ownership.models import HolderKey, HolderKind
+from infrahub.log import get_logger
 
 from ..model.path import (
     ConflictSelection,
@@ -12,11 +23,35 @@ from ..model.path import (
     EnrichedDiffSingleRelationship,
 )
 
+if TYPE_CHECKING:
+    from infrahub.core.schema.schema_branch import SchemaBranch
+
+log = get_logger()
+
 
 class AttributePropertyPath(NamedTuple):
     node_uuid: str
     attribute_name: str
     edge_type: str
+
+
+class OwnerHolderPath(NamedTuple):
+    """Identifies a holder of owners whose conflict on the list of owners BASE won."""
+
+    node_uuid: str
+    holder: HolderKey
+
+
+class OwnerDiffResolution(NamedTuple):
+    """Identifies a holder of owners whose conflict on the list of owners DIFF won.
+
+    The bulk merge handles each owner edge on its own, so the owners that only the base branch
+    added stay. The merge must then give the holder the list of owners of the source branch.
+    """
+
+    node_uuid: str
+    holder: HolderKey
+    owner_ids: tuple[str, ...] | None
 
 
 class RelationshipPath(NamedTuple):
@@ -86,6 +121,8 @@ class MergeExclusionPlan:
 
     excluded_node_uuids: list[str] = field(default_factory=list)
     excluded_attribute_property_paths: list[AttributePropertyPath] = field(default_factory=list)
+    excluded_owner_holders: list[OwnerHolderPath] = field(default_factory=list)
+    owner_diff_resolutions: list[OwnerDiffResolution] = field(default_factory=list)
     excluded_relationship_paths: list[RelationshipPath] = field(default_factory=list)
     excluded_relationship_property_paths: list[RelationshipPropertyPath] = field(default_factory=list)
     cardinality_one_diff_resolutions: list[CardinalityOneDiffResolution] = field(default_factory=list)
@@ -97,13 +134,20 @@ class MergeExclusionPlanBuilder:
     def __init__(self) -> None:
         self._plan = MergeExclusionPlan()
 
-    def build(self, diff: EnrichedDiffRoot) -> MergeExclusionPlan:
+    def build(self, diff: EnrichedDiffRoot, schema_branch: SchemaBranch) -> MergeExclusionPlan:
+        """Build the plan of a merge from the resolved conflicts of the diff.
+
+        Args:
+            diff: The diff of the source branch.
+            schema_branch: The schema of the source branch, which gives the field of each set of owners.
+
+        """
         self._plan = MergeExclusionPlan()
         for node in diff.nodes:
-            self._process_node(node=node)
+            self._process_node(node=node, schema_branch=schema_branch)
         return self._plan
 
-    def _process_node(self, node: EnrichedDiffNode) -> None:
+    def _process_node(self, node: EnrichedDiffNode, schema_branch: SchemaBranch) -> None:
         node_conflict = node.conflict
         if node_conflict and node_conflict.selected_branch is ConflictSelection.BASE_BRANCH:
             self._plan.excluded_node_uuids.append(node.uuid)
@@ -120,6 +164,23 @@ class MergeExclusionPlanBuilder:
                             node_uuid=node.uuid,
                             attribute_name=attribute.name,
                             edge_type=prop.property_type.value,
+                        )
+                    )
+                    if is_list_property(field_name=attribute.name, property_type=prop.property_type) and (
+                        holder := _owner_holder(node=node, field_name=attribute.name, schema_branch=schema_branch)
+                    ):
+                        self._plan.excluded_owner_holders.append(OwnerHolderPath(node_uuid=node.uuid, holder=holder))
+                elif conflict.selected_branch is ConflictSelection.DIFF_BRANCH and is_list_property(
+                    field_name=attribute.name, property_type=prop.property_type
+                ):
+                    holder = _owner_holder(node=node, field_name=attribute.name, schema_branch=schema_branch)
+                    if holder is None:
+                        continue
+                    self._plan.owner_diff_resolutions.append(
+                        OwnerDiffResolution(
+                            node_uuid=node.uuid,
+                            holder=holder,
+                            owner_ids=stored_owner_ids(value=conflict.diff_branch_value),
                         )
                     )
 
@@ -232,3 +293,29 @@ class MergeExclusionPlanBuilder:
                         edge_type=prop.property_type.value,
                     )
                 )
+
+
+def _owner_holder(node: EnrichedDiffNode, field_name: str, schema_branch: SchemaBranch) -> HolderKey | None:
+    """Return the holder that the diff shows the owners of under a field name of a node.
+
+    Returns:
+        None for the reserved name of the owners of a field that the schema lacks, for example after the branch
+        removed the relationship.
+
+    """
+    holder = holder_from_field_name(field_name=field_name)
+    if holder is not None:
+        return holder
+    schema = schema_branch.get(name=node.kind, duplicate=False) if schema_branch.has(name=node.kind) else None
+    if schema is not None:
+        holder = field_owners_holder(field_name=field_name, schema=schema, schema_branch=schema_branch)
+    if holder is not None:
+        return holder
+    if is_owners_field_name(field_name=field_name) and (schema is None or field_name not in schema.attribute_names):
+        log.info(
+            "Skipping the resolved owner conflict of a field that the schema lacks",
+            node_uuid=node.uuid,
+            field_name=field_name,
+        )
+        return None
+    return HolderKey(kind=HolderKind.ATTRIBUTE, attribute=field_name)

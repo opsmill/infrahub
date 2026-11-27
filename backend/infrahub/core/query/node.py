@@ -714,6 +714,55 @@ SET n.updated_at = $at, n.updated_by = $user_id
         self.add_to_query(query)
 
 
+class NodeLockQuery(NodeQuery):
+    """Take the write lock of the node vertex, which lasts until the transaction commits, and read if the node is active.
+
+    The read comes after the lock, so it sees a delete that committed while the query waited.
+    """
+
+    name = "node_lock"
+    type: QueryType = QueryType.WRITE
+    raise_error_if_empty = False
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
+        self.params.update(branch_params)
+        self.params["uuid"] = self.node_id
+        self.params["at"] = self.at.to_string()
+        # An isolated branch reads its origin branch at the branch start, so a later delete there is hidden.
+        self.params["later_branches"] = sorted(
+            {
+                name
+                for names, time in self.branch.get_branches_and_times_to_query_global(at=self.at).items()
+                if time == self.at.to_string()
+                for name in names
+            }
+        )
+        query = """
+MATCH (n:Node { uuid: $uuid })
+SET n.uuid = n.uuid
+WITH n
+MATCH (n)-[r:IS_PART_OF]->(:Root)
+WHERE %(branch_filter)s
+WITH r
+ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+LIMIT 1
+        """ % {"branch_filter": branch_filter}
+        self.add_to_query(query)
+        # A delete that commits while the query waits for the lock can have a later time than the query
+        self.return_labels = [
+            """r.status = "active" AND NOT EXISTS {
+    MATCH (:Node {uuid: $uuid})-[later:IS_PART_OF {status: "deleted"}]->(:Root)
+    WHERE later.branch IN $later_branches AND later.from > $at
+} AS is_active"""
+        ]
+
+    def is_active(self) -> bool:
+        """Tell if the node is active on the branch of the query, after the lock."""
+        result = self.get_result()
+        return bool(result and result.get("is_active"))
+
+
 class NodeCheckIDQuery(Query):
     name = "node_check_id"
 
@@ -814,17 +863,29 @@ WITH *,
     def _add_owner_to_query(self, branch_filter_str: str) -> None:
         if not self._include_owner:
             return
+        # An attribute with several own owners, or with none, has no single owner to give, and a copy from an
+        # object template is not an own owner.
         owner_query = """
 CALL (a) {
-    OPTIONAL MATCH (a)-[rel_owner:HAS_OWNER]-(owner)
+    MATCH (a)-[rel_owner:HAS_OWNER]->(owner:Node)
     WHERE all(r IN [rel_owner] WHERE ( %(branch_filter)s ))
-    RETURN owner, rel_owner
+    WITH owner, rel_owner
     ORDER BY rel_owner.branch_level DESC, rel_owner.from DESC, rel_owner.status ASC
-    LIMIT 1
+    WITH owner, head(collect(rel_owner)) AS rel_owner
+    WHERE rel_owner.status = "active"
+    WITH collect([owner, rel_owner]) AS own_owners
+    CALL (a) {
+        OPTIONAL MATCH (a)-[mark:HAS_OWNER_SOURCE]->(template)
+        WHERE all(r IN [mark] WHERE ( %(branch_filter)s ))
+        WITH template, mark
+        ORDER BY mark.branch_level DESC, mark.from DESC, mark.status ASC
+        WITH template, head(collect(mark)) AS mark
+        RETURN any(latest IN collect(mark) WHERE latest.status = "active") AS is_template_copy
+    }
+    WITH own_owners, size(own_owners) = 1 AND NOT is_template_copy AS has_single_owner
+    RETURN CASE WHEN has_single_owner THEN own_owners[0][0] ELSE NULL END AS owner,
+        CASE WHEN has_single_owner THEN own_owners[0][1] ELSE NULL END AS rel_owner
 }
-WITH *,
-    CASE WHEN rel_owner.status = "active" THEN owner ELSE NULL END AS owner,
-    CASE WHEN rel_owner.status = "active" THEN rel_owner ELSE NULL END AS rel_owner
         """ % {"branch_filter": branch_filter_str}
         self.add_to_query(owner_query)
         self.return_labels.extend(["owner", "rel_owner"])

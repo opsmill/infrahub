@@ -174,6 +174,8 @@ WITH s, d
 UNWIND [s, d] AS v
 WITH DISTINCT v
 WHERE NOT v:Root
+// every "no owner" write on any branch ends at this vertex
+AND NOT v:NoOwner
 AND NOT EXISTS { MATCH (v)--() }
 DELETE v
         """ % {"edge_type": self.edge_type.value}
@@ -259,7 +261,8 @@ UNWIND [s, d] AS n
 WITH DISTINCT n
 CALL (n) {
     MATCH (n)
-    WHERE NOT exists((n)--())
+    // every "no owner" write on any branch ends at the NoOwner vertex
+    WHERE NOT exists((n)--()) AND NOT n:NoOwner
     DELETE n
 }
         """ % {"edge_reads": "    UNION ALL".join(edge_reads)}

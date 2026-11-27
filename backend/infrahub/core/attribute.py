@@ -26,9 +26,13 @@ from infrahub.core.constants import (
     MetadataOptions,
     PoolRecordProvenance,
 )
+from infrahub.core.constants.schema import NodeProperty
 from infrahub.core.graph.schema import get_attribute_value_key
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
+from infrahub.core.ownership.input import check_owner_kinds
+from infrahub.core.ownership.models import HolderKey, HolderKind, StoredOwnerState
+from infrahub.core.ownership.repository import OwnershipRepository
 from infrahub.core.property import FlagPropertyMixin, NodePropertyData, NodePropertyMixin
 from infrahub.core.query.attribute import (
     AttributeClearNodePropertyQuery,
@@ -581,6 +585,16 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 value_previous=database_prop_id,
             )
 
+            if prop_name == NodeProperty.OWNER.value:
+                await self._replace_own_owners(
+                    db=db,
+                    owner_id=str(current_prop_id) if needs_update else None,
+                    write_branch=branch,
+                    at=update_at,
+                    user_id=user_id,
+                )
+                continue
+
             if needs_update:
                 query = await AttributeUpdateNodePropertyQuery.init(
                     db=db,
@@ -681,6 +695,27 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 related_node_ids.add(self.source_id)
 
         return response
+
+    async def _replace_own_owners(
+        self, db: InfrahubDatabase, owner_id: str | None, write_branch: Branch, at: Timestamp, user_id: str
+    ) -> None:
+        """Replace all own owners of the attribute with one owner, or set the attribute to inherit without an owner.
+
+        Raises:
+            ValidationError: When the owner is not found, or is not an account or an account group.
+
+        """
+        repository = OwnershipRepository(db=db, branch=self.branch, at=None)
+        if owner_id is not None:
+            await check_owner_kinds(lookup=repository, owner_ids=[owner_id], path=f"{self.name}.owner")
+        await repository.write(
+            node_id=self.node.get_id(),
+            holder=HolderKey(kind=HolderKind.ATTRIBUTE, attribute=self.name),
+            state=StoredOwnerState(owner_ids=(owner_id,) if owner_id is not None else None),
+            write_branch=write_branch,
+            at=at,
+            user_id=user_id,
+        )
 
     def _owner_reference_for_graphql(self) -> dict[str, Any] | None:
         """The object `owner` names, for its field resolver to load."""

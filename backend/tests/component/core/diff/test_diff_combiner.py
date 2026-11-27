@@ -1023,6 +1023,45 @@ class TestDiffCombiner:
         self.expected_combined.partner_uuid = combined.partner_uuid
         assert combined == self.expected_combined
 
+    async def test_resetting_an_owner_that_an_earlier_release_stored_makes_it_unchanged(self) -> None:
+        # An earlier release stored the owner ID alone, not a list of owner IDs.
+        earlier_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_OWNER, action=DiffAction.UPDATED, previous_value="a", new_value="b"
+        )
+        later_property = EnrichedPropertyFactory.build(
+            property_type=DatabaseEdgeType.HAS_OWNER,
+            action=DiffAction.UPDATED,
+            previous_value='["b"]',
+            new_value='["a"]',
+        )
+        earlier_node = EnrichedNodeFactory.build(
+            action=DiffAction.UPDATED,
+            attributes={
+                EnrichedAttributeFactory.build(name="name", action=DiffAction.UPDATED, properties={earlier_property})
+            },
+            relationships=set(),
+        )
+        later_node = EnrichedNodeFactory.build(
+            identifier=earlier_node.identifier,
+            action=DiffAction.UPDATED,
+            attributes={
+                EnrichedAttributeFactory.build(name="name", action=DiffAction.UPDATED, properties={later_property})
+            },
+            relationships=set(),
+            changed_at=Timestamp(),
+        )
+        self.diff_root_1.nodes = {earlier_node}
+        self.diff_root_2.nodes = {later_node}
+
+        combined = await self.__call_system_under_test(self.diff_root_1, self.diff_root_2)
+
+        assert [
+            (prop.property_type, prop.action)
+            for node in combined.nodes
+            for attribute in node.attributes
+            for prop in attribute.properties
+        ] == [(DatabaseEdgeType.HAS_OWNER, DiffAction.UNCHANGED)]
+
     async def test_resetting_relationship_one_makes_it_unchanged(self, with_schema_manager: None) -> None:
         relationship_name = "owner"
         old_peer_id = str(uuid4())

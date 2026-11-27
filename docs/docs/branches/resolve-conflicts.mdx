@@ -81,7 +81,7 @@ A [Proposed Change](../proposed-changes/overview.mdx) shows each conflict on its
 
 Infrahub also reports conflicts during a [rebase](./rebase.mdx). A rebase can't apply a resolution in favor of the default branch, so it stops on a conflict until you address it, and its error lists what each conflict needs:
 
-- A conflict on an attribute blocks the rebase until you resolve it in favor of the branch. Open a proposed change for the branch to choose the branch for the value of an attribute, as described in [Resolve a proposed-change conflict](../proposed-changes/resolve-conflict.mdx). For another property of an attribute, such as its owner or source, use the `ResolveDiffConflict` GraphQL mutation with the conflict ID that the `DiffTree` query returns.
+- A conflict on an attribute blocks the rebase until you resolve it in favor of the branch. Open a proposed change for the branch to choose the branch for the value of an attribute, as described in [Resolve a proposed-change conflict](../proposed-changes/resolve-conflict.mdx). For the source of an attribute, use the `ResolveDiffConflict` GraphQL mutation with the conflict ID that the `DiffTree` query returns. A conflict on the owner of an attribute blocks the rebase until both branches hold the same owner.
 - A conflict on a relationship, such as the datacenter a device is assigned to or a property of that assignment, blocks the rebase until you update the data so that both branches agree.
 - A conflict on an attribute that the default branch removed, or between the deletion of an object in one branch and a change to it in the other, also blocks the rebase until you update the data so that both branches agree.
 

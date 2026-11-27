@@ -21,6 +21,7 @@ from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.dependencies.registry import get_component_registry
 from tests.conftest import do_car_person_schema_unregistered
+from tests.helpers.ownership import OwnerDataset, load_owner_dataset
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -32,6 +33,12 @@ if TYPE_CHECKING:
 async def diff_repository(db: InfrahubDatabase, default_branch: Branch) -> DiffRepository:
     component_registry = get_component_registry()
     return await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
+
+
+@pytest.fixture
+async def dataset(db: InfrahubDatabase, default_branch: Branch) -> OwnerDataset:
+    """The account groups, the tenant, the racks and the device of the owner tests."""
+    return await load_owner_dataset(db=db, default_branch=default_branch)
 
 
 async def get_diff_coordinator(db: InfrahubDatabase, branch: Branch) -> DiffCoordinator:

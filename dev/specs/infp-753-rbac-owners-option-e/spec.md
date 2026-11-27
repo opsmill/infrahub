@@ -12,7 +12,7 @@
 
 **Related tickets**: [INFP-477][INFP-477] asks to enforce `is_protected`, which the design replaces. [INFP-478][INFP-478] asks for node-level metadata, and the design uses its owner and source parts.
 
-**Sibling spec**: [`infp-753-rbac-owners-option-b`](../infp-753-rbac-owners-option-b/spec.md) describes the same behaviour with storage option B. Decided on 2026-11-16: the team builds option E ([provisional-decisions.md](provisional-decisions.md), "Storage decision of 2026-11-16"). The two specs differ only in the section "Storage constraint" and in the requirements, risks and open points that refer to it.
+**Sibling spec**: `infp-753-rbac-owners-option-b` (not in this repository) describes the same behaviour with storage option B. Decided on 2026-11-16: the team builds option E ([provisional-decisions.md](provisional-decisions.md), "Storage decision of 2026-11-16"). The two specs differ only in the section "Storage constraint" and in the requirements, risks and open points that refer to it.
 
 ## Summary
 
@@ -122,10 +122,10 @@ A platform team gives an owner to 1,000 devices. The interfaces of those devices
 5. **Given** a node whose Parent relationship peer and hierarchy parent have different owners, **When** an engineer views the node, **Then** the node shows the owners of its Parent relationship peer.
 6. **Given** an interface whose device has owners, **When** an engineer sets the interface to "no owner", **Then** the interface shows no owner and matches the "no owner" filter.
 7. **Given** an interface set to "no owner", **When** an engineer sets the interface back to inherit, **Then** the interface shows the owners of its device again.
-8. **Given** a device owned only by the account group `dc-emea`, **When** an administrator deletes `dc-emea`, **Then** the device shows "deleted group", and the device and its interfaces match the "no owner" filter.
-9. **Given** the same deleted group, **When** an administrator creates a new account group with the name `dc-emea`, **Then** the device still shows "deleted group", and the new group does not own the device.
+8. **Given** a device owned only by the account group `dc-emea`, **When** an administrator deletes `dc-emea`, **Then** the device shows "deleted owner", and the device and its interfaces match the "no owner" filter.
+9. **Given** the same deleted group, **When** an administrator creates a new account group with the name `dc-emea`, **Then** the device still shows "deleted owner", and the new group does not own the device.
 10. **Given** a branch, **When** an engineer sets two owners on a device on that branch, **Then** the default branch shows no owners for the device. After the merge, the default branch shows both owners, and the interfaces of the device show them as inherited.
-11. **Given** a branch that deletes the account group `dc-emea`, **When** the branch is merged, **Then** a device that `dc-emea` owned shows "deleted group" on the default branch.
+11. **Given** a branch that deletes the account group `dc-emea`, **When** the branch is merged, **Then** a device that `dc-emea` owned shows "deleted owner" on the default branch.
 12. **Given** a repository, **When** an engineer gives the repository as the owner of a device, **Then** Infrahub refuses the whole change with an error that says that only an account or an account group can be an owner.
 13. **Given** a user without view permission on accounts and account groups, **When** the user views a node, **Then** the user views its owners.
 14. **Given** a user with update permission on the device kind, **When** the user changes the owners of a device that another team owns, **Then** Infrahub Community stores the change, because owners restrict nothing in Community.
@@ -263,7 +263,7 @@ A customer keeps its teams as a tree of account groups, for example `dc-emea` wi
 
 ### Edge Cases
 
-- E-1: a deleted owner stays in the list as "deleted group". It does not count as an owner. A new group with the same name does not get the data back.
+- E-1: a deleted owner stays in the list as "deleted owner". It does not count as an owner. A new group with the same name does not get the data back.
 - E-2: a node with both a Parent relationship and a hierarchy parent inherits through the Parent relationship.
 - E-3: a component moved to another parent on a branch gets the owners of the new parent. Only the relationship change appears in the diff. Infrahub Enterprise treats the move as an owner change when the owners that apply change.
 - E-4: a change to the owners of a device sends an event for the device only. Webhook consumers get no event for its interfaces.
@@ -323,7 +323,7 @@ The names of fields, filters and object file keys in this section follow the [en
 - **FR-007**: The owners of a relationship field MUST belong to the node, MUST exist when the field has no peers, and MUST apply to all links of the field (D-8). Owners on links MUST stay unchanged (D-9).
   - Check: set owners on a relationship without peers, add peers, and read `properties { owner }` on the links.
 - **FR-008**: A deleted owner MUST show as deleted and MUST NOT count as an owner. This MUST hold when the owner is deleted on the default branch, and when it is deleted on a branch that is then merged ([eng, section 2][eng]).
-  - Check: delete an account group on a branch, merge, and read a node that it owned. The node shows "deleted group" and matches the "no owner" filter.
+  - Check: delete an account group on a branch, merge, and read a node that it owned. The node shows "deleted owner" and matches the "no owner" filter.
 - **FR-009**: A query that does not request owners and does not filter by owner MUST NOT read owners.
   - Check: a query benchmark shows the same plan and time as before.
 
@@ -383,7 +383,7 @@ The names of fields, filters and object file keys in this section follow the [en
 - **FR-032**: When two writes of owners or sources on the same item run at the same time, Infrahub MUST keep one owner state for the item. The state MUST be the complete state of one of the writes, and never a mix of both.
   - On one branch, the writes MUST apply one after the other, so the state of the last write stays.
   - On two branches, the item MUST have one owner state after both merges. FR-030 says whether the second merge reports a conflict.
-  - A mutation replaces the whole list of owners of an item (D-5), so two writes at the same time cannot both stay. "The state of the last write stays" was a proposal of this spec. Decision of 2026-11-16 (PD-2): a mutation that writes owners or sources takes a lock for the node, and the state of the last write stays.
+  - A mutation replaces the whole list of owners of an item (D-5), so two writes at the same time cannot both stay. "The state of the last write stays" was a proposal of this spec. Decision of 2026-11-16 (PD-2): a mutation that writes owners or sources takes a lock for the node, and the state of the last write stays. Decision of 2026-11-20, which replaces PD-2: the lock is a write lock in the database on the node vertex, which each write of the node takes; the mutation takes no lock of its own.
   - Check: run two first writes of owners on one node at the same time, and merge two branches that each set the first owners of the same field.
 - **FR-053**: A change of the owners or of the sources of a node MUST update the "updated at" and "updated by" metadata of that node, like a change of a value. The nodes that inherit MUST NOT get new metadata (D-1). This requirement was a proposal of this spec. Decision of 2026-11-16 (PD-4): the change updates the metadata of the changed node only.
   - Known limits of this phase, accepted with the decision: the metadata does not change for an owner change on a branch other than the default branch, and after a merge of an owner change alone.
@@ -458,9 +458,9 @@ This section is a constraint for the plan. It comes from the request to write on
 - Infrahub creates an `OwnerSet` vertex at the first owner or the first "no owner" of the set. A write first reuses a vertex with the same key under the same node, created by any branch. When the set goes back to inherit, its edges close and the vertex stays.
 - The active edges of the node, attribute or `OwnerSet` vertex give the state:
   - no edge: inherit
-  - only a `HAS_NO_OWNER` edge to the shared `NoOwner` vertex: no owner
-  - at least one `HAS_OWNER` edge: those owners. They win over a `HAS_NO_OWNER` edge that a merge leaves active.
-- A `HAS_OWNER_SOURCE` edge, from the vertex that holds the owners to the template, marks the owners copied from an object template. A write closes the mark when a user changes those owners. The merge closes it when the template is deleted.
+  - only a `HAS_OWNER` edge to the shared `NoOwner` vertex: no owner. Decision of 2026-11-27: this was a separate `HAS_NO_OWNER` edge type before.
+  - at least one `HAS_OWNER` edge to an owner: those owners. They win over an edge to `NoOwner` that a merge leaves active.
+- A `HAS_OWNER_SOURCE` edge, from the vertex that holds the owners to the template, marks the owners copied from an object template. A write closes the mark when a user changes those owners. The delete of the template, and the merge of a branch that deletes it, close the mark. The copied owners stay.
 - The links do not change. The owner of one link stays on its relationship vertex (D-9).
 - No edge needs a property, and no two owner edges from a node vertex end at the same vertex.
 - Node sources break this rule for edges of different types (FR-033). Two cases are known:
@@ -472,14 +472,14 @@ This section is a constraint for the plan. It comes from the request to write on
 
 - FR-037: an attribute that has an owner today is already in the own state, so the state needs no migration. One step is needed: today a branch can write an owner on an attribute that has another owner on the default branch, and a read of several owner edges returns both. The prototype has an upgrade step that hides the owner that the branch replaced.
 - FR-008: when a branch deletes an owner group, the merge closes the owner edges to it today. The merge must keep these owner edges, as a delete on the default branch does. It still closes the source edges.
-- FR-040: the kind migration must copy the new edge types (`HAS_OWNER_SET`, `HAS_TARGET_OWNER_SET`, `HAS_OWNER_SOURCE`, `HAS_NO_OWNER`) and the outgoing `HAS_OWNER` and `HAS_SOURCE` edges of a node. Today, the migration:
+- FR-040: the kind migration must copy the new edge types (`HAS_OWNER_SET`, `HAS_TARGET_OWNER_SET`, `HAS_OWNER_SOURCE`) and the outgoing `HAS_OWNER` and `HAS_SOURCE` edges of a node. Today, the migration:
   - copies only the latest edge between the node and each other vertex, of any type. With node sources, two edges of different types can end at the same vertex, so the migration must keep one edge for each edge type.
   - copies `HAS_OWNER` and `HAS_SOURCE` edges only when they end at the node, so it must also copy the edges that start at the node.
   - needs no copy of edge properties, because no edge of option E has one.
 - FR-041: the key of a relationship field is the identifier and the direction, and the schema does not allow an update of the identifier. So a rename of a relationship field needs no migration. The attribute rename and removal migrations must close the sets that profiles and templates give to that attribute. For a rename, a set with the new name gets the owners on the branch of the migration, because the key of a set is a vertex property that all branches share. The relationship removal migration must close the sets of the removed relationship.
 - FR-029 and FR-030: the diff and the merge do not read edges from the node vertex today. They must read the `OwnerSet` vertices, the new edge types and the owner edges of the node vertex. When a branch deletes a node, the merge must also close the outgoing owner edges of the node and the edges of its `OwnerSet` vertices.
 - FR-014 and FR-029: three readers take the latest `HAS_OWNER` edge of an attribute: the `owner` field of today, the diff labels and the changelog. Each one must handle several owners.
-- FR-030: the diff query must use one pattern for each edge type. In the form of the prototype, it reads every node and attribute vertex (1,737 ms against 33 ms in the benchmark of 2026-11-09). `HAS_NO_OWNER` has no index on the branch, so the tuned query still reads more than the query of option B (27.9 ms against 14.3 ms). An index on the branch of `HAS_NO_OWNER` was not measured.
+- FR-030: the diff query must use one pattern for each edge type. In the form of the prototype, it reads every node and attribute vertex (1,737 ms against 33 ms in the benchmark of 2026-11-09). `HAS_NO_OWNER` has no index on the branch, so the tuned query still reads more than the query of option B (27.9 ms against 14.3 ms). An index on the branch of `HAS_NO_OWNER` was not measured. Decision of 2026-11-27: "no owner" is a `HAS_OWNER` edge to `NoOwner`, so the diff query reads it through `owner_branch`, and the index on `HAS_NO_OWNER(branch)` is removed. Nobody measured the diff query after this change.
 - FR-032: two branches can create two `OwnerSet` vertices for the same key at the same moment. Decision of 2026-11-16 (PD-5): two branches reuse the same `OwnerSet` vertex, through the lock for the node of FR-032.
 
 #### What the benchmarks measured for option E
@@ -516,7 +516,7 @@ The engineering design lists these points for option E:
 - How a write stops two branches from creating two `OwnerSet` vertices for the same key at the same moment.
 - What the merge does when two branches leave two active edges between the same two vertices.
 - What the `owner` field of today returns when its owner node is deleted.
-- The form of the diff query, and whether an index on the branch of `HAS_NO_OWNER` brings the diff query to the cost of option B.
+- The form of the diff query, and whether an index on the branch of `HAS_NO_OWNER` brings the diff query to the cost of option B. Decision of 2026-11-27: "no owner" is a `HAS_OWNER` edge to `NoOwner`, so the diff query reads it through `owner_branch`, and the index on `HAS_NO_OWNER(branch)` is removed. Nobody measured the diff query after this change.
 - The names of the labels and of the edge types.
 
 ### Key Entities *(include if feature involves data)*

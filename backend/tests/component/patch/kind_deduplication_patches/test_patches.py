@@ -1,10 +1,20 @@
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Generator
 
 import pytest
 
 from infrahub.cli.db import load_export
+from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.core.node import Node
+from infrahub.core.ownership.constants import NO_OWNER_VERTEX_UUID
+from infrahub.core.ownership.models import NODE_HOLDER, NODE_SOURCES_HOLDER, HolderKey, StoredOwnerState
+from infrahub.core.ownership.repository import OwnershipRepository
+from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.patch.edge_adder import PatchPlanEdgeAdder
@@ -87,3 +97,88 @@ RETURN db_id_a, db_id_b, edge_type, branch, status, num_dups
 
         after_errors = await self.validate_edge_deduplication_patch(db=db)
         assert not after_errors
+
+
+@dataclass
+class OwnerReAddTestCase:
+    name: str
+    holder: HolderKey
+    edge_type: DatabaseEdgeType
+    states: list[tuple[str, ...]]
+    """Group names for each write, in order. An empty tuple is the "no owner" state, or no source."""
+
+    peer_name: str
+    """The group that gets two edges, or the `NoOwner` vertex."""
+
+
+OWNER_RE_ADD_TEST_CASES: list[OwnerReAddTestCase] = [
+    OwnerReAddTestCase(
+        name="node_owner",
+        holder=NODE_HOLDER,
+        edge_type=DatabaseEdgeType.HAS_OWNER,
+        states=[("dc-emea",), ("network-emea",), ("dc-emea",)],
+        peer_name="dc-emea",
+    ),
+    OwnerReAddTestCase(
+        name="node_no_owner",
+        holder=NODE_HOLDER,
+        edge_type=DatabaseEdgeType.HAS_OWNER,
+        states=[(), ("dc-emea",), ()],
+        peer_name=NO_OWNER_VERTEX_UUID,
+    ),
+    OwnerReAddTestCase(
+        name="node_source",
+        holder=NODE_SOURCES_HOLDER,
+        edge_type=DatabaseEdgeType.HAS_SOURCE,
+        states=[("dc-emea",), (), ("dc-emea",)],
+        peer_name="dc-emea",
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in OWNER_RE_ADD_TEST_CASES])
+async def test_edge_deduplication_plan_keeps_owner_added_again(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+    test_case: OwnerReAddTestCase,
+) -> None:
+    peer_ids = {NO_OWNER_VERTEX_UUID: NO_OWNER_VERTEX_UUID}
+    for group_name in ("dc-emea", "network-emea"):
+        group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+        await group.new(db=db, name=group_name)
+        await group.save(db=db)
+        peer_ids[group_name] = group.id
+    person = await Node.init(db=db, schema="TestPerson")
+    await person.new(db=db, name="John")
+    await person.save(db=db)
+
+    repository = OwnershipRepository(db=db, branch=default_branch, at=None)
+    for group_names in test_case.states:
+        await repository.write(
+            node_id=person.id,
+            holder=test_case.holder,
+            state=StoredOwnerState(owner_ids=tuple(peer_ids[group_name] for group_name in group_names)),
+            write_branch=default_branch,
+            at=Timestamp(),
+            user_id="test-user-id",
+        )
+
+    records = await db.execute_query(
+        query=f"""
+MATCH (:Node {{uuid: $node_id}})-[e:{test_case.edge_type.value} {{branch: $branch, status: "active"}}]->({{uuid: $peer_id}})
+RETURN e.to IS NULL AS is_open
+""",
+        params={
+            "node_id": person.id,
+            "branch": default_branch.name,
+            "peer_id": peer_ids[test_case.peer_name],
+        },
+    )
+    assert sorted(record["is_open"] for record in records) == [False, True]
+
+    plan = await DeleteDuplicatedEdgesPatchQuery(db=db).plan()
+
+    assert plan.edges_to_update == []
+    assert plan.edges_to_delete == []

@@ -519,3 +519,34 @@ async def test_prefix_reconcile_finds_address_with_less_specific_mask(
     prefix_rels = await updated_address.ip_prefix.get_relationships(db=db)
     assert len(prefix_rels) == 1
     assert prefix_rels[0].peer_id == net143.id
+
+
+async def test_reconcile_saves_its_nodes_sorted_by_id(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+    default_ipnamespace: Node,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+    for prefix in [f"10.0.{index}.0/24" for index in range(8)] + ["10.0.0.0/16"]:
+        node = await Node.init(db=db, schema=prefix_schema)
+        await node.new(db=db, prefix=prefix, ip_namespace=default_ipnamespace)
+        await node.save(db=db)
+    saved_ids: list[str] = []
+    original_save = Node.save
+
+    async def recording_save(self: Node, *args: object, **kwargs: object) -> Node:
+        saved_ids.append(self.get_id())
+        return await original_save(self, *args, **kwargs)
+
+    monkeypatch.setattr(Node, "save", recording_save)
+
+    # Two writers that lock their shared nodes in one order cannot deadlock.
+    await IpamReconciler(db=db, branch=default_branch).reconcile(
+        ip_value=ipaddress.ip_network("10.0.0.0/16"), namespace=default_ipnamespace
+    )
+
+    assert len(saved_ids) == 9
+    assert saved_ids == sorted(saved_ids)

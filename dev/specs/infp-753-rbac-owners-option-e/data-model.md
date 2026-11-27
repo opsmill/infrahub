@@ -35,14 +35,14 @@ All edges below carry the branch and time properties of Infrahub edges (`branch`
 | `HAS_OWNER` | `Attribute` | owner `Node` | existing, now several | Own owners of an attribute |
 | `HAS_OWNER` | `Node` | owner `Node` | new use | Own owners of a node |
 | `HAS_OWNER` | `OwnerSet` | owner `Node` | new | Owners of the set |
-| `HAS_NO_OWNER` | `Node`, `Attribute`, `OwnerSet` | `NoOwner` | new | The holder is set to "no owner" |
+| `HAS_OWNER` | `Node`, `Attribute`, `OwnerSet` | `NoOwner` | new | The holder is set to "no owner". Decision of 2026-11-27: this was a separate `HAS_NO_OWNER` edge type before |
 | `HAS_OWNER_SET` | `Node` | `OwnerSet` | new | Owner state of one relationship field |
 | `HAS_TARGET_OWNER_SET` | `Node` (profile or template) | `OwnerSet` | new | Owners that it gives |
 | `HAS_OWNER_SOURCE` | `Node`, `Attribute`, `OwnerSet` | template `Node` | new | The owners are a copy from this template |
 | `HAS_SOURCE` | `Node` | source `Node` | new use | Sources of a node |
 | `HAS_OWNER`, `HAS_SOURCE` | `Relationship` | `Node` | existing, unchanged | Owner and source of one link (D-9) |
 
-No two edges from a node vertex end at the same vertex, because the owners of fields and the given owners start at an `OwnerSet`.
+No two owner edges from a node vertex end at the same vertex, because the owners of fields and the given owners start at an `OwnerSet`. Two edges of different types can end at the same vertex: for example, one account group can be an owner and a source of the same node, with a `HAS_OWNER` edge and a `HAS_SOURCE` edge.
 
 ### Owner state of a holder
 
@@ -51,8 +51,8 @@ A holder is a node vertex, an attribute vertex or an `OwnerSet` vertex.
 | Active edges of the holder | State |
 |---|---|
 | none | inherit |
-| only `HAS_NO_OWNER` | no owner |
-| one or more `HAS_OWNER` | those owners. They win over a `HAS_NO_OWNER` edge that a merge leaves active |
+| only a `HAS_OWNER` edge to `NoOwner` | no owner |
+| one or more `HAS_OWNER` edges to owners | those owners. They win over an edge to `NoOwner` that a merge leaves active |
 | `HAS_OWNER` edges and `HAS_OWNER_SOURCE` | template copy: the state reads as inherit, with the origin "template" |
 
 State changes:
@@ -60,9 +60,9 @@ State changes:
 | From | Input | To | Edges |
 |---|---|---|---|
 | any | key left out | same | no change |
-| any | list of owners | own owners | close `HAS_NO_OWNER` and `HAS_OWNER_SOURCE`, close removed owners, add new owners |
-| any | `[]` | no owner | close all `HAS_OWNER` and `HAS_OWNER_SOURCE`, add `HAS_NO_OWNER` |
-| any | `null` | inherit | close all `HAS_OWNER`, `HAS_NO_OWNER` and `HAS_OWNER_SOURCE` |
+| any | list of owners | own owners | close the edge to `NoOwner` and `HAS_OWNER_SOURCE`, close removed owners, add new owners |
+| any | `[]` | no owner | close all `HAS_OWNER` and `HAS_OWNER_SOURCE`, add a `HAS_OWNER` edge to `NoOwner` |
+| any | `null` | inherit | close all `HAS_OWNER` and `HAS_OWNER_SOURCE` |
 | new node | created from a template that gives owners | template copy | add `HAS_OWNER` and `HAS_OWNER_SOURCE` |
 
 A write on a branch hides each owner edge that the branch inherits with a `deleted` edge, also when the branch has its own edge to the same owner.
@@ -73,7 +73,8 @@ A write on a branch hides each owner edge that the branch inherits with a `delet
 |---|---|
 | `owner_branch` on `HAS_OWNER(branch)` | existing in `core/graph/index.py` |
 | `source_branch` on `HAS_SOURCE(branch)` | existing |
-| `no_owner_branch` on `HAS_NO_OWNER(branch)` | new. The spike measured it, and it stays ([measurements.md](measurements.md)). It needs no migration: the server creates each missing index of `core/graph/index.py` when it starts |
+| `owner_source_branch`, `owner_set_branch` and `target_owner_set_branch` on `HAS_OWNER_SOURCE(branch)`, `HAS_OWNER_SET(branch)` and `HAS_TARGET_OWNER_SET(branch)` | new. The diff and the merge of owners read these edges by branch. They need no migration: the server creates each missing index of `core/graph/index.py` when it starts. Decision of 2026-11-27: "no owner" is a `HAS_OWNER` edge, so `owner_branch` serves it, and the index `no_owner_branch` that the spike measured is removed |
+| `owner_source_from`, `owner_source_to`, `owner_set_from`, `owner_set_to`, `target_owner_set_from` and `target_owner_set_to` on `from` and `to` of `HAS_OWNER_SOURCE`, `HAS_OWNER_SET` and `HAS_TARGET_OWNER_SET` | new. The change count of a diff window on `develop` reads each edge type through a `from` index and a `to` index. They need no migration |
 | An index for the lookup of an `OwnerSet` by key | none. The spike decided that the lookup needs no index ([measurements.md](measurements.md)) |
 
 ### Graph migrations
@@ -82,10 +83,10 @@ The numbers are the next free numbers when the work starts.
 
 | Migration | Requirement |
 |---|---|
-| `m084`: hide the attribute owner of the default branch that a branch replaced. It runs before `m085`, so a branch that replaced an account group with a repository reads as inherit | FR-037 |
-| `m085`: close the `HAS_OWNER` edges from attributes to repositories, on every branch | FR-036 |
-| `m086`: create the `NoOwner` vertex, so that two first "no owner" writes at the same time cannot each create one | none |
-| `m087`: set `applies_to = all_objects` on every object permission and recompute its human-friendly ID. It runs on the default branch at the upgrade, and on each other branch after the rebase of that branch | FR-047 |
+| `m085`: hide the attribute owner of the default branch that a branch replaced. It runs before `m086`, so a branch that replaced an account group with a repository reads as inherit | FR-037 |
+| `m086`: close the `HAS_OWNER` edges from attributes to repositories, on every branch, and add a `deleted` edge on each branch that still reads a closed edge of the default branch, and on the global branch for a closed global edge that a branch still reads | FR-036 |
+| `m087`: create the `NoOwner` vertex, so that two first "no owner" writes at the same time cannot each create one | none |
+| `m088`: set `applies_to = all_objects` on every object permission and recompute its human-friendly ID. It runs on the default branch at the upgrade, and on each other branch after the rebase of that branch | FR-047 |
 
 The kind migration is not a graph migration, but it must change: it must keep one edge for each edge type between the node and each other vertex, and copy the owner and source edges that start at the node ([research.md](research.md), R-11).
 

@@ -28,6 +28,7 @@ from infrahub.core.node.proposed_change import CoreProposedChange
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.ownership.queries import NoOwnerVertexCreateQuery
 from infrahub.core.protocols import CoreAccount, CoreAccountGroup, CoreAccountRole
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
@@ -222,6 +223,9 @@ async def initialization(db: InfrahubDatabase, add_database_indexes: bool = Fals
 async def create_root_node(db: InfrahubDatabase) -> Root:
     root = Root(graph_version=GRAPH_VERSION, default_branch=config.SETTINGS.initial.default_branch)
     await root.save(db=db)
+    # Every "no owner" write ends at this vertex, so it must exist before two writes can each create one.
+    no_owner_query = await NoOwnerVertexCreateQuery.init(db=db)
+    await no_owner_query.execute(db=db)
     log.info(f"Generated instance ID : {root.uuid} (v{GRAPH_VERSION})")
 
     registry.id = root.id

@@ -94,7 +94,8 @@ class BulkRecomputeWriter:
         user_id = context.account_id or SYSTEM_USER_ID
         written: list[WrittenNode] = []
         async with self.db.start_session() as session:
-            for chunk in chunked(list(writes_by_node), self.transaction_chunk_size):
+            # Writers of several nodes lock them sorted by ID, so two writers lock their shared nodes in one order.
+            for chunk in chunked(sorted(writes_by_node), self.transaction_chunk_size):
                 # Load the whole node, not just the written fields: the save recomputes same-node
                 # derived values (display label, hfid, computed siblings) that read a written value,
                 # and it can only do that when they are loaded.

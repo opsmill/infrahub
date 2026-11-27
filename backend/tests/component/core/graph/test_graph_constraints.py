@@ -198,6 +198,34 @@ def test_constraint_manager_from_graph_schema_neo4j(db: InfrahubDatabase) -> Non
             type=GraphPropertyType.BOOLEAN,
             mandatory=True,
         ),
+        ConstraintNodeNeo4j(
+            item_name="ownerset",
+            item_label="OwnerSet",
+            property="attribute",
+            type=GraphPropertyType.STRING,
+            mandatory=False,
+        ),
+        ConstraintNodeNeo4j(
+            item_name="ownerset",
+            item_label="OwnerSet",
+            property="identifier",
+            type=GraphPropertyType.STRING,
+            mandatory=False,
+        ),
+        ConstraintNodeNeo4j(
+            item_name="ownerset",
+            item_label="OwnerSet",
+            property="direction",
+            type=GraphPropertyType.STRING,
+            mandatory=False,
+        ),
+        ConstraintNodeNeo4j(
+            item_name="noowner",
+            item_label="NoOwner",
+            property="uuid",
+            type=GraphPropertyType.STRING,
+            mandatory=True,
+        ),
     ]
 
     assert gm.rels == [
@@ -445,6 +473,132 @@ def test_constraint_manager_from_graph_schema_neo4j(db: InfrahubDatabase) -> Non
             type=GraphPropertyType.STRING,
             mandatory=False,
         ),
+        ConstraintRelNeo4j(
+            item_name="has_owner_set",
+            item_label="HAS_OWNER_SET",
+            property="branch",
+            type=GraphPropertyType.STRING,
+            mandatory=True,
+        ),
+        ConstraintRelNeo4j(
+            item_name="has_owner_set",
+            item_label="HAS_OWNER_SET",
+            property="branch_level",
+            type=GraphPropertyType.INTEGER,
+            mandatory=True,
+        ),
+        ConstraintRelNeo4j(
+            item_name="has_owner_set",
+            item_label="HAS_OWNER_SET",
+            property="from",
+            type=GraphPropertyType.STRING,
+            mandatory=True,
+        ),
+        ConstraintRelNeo4j(
+            item_name="has_owner_set",
+            item_label="HAS_OWNER_SET",
+            property="to",
+            type=GraphPropertyType.STRING,
+            mandatory=False,
+        ),
+        ConstraintRelNeo4j(
+            item_name="has_owner_set",
+            item_label="HAS_OWNER_SET",
+            property="status",
+            type=GraphPropertyType.STRING,
+            mandatory=True,
+        ),
+        ConstraintRelNeo4j(
+            item_name="has_owner_set",
+            item_label="HAS_OWNER_SET",
+            property="hierarchy",
+            type=GraphPropertyType.STRING,
+            mandatory=False,
+        ),
+        ConstraintRelNeo4j(
+            item_name="has_target_owner_set",
+            item_label="HAS_TARGET_OWNER_SET",
+            property="branch",
+            type=GraphPropertyType.STRING,
+            mandatory=True,
+        ),
+        ConstraintRelNeo4j(
+            item_name="has_target_owner_set",
+            item_label="HAS_TARGET_OWNER_SET",
+            property="branch_level",
+            type=GraphPropertyType.INTEGER,
+            mandatory=True,
+        ),
+        ConstraintRelNeo4j(
+            item_name="has_target_owner_set",
+            item_label="HAS_TARGET_OWNER_SET",
+            property="from",
+            type=GraphPropertyType.STRING,
+            mandatory=True,
+        ),
+        ConstraintRelNeo4j(
+            item_name="has_target_owner_set",
+            item_label="HAS_TARGET_OWNER_SET",
+            property="to",
+            type=GraphPropertyType.STRING,
+            mandatory=False,
+        ),
+        ConstraintRelNeo4j(
+            item_name="has_target_owner_set",
+            item_label="HAS_TARGET_OWNER_SET",
+            property="status",
+            type=GraphPropertyType.STRING,
+            mandatory=True,
+        ),
+        ConstraintRelNeo4j(
+            item_name="has_target_owner_set",
+            item_label="HAS_TARGET_OWNER_SET",
+            property="hierarchy",
+            type=GraphPropertyType.STRING,
+            mandatory=False,
+        ),
+        ConstraintRelNeo4j(
+            item_name="has_owner_source",
+            item_label="HAS_OWNER_SOURCE",
+            property="branch",
+            type=GraphPropertyType.STRING,
+            mandatory=True,
+        ),
+        ConstraintRelNeo4j(
+            item_name="has_owner_source",
+            item_label="HAS_OWNER_SOURCE",
+            property="branch_level",
+            type=GraphPropertyType.INTEGER,
+            mandatory=True,
+        ),
+        ConstraintRelNeo4j(
+            item_name="has_owner_source",
+            item_label="HAS_OWNER_SOURCE",
+            property="from",
+            type=GraphPropertyType.STRING,
+            mandatory=True,
+        ),
+        ConstraintRelNeo4j(
+            item_name="has_owner_source",
+            item_label="HAS_OWNER_SOURCE",
+            property="to",
+            type=GraphPropertyType.STRING,
+            mandatory=False,
+        ),
+        ConstraintRelNeo4j(
+            item_name="has_owner_source",
+            item_label="HAS_OWNER_SOURCE",
+            property="status",
+            type=GraphPropertyType.STRING,
+            mandatory=True,
+        ),
+        ConstraintRelNeo4j(
+            item_name="has_owner_source",
+            item_label="HAS_OWNER_SOURCE",
+            property="hierarchy",
+            type=GraphPropertyType.STRING,
+            mandatory=False,
+        ),
     ]
 
 
@@ -584,6 +738,34 @@ def test_constraint_manager_from_graph_schema_memgraph(db: InfrahubDatabase) -> 
             type=GraphPropertyType.BOOLEAN,
             mandatory=True,
         ),
+        ConstraintNodeMemgraph(
+            item_name="ownerset",
+            item_label="OwnerSet",
+            property="attribute",
+            type=GraphPropertyType.STRING,
+            mandatory=False,
+        ),
+        ConstraintNodeMemgraph(
+            item_name="ownerset",
+            item_label="OwnerSet",
+            property="identifier",
+            type=GraphPropertyType.STRING,
+            mandatory=False,
+        ),
+        ConstraintNodeMemgraph(
+            item_name="ownerset",
+            item_label="OwnerSet",
+            property="direction",
+            type=GraphPropertyType.STRING,
+            mandatory=False,
+        ),
+        ConstraintNodeMemgraph(
+            item_name="noowner",
+            item_label="NoOwner",
+            property="uuid",
+            type=GraphPropertyType.STRING,
+            mandatory=True,
+        ),
     ]
 
 
@@ -673,6 +855,11 @@ async def test_constraint_manager_database_neo4j(db: InfrahubDatabase, default_b
         ConstraintInfo(item_name="node_node_namespace_type", item_label="Node", property="namespace"),
         ConstraintInfo(item_name="node_node_uuid_exist", item_label="Node", property="uuid"),
         ConstraintInfo(item_name="node_node_uuid_type", item_label="Node", property="uuid"),
+        ConstraintInfo(item_name="node_noowner_uuid_exist", item_label="NoOwner", property="uuid"),
+        ConstraintInfo(item_name="node_noowner_uuid_type", item_label="NoOwner", property="uuid"),
+        ConstraintInfo(item_name="node_ownerset_attribute_type", item_label="OwnerSet", property="attribute"),
+        ConstraintInfo(item_name="node_ownerset_direction_type", item_label="OwnerSet", property="direction"),
+        ConstraintInfo(item_name="node_ownerset_identifier_type", item_label="OwnerSet", property="identifier"),
         ConstraintInfo(
             item_name="node_relationship_branch_support_exist", item_label="Relationship", property="branch_support"
         ),
@@ -704,6 +891,36 @@ async def test_constraint_manager_database_neo4j(db: InfrahubDatabase, default_b
         ConstraintInfo(item_name="rel_has_owner_from_exist", item_label="HAS_OWNER", property="from"),
         ConstraintInfo(item_name="rel_has_owner_from_type", item_label="HAS_OWNER", property="from"),
         ConstraintInfo(item_name="rel_has_owner_hierarchy_type", item_label="HAS_OWNER", property="hierarchy"),
+        ConstraintInfo(item_name="rel_has_owner_set_branch_exist", item_label="HAS_OWNER_SET", property="branch"),
+        ConstraintInfo(
+            item_name="rel_has_owner_set_branch_level_exist", item_label="HAS_OWNER_SET", property="branch_level"
+        ),
+        ConstraintInfo(
+            item_name="rel_has_owner_set_branch_level_type", item_label="HAS_OWNER_SET", property="branch_level"
+        ),
+        ConstraintInfo(item_name="rel_has_owner_set_branch_type", item_label="HAS_OWNER_SET", property="branch"),
+        ConstraintInfo(item_name="rel_has_owner_set_from_exist", item_label="HAS_OWNER_SET", property="from"),
+        ConstraintInfo(item_name="rel_has_owner_set_from_type", item_label="HAS_OWNER_SET", property="from"),
+        ConstraintInfo(item_name="rel_has_owner_set_hierarchy_type", item_label="HAS_OWNER_SET", property="hierarchy"),
+        ConstraintInfo(item_name="rel_has_owner_set_status_exist", item_label="HAS_OWNER_SET", property="status"),
+        ConstraintInfo(item_name="rel_has_owner_set_status_type", item_label="HAS_OWNER_SET", property="status"),
+        ConstraintInfo(item_name="rel_has_owner_set_to_type", item_label="HAS_OWNER_SET", property="to"),
+        ConstraintInfo(item_name="rel_has_owner_source_branch_exist", item_label="HAS_OWNER_SOURCE", property="branch"),
+        ConstraintInfo(
+            item_name="rel_has_owner_source_branch_level_exist", item_label="HAS_OWNER_SOURCE", property="branch_level"
+        ),
+        ConstraintInfo(
+            item_name="rel_has_owner_source_branch_level_type", item_label="HAS_OWNER_SOURCE", property="branch_level"
+        ),
+        ConstraintInfo(item_name="rel_has_owner_source_branch_type", item_label="HAS_OWNER_SOURCE", property="branch"),
+        ConstraintInfo(item_name="rel_has_owner_source_from_exist", item_label="HAS_OWNER_SOURCE", property="from"),
+        ConstraintInfo(item_name="rel_has_owner_source_from_type", item_label="HAS_OWNER_SOURCE", property="from"),
+        ConstraintInfo(
+            item_name="rel_has_owner_source_hierarchy_type", item_label="HAS_OWNER_SOURCE", property="hierarchy"
+        ),
+        ConstraintInfo(item_name="rel_has_owner_source_status_exist", item_label="HAS_OWNER_SOURCE", property="status"),
+        ConstraintInfo(item_name="rel_has_owner_source_status_type", item_label="HAS_OWNER_SOURCE", property="status"),
+        ConstraintInfo(item_name="rel_has_owner_source_to_type", item_label="HAS_OWNER_SOURCE", property="to"),
         ConstraintInfo(item_name="rel_has_owner_status_exist", item_label="HAS_OWNER", property="status"),
         ConstraintInfo(item_name="rel_has_owner_status_type", item_label="HAS_OWNER", property="status"),
         ConstraintInfo(item_name="rel_has_owner_to_type", item_label="HAS_OWNER", property="to"),
@@ -717,6 +934,38 @@ async def test_constraint_manager_database_neo4j(db: InfrahubDatabase, default_b
         ConstraintInfo(item_name="rel_has_source_status_exist", item_label="HAS_SOURCE", property="status"),
         ConstraintInfo(item_name="rel_has_source_status_type", item_label="HAS_SOURCE", property="status"),
         ConstraintInfo(item_name="rel_has_source_to_type", item_label="HAS_SOURCE", property="to"),
+        ConstraintInfo(
+            item_name="rel_has_target_owner_set_branch_exist", item_label="HAS_TARGET_OWNER_SET", property="branch"
+        ),
+        ConstraintInfo(
+            item_name="rel_has_target_owner_set_branch_level_exist",
+            item_label="HAS_TARGET_OWNER_SET",
+            property="branch_level",
+        ),
+        ConstraintInfo(
+            item_name="rel_has_target_owner_set_branch_level_type",
+            item_label="HAS_TARGET_OWNER_SET",
+            property="branch_level",
+        ),
+        ConstraintInfo(
+            item_name="rel_has_target_owner_set_branch_type", item_label="HAS_TARGET_OWNER_SET", property="branch"
+        ),
+        ConstraintInfo(
+            item_name="rel_has_target_owner_set_from_exist", item_label="HAS_TARGET_OWNER_SET", property="from"
+        ),
+        ConstraintInfo(
+            item_name="rel_has_target_owner_set_from_type", item_label="HAS_TARGET_OWNER_SET", property="from"
+        ),
+        ConstraintInfo(
+            item_name="rel_has_target_owner_set_hierarchy_type", item_label="HAS_TARGET_OWNER_SET", property="hierarchy"
+        ),
+        ConstraintInfo(
+            item_name="rel_has_target_owner_set_status_exist", item_label="HAS_TARGET_OWNER_SET", property="status"
+        ),
+        ConstraintInfo(
+            item_name="rel_has_target_owner_set_status_type", item_label="HAS_TARGET_OWNER_SET", property="status"
+        ),
+        ConstraintInfo(item_name="rel_has_target_owner_set_to_type", item_label="HAS_TARGET_OWNER_SET", property="to"),
         ConstraintInfo(item_name="rel_has_value_branch_exist", item_label="HAS_VALUE", property="branch"),
         ConstraintInfo(item_name="rel_has_value_branch_level_exist", item_label="HAS_VALUE", property="branch_level"),
         ConstraintInfo(item_name="rel_has_value_branch_level_type", item_label="HAS_VALUE", property="branch_level"),
@@ -791,6 +1040,10 @@ async def test_constraint_manager_database_memgraph(db: InfrahubDatabase, defaul
         ConstraintInfo(item_name="n_a", item_label="AttributeIPHost", property="binary_address"),
         ConstraintInfo(item_name="n_a", item_label="AttributeIPHost", property="version"),
         ConstraintInfo(item_name="n_a", item_label="Boolean", property="value"),
+        ConstraintInfo(item_name="n_a", item_label="OwnerSet", property="attribute"),
+        ConstraintInfo(item_name="n_a", item_label="OwnerSet", property="identifier"),
+        ConstraintInfo(item_name="n_a", item_label="OwnerSet", property="direction"),
+        ConstraintInfo(item_name="n_a", item_label="NoOwner", property="uuid"),
     ]
 
     await gm.drop()

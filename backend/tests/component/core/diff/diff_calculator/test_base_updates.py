@@ -939,7 +939,7 @@ async def test_relationship_updated_then_node_deleted(
 async def test_property_update_then_relationship_deleted(
     db: InfrahubDatabase,
     default_branch: Branch,
-    person_alfred_main: Node,
+    first_account: Node,
     person_john_main: Node,
     person_jane_main: Node,
     car_accord_main: Node,
@@ -948,7 +948,7 @@ async def test_property_update_then_relationship_deleted(
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_camry_main.id)
-    await car_branch.owner.update(db=db, data={"id": person_jane_main.id, "_relation__owner": person_alfred_main.id})
+    await car_branch.owner.update(db=db, data={"id": person_jane_main.id, "_relation__owner": first_account.id})
     await car_branch.save(db=db)
     car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_camry_main.id)
     await car_branch.owner.update(db=db, data={"id": person_john_main.id})
