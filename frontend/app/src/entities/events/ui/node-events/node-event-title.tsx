@@ -35,13 +35,13 @@ const NodeEventTitleContent = ({ primary_node, event, payload, branch }: NodeMut
 export const NodeEventTitle = (props: NodeMutatedEvent) => {
   const schemaLabels = useAtomValue(schemaKindLabelState);
 
-  const { event, account_id, payload, branch } = props;
+  const { event, account_id, payload } = props;
 
   return (
     <div className="flex w-full min-w-0 items-center gap-1 overflow-hidden text-sm">
       {account_id ? (
         <span className="max-w-50 shrink-0 truncate">
-          <NodeLabel id={account_id} kind="CoreAccount" branch={branch} />
+          <NodeLabel id={account_id} kind="CoreAccount" />
         </span>
       ) : (
         "-"

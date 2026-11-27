@@ -1,9 +1,15 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import type { AccountLoggedInEventType } from "@/shared/api/graphql/generated/types";
 
+import { getNodeLabelFromApi } from "@/entities/nodes/object/api/get-display-label-from-api";
+
 import { render } from "../../../../../tests/components/render";
+import { generateBranch } from "../../../../../tests/fake/branch";
 import { AccountLoggedInEventTitle } from "./account-logged-in-event-title";
+
+vi.mock("@/entities/branches/api/get-branches-from-api");
+vi.mock("@/entities/nodes/object/api/get-display-label-from-api");
 
 const loginEvent: AccountLoggedInEventType = {
   id: "7dfb5bf2-d0ad-4a06-bfd3-d0916b5b904e",
@@ -63,5 +69,20 @@ describe("AccountLoggedInEventTitle", () => {
 
     // THEN
     await expect.element(component.getByText("logged in via OAuth2")).toBeVisible();
+  });
+
+  test("requests the account name from the current branch, not from the event's branch", async () => {
+    // GIVEN
+    const currentBranchName = generateBranch().name;
+
+    // WHEN
+    await render(<AccountLoggedInEventTitle {...loginEvent} branch="merged-and-deleted" />);
+
+    // THEN
+    await vi.waitFor(() =>
+      expect(getNodeLabelFromApi).toHaveBeenCalledWith(
+        expect.objectContaining({ objectId: loginEvent.account_id, branchName: currentBranchName })
+      )
+    );
   });
 });

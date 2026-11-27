@@ -10,7 +10,7 @@ const AUTH_METHOD_LABELS: Record<string, string> = {
 
 export const AccountLoggedInEventTitle = (props: AccountLoggedInEventType) => {
   return (
-    <AccountEventLayout accountId={props.account_id} branch={props.branch}>
+    <AccountEventLayout accountId={props.account_id}>
       <span className="whitespace-nowrap text-foreground-muted">
         logged in via {AUTH_METHOD_LABELS[props.auth_method] ?? props.auth_method}
       </span>
