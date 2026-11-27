@@ -157,10 +157,9 @@ changelog/                                        # Fragments: the new services 
 `opsmill/infrahub-helm`, chart `charts/infrahub-observability/`:
 
 ```text
-values.yaml                                  # grafanaMcp.* (see contracts/helm-values.md)
-templates/grafana-mcp-deployment.yaml        # Deployment, required token, file-mounted Grafana token
-templates/grafana-mcp-service.yaml
-templates/grafana-mcp-secret.yaml            # Only when the token is given as a value
+Chart.yaml                                   # Dependency grafana-mcp 0.37.0 (community chart, research R12)
+values.yaml                                  # grafana-mcp-setup.* and grafana-mcp.* (see contracts/helm-values.md)
+templates/_helpers.tpl                       # Render checks: token, TLS, read-only flags, token volume, Grafana URL
 templates/grafana-mcp-sa-job.yaml            # post-install,post-upgrade hook Job, ServiceAccount, Role, RoleBinding
 files/grafana-mcp/create-service-account.sh  # Copied from this repository, as files/datasources.yaml is
 ```
@@ -203,7 +202,8 @@ text, without a link, so they do not wait for the published skill (decided by Da
    init container, Grafana admin variables, converter, tests, standalone file.
 3. **Helm chart** (`infrahub-helm`). First task: start the image in kind with the probe settings of
    [contracts/helm-values.md](contracts/helm-values.md) and confirm that the probes pass. Then the
-   templates.
+   templates. After the review of Fatih Acar, the server comes from the `grafana-mcp` community chart
+   as a dependency, and the chart keeps the hook Job and the render checks (research R12).
 4. **Skill** (`infrahub-skills`). Fixtures recorded from phase 2.
 5. **Docs and rules.** `observability-stack.mdx`, Build with AI pages, FAQ, `development/grafana/AGENTS.md`,
    `observability.md`.

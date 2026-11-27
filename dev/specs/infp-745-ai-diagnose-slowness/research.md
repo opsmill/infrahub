@@ -72,8 +72,9 @@ and whether it keeps the `profiles` key (task in `tasks.md`).
   `INFRAHUB_GRAFANA_MCP_TOKEN` is empty, the check writes
   `INFRAHUB_GRAFANA_MCP_TOKEN is not set: set it to the token that AI assistants send` to standard
   error and exits with code 1. The service has no `restart` key, so it stays stopped.
-- Helm: the template uses `required` on the token value, unless an existing Secret is named. The
-  install or upgrade fails with a message that names the value.
+- Helm: a render check of `infrahub-observability` fails when neither the token value nor an
+  existing Secret is set, or when the token is `null`. The install or upgrade fails with a message
+  that names the two values (R12).
 
 **Rationale.** FR-004 requires that the container does not start. The upstream default starts the
 server open, so the check must be ours.
@@ -155,7 +156,8 @@ when the address is not in `127.0.0.0/8` and is not `::1` or `[::1]` (Compose ne
 port mapping), and the two TLS settings are not set.
 Consequence: an operator whose reverse proxy runs on another host cannot reach the server over plain
 HTTP; that proxy must connect with HTTPS, or the proxy must run on the Docker host. In Helm, the chart
-applies the same rule with `fail` to a `LoadBalancer` or `NodePort` Service (critique E3).
+applies the same rule with `fail` to a `LoadBalancer` or `NodePort` Service whose arguments have no
+`--server.tls-cert-file` (critique E3, R12).
 
 ## R4. Which write tools the server keeps
 
@@ -246,7 +248,8 @@ replaced.
   `service_completed_successfully`.
 - Helm: a `post-install,post-upgrade` hook Job with a ServiceAccount and a Role. The Role allows
   `create` on Secrets, because Kubernetes cannot limit `create` to one name, and `get` and `update`
-  on the one token Secret. The MCP Deployment mounts the Secret as a file.
+  on the one token Secret, `grafana-mcp-service-account-token`. The MCP Deployment, rendered by the
+  community chart (R12), mounts the Secret as a file.
 
 The script reads the Grafana admin user and password from variables, so that an operator who changed
 the admin password sets it once (Compose: `INFRAHUB_GRAFANA_ADMIN_USER` and
@@ -415,5 +418,56 @@ answers with its version and the skill can name it.
 | Repository | Content |
 |------------|---------|
 | `opsmill/infrahub` | Compose services, converter change, unit tests of the Compose files, log fixes, docs, `development/grafana/AGENTS.md` rule, changelog fragments, `log-audit.md` |
-| `opsmill/infrahub-helm` | `infrahub-observability` chart: the Deployment, Service, Secret handling and hook Job |
+| `opsmill/infrahub-helm` | `infrahub-observability` chart: the `grafana-mcp` community chart as a dependency, the hook Job and its Role, the scripts and the render checks (R12) |
 | `opsmill/infrahub-skills` | The skill, its graders, evals and fixtures, and the `DO NOT TRIGGER` cross-link in `infrahub-analyzing-diagnostics` |
+
+## R12. The Helm chart of the server
+
+**Decision** (2026-11-26). The `infrahub-observability` chart installs the server with the community
+chart [`grafana-mcp`](https://github.com/grafana-community/helm-charts/tree/main/charts/grafana-mcp)
+0.37.0, a pinned dependency, with the image kept at `mcp-grafana` 2.0.2. Fatih Acar asked to reuse an
+upstream chart during his review of
+[infrahub-helm #131](https://github.com/opsmill/infrahub-helm/pull/131), and accepted this plan
+([comment](https://github.com/opsmill/infrahub-helm/pull/131#issuecomment-7197569372)). The first
+version of #131 rendered the server with templates of `infrahub-observability`.
+
+- The dependency renders the Deployment, the `ClusterIP` Service, the ServiceAccount of the server and
+  the Secret of a token value.
+- `infrahub-observability` keeps the hook Job that creates the Grafana service account and its token
+  (R5), its ServiceAccount, Role and RoleBinding, the scripts, and the render checks. A new check fails
+  when a read-only flag is missing or turned off.
+- The values are under two keys, `grafana-mcp-setup` and `grafana-mcp`. The Grafana token Secret is
+  `grafana-mcp-service-account-token`. The names are in
+  [contracts/helm-values.md](contracts/helm-values.md).
+
+**Facts.**
+
+- The `grafana-mcp` chart in `grafana.github.io/helm-charts` is deprecated and cannot set a token for
+  callers. The community chart can.
+- The values schema of the community chart rejects a key it does not know, so the settings of
+  `infrahub-observability` cannot be under `grafana-mcp`.
+- The community chart builds the image as `repository:tag`, so the digest is part of the tag.
+- The default liveness probe of the community chart calls the main port, which fails when the server
+  serves HTTPS. The values set the probes to the side listener (R3).
+- The appVersion of the community chart is 2.4.0. The chart sets the image to 2.0.2, the version under
+  security review.
+
+**Trade-offs that Fatih Acar accepted.**
+
+- TLS without an Ingress needs more setup than before: the two TLS flags in `grafana-mcp.extraArgs`, a
+  volume and a mount. A list in a values file replaces the default list, so it repeats the default
+  arguments and the `grafana-token` volume.
+- An operator whose release is not named `obs`, or who turns the bundled Grafana off, must set
+  `grafana-mcp.grafana.url`. The render fails otherwise.
+- The settings are under two keys, because the schema of the community chart rejects unknown keys.
+
+**Rationale.** Operators get an Ingress, an HTTPRoute, autoscaling and a ServiceMonitor from the
+community chart, and OpsMill maintains less code. The chart is not released, so the renamed values
+affect no operator.
+
+**Consequence.** The name of the Grafana token Secret has no release name, because a list of volumes
+in `values.yaml` cannot be templated. Two releases in one namespace share the Secret, unless each sets
+its own name in `grafana-mcp.volumes`.
+
+**Not verified** (description of #131 at `dbaa36a`): the TLS setup with the community chart, which has
+no e2e test, and the manual TLS check was not repeated after the switch.

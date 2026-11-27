@@ -11,7 +11,7 @@ The container or pod that gives an AI assistant tools to read and write in the s
 
 | Field | Value | Rule |
 |-------|-------|------|
-| Enabled | Off by default | Compose: profile `grafana-mcp`. Helm: `grafanaMcp.enabled`. Off means no container (FR-001). |
+| Enabled | Off by default | Compose: profile `grafana-mcp`. Helm: `grafana-mcp-setup.enabled`. Off means no container (FR-001). |
 | Published address | Compose: `127.0.0.1:8100` to container port 8000. Helm: a `ClusterIP` Service on port 8000. | Not reachable from another computer by default (FR-006). |
 | Listen address | Compose: `INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS`, default `127.0.0.1`. Helm: `service.type`, default `ClusterIP`. | One setting opens the port to a network (FR-006). |
 | TLS | Off by default | On when a certificate and its key are given; both or neither (FR-006a). |
@@ -35,7 +35,7 @@ running ── no caller token ──► stopped, error names INFRAHUB_GRAFANA_M
 The value that each AI assistant sends as `Authorization: Bearer <token>`.
 
 - Set by the operator: Compose variable `INFRAHUB_GRAFANA_MCP_TOKEN`; Helm value
-  `grafanaMcp.serverToken.value` or an existing Secret.
+  `grafana-mcp.serverAuth.token` or an existing Secret (`grafana-mcp.serverAuth.tokenSecret.name`).
 - Shared with the users who diagnose the instance.
 - Changing it needs a restart of the container.
 
@@ -46,7 +46,7 @@ The value that each AI assistant sends as `Authorization: Bearer <token>`.
 | Name | `infrahub-grafana-mcp` |
 | Role | Viewer in 1.13; Editor from the release of story 4 (FR-010). The step changes the role of an existing account when it differs. |
 | Token name | `infrahub-grafana-mcp` |
-| Where the token is stored | Compose: file `token` in the volume `grafana_mcp_token`. Helm: key `token` of the Secret `<release>-grafana-mcp-grafana-token`. |
+| Where the token is stored | Compose: file `token` in the volume `grafana_mcp_token`. Helm: key `token` of the Secret `grafana-mcp-service-account-token`. |
 
 **Rules.**
 

@@ -85,9 +85,10 @@ Expected: the assistant cannot connect. After setting `INFRAHUB_GRAFANA_MCP_ALLO
 
 ## 6. Helm (FR-001 to FR-009 in Kubernetes)
 
-- `helm install` with `grafanaMcp.enabled=true` and no token: fails with the message in the contract.
+- `helm install` with `grafana-mcp-setup.enabled=true` and no token: fails with the message in the contract.
 - With a token: the Job completes, the Secret with the Grafana token exists, and after
-  `kubectl port-forward svc/<fullname>-grafana-mcp 8100:8000` (`<fullname>`: the full name of the chart release), check 3 passes.
+  `kubectl port-forward svc/<release>-grafana-mcp 8100:8000`, check 3 passes. With a release that is not
+  named `obs`, also set `grafana-mcp.grafana.url`.
 - `helm upgrade` with no change: the Job keeps the existing token.
 
 ## 7. Diagnosis (FR-013 to FR-016, SC-003)
