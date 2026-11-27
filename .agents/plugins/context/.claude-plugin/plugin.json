@@ -1,0 +1,6 @@
+{
+  "name": "context",
+  "version": "0.1.0",
+  "description": "Record which internal docs a Claude Code session loads, map them, and audit whether they were the right ones.",
+  "author": { "name": "OpsMill" }
+}
