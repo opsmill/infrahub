@@ -126,6 +126,16 @@ const cases: Array<Case> = [
     expected: null,
   },
   {
+    name: "does not reassure about an encrypted artifact whose file is missing",
+    params: {
+      encryption: "encrypted",
+      reason: "missing",
+      isEncryptionEnabled: true,
+      isVerified: true,
+    },
+    expected: null,
+  },
+  {
     name: "says nothing when the artifact has no encryption value",
     params: { encryption: undefined, isEncryptionEnabled: true, isVerified: true },
     expected: null,
