@@ -69,7 +69,7 @@ class AccountGlobalPermissionQuery(Query):
         self.params.update(branch_params)
 
         query = """
-        MATCH (account:%(generic_account_node)s)
+        MATCH (account:Node:%(generic_account_node)s)
         WHERE account.uuid = $account_id
         CALL (account) {
             MATCH (account)-[r:IS_PART_OF]-(root:Root)
@@ -178,7 +178,7 @@ class AccountObjectPermissionQuery(Query):
         self.params.update(branch_params)
 
         query = """
-        MATCH (account:%(generic_account_node)s)
+        MATCH (account:Node:%(generic_account_node)s)
         WHERE account.uuid = $account_id
         CALL (account) {
             MATCH (account)-[r:IS_PART_OF]-(root:Root)
@@ -324,7 +324,7 @@ class AccountRoleGlobalPermissionQuery(Query):
 
         # ruff: noqa: E501
         query = """
-        MATCH (account_role:%(account_role_node)s)
+        MATCH (account_role:Node:%(account_role_node)s)
         WHERE account_role.uuid = $role_id
         CALL (account_role) {
             MATCH (account_role)-[r:IS_PART_OF]-(root:Root)
@@ -409,7 +409,7 @@ class AccountRoleObjectPermissionQuery(Query):
         self.params.update(branch_params)
 
         query = """
-        MATCH (account_role:%(account_role_node)s)
+        MATCH (account_role:Node:%(account_role_node)s)
         WHERE account_role.uuid = $role_id
         CALL (account_role) {
             MATCH (account_role)-[r:IS_PART_OF]-(root:Root)
