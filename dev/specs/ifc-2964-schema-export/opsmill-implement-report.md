@@ -33,7 +33,7 @@ Decisions and surprises the chunks reported:
 - Chunk 5: the exporter leaves out a marked field, a pinned property or an empty list when it holds its default value. Without this, every node carried `inherit_from: []` and `relationships: []`.
 - Chunk 6: the round trip of `models/base/` needed four marks that no variation schema needed. A schema read back from the database does not keep the order in which attributes and relationships were loaded, so the exporter now sorts them by `order_weight`, then by name. data-model.md and the text of T021 were updated to match. T014 is partial; see "Tasks not completed".
 - Chunk 7: in FULL mode the load gives exactly the same deprecation warnings as in BRIEF mode.
-- Chunk 8: a filter that names only restricted namespaces returns status 200 with empty `nodes` and `generics`.
+- Chunk 8: a filter that names only restricted namespaces returns status 200 with empty `nodes` and `generics`. Changed after the run, in `31247b230c`: a restricted or unknown namespace now returns 404.
 - Chunk 9: the SDK release constant is `SCHEMA_EXPORT_MIN_INFRAHUB_VERSION = "1.13.0"`. No source confirms it. The SDK also exports a `SchemaExportMode` enum, which the task list did not ask for.
 - Chunk 10: the frontend REST types come from `pnpm codegen:openapi`, not `pnpm codegen` as T046 states. Neither generator found changes left over from the base branch.
 - Chunk 11: the error texts in `docs/docs/schema/export.mdx` come from running each case. A test against a real 1.12.2 server found that the SDK never named the release for an older server. Chunk 12 fixed this.
@@ -100,12 +100,12 @@ Review mode: plugin (pr-review-toolkit). Five agents reviewed both ranges: this 
 | medium | Infrahub, `dev/knowledge/backend/schema-export.md` | Repeats the claim above | Fixed in `c2cb0e4242` |
 | medium | SDK, `changelog/+schema-export-endpoint.changed.md` | Says lengths move under `parameters` for every kind except List; true only for Text and TextArea | Fixed in SDK `e59fd9c8` |
 | medium | Infrahub, `exporter.py` | Docstring of `convert_deprecated_attribute_fields` misstates when the top-level value is dropped | Fixed in `c2cb0e4242` |
-| medium | Infrahub, `api/schema.py`, `exporter.py` | The async route runs the export on the event loop; each BRIEF pass builds a 0.6 s baseline, so an export blocks the API worker for seconds | Deferred |
+| medium | Infrahub, `api/schema.py`, `exporter.py` | The async route runs the export on the event loop; each BRIEF pass builds a 0.6 s baseline, so an export blocks the API worker for seconds | Fixed after the run in `61ff4d8b5e`: the export runs in a thread |
 | medium | Infrahub, `exporter.py` | Looking up `KEEP_IN_EXPORT_FIELDS` by class name returns an empty set when a write class is renamed, and the export then falls back to FULL | Deferred |
 | medium | Both | `SchemaExportMode` is defined in both repositories, so the two copies can drift | Deferred |
 | medium | Infrahub, `exporter.py` | The fallback warning logs no exception type and no stack trace | Deferred |
 | medium | SDK, generated write models and `schema/__init__.py` | `extra="ignore"` drops fields a newer server sends, and nothing warns the user | Deferred |
-| medium | SDK, `ctl/schema.py` | `--namespaces` with a mistyped or restricted namespace prints "No user-defined schema found to export." and exits 0, with no message about the namespace | Deferred |
+| medium | SDK, `ctl/schema.py` | `--namespaces` with a mistyped or restricted namespace prints "No user-defined schema found to export." and exits 0, with no message about the namespace | Fixed after the run in `31247b230c` and SDK `a5c82404`: the server returns 404 and the CLI prints one error per namespace |
 | medium | Infrahub, `tests/unit/schema/export/conftest.py` | The round-trip check uses the same normalization function as the loop, so a bug there would be hidden in both | Deferred |
 | medium | Infrahub, unit tests | The export unit tests take about 214 s; a module-scoped fixture would make the filter tests faster | Deferred |
 | low | Infrahub, `exporter.py` | `ExportedField` allows `collection` without `element_name` | Deferred |
