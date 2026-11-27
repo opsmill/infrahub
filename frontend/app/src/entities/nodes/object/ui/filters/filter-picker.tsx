@@ -4,7 +4,7 @@ import type React from "react";
 import { useRef, useState } from "react";
 import type { Key } from "react-aria-components";
 
-import { CountBadge } from "@/shared/components/buttons/count-badge";
+import { CountBadge } from "@/shared/components/display/count-badge";
 import { Icon } from "@/shared/components/display/icon";
 import { classNames } from "@/shared/utils/common";
 

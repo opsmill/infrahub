@@ -1,38 +1,12 @@
-import { Card, LinkButton } from "@infrahub/ui";
-import { SearchXIcon } from "lucide-react";
-
-import { Col } from "@/shared/components/container";
+import { Card } from "@infrahub/ui";
 
 import type {
   NumberPoolDivisionSelector,
   NumberPoolRange,
 } from "@/entities/resource-manager/domain/model/number-pool";
 import { NumberPoolAllocationsTable } from "@/entities/resource-manager/ui/number-pool/details/number-pool-allocations-table";
+import { PoolItemNotFound } from "@/entities/resource-manager/ui/pool/pool-item-not-found";
 import { getNumberPoolRangeUrl } from "@/entities/resource-manager/ui/routing/number-pool-urls";
-
-interface UnknownRangeProps {
-  poolId: string;
-}
-
-function UnknownRange({ poolId }: UnknownRangeProps) {
-  return (
-    <Col className="items-center gap-4 px-6 py-16 text-center">
-      <span className="flex size-10 items-center justify-center rounded-xl bg-content-muted text-foreground-muted">
-        <SearchXIcon className="size-5" aria-hidden />
-      </span>
-      <Col className="max-w-sm items-center gap-1.5">
-        <p className="font-medium">Range not found</p>
-        <p className="text-pretty text-foreground-muted text-sm">
-          The link points to a range this pool does not have. The range may have been deleted, or it
-          may belong to another pool.
-        </p>
-      </Col>
-      <LinkButton variant="outline" size="sm" href={getNumberPoolRangeUrl(poolId)}>
-        View all ranges
-      </LinkButton>
-    </Col>
-  );
-}
 
 export interface NumberPoolAllocationsCardProps {
   poolId: string;
@@ -52,7 +26,16 @@ function AllocationsCardContent({
   }
 
   const selectedRange = tableProps.ranges.find((range) => range.id === selectedRangeId);
-  if (!selectedRange) return <UnknownRange poolId={tableProps.poolId} />;
+  if (!selectedRange) {
+    return (
+      <PoolItemNotFound
+        title="Range not found"
+        description="The link points to a range this pool does not have. The range may have been deleted, or it may belong to another pool."
+        href={getNumberPoolRangeUrl(tableProps.poolId)}
+        linkLabel="View all ranges"
+      />
+    );
+  }
 
   return (
     <NumberPoolAllocationsTable

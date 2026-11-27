@@ -1,0 +1,1 @@
+Redesigned the IP prefix pool and IP address pool details page: it shows the pool's defaults, how full the pool and each resource prefix are, and the prefixes or addresses that the selected resource prefix holds. The page now reads usage and allocations on the branch and at the date you are viewing, instead of always on the default branch.

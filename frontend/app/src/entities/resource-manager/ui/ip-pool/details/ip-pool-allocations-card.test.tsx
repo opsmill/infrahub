@@ -1,0 +1,100 @@
+import { describe, expect, it, vi } from "vitest";
+
+import { IP_ADDRESS_POOL, IP_PREFIX_POOL } from "@/entities/resource-manager/domain/model/pool";
+import type { IpPoolAllocationsTableProps } from "@/entities/resource-manager/ui/ip-pool/details/ip-pool-allocations-table";
+
+import { render } from "../../../../../../tests/components/render";
+import { generateIpPoolUtilization } from "../../../../../../tests/fake/ip-pool";
+import { IpPoolAllocationsCard, type IpPoolAllocationsCardProps } from "./ip-pool-allocations-card";
+
+vi.mock("@/entities/resource-manager/ui/ip-pool/details/ip-pool-allocations-table", () => ({
+  IpPoolAllocationsTable: ({ resource }: IpPoolAllocationsTableProps) => (
+    <p>Prefixes of {resource.id}</p>
+  ),
+}));
+
+const { resources } = generateIpPoolUtilization();
+const [firstResource] = resources;
+
+const renderCard = (props: Partial<IpPoolAllocationsCardProps> = {}) =>
+  render(
+    <IpPoolAllocationsCard
+      poolId="pool-id"
+      poolKind={IP_PREFIX_POOL}
+      resources={resources}
+      selectedResourceId={firstResource?.id ?? null}
+      {...props}
+    />
+  );
+
+describe("IpPoolAllocationsCard", () => {
+  it("lists the prefixes of the selected resource prefix", async () => {
+    // GIVEN
+    const selectedResourceId = firstResource?.id ?? null;
+
+    // WHEN
+    const component = await renderCard({ selectedResourceId });
+
+    // THEN
+    await expect.element(component.getByText(`Prefixes of ${firstResource?.id}`)).toBeVisible();
+  });
+
+  it("explains that the selected resource prefix is not part of the pool", async () => {
+    // GIVEN
+    const selectedResourceId = "not-in-pool";
+
+    // WHEN
+    const component = await renderCard({ selectedResourceId });
+
+    // THEN
+    await expect.element(component.getByText("Resource prefix not found")).toBeVisible();
+    await expect
+      .element(component.getByRole("link", { name: "View the pool" }))
+      .toHaveAttribute("href", "/resource-manager/pool-id");
+    await expect.element(component.getByText(/^Prefixes of/)).not.toBeInTheDocument();
+  });
+
+  it("asks to select a resource prefix when none is selected", async () => {
+    // GIVEN
+    const selectedResourceId = null;
+
+    // WHEN
+    const component = await renderCard({ selectedResourceId });
+
+    // THEN
+    await expect
+      .element(component.getByRole("heading", { level: 2, name: "Select a resource prefix" }))
+      .toBeVisible();
+    await expect
+      .element(component.getByText("See all IP prefixes allocated from it."))
+      .toBeVisible();
+    await expect.element(component.getByText(/^Prefixes of/)).not.toBeInTheDocument();
+  });
+
+  it("names IP addresses when an address pool has no resource prefix selected", async () => {
+    // GIVEN
+    const props: Partial<IpPoolAllocationsCardProps> = {
+      poolKind: IP_ADDRESS_POOL,
+      selectedResourceId: null,
+    };
+
+    // WHEN
+    const component = await renderCard(props);
+
+    // THEN
+    await expect
+      .element(component.getByText("See all IP addresses allocated from it."))
+      .toBeVisible();
+  });
+
+  it("shows nothing when the pool has no resource prefix", async () => {
+    // GIVEN
+    const props = { resources: [] };
+
+    // WHEN
+    const component = await renderCard(props);
+
+    // THEN
+    expect(component.container.textContent).toBe("");
+  });
+});

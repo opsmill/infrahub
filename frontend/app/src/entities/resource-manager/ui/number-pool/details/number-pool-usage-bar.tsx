@@ -3,58 +3,19 @@ import type React from "react";
 
 import { Col, Row } from "@/shared/components/container";
 import MultipleProgressBar from "@/shared/components/stats/multiple-progress-bar";
-import { classNames } from "@/shared/utils/common";
 import { formatNumberDisplay } from "@/shared/utils/number";
 
 import type { NumberPoolUsage } from "@/entities/resource-manager/domain/model/number-pool";
+import { formatUsagePercent } from "@/entities/resource-manager/ui/pool/format-usage-percent";
+import { UtilizationFiguresRow } from "@/entities/resource-manager/ui/pool/utilization-figures-row";
+import { UtilizationTooltipMessage } from "@/entities/resource-manager/ui/pool/utilization-tooltip-message";
 
 const percentOf = (part: number, total: number) => (total === 0 ? 0 : (part / total) * 100);
-
-export const formatUsagePercent = (value: number) => {
-  if (value === 0) return "0%";
-  if (value < 0.1) return "<0.1%";
-  if (value < 10) return `${value.toFixed(1).replace(/\.0$/, "")}%`;
-  return `${Math.floor(value)}%`;
-};
 
 const formatUsedOfSize = (used: number, size: number | null) =>
   size === null
     ? formatNumberDisplay(used)
     : `${formatNumberDisplay(used)} of ${formatNumberDisplay(size)}`;
-
-interface UtilizationTooltipMessageProps {
-  title: string;
-  value: string;
-}
-
-function UtilizationTooltipMessage({ title, value }: UtilizationTooltipMessageProps) {
-  return (
-    <Col className="gap-0.5">
-      <span className="text-white/70 text-xxs">{title}</span>
-      <span className="tabular-nums">{value}</span>
-    </Col>
-  );
-}
-
-interface UtilizationFiguresRowProps {
-  label: string;
-  value: number;
-  dotClassName?: string;
-}
-
-function UtilizationFiguresRow({ label, value, dotClassName }: UtilizationFiguresRowProps) {
-  return (
-    <Row className="justify-between gap-5">
-      <Row className="text-white/70">
-        {dotClassName && (
-          <span className={classNames("size-2 shrink-0 rounded-full", dotClassName)} />
-        )}
-        {label}
-      </Row>
-      <span>{formatNumberDisplay(value)}</span>
-    </Row>
-  );
-}
 
 interface UtilizationFiguresTooltipProps {
   usage: NumberPoolUsage;
@@ -73,12 +34,12 @@ function UtilizationFiguresTooltip({ usage, children }: UtilizationFiguresToolti
         <Col className="gap-1 text-xs tabular-nums">
           <UtilizationFiguresRow
             label="Default branch"
-            value={usedDefaultBranch}
+            value={formatNumberDisplay(usedDefaultBranch)}
             dotClassName={hasBarSegments ? "bg-accent-strong" : undefined}
           />
           <UtilizationFiguresRow
             label="Other branches"
-            value={usedBranches}
+            value={formatNumberDisplay(usedBranches)}
             dotClassName={hasBarSegments ? "bg-accent-strong/45" : undefined}
           />
           <span className="my-0.5 h-px bg-white/15" />

@@ -133,10 +133,12 @@ reveal the icon. On devices without hover, the icon stays visible.
 | Popover | `Popover` | `shared/components/ui/popover.tsx` |
 | Accordion | `Accordion` | `shared/components/ui/accordion.tsx` |
 | Badge | `Badge` | `shared/components/ui/badge.tsx` |
+| Count in a rounded badge | `CountBadge` — `variant="raised"` (default) inside a control, such as the filter, sort or columns trigger; `variant="pill"`, smaller and flat, next to a card title or section heading. `hasMore` appends `+`. Place it next to text that names what is counted, because the badge shows only the number | `shared/components/display/count-badge.tsx` |
 | Alert | `Alert` | `shared/components/ui/alert.tsx` |
 | Pagination (one list per page) | `Pagination` — bound to the page-global `pagination` query-string parameter (`usePagination`), so only one list per page can use it | `shared/components/ui/pagination.tsx` |
 | Paginated table footer, one per table | `TablePagination` — controlled (`page`, `onPageChange`); give each pager an `aria-label`. Pair with `useTablePagination({ urlKey })` (`shared/hooks/use-table-pagination.ts`, page in `${urlKey}_page`, one key per table) and `shared/utils/table-pagination.ts` (`PAGE_SIZE`, `getOffset`) | `shared/components/table/table-pagination.tsx` |
 | Card with a server-paged table | `PagedTableCard` — region labelled by its title, count badge, fixed-height body, `TablePagination`, and the loading, denied (`UnauthorizedScreen`), failed (`ErrorScreen` with "Go to first page" or "Try again"), empty (`NoDataFound`) and page-past-the-end states. Pair with `keepPreviousDataWithin(listKey, hasRows)` (`shared/api/keep-previous-data-within.ts`) as the query's `placeholderData` | `shared/components/table/paged-table-card.tsx` |
+| Read-only table that loads more rows as the user scrolls | `Table` with `TableLoadMoreItem` — virtualized, single-line rows; see the table note in `design-system.md` for when to pick it over `DataTable` | `@infrahub/ui` |
 | Page header row (title, actions) | `HeaderContainer` | `shared/components/layout/header-container.tsx` |
 | Refresh button with "Last data refresh" tooltip | `RefreshButton` — pass the `queryKeys` it invalidates | `shared/components/buttons/refresh-button.tsx` |
 | Value on a schema colour, with an optional tooltip | `ColorDisplay` — `className` adjusts its size | `shared/components/display/color-display.tsx` |

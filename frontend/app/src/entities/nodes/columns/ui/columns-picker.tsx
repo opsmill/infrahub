@@ -1,7 +1,7 @@
 import { Button, Popover, PopoverTrigger } from "@infrahub/ui";
 import { Columns3Icon } from "lucide-react";
 
-import { CountBadge } from "@/shared/components/buttons/count-badge";
+import { CountBadge } from "@/shared/components/display/count-badge";
 
 import type { ColumnSurface } from "@/entities/nodes/columns/domain/model/column-surface";
 import { ColumnsEditor } from "@/entities/nodes/columns/ui/columns-editor";
