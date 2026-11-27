@@ -3,9 +3,9 @@
 - **Feature**: owners and sources of nodes, attributes and relationships (advanced RBAC, phase P1), storage option E
 - **Jira**: [IFC-3627](https://opsmill.atlassian.net/browse/IFC-3627), in the epic [IFC-3625](https://opsmill.atlassian.net/browse/IFC-3625)
 - **Spec directory**: `dev/specs/infp-753-rbac-owners-option-e`
-- **Branch**: `rbac-phase-1-implementation-ifc3627-enevw`, based on pull request 1 ([#11620](https://github.com/opsmill/infrahub/pull/11620), branch `gma-20261117-ifc3626`, head `21927113bc`)
-- **Base commit**: `2d4971d38f` (the task list update for pull request 2, on top of `21927113bc`). The branch was rebased on 2026-11-26 from `b77bcf2fb9` to `21927113bc`, so the commit SHAs in this report from before that day's rebase are the SHAs before the rebase.
-- **Head commit**: see the branch head; the last code commit is `dbe9c56502`
+- **Branch**: `rbac-phase-1-implementation-ifc3627-enevw`, based on pull request 1 ([#11620](https://github.com/opsmill/infrahub/pull/11620), branch `gma-20261117-ifc3626`, head `feced9fc3f`)
+- **Base commit**: `82267ef17a` (the task list update for pull request 2, on top of `feced9fc3f`). The branch was rebased twice: on 2026-11-26 from `b77bcf2fb9` to `21927113bc`, and on 2026-11-27 to `feced9fc3f`. The commit SHAs in the rows of this report dated before 2026-11-27 10:00Z are the SHAs before those rebases.
+- **Head commit**: see the branch head; the last code commit is `5284ddeb3c`
 - **Wall-clock time**: about 6 hours, 2026-11-26 10:15Z to 16:15Z
 - **Status**: DONE. Every task of "2. GraphQL API" in tasks.md is ticked. The review ran with `/code-review`.
 
@@ -42,7 +42,7 @@ None of the tasks of pull request 2. Tasks of pull request 3 and T149 (the conso
 
 ## 4. Local-pass evidence
 
-Environment for all rows: local Linux VM, the uv venv of the repository, Docker 29.10.1. "testcontainers" means Neo4j 2026.10.1 started by testcontainers. "image" means `registry.opsmill.io/opsmill/infrahub:e2e-ifc3627`. The rows before the review fixes ran on the image built from `3bf19c4c1b`; the code in `backend/infrahub` did not change between that commit and `14eab625d7`. The later commits change the backend code, so the image was built again from `dbe9c56502`, the last code commit, for the two image rows at the end.
+Environment for all rows: local Linux VM, the uv venv of the repository, Docker 29.10.1. "testcontainers" means Neo4j 2026.10.1 started by testcontainers. "image" means `registry.opsmill.io/opsmill/infrahub:e2e-ifc3627`. The rows before the review fixes ran on the image built from `3bf19c4c1b`; the code in `backend/infrahub` did not change between that commit and `14eab625d7`. The later commits change the backend code, so the image was built again from `dbe9c56502` on 2026-11-26, and from `83020e61ed` on 2026-11-27 after the rebase on `feced9fc3f`.
 
 | Test id | Type | Run command | Passed at | Environment | Verbatim pass line |
 |---|---|---|---|---|---|
@@ -70,6 +70,10 @@ Environment for all rows: local Linux VM, the uv venv of the repository, Docker 
 | graphql/metadata, graphql/queries/test_event*.py, core/ownership, templates/test_template_owners.py, graphql/mutations/test_ipam.py after the API decisions of 2026-11-26 | component | `uv run pytest backend/tests/component/graphql/metadata backend/tests/component/graphql/queries/test_event*.py backend/tests/component/core/ownership backend/tests/component/templates/test_template_owners.py backend/tests/component/graphql/mutations/test_ipam.py -n 2 -o session_timeout=7000 -q` | 2026-11-26T22:20:15Z | testcontainers | `367 passed, 3 warnings in 365.23s (0:06:05)` |
 | tests/e2e/ownership on the image built from `dbe9c56502` | e2e | `INFRAHUB_TESTING_IMAGE_VER=e2e-ifc3627 INFRAHUB_TESTING_DOCKER_PULL=false uv run pytest -c tests/e2e/pytest.ini tests/e2e/ownership -p no:randomly` | 2026-11-26T22:27:07Z | image | `4 passed in 129.68s (0:02:09)` |
 | backend/tests/integration_docker/test_schema_migration.py on the image built from `dbe9c56502` | integration | `INFRAHUB_TESTING_IMAGE_VER=e2e-ifc3627 INFRAHUB_TESTING_DOCKER_PULL=false uv run pytest <file> -p no:cacheprovider` | 2026-11-26T22:29:21Z | image | `3 passed, 1 xfailed, 1 warning in 125.86s (0:02:05)` |
+| backend/tests/unit/core/ownership, backend/tests/unit/graphql after the rebase on `feced9fc3f` (no owner stored as `HAS_OWNER`) | unit | `uv run pytest backend/tests/unit/core/ownership backend/tests/unit/graphql -n 2 -q -p no:randomly` | 2026-11-27T10:35:07Z | n/a | `385 passed, 3 warnings in 6.06s` |
+| core/ownership, graphql/metadata, test_event_owner_changes.py, templates/test_template_owners.py, graphql/mutations/test_ipam.py, core/test_node_get_list_query.py after the rebase on `feced9fc3f` | component | `uv run pytest <those paths> -n 2 -o session_timeout=7000 -q -p no:randomly` | 2026-11-27T10:35:17Z | testcontainers | `425 passed, 3 warnings in 386.04s (0:06:26)` |
+| tests/e2e/ownership on the image built from `83020e61ed` | e2e | `INFRAHUB_TESTING_IMAGE_VER=e2e-ifc3627 INFRAHUB_TESTING_DOCKER_PULL=false uv run pytest -c tests/e2e/pytest.ini tests/e2e/ownership -p no:randomly` | 2026-11-27T10:42:28Z | image | `4 passed in 127.93s (0:02:07)` |
+| backend/tests/integration_docker/test_schema_migration.py on the image built from `83020e61ed` | integration | `INFRAHUB_TESTING_IMAGE_VER=e2e-ifc3627 INFRAHUB_TESTING_DOCKER_PULL=false uv run pytest <file> -p no:cacheprovider` | 2026-11-27T10:44:36Z | image | `3 passed, 1 xfailed, 1 warning in 127.57s (0:02:07)` |
 | backend/tests/query_benchmark/ownership/test_no_owner_overhead.py (head) | benchmark | `uv run pytest <file> -s -p no:cacheprovider --no-cov -q --session-timeout=10800` | 2026-11-26T13:20:40Z (end) | testcontainers, no other test stack | `4 passed, 1 warning in 2653.39s (0:44:13)` |
 
 Quickstart scenarios of user stories 1 to 5 ran on the same image with a scratch test that is not committed: `5 passed in 131.09s (0:02:11)`, 2026-11-26T14:55:58Z. Scenario 6 (the upgrade) ran by hand: data on release 1.12.3, then `infrahub db ownership-report` and `infrahub upgrade` with the image, 2026-11-26T15:32:19Z to 15:35:44Z, `Upgrade complete SUCCESS`.
