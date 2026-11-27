@@ -17,6 +17,10 @@ worker count, and resource load where practical. Record differences from CI, inc
 versions and container configuration. Separate slow progress from a blocked operation: less setup
 work can reduce contention without fixing a deadlock.
 
+When a whole job reaches its limit with every test passing, measure what the job adds to the tests.
+Coverage measurement slows every test, most on Python versions before 3.14, where coverage.py traces
+each executed line. `uv run invoke backend.test-unit --no-coverage` runs the unit suite without it.
+
 ## Reduce work without weakening coverage
 
 Measure a baseline, identify the dominant cost, and make one targeted change. Check for repeated

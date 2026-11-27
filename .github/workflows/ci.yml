@@ -516,6 +516,9 @@ jobs:
           - "3.14"
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      # Coveralls receives the unit coverage of one Python version, so the other versions do not measure it.
+      MEASURE_COVERAGE: ${{ matrix.python-version == '3.14' }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
@@ -533,9 +536,14 @@ jobs:
       - name: Install dependencies
         run: "uv sync --all-groups"
       - name: "Unit Tests"
-        run: "uv run invoke backend.test-unit"
+        run: |
+          if [ "$MEASURE_COVERAGE" = "true" ]; then
+            uv run invoke backend.test-unit
+          else
+            uv run invoke backend.test-unit --no-coverage
+          fi
       - name: "Coveralls : Unit Tests"
-        if: matrix.python-version == '3.14'
+        if: env.MEASURE_COVERAGE == 'true'
         uses: coverallsapp/github-action@8d6379e14d29928660c4ba802d8e85393440b329 # v2.3.8
         continue-on-error: true
         env:
