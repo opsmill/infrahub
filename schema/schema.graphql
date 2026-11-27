@@ -13717,7 +13717,7 @@ input ProposedChangeRequestRunCheckInput {
   check_type: CheckType
   id: String!
   """
-  Retry only the artifact targets whose latest check failed or did not finish. Requires check_type ARTIFACT.
+  Retry only the artifact targets whose latest check failed or did not finish. Requires check_type ARTIFACT. The scheduled run of a definition is refused when its previous run did not complete.
   """
   retry_failed_only: Boolean = false
   """

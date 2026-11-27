@@ -65,17 +65,62 @@ def test_a_check_with_an_artifact_never_matches_a_target_by_name() -> None:
     assert plan.obsolete_check_ids == ["failed-removed"]
 
 
-def test_a_check_matched_by_a_shared_name_is_updated_by_one_target() -> None:
-    shared = ArtifactCheckState(
-        check_id="failed-switch", artifact_id=None, name="config: switch", conclusion=ValidatorConclusion.FAILURE.value
+@dataclass
+class SharedNameCase:
+    name: str
+    unresolved_check_ids: list[str]
+    expected: ArtifactRunPlan
+
+
+SHARED_NAME_CASES: list[SharedNameCase] = [
+    SharedNameCase(
+        name="one_check_is_updated_by_one_target",
+        unresolved_check_ids=["failed-switch-1"],
+        expected=ArtifactRunPlan(
+            target_ids=["switch-a", "switch-b"],
+            check_ids={"switch-a": "failed-switch-1"},
+            obsolete_check_ids=[],
+            keeps_failure=False,
+        ),
+    ),
+    SharedNameCase(
+        name="each_target_updates_its_own_check",
+        unresolved_check_ids=["failed-switch-1", "failed-switch-2"],
+        expected=ArtifactRunPlan(
+            target_ids=["switch-a", "switch-b"],
+            check_ids={"switch-a": "failed-switch-1", "switch-b": "failed-switch-2"},
+            obsolete_check_ids=[],
+            keeps_failure=False,
+        ),
+    ),
+    SharedNameCase(
+        name="a_check_that_no_target_updates_keeps_the_failure",
+        unresolved_check_ids=["failed-switch-1", "failed-switch-2", "failed-switch-3"],
+        expected=ArtifactRunPlan(
+            target_ids=["switch-a", "switch-b"],
+            check_ids={"switch-a": "failed-switch-1", "switch-b": "failed-switch-2"},
+            obsolete_check_ids=[],
+            keeps_failure=True,
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in SHARED_NAME_CASES])
+def test_checks_matched_by_a_shared_name(test_case: SharedNameCase) -> None:
+    planner = make_planner(
+        *(
+            ArtifactCheckState(
+                check_id=check_id,
+                artifact_id=None,
+                name="config: switch",
+                conclusion=ValidatorConclusion.FAILURE.value,
+            )
+            for check_id in test_case.unresolved_check_ids
+        )
     )
 
-    assert make_planner(shared).plan_failed_retry(requested_checks=None) == ArtifactRunPlan(
-        target_ids=["switch-a", "switch-b"],
-        check_ids={"switch-a": "failed-switch"},
-        obsolete_check_ids=[],
-        keeps_failure=False,
-    )
+    assert planner.plan_failed_retry(requested_checks=None) == test_case.expected
 
 
 @dataclass

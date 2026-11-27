@@ -231,7 +231,10 @@ class ProposedChangeRequestRunCheckInput(InputObjectType):
     check_type = GraphQLCheckType(required=False)
     retry_failed_only = Boolean(
         default_value=False,
-        description="Retry only the artifact targets whose latest check failed or did not finish. Requires check_type ARTIFACT.",
+        description=(
+            "Retry only the artifact targets whose latest check failed or did not finish. Requires check_type ARTIFACT. "
+            "The scheduled run of a definition is refused when its previous run did not complete."
+        ),
     )
     validator_id = String(
         description="Limit artifact checks to this proposed change's artifact validator. Requires check_type ARTIFACT.",

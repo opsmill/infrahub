@@ -45,7 +45,7 @@ class ArtifactRunPlan:
     """Unresolved checks that match no current target of the definition."""
 
     keeps_failure: bool
-    """An unresolved check remains that this run neither renders again nor deletes."""
+    """An unresolved check remains that this run neither updates nor deletes."""
 
 
 class ArtifactRunPlanner:
@@ -69,12 +69,13 @@ class ArtifactRunPlanner:
     def plan_failed_retry(self, requested_checks: Sequence[ArtifactCheckState] | None) -> ArtifactRunPlan:
         """Plan a run of the unresolved targets, limited to the targets of `requested_checks` when given."""
         if requested_checks is None:
-            return self._plan(candidates=self._unresolved_check_by_target(), scoped=False, requested={})
-        requested = self._requested_check_by_target(requested_checks=requested_checks)
-        unresolved_ids = {check.check_id for check in requested_checks if check.is_unresolved}
-        unresolved_requested = {
-            target_id: check_id for target_id, check_id in requested.items() if check_id in unresolved_ids
-        }
+            return self._plan(
+                candidates=self._check_ids_by_target(checks=self._unresolved_checks), scoped=False, requested={}
+            )
+        self._ensure_requested_checks_match_targets(requested_checks=requested_checks)
+        unresolved_requested = self._check_ids_by_target(
+            checks=[check for check in requested_checks if check.is_unresolved]
+        )
         return self._plan(candidates=unresolved_requested, scoped=True, requested=unresolved_requested)
 
     def plan_changes(
@@ -83,7 +84,8 @@ class ArtifactRunPlanner:
         """Plan a run of the changed targets, limited to the targets of `requested_checks` when given."""
         if requested_checks is None:
             return self._plan(candidates=changed_target_ids, scoped=False, requested={})
-        requested = self._requested_check_by_target(requested_checks=requested_checks)
+        self._ensure_requested_checks_match_targets(requested_checks=requested_checks)
+        requested = self._check_ids_by_target(checks=requested_checks)
         changed = set(changed_target_ids)
         return self._plan(
             candidates=[target_id for target_id in requested if target_id in changed], scoped=True, requested=requested
@@ -95,47 +97,47 @@ class ArtifactRunPlanner:
             return [target_id] if target_id else []
         return self._targets_by_name.get(check.name or "", [])
 
-    def _unresolved_check_by_target(self) -> dict[str, str]:
-        check_by_target: dict[str, str] = {}
-        for check in self._unresolved_checks:
+    def _check_ids_by_target(self, checks: Sequence[ArtifactCheckState]) -> dict[str, list[str]]:
+        check_ids_by_target: dict[str, list[str]] = defaultdict(list)
+        for check in checks:
             for target_id in self._target_ids_of(check):
-                check_by_target.setdefault(target_id, check.check_id)
-        return check_by_target
+                check_ids_by_target[target_id].append(check.check_id)
+        return check_ids_by_target
 
-    def _requested_check_by_target(self, requested_checks: Sequence[ArtifactCheckState]) -> dict[str, str]:
-        check_by_target: dict[str, str] = {}
+    def _ensure_requested_checks_match_targets(self, requested_checks: Sequence[ArtifactCheckState]) -> None:
         for check in requested_checks:
-            target_ids = self._target_ids_of(check)
-            if not target_ids:
+            if not self._target_ids_of(check):
                 raise ValidationError(
                     f"The artifact check {check.check_id} matches no current target of the artifact definition. "
                     "Refresh the checks view."
                 )
-            for target_id in target_ids:
-                check_by_target.setdefault(target_id, check.check_id)
-        return check_by_target
 
-    def _plan(self, *, candidates: Collection[str], scoped: bool, requested: Mapping[str, str]) -> ArtifactRunPlan:
+    def _plan(
+        self, *, candidates: Collection[str], scoped: bool, requested: Mapping[str, Sequence[str]]
+    ) -> ArtifactRunPlan:
         selected = [target_id for target_id in self._target_ids if target_id in candidates]
-        selected_ids = set(selected)
-        obsolete_check_ids = (
-            [] if scoped else [check.check_id for check in self._unresolved_checks if not self._target_ids_of(check)]
-        )
-        keeps_failure = any(
-            not selected_ids.intersection(self._target_ids_of(check))
-            for check in self._unresolved_checks
-            if check.check_id not in obsolete_check_ids
-        )
-
-        unresolved = self._unresolved_check_by_target()
+        unresolved = self._check_ids_by_target(checks=self._unresolved_checks)
         check_ids: dict[str, str] = {}
         assigned_check_ids: set[str] = set()
         for target_id in selected:
-            check_id = requested.get(target_id) or unresolved.get(target_id)
-            # A check matched by a shared name is updated by one target only, so each target keeps its own check.
-            if check_id and check_id not in assigned_check_ids:
+            # A check matched by a shared name is updated by one target only, so each target takes a check no other took.
+            check_id = next(
+                (
+                    check_id
+                    for check_id in (*requested.get(target_id, ()), *unresolved.get(target_id, ()))
+                    if check_id not in assigned_check_ids
+                ),
+                None,
+            )
+            if check_id:
                 check_ids[target_id] = check_id
                 assigned_check_ids.add(check_id)
+
+        obsolete_check_ids = (
+            [] if scoped else [check.check_id for check in self._unresolved_checks if not self._target_ids_of(check)]
+        )
+        handled_check_ids = assigned_check_ids.union(obsolete_check_ids)
+        keeps_failure = any(check.check_id not in handled_check_ids for check in self._unresolved_checks)
 
         return ArtifactRunPlan(
             target_ids=selected,
