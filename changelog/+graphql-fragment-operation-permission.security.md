@@ -1,1 +1,0 @@
-The GraphQL API now classifies an operation written inside a top-level inline fragment or fragment spread as the operation it is, so its permission checks run before it executes. A caller can no longer bypass authentication or object permissions by wrapping a mutation in `... on Mutation { ... }` alongside a harmless authorized operation (GHSA-299f-9wgh-7jhv).
