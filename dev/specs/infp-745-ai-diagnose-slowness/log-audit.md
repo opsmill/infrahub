@@ -64,8 +64,8 @@ Then each marker was searched for in:
   log levels only.
 - Every path where an exception message is logged with `exc_info`. The audit covers the paths that the
   five steps above reach: the HTTP adapter, the webhook delivery and the Git connectivity check.
-- The log lines of the Helm pods that Compose does not run. The list of pods is in "Log streams in
-  Helm" below; no line of these pods was read.
+- The Helm pods listed under "Not checked in Helm" below: the Prefect exporter, Emma, and other
+  workloads in the Infrahub namespace.
 - Neo4j Enterprise query logging, which is off in the Compose stack.
 - Longer use. The stack ran for about 15 minutes, so a line that a service writes rarely, such as a
   PostgreSQL statement error, was not seen.
@@ -131,9 +131,9 @@ entry, because no value was found. This holds for default log levels only (see "
 
 ## Log streams in Helm
 
-Checked on 2026-11-24 by reading the chart on the branch of
-[opsmill/infrahub-helm#131](https://github.com/opsmill/infrahub-helm/pull/131) (task T045). No
-cluster was started, so no log line was read.
+The list of pods was made on 2026-11-24 by reading the chart on the branch of
+[opsmill/infrahub-helm#131](https://github.com/opsmill/infrahub-helm/pull/131) (task T045). Their
+log lines were read on 2026-11-27 (task T055).
 
 The Alloy of the `infrahub-observability` chart reads the logs of every container of every pod in
 the Infrahub namespace (`templates/alloy-config.yaml:37-42` and `80-83`). The namespace is
@@ -145,7 +145,7 @@ These pods run the same software as the Compose containers above: the Infrahub s
 worker, Neo4j, Redis, RabbitMQ, the Prefect server and its database, Grafana, Loki, Tempo, Alloy,
 the node exporter and the Grafana MCP server.
 
-These pods are in Helm only, and their lines were not read:
+These pods are in Helm only:
 
 | Pod | Source in the charts | When it runs |
 |-----|----------------------|--------------|
@@ -158,8 +158,46 @@ These pods are in Helm only, and their lines were not read:
 | Infrahub demo data Job | `charts/infrahub/templates/infrahub-demo-data-job.yaml` | When it is turned on |
 | Any other workload in the Infrahub namespace | No selector | Not known |
 
-**FR-022a in Helm.** No `drop` rule was added to the chart (task T055), because no line of these
-pods was read, so no value to drop is known. Whether the pods above write a secret, an email address or a URL query string is not known.
+### What the Helm pods write
+
+Method: Infrahub and the `infrahub-observability` chart from the head `dbaa36a` of helm#131 were
+installed in a local vcluster (release `obs`, `grafana-mcp-setup.enabled=true`), as the e2e tests of
+the chart do. The MCP requests `initialize`, `tools/list`, `list_datasources` and `search_dashboards`
+were sent with the caller token through a port-forward. Then the logs of every container of every
+pod were read with `kubectl logs --all-containers`, for the first 4 to 5 minutes after the install.
+Each log was searched for `Authorization` and bearer, password, secret, Grafana tokens (`glsa_`) and
+JSON Web Tokens (`eyJ`), email addresses, user names, IP addresses and URL query strings, and every
+matching line was read. The token Job was also run with the token Secret present and with it deleted.
+
+| Pod | Lines read | Result |
+|-----|-----------:|--------|
+| Grafana MCP server | 38 | Clean. Start-up lines and 21 warnings that the Grafana token file could not be read, with its path and the error: the file did not exist for the first 90 seconds. One line says that callers must present a bearer token, without a token. The only IP address is its own listen address. At the default log level the server writes no line per request, so no client address and no token appear |
+| Token Job, Secret present | 1 | Clean: "still works: nothing to do" |
+| Token Job, Secret deleted | 2 | Clean: a new token was stored, and the name of the Secret. No token, no admin password |
+| Loki | 22 | Clean. Cluster-internal IP addresses only. The word "token" is in a ring message |
+| Prometheus server and its config reloader | 8 | Clean. Listen address and build line |
+| Tempo | 54 | Clean. Ring messages with the word "tokens", and listen addresses |
+| Node exporter | 55 | Clean. `user=root@...` in the build line is build information, not a user of the stack |
+| Grafana and its dashboard and data source loaders | 32 | Clean. The loaders write the address of the Kubernetes API server and retries; Grafana writes migration and plugin warnings, and no request line |
+| Alloy | 985 | Clean. Retries to Loki and Prometheus at start-up. 962 lines are errors that a line is not in logfmt; they give only the position of the error, not the line, so they are not personal data |
+| Infrahub upgrade Job | 16 | Clean. Step messages |
+| Infrahub demo data Job | 5 to 181 per pod | Clean. One error holds a URL with the query string `?branch=main`, a branch name, not a secret |
+
+**FR-022a in Helm.** No `drop` rule is needed in the chart (task T055), because no secret, email
+address, Authorization header or client IP address was found. The chart was not changed. This holds
+for default log levels and the first minutes after an install only (see below).
+
+### Not checked in Helm
+
+- The Prefect exporter and Emma: they did not run in this install.
+- Any other workload in the Infrahub namespace.
+- The Grafana MCP server at a debug log level.
+- Logs under load, during a long run, or after a failure of Grafana.
+- A successful demo data load: the demo data Job failed in the test install, so only its error lines
+  were read.
+- Real client addresses: the test client connected through a port-forward.
+- Neo4j, Redis, RabbitMQ, Prefect, PostgreSQL and the Infrahub server were searched but not read line
+  by line. The Compose audit above read the same software.
 
 ## Metric labels in Prometheus
 
