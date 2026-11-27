@@ -76,6 +76,7 @@ Diataxis
 direnv
 display_label
 display_labels
+distinguisher
 Dockerfile
 Docusaurus
 dropdown

@@ -2,43 +2,75 @@
 title: Build your IPAM schema
 ---
 
-Infrahub includes the `IpamNamespace` node and the `BuiltinIPNamespace`, `BuiltinIPPrefix`, and `BuiltinIPAddress` generics by default — but no concrete IP prefix or address node until you load one.
+Infrahub includes the `IpamNamespace` node and three built-in IPAM generics, but no prefix or address node until you load a schema that defines them. Load the Marketplace IPAM schema to start from a complete model, or define your own prefix and address nodes.
 
-## Load the IPAM schema
+## Load the IPAM schema from the Marketplace
 
 :::tip Already have IPAM in the menu?
-If the `IPAM` entry already appears in the left-side menu, a schema is already loaded — this is the case after completing a quick start. You can skip the rest of this section.
+If the `IPAM` entry already appears in the left-side menu, a schema is already loaded. This is the case after you complete the [quick start](../overview/quickstart.mdx). You can skip the rest of this section.
 :::
 
-Otherwise, load the base collection from the Marketplace:
+Load the base collection from the Marketplace:
 
 ```shell
 infrahubctl marketplace get infrahub/base-schemas --collection
 infrahubctl schema load schemas/
 ```
 
-To inspect the IPAM schema alone without loading it, fetch it with `--stdout`:
+To inspect the IPAM schema without loading it, fetch it with `--stdout`:
 
 ```shell
 infrahubctl marketplace get infrahub/ipam --stdout
 ```
 
+The [`infrahub/ipam`](https://marketplace.infrahub.app/schemas/infrahub/ipam) schema defines two nodes:
+
+- `IpamPrefix`, with a `status` (`active`, `reserved` or `deprecated`), a `role` and a `scope` relationship in addition to the attributes of the built-in prefix.
+- `IpamIPAddress`, with a `status`, a `role`, an `fqdn`, and the `interface` and `primary_of` relationships in addition to the attributes of the built-in address.
+
+Both nodes are unique within a namespace, and their human-friendly ID is the namespace name followed by the value, for example `["default", "10.0.0.0/16"]`. The other IPAM pages use these two kinds in their examples.
+
 See [Infrahub Marketplace](../schema/marketplace/index.mdx) for the full fetch-and-load workflow.
+
+## What the built-in generics provide
+
+The prefix and address nodes of any IPAM schema inherit from the built-in generics, which define the attributes and relationships that Infrahub uses to build the tree and compute utilization:
+
+![BuiltinIPNamespace has a name and a description. BuiltinIPPrefix has prefix, member_type, is_pool and the read-only utilization, an ip_namespace relationship to the namespace, and the read-only parent and children relationships to other prefixes. BuiltinIPAddress has address and description, a read-only ip_prefix relationship to its prefix, and an ip_namespace relationship to the namespace. IpamNamespace, IpamPrefix and IpamIPAddress inherit from these three generics.](../media/ipam/ipam-generics.svg)
+
+The full list of attributes and relationships of each generic:
+
+- `BuiltinIPNamespace`
+  - Attributes: `name` and `description`.
+  - Relationships: `ip_prefixes` and `ip_addresses`. When you delete a namespace, Infrahub deletes the prefixes and addresses it holds.
+  - Infrahub includes `IpamNamespace`, which inherits from this generic and has an additional read-only `default` attribute.
+- `BuiltinIPPrefix`
+  - Attributes: `prefix` (attribute kind `IPNetwork`), `description`, `member_type` (`prefix` or `address`, default `address`) and `is_pool` (default `false`).
+  - Read-only attributes: `is_top_level`, `utilization`, `netmask`, `hostmask`, `network_address` and `broadcast_address`.
+  - Relationships: `ip_namespace`, and the read-only `parent`, `children`, `ancestors`, `descendants`, `ip_addresses` and `resource_pool`.
+- `BuiltinIPAddress`
+  - Attributes: `address` (attribute kind `IPHost`) and `description`.
+  - Relationships: `ip_namespace`, and the read-only `ip_prefix`.
 
 ## Define your own IPAM nodes
 
-The Marketplace collection speeds this up by giving you a working schema to start from — building it yourself means inheriting directly from the built-in generics. Inheriting from `BuiltinIPPrefix` and `BuiltinIPAddress` gets you hierarchy, utilization, and the other generic behavior for free:
+To build the model yourself rather than start from the Marketplace schema, inherit from `BuiltinIPPrefix` and `BuiltinIPAddress`. The nodes then take part in the tree, utilization and namespaces. This example uses the same kind names as the Marketplace schema, so the examples on the other IPAM pages work with either:
 
 ```yaml title="schemas/ipam/prefix-and-address.yml"
 nodes:
-  - name: IPPrefix
+  - name: Prefix
     namespace: Ipam
     inherit_from:
       - BuiltinIPPrefix
     description: IPv4 or IPv6 network
     icon: mdi:ip-network
-    label: IP Prefix
+    label: Prefix
     menu_placement: IpamNamespace
+    human_friendly_id:
+      - ip_namespace__name__value
+      - prefix__value
+    uniqueness_constraints:
+      - [prefix__value, ip_namespace]
   - name: IPAddress
     namespace: Ipam
     inherit_from:
@@ -47,6 +79,11 @@ nodes:
     icon: mdi:ip
     label: IP Address
     menu_placement: IpamNamespace
+    human_friendly_id:
+      - ip_namespace__name__value
+      - address__value
+    uniqueness_constraints:
+      - [address__value, ip_namespace]
 ```
 
 Load it the same way as a Marketplace schema:
@@ -55,36 +92,56 @@ Load it the same way as a Marketplace schema:
 infrahubctl schema load schemas/
 ```
 
-An `IpamNamespace` node inheriting from `BuiltinIPNamespace` already exists by default — define your own only if you need attributes beyond `name` and `description`.
+An `IpamNamespace` node that inherits from `BuiltinIPNamespace` already exists. Define your own namespace node only if you need attributes beyond `name` and `description`.
 
-## VLAN, VRF, RIR, and other extensions
+## Choose the uniqueness constraints
 
-VLAN, VRF, RIR, and aggregate are Marketplace extensions, not part of the base IPAM schema — fetch them individually:
+Make prefixes and addresses unique within a namespace, not across the whole instance: `[prefix__value, ip_namespace]` and `[address__value, ip_namespace]`, as in the example above and in the Marketplace schema.
+
+The built-in generics declare no uniqueness constraint, so your schema decides what Infrahub accepts:
+
+- With the per-namespace constraint, Infrahub rejects a second prefix or address with the same value in the same namespace, and accepts the same value in another namespace.
+- With a constraint on the value alone, such as `[address__value]`, Infrahub also rejects the same address in a second namespace, so namespaces can no longer hold overlapping address space.
+- Without a constraint, Infrahub accepts two prefixes or two addresses with the same value in one namespace. Two such prefixes are siblings in the tree, and neither contains the other.
+- A constraint applies only within its own kind. An `IpamIPAddress` can have the same value as an address of another kind that also inherits from `BuiltinIPAddress`.
+
+Reference the namespace through the relationship name, `ip_namespace`. Infrahub rejects an attribute of the related node, such as `ip_namespace__name__value`, in a uniqueness constraint.
+
+When two branches each create the same prefix in a namespace, Infrahub checks the constraint again in the Proposed Change of the second branch. See [Plan changes on a branch](./plan-changes-on-a-branch.mdx#when-two-branches-create-the-same-prefix).
+
+## VLAN, VRF, and other extensions
+
+VLAN, VRF and aggregates are Marketplace extensions, not part of the IPAM schema. Fetch them individually:
 
 ```shell
 infrahubctl marketplace get infrahub/vrf
 infrahubctl marketplace get infrahub/vlan
+infrahubctl marketplace get infrahub/ipam_aggregate
 ```
 
-Browse [marketplace.infrahub.app](https://marketplace.infrahub.app) for the full catalog of extensions. Load extension schemas on a branch, not `main` — see [Create and load schema](../schema/create-and-load.mdx).
+The [`infrahub/ipam_aggregate`](https://marketplace.infrahub.app/schemas/infrahub/ipam_aggregate) extension defines `IpamAggregate`, a top-level prefix assigned by a Regional Internet Registry (RIR), and `OrganizationRIR` for the registry. `IpamAggregate` inherits from `BuiltinIPPrefix`, so aggregates are prefixes in the tree. Its uniqueness constraint is on the value alone, so one aggregate value cannot exist in two namespaces.
+
+The [`infrahub/vrf`](https://marketplace.infrahub.app/schemas/infrahub/vrf) extension defines a VRF node with a route distinguisher and import and export route targets, and adds a `vrf` relationship to `IpamPrefix`. To choose how to combine VRFs and namespaces, see [Use namespaces](./use-namespaces.mdx#choose-between-a-namespace-and-a-vrf).
+
+Browse [marketplace.infrahub.app](https://marketplace.infrahub.app) for the full catalog of extensions. Load extension schemas on a branch, not `main`. See [Create and load schema](../schema/create-and-load.mdx).
 
 ## IPHost, IPNetwork, and IPAddress attribute kinds
 
-`IPHost`, `IPNetwork`, and `IPAddress` are attribute kinds, not IPAM nodes. Attach one directly to any schema node for a validated IP value that does not belong in your address plan — a monitoring target, a syslog destination, an NTP server address. The value behaves like any other attribute: it lives on the node you attach it to, it does not appear in `IpamIPPrefix` hierarchy or utilization, and it cannot be allocated from a Resource Manager pool.
+`IPHost`, `IPNetwork`, and `IPAddress` are attribute kinds, not IPAM nodes. Attach one directly to any schema node for a validated IP value that does not belong in your address plan: a monitoring target, a syslog destination, an NTP server address. The value behaves like any other attribute. It is stored on the node you attach it to, it does not appear in the prefix tree or in utilization, and it cannot be allocated from a Resource Manager pool.
 
 | Kind | Stores | Example |
 | --- | --- | --- |
-| `IPAddress` | A bare IP address, with no prefix or netmask. A value carrying prefix notation is rejected. | `192.0.2.1` |
-| `IPHost` | An IP address with a prefix length. A bare value is stored with a host prefix — `192.0.2.1` becomes `192.0.2.1/32`. | `192.0.2.1/24` |
+| `IPAddress` | A bare IP address, with no prefix or netmask. A value with prefix notation is rejected. | `192.0.2.1` |
+| `IPHost` | An IP address with a prefix length. A bare value is stored with a host prefix: `192.0.2.1` becomes `192.0.2.1/32`. | `192.0.2.1/24` |
 | `IPNetwork` | A network in CIDR notation. | `192.0.2.0/24` |
 
-Use `IPAddress` when the value has no subnet context and a prefix would be misleading. Use `IPHost` when the prefix is part of the data but the address itself is not tracked in IPAM — for example, a value mirrored from an external inventory system. Use `IPNetwork` for a subnet reference that is not itself a tracked `IpamIPPrefix`.
+Use `IPAddress` when the value has no subnet context and a prefix would be misleading. Use `IPHost` when the prefix is part of the data but the address itself is not tracked in IPAM, for example a value copied from an external inventory system. Use `IPNetwork` for a subnet reference that is not itself a tracked prefix.
 
-An address that belongs to infrastructure you manage — an interface's IP, for example — is not a fit for any of these three kinds. Infrahub's base schema relates `InfraInterfaceL3` to `IpamIPAddress` through a `Component` relationship instead, so each address gets its own hierarchy position, utilization accounting, and pool allocation history. See [When to model an IPAM node instead](#when-to-model-an-ipam-node-instead) below.
+An address that belongs to infrastructure you manage, such as the address of an interface, is not a fit for any of these three kinds. In the Marketplace schema, `IpamIPAddress` has an `interface` relationship to `InterfaceLayer3`, so each interface address is an IPAM address with its own position in the tree, its own place in utilization, and its own allocation history. See [When to model an IPAM node instead](#when-to-model-an-ipam-node-instead).
 
 ### Example: NTP and syslog addresses on a region
 
-A region's NTP and syslog servers are addresses other devices point to, not address space to manage — they need no hierarchy, no utilization, and no allocation of their own. Add them as `IPAddress` attributes on the node that uses them:
+The NTP and syslog servers of a region are addresses that other devices are configured to use, not address space to manage. You do not need a tree, utilization or allocation for them. Add them as `IPAddress` attributes on the node that uses them:
 
 ```yaml title="schemas/location/region.yml"
 nodes:
@@ -102,30 +159,30 @@ nodes:
         optional: true
 ```
 
-`192.168.1.1/24` is rejected on either attribute — only a bare address is accepted. Read the value directly, with no netmask to strip:
+Infrahub rejects `192.0.2.1/24` on either attribute, because the `IPAddress` kind takes only a bare address. Read the value directly, with no netmask to strip:
 
 ```python
 region = await client.get(kind="LocationRegion", name__value="us-east")
-print(region.ntp_server.value)  # "192.168.1.1"
+print(region.ntp_server.value)  # 192.0.2.1, an ipaddress.IPv4Address
 ```
 
 ### When to model an IPAM node instead
 
-The `Region` example above fits a third-party NTP or syslog service — the address is not yours to manage, and Infrahub only needs it to render into device configuration. The `IPAddress` attribute is the right choice for that: a validated value to read back at generation time, nothing more.
+The `Region` example models a third-party NTP or syslog service: the address is not yours to manage, and Infrahub only needs it to render into device configuration. The `IPAddress` attribute is the right choice there, because all you need is a validated value to read back when you generate the configuration.
 
-Use an `IpamIPAddress` node instead of an attribute kind when the address itself needs to:
+Use an `IpamIPAddress` node instead of an attribute kind when you need the address to:
 
-- Participate in prefix hierarchy or utilization calculations
+- Take part in the prefix tree or in utilization
 - Be allocated from a `CoreIPAddressPool`
-- Be shared across more than one object, or carry its own relationships, lifecycle, or namespace
+- Be shared across more than one object, or have its own relationships, lifecycle, or namespace
 
-If the NTP server is infrastructure you track and allocate addresses for — not a third-party value another device just points to — model it as an `IpamIPAddress` and relate it to `Region` following the pattern in [Extend IPAM with a relationship to another object](#extend-ipam-with-a-relationship-to-another-object) below.
+If the NTP server is infrastructure you track and allocate addresses for, model it as an `IpamIPAddress` and relate it to `Region` following the pattern in [Extend IPAM with a relationship to another object](#extend-ipam-with-a-relationship-to-another-object).
 
 ## Extend IPAM with a relationship to another object
 
-Relationships from IPAM to other Infrahub objects are ordinary schema relationships, not metadata fields. The [Service Catalog demo](https://github.com/opsmill/infrahub-demo-service-catalog) relates `IpamIPPrefix` and `IpamIPAddress` to a `ServiceGeneric` node this way, declaring both directions and pairing them by `identifier`.
+Relationships from IPAM to other Infrahub objects are ordinary schema relationships, not metadata fields. The [Service Catalog demo](https://github.com/opsmill/infrahub-demo-service-catalog) relates prefixes and addresses to a `ServiceGeneric` node this way, declaring both directions and pairing them by `identifier`.
 
-Declare the relationship from the `Service` side first — inbound, paired by `identifier`:
+Declare the relationship from the `Service` side first, inbound and paired by `identifier`:
 
 ```yaml title="example/service.yml"
 nodes:
@@ -140,7 +197,7 @@ nodes:
     relationships:
       - name: assigned_prefix
         label: "Assigned prefix"
-        peer: IpamIPPrefix
+        peer: IpamPrefix
         optional: false
         kind: Attribute
         direction: inbound
@@ -148,12 +205,12 @@ nodes:
         cardinality: one
 ```
 
-To add the relationship from the IPAM side instead — so you can query and filter from `IpamIPPrefix` or `IpamIPAddress` directly — extend the IPAM kind with an `extensions.nodes` block.
+To add the relationship from the IPAM side as well, so that you can query and filter from `IpamPrefix` directly, extend the IPAM kind with an `extensions.nodes` block:
 
 ```yaml title="Adapted from opsmill/infrahub-demo-service-catalog: schemas/service/service.yml"
 extensions:
   nodes:
-    - kind: IpamIPPrefix
+    - kind: IpamPrefix
       relationships:
         - name: service
           peer: ServiceGeneric
@@ -164,6 +221,6 @@ extensions:
 
 ## Next
 
-- [Use namespaces](./use-namespaces.mdx) — isolating the prefixes and addresses this schema holds
-- [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx) — assigning addresses and subnets from a pool
-- [Query IPAM data](./query-ipam-data.mdx) — reading computed values and the hierarchy
+- [Manage prefixes and addresses](./manage-prefixes-and-addresses.mdx) — Create, change and delete the prefixes and addresses this schema defines
+- [Use namespaces](./use-namespaces.mdx) — Separate overlapping address space
+- [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx) — Assign addresses and subnets from a pool

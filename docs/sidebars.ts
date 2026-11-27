@@ -168,6 +168,7 @@ const sidebars: SidebarsConfig = {
           link: { type: 'doc', id: 'ipam/overview' },
           items: [
             'ipam/build-your-ipam-schema',
+            'ipam/manage-prefixes-and-addresses',
             'ipam/use-namespaces',
             'ipam/allocate-ips-and-prefixes',
             'ipam/query-ipam-data',

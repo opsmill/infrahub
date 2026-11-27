@@ -1,0 +1,279 @@
+---
+title: Manage prefixes and addresses
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Create, change and delete the prefixes and addresses of your address plan in the web interface, with GraphQL, or with the Python SDK. You set the value and the namespace of each prefix and address, and Infrahub sets its parent. When you change one prefix, Infrahub can therefore move other prefixes and addresses in the tree.
+
+The examples use the Marketplace kinds `IpamPrefix` and `IpamIPAddress`, described in [Build your IPAM schema](./build-your-ipam-schema.mdx), and the `default` namespace. To work in another namespace, see [Use namespaces](./use-namespaces.mdx#create-a-prefix-or-an-address-in-a-namespace).
+
+## Create a prefix
+
+Choose the member type of the prefix before you create it, because Infrahub computes the utilization of the prefix with a formula that depends on it:
+
+- `prefix` for a prefix that you divide into other prefixes, such as the `10.0.0.0/16` of a data center that you split into subnets.
+- `address` for a subnet that holds addresses. This is the default.
+
+Set `is_pool` to `true` when every address in the prefix is usable, including the network and broadcast addresses.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web Interface" default>
+
+1. In the menu, select **IPAM** → **IP Prefixes**, then select **Add Prefix**.
+2. In the **Create Prefix** panel, enter the prefix in CIDR notation in **Prefix**, and choose the **Member Type**.
+3. Leave **IP Namespace** empty to create the prefix in `default`. The field is empty when the panel opens, even when another namespace is selected on the IPAM page.
+4. Select **Save**.
+
+</TabItem>
+
+  <TabItem value="graphql" label="GraphQL">
+
+```graphql
+mutation {
+  IpamPrefixCreate(data: {
+    prefix: {value: "10.0.0.0/16"},
+    member_type: {value: "prefix"},
+    description: {value: "Data center 1"}
+  }) {
+    ok
+    object {
+      id
+      hfid
+    }
+  }
+}
+```
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+```python
+prefix = await client.create(
+    kind="IpamPrefix",
+    prefix="10.0.0.0/16",
+    member_type="prefix",
+    description="Data center 1",
+)
+await prefix.save()
+```
+
+</TabItem>
+</Tabs>
+
+Infrahub places the new prefix under the most specific prefix that contains it, and moves the existing prefixes and addresses it contains under it.
+
+## Create an address
+
+Enter the address with its prefix length, for example `10.0.1.10/24`. A value without a prefix length is stored as a host address, so `10.0.1.10` becomes `10.0.1.10/32`.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web Interface" default>
+
+In the menu, select **IPAM** → **IP Addresses**, then select **Add IP Address**. Enter the address with its prefix length, and select **Save**. As for a prefix, leave **IP Namespace** empty to create the address in `default`.
+
+</TabItem>
+
+  <TabItem value="graphql" label="GraphQL">
+
+```graphql
+mutation {
+  IpamIPAddressCreate(data: {
+    address: {value: "10.0.1.10/24"},
+    description: {value: "web01"}
+  }) {
+    ok
+    object {
+      id
+      ip_prefix {
+        node { prefix { value } }
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+```python
+address = await client.create(
+    kind="IpamIPAddress",
+    address="10.0.1.10/24",
+    description="web01",
+)
+await address.save()
+```
+
+</TabItem>
+</Tabs>
+
+Infrahub attaches the address to the most specific prefix that contains it. If no prefix contains it, the address has no parent prefix until you create one that does.
+
+## Create a prefix or an address in free space
+
+When you add a subnet to a site or an address to a subnet, start from the free space of the parent prefix instead of searching for an unused value.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web Interface" default>
+
+1. Open the parent prefix by selecting its value in the prefix table or in the tree.
+2. On the **Children** tab, each free block is listed as a row marked **Prefix available**. The **Available IP prefixes** tag above the table hides or shows these rows, and they are shown by default. On the **IP Addresses** tab of a subnet, the **Available IP addresses** tag controls the rows of free address ranges in the same way.
+3. Select a free prefix row. The **Create Prefix** panel opens with the free block in **Prefix**. To create a smaller prefix inside the block, change the value, for example from `10.0.2.0/23` to `10.0.2.0/24`.
+4. The panel does not fill in the namespace. If the parent prefix is not in `default`, choose its namespace in **IP Namespace**. Otherwise Infrahub creates the prefix in `default`.
+5. Select **Save**.
+
+![The Children tab of 10.0.0.0/16 with Available IP prefixes visible: the free blocks 10.0.2.0/23 to 10.0.64.0/18 between 10.0.1.0/24 and 10.0.128.0/24, and further free blocks after 10.0.128.0/24.](../media/ipam/ipam-available-prefixes.png)
+
+</TabItem>
+
+  <TabItem value="graphql" label="GraphQL">
+
+Query the next free prefix of a given size in the parent prefix, then create it:
+
+```graphql
+query {
+  InfrahubIPPrefixGetNextAvailable(prefix_id: "<parent-prefix-id>", prefix_length: 24) {
+    prefix
+  }
+}
+```
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+Query the next free prefix of a given size in the parent prefix, then create it:
+
+```python
+parent = await client.get(
+    kind="IpamPrefix",
+    prefix__value="10.0.0.0/16",
+    ip_namespace__name__value="default",
+)
+query = """
+query ($parent: String!) {
+  InfrahubIPPrefixGetNextAvailable(prefix_id: $parent, prefix_length: 24) {
+    prefix
+  }
+}
+"""
+result = await client.execute_graphql(query=query, variables={"parent": parent.id})
+subnet = await client.create(
+    kind="IpamPrefix",
+    prefix=result["InfrahubIPPrefixGetNextAvailable"]["prefix"],
+)
+await subnet.save()
+```
+
+</TabItem>
+</Tabs>
+
+The query returns the value and creates nothing, so another client can use the same value before you create it. To list every free block of the parent prefix, see [Query IPAM data](./query-ipam-data.mdx#list-the-free-space-in-a-prefix).
+
+When automation assigns the prefix, allocate it from a Resource Manager pool instead. The pool creates the prefix and records the allocation in one request, and it does not give the same value to two requests with different identifiers. A pool has to exist first, with the parent prefix as one of its resources. See [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx).
+
+## Change a prefix or an address
+
+Change any attribute of a prefix or an address, such as its description, status or member type. Two changes have effects beyond the prefix or address you change:
+
+- When you change the value of a prefix, for example from `10.0.1.0/24` to `10.0.0.0/23`, Infrahub moves prefixes and addresses into it or out of it. When you change it back, Infrahub reverses the move.
+- When you change the member type of a prefix, Infrahub computes its utilization with the other formula. See [Utilization depends on the member type](./overview.mdx#utilization-depends-on-the-member-type).
+
+To move a prefix or an address to another namespace, see [Use namespaces](./use-namespaces.mdx#move-a-prefix-or-an-address-to-another-namespace).
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web Interface" default>
+
+Open the prefix or the address, and select **Edit** in the page header. In a table, **Edit** is also in the **⋮** menu of each row. Change the values, and save.
+
+</TabItem>
+
+  <TabItem value="graphql" label="GraphQL">
+
+Identify the prefix by its ID in `id`:
+
+```graphql
+mutation {
+  IpamPrefixUpdate(data: {
+    id: "<prefix-id>",
+    prefix: {value: "10.0.0.0/23"}
+  }) {
+    ok
+  }
+}
+```
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+```python
+prefix = await client.get(
+    kind="IpamPrefix",
+    prefix__value="10.0.1.0/24",
+    ip_namespace__name__value="default",
+)
+prefix.prefix.value = "10.0.0.0/23"
+await prefix.save()
+```
+
+</TabItem>
+</Tabs>
+
+## Delete a prefix or an address
+
+When you delete a prefix, Infrahub moves its child prefixes and addresses up to its parent. It does not delete them. To remove a whole subtree, delete each of its prefixes and addresses.
+
+When you delete an address that was allocated from a pool, the address becomes free in the pool again. See [Return an address to the pool](./allocate-ips-and-prefixes.mdx#return-an-address-to-the-pool).
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web Interface" default>
+
+Open the prefix or the address, and select **Actions** → **Delete**. In a table, **Delete** is also in the **⋮** menu of each row. Confirm with **Delete**.
+
+</TabItem>
+
+  <TabItem value="graphql" label="GraphQL">
+
+Identify the prefix by its ID in `id`:
+
+```graphql
+mutation {
+  IpamPrefixDelete(data: {id: "<prefix-id>"}) {
+    ok
+  }
+}
+```
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+```python
+prefix = await client.get(
+    kind="IpamPrefix",
+    prefix__value="10.0.1.0/24",
+    ip_namespace__name__value="default",
+)
+await prefix.delete()
+```
+
+</TabItem>
+</Tabs>
+
+## Concurrent changes to one namespace
+
+Infrahub handles the changes to the prefixes of one namespace one at a time, on every branch: a create, update or delete of a prefix waits until the previous one in the same namespace is complete. If a script creates many prefixes in one namespace in parallel, Infrahub still handles them one at a time.
+
+Changes to addresses wait for each other only when they write the same address in the same namespace on the default branch. When the address schema declares a uniqueness constraint, creates of the same address are also handled one at a time on every branch: one succeeds, and the others are rejected with the uniqueness error.
+
+## Next
+
+- [Use namespaces](./use-namespaces.mdx) — Separate overlapping address space and move prefixes between namespaces
+- [Allocate IPs and prefixes](./allocate-ips-and-prefixes.mdx) — Assign the next free address or prefix from a pool
+- [Query IPAM data](./query-ipam-data.mdx) — Check utilization and the tree after a change
+- [Plan changes on a branch](./plan-changes-on-a-branch.mdx) — Review an addressing change before it is merged
