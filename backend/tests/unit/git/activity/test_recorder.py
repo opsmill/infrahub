@@ -314,6 +314,29 @@ async def test_a_run_that_keeps_the_last_run_leaves_the_earlier_one_in_place() -
     assert json.loads(earlier)["branches"] == [{"branch_name": "main", "outcome": "failed"}]
 
 
+async def test_a_run_that_keeps_the_last_run_but_records_a_branch_replaces_the_earlier_one() -> None:
+    cache = RecordingCache()
+    clock = FakeClock()
+    activity = build_activity(cache=cache, clock=clock, sleep=ManualSleep())
+
+    async with activity.track(repository_id=REPOSITORY_ID, operation=RepositoryActivityOperation.SYNC) as run:
+        run.record_branch(branch_name="main", outcome=RepositoryActivityBranchOutcome.IMPORTED)
+    clock.advance(seconds=30)
+    async with activity.track(repository_id=REPOSITORY_ID, operation=RepositoryActivityOperation.SYNC) as kept:
+        kept.keep_last_run()
+        kept.record_branch(branch_name="feature", outcome=RepositoryActivityBranchOutcome.FAILED)
+        clock.advance(seconds=30)
+
+    assert run_key(kept.run_id) in cache.deleted
+    assert list(cache.storage) == [LAST_SYNC_KEY]
+    assert json.loads(cache.storage[LAST_SYNC_KEY]) == {
+        "operation": "sync",
+        "started_at": "2026-01-01T10:00:30Z",
+        "finished_at": "2026-01-01T10:01:00Z",
+        "branches": [{"branch_name": "feature", "outcome": "failed"}],
+    }
+
+
 async def test_an_unreachable_cache_does_not_fail_the_run() -> None:
     sleep = ManualSleep()
     activity = build_activity(cache=UnreachableCache(), clock=FakeClock(), sleep=sleep)

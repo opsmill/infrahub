@@ -141,6 +141,17 @@ class RecordedImport:
     commit: str | None
     sync_status: str | None
 
+    def covers(self, commit: str) -> bool:
+        """Whether the objects of `commit` are imported, or their import is under way, so a clone need not import it.
+
+        A branch that failed to import the commit, or whose status is still unknown, answers no, so the
+        caller imports the commit itself.
+        """
+        return self.commit == commit and self.sync_status in {
+            RepositorySyncStatus.IN_SYNC.value,
+            RepositorySyncStatus.SYNCING.value,
+        }
+
 
 class ImportStep(StrEnum):
     """The phase of a branch synchronization in which a failure occurred."""

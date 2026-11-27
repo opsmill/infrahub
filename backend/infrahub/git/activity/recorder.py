@@ -112,7 +112,10 @@ class ActivityRun:
         self._branches[branch_name] = outcome
 
     def keep_last_run(self) -> None:
-        """Leave the earlier last run of this operation in place, for a run whose work another run records."""
+        """Leave the earlier last run of this operation in place, for a run whose work another run records.
+
+        A branch outcome that the run records anyway still replaces the earlier last run.
+        """
         self._keep_last_run = True
 
     async def renew(self) -> None:
@@ -121,9 +124,12 @@ class ActivityRun:
             await self._write_record()
 
     async def finish(self, last_run_ttl_seconds: int) -> None:
-        """Write the last run of this operation, unless the run keeps the previous one, then delete the run record."""
+        """Write the last run of this operation, unless the run keeps the previous one and recorded no branch outcome.
+
+        The run record is deleted in both cases.
+        """
         async with self._write_lock:
-            if not self._keep_last_run:
+            if self._branches or not self._keep_last_run:
                 await self._write_last_run(last_run_ttl_seconds=last_run_ttl_seconds)
             try:
                 await self._cache.delete(key=self._run_key)

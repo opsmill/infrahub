@@ -215,6 +215,10 @@ class RepositoryInvalidFileSystemError(RepositoryError):
         self.directory = directory
 
 
+class RepositoryBrokenLocalCopyError(RepositoryError):
+    """Raised when the directories of a local copy exist but the copy cannot be opened."""
+
+
 class RepositoryConfigurationError(RepositoryError):
     """Raised when repository configuration file is missing or invalid."""
 
