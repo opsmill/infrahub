@@ -551,7 +551,6 @@ allow-dunder-method-names = [
     "SIM103",   # Return the condition directly
     "SIM108",   # Use ternary operator instead of `if`-`else`-block
     "SIM114",   # Combine `if` branches using logical `or` operator
-    "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
     "SLF001",   # Private member accessed
     "TD",       # flake8-todos
     "TID252",   # Replace relative imports from parent modules with absolute imports
@@ -625,6 +624,21 @@ allow-dunder-method-names = [
     # Refactor code and remove the ignore rule
     ##################################################################################################
     "PLR0915", # Too many statements
+    "SIM118",  # `data` is annotated `InputObjectType`, which declares no `__contains__` or `__iter__`
+]
+
+"backend/infrahub/graphql/mutations/node_getter/by_hfid.py" = [
+    ##################################################################################################
+    # Type the mutation `data` parameter as a mapping and remove the ignore rule
+    ##################################################################################################
+    "SIM118",  # `data` is annotated `InputObjectType`, which declares no `__contains__` or `__iter__`
+]
+
+"backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py" = [
+    ##################################################################################################
+    # Type the mutation `data` parameter as a mapping and remove the ignore rule
+    ##################################################################################################
+    "SIM118",  # `data` is annotated `InputObjectType`, which declares no `__contains__` or `__iter__`
 ]
 
 "backend/infrahub/graphql/mutations/relationship.py" = [
@@ -720,7 +734,6 @@ allow-dunder-method-names = [
     "PLR0913",  # Too many arguments in function definition
     "PLR0917",  # Too many positional arguments
     "PLR6301",  # Method could be a function, class method, or static method
-    "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
 ]
 
 "backend/tests/benchmark/**.py" = [
@@ -802,7 +815,6 @@ allow-dunder-method-names = [
     "PT012",    # `pytest.raises()` block should contain a single simple statement
     "RUF005",   # Consider spread operator instead of concatenation
     "RUF029",   # Function is declared `async`, but doesn't `await`
-    "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
     "SLF001",   # Private member accessed
     "UP035",    # `typing.List` is deprecated, use `list` instead
 ]
@@ -830,7 +842,6 @@ allow-dunder-method-names = [
     "RUF012",   # Mutable class attributes should be annotated with `typing.ClassVar`
     "RUF029",   # Function is declared `async`, but doesn't `await`
     "S311",     # Standard pseudo-random generators are not suitable for crypto
-    "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
     "SLF001",   # Private member accessed
     "TD",       # flake8-todos
     "TID252",   # Replace relative imports from parent modules with absolute imports
@@ -899,7 +910,6 @@ allow-dunder-method-names = [
     "S108",     # Probable insecure usage of temporary file or directory
     "S311",     # Standard pseudo-random generators are not suitable for crypto
     "SIM108",   # Use ternary operator instead of `if`-`else`-block
-    "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
     "SLF001",   # Private member accessed
     "TD",       # flake8-todos
     "TID252",   # Replace relative imports from parent modules with absolute imports

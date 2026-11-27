@@ -413,11 +413,9 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
             """
         self.add_to_query(rel_query)
 
-        self.params["property_types_to_update"] = sorted(
-            [flag.upper() for flag in self.flag_properties_to_update.keys()]
-        )
+        self.params["property_types_to_update"] = sorted([flag.upper() for flag in self.flag_properties_to_update])
         self.params["property_types_to_update"] += sorted(
-            [f"HAS_{prop.upper()}" for prop in self.node_properties_to_update.keys()]
+            [f"HAS_{prop.upper()}" for prop in self.node_properties_to_update]
         )
         set_to_time_on_current_property_query = """
 OPTIONAL MATCH (rl)-[r]->()

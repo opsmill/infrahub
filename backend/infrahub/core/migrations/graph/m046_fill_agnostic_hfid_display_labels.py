@@ -74,7 +74,7 @@ class Migration046(ArbitraryMigration):
         print(f"Processing {schema.kind}...", end="")
 
         schema_paths_by_name: dict[str, list[SchemaAttributePath]] = {}
-        for source_attribute_schema in attribute_schema_map.keys():
+        for source_attribute_schema in attribute_schema_map:
             node_schema_property = getattr(schema, source_attribute_schema.name)
             if not node_schema_property:
                 continue

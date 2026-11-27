@@ -278,7 +278,7 @@ class RelationshipAdd(Mutation):
                 await rel.new(db=db, data=node_data)
                 await rel.resolve(db=db, user_id=graphql_context.assigned_user_id)
                 # Save it only if it does not exist
-                if rel.get_peer_id() not in existing_peers.keys():
+                if rel.get_peer_id() not in existing_peers:
                     if group_event_type != GroupUpdateType.NONE:
                         peers.append(EventNode(id=rel.get_peer_id(), kind=nodes[rel.get_peer_id()].get_kind()))
                     node_changelog.create_relationship(relationship=rel)
@@ -389,7 +389,7 @@ class RelationshipRemove(Mutation):
             relationship_modified = False
 
             for node_data in data.get("nodes"):
-                if node_data.get("id") in existing_peers.keys():
+                if node_data.get("id") in existing_peers:
                     # TODO once https://github.com/opsmill/infrahub/issues/792 has been fixed
                     # we should use RelationshipDeleteQuery to delete the relationship
                     # it would be more query efficient

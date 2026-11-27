@@ -1394,7 +1394,7 @@ class SchemaBranch:
                             ) from None
 
     def validate_attribute_parameters(self, default_branch_schema: SchemaBranch | None = None) -> None:
-        for name in self.generics.keys():
+        for name in self.generics:
             generic_schema = self.get_generic(name=name, duplicate=False)
             for attribute in generic_schema.attributes:
                 if attribute.kind == "NumberPool":
@@ -1404,7 +1404,7 @@ class SchemaBranch:
                         default_branch_schema=default_branch_schema,
                     )
 
-        for name in self.nodes.keys():
+        for name in self.nodes:
             node_schema = self.get_node(name=name, duplicate=False)
             for attribute in node_schema.attributes:
                 if attribute.kind == "NumberPool":
@@ -1557,7 +1557,7 @@ class SchemaBranch:
 
     def _validate_node_computed_attributes(self) -> None:
         """Validate and register computed attributes defined directly on nodes."""
-        for name in self.nodes.keys():
+        for name in self.nodes:
             node_schema = self.get_node(name=name, duplicate=False)
             for attribute in node_schema.attributes:
                 self._validate_computed_attribute(node=node_schema, attribute=attribute)
@@ -1570,7 +1570,7 @@ class SchemaBranch:
 
         """
         defined_from_generic: dict[str, str] = {}
-        for name in self.generics.keys():
+        for name in self.generics:
             generic_schema = self.get_generic(name=name, duplicate=False)
             for attribute in generic_schema.attributes:
                 if attribute.computed_attribute and attribute.computed_attribute.kind != ComputedAttributeKind.USER:
@@ -1959,7 +1959,7 @@ class SchemaBranch:
                     )
 
     def process_hierarchy(self) -> None:
-        for name in self.nodes.keys():
+        for name in self.nodes:
             node = self.get_node(name=name, duplicate=False)
 
             if not node.hierarchy and not node.parent and not node.children:
@@ -1968,7 +1968,7 @@ class SchemaBranch:
             if not node.hierarchy and (node.parent is not None or node.children is not None):
                 raise ValueError(f"{node.kind} Hierarchy must be provided if either parent or children is defined.")
 
-            if node.hierarchy not in self.generics.keys():
+            if node.hierarchy not in self.generics:
                 # TODO add a proper exception for all schema related issue
                 raise ValueError(f"{node.kind} Unable to find the generic {node.hierarchy!r} provided in 'hierarchy'.")
 
@@ -2024,7 +2024,7 @@ class SchemaBranch:
         node_inheritance_handler = NodeInheritanceHandler()
 
         # For all node_schema, add the attributes & relationships from the generic / interface
-        for name in self.nodes.keys():
+        for name in self.nodes:
             node = self.get_node(name=name, duplicate=False)
 
             if node.inherit_from or node.namespace == "Builtin" or node.namespace not in RESTRICTED_NAMESPACES:
@@ -2042,7 +2042,7 @@ class SchemaBranch:
 
             generic_with_hierarchical_support = []
             for generic_kind in node.inherit_from:
-                if generic_kind not in self.generics.keys():
+                if generic_kind not in self.generics:
                     # TODO add a proper exception for all schema related issue
                     raise ValueError(f"{node.kind} Unable to find the generic {generic_kind}")
 
@@ -2068,7 +2068,7 @@ class SchemaBranch:
             self.set(name=name, schema=node)
 
         # Update all generics with the list of nodes referrencing them.
-        for generic_name in self.generics.keys():
+        for generic_name in self.generics:
             generic = self.get_generic(name=generic_name)
 
             if generic.kind in generics_used_by:
@@ -2561,7 +2561,7 @@ class SchemaBranch:
         )
 
     def add_hierarchy_generic(self) -> None:
-        for generic_name in self.generics.keys():
+        for generic_name in self.generics:
             generic = self.get_generic(name=generic_name, duplicate=False)
 
             if not generic.hierarchical:
@@ -2584,7 +2584,7 @@ class SchemaBranch:
             self.set(name=generic_name, schema=generic)
 
     def add_hierarchy_node(self) -> None:
-        for node_name in self.nodes.keys():
+        for node_name in self.nodes:
             node = self.get_node(name=node_name, duplicate=False)
 
             if node.parent is None and node.children is None:

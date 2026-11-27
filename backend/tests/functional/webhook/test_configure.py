@@ -37,9 +37,9 @@ class TestWebhookConfigure(TestInfrahubApp):
         assert len(automation.actions) == 1
         action: RunDeployment = automation.actions[0]
         assert action.parameters
-        assert "webhook_id" in action.parameters.keys()
+        assert "webhook_id" in action.parameters
         assert action.parameters["webhook_id"] == webhook1.id
-        assert "webhook_kind" in action.parameters.keys()
+        assert "webhook_kind" in action.parameters
         assert action.parameters["webhook_kind"] == InfrahubKind.STANDARDWEBHOOK
 
         # Configure it a second time to ensure the function is idempotent
@@ -125,16 +125,16 @@ class TestWebhookConfigure(TestInfrahubApp):
         automations = await gather_all_automations(client=prefect_client)
         automations_by_name = {automation.name: automation for automation in automations}
 
-        assert f"webhook::{webhook1.id}" in automations_by_name.keys()
-        assert f"webhook::{webhook2.id}" in automations_by_name.keys()
+        assert f"webhook::{webhook1.id}" in automations_by_name
+        assert f"webhook::{webhook2.id}" in automations_by_name
 
         automation = automations_by_name[f"webhook::{webhook2.id}"]
         assert len(automation.actions) == 1
         action: RunDeployment = automation.actions[0]
         assert action.parameters
-        assert "webhook_id" in action.parameters.keys()
+        assert "webhook_id" in action.parameters
         assert action.parameters["webhook_id"] == webhook2.id
-        assert "webhook_kind" in action.parameters.keys()
+        assert "webhook_kind" in action.parameters
         assert action.parameters["webhook_kind"] == InfrahubKind.CUSTOMWEBHOOK
 
     async def test_configure_all_invalidates_cache(

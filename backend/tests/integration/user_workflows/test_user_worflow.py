@@ -247,7 +247,7 @@ class TestUserWorkflow01(TestInfrahubApp):
         assert response.json()["data"] is not None
         result = response.json()["data"]
 
-        assert "InfraDevice" in result.keys()
+        assert "InfraDevice" in result
         assert len(result["InfraDevice"]["edges"]) == 2
 
         for device in result["InfraDevice"]["edges"]:

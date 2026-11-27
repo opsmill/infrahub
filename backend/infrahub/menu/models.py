@@ -44,7 +44,7 @@ class MenuDict:
 
     @classmethod
     def _find_child_item(cls, name: str, children: dict[str, MenuItemDict]) -> tuple[list[str], MenuItemDict | None]:
-        if name in children.keys():
+        if name in children:
             return [], children[name]
 
         for child in children.values():

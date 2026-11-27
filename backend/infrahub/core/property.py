@@ -41,7 +41,7 @@ class FlagPropertyMixin:
             return
 
         for flag in self._flag_properties:
-            if flag in kwargs.keys():
+            if flag in kwargs:
                 setattr(self, flag, kwargs.get(flag))
 
 
@@ -63,9 +63,9 @@ class NodePropertyMixin:
             return
 
         for node in self._node_properties:
-            if node in kwargs.keys():
+            if node in kwargs:
                 setattr(self, node, kwargs.get(node))
-            if f"{node}_id" in kwargs.keys():
+            if f"{node}_id" in kwargs:
                 setattr(self, f"{node}_id", kwargs.get(f"{node}_id"))
 
     @property
