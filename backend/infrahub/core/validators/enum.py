@@ -13,3 +13,7 @@ class ConstraintIdentifier(StrEnum):
     ATTRIBUTE_PARAMETERS_RANGES_UPDATE = "attribute.parameters.ranges.update"
     ATTRIBUTE_PARAMETERS_ALLOCATION_SCOPE_UPDATE = "attribute.parameters.allocation_scope.update"
     NODE_UNIQUENESS_CONSTRAINTS_UPDATE = "node.uniqueness_constraints.update"
+    NODE_PARENT_UPDATE = "node.parent.update"
+    NODE_CHILDREN_UPDATE = "node.children.update"
+    NODE_HIERARCHY_UPDATE = "node.hierarchy.update"
+    NODE_HIERARCHICAL_UPDATE = "node.hierarchical.update"

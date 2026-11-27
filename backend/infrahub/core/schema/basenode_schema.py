@@ -38,15 +38,23 @@ NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 NODE_PROPERTY_ATTRIBUTES = [DISPLAY_LABEL_ATTRIBUTE_NAME, HFID_ATTRIBUTE_NAME]
 INHERITED = "INHERITED"
 
-OPTIONAL_TEXT_FIELDS = [
-    "default_filter",
-    "description",
-    "label",
-    "menu_placement",
-    "documentation",
-    "parent",
-    "children",
-]
+
+class EmptyTextUpdate(Enum):
+    """What an empty string does to an optional text field when a schema update is merged."""
+
+    CLEARS = "clears"
+    IS_A_VALUE = "is_a_value"
+
+
+OPTIONAL_TEXT_FIELDS: dict[str, EmptyTextUpdate] = {
+    "default_filter": EmptyTextUpdate.CLEARS,
+    "description": EmptyTextUpdate.CLEARS,
+    "label": EmptyTextUpdate.CLEARS,
+    "menu_placement": EmptyTextUpdate.CLEARS,
+    "documentation": EmptyTextUpdate.CLEARS,
+    "parent": EmptyTextUpdate.IS_A_VALUE,
+    "children": EmptyTextUpdate.IS_A_VALUE,
+}
 
 
 def _json_schema_extra(schema: JsonDict) -> None:
@@ -764,9 +772,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         super().update(other=other)
 
-        # An empty string means clearing the existing field value
-        for field_name in OPTIONAL_TEXT_FIELDS:
-            if getattr(other, field_name, None) != "":  # noqa: PLC1901
+        # An empty string clears a field unless that field keeps it as a value
+        for field_name, on_empty in OPTIONAL_TEXT_FIELDS.items():
+            if on_empty is EmptyTextUpdate.IS_A_VALUE or getattr(other, field_name, None) != "":  # noqa: PLC1901
                 continue
             local_value = local_text_values[field_name]
             # keep current local value if it's already None or ""

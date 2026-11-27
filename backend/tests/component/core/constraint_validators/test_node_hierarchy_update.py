@@ -1,8 +1,10 @@
+from typing import Any
+
 import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import PathType, SchemaPathType
+from infrahub.core.constants import HierarchySide, PathType, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -75,7 +77,7 @@ async def test_query_children_success(
         branch=default_branch,
         node_schema=site_schema,
         schema_path=schema_path,
-        check_children=True,
+        side=HierarchySide.CHILDREN,
         allowed_peer_kinds=["LocationRack"],
         allowed_hierarchy_kinds=["LocationGeneric"],
     )
@@ -98,7 +100,7 @@ async def test_query_parent_success(
         branch=default_branch,
         node_schema=site_schema,
         schema_path=schema_path,
-        check_parent=True,
+        side=HierarchySide.PARENT,
         allowed_peer_kinds=["LocationRegion"],
         allowed_hierarchy_kinds=["LocationGeneric"],
     )
@@ -124,7 +126,7 @@ async def test_query_children_failure(
         branch=default_branch,
         node_schema=site_schema,
         schema_path=schema_path,
-        check_children=True,
+        side=HierarchySide.CHILDREN,
         allowed_peer_kinds=["LocationRegion"],
         allowed_hierarchy_kinds=["LocationGeneric"],
     )
@@ -194,7 +196,7 @@ async def test_query_parent_failure(
         branch=default_branch,
         node_schema=site_schema,
         schema_path=schema_path,
-        check_parent=True,
+        side=HierarchySide.PARENT,
         allowed_peer_kinds=["LocationRack"],
         allowed_hierarchy_kinds=["LocationGeneric"],
     )
@@ -271,7 +273,7 @@ async def test_query_update_on_branch_failure(
         branch=branch,
         node_schema=site_schema,
         schema_path=schema_path,
-        check_children=True,
+        side=HierarchySide.CHILDREN,
         allowed_peer_kinds=["LocationRegion"],
         allowed_hierarchy_kinds=["LocationGeneric"],
     )
@@ -359,7 +361,7 @@ async def test_query_delete_on_branch_failure(
         branch=branch,
         node_schema=site_schema,
         schema_path=schema_path,
-        check_children=True,
+        side=HierarchySide.CHILDREN,
         allowed_peer_kinds=["LocationRegion"],
         allowed_hierarchy_kinds=["LocationGeneric"],
     )
@@ -454,6 +456,53 @@ async def test_validator_parents_success(
     assert len(grouped_data_paths) == 1
     data_paths = grouped_data_paths[0].get_all_data_paths()
     assert len(data_paths) == 0
+
+
+async def test_validator_parents_emptied_failure(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small: dict[str, Node]
+) -> None:
+    """Emptying the parent of a kind is refused while its nodes still have a parent."""
+    hldsas = hierarchical_location_data_simple_and_small
+    site_schema = registry.schema.get(name="LocationSite")
+    site_schema.parent = ""
+
+    request = SchemaConstraintValidatorRequest(
+        branch=default_branch,
+        constraint_name="node.parent.update",
+        node_schema=site_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="parent"),
+        schema_branch=registry.schema.get_schema_branch(name=default_branch.name),
+    )
+
+    grouped_data_paths = await NodeHierarchyChecker(db=db, branch=default_branch).check(request)
+
+    assert len(grouped_data_paths) == 1
+    assert {(dp.node_id, dp.peer_id) for dp in grouped_data_paths[0].get_all_data_paths()} == {
+        (hldsas["s1r1"].id, hldsas["r1"].id),
+        (hldsas["s2r1"].id, hldsas["r1"].id),
+        (hldsas["s1r2"].id, hldsas["r2"].id),
+        (hldsas["s2r2"].id, hldsas["r2"].id),
+    }
+
+
+async def test_validator_parents_emptied_success(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple: SchemaRoot
+) -> None:
+    """Emptying the parent of a kind is accepted when none of its nodes has a parent."""
+    site_schema = registry.schema.get(name="LocationSite")
+    site_schema.parent = ""
+
+    request = SchemaConstraintValidatorRequest(
+        branch=default_branch,
+        constraint_name="node.parent.update",
+        node_schema=site_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="parent"),
+        schema_branch=registry.schema.get_schema_branch(name=default_branch.name),
+    )
+
+    grouped_data_paths = await NodeHierarchyChecker(db=db, branch=default_branch).check(request)
+
+    assert [paths.get_all_data_paths() for paths in grouped_data_paths] == [[]]
 
 
 async def test_validator_children_failure(
@@ -620,3 +669,165 @@ class TestHierarchyValidatorRenamedParent:
             (nodes["beijing"].id, nodes["asia"].id),
             (nodes["singapore"].id, nodes["asia"].id),
         }
+
+
+def _generic_turned_flat(default_branch: Branch, generic_kind: str) -> SchemaConstraintValidatorRequest:
+    candidate = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
+    generic = candidate.get_generic(name=generic_kind)
+    generic.hierarchical = False
+    candidate.set(name=generic_kind, schema=generic)
+    return SchemaConstraintValidatorRequest(
+        branch=default_branch,
+        constraint_name="node.hierarchical.update",
+        node_schema=generic,
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind=generic_kind, field_name="hierarchical"),
+        schema_branch=candidate,
+    )
+
+
+async def test_validator_generic_leaving_a_used_hierarchy_failure(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple: SchemaRoot
+) -> None:
+    """A generic cannot stop being hierarchical while kinds use its hierarchy."""
+    request = _generic_turned_flat(default_branch=default_branch, generic_kind="LocationGeneric")
+
+    grouped_data_paths = await NodeHierarchyChecker(db=db, branch=default_branch).check(request)
+
+    assert [paths.get_all_data_paths() for paths in grouped_data_paths] == [
+        [
+            DataPath(
+                branch=default_branch.name,
+                path_type=PathType.NODE,
+                node_id=str(request.node_schema.id),
+                kind="SchemaGeneric",
+                field_name="hierarchical",
+                value=["LocationRack", "LocationRegion", "LocationSite"],
+            )
+        ]
+    ]
+
+
+def _region_site_schema(hierarchical: bool, site_fields: dict[str, Any]) -> SchemaRoot:
+    hierarchy_fields: dict[str, dict[str, str]] = {
+        "Region": {"parent": "", "children": "LocationSite"},
+        "Site": {"parent": "LocationRegion", "children": ""},
+    }
+    return SchemaRoot(
+        version="1.0",
+        generics=[
+            {
+                "id": "generic-id",
+                "name": "Generic",
+                "namespace": "Location",
+                "hierarchical": hierarchical,
+                "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+            }
+        ],
+        nodes=[
+            {
+                "id": f"{name.lower()}-id",
+                "name": name,
+                "namespace": "Location",
+                "inherit_from": ["LocationGeneric"],
+                **(fields if hierarchical else {}),
+                **(site_fields if name == "Site" else {}),
+            }
+            for name, fields in hierarchy_fields.items()
+        ],
+    )
+
+
+def _site_joining_hierarchy(default_branch: Branch, site_fields: dict[str, Any]) -> SchemaConstraintValidatorRequest:
+    registry.schema.register_schema(
+        schema=_region_site_schema(hierarchical=False, site_fields=site_fields), branch=default_branch.name
+    )
+    candidate = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
+    candidate.load_schema(schema=_region_site_schema(hierarchical=True, site_fields=site_fields))
+    candidate.process()
+    return SchemaConstraintValidatorRequest(
+        branch=default_branch,
+        constraint_name="node.hierarchy.update",
+        node_schema=candidate.get_node(name="LocationSite"),
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="hierarchy"),
+        schema_branch=candidate,
+    )
+
+
+async def test_validator_kind_joining_a_hierarchy_with_its_own_parent_failure(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    """An existing kind with its own parent relationship cannot join a hierarchy, which defines its own."""
+    request = _site_joining_hierarchy(
+        default_branch=default_branch,
+        site_fields={
+            "relationships": [{"name": "parent", "peer": "LocationRegion", "cardinality": "one", "optional": True}]
+        },
+    )
+
+    grouped_data_paths = await NodeHierarchyChecker(db=db, branch=default_branch).check(request)
+
+    assert [paths.get_all_data_paths() for paths in grouped_data_paths] == [
+        [
+            DataPath(
+                branch=default_branch.name,
+                path_type=PathType.NODE,
+                node_id="site-id",
+                kind="SchemaNode",
+                field_name="parent",
+                value="LocationRegion",
+            )
+        ],
+        [],
+        [],
+    ]
+
+
+async def test_validator_generic_joining_a_hierarchy_with_a_reserved_name_failure(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    """An existing generic with a field named ancestors cannot become hierarchical, which reserves that name."""
+
+    def generic_schema(hierarchical: bool) -> SchemaRoot:
+        return SchemaRoot(
+            version="1.0",
+            generics=[
+                {
+                    "id": "generic-id",
+                    "name": "Generic",
+                    "namespace": "Location",
+                    "hierarchical": hierarchical,
+                    "attributes": [
+                        {"name": "name", "kind": "Text", "unique": True},
+                        {"name": "ancestors", "kind": "Text", "optional": True},
+                    ],
+                }
+            ],
+            nodes=[{"id": "site-id", "name": "Site", "namespace": "Location", "inherit_from": ["LocationGeneric"]}],
+        )
+
+    registry.schema.register_schema(schema=generic_schema(hierarchical=False), branch=default_branch.name)
+    candidate = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
+    candidate.load_schema(schema=generic_schema(hierarchical=True))
+    candidate.process()
+    request = SchemaConstraintValidatorRequest(
+        branch=default_branch,
+        constraint_name="node.hierarchical.update",
+        node_schema=candidate.get_generic(name="LocationGeneric"),
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationGeneric", field_name="hierarchical"),
+        schema_branch=candidate,
+    )
+
+    grouped_data_paths = await NodeHierarchyChecker(db=db, branch=default_branch).check(request)
+
+    assert [paths.get_all_data_paths() for paths in grouped_data_paths] == [
+        [
+            DataPath(
+                branch=default_branch.name,
+                path_type=PathType.NODE,
+                node_id="generic-id",
+                kind="SchemaGeneric",
+                field_name="ancestors",
+                value="Text",
+            )
+        ]
+    ]
