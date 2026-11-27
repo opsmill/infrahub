@@ -5,6 +5,8 @@ import type { SearchDocsParams } from "@/entities/navigation/domain/use-cases/se
 
 export type SearchObjectsKeyParams = Omit<SearchAnywhereParams, keyof PaginationParams>;
 
+export type SearchResultsPageKeyParams = SearchObjectsKeyParams & Required<PaginationParams>;
+
 export const searchAnywhereQueryKeys = {
   objects: ({ branchName, search, atDate, caseSensitive }: SearchObjectsKeyParams) => [
     branchName,
@@ -13,5 +15,7 @@ export const searchAnywhereQueryKeys = {
     search,
     caseSensitive,
   ],
+  results: (params: SearchObjectsKeyParams) => ["search-results", params],
+  resultsPage: (params: SearchResultsPageKeyParams) => ["search-results", params],
   docs: ({ query, limit }: SearchDocsParams) => ["search-docs", query, limit],
 } as const;

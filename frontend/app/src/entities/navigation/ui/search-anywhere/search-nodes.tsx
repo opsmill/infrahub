@@ -5,31 +5,25 @@ import React from "react";
 import { CountBadge } from "@/shared/components/display/count-badge";
 import { Icon } from "@/shared/components/display/icon";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { Skeleton } from "@/shared/components/loading/skeleton";
-import { Badge } from "@/shared/components/ui/badge";
 import { InfiniteTrigger } from "@/shared/components/utils/infinite-trigger";
-import { useFormatDate } from "@/shared/context/date-preferences-context";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { formatNumberDisplay } from "@/shared/utils/number";
 
-import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
-import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import type { ObjectResult } from "@/entities/navigation/domain/use-cases/search-anywhere";
 import { searchCaseSensitiveAtom } from "@/entities/navigation/stores/search-case-sensitive.atom";
 import {
   SEARCH_BATCH_SIZE,
   useGetSearchAnywhere,
 } from "@/entities/navigation/ui/queries/search-anywhere.query";
+import { getSearchResultsUrl } from "@/entities/navigation/ui/routing/search-results-urls";
 import { SearchAnywhereGroup } from "@/entities/navigation/ui/search-anywhere/search-anywhere-group";
 import { SearchAnywhereItem } from "@/entities/navigation/ui/search-anywhere/search-anywhere-item";
-import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
-import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
-import { getSchemaObjectColumns } from "@/entities/nodes/object/ui/object-table/get-schema-object-columns";
-import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
+import {
+  SearchResultNodeSummary,
+  SearchResultNodeSummarySkeleton,
+  useGetSearchResultObject,
+} from "@/entities/navigation/ui/search-anywhere/search-result-node";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
-import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export const SearchNodes = () => {
   const query = useCommandState((state) => state.search);
@@ -67,30 +61,51 @@ export const SearchNodes = () => {
   if (rows.length === 0) return null;
 
   return (
-    <SearchAnywhereGroup
-      heading={<SearchNodesHeading count={rows.length} hasMore={hasNextPage} />}
-      className="min-h-26 shrink"
-      viewportRef={viewportRef}
-    >
-      {rows.map((node) => (
-        <NodesOptions key={node.id} node={node} />
-      ))}
+    <>
+      <SearchAnywhereGroup
+        heading={<SearchNodesHeading count={rows.length} hasMore={hasNextPage} />}
+        className="min-h-26 shrink"
+        viewportRef={viewportRef}
+      >
+        {rows.map((node) => (
+          <NodesOptions key={node.id} node={node} />
+        ))}
 
-      <InfiniteTrigger
-        hasNextPage={hasNextPage && !isFetching && !isFetchNextPageError}
-        onLoadMore={fetchNextPage}
-        rootRef={viewportRef}
-      />
+        <InfiniteTrigger
+          hasNextPage={hasNextPage && !isFetching && !isFetchNextPageError}
+          onLoadMore={fetchNextPage}
+          rootRef={viewportRef}
+        />
 
-      <SearchNodesListEnd
-        isLoadingMore={isFetchingNextPage}
-        hasMore={hasNextPage}
-        hasFailed={isFetchNextPageError}
-        count={rows.length}
-      />
-    </SearchAnywhereGroup>
+        <SearchNodesListEnd
+          isLoadingMore={isFetchingNextPage}
+          hasMore={hasNextPage}
+          hasFailed={isFetchNextPageError}
+          count={rows.length}
+        />
+      </SearchAnywhereGroup>
+
+      <ShowAllSearchResults search={query.trim()} caseSensitive={caseSensitive} />
+    </>
   );
 };
+
+interface ShowAllSearchResultsProps {
+  search: string;
+  caseSensitive: boolean;
+}
+
+const ShowAllSearchResults = ({ search, caseSensitive }: ShowAllSearchResultsProps) => (
+  <SearchAnywhereGroup>
+    <SearchAnywhereItem
+      to={getSearchResultsUrl({ search, caseSensitive })}
+      value="show-all-search-results"
+    >
+      <Icon icon="mdi:format-list-bulleted" className="px-2 text-lg" />
+      Show all results for <span className="font-semibold">{search}</span>
+    </SearchAnywhereItem>
+  </SearchAnywhereGroup>
+);
 
 interface SearchNodesHeadingProps {
   count: number;
@@ -140,20 +155,7 @@ type NodesOptionsProps = {
 };
 
 export const NodesOptions = ({ node }: NodesOptionsProps) => {
-  const { schema } = useSchema(node.kind);
-  const {
-    data: objectDetailsData,
-    isPending,
-    error,
-  } = useGetObject(
-    {
-      objectSchema: schema!,
-      objectId: node.id,
-      getRelationshipsVisible: (relationships) =>
-        relationships.filter((rel) => rel.cardinality === "one"),
-    },
-    { refetchOnWindowFocus: false } // Otherwise every loaded row refetches at once.
-  );
+  const { schema, object, isPending, error } = useGetSearchResultObject(node);
 
   if (!schema) return null;
 
@@ -161,143 +163,21 @@ export const NodesOptions = ({ node }: NodesOptionsProps) => {
 
   if (error) return null;
 
-  if (!objectDetailsData) return <div className="text-sm">No data found for this object</div>;
+  if (!object) return <div className="text-sm">No data found for this object</div>;
 
-  const displayIpNamespace =
-    isOfKind(IP_PREFIX_GENERIC, schema) || isOfKind(IP_ADDRESS_GENERIC, schema);
-
-  const columns = getSchemaObjectColumns({
-    schema,
-    forListView: true,
-    limit: displayIpNamespace ? 6 : 7,
-    forSearchAnywhere: true,
-  });
-
-  const url = getObjectDetailsUrl(objectDetailsData.__typename, objectDetailsData.id);
+  const url = getObjectDetailsUrl(object.__typename, object.id);
 
   return (
     <SearchAnywhereItem to={url} value={url}>
-      <Icon
-        icon={schema.icon || "mdi:code-braces-box"}
-        className="px-2 py-0.5 text-accent text-lg"
-      />
-
-      <div className="grow overflow-auto text-sm">
-        <div className="flex justify-between">
-          <span className="mr-1 font-semibold text-accent">{getNodeLabel(objectDetailsData)}</span>
-
-          <div className="inline-flex items-center gap-1">
-            <Badge variant="blue" className="py-0 text-xxs">
-              {schema.namespace}
-            </Badge>
-            <span className="mr-2 font-medium text-xxs">{schema.label}</span>
-          </div>
-        </div>
-
-        <div className="mt-1 flex gap-5 text-foreground-muted">
-          {displayIpNamespace && (
-            <NodeAttribute
-              title={"IP Namespace"}
-              value={{ node: objectDetailsData?.ip_namespace?.node ?? undefined }}
-            />
-          )}
-
-          {columns
-            .filter(({ name }) => !["name", "label"].includes(name))
-            .map((column) => (
-              <NodeAttribute
-                key={column.name}
-                title={column.label}
-                kind={column.kind}
-                value={objectDetailsData[column.name]}
-              />
-            ))}
-        </div>
-      </div>
+      <SearchResultNodeSummary schema={schema} object={object} />
     </SearchAnywhereItem>
-  );
-};
-
-type NodeAttributeProps = {
-  title: string;
-  kind?: string;
-  value:
-    | { value: string | number | boolean | null }
-    | { value: string | null; label: string; color: string }
-    | { node: NodeCore }
-    | { edges: Array<{ node: NodeCore }> };
-};
-
-const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
-  const { formatDate } = useFormatDate();
-
-  const formatValue = (): string | number | boolean | React.ReactElement | null => {
-    if ("node" in value && value.node) {
-      return value.node ? getNodeLabel(value.node) : null;
-    }
-
-    if ("edges" in value && value.edges?.length > 0) {
-      return value.edges.map(({ node }) => (node ? getNodeLabel(node) : "")).join(", ");
-    }
-
-    if ("value" in value && value.value) {
-      switch (kind) {
-        case ATTRIBUTE_KIND.BOOLEAN:
-          return <Icon icon={value.value ? "mdi:check" : "mdi:remove"} className="text-sm" />;
-        case ATTRIBUTE_KIND.COLOR:
-          return (
-            <div
-              className="mt-0.5 h-4 w-4 rounded-sm"
-              style={{ background: value.value as string }}
-            />
-          );
-        case ATTRIBUTE_KIND.DATETIME: {
-          const date = typeof value.value === "string" ? new Date(value.value) : new Date();
-          return formatDate(date, "datetime");
-        }
-        case ATTRIBUTE_KIND.DROPDOWN: {
-          if (!("color" in value)) return value.value;
-
-          const color = value.color === "" ? "#f1f1f1" : value.color;
-          return (
-            <div
-              className="truncate rounded-sm border border-transparent px-1.5 text-center font-medium text-foreground"
-              style={{ background: `${color}40` }}
-            >
-              {value.label}
-            </div>
-          );
-        }
-      }
-      return value.value;
-    }
-
-    return null;
-  };
-
-  return (
-    <div className="flex flex-col overflow-hidden whitespace-nowrap text-xxs leading-3">
-      <span>{title}</span>
-      <span className="truncate font-medium text-foreground">{formatValue() || "-"}</span>
-    </div>
   );
 };
 
 export const SearchResultNodeSkeleton = () => {
   return (
     <Command.Item disabled className="flex w-full py-2">
-      <Skeleton className="mx-1 mr-2 h-6 w-6 rounded-sm" />
-
-      <div className="grow space-y-2">
-        <div className="flex space-x-2">
-          <Skeleton className="h-3 w-40" />
-          <Skeleton className="h-3 w-20" />
-        </div>
-        <div className="space-y-1">
-          <Skeleton className="h-3 max-w-xl" />
-          <Skeleton className="h-3 max-w-xl" />
-        </div>
-      </div>
+      <SearchResultNodeSummarySkeleton />
     </Command.Item>
   );
 };

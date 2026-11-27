@@ -197,6 +197,10 @@ export const router = createBrowserRouter([
                 lazy: () => import("@/pages/global-preferences"),
               },
               {
+                path: "/search",
+                lazy: () => import("@/pages/search"),
+              },
+              {
                 path: "/proposed-changes",
                 children: [
                   {
