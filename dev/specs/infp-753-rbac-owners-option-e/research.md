@@ -264,7 +264,7 @@ The Technical Context of the plan has no open "NEEDS CLARIFICATION" item. The op
 - Functional tests through GraphQL: the scenarios of the user stories. These are the tests of the user-facing API.
 - Query benchmarks in `backend/tests/query_benchmark/`: SC-001 to SC-006 and SC-008, on the reference data set.
 - Integration Docker test in `backend/tests/integration_docker/`: a kind change and a field rename on nodes with owners. The constitution asks for this level for schema migrations.
-- E2E tests in `tests/e2e/ownership/`: one scenario for each of user stories 1 to 6, through the SDK client fixture `infrahub_client` on the full stack. They open no page. User story 7 has none, because its setting needs its own stack.
+- No E2E test. Decision of 2026-11-27: `tests/e2e/` is the browser suite, and the E2E tests come with the frontend work ([IFC-3638](https://opsmill.atlassian.net/browse/IFC-3638)), which is not part of these specs. The first build had API tests in `tests/e2e/ownership/`; they are removed.
 - Spike, before the first pull request: SC-003 to SC-006, SC-009 and SC-010 with plain Cypher queries. A second measure of SC-009 and SC-010 uses a test implementation of the change check that reads owners.
 - Not measured so far: the kind migration, concurrent writes, and a build without the ownership code for comparison.
 - The existing permission tests must pass without changes (SC-007).

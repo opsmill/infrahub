@@ -54,7 +54,7 @@ Technical approach (see [research.md](research.md)):
 | I. Schema-Driven Integrity | PASS with note | "Applies to", the action for changing owners and the global permission are in the core schema and the enums. Owner edges are graph metadata, like `HAS_OWNER` and `IS_PROTECTED` today. They are declared in `core/graph/schema.py`. See Complexity Tracking. |
 | II. Branch-Safe by Default | OPEN | All owner edges carry branch and time data. Each merge and rebase case of FR-030 gets a test. `OwnerSet` and `NoOwner` vertices have no branch data. Two points are not decided, and a decision task blocks Phase 3 for each: the design for two branches that create the same `OwnerSet` (R-21), and the rule for conflicts between owner changes (R-9). |
 | III. Type Safety & Explicit Contracts | PASS | Contracts in [contracts/](contracts/). Query results through frozen dataclasses. The change check is a typed interface. |
-| IV. Test Discipline | PASS with note | Unit, component and functional tests for each requirement. An integration Docker test for the schema migrations. E2E tests in `tests/e2e/ownership/` run user stories 1 to 6 through the API on the full stack (R-19). They open no page, because this plan has no frontend change. User story 7 has no E2E test, because its setting needs its own stack. A maintainer confirms both points (first task of tasks.md). |
+| IV. Test Discipline | FAIL, accepted | Unit, component and functional tests for each requirement. An integration Docker test for the schema migrations. No E2E test: the constitution asks for pytest-playwright tests in `tests/e2e/`, and this plan has no frontend change. The maintainer accepted this on 2026-11-27: the E2E tests come with the frontend work ([IFC-3638](https://opsmill.atlassian.net/browse/IFC-3638)), which is not part of these specs ([provisional-decisions.md](provisional-decisions.md), "Decision of 2026-11-27: E2E tests come with the frontend"). |
 | V. Query Performance & Efficiency | PASS with measurement | One batch read for each request. No owner read without a request. Each new query gets `EXPLAIN` and `PROFILE` checks and a query benchmark. SC-003 is not met with the database filter (R-6). |
 | VI. Security & Input Boundaries | PASS | Owner inputs are validated (FR-003). Cypher uses parameters. Community refuses Enterprise permission values at save time. At load time, it drops those that allow and keeps those that deny (R-15). |
 | VII. Simplicity & Maintainability | PASS | No new mutation, no new dependency. Sources stay on nodes only. An index of the owners that apply is built only if the spike shows that SC-003 needs it. |
@@ -175,7 +175,6 @@ backend/tests/
 ├── integration_docker/                      # Schema migrations on nodes with owners
 └── query_benchmark/                         # SC-001 to SC-006, SC-008
 
-tests/e2e/ownership/                         # User stories 1 to 6 through the API, no page
 
 python_sdk/infrahub_sdk/                     # Submodule
 └── spec/object.py                           # node_metadata and field owners in object files

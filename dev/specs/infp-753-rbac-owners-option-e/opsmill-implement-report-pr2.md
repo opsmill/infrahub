@@ -78,6 +78,8 @@ Environment for all rows: local Linux VM, the uv venv of the repository, Docker 
 
 Quickstart scenarios of user stories 1 to 5 ran on the same image with a scratch test that is not committed: `5 passed in 131.09s (0:02:11)`, 2026-11-26T14:55:58Z. Scenario 6 (the upgrade) ran by hand: data on release 1.12.3, then `infrahub db ownership-report` and `infrahub upgrade` with the image, 2026-11-26T15:32:19Z to 15:35:44Z, `Upgrade complete SUCCESS`.
 
+On 2026-11-27 the maintainer removed tests/e2e/ownership/, because tests/e2e/ is the browser suite and these tests opened no page (provisional-decisions.md, "Decision of 2026-11-27: E2E tests come with the frontend"). The three rows above that name tests/e2e/ownership are runs from before the removal.
+
 Each test file that a chunk added was proven able to fail: the chunk broke the matching code for a moment and saw the test fail, then restored it. Each review fix test failed before its fix.
 
 ## 5. Review findings
@@ -107,6 +109,7 @@ Review mode: command (/code-review)
 - The base benchmark first ran at the same time as an E2E stack. The 7 base rows that could have overlapped ran again alone.
 - This report is in a new file. `opsmill-implement-report.md` keeps the report of pull request 1.
 - No towncrier fragment: the changelog is one consolidated set after all pull requests are in the feature branch (T149).
+- On 2026-11-27, at the maintainer's request, the four API tests in tests/e2e/ownership/ were removed. The constitution exception (no E2E test until the frontend work, IFC-3638) is recorded in plan.md and provisional-decisions.md.
 
 ## 7. Suggested next steps
 

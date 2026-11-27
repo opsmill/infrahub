@@ -150,3 +150,13 @@ Guillaume Mazoyer, maintainer, made this decision on 2026-11-27. Pull request 1 
 - "No owner" is a `HAS_OWNER` edge to the shared `NoOwner` vertex. The `HAS_NO_OWNER` edge type and its three indexes are removed.
 - Reason, from the commit: the graph has one edge type less, and the diff and the merge read half as many owner patterns. The `owner_branch`, `owner_from` and `owner_to` indexes serve the edges to `NoOwner`.
 - Rule for every read of owners: a Cypher read of the owners from a `HAS_OWNER` edge of a `Node`, `Attribute` or `OwnerSet` vertex ends the edge at `(:Node)`. `NoOwner` has no `Node` label. A check of whether a holder has its own state reads `HAS_OWNER` to any end vertex, so it also sees "no owner".
+
+## Decision of 2026-11-27: E2E tests come with the frontend
+
+Guillaume Mazoyer, maintainer, made this decision on 2026-11-27.
+
+- `tests/e2e/` is the browser suite (pytest-playwright, `tests/e2e/README.md`). Pull request 2 had four API tests in `tests/e2e/ownership/` that opened no page. They are removed.
+- The constitution asks for pytest-playwright E2E tests for each user-facing feature (principle IV). These specs have no frontend change, so they have no E2E test. This exception is accepted: the E2E tests come with the frontend work ([IFC-3638](https://opsmill.atlassian.net/browse/IFC-3638)), which is not part of these specs.
+- Reason: the component tests in `backend/tests/component/graphql/metadata/` and `backend/tests/component/core/ownership/` already test the same behavior through GraphQL with a real database. No owner behavior needs the deployed services or the task workers: an object template copies its owners inside the create, and the owners that a profile gives are read through the profile.
+- The runs on the full stack stay: the integration Docker test of T110 (schema migrations run through the workers) and the scenarios of quickstart.md.
+- Task T087 of pull request 3 asks for an API test in `tests/e2e/ownership/`. Pull request 3 chooses its level.
