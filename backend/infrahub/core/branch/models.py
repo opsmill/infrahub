@@ -183,10 +183,8 @@ class Branch(StandardNode):
 
         Args:
             db: Database connection instance.
-            limit: Page size, or None to read every match. None leaves the underlying query without
-                a LIMIT, so it is served in chunks of the configured query size limit instead.
-            offset: Number of matches to skip. Pairing it with `limit=None` issues one unbounded
-                query that bypasses the query size limit, so callers must not combine the two.
+            limit: Page size, or None to read every match.
+            offset: Number of matches to skip.
             ids: Restrict to these branch UUIDs, when `branch_filters` carries none.
             name: Restrict to this branch name, when `branch_filters` carries none.
             node_ordering: Ordering to apply; defaults to ascending database id.

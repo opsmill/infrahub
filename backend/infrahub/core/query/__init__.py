@@ -25,8 +25,6 @@ from infrahub.exceptions import QueryError
 if TYPE_CHECKING:
     from typing import Self
 
-    from neo4j import Record
-
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
@@ -552,8 +550,7 @@ class Query:
             tmp_query_lines.append("ORDER BY " + ",".join(self.order_by))
 
         # Bound as parameters rather than literals, a zero offset included, so every page of a
-        # paginated query shares one text, and with it one cached plan. A zero limit is no bound,
-        # the same reading `execute()` gives it when choosing how to run.
+        # paginated query shares one text, and with it one cached plan. A zero limit is no bound.
         if offset is not None and self.insert_limit:
             params[PAGINATION_OFFSET_PARAM] = offset
             tmp_query_lines.append(f"SKIP ${PAGINATION_OFFSET_PARAM}")
@@ -653,17 +650,14 @@ class Query:
         rendered = self.render()
 
         if self.type == QueryType.READ:
-            if self.limit or self.offset:
-                results = await db.execute_query(
-                    query=rendered.text,
-                    params=rendered.params,
-                    name=self.name,
-                    context=self.get_context(),
-                    type=self.type,
-                    timeout_seconds=timeout_seconds,
-                )
-            else:
-                results = await self.query_with_size_limit(db=db, timeout_seconds=timeout_seconds)
+            results = await db.execute_query(
+                query=rendered.text,
+                params=rendered.params,
+                name=self.name,
+                context=self.get_context(),
+                type=self.type,
+                timeout_seconds=timeout_seconds,
+            )
 
         elif self.type == QueryType.WRITE:
             results, metadata = await db.execute_query_with_metadata(
@@ -687,31 +681,6 @@ class Query:
         self.has_been_executed = True
 
         return self
-
-    async def query_with_size_limit(self, db: InfrahubDatabase, timeout_seconds: float | None = None) -> list[Record]:
-        query_limit = config.SETTINGS.database.query_size_limit
-        offset = 0
-        results: list[Record] = []
-        remaining = True
-        while remaining:
-            rendered = self.render(limit=query_limit, offset=offset)
-            offset_results, metadata = await db.execute_query_with_metadata(
-                query=rendered.text,
-                params=rendered.params,
-                name=self.name,
-                context=self.get_context(),
-                type=self.type,
-                timeout_seconds=timeout_seconds,
-            )
-            if "stats" in metadata:
-                self.stats.add(metadata.get("stats"))
-            results.extend(offset_results)
-            offset += query_limit
-
-            if len(offset_results) < query_limit:
-                remaining = False
-
-        return results
 
     async def count(self, db: InfrahubDatabase) -> int:
         """Count the number of results matching a READ query.

@@ -4,7 +4,6 @@ import pytest
 from infrahub_sdk.exceptions import TimestampFormatError
 from pydantic import ValidationError as PydanticValidationError
 
-from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.branch.enums import BranchStatus
@@ -544,12 +543,8 @@ async def test_get_list_with_offset(db: InfrahubDatabase, default_branch: Branch
     )
 
 
-async def test_get_list_unpaged_reads_every_branch(
-    db: InfrahubDatabase, default_branch: Branch, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """`limit=None` drops the LIMIT, so the read is served in chunks of the query size limit."""
-    monkeypatch.setattr(config.SETTINGS.database, "query_size_limit", 3)
-
+async def test_get_list_unpaged_reads_every_branch(db: InfrahubDatabase, default_branch: Branch) -> None:
+    """`limit=None` reads every branch."""
     created_names = {f"unpaged-{index:02d}" for index in range(10)}
     for name in sorted(created_names):
         await Branch(name=name, branched_from=Timestamp().to_string()).save(db=db)

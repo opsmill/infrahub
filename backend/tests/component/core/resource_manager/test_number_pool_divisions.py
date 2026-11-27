@@ -457,17 +457,6 @@ class TestScopedPoolQueries:
 
         assert (utilization.figures.used_default_branch, utilization.figures.used_branches) == (2, 1)
 
-    async def test_divisions_read_one_row_at_a_time_are_each_counted_once(
-        self, db: InfrahubDatabase, dataset: DivisionsDataset, query_limit_of_one: None
-    ) -> None:
-        figures = await division_figures(db=db, pool=dataset.site_pool, branch=dataset.other_branch)
-
-        assert figures == {
-            (dataset.sites["site-a"],): (3, 2, 1),
-            (dataset.sites["site-b"],): (2, 1, 1),
-            (dataset.sites["site-c"],): (1, 0, 1),
-        }
-
     async def test_a_division_of_two_elements(self, db: InfrahubDatabase, dataset: DivisionsDataset) -> None:
         figures = await division_figures(db=db, pool=dataset.site_role_pool, branch=dataset.default_branch)
 

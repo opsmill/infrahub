@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast
 
 import pytest
@@ -16,15 +16,6 @@ class PagingCase:
     name: str
     kwargs: dict[str, Any]
     expected_message: str
-
-
-@dataclass
-class SizeCase:
-    name: str
-    repository_ids: list[str] = field(default_factory=lambda: ["repository-1"])
-    branch_names: list[str] = field(default_factory=lambda: ["main"])
-    attribute_names: list[str] = field(default_factory=lambda: ["commit"])
-    expected_limit: int = 1
 
 
 def _build(**kwargs: Any) -> RepositoryBranchAttributesQuery:
@@ -75,29 +66,5 @@ async def test_paging_arguments_left_unset_are_accepted() -> None:
         global_branch_name="-global-",
     )
 
-    assert query.limit == 2
-
-
-@pytest.mark.parametrize(
-    "case",
-    [
-        SizeCase(name="single_triple", expected_limit=1),
-        SizeCase(name="many_branches", branch_names=["main", "branch-1", "branch-2"], expected_limit=3),
-        SizeCase(
-            name="branches_times_attributes",
-            branch_names=["main", "branch-1"],
-            attribute_names=["commit", "ref", "sync_status"],
-            expected_limit=6,
-        ),
-        SizeCase(name="no_attributes_selected", attribute_names=[], expected_limit=1),
-    ],
-    ids=lambda case: case.name,
-)
-def test_limit_covers_every_row_the_statement_can_produce(case: SizeCase) -> None:
-    query = _build(
-        repository_ids=case.repository_ids,
-        branch_names=case.branch_names,
-        attribute_names=case.attribute_names,
-    )
-
-    assert query.limit == case.expected_limit
+    assert query.limit is None
+    assert query.offset is None

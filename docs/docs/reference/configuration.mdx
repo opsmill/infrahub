@@ -130,7 +130,7 @@ The HTTP settings control how Infrahub interacts with external HTTP servers. Thi
 | `INFRAHUB_DB_TLS_ENABLED` | Indicates if TLS is enabled for the connection | boolean | False |
 | `INFRAHUB_DB_TLS_INSECURE` | Indicates if TLS certificates are verified | boolean | False |
 | `INFRAHUB_DB_TLS_CA_FILE` | File path to a CA cert or bundle in PEM format, or the PEM text itself. | string | None |
-| `INFRAHUB_DB_QUERY_SIZE_LIMIT` | The max number of records to fetch in a single query before performing internal pagination. | integer | 5000 |
+| `INFRAHUB_DB_QUERY_SIZE_LIMIT` | Batch size of the operations that read or write records in batches: diff calculation and storage, deletion of branch data, changelog enrichment and some migrations. | integer | 5000 |
 | `INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY` | Maximum number of level to search in a hierarchy. | integer | 5 |
 | `INFRAHUB_DB_RETRY_LIMIT` | Maximum number of times a transient issue in a transaction should be retried. | integer | 3 |
 | `INFRAHUB_DB_RETRY_BASE_DELAY` | Base delay in seconds for exponential backoff on transaction retries. | number | 0.1 |

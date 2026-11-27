@@ -1,0 +1,1 @@
+Large database reads are now faster. A read of 5,000 rows or more, the default query size limit, ran its query again for each block of 5,000 rows, and each run had to compute all the rows before the block. Such a read now runs its query once.

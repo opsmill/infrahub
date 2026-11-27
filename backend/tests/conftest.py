@@ -255,14 +255,6 @@ async def do_default_branch(db: InfrahubDatabase) -> Branch:
 
 
 @pytest.fixture
-def query_limit_of_one() -> Generator[None, None, None]:
-    original_query_size_limit = config.SETTINGS.database.query_size_limit
-    config.SETTINGS.database.query_size_limit = 1
-    yield
-    config.SETTINGS.database.query_size_limit = original_query_size_limit
-
-
-@pytest.fixture
 def neo4j_runtime_parallel(db: InfrahubDatabase) -> Generator[None, None, None]:
     original_neo4j_runtime = db.default_neo4j_runtime
     db.default_neo4j_runtime = Neo4jRuntime.PARALLEL
