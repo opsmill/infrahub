@@ -98,10 +98,7 @@ export const EnumAddAction = ({ schema, field, addOption }: EnumAddActionProps) 
   return (
     <div className="p-2 pt-0">
       {namespace?.user_editable && (
-        <Button
-          className="w-full border border-custom-blue-700/20 bg-custom-blue-700/10 text-custom-blue-700 not-data-disabled:data-hovered:bg-custom-blue-700/20"
-          onPress={() => setOpen(!open)}
-        >
+        <Button variant="primary-outline" className="w-full" onPress={() => setOpen(!open)}>
           + Add option
         </Button>
       )}

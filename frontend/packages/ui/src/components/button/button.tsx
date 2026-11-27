@@ -31,13 +31,13 @@ const buttonVariants = tv({
         "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
       ],
       "primary-outline": [
-        "inset-shadow-[0_1px_0_rgba(255,255,255,0.9)] border-cyan-700 bg-gradient-to-b from-stone-100 to-white text-cyan-800 dark:text-cyan-600",
+        "inset-shadow-[0_1px_0_rgba(255,255,255,0.9)] border-cyan-700 bg-gradient-to-b from-stone-100 to-white text-cyan-800 dark:text-cyan-500",
         "data-hovered:from-neutral-100",
         "dark:inset-shadow-[0_1px_0_rgba(255,255,255,0.12)] dark:from-stone-500/15 dark:to-stone-500/5",
         "dark:data-hovered:from-stone-500/25",
       ],
       danger: [
-        "inset-shadow-[0_1px_0_rgba(255,255,255,0.15)] border-rose-700 bg-gradient-to-b from-rose-700 to-rose-700/70 text-white",
+        "inset-shadow-[0_1px_0_rgba(255,255,255,0.15)] border-rose-700 bg-gradient-to-b from-rose-700 to-rose-700/80 text-white",
         "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
       ],
       "danger-outline": [
@@ -47,11 +47,11 @@ const buttonVariants = tv({
         "dark:data-hovered:from-rose-500/15",
       ],
       warning: [
-        "inset-shadow-[0_1px_0_rgba(255,255,255,0.15)] border-amber-600 bg-gradient-to-b from-amber-600 to-amber-700/70 text-white",
+        "inset-shadow-[0_1px_0_rgba(255,255,255,0.15)] border-amber-700 bg-gradient-to-b from-amber-700 to-amber-800/80 text-white",
         "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
       ],
       active: [
-        "inset-shadow-[0_1px_0_rgba(255,255,255,0.15)] border-emerald-700 bg-gradient-to-b from-emerald-700 to-emerald-800/70 text-white",
+        "inset-shadow-[0_1px_0_rgba(255,255,255,0.15)] border-emerald-700 bg-gradient-to-b from-emerald-700 to-emerald-800/80 text-white",
         "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
       ],
       outline: [

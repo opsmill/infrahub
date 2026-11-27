@@ -90,7 +90,7 @@ exports[`fix ts error`] = {
     "src/entities/nodes/relationships/ui/queries/get-default-parent.query.ts:1805247483": [
       [18, 34, 2, "tsc: Property \'id\' does not exist on type \'NodeCore | NodeCore[] | undefined; allocatedKind?: string | undefined; }; } | { from_pool: { id: string; prefixLength?: number\'.\\n  Property \'id\' does not exist on type \'NodeCore[]\'.", "5861160"]
     ],
-    "src/entities/nodes/relationships/ui/relationship-hierarchical-combobox-list.tsx:3281467885": [
+    "src/entities/nodes/relationships/ui/relationship-hierarchical-combobox-list.tsx:1364943913": [
       [156, 61, 10, "tsc: No overload matches this call.\\n  Overload 1 of 2, \'(predicate: (value: NodeCore, index: number, array: NodeCore[]) => value is NodeCore, thisArg?: any): NodeCore[]\', gave the following error.\\n    Argument of type \'(relationshipNode: RelationshipNode) => boolean\' is not assignable to parameter of type \'(value: NodeCore, index: number, array: NodeCore[]) => value is NodeCore\'.\\n      Types of parameters \'relationshipNode\' and \'value\' are incompatible.\\n        Type \'NodeCore\' is not assignable to type \'RelationshipNode\'.\\n          Types of property \'display_label\' are incompatible.\\n            Type \'null | string | undefined\' is not assignable to type \'string\'.\\n              Type \'undefined\' is not assignable to type \'string\'.\\n  Overload 2 of 2, \'(predicate: (value: NodeCore, index: number, array: NodeCore[]) => unknown, thisArg?: any): NodeCore[]\', gave the following error.\\n    Argument of type \'(relationshipNode: RelationshipNode) => boolean\' is not assignable to parameter of type \'(value: NodeCore, index: number, array: NodeCore[]) => unknown\'.\\n      Types of parameters \'relationshipNode\' and \'value\' are incompatible.\\n        Type \'NodeCore\' is not assignable to type \'RelationshipNode\'.\\n          Types of property \'display_label\' are incompatible.\\n            Type \'null | string | undefined\' is not assignable to type \'string\'.\\n              Type \'undefined\' is not assignable to type \'string\'.", "2021508816"],
       [165, 49, 4, "tsc: Argument of type \'NodeCore\' is not assignable to parameter of type \'RelationshipNode\'.\\n  Types of property \'display_label\' are incompatible.\\n    Type \'null | string | undefined\' is not assignable to type \'string\'.\\n      Type \'undefined\' is not assignable to type \'string\'.", "2087865285"]
     ],
@@ -156,7 +156,7 @@ exports[`fix ts error`] = {
       [146, 8, 5, "tsc: Type \'{ value: number; label: string; }[]\' is not assignable to type \'DropdownOption[]\'.\\n  Type \'{ value: number; label: string; }\' is not assignable to type \'DropdownOption\'.\\n    Types of property \'value\' are incompatible.\\n      Type \'number\' is not assignable to type \'string\'.", "179721187"],
       [153, 8, 12, "tsc: Type \'{ name: string; peer: string; cardinality: \\"many\\"; }\' is missing 10 properties from type \'\\"Attribute\\" | \\"Component\\" | \\"Group\\" | \\"Hierarchy\\" | \\"Parent\\" | \\"Profile\\" | \\"Template\\"; label?: string | \\"absent\\"; on_delete?: \\"no-action\\" | \\"agnostic\\" | \\"any\\"; read_only: boolean; deprecation?: string | \\"aware\\" | \\"cascade\\" | \\"extra\\"; } | \\"inbound\\"; hierarchical?: string | \\"many\\"; min_count: number; max_count: number; common_parent?: string | \\"outbound\\" | null | null | null | null | null | null | null | null | null | null | null | undefined; allow_override: \\"none\\" | undefined; cardinality: \\"one\\" | undefined; common_relatives?: string[] | undefined; description?: string | undefined; display: \\"default\\" | undefined; identifier?: string | undefined; inherited: boolean; direction: \\"bidirectional\\" | undefined; name: string; peer: string; kind: \\"Generic\\" | undefined; optional: boolean; branch?: \\"local\\" | undefined; order_weight?: number | undefined; state: \\"present\\" | { id?: string\'", "2930100897"]
     ],
-    "src/entities/role-manager/ui/permission-combobox.tsx:3844213873": [
+    "src/entities/role-manager/ui/permission-combobox.tsx:104291445": [
       [95, 64, 9, "tsc: Type \'(relationship: PermissionNode) => void\' is not assignable to type \'(newObject: NodeCore) => void\'.\\n  Types of parameters \'relationship\' and \'newObject\' are incompatible.\\n    Property \'identifier\' is missing in type \'NodeCore\' but required in type \'PermissionNode\'.", "3172999"]
     ],
     "src/entities/schema/ui/computed-attribute-display.tsx:4204959992": [
@@ -276,11 +276,11 @@ exports[`fix ts error`] = {
       [80, 30, 8, "tsc: Argument of type \'null | { id: string; } | { id: string; }[]\' is not assignable to parameter of type \'NodeCore | NodeCore[] | boolean | null | number | string | string[]\'.\\n  Type \'{ id: string; }\' is not assignable to type \'NodeCore | NodeCore[] | boolean | null | number | string | string[]\'.\\n    Property \'__typename\' is missing in type \'{ id: string; }\' but required in type \'NodeCore\'.", "288015442"],
       [160, 30, 8, "tsc: Argument of type \'null | { id: string; } | { id: string; }[]\' is not assignable to parameter of type \'NodeCore | NodeCore[] | boolean | null | number | string | string[]\'.\\n  Type \'{ id: string; }\' is not assignable to type \'NodeCore | NodeCore[] | boolean | null | number | string | string[]\'.\\n    Property \'__typename\' is missing in type \'{ id: string; }\' but required in type \'NodeCore\'.", "288015442"]
     ],
-    "src/shared/components/inputs/dropdown.tsx:1659953852": [
-      [202, 24, 14, "tsc: \'formData.value\' is possibly \'undefined\'.", "945600486"]
+    "src/shared/components/inputs/dropdown.tsx:1186419969": [
+      [203, 24, 14, "tsc: \'formData.value\' is possibly \'undefined\'.", "945600486"]
     ],
-    "src/shared/components/inputs/enum.tsx:351438738": [
-      [131, 33, 13, "tsc: \'formData.enum\' is possibly \'undefined\'.", "1980161662"]
+    "src/shared/components/inputs/enum.tsx:3472692335": [
+      [128, 33, 13, "tsc: \'formData.enum\' is possibly \'undefined\'.", "1980161662"]
     ],
     "src/shared/components/inputs/list.test.tsx:186972491": [
       [112, 7, 7, "tsc: Property \'locator\' does not exist on type \'Locator\'. Did you mean \'asLocator\'?", "3986352749"]
@@ -288,7 +288,7 @@ exports[`fix ts error`] = {
     "src/shared/components/inputs/peer.tsx:2120575200": [
       [66, 23, 5, "tsc: Argument of type \'NodeCore\' is not assignable to parameter of type \'Node\'.\\n  Types of property \'display_label\' are incompatible.\\n    Type \'null | string | undefined\' is not assignable to type \'string\'.\\n      Type \'undefined\' is not assignable to type \'string\'.", "189936718"]
     ],
-    "src/shared/components/inputs/relationship-one.tsx:3505246517": [
+    "src/shared/components/inputs/relationship-one.tsx:947574405": [
       [105, 38, 2, "tsc: Property \'id\' does not exist on type \'Node | PoolValue\'.\\n  Property \'id\' does not exist on type \'PoolValue\'.", "5861160"],
       [107, 54, 2, "tsc: Property \'id\' does not exist on type \'Node | PoolValue\'.\\n  Property \'id\' does not exist on type \'PoolValue\'.", "5861160"],
       [155, 23, 5, "tsc: Argument of type \'NodeCore\' is not assignable to parameter of type \'Node | PoolValue | null\'.\\n  Type \'NodeCore\' is not assignable to type \'Node\'.\\n    Types of property \'display_label\' are incompatible.\\n      Type \'null | string | undefined\' is not assignable to type \'string\'.\\n        Type \'undefined\' is not assignable to type \'string\'.", "189936718"]

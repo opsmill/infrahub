@@ -179,7 +179,7 @@ const HierarchicalExplorer = ({
             value="Load more"
             onSelect={() => fetchNextPage()}
             disabled={!hasNextPage || isFetchingNextPage}
-            className="justify-center text-custom-blue-700"
+            className="justify-center text-accent"
           >
             {isFetchingNextPage ? "Loading more..." : "Load more"}
           </ComboboxItem>

@@ -54,9 +54,5 @@ interface ButtonStyledProps extends React.HTMLAttributes<HTMLButtonElement> {
 }
 
 const ButtonStyled = ({ className, ref, ...props }: ButtonStyledProps) => (
-  <button
-    ref={ref}
-    className={classNames("font-semibold text-custom-blue-700", className)}
-    {...props}
-  />
+  <button ref={ref} className={classNames("font-semibold text-accent", className)} {...props} />
 );

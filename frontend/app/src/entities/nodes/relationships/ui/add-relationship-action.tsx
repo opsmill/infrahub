@@ -27,10 +27,7 @@ export const AddRelationshipAction: React.FC<AddRelationshipActionProps> = ({
 
   return (
     <div className="p-2 pt-0">
-      <Button
-        className="w-full border border-custom-blue-700/20 bg-custom-blue-700/10 text-custom-blue-700 not-data-disabled:data-hovered:bg-custom-blue-700/20"
-        onPress={() => setOpen(!open)}
-      >
+      <Button variant="primary-outline" className="w-full" onPress={() => setOpen(!open)}>
         + Add new <span className="truncate">{schema.label}</span>
       </Button>
 

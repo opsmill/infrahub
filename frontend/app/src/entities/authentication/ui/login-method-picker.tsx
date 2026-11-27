@@ -36,8 +36,8 @@ export const LoginMethodPicker = () => {
           variant="ghost"
           onPress={() => setActive(m)}
           className={classNames(
-            "text-cyan-900 text-sm",
-            "data-hovered:bg-transparent data-hovered:underline"
+            "text-accent text-sm",
+            "data-hovered:bg-transparent data-pressed:bg-transparent data-hovered:underline"
           )}
         >
           {getAuthMethodToggleLabel(m)}
