@@ -11,7 +11,7 @@ from infrahub.core.schema import NodeSchema
 from infrahub.database import DatabaseType, InfrahubDatabase
 
 from .models import TelemetryDatabaseData, TelemetryDatabaseServerData, TelemetryDatabaseSystemInfoData
-from .queries import CountNodesByKindsQuery
+from .queries import CountNodesByKindsQuery, CountNodesWithOutputQuery, NodesWithOutputCount
 from .utils import safe_metric
 
 # The Neo4j setting for how many CPUs its parallel query engine uses; the default, 0, means all of them, so no cap.
@@ -19,6 +19,16 @@ DB_WORKER_LIMIT_SETTING = "server.cypher.parallel.worker_limit"
 # The Neo4j settings that size its memory; left unset, Neo4j sizes it from the memory it can see.
 DB_HEAP_MAX_SETTING = "server.memory.heap.max_size"
 DB_PAGECACHE_SETTING = "server.memory.pagecache.size"
+# Counted as the nodes that exist on the default branch.
+DEFINITION_KINDS = [
+    InfrahubKind.ARTIFACTDEFINITION,
+    InfrahubKind.CHECKDEFINITION,
+    InfrahubKind.GENERATORDEFINITION,
+]
+# The relationship that links an artifact or a generator instance to the node it was produced for.
+OUTPUT_TARGET_RELATIONSHIP = "object"
+# The artifact attribute that is set once a generation has stored content.
+ARTIFACT_CONTENT_ATTRIBUTE = "storage_id"
 
 
 async def get_server_info(db: InfrahubDatabase) -> list[TelemetryDatabaseServerData]:
@@ -98,9 +108,17 @@ async def get_system_info(db: InfrahubDatabase) -> TelemetryDatabaseSystemInfoDa
         memory_total=results[0]["memory_total"]["value"],
         memory_available=results[0]["memory_available"]["value"],
         processor_available=results[0]["processor_available"]["value"],
-        processor_assigned=await safe_metric(get_processor_assigned(db=db)),
-        memory_heap_max_size=await safe_metric(get_setting_text(db=db, setting_name=DB_HEAP_MAX_SETTING)),
-        memory_pagecache_size=await safe_metric(get_setting_text(db=db, setting_name=DB_PAGECACHE_SETTING)),
+        processor_assigned=await safe_metric(
+            get_processor_assigned(db=db), metric="database.system_info.processor_assigned"
+        ),
+        memory_heap_max_size=await safe_metric(
+            get_setting_text(db=db, setting_name=DB_HEAP_MAX_SETTING),
+            metric="database.system_info.memory_heap_max_size",
+        ),
+        memory_pagecache_size=await safe_metric(
+            get_setting_text(db=db, setting_name=DB_PAGECACHE_SETTING),
+            metric="database.system_info.memory_pagecache_size",
+        ),
     )
 
 
@@ -126,6 +144,48 @@ async def count_user_nodes(db: InfrahubDatabase) -> int:
     return sum(item.count for item in query.get_data())
 
 
+async def count_definitions(db: InfrahubDatabase) -> dict[str, int]:
+    """Count the artifact, check and generator definitions that exist on the default branch, per kind."""
+    default_branch = registry.get_branch_from_registry()
+    schema_branch = db.schema.get_schema_branch(name=default_branch.name)
+    schemas = [schema_branch.get_node(name=kind, duplicate=False) for kind in DEFINITION_KINDS]
+    query = await CountNodesByKindsQuery.init(db=db, branch=default_branch, schemas=schemas)
+    await query.execute(db=db)
+    counts = dict.fromkeys(DEFINITION_KINDS, 0)
+    counts.update({item.kind: item.count for item in query.get_data()})
+    return counts
+
+
+async def count_artifact_targets(db: InfrahubDatabase) -> int:
+    """Count the nodes on the default branch whose kind can have an artifact."""
+    return await NodeManager.count(db=db, schema=InfrahubKind.ARTIFACTTARGET)
+
+
+async def count_nodes_with_output(
+    db: InfrahubDatabase, output_kind: str, content_attribute: str | None = None
+) -> NodesWithOutputCount:
+    """Count the nodes on the default branch that have at least one node of ``output_kind``.
+
+    Args:
+        content_attribute: An attribute of the output kind. When given, also count the outputs where it has a
+            value and the nodes that have at least one of them.
+
+    """
+    default_branch = registry.get_branch_from_registry()
+    schema_branch = db.schema.get_schema_branch(name=default_branch.name)
+    target_relationship = schema_branch.get_node(name=output_kind, duplicate=False).get_relationship(
+        name=OUTPUT_TARGET_RELATIONSHIP
+    )
+    query = CountNodesWithOutputQuery(
+        output_kind=output_kind,
+        relationship_identifier=target_relationship.get_identifier(),
+        content_attribute=content_attribute,
+        branch=default_branch,
+    )
+    await query.execute(db=db)
+    return query.get_data()
+
+
 @task(name="telemetry-gather-db", task_run_name="Gather Database Information", cache_policy=NONE)
 async def gather_database_information(db: InfrahubDatabase) -> TelemetryDatabaseData:
     """Gather node/relationship counts and database server/system info."""
@@ -136,7 +196,7 @@ async def gather_database_information(db: InfrahubDatabase) -> TelemetryDatabase
 
         if db.db_type == DatabaseType.NEO4J:
             server_info = await get_server_info(db=dbs)
-            system_info = await safe_metric(get_system_info(db=dbs))
+            system_info = await safe_metric(get_system_info(db=dbs), metric="database.system_info")
 
             # server_info is populated only on Neo4j Enterprise, so a non-empty result implies it.
             if len(server_info) == 0:
@@ -162,8 +222,29 @@ async def gather_database_information(db: InfrahubDatabase) -> TelemetryDatabase
         for name in GRAPH_SCHEMA["nodes"]:
             data.node_count[name] = await utils.count_nodes(db=dbs, label=name)
 
-        # corenode/user each degrade to None independently through the shared metric helper.
-        data.node_count["corenode"] = await safe_metric(count_corenode(db=dbs))
-        data.node_count["user"] = await safe_metric(count_user_nodes(db=dbs))
+        # Each count below degrades to None on its own through the shared metric helper.
+        data.node_count["corenode"] = await safe_metric(count_corenode(db=dbs), metric="database.node_count.corenode")
+        data.node_count["user"] = await safe_metric(count_user_nodes(db=dbs), metric="database.node_count.user")
+        data.node_count["artifact_target"] = await safe_metric(
+            count_artifact_targets(db=dbs), metric="database.node_count.artifact_target"
+        )
+
+        artifacts = await safe_metric(
+            count_nodes_with_output(
+                db=dbs, output_kind=InfrahubKind.ARTIFACT, content_attribute=ARTIFACT_CONTENT_ATTRIBUTE
+            ),
+            metric="database.node_count.with_artifact, with_generated_artifact and generated_artifact",
+        )
+        data.node_count["with_artifact"] = artifacts.nodes if artifacts is not None else None
+        data.node_count["with_generated_artifact"] = artifacts.nodes_with_content if artifacts is not None else None
+        data.node_count["generated_artifact"] = artifacts.outputs_with_content if artifacts is not None else None
+
+        generator_instances = await safe_metric(
+            count_nodes_with_output(db=dbs, output_kind=InfrahubKind.GENERATORINSTANCE),
+            metric="database.node_count.with_generator_instance",
+        )
+        data.node_count["with_generator_instance"] = (
+            generator_instances.nodes if generator_instances is not None else None
+        )
 
         return data

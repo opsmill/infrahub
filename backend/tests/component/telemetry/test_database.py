@@ -1,9 +1,16 @@
+from typing import Any
+from uuid import uuid4
+
+from neo4j import Record
+
 from infrahub.core import utils
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.query.node_duplicate import NodeDuplicateQuery, SchemaNodeInfo
 from infrahub.core.node import Node
+from infrahub.core.query import QueryType
 from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
@@ -13,7 +20,10 @@ from infrahub.telemetry.database import (
     get_server_info,
     get_system_info,
 )
-from tests.helpers.db_query_failer import FailingQueryInfrahubDatabase
+from infrahub.telemetry.models import TelemetryDatabaseData
+from tests.helpers.db_query_failer import FailingQueryInfrahubDatabase, InjectedQueryError
+
+from .conftest import create_artifact, create_generated_artifact, create_generator_instance
 
 
 async def test_get_server_info(db: InfrahubDatabase) -> None:
@@ -179,3 +189,231 @@ async def test_count_user_nodes_matches_per_kind_oracle(
 
     assert oracle == seeded_persons + seeded_cars
     assert await count_user_nodes(db=db) == oracle
+
+
+_OUTPUT_TOTALS = ("with_artifact", "with_generated_artifact", "generated_artifact", "with_generator_instance")
+
+
+def _output_totals(data: TelemetryDatabaseData) -> dict[str, int | None]:
+    return {key: data.node_count[key] for key in _OUTPUT_TOTALS}
+
+
+async def _create_car(db: InfrahubDatabase, branch: Branch, name: str, owner: Node) -> Node:
+    car = await Node.init(db=db, schema="TestGazCar", branch=branch)
+    await car.new(db=db, name=name, nbr_seats=2, mpg=20, owner=owner)
+    await car.save(db=db)
+    return car
+
+
+class FailingContentReadDatabase(FailingQueryInfrahubDatabase):
+    """Database that fails the count of nodes with an output only when the count reads stored content."""
+
+    async def execute_query_with_metadata(
+        self,
+        query: str,
+        params: dict[str, Any] | None = None,
+        name: str = "undefined",
+        context: dict[str, str] | None = None,
+        type: QueryType | None = None,
+        timeout_seconds: float | None = None,
+    ) -> tuple[list[Record], dict[str, Any]]:
+        if name == "count-nodes-with-output" and params is not None and "content_attribute" in params:
+            raise InjectedQueryError("The read of stored content failed on purpose")
+        return await super().execute_query_with_metadata(
+            query=query, params=params, name=name, context=context, type=type, timeout_seconds=timeout_seconds
+        )
+
+
+async def _delete(db: InfrahubDatabase, node: Node) -> None:
+    current = await NodeManager.get_one(db=db, id=node.id, raise_on_error=True)
+    await current.delete(db=db)
+
+
+async def test_gather_database_information_artifact_totals(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
+    artifact_definition: Node,
+) -> None:
+    """The artifact totals count each node once, on the default branch, and split out stored content."""
+    cars = car_person_data_generic
+
+    baseline = await gather_database_information.fn(db)
+    # The four seeded cars are the only nodes whose kind can have an artifact.
+    assert baseline.node_count["artifact_target"] == 4
+    assert _output_totals(data=baseline) == dict.fromkeys(_OUTPUT_TOTALS, 0)
+
+    # Two artifacts with stored content on one node: one node, two artifacts.
+    await create_generated_artifact(db=db, definition=artifact_definition, target=cars["c1"], name="c1-a")
+    await create_generated_artifact(db=db, definition=artifact_definition, target=cars["c1"], name="c1-b")
+    # An artifact whose first generation has not stored content yet.
+    await create_artifact(db=db, definition=artifact_definition, target=cars["c2"], name="c2-a", status="Pending")
+    deleted_artifact = await create_generated_artifact(
+        db=db, definition=artifact_definition, target=cars["c3"], name="c3-a"
+    )
+    await _delete(db=db, node=deleted_artifact)
+    other_branch = await create_branch(branch_name="artifact-branch", db=db)
+    await create_generated_artifact(
+        db=db, definition=artifact_definition, target=cars["c4"], name="c4-a", branch=other_branch
+    )
+    deleted_car = await _create_car(db=db, branch=default_branch, name="scrapped", owner=cars["p1"])
+    await create_generated_artifact(db=db, definition=artifact_definition, target=deleted_car, name="scrapped-a")
+    await _delete(db=db, node=deleted_car)
+    # An artifact whose latest generation failed still holds the content of an earlier generation.
+    failed_car = await _create_car(db=db, branch=default_branch, name="stalled", owner=cars["p1"])
+    await create_artifact(
+        db=db,
+        definition=artifact_definition,
+        target=failed_car,
+        name="stalled-a",
+        status="Error",
+        storage_id=str(uuid4()),
+        checksum=str(uuid4()),
+    )
+    # A generation creates the artifact without content and stores the content in a later update.
+    updated_car = await _create_car(db=db, branch=default_branch, name="serviced", owner=cars["p1"])
+    pending_artifact = await create_artifact(
+        db=db, definition=artifact_definition, target=updated_car, name="serviced-a", status="Pending"
+    )
+    updated_artifact = await NodeManager.get_one(db=db, id=pending_artifact.id, raise_on_error=True)
+    updated_artifact.get_attribute(name="status").value = "Ready"
+    updated_artifact.get_attribute(name="storage_id").value = str(uuid4())
+    updated_artifact.get_attribute(name="checksum").value = str(uuid4())
+    await updated_artifact.save(db=db)
+
+    data = await gather_database_information.fn(db)
+
+    assert data.node_count["artifact_target"] == 6
+    assert data.node_count["with_artifact"] == 4
+    assert data.node_count["with_generated_artifact"] == 3
+    assert data.node_count["generated_artifact"] == 4
+    assert data.node_count["with_generator_instance"] == 0
+
+
+async def test_gather_database_information_generator_instance_total(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
+    generator_definitions: list[Node],
+) -> None:
+    """A node with a generator instance is counted once, whatever the status of the instance."""
+    cars = car_person_data_generic
+    first_definition, second_definition = generator_definitions
+
+    # Instances of two generator definitions for one node: one node.
+    await create_generator_instance(db=db, definition=first_definition, target=cars["c1"])
+    await create_generator_instance(db=db, definition=second_definition, target=cars["c1"])
+    # The instance is created before the generator's code runs, so a run that failed in the generator still counts.
+    await create_generator_instance(
+        db=db, definition=first_definition, target=cars["c2"], status=GeneratorInstanceStatus.ERROR
+    )
+    deleted_instance = await create_generator_instance(db=db, definition=first_definition, target=cars["c3"])
+    await _delete(db=db, node=deleted_instance)
+    other_branch = await create_branch(branch_name="generator-branch", db=db)
+    await create_generator_instance(db=db, definition=first_definition, target=cars["c4"], branch=other_branch)
+
+    data = await gather_database_information.fn(db)
+
+    assert data.node_count["with_generator_instance"] == 2
+    assert data.node_count["with_artifact"] == 0
+    assert data.node_count["with_generated_artifact"] == 0
+    assert data.node_count["generated_artifact"] == 0
+
+
+async def _migrate_kinds(db: InfrahubDatabase, branch: Branch, kinds: list[str]) -> None:
+    """Give every node of the listed kinds a new vertex, as a change of inheritance does."""
+    schema_branch = db.schema.get_schema_branch(name=branch.name)
+    kind_updates_map: dict[str, SchemaNodeInfo] = {}
+    for kind in kinds:
+        schema = schema_branch.get_node(name=kind, duplicate=False)
+        kind_updates_map[kind] = SchemaNodeInfo(
+            name=schema.name,
+            namespace=schema.namespace,
+            branch_support=schema.branch.value,
+            labels=[*schema.get_labels(), "TestMigratedGeneric"],
+            kind=schema.kind,
+        )
+    migration = await NodeDuplicateQuery.init(db=db, branch=branch, kind_updates_map=kind_updates_map)
+    await migration.execute(db=db)
+
+
+async def test_gather_database_information_output_totals_after_a_kind_migration(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
+    artifact_definition: Node,
+    generator_definitions: list[Node],
+) -> None:
+    """A kind migration leaves a deleted vertex with the same UUID; the node and its outputs are still counted once."""
+    car = car_person_data_generic["c3"]
+    await create_generated_artifact(db=db, definition=artifact_definition, target=car, name="c3-a")
+    await create_generator_instance(db=db, definition=generator_definitions[0], target=car)
+    counted_once = dict.fromkeys(_OUTPUT_TOTALS, 1)
+
+    before = await gather_database_information.fn(db)
+    assert _output_totals(data=before) == counted_once
+
+    await _migrate_kinds(db=db, branch=default_branch, kinds=[car.get_kind()])
+    after_target_migration = await gather_database_information.fn(db)
+    assert _output_totals(data=after_target_migration) == counted_once
+
+    # Migrated later than the target, so the deleted edge of the old output vertex is the newest edge of the relationship.
+    await _migrate_kinds(db=db, branch=default_branch, kinds=[InfrahubKind.ARTIFACT, InfrahubKind.GENERATORINSTANCE])
+    after_output_migration = await gather_database_information.fn(db)
+    assert _output_totals(data=after_output_migration) == counted_once
+
+
+async def test_gather_database_information_failed_node_count_keeps_the_output_totals(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
+    generator_definitions: list[Node],
+) -> None:
+    await create_generator_instance(db=db, definition=generator_definitions[0], target=car_person_data_generic["c1"])
+    failing_db = FailingQueryInfrahubDatabase.from_db(db=db, failing_query_names={"node_get_list_count"})
+
+    data = await gather_database_information.fn(failing_db)
+
+    assert data.node_count["artifact_target"] is None
+    assert data.node_count["corenode"] is None
+    assert _output_totals(data=data) == {
+        "with_artifact": 0,
+        "with_generated_artifact": 0,
+        "generated_artifact": 0,
+        "with_generator_instance": 1,
+    }
+
+
+async def test_gather_database_information_survives_output_count_failure(
+    db: InfrahubDatabase, register_core_models_schema: SchemaBranch
+) -> None:
+    """A failed read of the artifacts and generator instances reports their totals as ``None`` and keeps the rest."""
+    failing_db = FailingQueryInfrahubDatabase.from_db(db=db, failing_query_names={"count-nodes-with-output"})
+
+    data = await gather_database_information.fn(failing_db)
+
+    assert _output_totals(data=data) == dict.fromkeys(_OUTPUT_TOTALS)
+    # With the core schema only, no kind can have an artifact.
+    assert data.node_count["artifact_target"] == 0
+    assert data.node_count["corenode"] is not None
+    assert data.node_count["user"] is not None
+
+
+async def test_gather_database_information_failed_artifact_read_nulls_only_the_artifact_totals(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
+    generator_definitions: list[Node],
+) -> None:
+    await create_generator_instance(db=db, definition=generator_definitions[0], target=car_person_data_generic["c1"])
+    failing_db = FailingContentReadDatabase.from_db(db=db, failing_query_names=set())
+
+    data = await gather_database_information.fn(failing_db)
+
+    assert _output_totals(data=data) == {
+        "with_artifact": None,
+        "with_generated_artifact": None,
+        "generated_artifact": None,
+        "with_generator_instance": 1,
+    }
+    assert data.node_count["artifact_target"] == 4

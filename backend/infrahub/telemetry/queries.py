@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from infrahub.core.constants import NULL_VALUE
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.standard_node import StandardNodeGetListQuery
 
@@ -90,6 +91,102 @@ class CountNodesByKindsQuery(Query):
                 kind=result.get_as_type("kind", str),
                 count=result.get_as_type("total", int),
             )
+
+
+@dataclass(frozen=True)
+class NodesWithOutputCount:
+    nodes: int
+    nodes_with_content: int
+    outputs_with_content: int
+
+
+class CountNodesWithOutputQuery(Query):
+    """Count the nodes that have at least one active node of an output kind, on the query's branch at the query's time.
+
+    A target can have several nodes of the output kind, each linked to it by one relationship.
+    With a content attribute, the query also counts the outputs whose attribute has a value and
+    the nodes that have at least one of them.
+    """
+
+    name = "count-nodes-with-output"
+    type = QueryType.READ
+    insert_return = False
+
+    def __init__(
+        self, output_kind: str, relationship_identifier: str, content_attribute: str | None, **kwargs: Any
+    ) -> None:
+        super().__init__(**kwargs)
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
+        self.params.update(branch_params)
+        self.params["relationship_identifier"] = relationship_identifier
+
+        content_query = "WITH output, target, 0 AS has_content"
+        if content_attribute:
+            self.params["content_attribute"] = content_attribute
+            self.params["null_value"] = NULL_VALUE
+            content_query = """
+        CALL (output) {
+            OPTIONAL MATCH (output)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: $content_attribute})-[r2:HAS_VALUE]->(av)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            RETURN av.value AS content, r1.status = "active" AND r2.status = "active" AS content_is_active
+            ORDER BY r2.branch_level DESC, r2.from DESC, r2.status ASC
+            LIMIT 1
+        }
+        WITH output, target,
+            CASE WHEN content_is_active AND content IS NOT NULL AND content <> $null_value THEN 1 ELSE 0 END AS has_content
+            """ % {"branch_filter": branch_filter}
+
+        query = """
+        MATCH (output:%(output_kind)s)
+        CALL (output) {
+            MATCH (output)-[r:IS_PART_OF]->(:Root)
+            WHERE %(branch_filter)s
+            RETURN r.status = "active" AS output_is_active
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH output, output_is_active
+        WHERE output_is_active
+        MATCH (output)-[:IS_RELATED]->(rl:Relationship {name: $relationship_identifier})
+        WITH DISTINCT output, rl
+        CALL (output, rl) {
+            MATCH (output)-[r1:IS_RELATED]->(rl)<-[r2:IS_RELATED]-(target:Node)
+            WHERE target.uuid <> output.uuid
+                AND all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            RETURN target, r1.status = "active" AND r2.status = "active" AS is_related
+            // status is a tie-breaker for an edge added and deleted at the same time
+            ORDER BY r1.branch_level + r2.branch_level DESC, r2.from DESC, r2.status ASC, r1.from DESC, r1.status ASC
+            LIMIT 1
+        }
+        WITH output, target, is_related
+        WHERE is_related
+        CALL (target) {
+            MATCH (target)-[r:IS_PART_OF]->(:Root)
+            WHERE %(branch_filter)s
+            RETURN r.status = "active" AS target_is_active
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH output, target, target_is_active
+        WHERE target_is_active
+        %(content_query)s
+        WITH target.uuid AS target_id, sum(has_content) AS outputs_with_content
+        RETURN count(target_id) AS nodes,
+            sum(CASE WHEN outputs_with_content > 0 THEN 1 ELSE 0 END) AS nodes_with_content,
+            sum(outputs_with_content) AS outputs_with_content
+        """ % {"output_kind": output_kind, "branch_filter": branch_filter, "content_query": content_query}
+        self.add_to_query(query)
+        self.return_labels = ["nodes", "nodes_with_content", "outputs_with_content"]
+
+    def get_data(self) -> NodesWithOutputCount:
+        result = self.get_result()
+        if result is None:
+            return NodesWithOutputCount(nodes=0, nodes_with_content=0, outputs_with_content=0)
+        return NodesWithOutputCount(
+            nodes=result.get_as_type("nodes", int),
+            nodes_with_content=result.get_as_type("nodes_with_content", int),
+            outputs_with_content=result.get_as_type("outputs_with_content", int),
+        )
 
 
 class TelemetrySnapshotGetListQuery(StandardNodeGetListQuery):

@@ -4,9 +4,11 @@ import hashlib
 import json
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
+from functools import partial
 from typing import Generator
 
 import pytest
+from fast_depends import Provider
 from prefect.client.orchestration import get_client
 
 from infrahub import __version__, config
@@ -14,6 +16,7 @@ from infrahub.components import ComponentType
 from infrahub.core import registry
 from infrahub.core.constants import AccountStatus, InfrahubKind
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
@@ -42,9 +45,12 @@ from infrahub.telemetry.tasks import (
     build_anonymous_telemetry_gatherer,
     count_active_branches,
     gather_account_information,
+    gather_feature_information,
+    list_validator_kinds,
 )
 from infrahub.workers.dependencies import (
     build_component,
+    build_database,
     clear_singletons,
     get_component,
     get_database,
@@ -52,6 +58,10 @@ from infrahub.workers.dependencies import (
 )
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusSimulator
+from tests.helpers.db_query_failer import FailingQueryInfrahubDatabase
+from tests.helpers.dependency_override import override_dependency
+
+from .conftest import create_generated_artifact, create_generator_instance
 
 # A far-past day no test ever seeds into: proves genuine-empty -> 0 without shared server state.
 _EMPTY_WINDOW_START = datetime(2000, 1, 1, tzinfo=UTC)
@@ -70,6 +80,45 @@ _ACTIVITY_FIELDS = (
     "branches_deleted",
     "webhooks_fired_success",
     "webhooks_fired_failure",
+    "validators_started",
+    "workflow_runs",
+)
+
+_ARTIFACT_AND_GENERATOR_TOTALS = (
+    "artifact_target",
+    "with_artifact",
+    "with_generated_artifact",
+    "generated_artifact",
+    "with_generator_instance",
+)
+
+_DEFINITION_KINDS = ("CoreArtifactDefinition", "CoreCheckDefinition", "CoreGeneratorDefinition")
+
+# The kind names are keys of the report that the data warehouse reads, so the list is pinned here.
+_VALIDATOR_KINDS = [
+    "CoreArtifactValidator",
+    "CoreDataValidator",
+    "CoreGeneratorValidator",
+    "CoreRepositoryValidator",
+    "CoreSchemaValidator",
+    "CoreUserValidator",
+]
+
+# Names from the car and person schema and its data, which stand for names a customer defined.
+_CUSTOMER_DEFINED_NAMES = (
+    "TestCar",
+    "TestElectricCar",
+    "TestGazCar",
+    "TestPerson",
+    "John",
+    "Jane",
+    "nolt",
+    "repo01",
+    "query01",
+    "transform01",
+    "artifactdef01",
+    "myartifact",
+    "generatordef01",
 )
 
 
@@ -135,6 +184,10 @@ async def test_active_branches_excludes_default_and_global(
     assert await count_active_branches(db=db) == 2
 
 
+async def test_list_validator_kinds(db: InfrahubDatabase, register_core_models_schema: SchemaBranch) -> None:
+    assert list_validator_kinds(db=db) == _VALIDATOR_KINDS
+
+
 @pytest.fixture
 async def telemetry_environment(
     db: InfrahubDatabase,
@@ -177,14 +230,15 @@ async def _build_gatherer(
         database=database,
         component=component,
         account_gatherer=account_gatherer or DefaultAccountGatherer(db=database),
-        activity_gatherer=activity_gatherer or DefaultActivityGatherer(),
+        activity_gatherer=activity_gatherer
+        or DefaultActivityGatherer(read_validator_kinds=partial(list_validator_kinds, db=database)),
         active_branch_counter=active_branch_counter or DefaultActiveBranchCounter(db=database),
         task_manager_database_gatherer=task_manager_database_gatherer or DefaultTaskManagerDatabaseGatherer(),
     )
 
 
 async def test_gather_full_payload_fields_present(telemetry_environment: InfrahubDatabase) -> None:
-    """A healthy gather populates every new field on the payload (presence, not exact values)."""
+    """A healthy gather populates every field that a failed read would leave null, and reports 0 where there is nothing to count."""
     gatherer = await build_anonymous_telemetry_gatherer()
     data = await gatherer.gather()
 
@@ -206,6 +260,94 @@ async def test_gather_full_payload_fields_present(telemetry_environment: Infrahu
     # An empty window is 0, not null, so every field is populated.
     for field in _ACTIVITY_FIELDS:
         assert getattr(data.activity_24h, field) is not None, field
+
+    assert data.activity_24h.validators_started is not None
+    assert sorted(data.activity_24h.validators_started) == _VALIDATOR_KINDS
+
+    # With the core schema and no node, each total is 0, not null.
+    assert {key: data.database.node_count[key] for key in _ARTIFACT_AND_GENERATOR_TOTALS} == dict.fromkeys(
+        _ARTIFACT_AND_GENERATOR_TOTALS, 0
+    )
+    assert {kind: data.features[kind] for kind in _DEFINITION_KINDS} == dict.fromkeys(_DEFINITION_KINDS, 0)
+
+
+async def _create_check_definition(db: InfrahubDatabase, name: str, repository: Node, branch_name: str) -> Node:
+    definition = await Node.init(db=db, schema=InfrahubKind.CHECKDEFINITION, branch=branch_name)
+    await definition.new(
+        db=db, name=name, file_path=f"{name}.py", class_name="Check", repository=repository, timeout=10
+    )
+    await definition.save(db=db)
+    return definition
+
+
+async def test_gather_feature_information_counts_definitions_on_the_default_branch(
+    telemetry_environment: InfrahubDatabase,
+) -> None:
+    """The definition keys count the nodes that exist on the default branch, not every vertex with the label."""
+    db = telemetry_environment
+    default_branch = registry.get_branch_from_registry()
+    repository = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
+    await repository.new(db=db, name="repo01", location="git@github.com:user/repo01.git", commit="aaaaaaaaa")
+    await repository.save(db=db)
+
+    await _create_check_definition(db=db, name="kept", repository=repository, branch_name=default_branch.name)
+    deleted = await _create_check_definition(
+        db=db, name="deleted", repository=repository, branch_name=default_branch.name
+    )
+    current = await NodeManager.get_one(db=db, id=deleted.id, raise_on_error=True)
+    await current.delete(db=db)
+    other_branch = await create_branch(branch_name="definition-branch", db=db)
+    await _create_check_definition(db=db, name="branch-only", repository=repository, branch_name=other_branch.name)
+
+    data = await gather_feature_information.fn()
+
+    assert data[InfrahubKind.CHECKDEFINITION] == 1
+    assert data[InfrahubKind.ARTIFACTDEFINITION] == 0
+    assert data[InfrahubKind.GENERATORDEFINITION] == 0
+    assert data[InfrahubKind.REPOSITORY] == 1
+
+
+async def test_gather_feature_information_failed_definition_read_nulls_only_the_definitions(
+    telemetry_environment: InfrahubDatabase, dependency_provider: Provider
+) -> None:
+    db = telemetry_environment
+    repository = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
+    await repository.new(db=db, name="repo01", location="git@github.com:user/repo01.git", commit="aaaaaaaaa")
+    await repository.save(db=db)
+    failing_db = FailingQueryInfrahubDatabase.from_db(db=db, failing_query_names={"count-nodes-by-kinds"})
+
+    async def build_failing_database() -> InfrahubDatabase:
+        return failing_db
+
+    with override_dependency(build_database, build_failing_database, dependency_provider=dependency_provider):
+        data = await gather_feature_information.fn()
+
+    assert {kind: data[kind] for kind in _DEFINITION_KINDS} == dict.fromkeys(_DEFINITION_KINDS)
+    assert data[InfrahubKind.REPOSITORY] == 1
+
+
+async def test_gather_full_report_contains_no_customer_defined_name(
+    telemetry_environment: InfrahubDatabase,
+    car_person_data_generic: dict[str, Node],
+    artifact_definition: Node,
+    generator_definitions: list[Node],
+) -> None:
+    """A report on customer-defined kinds that have an artifact and a generator instance names none of them."""
+    db = telemetry_environment
+    car = car_person_data_generic["c3"]
+    await create_generated_artifact(db=db, definition=artifact_definition, target=car, name="nolt-config")
+    await create_generator_instance(db=db, definition=generator_definitions[0], target=car)
+
+    gatherer = await build_anonymous_telemetry_gatherer()
+    data = await gatherer.gather()
+
+    assert data.database.node_count["artifact_target"] == 4
+    assert data.database.node_count["with_generated_artifact"] == 1
+    assert data.database.node_count["with_generator_instance"] == 1
+    assert data.features[InfrahubKind.ARTIFACTDEFINITION] == 1
+    assert data.features[InfrahubKind.GENERATORDEFINITION] == 2
+    report = data.model_dump_json()
+    assert [name for name in _CUSTOMER_DEFINED_NAMES if name in report] == []
 
 
 class EmptyWindowActivityGatherer:

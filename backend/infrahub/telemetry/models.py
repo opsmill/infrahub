@@ -1,6 +1,8 @@
-from pydantic import BaseModel, Field
+from typing import Self
 
-from .constants import InfrahubType
+from pydantic import BaseModel, Field, model_validator
+
+from .constants import InfrahubType, WorkflowRunState
 
 
 class TelemetryContainerData(BaseModel):
@@ -27,6 +29,25 @@ class TelemetryAccountData(BaseModel):
     groups: int | None = Field(default=None)
 
 
+class TelemetryWorkflowRunData(BaseModel):
+    """The runs of one workflow that ended in one state.
+
+    ``state``, ``runs`` and ``run_seconds`` are all null when the run history of the workflow could not be read.
+    """
+
+    workflow: str
+    state: WorkflowRunState | None = None
+    runs: int | None = Field(default=None, ge=0)
+    run_seconds: int | None = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def validate_all_set_or_all_null(self) -> Self:
+        values = (self.state, self.runs, self.run_seconds)
+        if any(value is None for value in values) and any(value is not None for value in values):
+            raise ValueError("state, runs and run_seconds must be all set or all null")
+        return self
+
+
 class TelemetryActivity24hData(BaseModel):
     logins: int | None = Field(default=None)
     unique_logins: int | None = Field(default=None)
@@ -40,6 +61,8 @@ class TelemetryActivity24hData(BaseModel):
     branches_deleted: int | None = Field(default=None)
     webhooks_fired_success: int | None = Field(default=None)
     webhooks_fired_failure: int | None = Field(default=None)
+    validators_started: dict[str, int | None] | None = Field(default=None)
+    workflow_runs: list[TelemetryWorkflowRunData] | None = Field(default=None)
 
 
 class TelemetrySchemaData(BaseModel):
@@ -114,7 +137,7 @@ class TelemetryData(BaseModel):
     branches: TelemetryBranchData
     accounts: TelemetryAccountData = Field(default_factory=TelemetryAccountData)
     activity_24h: TelemetryActivity24hData = Field(default_factory=TelemetryActivity24hData)
-    features: dict[str, int]
+    features: dict[str, int | None]
     schema_info: TelemetrySchemaData
     database: TelemetryDatabaseData
     prefect: TelemetryPrefectData

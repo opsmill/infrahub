@@ -37,10 +37,10 @@ distinction that matters operationally is each category's **temporal model** (be
 | Branches | total and open (non-system) branch counts |
 | Accounts | active accounts, account groups |
 | Schema | node/generic kind counts, last schema change |
-| Features | how many objects of adoption-signalling kinds exist (artifacts, repos, generators, …) |
-| Database | database type, node/relationship counts, server versions, the CPU and memory Neo4j can use |
+| Features | how many objects of adoption-signalling kinds exist (artifacts, repos, generators, …), counted in two ways (below) |
+| Database | database type, node/relationship counts, objects that have an artifact or a generator instance, server versions, the CPU and memory Neo4j can use |
 | Prefect | event tally, automation counts, work-pool state, task manager database type and version |
-| Activity (24h) | logins, checks, artifacts, branch actions, webhook deliveries |
+| Activity (24h) | logins, checks, started validators per kind, artifacts, branch actions, webhook deliveries, runs of the workflows that execute generators, artifact generations, checks, Transformations and the proposed change pipeline |
 
 ### Activity (24h) field semantics
 
@@ -51,6 +51,28 @@ distinction that matters operationally is each category's **temporal model** (be
 | `artifacts_created` / `_updated` | Artifact lifecycle events. |
 | `branches_created` / `_merged` / `_deleted` | Branch lifecycle events. |
 | `webhooks_fired_success` / `_failure` | Terminal `webhook-process` flow-run states. |
+| `validators_started` | The validators that `checks_started` counts, split by kind: one key per kind that inherits from `CoreValidator`, `0` for a kind with no started validator. |
+| `workflow_runs` | One row per workflow and end state (`COMPLETED`, `FAILED`, `CRASHED`, `CANCELLED`) with the number of runs and their summed run time in whole seconds. Only the workflows in `REPORTED_WORKFLOW_NAMES` are read. A workflow with no ended run has no row. The end state is the state of the run, not the result of the work: the three workflows that run inside a proposed change (`run-generator-as-check`, `git-repository-check-artifact-create`, `git-repository-run-user-check`) record a failed generator, artifact generation or check as a failed check and end in `COMPLETED`. |
+
+Rows are keyed by workflow name, never by run name: a run name can contain a name the customer chose.
+
+### Two ways of counting in `features` and `database.node_count`
+
+- `features.CoreArtifactDefinition`, `CoreCheckDefinition` and `CoreGeneratorDefinition` count the
+  objects that exist on the default branch. The other `features` keys count graph vertices with the
+  label, on every branch and with deleted objects included, so they do not go down when an object
+  is deleted. They go down when a branch is deleted and the vertices that only it used go with it.
+- `database.node_count.artifact_target`, `with_artifact`, `with_generated_artifact`,
+  `generated_artifact` and `with_generator_instance` also count on the default branch only.
+  Artifacts and generator instances are stored per branch, so one generated on another branch is
+  not counted. `with_generated_artifact` needs a `storage_id` on the artifact, because the artifact
+  exists before its first generation stores content. A generator instance is created before the
+  generator's code runs, so `with_generator_instance` includes an object whose only run failed in
+  the generator. A run that fails earlier, while the repository is prepared, creates no instance. A
+  generator definition with `execute_after_merge: false` does not run after a merge, so the
+  instances of its runs inside proposed changes stay on the source branches. Its objects are
+  counted only after the generator has run for them on the default branch, which a user or a
+  trigger rule with a generator action can start.
 
 ## CPU and memory figures
 
@@ -153,8 +175,10 @@ Not every number means the same thing over time. There are three kinds:
    day to day. This is the older, coarse signal.
 
 3. **Windowed — previous full UTC day** — every `activity_24h.*` metric counts only events (or
-   webhook flow-runs) that occurred within `[yesterday 00:00 UTC, today 00:00 UTC)`. This is the
-   precise daily signal that supersedes the coarse cumulative tally for activity.
+   flow runs) within `[yesterday 00:00 UTC, today 00:00 UTC)`. This is the
+   precise daily signal that supersedes the coarse cumulative tally for activity. An event is
+   placed by the time it occurred and a webhook run by its start time. A `workflow_runs` run is
+   placed by its expected start time, the only time the task manager's run history groups by.
 
 The contrast between (2) and (3) is deliberate: `prefect.events` answers "roughly how much of X
 is Prefect holding right now", while `activity_24h` answers "exactly how much X happened
@@ -176,10 +200,17 @@ so they are safe as long as the daily flow runs within retention (it runs every 
 7 days). If the flow were down for several days, days beyond retention could not be recovered —
 the metrics are a live daily sample, not a backfillable ledger.
 
+`workflow_runs` has a shorter limit: deleting a branch deletes the ended flow runs tagged with it.
+The runs of a branch that is deleted before the daily flow runs are in no row. Every reported
+workflow except `proposed-changed-pipeline` tags its run with the branch, so the rows of the
+workflows that run inside a proposed change are a lower bound when branches are deleted after the
+merge. Events are not deleted with the branch.
+
 ## Graceful degradation
 
 Many metric sources are gathered through a single helper (`safe_metric`) that isolates failures:
-if a source raises, that field is reported as `null` (and the failure is logged) while the rest
+if a source raises, that field is reported as `null` (and the failure is logged with the name of
+the value and the type of the exception) while the rest
 of the payload is still built, stored, and sent. A source that succeeds with nothing to count
 reports `0`. So **`null` means "could not measure", `0` means "measured, nothing there"**.
 
@@ -189,6 +220,32 @@ The new CPU and memory figures for the API server and the task workers, and the 
 the task worker during an upgrade, because an older task manager does not serve the route that reports them. Several older parts are not,
 among them the list of workers and the database block, including its CPU and memory figures: a
 failure in any of them stops the whole report.
+
+`workflow_runs` is the one place where a failed read is not a `null` field: a workflow whose run
+history cannot be read gets one row with `state`, `runs` and `run_seconds` set to `null`, so the rows
+of the other workflows are kept. In `features`, only the three definition counts are protected; a
+failure in one of the older counts stops the whole report. In `database.node_count`, the five
+artifact and generator totals are protected: `artifact_target` and `with_generator_instance` are
+`null` on their own, and `with_artifact`, `with_generated_artifact` and `generated_artifact` are
+`null` together, because one query reads them.
+
+`validators_started` is read in two steps, the validator kinds from the schema and then one count
+per kind. When the kinds cannot be read, the whole map is `null`; when one count fails, only that
+kind is `null`. Neither failure changes another activity field.
+
+A read of the task manager that gets no answer does not fail at once. With the defaults of the
+Prefect client, a request waits 60 seconds for an answer and is tried 6 times, with waits of 2, 4,
+8, 16 and 32 seconds in between, so one unanswered read takes about 7 minutes. The 8 run history
+reads and the counts per validator kind have a deadline of their own,
+`TASK_MANAGER_READ_DEADLINE_SECONDS` (60 seconds): a read that has not returned by then is given up
+and reported as `null`, so a task manager that accepts connections and does not answer delays the
+report by at most 1 minute for each of them. The older reads of the task manager have no deadline.
+
+The event counts of `activity_24h` (`logins`, `unique_logins`, the check, artifact and branch
+counts, and each kind of `validators_started`) validate the response of the task manager. A
+response that is not a list of buckets with a count is a failed read and gives `null`. The
+`prefect.events` tally has no `null` value and is not read through `safe_metric`, so it counts
+such a response as no event.
 
 One caveat on the check metrics: `checks_started` counts every validator that starts, but
 `checks_passed`/`checks_failed` are only emitted for validators that run through the checks
@@ -208,7 +265,7 @@ both gated on the `READ_TELEMETRY` global permission.
 | Path | Purpose |
 |------|---------|
 | `backend/infrahub/telemetry/tasks.py` | Daily flow, payload assembly, remote send |
-| `backend/infrahub/telemetry/task_manager.py` | Windowed event / webhook-run counters, task manager database version |
+| `backend/infrahub/telemetry/task_manager.py` | Windowed event / webhook-run counters, run rows of the reported workflows, task manager database version |
 | `backend/infrahub/prefect_server/database_version.py` | Task manager route that reports its database type and version; the task worker has no connection to that database |
 | `backend/infrahub/telemetry/utils.py` | Degradation helper, 24h window functions, infrahub-type detection |
 | `backend/infrahub/telemetry/database.py` | Database and node-count metrics |
