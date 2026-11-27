@@ -8,7 +8,7 @@ from starlette.status import HTTP_429_TOO_MANY_REQUESTS
 from ..exception_handlers import GRAPHQL_PATH_PREFIX
 from . import metrics
 from .controller import Admitted, Rejected
-from .priority import parse_priority
+from .priority import parse_request_priority
 
 if TYPE_CHECKING:
     from starlette.types import ASGIApp, Receive, Scope, Send
@@ -25,7 +25,6 @@ EXCLUDED_PATHS: tuple[str, ...] = (
     "/api/schema",
 )
 
-_PRIORITY_HEADER = b"x-priority"
 _CORS_REQUEST_METHOD_HEADER = b"access-control-request-method"
 _ACCEPT_HEADER = b"accept"
 _HTML_MEDIA_TYPE = "text/html"
@@ -105,7 +104,7 @@ class AdmissionMiddleware:
             return
 
         controller = cast("AdmissionController", state.admission_controller)
-        parsed = parse_priority(_read_priority_header(scope))
+        parsed = parse_request_priority(scope)
         if not parsed.was_explicit:
             metrics.MISSING_PRIORITY_TOTAL.inc()
 
@@ -146,13 +145,6 @@ def _is_document_navigation(scope: Scope) -> bool:
         if name == _ACCEPT_HEADER
         for media_range in value.decode("latin-1").lower().split(",")
     )
-
-
-def _read_priority_header(scope: Scope) -> str | None:
-    for name, value in scope["headers"]:
-        if name == _PRIORITY_HEADER:
-            return value.decode("latin-1")
-    return None
 
 
 def _build_shed_response(*, path: str, retry_after: int) -> JSONResponse:

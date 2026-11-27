@@ -27,11 +27,13 @@ from infrahub.core.initialization import initialization
 from infrahub.database.graph import validate_graph_version
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import InitializationError
+from infrahub.execution_priority import bind_execution_priority
 from infrahub.git import initialize_repositories_directory
 from infrahub.git.global_config import apply_git_tls_config, set_git_global_setting
 from infrahub.lock import initialize_lock
 from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
+from infrahub.services.adapters.workflow.priority import priority_of_work_queue
 from infrahub.trace import configure_trace
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import (
@@ -230,7 +232,10 @@ class InfrahubWorkerAsync(BaseWorker):
             expected_start_time=flow_run.expected_start_time,
             started_at=datetime.now(UTC),
         )
-        with track_flow_run(flow=flow_func.name, queue=flow_run.work_queue_name):
+        with (
+            track_flow_run(flow=flow_func.name, queue=flow_run.work_queue_name),
+            bind_execution_priority(priority_of_work_queue(work_queue_name=flow_run.work_queue_name)),
+        ):
             async with AsyncClientContext(httpx_settings={"verify": get_http().verify_tls()}) as ctx:
                 ctx._httpx_settings = None  # Hack to make all child task/flow runs use the same client
                 await run_flow_async(flow=flow_func, flow_run=flow_run, parameters=params, return_type="state")

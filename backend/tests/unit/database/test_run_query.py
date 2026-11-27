@@ -4,15 +4,13 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast
 
 import pytest
-from neo4j import AsyncGraphDatabase, Query
+from neo4j import Query
 from neo4j.exceptions import ClientError, ServiceUnavailable
 
 from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode
 from infrahub.exceptions import DatabaseError
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
-
     from neo4j import AsyncDriver, AsyncResult, AsyncSession, AsyncTransaction
 
 QUERY = "MATCH (n) RETURN n"
@@ -62,14 +60,6 @@ MODE_TEST_CASES: list[ModeTestCase] = [
         mode=InfrahubDatabaseMode.SESSION,
     ),
 ]
-
-
-@pytest.fixture
-async def driver() -> AsyncGenerator[AsyncDriver, None]:
-    # Building a driver opens no connection, and these tests never execute against it.
-    driver = AsyncGraphDatabase.driver("bolt://127.0.0.1:9", auth=("neo4j", "unused"))
-    yield driver
-    await driver.close()
 
 
 def build_db(

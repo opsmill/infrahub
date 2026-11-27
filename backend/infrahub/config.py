@@ -32,6 +32,9 @@ from infrahub.instance_identity import InstanceColor, validate_instance_label
 from infrahub.log import get_logger
 from infrahub.redis_connection import pool_size_from_url, validate_redis_url
 from infrahub.tls.bundle import resolve_ca_bundle
+from infrahub.workflows.constants import (
+    WorkflowPriority,  # noqa: TC001  (pydantic needs it at runtime for the writer_read_priorities field)
+)
 
 if TYPE_CHECKING:
     from infrahub.git.state.reader import RepositoryGitStateReader
@@ -85,6 +88,13 @@ def _blank_setting_as_unset(value: Any) -> Any:
 
 
 CaBundleSetting = Annotated[str | None, BeforeValidator(_blank_setting_as_unset)]
+
+
+def _split_comma_separated(value: Any) -> Any:
+    """Read a comma-separated string, such as an environment variable, as the list of its non-blank items."""
+    if isinstance(value, str):
+        return [item.strip() for item in value.split(",") if item.strip()]
+    return value
 
 
 class EnterpriseFeatures(StrEnum):
@@ -394,6 +404,15 @@ class DatabaseSettings(BaseSettings):
     port: int = 7687
     database: str | None = Field(default=None, pattern=VALID_DATABASE_NAME_REGEX, description="Name of the database")
     policy: str | None = Field(default=None, description="Routing policy for database connections")
+    writer_read_priorities: Annotated[list[WorkflowPriority], NoDecode] = Field(
+        default_factory=list,
+        description=(
+            "Comma-separated list of priorities (high, medium, low) whose read sessions run on the writer of "
+            "the database, the cluster leader, instead of on a reader that the routing policy allows. API "
+            "requests that send no priority are medium. While the cluster has no leader, these reads cannot "
+            "run. Requires the 'neo4j' database type and the 'neo4j' protocol."
+        ),
+    )
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
     tls_ca_file: CaBundleSetting = Field(
@@ -483,10 +502,27 @@ class DatabaseSettings(BaseSettings):
         ),
     )
 
+    @field_validator("writer_read_priorities", mode="before")
+    @classmethod
+    def _split_writer_read_priorities(cls, value: Any) -> Any:
+        items = _split_comma_separated(value)
+        if isinstance(items, list):
+            return [item.lower() if isinstance(item, str) else item for item in items]
+        return items
+
     @model_validator(mode="after")
     def validate_tls_configuration(self) -> Self:
         if self.tls_ca_file is not None:
             self.tls_ca_file = _resolve_ca_bundle_setting("database.tls_ca_file", self.tls_ca_file)
+        return self
+
+    @model_validator(mode="after")
+    def validate_writer_read_priorities(self) -> Self:
+        # Only the 'neo4j' scheme fetches the routing table that sends a read session elsewhere than the writer.
+        if self.writer_read_priorities and (self.db_type != DatabaseType.NEO4J or self.protocol != "neo4j"):
+            raise ValueError(
+                "The writer_read_priorities setting requires the 'neo4j' database type and the 'neo4j' protocol"
+            )
         return self
 
     @property
@@ -1738,9 +1774,7 @@ class LogForwardingSettings(BaseSettings):
     @field_validator("destination_names", mode="before")
     @classmethod
     def _split_destination_names(cls, v: Any) -> Any:
-        if isinstance(v, str):
-            return [n.strip() for n in v.split(",") if n.strip()]
-        return v
+        return _split_comma_separated(v)
 
     @model_validator(mode="after")
     def _materialize_destinations_from_env(self) -> Self:
@@ -2039,9 +2073,7 @@ class LDAPSettings(BaseSettings):
     @field_validator("servers", mode="before")
     @classmethod
     def _split_servers(cls, v: Any) -> Any:
-        if isinstance(v, str):
-            return [s.strip() for s in v.split(",") if s.strip()]
-        return v
+        return _split_comma_separated(v)
 
     @field_validator("servers")
     @classmethod

@@ -27,6 +27,8 @@ from infrahub.config import (
     default_cors_allow_headers,
     load,
 )
+from infrahub.constants.database import DatabaseType
+from infrahub.workflows.constants import WorkflowPriority
 from tests.conftest import TestHelper
 
 
@@ -186,6 +188,48 @@ def test_database_address_ipv6_member() -> None:
 def test_database_uri_with_policy() -> None:
     settings = DatabaseSettings(address="member1,member2", policy="europe")
     assert settings.database_uri == "bolt://member1:7687?policy=europe"
+
+
+def test_database_writer_read_priorities_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("INFRAHUB_DB_PROTOCOL", "neo4j")
+    monkeypatch.setenv("INFRAHUB_DB_WRITER_READ_PRIORITIES", " High , medium")
+
+    settings = DatabaseSettings()
+
+    assert settings.writer_read_priorities == [WorkflowPriority.HIGH, WorkflowPriority.MEDIUM]
+
+
+def test_database_writer_read_priorities_from_a_configuration_file() -> None:
+    settings = DatabaseSettings.model_validate({"protocol": "neo4j", "writer_read_priorities": ["High", "low"]})
+
+    assert settings.writer_read_priorities == [WorkflowPriority.HIGH, WorkflowPriority.LOW]
+
+
+@dataclass
+class WriterReadTransportCase:
+    name: str
+    db_type: DatabaseType
+    protocol: str
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        pytest.param(case, id=case.name)
+        for case in [
+            WriterReadTransportCase(name="bolt_protocol", db_type=DatabaseType.NEO4J, protocol="bolt"),
+            WriterReadTransportCase(name="memgraph", db_type=DatabaseType.MEMGRAPH, protocol="neo4j"),
+        ]
+    ],
+)
+def test_database_writer_read_priorities_require_neo4j_routing(case: WriterReadTransportCase) -> None:
+    with pytest.raises(
+        ValidationError,
+        match=re.escape(
+            "The writer_read_priorities setting requires the 'neo4j' database type and the 'neo4j' protocol"
+        ),
+    ):
+        DatabaseSettings(db_type=case.db_type, protocol=case.protocol, writer_read_priorities="high")
 
 
 def test_database_pool_timeout_defaults() -> None:

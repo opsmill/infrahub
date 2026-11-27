@@ -6,7 +6,7 @@ from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.events.models import EventBranchContext, EventContext
-from infrahub.services.adapters.workflow.priority import prepare_dispatch, resolve_priority
+from infrahub.services.adapters.workflow.priority import prepare_dispatch, priority_of_work_queue, resolve_priority
 from infrahub.workflows.constants import WorkflowPriority
 from infrahub.workflows.models import WorkflowDefinition
 
@@ -238,3 +238,24 @@ class TestPrepareDispatch:
 
         assert dispatched_context is None
         assert work_queue_name == WorkflowPriority.HIGH.queue_name
+
+
+@dataclass
+class WorkQueueCase:
+    name: str
+    work_queue_name: str | None
+    expected: WorkflowPriority | None
+
+
+WORK_QUEUE_CASES = [
+    WorkQueueCase(name="high_lane", work_queue_name="high", expected=WorkflowPriority.HIGH),
+    WorkQueueCase(name="medium_lane", work_queue_name="medium", expected=WorkflowPriority.MEDIUM),
+    WorkQueueCase(name="low_lane", work_queue_name="low", expected=WorkflowPriority.LOW),
+    WorkQueueCase(name="queue_outside_the_lanes", work_queue_name="default", expected=None),
+    WorkQueueCase(name="no_queue", work_queue_name=None, expected=None),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in WORK_QUEUE_CASES])
+def test_priority_of_work_queue(case: WorkQueueCase) -> None:
+    assert priority_of_work_queue(work_queue_name=case.work_queue_name) is case.expected

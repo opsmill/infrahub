@@ -37,6 +37,7 @@ from infrahub.core.constants import (
 from infrahub.core.query import QueryType
 from infrahub.core.schema import GenericSchema, NodeSchema
 from infrahub.exceptions import DatabaseError, QueryTimeoutError
+from infrahub.execution_priority import get_execution_priority
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
@@ -60,6 +61,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.workflows.constants import WorkflowPriority
 
 validated_database: dict[str, bool] = {}
 R = TypeVar("R")
@@ -173,9 +175,11 @@ class InfrahubDatabase:
         session_mode: InfrahubDatabaseSessionMode = InfrahubDatabaseSessionMode.WRITE,
         transaction: AsyncTransaction | None = None,
         queries_names_to_config: dict[str, QueryConfig] | None = None,
+        writer_read_priorities: frozenset[WorkflowPriority] = frozenset(),
     ) -> None:
         self._mode: InfrahubDatabaseMode = mode
         self._driver: AsyncDriver = driver
+        self._writer_read_priorities = writer_read_priorities
         self._session: AsyncSession | None = session
         self._session_mode: InfrahubDatabaseSessionMode = session_mode
         self._is_session_local: bool = False
@@ -245,6 +249,7 @@ class InfrahubDatabase:
             driver=self._driver,
             session_mode=session_mode,
             queries_names_to_config=self.queries_names_to_config,
+            writer_read_priorities=self._writer_read_priorities,
             **context,
         )
 
@@ -260,22 +265,29 @@ class InfrahubDatabase:
             session=self._session,
             session_mode=self._session_mode,
             queries_names_to_config=self.queries_names_to_config,
+            writer_read_priorities=self._writer_read_priorities,
             **context,
         )
+
+    def _reads_on_writer(self) -> bool:
+        """Whether this is a read-only session that serves a priority whose reads run on the writer."""
+        return (
+            self._session_mode == InfrahubDatabaseSessionMode.READ
+            and get_execution_priority() in self._writer_read_priorities
+        )
+
+    def _open_session(self) -> AsyncSession:
+        access_mode = WRITE_ACCESS
+        # A cluster runs a write-mode session on its leader, which is where writer-read priorities must read.
+        if self._session_mode == InfrahubDatabaseSessionMode.READ and not self._reads_on_writer():
+            access_mode = READ_ACCESS
+        return self._driver.session(database=config.SETTINGS.database.database_name, default_access_mode=access_mode)
 
     async def session(self) -> AsyncSession:
         if self._session:
             return self._session
 
-        if self._session_mode == InfrahubDatabaseSessionMode.READ:
-            self._session = self._driver.session(
-                database=config.SETTINGS.database.database_name, default_access_mode=READ_ACCESS
-            )
-        else:
-            self._session = self._driver.session(
-                database=config.SETTINGS.database.database_name, default_access_mode=WRITE_ACCESS
-            )
-
+        self._session = self._open_session()
         self._is_session_local = True
         return self._session
 
@@ -291,14 +303,7 @@ class InfrahubDatabase:
 
     async def __aenter__(self) -> Self:
         if self._mode == InfrahubDatabaseMode.SESSION:
-            if self._session_mode == InfrahubDatabaseSessionMode.READ:
-                self._session = self._driver.session(
-                    database=config.SETTINGS.database.database_name, default_access_mode=READ_ACCESS
-                )
-            else:
-                self._session = self._driver.session(
-                    database=config.SETTINGS.database.database_name, default_access_mode=WRITE_ACCESS
-                )
+            self._session = self._open_session()
 
         elif self._mode == InfrahubDatabaseMode.TRANSACTION:
             session = await self.session()
@@ -475,8 +480,9 @@ class InfrahubDatabase:
                     raise
                 # Time the query ourselves (submission through row drain). Only READ executions of
                 # the reference query feed the database-stress signal, so a write sharing the name
-                # cannot pollute the floor or the window.
-                if name == REFERENCE_QUERY_NAME and type == QueryType.READ:
+                # cannot pollute the floor or the window, and neither can a read that its priority
+                # moved from a cluster's readers to its leader.
+                if name == REFERENCE_QUERY_NAME and type == QueryType.READ and not self._reads_on_writer():
                     get_reference_query_load_tracker().record(time.monotonic() - execution_start)
                 metadata = response._metadata or {}
                 span.set_attribute("rows", len(results))

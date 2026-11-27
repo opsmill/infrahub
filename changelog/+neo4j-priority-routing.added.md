@@ -1,0 +1,1 @@
+Added the INFRAHUB_DB_WRITER_READ_PRIORITIES setting, which runs the read-only database sessions of the chosen request priorities, such as GraphQL queries, on the Neo4j cluster leader instead of on a follower.

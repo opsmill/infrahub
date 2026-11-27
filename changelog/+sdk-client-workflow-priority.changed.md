@@ -1,0 +1,1 @@
+Workflows that did not send their priority on the GraphQL queries they make through the Python SDK now send it. API load shedding and the INFRAHUB_DB_WRITER_READ_PRIORITIES setting now apply the workflow's priority to these queries, which counted as medium before.

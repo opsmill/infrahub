@@ -159,6 +159,55 @@ INFRAHUB_DB_ADDRESS=neo4j-core-1,neo4j-core-2,neo4j-core-3
 
 In both cases the driver tries the members in turn until one answers, so the initial connection succeeds even when some members are down.
 
+### Run the reads of a priority on the cluster leader
+
+Infrahub classifies each API request and each workflow run as high, medium, or low priority. The web interface sends most of its requests at high priority, and workflows such as Generators and artifact generation run at medium priority by default. API requests that send no priority are medium.
+
+On a Neo4j cluster, Infrahub can run the reads of chosen priorities on the writer of the database, which is the cluster leader, and the reads of the other priorities on followers. For example, high-priority reads can run on the leader, which has every committed write, while background reads stay on the followers.
+
+This applies only to the database sessions that Infrahub opens as read-only, which include the queries of the GraphQL API. GraphQL queries that a workflow sends through the Python SDK carry the priority of the workflow. A workflow that an event started can send them with the priority of the change that caused the event instead. Writes, authentication, and the other steps that Infrahub runs in a write session always run on the leader, whatever their priority. The leader therefore also runs every write, so a large import slows down the reads that run on it.
+
+While the cluster has no leader, for example during a leader election, the reads of the listed priorities cannot run, because they run only on the leader. The reads of the other priorities keep running on the followers.
+
+1. List the priorities whose reads run on the leader, and restart the API servers and task workers:
+
+   ```bash
+   INFRAHUB_DB_PROTOCOL=neo4j
+   INFRAHUB_DB_WRITER_READ_PRIORITIES=high
+   ```
+
+   The reads of the other priorities run on the servers that Neo4j lists as readers. By default, Neo4j lists the leader as a reader only when no other server is available (`dbms.routing.reads_on_writers_enabled=false`).
+
+2. Optional: to run the reads of the other priorities only on some of the followers, tag those servers in their `neo4j.conf` file. To change the tags of a running server, use the `ALTER SERVER` command.
+
+   ```ini
+   initial.server.tags=batch
+   ```
+
+   Then define a load balancing policy in the `neo4j.conf` file of every primary server, with the same definition on all servers:
+
+   ```ini
+   dbms.routing.load_balancing.config.server_policies.infrahub_batch=tags(batch)->roles(follower);halt();
+   ```
+
+   Neo4j applies the rules of a policy in order and uses the first rule that returns at least one server. `halt()` stops the evaluation, so reads fail instead of using other servers when no `batch` follower is available. The `roles()` filter requires Neo4j 2025.12 or later. See [Load balancing policies](https://neo4j.com/docs/operations-manual/current/clustering/clustering-advanced/multi-data-center-routing/) in the Neo4j documentation for the full syntax.
+
+   Select the policy in the Infrahub configuration, and restart the API servers and task workers:
+
+   ```bash
+   INFRAHUB_DB_POLICY=infrahub_batch
+   ```
+
+   To check which servers the policy selects, run the following procedure on a cluster server. The second argument is the name of the Infrahub database, set by `INFRAHUB_DB_DATABASE` and `neo4j` by default. The `READ` entry of the result lists the servers that the policy allows for reads:
+
+   ```cypher
+   CALL dbms.routing.getRoutingTable({policy: 'infrahub_batch'}, 'neo4j')
+   ```
+
+3. Optional: to keep the leader on chosen servers, tag them, for example `interactive`, and set `db.cluster.raft.leader_transfer.priority_tag=interactive` on the cluster servers. This setting turns off the automatic leadership balancing of Neo4j.
+
+A follower can return a read before it applies a write that the leader committed a moment earlier, so a read that runs on a follower can miss a change made just before.
+
 ## Connecting Infrahub to a RabbitMQ cluster
 
 RabbitMQ 4.0 removed classic queue mirroring. A classic queue is stored on one node of the cluster: when that node stops, the queue is unavailable, and Infrahub cannot send or receive the messages that use it until the node is back. A quorum queue stores a copy of its messages on several nodes, and RabbitMQ elects a new leader for the queue when the node of the current leader stops.
