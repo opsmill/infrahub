@@ -167,6 +167,10 @@ except ClientDisconnect as exc:
 
 Being inside an `except` block is not by itself a reason to suppress — justify each site on its own.
 
+An outcome your own code produces and expects is not an exception. When a write can find nothing to
+change (the branch was deleted during the run), return whether it changed anything and let the caller
+log a warning; the `except` around it then catches only real failures, and `log.exception` stays right.
+
 ## See Also
 
 - [Python Standards](python.md) - Typing, imports, data structures, call style
