@@ -761,6 +761,7 @@ async def test_branch_merge_with_conflict_fails(
         variable_values={},
     )
 
+    assert result.errors is not None
     assert [error.message for error in result.errors] == [
         "Branch branch2 contains conflicts with the default branch. Please create a Proposed Change to resolve the "
         "conflicts or manually update them before merging."

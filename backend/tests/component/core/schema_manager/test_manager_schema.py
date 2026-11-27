@@ -257,6 +257,7 @@ async def test_validate_human_friendly_id_assign_uniquess_constraints(
     if human_friendly_id:
         expected_uniqueness_constraints += [human_friendly_id]
 
+    assert dog_node.uniqueness_constraints is not None
     assert {tuple(uc) for uc in dog_node.uniqueness_constraints} == {
         tuple(uc) for uc in expected_uniqueness_constraints
     }

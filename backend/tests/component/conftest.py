@@ -94,7 +94,6 @@ from tests.helpers.schema_cache import install_processed_core_schema_branch, ins
 from tests.helpers.test_client import dummy_async_request
 from tests.helpers.utils import find_available_prefect_port
 from tests.helpers.workflow_override import override_workflow
-from tests.test_data import dataset01 as ds01
 
 COMPONENT_TESTS_DIR = Path(__file__).parent
 
@@ -2986,11 +2985,6 @@ async def mock_core_schema_01(helper: TestHelper, httpx_mock: HTTPXMock) -> HTTP
     response_text = helper.schema_file(file_name="core_schema_01.json")
     httpx_mock.add_response(method="GET", url="http://mock/api/schema?branch=main", json=response_text)
     return httpx_mock
-
-
-@pytest.fixture
-def dataset01(init_db: Any) -> None:
-    ds01.load_data()
 
 
 @pytest.fixture

@@ -1668,14 +1668,11 @@ include = ["backend/tests/component/**"]
 invalid-argument-type = "ignore"
 invalid-assignment = "ignore"
 invalid-return-type = "ignore"
-invalid-type-arguments = "ignore"
 missing-argument = "ignore"
 no-matching-overload = "ignore"
 not-subscriptable = "ignore"
-not-iterable = "ignore"
 unresolved-attribute = "ignore"
 unsupported-operator = "ignore"
-unused-awaitable = "ignore"
 
 [[tool.ty.overrides]]
 include = ["backend/tests/helpers/**"]
