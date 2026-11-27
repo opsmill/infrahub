@@ -2,24 +2,24 @@ from __future__ import annotations
 
 import asyncio
 from typing import TYPE_CHECKING, Any
-from unittest.mock import patch
 
 import pytest
-from infrahub_sdk.protocols import CoreArtifactValidator
 
 from infrahub import lock
 from infrahub.artifacts.models import CheckArtifactCreate
 from infrahub.core.constants import ValidatorConclusion, ValidatorState
 from infrahub.proposed_change.tasks import validate_artifacts_generation
 from infrahub.workflows.catalogue import GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE
+from tests.adapters.lock import LockAction, LockTimeline, install_recording_lock_registry
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.workflow_override import override_workflow
 
 from .test_failed_artifact_retry import ArtifactRetryTestBase, RetryDataset
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Generator
+
     from fast_depends import Provider
-    from infrahub_sdk import InfrahubClient
 
     from infrahub.context import InfrahubContext
     from infrahub.core.branch import Branch
@@ -30,12 +30,33 @@ if TYPE_CHECKING:
     from infrahub.workflows.models import WorkflowDefinition
 
 WAIT_TIMEOUT_SECONDS = 30
+FIRST_TARGET_FINISHED = "first target finished"
+
+
+class NotifyingLockTimeline(LockTimeline):
+    """A lock timeline that a test can wait on until a condition over its events holds."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._recorded = asyncio.Event()
+
+    def record(self, name: str, action: LockAction, label: str | None = None) -> int:
+        seq = super().record(name=name, action=action, label=label)
+        self._recorded.set()
+        return seq
+
+    async def wait_until(self, condition: Callable[[], bool]) -> None:
+        async with asyncio.timeout(WAIT_TIMEOUT_SECONDS):
+            while not condition():
+                self._recorded.clear()
+                await self._recorded.wait()
 
 
 class BlockedArtifactWorkflow(WorkflowRecorder):
-    def __init__(self, first_run_target_count: int) -> None:
+    def __init__(self, first_run_target_count: int, timeline: LockTimeline) -> None:
         super().__init__()
         self.first_run_target_count = first_run_target_count
+        self.timeline = timeline
         self.first_run_started = asyncio.Event()
         self.release_first_target = asyncio.Event()
         self.first_target_cancelled = False
@@ -69,11 +90,23 @@ class BlockedArtifactWorkflow(WorkflowRecorder):
             except asyncio.CancelledError:
                 self.first_target_cancelled = True
                 raise
+            self.timeline.checkpoint(FIRST_TARGET_FINISHED)
         assert parameters is not None
         assert isinstance(parameters["model"], CheckArtifactCreate)
         if call_number <= self.first_run_target_count:
             return ValidatorConclusion.FAILURE
         return ValidatorConclusion.SUCCESS
+
+
+@pytest.fixture
+def lock_timeline() -> Generator[NotifyingLockTimeline, None, None]:
+    original = lock.registry
+    timeline = NotifyingLockTimeline()
+    install_recording_lock_registry(timeline=timeline)
+    try:
+        yield timeline
+    finally:
+        lock.registry = original
 
 
 class TestArtifactRetryConcurrency(ArtifactRetryTestBase):
@@ -82,49 +115,32 @@ class TestArtifactRetryConcurrency(ArtifactRetryTestBase):
         db: InfrahubDatabase,
         dataset: RetryDataset,
         dependency_provider: Provider,
-        client: InfrahubClient,
         default_branch: Branch,
         admin_account: CoreAccount,
+        lock_timeline: NotifyingLockTimeline,
     ) -> None:
         history = await self._history(db=db, dataset=dataset)
         model = self._request(dataset=dataset, proposed_change_id=history.proposed_change_id)
         context = self._make_context(admin_account, default_branch)
-        workflow = BlockedArtifactWorkflow(first_run_target_count=3)
-        validation_lock = lock.registry.get(
+        workflow = BlockedArtifactWorkflow(first_run_target_count=3, timeline=lock_timeline)
+        lock_name = lock.registry.get(
             name=f"{history.proposed_change_id}:{dataset.definition.definition_id}", namespace="artifact-validation"
-        )
-        acquire = validation_lock.acquire
-        acquisition_count = 0
-        second_attempted = asyncio.Event()
-        second_acquired = asyncio.Event()
-        validator_states_before_second_run: list[tuple[str | None, str | None]] = []
+        ).name
 
-        async def observed_acquire() -> None:
-            nonlocal acquisition_count
-            acquisition_count += 1
-            second_run = acquisition_count == 2
-            if second_run:
-                second_attempted.set()
-            await acquire()
-            if second_run:
-                validator = await client.get(kind=CoreArtifactValidator, id=history.validator_id)
-                validator_states_before_second_run.append((validator.state.value, validator.conclusion.value))
-                second_acquired.set()
+        def lock_actions() -> list[LockAction]:
+            return [event.action for event in lock_timeline.events if event.name == lock_name]
 
-        with (
-            override_workflow(workflow=workflow, dependency_provider=dependency_provider),
-            patch.object(validation_lock, "acquire", new=observed_acquire),
-        ):
+        with override_workflow(workflow=workflow, dependency_provider=dependency_provider):
             first = asyncio.create_task(validate_artifacts_generation(model=model, context=context))
             second: asyncio.Task[None] | None = None
             try:
                 await asyncio.wait_for(workflow.first_run_started.wait(), timeout=WAIT_TIMEOUT_SECONDS)
                 first.cancel()
                 second = asyncio.create_task(validate_artifacts_generation(model=model, context=context))
-                await asyncio.wait_for(second_attempted.wait(), timeout=WAIT_TIMEOUT_SECONDS)
+                await lock_timeline.wait_until(lambda: lock_timeline.waiting(lock_name) == 1)
 
                 assert not first.done()
-                assert not second_acquired.is_set()
+                assert lock_actions() == [LockAction.WAIT, LockAction.ACQUIRE, LockAction.WAIT]
                 assert len(workflow.get_execute_calls_for(GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE)) == 3
 
                 assert first.cancel()
@@ -132,7 +148,7 @@ class TestArtifactRetryConcurrency(ArtifactRetryTestBase):
                 asyncio.get_running_loop().call_soon(cancellation_scheduled.set)
                 await asyncio.wait_for(cancellation_scheduled.wait(), timeout=WAIT_TIMEOUT_SECONDS)
                 assert not first.done()
-                assert not second_acquired.is_set()
+                assert lock_actions() == [LockAction.WAIT, LockAction.ACQUIRE, LockAction.WAIT]
                 assert not workflow.first_target_cancelled
                 assert len(workflow.get_execute_calls_for(GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE)) == 3
 
@@ -148,9 +164,20 @@ class TestArtifactRetryConcurrency(ArtifactRetryTestBase):
                         task.cancel()
                 await asyncio.wait_for(asyncio.gather(*running, return_exceptions=True), timeout=WAIT_TIMEOUT_SECONDS)
 
-        assert validator_states_before_second_run == [
-            (ValidatorState.COMPLETED.value, ValidatorConclusion.FAILURE.value)
+        assert lock_actions() == [
+            LockAction.WAIT,
+            LockAction.ACQUIRE,
+            LockAction.WAIT,
+            LockAction.RELEASE,
+            LockAction.ACQUIRE,
+            LockAction.RELEASE,
         ]
+        second_acquired = [
+            event.seq
+            for event in lock_timeline.events
+            if event.name == lock_name and event.action == LockAction.ACQUIRE
+        ][1]
+        assert lock_timeline.checkpoint_seqs(FIRST_TARGET_FINISHED)[0] < second_acquired
         assert not workflow.first_target_cancelled
         calls = workflow.get_execute_calls_for(GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE)
         assert len(calls) == 6

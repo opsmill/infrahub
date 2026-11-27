@@ -6,8 +6,8 @@ from prefect import flow, get_run_logger
 
 from infrahub.artifacts.checks import artifact_check_name, save_artifact_check
 from infrahub.artifacts.models import CheckArtifactCreate  # noqa: TC001  needed for prefect flow
+from infrahub.artifacts.repositories import get_artifact_repositories
 from infrahub.core.constants import Severity, ValidatorConclusion
-from infrahub.git.repository import get_initialized_repo
 from infrahub.tasks.artifact import define_artifact
 from infrahub.workers.dependencies import get_client
 from infrahub.workflows.utils import add_tags
@@ -22,6 +22,7 @@ async def create(model: CheckArtifactCreate) -> ValidatorConclusion:
 
     client = get_client()
     client.request_context = model.context.to_request_context()
+    repositories = get_artifact_repositories()
     log = get_run_logger()
 
     check = await save_artifact_check(
@@ -38,14 +39,7 @@ async def create(model: CheckArtifactCreate) -> ValidatorConclusion:
 
     artifact: CoreArtifact | None = None
     try:
-        repo = await get_initialized_repo(
-            client=client,
-            repository_id=model.repository_id,
-            name=model.repository_name,
-            repository_kind=model.repository_kind,
-            infrahub_branch_name=model.branch_name,
-            commit=model.commit,
-        )
+        repo = await repositories.open(client=client, model=model)
         artifact, artifact_created = await define_artifact(model=model)
         check.artifact_id.value = artifact.id
         result = await repo.render_artifact(artifact=artifact, artifact_created=artifact_created, message=model)

@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
-from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
 from infrahub_sdk.protocols import CoreArtifact, CoreArtifactCheck, CoreArtifactDefinition, CoreArtifactValidator
+from prefect import flow
 
 from infrahub.artifacts.models import CheckArtifactCreate
+from infrahub.artifacts.repositories import ArtifactRenderer, ArtifactRepositories, build_artifact_repositories
 from infrahub.artifacts.tasks import create
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.initialization import create_branch
@@ -26,12 +26,15 @@ from infrahub.proposed_change.tasks import _run_artifact_target
 from infrahub.workflows.catalogue import GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE
 from tests.adapters.workflow import WorkflowRecorder
 from tests.constants import TestKind
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.schema import CAR_SCHEMA, save_schema
 from tests.helpers.workflow_override import override_workflow
 
 from .conftest import ArtifactRegenTestBase
 
 if TYPE_CHECKING:
+    from contextlib import AbstractContextManager
+
     from fast_depends import Provider
     from infrahub_sdk import InfrahubClient
 
@@ -56,7 +59,7 @@ class Dataset:
 
 class SuccessfulArtifactRepository:
     async def render_artifact(
-        self, *, artifact: CoreArtifact, artifact_created: bool, message: CheckArtifactCreate
+        self, artifact: CoreArtifact, artifact_created: bool, message: CheckArtifactCreate
     ) -> ArtifactGenerateResult:
         artifact.status.value = "Ready"
         await artifact.save()
@@ -65,16 +68,25 @@ class SuccessfulArtifactRepository:
         )
 
 
-async def unavailable_repository(**kwargs: object) -> SuccessfulArtifactRepository:
-    raise RuntimeError("Repository setup failed")
+class SuccessfulArtifactRepositories(ArtifactRepositories):
+    async def open(self, client: InfrahubClient, model: CheckArtifactCreate) -> ArtifactRenderer:
+        return SuccessfulArtifactRepository()
 
 
-async def successful_repository(**kwargs: object) -> SuccessfulArtifactRepository:
-    return SuccessfulArtifactRepository()
+class UnavailableArtifactRepositories(ArtifactRepositories):
+    async def open(self, client: InfrahubClient, model: CheckArtifactCreate) -> ArtifactRenderer:
+        raise RuntimeError("Repository setup failed")
 
 
-async def cancelled_repository(**kwargs: object) -> SuccessfulArtifactRepository:
-    raise asyncio.CancelledError
+class CancelledArtifactRepositories(ArtifactRepositories):
+    async def open(self, client: InfrahubClient, model: CheckArtifactCreate) -> ArtifactRenderer:
+        raise asyncio.CancelledError
+
+
+def use_repositories(repositories: ArtifactRepositories, dependency_provider: Provider) -> AbstractContextManager[None]:
+    return override_dependency(
+        build_artifact_repositories, lambda: repositories, dependency_provider=dependency_provider
+    )
 
 
 class TerminalArtifactWorkflow(WorkflowRecorder):
@@ -204,9 +216,9 @@ class TestArtifactCheckRetry(ArtifactRegenTestBase):
         )
 
     async def test_setup_failure_is_persisted_and_retry_updates_the_same_check_after_rename(
-        self, check_model: CheckArtifactCreate, client: InfrahubClient
+        self, check_model: CheckArtifactCreate, client: InfrahubClient, dependency_provider: Provider
     ) -> None:
-        with patch("infrahub.artifacts.tasks.get_initialized_repo", new=unavailable_repository):
+        with use_repositories(UnavailableArtifactRepositories(), dependency_provider):
             failed = await create(model=check_model)
 
         assert failed == ValidatorConclusion.FAILURE
@@ -222,7 +234,7 @@ class TestArtifactCheckRetry(ArtifactRegenTestBase):
         target.name.value = "after-rename"
         await target.save()
         retry = check_model.model_copy(update={"check_id": failed_check.id, "target_name": "after-rename"})
-        with patch("infrahub.artifacts.tasks.get_initialized_repo", new=successful_repository):
+        with use_repositories(SuccessfulArtifactRepositories(), dependency_provider):
             succeeded = await create(model=retry)
 
         assert succeeded == ValidatorConclusion.SUCCESS
@@ -242,12 +254,12 @@ class TestArtifactCheckRetry(ArtifactRegenTestBase):
         assert check.artifact_id.value == artifacts[0].id
 
     async def test_cancelled_check_reuses_its_reserved_identity_on_retry(
-        self, check_model: CheckArtifactCreate, client: InfrahubClient
+        self, check_model: CheckArtifactCreate, client: InfrahubClient, dependency_provider: Provider
     ) -> None:
         reserved_id = str(uuid4())
         check_model = check_model.model_copy(update={"check_id": reserved_id})
         with (
-            patch("infrahub.artifacts.tasks.get_initialized_repo", new=cancelled_repository),
+            use_repositories(CancelledArtifactRepositories(), dependency_provider),
             pytest.raises(asyncio.CancelledError, match=r"^$"),
         ):
             await create(model=check_model)
@@ -258,7 +270,7 @@ class TestArtifactCheckRetry(ArtifactRegenTestBase):
         assert checks[0].conclusion.value == ValidatorConclusion.UNKNOWN.value
         assert checks[0].message.value == "Rendering artifact"
 
-        with patch("infrahub.artifacts.tasks.get_initialized_repo", new=successful_repository):
+        with use_repositories(SuccessfulArtifactRepositories(), dependency_provider):
             succeeded = await create(model=check_model)
 
         assert succeeded == ValidatorConclusion.SUCCESS
@@ -312,22 +324,24 @@ class TestArtifactCheckRetry(ArtifactRegenTestBase):
         )
 
         async def run_target(check_id: str | None) -> ValidatorConclusion:
-            return await _run_artifact_target(
-                client=client,
-                model=request,
-                context=check_model.context,
-                artifact_definition=definition,
-                member=target,
-                artifact_id=None,
-                validator_id=validator.id,
-                check_id=check_id,
-            )
+            # The target check logs through the run logger, which needs a flow run.
+            @flow(name="artifact-target-check")
+            async def run_in_flow() -> ValidatorConclusion:
+                return await _run_artifact_target(
+                    client=client,
+                    model=request,
+                    context=check_model.context,
+                    artifact_definition=definition,
+                    member=target,
+                    artifact_id=None,
+                    validator_id=validator.id,
+                    check_id=check_id,
+                )
 
-        with (
-            override_workflow(workflow=TerminalArtifactWorkflow(), dependency_provider=dependency_provider),
-            patch("infrahub.proposed_change.tasks.get_run_logger", return_value=logging.getLogger(__name__)),
-        ):
-            with patch("infrahub.artifacts.tasks.get_initialized_repo", new=cancelled_repository):
+            return await run_in_flow()
+
+        with override_workflow(workflow=TerminalArtifactWorkflow(), dependency_provider=dependency_provider):
+            with use_repositories(CancelledArtifactRepositories(), dependency_provider):
                 failed = await run_target(check_id=None)
             assert failed == ValidatorConclusion.FAILURE
             checks = await client.filters(kind=CoreArtifactCheck, validator__ids=[validator.id])
@@ -338,7 +352,7 @@ class TestArtifactCheckRetry(ArtifactRegenTestBase):
                 failed_check.message.value == "Failed to render artifact: Artifact worker terminated without a result"
             )
 
-            with patch("infrahub.artifacts.tasks.get_initialized_repo", new=successful_repository):
+            with use_repositories(SuccessfulArtifactRepositories(), dependency_provider):
                 succeeded = await run_target(check_id=failed_check.id)
 
         assert succeeded == ValidatorConclusion.SUCCESS
@@ -349,14 +363,14 @@ class TestArtifactCheckRetry(ArtifactRegenTestBase):
         assert checks[0].message.value == "Artifact rendered successfully"
 
     async def test_different_targets_with_the_same_label_keep_distinct_checks(
-        self, check_model: CheckArtifactCreate, client: InfrahubClient
+        self, check_model: CheckArtifactCreate, client: InfrahubClient, dependency_provider: Provider
     ) -> None:
         other_target = await client.create(
             kind=TestKind.PERSON, branch=SOURCE_BRANCH, data={"name": check_model.target_name}
         )
         await other_target.save()
         other_model = check_model.model_copy(update={"target_id": other_target.id})
-        with patch("infrahub.artifacts.tasks.get_initialized_repo", new=unavailable_repository):
+        with use_repositories(UnavailableArtifactRepositories(), dependency_provider):
             first = await create(model=check_model)
             second = await create(model=other_model)
 
