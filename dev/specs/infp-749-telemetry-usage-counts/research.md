@@ -204,7 +204,7 @@ The review left three findings open. The owner of the telemetry code decided to 
 - **Each new read of the task manager has a deadline.**
   - Built: `task_manager.py::read_within_deadline` stops waiting after `TASK_MANAGER_READ_DEADLINE_SECONDS`, 60 seconds, and the 8 run history reads and the count per validator kind go through it. A read that is given up is reported like any failed read. The 14 new reads delay the report by at most about 14 minutes when the task manager does not answer.
   - The value: 60 seconds is the default request timeout of the Prefect client, so an unanswered read gets one full attempt and no retry. A read that the task manager answers takes far less.
-  - Not changed: the older reads of the task manager in `task_manager.py::gather_activity_24h` have no deadline, so each can still take about 7 minutes when it gets no answer.
+  - Not changed, by a decision of the owner on 2026-11-27: the 11 older reads of the task manager in `task_manager.py::gather_activity_24h` (the logins, the check, artifact and branch counts, and the webhook counts) keep no deadline. Each can still take about 7 minutes when it gets no answer, so the report can still be about 77 minutes late.
   - A timeout that the read raises by itself before the deadline is passed on unchanged, so the log does not report it as the deadline.
 
 ## Checks before the pull request is merged
