@@ -191,6 +191,7 @@ Single backend project. Source under `backend/infrahub/telemetry/`, tests under 
 - [x] T048 Component test `test_gather_database_information_failed_node_count_keeps_the_output_totals` in `backend/tests/component/telemetry/test_database.py`, and one more case in `test_gather_database_information_artifact_totals`: an artifact that is created without content and gets its content in a later update
 - [x] T049 Unit tests in `backend/tests/unit/telemetry/test_models.py` (a partly filled row is rejected; the JSON of a row) and `backend/tests/unit/telemetry/test_utils.py` (the log line of a failed read). In `backend/tests/unit/telemetry/test_task_manager.py`, the failing read comes first, so a loop that stops at the first failure fails the test
 - [x] T050 Run the telemetry tests and the new tests against code with the guarded behaviour removed. Run on 2026-11-27: the 149 telemetry unit and component tests pass. Each of the new or changed guards fails when its behaviour is removed: the window passed to the run rows (two mutations), the same-UUID filter and the status tie-breaker of `queries.py::CountNodesWithOutputQuery`, the protected count of artifact targets, the rule of the row model, the exception type in the log line, a run row loop that stops at the first failed read, and a content read that takes the first value with no time filter. The case with content stored in a later update still passes when only the order of the content read is reversed, because the time filter already removes the earlier value
+- [x] T051 Apply the simplifications of the review that change no behaviour: one helper for the comparison of the output totals and one for the car seeds in `backend/tests/component/telemetry/test_database.py`, the validator kinds pinned once and one assertion that could not fail removed in `backend/tests/component/telemetry/test_tasks.py`, one name for one thing in `task_manager.py::build_workflow_run_rows`, and no default for `content_attribute` on `queries.py::CountNodesWithOutputQuery`. The 149 telemetry tests pass after them
 
 ---
 
@@ -243,7 +244,7 @@ Phases 1 to 6 are built in the working tree: the four groups of values, their te
 1. T027: a failed read of the validator kinds nulls only `validators_started`, and the kinds are read through `db.schema`.
 2. T010, T023 to T026, T029 and T030: tests for the acceptance scenarios that had no test of their own. Seven of the eight new or extended tests were run against code with the behaviour removed, and each failed. The case added by T010 was not run against changed code.
 3. T034: three corrections to the knowledge doc.
-4. T041 to T050: the fixes from the speckit review of 2026-11-27.
+4. T041 to T051: the fixes from the speckit review of 2026-11-27.
 
 ### What is open
 

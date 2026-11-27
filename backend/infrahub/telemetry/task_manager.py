@@ -229,17 +229,17 @@ def build_workflow_run_rows(workflow: str, states: list[RunHistoryState]) -> lis
     """
     runs: dict[StateType, int] = {}
     run_time: dict[StateType, timedelta] = {}
-    for state in states:
-        runs[state.state_type] = runs.get(state.state_type, 0) + state.count_runs
-        run_time[state.state_type] = run_time.get(state.state_type, timedelta()) + state.sum_estimated_run_time
+    for entry in states:
+        runs[entry.state_type] = runs.get(entry.state_type, 0) + entry.count_runs
+        run_time[entry.state_type] = run_time.get(entry.state_type, timedelta()) + entry.sum_estimated_run_time
     return [
         TelemetryWorkflowRunData(
             workflow=workflow,
-            state=state,
+            state=reported_state,
             runs=runs[state_type],
             run_seconds=round(run_time[state_type].total_seconds()),
         )
-        for state_type, state in REPORTED_RUN_STATES.items()
+        for state_type, reported_state in REPORTED_RUN_STATES.items()
         if state_type in runs
     ]
 

@@ -113,7 +113,7 @@ class CountNodesWithOutputQuery(Query):
     insert_return = False
 
     def __init__(
-        self, output_kind: str, relationship_identifier: str, content_attribute: str | None = None, **kwargs: Any
+        self, output_kind: str, relationship_identifier: str, content_attribute: str | None, **kwargs: Any
     ) -> None:
         super().__init__(**kwargs)
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)

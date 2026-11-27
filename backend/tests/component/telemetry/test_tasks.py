@@ -94,6 +94,16 @@ _ARTIFACT_AND_GENERATOR_TOTALS = (
 
 _DEFINITION_KINDS = ("CoreArtifactDefinition", "CoreCheckDefinition", "CoreGeneratorDefinition")
 
+# The kind names are keys of the report that the data warehouse reads, so the list is pinned here.
+_VALIDATOR_KINDS = [
+    "CoreArtifactValidator",
+    "CoreDataValidator",
+    "CoreGeneratorValidator",
+    "CoreRepositoryValidator",
+    "CoreSchemaValidator",
+    "CoreUserValidator",
+]
+
 # Names from the car and person schema and its data, which stand for names a customer defined.
 _CUSTOMER_DEFINED_NAMES = (
     "TestCar",
@@ -175,15 +185,7 @@ async def test_active_branches_excludes_default_and_global(
 
 
 async def test_list_validator_kinds(db: InfrahubDatabase, register_core_models_schema: SchemaBranch) -> None:
-    # The kind names are keys of the report that the data warehouse reads, so the list is pinned here.
-    assert list_validator_kinds(db=db) == [
-        "CoreArtifactValidator",
-        "CoreDataValidator",
-        "CoreGeneratorValidator",
-        "CoreRepositoryValidator",
-        "CoreSchemaValidator",
-        "CoreUserValidator",
-    ]
+    assert list_validator_kinds(db=db) == _VALIDATOR_KINDS
 
 
 @pytest.fixture
@@ -260,15 +262,7 @@ async def test_gather_full_payload_fields_present(telemetry_environment: Infrahu
         assert getattr(data.activity_24h, field) is not None, field
 
     assert data.activity_24h.validators_started is not None
-    assert sorted(data.activity_24h.validators_started) == [
-        "CoreArtifactValidator",
-        "CoreDataValidator",
-        "CoreGeneratorValidator",
-        "CoreRepositoryValidator",
-        "CoreSchemaValidator",
-        "CoreUserValidator",
-    ]
-    assert isinstance(data.activity_24h.workflow_runs, list)
+    assert sorted(data.activity_24h.validators_started) == _VALIDATOR_KINDS
 
     # With the core schema and no node, each total is 0, not null.
     assert {key: data.database.node_count[key] for key in _ARTIFACT_AND_GENERATOR_TOTALS} == dict.fromkeys(
