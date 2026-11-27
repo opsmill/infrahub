@@ -303,8 +303,8 @@ async def export_schema(
     _: AccountSession = Depends(get_current_user),
 ) -> SchemaExportDocument:
     log.debug("schema_export_request", branch=branch.name, mode=mode.value, namespaces=namespaces)
-    # The export runs in a thread for seconds, so it reads a copy in which a concurrent schema load replaces no kind.
-    schema_branch = registry.schema.get_schema_branch(name=branch.name).duplicate()
+    # The export runs in a thread for seconds, so it reads a copy whose cache a schema refresh cannot purge.
+    schema_branch = registry.schema.get_schema_branch(name=branch.name).duplicate_with_own_cache(name=branch.name)
     return await asyncio.to_thread(exporter.export, schema_branch=schema_branch, mode=mode, namespaces=namespaces)
 
 

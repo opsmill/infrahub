@@ -13,10 +13,11 @@ from infrahub import __version__
 from infrahub.core.constants import RESTRICTED_NAMESPACES, RelationshipKind
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.attribute_parameters import get_attribute_parameters_class_for_kind
+from infrahub.core.schema.basenode_schema import AttributePathParsingError
 from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.node_inheritance_handler import PROPERTIES_INHERITED_FROM_GENERIC
 from infrahub.core.schema.schema_branch import SchemaBranch
-from infrahub.exceptions import SchemaNamespaceNotFoundError, ValidationError
+from infrahub.exceptions import SchemaNamespaceNotFoundError, SchemaNotFoundError, ValidationError
 from infrahub.log import get_logger
 from infrahub.schema.export.models import SCHEMA_FILE_FORMAT_VERSION, SchemaExportDocument, SchemaExportMode
 
@@ -377,7 +378,7 @@ class SchemaExporter:
             baseline = self._baseline_factory(schema_branch.name)
             try:
                 self._load_candidate(baseline=baseline, candidate=candidate)
-            except (ValueError, ValidationError) as exc:
+            except (ValueError, ValidationError, SchemaNotFoundError, AttributePathParsingError) as exc:
                 log.warning(
                     "A schema export candidate failed validation, the export holds every value instead",
                     branch=schema_branch.name,
@@ -449,6 +450,10 @@ class SchemaExporter:
         Raises:
             ValueError: When the candidate does not pass the schema validation.
             ValidationError: When a kind of the candidate conflicts with a kind of the baseline.
+            SchemaNotFoundError: When a path of the candidate names a kind that neither the candidate nor the
+                baseline holds.
+            AttributePathParsingError: When a human-friendly ID or uniqueness constraint path of the candidate
+                cannot be parsed after validation.
 
         """
         schema = SchemaRoot(

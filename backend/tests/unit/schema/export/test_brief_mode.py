@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -9,9 +10,12 @@ from infrahub import __version__
 from infrahub.core.constants import RESTRICTED_NAMESPACES, InfrahubKind, RelationshipKind
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
+from infrahub.core.schema.basenode_schema import AttributePathParsingError
 from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.node_inheritance_handler import PROPERTIES_INHERITED_FROM_GENERIC
+from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.exceptions import SchemaNotFoundError
 from infrahub.schema.export.exporter import SchemaExporter, build_core_schema_baseline
 from infrahub.schema.export.models import SchemaExportMode
 from tests.helpers.schema.export_variations import (
@@ -35,8 +39,6 @@ from .conftest import (
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, MutableMapping
-
-    from infrahub.core.schema.schema_branch import SchemaBranch
 
 WARNING_LOG_LEVEL = "warning"
 REPEATED_EXPORTS = 3
@@ -148,6 +150,53 @@ def test_export_returns_the_full_document_when_the_stored_schema_fails_validatio
     assert document.model_dump(exclude_unset=True) == full_document.model_dump(exclude_unset=True)
     assert [(warning["branch"], warning["error"]) for warning in _warnings(records)] == [
         (ROUND_TRIP_BRANCH_NAME, "TestingDevice.display_label: missing__value is invalid on schema TestingDevice")
+    ]
+
+
+@dataclass
+class ProcessingErrorCase:
+    name: str
+    error: Exception
+    message: str
+
+
+PROCESSING_ERROR_CASES = [
+    ProcessingErrorCase(
+        name="schema-not-found",
+        error=SchemaNotFoundError(branch_name=ROUND_TRIP_BRANCH_NAME, identifier="TestingSite", message="no site"),
+        message="\n        no site\n        main | TestingSite\n        ",
+    ),
+    ProcessingErrorCase(name="path-parsing", error=AttributePathParsingError("bad path"), message="bad path"),
+]
+
+
+class _ProcessingFailsSchemaBranch(SchemaBranch):
+    """A baseline whose processing raises the given error, as processing a reduced candidate can."""
+
+    def __init__(self, name: str, error: Exception) -> None:
+        super().__init__(cache={}, name=name)
+        self._error = error
+
+    def process(self, validate_schema: bool = True, default_branch_schema: SchemaBranch | None = None) -> None:
+        raise self._error
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in PROCESSING_ERROR_CASES])
+def test_export_returns_the_full_document_when_processing_the_candidate_raises(
+    schema_exporter: SchemaExporter, case: ProcessingErrorCase
+) -> None:
+    source = load_on_new_baseline(_device_schema())
+    failing_exporter = SchemaExporter(
+        baseline_factory=lambda name: _ProcessingFailsSchemaBranch(name=name, error=case.error)
+    )
+
+    with capture_logs() as records:
+        document = failing_exporter.export(schema_branch=source, mode=SchemaExportMode.BRIEF, namespaces=None)
+
+    full_document = schema_exporter.export(schema_branch=source, mode=SchemaExportMode.FULL, namespaces=None)
+    assert document.model_dump(exclude_unset=True) == full_document.model_dump(exclude_unset=True)
+    assert [(warning["branch"], warning["error"]) for warning in _warnings(records)] == [
+        (ROUND_TRIP_BRANCH_NAME, case.message)
     ]
 
 

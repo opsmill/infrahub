@@ -19,7 +19,7 @@ Working from the [Data Importer](https://docs.infrahub.app/skills/skills-referen
 |---|---|---|
 | MCP server | The [MCP server](../overview/build-with-ai/setup.mdx) connected to your instance | Live, branch-specific state — including dropdown choices and HFIDs added on a feature branch |
 | `infrahubctl schema export` | `infrahubctl` configured against your instance | The live schema as schema files, not branch-specific unless you pass `--branch`. Leaves out the nodes and generics that Infrahub defines itself. See [Export a schema](../schema/export) |
-| `/api/schema` REST endpoint | Network access to the instance's API | The same live schema as the CLI export |
+| `/api/schema` REST endpoint | Network access to the instance's API | The live schema with every value Infrahub derives, including the nodes and generics that Infrahub defines itself |
 | Local `schemas/*.yml` files | Nothing — works with no connection to any instance | Whatever is on disk, which can lag what's actually deployed |
 
 The rows are translated into the same object YAML format documented on [Load data using YAML file](./load-from-yaml).

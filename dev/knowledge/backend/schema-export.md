@@ -15,8 +15,10 @@ The endpoint is `backend/infrahub/api/schema.py::export_schema`. The work is in
 
 A `BRIEF` export processes the schema twice or more, about 2 to 3 seconds of CPU for `models/base/`. The
 route runs it with `asyncio.to_thread`, so the API worker keeps answering other requests. The thread reads
-`SchemaBranch.duplicate()` of the registry's branch schema, so a schema load that replaces a kind of the
-branch during the export does not change the kinds the export reads.
+`SchemaBranch.duplicate_with_own_cache()` of the registry's branch schema, taken on the event loop. A copy made
+with `duplicate()` would share the registry's cache dict, and `SchemaManager.purge_inactive_branches` deletes
+the hashes no active branch uses from that dict when a schema change reaches this worker, so a running export
+could no longer read a kind it started with.
 
 The processed core schema is built once per process (`exporter.py::copy_core_schema_baseline`), and each pass
 loads into `SchemaBranch.duplicate_with_own_cache()` of it, which takes about 1 ms instead of about 0.6 s for
@@ -78,8 +80,10 @@ produces again on load. It does not use a list of derived fields; it asks proces
 1. Build a candidate from the `FULL` document with every optional field removed, except the fields a node
    takes from its generic (see the last section), the fields marked `keep_in_export`, and the attribute and
    relationship lists.
-2. Load the candidate into a new core-only schema (`build_core_schema_baseline`, the schema of an empty
-   instance) and run `SchemaBranch.process`, as a schema load does.
+2. Load the candidate into a copy of the core-only schema, the schema of an empty instance
+   (`copy_core_schema_baseline` in the route), and run `SchemaBranch.process`, as a schema load does. When
+   processing raises `ValueError`, `ValidationError`, `SchemaNotFoundError` or `AttributePathParsingError`, the
+   export returns the `FULL` document and logs a warning.
 3. Compare every write-visible field of each processed element with the stored element, both normalized
    by `normalize_element_for_comparison` (IDs dropped, deprecated forms converted).
 4. Copy each differing field that the candidate does not hold back from the `FULL` document.
