@@ -93,8 +93,9 @@ produces again on load. It does not use a list of derived fields; it asks proces
 5. Repeat from step 2 while the previous pass copied at least one field back.
 
 The candidate is a dict at every step, so the final document's set fields are the keys the loop kept. The
-route serializes with `response_model_exclude_unset=True` and the SDK writes files with
-`model_dump(exclude_unset=True)`; without that, every write-model default would come back.
+route serializes with `response_model_exclude_unset=True`; without that, every write-model default would
+come back. `infrahubctl schema export` writes the JSON body it received, not the SDK models, so the files
+also keep a field that a newer server returns and the SDK's write models do not declare.
 
 The loop never makes the endpoint fail:
 

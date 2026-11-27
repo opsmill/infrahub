@@ -77,7 +77,7 @@ Processing keeps the deprecated top-level fields and `parameters` equal (`Schema
 
 ## Serialization
 
-The `BRIEF` document holds only the keys the reduction loop kept. The candidate is a dict, and the document is validated from it at the end, so its set fields are those keys. The endpoint and the SDK serialize it with `exclude_unset=True`; otherwise every write-model field would be written with its default value (research R3).
+The `BRIEF` document holds only the keys the reduction loop kept. The candidate is a dict, and the document is validated from it at the end, so its set fields are those keys. The endpoint serializes it with `exclude_unset=True`; otherwise every write-model field would be written with its default value (research R3). `infrahubctl schema export` writes the JSON body it received, so the files hold exactly the keys of the response.
 
 ## SchemaExporter
 

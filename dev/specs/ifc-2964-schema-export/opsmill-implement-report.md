@@ -3,7 +3,7 @@
 - Feature: export the running schema (`GET /api/schema/export` and `infrahubctl schema export`)
 - Spec directory: `dev/specs/ifc-2964-schema-export`
 - Infrahub repository, branch `po-ifc-3670-schema-export-endpoint`: base `91568a343a`, head `c2cb0e4242` at the end of the run, `80c4f0001a` after the fixes made after the run (before this update of the report)
-- SDK submodule, branch `po-ifc-3669-schema-export-cli`: base `338fbdc188` (`origin/infrahub-develop`), head `e59fd9c8` at the end of the run, `58ced06a` after the fixes made after the run
+- SDK submodule, branch `po-ifc-3669-schema-export-cli`: base `338fbdc188` (`origin/infrahub-develop`), head `e59fd9c8` at the end of the run, `efeebb71` after the fixes made after the run
 - Wall-clock time: about 3 hours
 - Status: DONE. T052, T053 and T055 were out of scope for this run and are still open.
 
@@ -104,14 +104,14 @@ Review mode: plugin (pr-review-toolkit). Five agents reviewed both ranges: this 
 | medium | Infrahub, `exporter.py` | Looking up `KEEP_IN_EXPORT_FIELDS` by class name returns an empty set when a write class is renamed, and the export then falls back to FULL | Deferred |
 | medium | Both | `SchemaExportMode` is defined in both repositories, so the two copies can drift | Deferred |
 | medium | Infrahub, `exporter.py` | The fallback warning logs no exception type and no stack trace | Deferred |
-| medium | SDK, generated write models and `schema/__init__.py` | `extra="ignore"` drops fields a newer server sends, and nothing warns the user | Deferred |
+| medium | SDK, generated write models and `schema/__init__.py` | `extra="ignore"` drops fields a newer server sends, and nothing warns the user | Fixed for the CLI after the run in SDK `efeebb71`; `export` in Python still drops them |
 | medium | SDK, `ctl/schema.py` | `--namespaces` with a mistyped or restricted namespace prints "No user-defined schema found to export." and exits 0, with no message about the namespace | Fixed after the run in `31247b230c` and SDK `a5c82404`: the server returns 404 and the CLI prints one error per namespace |
 | medium | Infrahub, `tests/unit/schema/export/conftest.py` | The round-trip check uses the same normalization function as the loop, so a bug there would be hidden in both | Deferred |
 | medium | Infrahub, unit tests | The export unit tests take about 214 s; a module-scoped fixture would make the filter tests faster | Deferred |
 | low | Infrahub, `exporter.py` | `ExportedField` allows `collection` without `element_name` | Deferred |
 | low | Infrahub, `models.py` | `generics` and `nodes` repeat the parent's declarations | Deferred |
-| low | SDK, `export.py` | `SchemaExportDocument` accepts `extensions`, and `split_by_namespace` drops them | Deferred |
-| low | SDK, `export.py` | `split_by_namespace` assigns lists after construction and shares node instances with its input | Deferred |
+| low | SDK, `export.py` | `SchemaExportDocument` accepts `extensions`, and `split_by_namespace` drops them | Fixed after the run in SDK `efeebb71`: `split_by_namespace` copies every other top-level field |
+| low | SDK, `export.py` | `split_by_namespace` assigns lists after construction and shares node instances with its input | Fixed after the run in SDK `efeebb71` for the assignment; the dicts of the nodes are still shared with the input |
 | low | SDK, `schema/__init__.py` | `_parse_export_response` repeats the filter in `as_error_list` | Deferred |
 | low | SDK, `schema/__init__.py` | The `Raises:` sections omit `JsonDecodeError` and the pydantic `ValidationError` | Deferred |
 | low | SDK, `ctl/schema.py` | `--single-file` writes `generics: []` when a branch has no generics | Deferred |
@@ -152,6 +152,7 @@ A second review ran after the run: `/code-review` at `xhigh` with the rules in `
 | `80c4f0001a` | The export leaves out only the six relationships processing adds, matched by kind, name and identifier. A relationship the schema owner defined with kind `Group`, `Profile`, `Hierarchy` or `Template` was left out before. |
 | SDK `90f49d42` | The SDK reports the errors of the export with its own exceptions: `AuthenticationError`, `BranchNotFoundError`, `VersionNotSupportedError`, `SchemaNamespaceNotFoundError`, `URLNotFoundError` and `InvalidResponseError`. The new exceptions can be pickled and copied. |
 | SDK `58ced06a` | The CLI reports a rejected login as an authentication failure, and prints paths and names that contain square brackets as written. |
+| SDK `efeebb71` | The CLI writes the JSON body the server returned, after the SDK has checked it, instead of the SDK write models. With an SDK older than the server, a field that a later Infrahub release adds was left out of the files with no message; it is now written. `split_by_namespace` takes and returns dicts and copies every other top-level field to each namespace document. `export` still returns a `SchemaExportDocument`, so Python code that calls it still drops unknown fields. |
 
 ## Decisions made after the run
 
@@ -164,7 +165,6 @@ A second review ran after the run: `/code-review` at `xhigh` with the rules in `
 
 Planned as follow-up tickets:
 
-- An older SDK drops the fields a newer server adds to the export, because the CLI writes the validated SDK model, which ignores unknown fields (the deferred medium finding on `extra="ignore"`). The fix is to write the server response as received. This is not a regression: the export before this change had the same limit.
 - Record whether processing added a relationship, attribute or field, so the exporter no longer needs a list kept by hand.
 - Tell the client when a BRIEF export falls back to FULL. Today only the server log shows it.
 - Log each deprecation warning once per export. Today each pass of the BRIEF loop logs it again.
@@ -180,7 +180,6 @@ Open questions for the pull request descriptions, because `AGENTS.md` asks for a
 Other findings that are still open:
 
 - The CLI leaves the files of an earlier export in a directory it writes to again.
-- `split_by_namespace` drops `extensions`.
 - Loading an export that holds `infrahub_version` into a server without this change.
 - No SDK integration test against a running server.
 - The deferred rows of the first review table above.

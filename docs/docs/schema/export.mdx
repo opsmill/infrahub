@@ -208,6 +208,10 @@ The response of `POST /api/schema/load` names the field in `loc`. The response b
 
 Load the export into an instance on the same release as the source, or on a later one.
 
+### `infrahubctl` is older than the source
+
+The export files hold every schema setting the source returns, including settings added in a release later than your `infrahubctl`. Before it sends the files, `infrahubctl schema load` checks them and rejects a setting it does not know with `Unknown field, it is not part of the schema`. Load the files with an `infrahubctl` version that matches the release of the target.
+
 ### The export refers to a node or a generic the target does not have
 
 This happens most often with a namespace filter, when a relationship or an `inherit_from` refers to a kind in a namespace you did not export:
