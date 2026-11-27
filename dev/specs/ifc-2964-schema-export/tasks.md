@@ -71,7 +71,7 @@ Write these first and check that they fail before the implementation tasks.
 - [X] T013 [P] [US1] Add the variation schemas to `backend/tests/unit/schema/export/conftest.py` as inline fixtures, one per export rule, each in its own namespace (research R8, spec Assumptions):
   - a generic that sets the eight inherited properties from T004 and a node that takes them (pinned, FR-005);
   - a node that takes `human_friendly_id` from a generic and has its own `unique: true` attribute, so its `uniqueness_constraints` differ from the generic's (research R8);
-  - a node with no generic and a `unique: true` attribute, from which processing derives `human_friendly_id` and `uniqueness_constraints` (all three written in `BRIEF`, research R3);
+  - a node with no generic and a `unique: true` attribute, from which processing derives `human_friendly_id` and `uniqueness_constraints` (`BRIEF` writes only `unique`, research R3);
   - a user node in the `Ipam` namespace (exported, while `IpamNamespace` is not, research R2);
   - Text, TextArea and List attributes with the deprecated top-level `regex`, `min_length` and `max_length` (FR-008);
   - a NumberPool attribute with `start_range` and `end_range`, and one with only `start_range` (FR-009);
@@ -86,7 +86,7 @@ Write these first and check that they fail before the implementation tasks.
   - no `id`, no attribute or relationship with `inherited: true` on a node, no relationship of kind `Group`, `Profile`, `Hierarchy` or `Template`, no restricted namespace, no `IpamNamespace` (FR-003, FR-004);
   - the pinned properties are written on the node that took them from its generic (FR-005);
   - a `label` equal to the derived label is left out (FR-006);
-  - on the node with the `unique: true` attribute, `unique`, `human_friendly_id` and `uniqueness_constraints` are all written. Do not assert that a derived value next to its source is left out (FR-006, research R3);
+  - on the node with the `unique: true` attribute, `unique` is written and `human_friendly_id` and `uniqueness_constraints` are left out, because `unique` is marked `keep_in_export` (FR-006, research R3);
   - the export did not reach the `FULL` fallback (research R3);
   - `regex`, `min_length` and `max_length` appear only under `parameters`, and NumberPool ranges only as `ranges`, with an unset bound left unset (FR-008, FR-009);
   - `version` is `"1.0"` and `infrahub_version` is `infrahub.__version__` (FR-010)

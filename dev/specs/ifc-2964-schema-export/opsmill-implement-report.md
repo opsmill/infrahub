@@ -58,7 +58,7 @@ Processing does derive an `identifier` and a `unique` value. Without the stored 
 - T052: not in scope for this run. Opening the SDK pull request is a manual step.
 - T053: not in scope for this run. The `python_sdk` pointer can move only after the SDK pull request merges.
 - T055: not in scope for this run. The quickstart scenarios are manual.
-- T014 is marked done, with one assertion changed. It was to assert that BRIEF writes `unique`, `human_friendly_id` and `uniqueness_constraints` on the node with a unique attribute. T028 added the mark on `unique`, so processing derives the other two values again and the loop leaves them out. The test asserts only `unique`, and does not assert that the other two are left out. The loop has no second removal pass (A1). The example in research R3 and T013 expected all three values; it needs a product decision.
+- T014 is marked done, with one assertion changed. It was to assert that BRIEF writes `unique`, `human_friendly_id` and `uniqueness_constraints` on the node with a unique attribute. T028 added the mark on `unique`, so processing derives the other two values again and the loop leaves them out. The test asserts only `unique`, and does not assert that the other two are left out. The loop has no second removal pass (A1). The example in research R3 and T013 expected all three values. The feature owner accepted the current behavior on 2026-11-27, and the test now asserts that the two derived values are left out.
 
 ## Local-pass evidence
 
@@ -160,6 +160,10 @@ A second review ran after the run: `/code-review` at `xhigh` with the rules in `
 - The 404 for a namespace is told apart from the 404 for an unknown URL by the `extensions.namespace` field, not by the status or the message.
 - The core schema baseline is built once per process and reused, after a test showed that processing replaces the schema objects it changes instead of changing them in place.
 - The list of relationships processing adds is kept by hand, matched by kind, name and identifier. A relationship the schema owner defined with the same kind, name and identifier as a generated one is still left out. The long-term fix is to record on each relationship, attribute and field whether processing added it.
+- T014 (2026-11-27): the feature owner accepts that BRIEF writes `unique: true` and leaves out the `human_friendly_id` and `uniqueness_constraints` derived from it. The test now asserts that both are left out; it fails when the `unique` mark is removed. The spec documents were updated to match.
+- SDK release constant (2026-11-27): the schema export ships with Infrahub 1.13.0, so `SCHEMA_EXPORT_MIN_INFRAHUB_VERSION = "1.13.0"` stays.
+- SDK public API (2026-11-27): the feature owner accepts the removed names and the new return type of `export`. The `removed` changelog fragment lists the removed names for the SDK release notes.
+- The four contract items below go into the Infrahub pull request description for the reviewers to agree.
 
 ## Plan for the findings that are still open
 
@@ -170,10 +174,10 @@ Planned as follow-up tickets:
 - Log each deprecation warning once per export. Today each pass of the BRIEF loop logs it again.
 - Optional: limit the number of exports that run at the same time.
 
-Open questions for the pull request descriptions, because `AGENTS.md` asks for agreement first or the design document says otherwise:
+Open questions for the pull request descriptions, because `backend/AGENTS.md` asks for agreement first or the design document says otherwise:
 
-- the new REST endpoint `GET /api/schema/export`;
-- the `keep_in_export` mark in the schema definitions;
+- the new REST endpoint `GET /api/schema/export` (`backend/AGENTS.md`, Ask First: new REST endpoints);
+- the `keep_in_export` mark in the schema definitions (`backend/AGENTS.md`, Ask First: core schema definition changes);
 - the `extensions.namespace` field in REST error responses;
 - BRIEF can write a derived value next to the value it comes from, which the design document lists as left out.
 
@@ -186,7 +190,5 @@ Other findings that are still open:
 
 ## Suggested next steps
 
-1. Decide the T014 question: with the `unique` mark, BRIEF leaves out a derived `human_friendly_id` and `uniqueness_constraints`, while research R3 and T013 expected them written.
-2. Confirm the SDK release constant `1.13.0` with the release owner.
-3. Create the follow-up tickets listed above.
-4. Run `/pre-ci`, then open the SDK pull request (T052). Open the Infrahub pull request as a draft: its CI fails until the SDK pull request merges and the pointer moves (T053). Then run the quickstart (T055).
+1. Create the follow-up tickets listed above.
+2. Run `/pre-ci`, then open the SDK pull request (T052). Open the Infrahub pull request as a draft: its CI fails until the SDK pull request merges and the pointer moves (T053). Then run the quickstart (T055).

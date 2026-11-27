@@ -63,7 +63,7 @@ Fields whose definition has the `keep_in_export` mark (working name) in `ExtraFi
 
 Removed when the reduction loop (research R3) finds that processing produces the same value, written otherwise. Examples from the design document that the loop leaves out: `label` taken from the name, `order_weight`, `branch` equal to the value derived from the node or the peer.
 
-A derived value and the value it comes from are both written when the first pass removed both, because both then differ after processing (research R3). Examples: a `human_friendly_id` and `uniqueness_constraints` derived from a `unique: true` attribute are written with that attribute; `optional` is written with `default_value`. The design document lists these derived values as left out; this difference needs the feature owner's agreement.
+A derived value and the value it comes from are both written when the first pass removed both, because both then differ after processing (research R3). Example: `optional` is written with `default_value`. A `human_friendly_id` and `uniqueness_constraints` derived from a `unique: true` attribute are left out, because `unique` is marked `keep_in_export`, so the candidate keeps it and processing derives both values again (agreed by the feature owner on 2026-11-27). The design document lists these derived values as left out; this difference needs the feature owner's agreement.
 
 ## Conversions
 

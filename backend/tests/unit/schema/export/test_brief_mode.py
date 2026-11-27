@@ -329,10 +329,14 @@ def test_brief_export_leaves_out_a_label_equal_to_the_derived_label(schema_expor
     assert item["attributes"][0] == {"name": "name", "kind": "Text", "unique": True}
 
 
-def test_brief_export_writes_a_unique_attribute(schema_exporter: SchemaExporter) -> None:
+def test_brief_export_writes_a_unique_attribute_without_the_values_derived_from_it(
+    schema_exporter: SchemaExporter,
+) -> None:
     device = _brief_export(schema_exporter, DERIVED_FROM_UNIQUE_ATTRIBUTE)["DerivedDevice"]
 
     assert device["attributes"] == [{"name": "name", "kind": "Text", "unique": True}]
+    assert "human_friendly_id" not in device
+    assert "uniqueness_constraints" not in device
 
 
 def test_brief_export_writes_validation_settings_only_under_parameters(schema_exporter: SchemaExporter) -> None:
