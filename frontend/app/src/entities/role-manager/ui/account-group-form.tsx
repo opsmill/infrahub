@@ -2,7 +2,6 @@ import { Button } from "@infrahub/ui";
 import { type FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
-import { Row } from "@/shared/components/container";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
 import InputField from "@/shared/components/form/fields/input.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
@@ -14,7 +13,7 @@ import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/util
 import { isRequired } from "@/shared/components/form/utils/validation";
 import type { DropdownOption } from "@/shared/components/inputs/dropdown";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Form, FormSubmit } from "@/shared/components/ui/form";
+import { Form, FormActions, FormSubmit } from "@/shared/components/ui/form";
 
 import type { NodeFieldsWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
@@ -155,7 +154,7 @@ export const AccountGroupForm = ({ currentObject, onSuccess, onCancel }: Account
         defaultValue={members}
       />
 
-      <Row className="justify-end">
+      <FormActions>
         {onCancel && (
           <Button variant="outline" onPress={onCancel}>
             Cancel
@@ -163,7 +162,7 @@ export const AccountGroupForm = ({ currentObject, onSuccess, onCancel }: Account
         )}
 
         <FormSubmit>Save</FormSubmit>
-      </Row>
+      </FormActions>
     </Form>
   );
 };

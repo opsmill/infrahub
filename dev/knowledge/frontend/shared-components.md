@@ -73,6 +73,8 @@ All `.field.tsx` files in `shared/components/form/fields/` wrap a primitive in t
 
 **Use `.field.tsx` only inside a `<Form>` from `shared/components/ui/form.tsx`.** Outside a form, use the underlying input from `shared/components/inputs/` or the primitive from `shared/components/ui/`.
 
+**Put a form's Cancel and submit buttons in `FormActions`** from the same file, as the form's last child: it keeps them in view at the bottom of a sheet and draws a separator while fields are scrolled out of view beneath it. Its offset assumes the sheet's 12px padding.
+
 ### Tab bars
 
 | Need | Use | Location |

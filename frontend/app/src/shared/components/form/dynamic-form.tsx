@@ -1,7 +1,6 @@
 import { Button } from "@infrahub/ui";
 import type React from "react";
 
-import { Row } from "@/shared/components/container";
 import BooleanField from "@/shared/components/form/fields/boolean.field";
 import ColorField from "@/shared/components/form/fields/color.field";
 import DatetimeField from "@/shared/components/form/fields/datetime.field";
@@ -19,7 +18,13 @@ import RelationshipManyField from "@/shared/components/form/fields/relationships
 import { SelectField } from "@/shared/components/form/fields/select.field";
 import TextareaField from "@/shared/components/form/fields/textarea.field";
 import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
-import { Form, type FormProps, type FormRef, FormSubmit } from "@/shared/components/ui/form";
+import {
+  Form,
+  FormActions,
+  type FormProps,
+  type FormRef,
+  FormSubmit,
+} from "@/shared/components/ui/form";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
 import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
@@ -53,7 +58,7 @@ const DynamicForm = ({
         <DynamicField key={`${field.type}_${field.name}`} {...field} />
       ))}
 
-      <Row className="justify-end">
+      <FormActions>
         {onCancel && (
           <Button variant="outline" onPress={onCancel}>
             Cancel
@@ -61,7 +66,7 @@ const DynamicForm = ({
         )}
 
         <FormSubmit>{submitLabel ?? "Save"}</FormSubmit>
-      </Row>
+      </FormActions>
     </Form>
   );
 };

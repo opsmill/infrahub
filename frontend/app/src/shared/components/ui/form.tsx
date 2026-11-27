@@ -14,6 +14,7 @@ import {
   useFormState,
 } from "react-hook-form";
 
+import { Row } from "@/shared/components/container";
 import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
 import Label, { type LabelProps } from "@/shared/components/ui/label";
 import { inputErrorStyle } from "@/shared/components/ui/style";
@@ -182,6 +183,49 @@ export const FormMessage = ({
     >
       {message}
     </p>
+  );
+};
+
+interface FormActionsProps extends Omit<React.ComponentProps<"div">, "ref"> {}
+
+/**
+ * Keeps the form's buttons pinned to the bottom of the scroll area, and draws a separator over
+ * the fields while some of them are scrolled out of view beneath it.
+ */
+export const FormActions = ({ className, ...props }: FormActionsProps) => {
+  const actionsRef = React.useRef<HTMLDivElement>(null);
+  const [isStuck, setIsStuck] = React.useState(false);
+
+  React.useEffect(() => {
+    const actions = actionsRef.current;
+    if (!actions) return;
+
+    // The bar's bottom edge is clipped only while it is pinned.
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          setIsStuck(entry.intersectionRect.bottom < entry.boundingClientRect.bottom);
+        }
+      },
+      { threshold: 1 }
+    );
+    observer.observe(actions);
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <Row
+      ref={actionsRef}
+      data-stuck={isStuck || undefined}
+      className={classNames(
+        // Pinning one pixel past a sheet's 12px padding covers that padding and lets the observer see the bar clipped.
+        "sticky -bottom-3.25 -my-3 justify-end border-transparent border-t py-3",
+        "data-stuck:border-border-strong data-stuck:bg-secondary",
+        className
+      )}
+      {...props}
+    />
   );
 };
 
