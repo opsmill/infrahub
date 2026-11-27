@@ -160,7 +160,12 @@ services:
       INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_TESTING_CACHE_ADDRESS}
       PREFECT_MESSAGING_BROKER: prefect_redis.messaging
       PREFECT_MESSAGING_CACHE: prefect_redis.messaging
-      PREFECT_SERVER_EVENTS_CAUSAL_ORDERING: prefect_redis.ordering
+      # Skips the ordering bookkeeping of the Infrahub events no automation matches; images older than the
+      # module need INFRAHUB_TESTING_TASKMGR_CAUSAL_ORDERING=prefect_redis.ordering.
+      PREFECT_SERVER_EVENTS_CAUSAL_ORDERING: ${INFRAHUB_TESTING_TASKMGR_CAUSAL_ORDERING:-infrahub.prefect_server.ordering}
+      # The stream-out distributors serve websocket subscribers, which only the API server process has.
+      PREFECT_SERVER_EVENTS_STREAM_OUT_ENABLED: "false"
+      PREFECT_SERVER_LOGS_STREAM_OUT_ENABLED: "false"
       PREFECT_SERVER_CONCURRENCY_LEASE_STORAGE: prefect_redis.lease_storage
       PREFECT_REDIS_MESSAGING_HOST: "${INFRAHUB_TESTING_CACHE_ADDRESS:-cache}"
       PREFECT_REDIS_MESSAGING_DB: "1"
