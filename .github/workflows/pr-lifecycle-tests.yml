@@ -1,0 +1,31 @@
+---
+# yamllint disable rule:truthy
+name: PR lifecycle tests
+
+on:
+  pull_request:
+    paths:
+      - '.github/scripts/pr-lifecycle*'
+      - '.github/workflows/manage-stale-prs.yml'
+      - '.github/workflows/pr-lifecycle-tests.yml'
+  push:
+    paths:
+      - '.github/scripts/pr-lifecycle*'
+      - '.github/workflows/manage-stale-prs.yml'
+      - '.github/workflows/pr-lifecycle-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check syntax and behavior
+        run: |
+          node --check .github/scripts/pr-lifecycle.cjs
+          node --test .github/scripts/pr-lifecycle.test.cjs
