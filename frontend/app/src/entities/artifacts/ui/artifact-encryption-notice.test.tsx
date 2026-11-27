@@ -133,6 +133,40 @@ describe("ArtifactEncryptionNotice", () => {
       .toBeVisible();
   });
 
+  test.each([
+    ["no_key", "No encryption key is configured."],
+    ["unsupported_format", "The file is in a format this version cannot read."],
+    ["truncated", "The file is incomplete."],
+  ])("explains an unreadable file with the reason %s", async (reason, detail) => {
+    vi.mocked(useGetAppInfo).mockReturnValue(appInfo(true));
+    vi.mocked(useCheckArtifactEncryption).mockReturnValue(
+      check({ encryption: "unreadable", reason, updated: false })
+    );
+
+    const component = await render(<ArtifactEncryptionNotice artifact={artifact("unreadable")} />);
+
+    await expect
+      .element(
+        component.getByText(
+          `This artifact is encrypted but cannot be read with the current encryption key. ${detail}`
+        )
+      )
+      .toBeVisible();
+  });
+
+  test("reports that the file of an unreadable artifact is missing", async () => {
+    vi.mocked(useGetAppInfo).mockReturnValue(appInfo(true));
+    vi.mocked(useCheckArtifactEncryption).mockReturnValue(
+      check({ encryption: "unreadable", reason: "missing", updated: false })
+    );
+
+    const component = await render(<ArtifactEncryptionNotice artifact={artifact("unreadable")} />);
+
+    await expect
+      .element(component.getByText("The file of this artifact is missing from the storage."))
+      .toBeVisible();
+  });
+
   test("the check overrides the stored value", async () => {
     vi.mocked(useGetAppInfo).mockReturnValue(appInfo(true));
     vi.mocked(useCheckArtifactEncryption).mockReturnValue(

@@ -1,25 +1,21 @@
 import { describe, expect, test } from "vitest";
 
 import {
-  type GetArtifactEncryptionNoticeParams,
-  getArtifactEncryptionNotice,
-} from "@/entities/artifacts/domain/rules/get-artifact-encryption-notice";
+  type GetArtifactEncryptionStateParams,
+  getArtifactEncryptionState,
+} from "@/entities/artifacts/domain/rules/get-artifact-encryption-state";
 
 interface Case {
   name: string;
-  params: GetArtifactEncryptionNoticeParams;
-  expected: ReturnType<typeof getArtifactEncryptionNotice>;
+  params: GetArtifactEncryptionStateParams;
+  expected: ReturnType<typeof getArtifactEncryptionState>;
 }
 
 const cases: Array<Case> = [
   {
     name: "warns about a plaintext file while encryption is enabled",
     params: { encryption: "plaintext", isEncryptionEnabled: true, isVerified: true },
-    expected: {
-      level: "warning",
-      message:
-        "This artifact is stored without encryption. Encryption only applies to artifacts stored after it was enabled.",
-    },
+    expected: { state: "plaintext" },
   },
   {
     name: "says nothing about a plaintext file while encryption is disabled",
@@ -29,12 +25,12 @@ const cases: Array<Case> = [
   {
     name: "reassures about an encrypted file that can be read",
     params: { encryption: "encrypted", isEncryptionEnabled: true, isVerified: true },
-    expected: { level: "success", message: "This artifact is encrypted." },
+    expected: { state: "encrypted" },
   },
   {
     name: "reassures about an encrypted file even when encryption is disabled",
     params: { encryption: "encrypted", isEncryptionEnabled: false, isVerified: true },
-    expected: { level: "success", message: "This artifact is encrypted." },
+    expected: { state: "encrypted" },
   },
   {
     name: "reports an unreadable file with the reason of the check",
@@ -44,47 +40,12 @@ const cases: Array<Case> = [
       isEncryptionEnabled: true,
       isVerified: true,
     },
-    expected: {
-      level: "error",
-      message:
-        "This artifact is encrypted but cannot be read with the current encryption key. It was not encrypted with the current key.",
-    },
-  },
-  {
-    name: "reports an unreadable file in a format this version cannot read",
-    params: {
-      encryption: "unreadable",
-      reason: "unsupported_format",
-      isEncryptionEnabled: true,
-      isVerified: true,
-    },
-    expected: {
-      level: "error",
-      message:
-        "This artifact is encrypted but cannot be read with the current encryption key. The file is in a format this version cannot read.",
-    },
-  },
-  {
-    name: "reports an unreadable file that is incomplete",
-    params: {
-      encryption: "unreadable",
-      reason: "truncated",
-      isEncryptionEnabled: true,
-      isVerified: true,
-    },
-    expected: {
-      level: "error",
-      message:
-        "This artifact is encrypted but cannot be read with the current encryption key. The file is incomplete.",
-    },
+    expected: { state: "unreadable", reason: "unknown_key" },
   },
   {
     name: "reports an unreadable file without a reason before the check answers",
     params: { encryption: "unreadable", isEncryptionEnabled: true, isVerified: true },
-    expected: {
-      level: "error",
-      message: "This artifact is encrypted but cannot be read with the current encryption key.",
-    },
+    expected: { state: "unreadable", reason: null },
   },
   {
     name: "reports an unreadable file even when encryption is disabled",
@@ -94,11 +55,7 @@ const cases: Array<Case> = [
       isEncryptionEnabled: false,
       isVerified: true,
     },
-    expected: {
-      level: "error",
-      message:
-        "This artifact is encrypted but cannot be read with the current encryption key. No encryption key is configured.",
-    },
+    expected: { state: "unreadable", reason: "no_key" },
   },
   {
     name: "does not reassure about an encrypted file that no check has confirmed",
@@ -113,7 +70,7 @@ const cases: Array<Case> = [
       isEncryptionEnabled: true,
       isVerified: false,
     },
-    expected: { level: "error", message: "The file of this artifact is missing from the storage." },
+    expected: { state: "missing" },
   },
   {
     name: "does not warn about a plaintext artifact whose file is missing",
@@ -142,8 +99,8 @@ const cases: Array<Case> = [
   },
 ];
 
-describe("getArtifactEncryptionNotice", () => {
+describe("getArtifactEncryptionState", () => {
   test.each(cases)("$name", ({ params, expected }) => {
-    expect(getArtifactEncryptionNotice(params)).toEqual(expected);
+    expect(getArtifactEncryptionState(params)).toEqual(expected);
   });
 });
