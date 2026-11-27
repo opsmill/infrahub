@@ -385,7 +385,7 @@ dashboard and offers to contribute it (design document, section 6, test for D8).
   - every other log stream that the stack sends to Loki, listed by container. In Compose, Alloy sends
     the logs of every container of the project (`development/alloy/config.alloy`): Neo4j, RabbitMQ,
     Redis, the Prefect server and its database, Grafana and the Grafana MCP server itself. For Helm,
-    the pods that the chart's Alloy collects (listed in `log-audit.md`, tasks T045 and T055);
+    the pods that the chart's Alloy collects (section "Log streams in Helm" of `log-audit.md`, tasks T045 and T055);
   - the labels of the metrics in Prometheus, and the resource attributes of traces.
 
   The result is recorded in this feature directory.
