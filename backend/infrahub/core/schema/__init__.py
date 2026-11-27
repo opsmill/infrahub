@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from infrahub.core.constants import RESTRICTED_NAMESPACES
 from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.models import HashableModel
+from infrahub.core.utils import parse_node_kind
 from infrahub.exceptions import SchemaNotFoundError
 
 from .attribute_parameters import NumberPoolParameters
@@ -112,6 +113,15 @@ class SchemaRoot(BaseModel):
         for model in models:
             if model.namespace in RESTRICTED_NAMESPACES:
                 errors.append(f"Restricted namespace '{model.namespace}' used on '{model.name}'")
+
+        for extension in self.extensions.nodes:
+            try:
+                namespace = parse_node_kind(extension.kind).namespace
+            except ValueError:
+                # A kind that does not parse matches no existing node, so merging the extension rejects it.
+                continue
+            if namespace in RESTRICTED_NAMESPACES:
+                errors.append(f"Restricted namespace '{namespace}' used on extension of '{extension.kind}'")
 
         return errors
 

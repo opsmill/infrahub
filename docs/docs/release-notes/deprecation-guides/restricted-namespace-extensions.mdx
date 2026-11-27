@@ -1,0 +1,59 @@
+---
+title: Remove extensions of built-in kinds
+---
+
+# How to remove extensions of built-in kinds
+
+Infrahub rejects a schema file whose `extensions` section targets a kind in a restricted namespace, such as `Core`, `Builtin`, `Profile` or `Template`. Earlier versions accepted these extensions, so a schema could add attributes and relationships to built-in kinds such as `BuiltinTag`, `CoreNumberPool` or `CoreIPPrefixPool`, or remove existing ones. Removing the `password` attribute from `CoreAccount` this way made login fail.
+
+This guide applies to you when a schema file you load, with `infrahubctl schema load` or from a Git repository, extends a built-in kind. After the upgrade, loading that file fails with an error such as:
+
+```text
+Restricted namespace 'Core' used on extension of 'CoreNumberPool'
+```
+
+## Step 1: Find the extensions of built-in kinds
+
+Search your schema files for `extensions` entries whose `kind` starts with a restricted namespace. The restricted namespaces are `Account`, `Branch`, `Builtin`, `Core`, `Deprecated`, `Diff`, `Infrahub`, `Internal`, `Lineage`, `Schema`, `Profile` and `Template`.
+
+```yaml
+extensions:
+  nodes:
+    - kind: CoreNumberPool # rejected
+      relationships:
+        - name: owner_site
+          peer: LocationSite
+          cardinality: one
+          optional: true
+```
+
+## Step 2: Remove the extension from the schema file
+
+Delete each entry that targets a built-in kind, then load the file again on a branch to confirm the load succeeds:
+
+```shell
+infrahubctl schema load schemas/ --branch remove-builtin-extensions
+```
+
+A schema load is incremental: it removes an attribute or relationship only when the file sets `state: absent` on it (see [schema migration](../../schema/migration.mdx#state-absent-or-present)). So the attributes and relationships that an earlier extension added stay on the built-in kind in the instance's schema after you remove the extension from the file. Because `state: absent` on a built-in kind is now rejected too, you cannot remove these fields with a schema load.
+
+## Step 3: Model new data on your own nodes
+
+To link built-in kinds to your own data from now on, define the relationship on a node in your own namespace, with the built-in kind as the peer. For example, instead of adding `owner_site` to `CoreNumberPool`, add a relationship from the site to the pools it uses:
+
+```yaml
+nodes:
+  - name: Site
+    namespace: Location
+    relationships:
+      - name: number_pools
+        peer: CoreNumberPool
+        cardinality: many
+        optional: true
+```
+
+Update the Generators, Transformations and GraphQL queries that read the old relationship from the pool so that they read it from your node instead. Infrahub does not move the existing relationship data from the old fields to the new relationship; you need to recreate those links.
+
+## Use cases that are not supported
+
+Adding attributes or relationships that are shown and edited on a built-in kind, for example on the detail view of a resource pool, is not supported. Attaching user-defined relationships or metadata to resource pools is tracked as a separate feature request.

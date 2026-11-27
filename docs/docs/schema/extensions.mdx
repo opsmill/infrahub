@@ -40,6 +40,8 @@ extensions:
 
 The `kind` field specifies which existing node/generic to extend. The attributes and relationships follow the same format as when defining them directly on a node.
 
+An extension can target only nodes and generics that your own schema defines. Infrahub rejects a schema file whose extension targets a kind in a restricted namespace, such as `Core`, `Builtin`, `Profile` or `Template`, in the same way as it rejects a node defined directly in one of those namespaces. To update a schema that extends a built-in kind, see [remove extensions of built-in kinds](../release-notes/deprecation-guides/restricted-namespace-extensions.mdx).
+
 ## How schema extensions work
 
 When Infrahub processes schema files, it merges extensions into their target nodes. This happens at schema load time, not at runtime, so extended nodes behave identically to nodes with attributes defined directly.

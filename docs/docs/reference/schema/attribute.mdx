@@ -50,13 +50,13 @@ nodes:
         description: Unique identifier for the rack
 extensions:
   nodes:
-    - kind: CoreProposedChange
-      attribute:
-        - name: ticket_id
-            kind: Text
-            unique: True
-            optional: False
-            description: Internal Ticket ID from Service Now
+    - kind: InfraDevice
+      attributes:
+        - name: asset_tag
+          kind: Text
+          unique: True
+          optional: True
+          description: Asset tag from the inventory system
 ```
 
 ## Reference Guide

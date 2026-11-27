@@ -4,7 +4,7 @@ title: Develop changes from a Git repository
 
 Change the schemas, objects, Transformations, Generators, and other [`.infrahub.yml`](./infrahub-yml.mdx) content an instance imports from a [read-only repository](./overview.mdx#read-only-vs-core), and land the change on the instance's `main` safely. This is the recommended workflow for a single instance; promoting a change across environments builds on it — see [promote changes between environments](./promote-between-environments.mdx).
 
-The instance's `main` tracks a Git branch through the read-only repository's `ref`, and you never import onto `main` directly. Instead you develop on an Infrahub branch and merge it into `main` through a proposed change. This worked example adds a `color` attribute to the built-in Tag.
+The instance's `main` tracks a Git branch through the read-only repository's `ref`, and you never import onto `main` directly. Instead you develop on an Infrahub branch and merge it into `main` through a proposed change. This worked example adds a `Label` node with a `color` attribute to the schema.
 
 ## Prerequisites
 
@@ -24,22 +24,27 @@ Work from a feature branch cut from the tracked branch (`main`).
 
 ```bash
 git switch main
-git switch -c feature/add-tag-color
+git switch -c feature/add-label
 ```
 
-Add a schema file that extends the built-in Tag with a `color` attribute:
+Add a schema file that defines a `Label` node with a `color` attribute:
 
 ```yaml
-# schemas/tags.yml
+# schemas/labels.yml
 ---
 version: '1.0'
-extensions:
-  nodes:
-    - kind: BuiltinTag
-      attributes:
-        - name: color
-          kind: Text
-          optional: true
+nodes:
+  - name: Label
+    namespace: Organization
+    human_friendly_id: [name__value]
+    display_label: name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: color
+        kind: Text
+        optional: true
 ```
 
 Make sure `.infrahub.yml` loads it, then commit and push:
@@ -48,42 +53,42 @@ Make sure `.infrahub.yml` loads it, then commit and push:
 # .infrahub.yml
 ---
 schemas:
-  - schemas/tags.yml
+  - schemas/labels.yml
 ```
 
 ```bash
-git add schemas/tags.yml .infrahub.yml
-git commit -m "Add color attribute to Tag"
-git push -u origin feature/add-tag-color
+git add schemas/labels.yml .infrahub.yml
+git commit -m "Add Label node"
+git push -u origin feature/add-label
 ```
 
 ## Step 2: Test it on an Infrahub branch
 
 Import your feature branch onto an Infrahub branch and check it there before it reaches `main`.
 
-1. On the instance, create an Infrahub branch, for example `test-tag-color`.
-2. On `test-tag-color`, set the repository's `ref` to your `feature/add-tag-color` Git branch. Changing the `ref` triggers the import on its own. Because `ref` is branch-aware, only this branch is affected — `main` is untouched.
+1. On the instance, create an Infrahub branch, for example `test-label`.
+2. On `test-label`, set the repository's `ref` to your `feature/add-label` Git branch. Changing the `ref` triggers the import on its own. Because `ref` is branch-aware, only this branch is affected — `main` is untouched.
 
    ```graphql
-   # against the Infrahub branch, e.g. https://<host>/graphql/test-tag-color
+   # against the Infrahub branch, e.g. https://<host>/graphql/test-label
    mutation {
      CoreReadOnlyRepositoryUpdate(data: {
        id: "<repository-id>"
-       ref: { value: "feature/add-tag-color" }
+       ref: { value: "feature/add-label" }
      }) { ok }
    }
    ```
 
-3. Test the change on `test-tag-color` — confirm the schema has the `color` attribute and behaves as you expect, for example by creating a Tag with a color on this branch. There is no proposed change here; you work on the branch directly and never merge it.
+3. Test the change on `test-label` — confirm the schema has the `Label` node and behaves as you expect, for example by creating a label with a color on this branch. There is no proposed change here; you work on the branch directly and never merge it.
 
-   This is an **iterative loop**: refine the schema on your Git feature branch, push, run **Import latest commit** on `test-tag-color`, and re-check. Repeat until the feature is ready — delete the branch when you are done.
+   This is an **iterative loop**: refine the schema on your Git feature branch, push, run **Import latest commit** on `test-label`, and re-check. Repeat until the feature is ready — delete the branch when you are done.
 
 :::tip Faster iteration with infrahubctl
 
 While developing, you can load a schema file straight onto the branch with [`infrahubctl`]($(base_url)infrahubctl/infrahubctl) instead of importing it from Git — no commit or push required:
 
 ```shell
-infrahubctl schema load schemas/tags.yml --branch test-tag-color
+infrahubctl schema load schemas/labels.yml --branch test-label
 ```
 
 This shortens the inner loop. The Git import is what makes the change reproducible and promotable, so land the final version through Git as below.
@@ -95,14 +100,14 @@ This shortens the inner loop. The Git import is what makes the change reproducib
 1. Merge the Git pull request into `main`:
 
    ```bash
-   gh pr create --base main --head feature/add-tag-color --title "Add color attribute to Tag" --fill
+   gh pr create --base main --head feature/add-label --title "Add Label node" --fill
    gh pr merge --merge
    ```
 
 2. On the instance, create an Infrahub branch, set its `ref` to `main` (which now holds the change), and open a proposed change from it to `main`. The `ref` change re-imports on its own.
 
    ```graphql
-   # against the Infrahub branch, e.g. https://<host>/graphql/land-tag-color
+   # against the Infrahub branch, e.g. https://<host>/graphql/land-label
    mutation {
      CoreReadOnlyRepositoryUpdate(data: {
        id: "<repository-id>"
@@ -111,7 +116,7 @@ This shortens the inner loop. The Git import is what makes the change reproducib
    }
    ```
 
-3. Review the proposed change and merge it. The instance's `main` now has the `color` attribute.
+3. Review the proposed change and merge it. The instance's `main` now has the `Label` node.
 
 :::caution Do not import onto `main` directly
 
@@ -121,12 +126,12 @@ You can import onto `main` — run **Import latest commit** or set its `ref` the
 
 ## Step 4: Verify
 
-Create a Tag with a color to confirm the attribute is on `main`:
+Create a label with a color to confirm the node is on `main`:
 
 ```graphql
 # against https://<host>/graphql/main
 mutation {
-  BuiltinTagCreate(data: {
+  OrganizationLabelCreate(data: {
     name: { value: "ready" }
     color: { value: "#2ecc71" }
   }) { ok object { id color { value } } }
@@ -137,5 +142,5 @@ mutation {
 
 - [Promote changes between environments](./promote-between-environments.mdx) — repeat this workflow across dev / staging / production
 - [Connect a repository](./connect-repository.mdx) — repository registration
-- [Schema extensions](../schema/extensions.mdx) — extending existing nodes like Tag
+- [Schema extensions](../schema/extensions.mdx) — adding attributes and relationships to nodes your schema already defines
 - [Proposed changes](../proposed-changes/overview.mdx) — the review workflow used to merge into `main`
