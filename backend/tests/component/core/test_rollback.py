@@ -27,6 +27,7 @@ from tests.helpers.agnostic_edges import (
     edge_summary,
     open_edges,
 )
+from tests.helpers.db_validation import count_branch_edges_at, count_branch_edges_since
 from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA, WIDGET_KIND
 
 if TYPE_CHECKING:
@@ -69,22 +70,6 @@ async def _count_vertices_with_uuid(db: InfrahubDatabase, uuid: str) -> int:
     result = await db.execute_query(
         query="MATCH (n {uuid: $uuid}) RETURN count(n) AS c",
         params={"uuid": uuid},
-    )
-    return result[0].get("c")
-
-
-async def _count_branch_edges_at(db: InfrahubDatabase, branch: Branch, at: Timestamp) -> int:
-    result = await db.execute_query(
-        query="MATCH ()-[r {from: $at, branch: $branch}]->() RETURN count(r) AS c",
-        params={"at": at.to_string(), "branch": branch.name},
-    )
-    return result[0].get("c")
-
-
-async def _count_branch_edges_since(db: InfrahubDatabase, branch: Branch, at: Timestamp) -> int:
-    result = await db.execute_query(
-        query="MATCH ()-[r {branch: $branch}]->() WHERE r.from >= $at RETURN count(r) AS c",
-        params={"at": at.to_string(), "branch": branch.name},
     )
     return result[0].get("c")
 
@@ -133,7 +118,7 @@ async def test_rollback_at_timestamp_only_reverses_that_timestamp(
     await later.new(db=db, name="Dave", height=175)
     await later.save(db=db, at=at_later)
 
-    edges_before = await _count_branch_edges_at(db=db, branch=default_branch, at=at_rolled_back)
+    edges_before = await count_branch_edges_at(db=db, branch_name=default_branch.name, at=at_rolled_back.to_string())
     assert edges_before > 0, "Saving a node should create at least one edge stamped with `at`"
 
     await GraphRollbacker(db=db).rollback(
@@ -153,7 +138,7 @@ async def test_rollback_at_timestamp_only_reverses_that_timestamp(
     loaded_discarded = await NodeManager.get_one(db=db, id=discarded.id, branch=default_branch)
     assert loaded_discarded is None, "Node created at the rollback timestamp must be removed"
 
-    edges_after = await _count_branch_edges_at(db=db, branch=default_branch, at=at_rolled_back)
+    edges_after = await count_branch_edges_at(db=db, branch_name=default_branch.name, at=at_rolled_back.to_string())
     assert edges_after == 0, "Rollback should delete every edge stamped with `at` on the branch"
 
     assert await _count_vertices_with_uuid(db=db, uuid=discarded.id) == 0, (
@@ -360,7 +345,9 @@ class TestRollbackSinceTimestamp:
         carol = await NodeManager.get_one(db=db, id=dataset.created_main.id, branch=default_branch)
         assert carol is not None, "The node created on the default branch must survive a user-branch rollback"
 
-        default_edges = await _count_branch_edges_since(db=db, branch=default_branch, at=dataset.window_start)
+        default_edges = await count_branch_edges_since(
+            db=db, branch_name=default_branch.name, at=dataset.window_start.to_string()
+        )
         assert default_edges > 0, "The default branch's in-window edges must survive a user-branch rollback"
 
         # The restore matches only the rolled-back operation's exact timestamp, so the
@@ -815,9 +802,13 @@ class TestRollbackOfStepsAtSeveralTimestamps:
         )
         widget_a_after_steps = await _get_node_vertex_metadata(db=db, node_uuid=widget_a.id)
 
-        main_edges_at_step1 = await _count_branch_edges_at(db=db, branch=main, at=step1_at)
-        global_edges_at_step1 = await _count_branch_edges_at(db=db, branch=global_branch, at=step1_at)
-        global_edges_at_step2 = await _count_branch_edges_at(db=db, branch=global_branch, at=step2_at)
+        main_edges_at_step1 = await count_branch_edges_at(db=db, branch_name=main.name, at=step1_at.to_string())
+        global_edges_at_step1 = await count_branch_edges_at(
+            db=db, branch_name=global_branch.name, at=step1_at.to_string()
+        )
+        global_edges_at_step2 = await count_branch_edges_at(
+            db=db, branch_name=global_branch.name, at=step2_at.to_string()
+        )
 
         async def _roll_back() -> None:
             await GraphRollbacker(db=db).rollback(
@@ -827,8 +818,12 @@ class TestRollbackOfStepsAtSeveralTimestamps:
         await _roll_back()
         main_after = await branch_edge_fingerprint(db=db, branch_name=main.name)
         global_after = await branch_edge_fingerprint(db=db, branch_name=GLOBAL_BRANCH_NAME)
-        global_edges_at_step1_after = await _count_branch_edges_at(db=db, branch=global_branch, at=step1_at)
-        global_edges_at_step2_after = await _count_branch_edges_at(db=db, branch=global_branch, at=step2_at)
+        global_edges_at_step1_after = await count_branch_edges_at(
+            db=db, branch_name=global_branch.name, at=step1_at.to_string()
+        )
+        global_edges_at_step2_after = await count_branch_edges_at(
+            db=db, branch_name=global_branch.name, at=step2_at.to_string()
+        )
         other_serial_after_rollback = await attribute_global_edges(db=db, node_id=other.id, attribute_name="serial")
         widget_a_after_rollback = await _get_node_vertex_metadata(db=db, node_uuid=widget_a.id)
         widget_b_after_rollback = await _get_node_vertex_metadata(db=db, node_uuid=widget_b.id)

@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from infrahub.core.branch import Branch
+    from infrahub.core.schema_change.enums import SchemaChangeSource
     from infrahub.core.schema_change.operations import SchemaOperation
     from infrahub.core.schema_change.repository import CreatedSchemaChange
     from infrahub.core.schema_change.version_resolver import SchemaChangeVersionResolver
@@ -19,7 +20,13 @@ EMPTY_OPERATIONS_ERROR = "A schema change needs at least one operation"
 
 class SchemaChangeRecordStore(Protocol):
     async def create_schema_change(
-        self, *, branch: str, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
+        self,
+        *,
+        branch: str,
+        operations: Sequence[SchemaOperation],
+        at: Timestamp,
+        user_id: str,
+        source: SchemaChangeSource,
     ) -> CreatedSchemaChange: ...
 
     async def mark_applied(
@@ -59,7 +66,13 @@ class SchemaChangeRecorder:
         self.version_resolver = version_resolver
 
     async def start(
-        self, *, branch: Branch, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
+        self,
+        *,
+        branch: Branch,
+        operations: Sequence[SchemaOperation],
+        at: Timestamp,
+        user_id: str,
+        source: SchemaChangeSource,
     ) -> SchemaChangeRecording:
         """Create a running schema change without a version, and its running application.
 
@@ -71,7 +84,7 @@ class SchemaChangeRecorder:
             raise ValueError(EMPTY_OPERATIONS_ERROR)
 
         created = await self.repository.create_schema_change(
-            branch=branch.name, operations=operations, at=at, user_id=user_id
+            branch=branch.name, operations=operations, at=at, user_id=user_id, source=source
         )
         return SchemaChangeRecording(
             schema_change_id=created.schema_change_id, application_id=created.application_id, at=at
@@ -131,7 +144,13 @@ class SchemaChangeRecorder:
         )
 
     async def record_applied(
-        self, *, branch: Branch, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
+        self,
+        *,
+        branch: Branch,
+        operations: Sequence[SchemaOperation],
+        at: Timestamp,
+        user_id: str,
+        source: SchemaChangeSource,
     ) -> SchemaChangeRecording:
         """Create an applied schema change, with the next version of the branch and its parent, and its applied application.
 
@@ -140,6 +159,6 @@ class SchemaChangeRecorder:
             SchemaChangeRecordNotFoundError: When the created records are deleted before they are set to applied.
 
         """
-        recording = await self.start(branch=branch, operations=operations, at=at, user_id=user_id)
+        recording = await self.start(branch=branch, operations=operations, at=at, user_id=user_id, source=source)
         await self.complete(recording=recording, branch=branch, user_id=user_id)
         return recording

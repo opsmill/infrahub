@@ -110,4 +110,29 @@ export const ComboboxItem = ({ children, selectedValue, ref, ...props }: Combobo
   );
 };
 
+interface ComboboxLoadMoreItemProps {
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  onLoadMore: () => void;
+}
+
+export const ComboboxLoadMoreItem = ({
+  hasNextPage,
+  isFetchingNextPage,
+  onLoadMore,
+}: ComboboxLoadMoreItemProps) => {
+  if (!hasNextPage) return null;
+
+  return (
+    <ComboboxItem
+      value="Load more"
+      onSelect={() => onLoadMore()}
+      disabled={isFetchingNextPage}
+      className="justify-center text-accent"
+    >
+      {isFetchingNextPage ? "Loading more..." : "Load more"}
+    </ComboboxItem>
+  );
+};
+
 export const ComboboxEmpty = CommandEmpty;

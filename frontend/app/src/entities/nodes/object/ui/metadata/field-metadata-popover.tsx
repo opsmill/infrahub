@@ -93,7 +93,7 @@ export function FieldMetadataPopover({
           icon="mdi:information-slab-circle-outline"
           className={
             revealOnHover
-              ? "in-aria-expanded:opacity-100 in-focus-visible:opacity-100 opacity-0 group-hover/metadata:opacity-100"
+              ? "in-aria-expanded:opacity-100 in-focus-visible:opacity-100 opacity-0 group-hover/metadata:opacity-100 [@media(hover:none)]:opacity-100"
               : undefined
           }
         />

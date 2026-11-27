@@ -14,8 +14,9 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.models import SchemaDiff, SchemaUpdateMigrationInfo
     from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.core.schema.update_coordinator import SchemaUpdateFinalStep
+    from infrahub.core.schema.update_coordinator import MigrationExecutor, MigrationsRun, SchemaUpdateFinalStep
     from infrahub.core.schema_change.candidate import SchemaCandidate
+    from infrahub.core.schema_change.enums import SchemaChangeSource
     from infrahub.core.schema_change.operations import SchemaOperation
     from infrahub.core.schema_change.recorder import SchemaChangeRecording
     from infrahub.core.timestamp import Timestamp
@@ -27,7 +28,13 @@ LOAD_CANCELLED_ERROR = "The schema load was cancelled before it completed"
 
 class ApplicationRecorder(Protocol):
     async def start(
-        self, *, branch: Branch, operations: Sequence[SchemaOperation], at: Timestamp, user_id: str
+        self,
+        *,
+        branch: Branch,
+        operations: Sequence[SchemaOperation],
+        at: Timestamp,
+        user_id: str,
+        source: SchemaChangeSource,
     ) -> SchemaChangeRecording: ...
 
     async def complete(self, *, recording: SchemaChangeRecording, branch: Branch, user_id: str) -> None: ...
@@ -46,7 +53,8 @@ class SchemaUpdateExecutor(Protocol):
         rollback_schema: SchemaBranch,
         candidate_schema: SchemaBranch,
         at: Timestamp,
-        context: InfrahubContext,
+        context: InfrahubContext | None,
+        migration_executor: MigrationExecutor,
         diff: SchemaDiff,
         migrations: list[SchemaUpdateMigrationInfo],
         limit: list[str],
@@ -56,7 +64,8 @@ class SchemaUpdateExecutor(Protocol):
     ) -> str: ...
 
 
-def _error_text(exc: Exception) -> str:
+def error_text(exc: Exception) -> str:
+    """Return the text of an error to show to a user, or the name of its class when it has no text."""
     # An Infrahub error can hold its text in `message` alone, which leaves `str()` empty.
     if isinstance(exc, Error) and exc.message:
         return exc.message
@@ -77,8 +86,9 @@ class SchemaChangeApplicationRunner:
         origin_schema: SchemaBranch,
         candidate: SchemaCandidate,
         at: Timestamp,
-        context: InfrahubContext,
         user_id: str,
+        source: SchemaChangeSource,
+        migrations_run: MigrationsRun,
     ) -> str:
         """Record a running schema change, apply the candidate at `at`, then record the schema change as applied.
 
@@ -109,13 +119,15 @@ class SchemaChangeApplicationRunner:
                 origin_schema=origin_schema,
                 candidate=candidate,
                 at=at,
-                context=context,
+                migrations_run=migrations_run,
                 user_id=user_id,
                 application_id=None,
                 final_step=None,
             )
 
-        recording = await self.recorder.start(branch=branch, operations=candidate.operations, at=at, user_id=user_id)
+        recording = await self.recorder.start(
+            branch=branch, operations=candidate.operations, at=at, user_id=user_id, source=source
+        )
 
         async def record_completion() -> None:
             await self.recorder.complete(recording=recording, branch=branch, user_id=user_id)
@@ -126,7 +138,7 @@ class SchemaChangeApplicationRunner:
                 origin_schema=origin_schema,
                 candidate=candidate,
                 at=at,
-                context=context,
+                migrations_run=migrations_run,
                 user_id=user_id,
                 application_id=recording.application_id,
                 final_step=record_completion,
@@ -135,7 +147,7 @@ class SchemaChangeApplicationRunner:
             await asyncio.shield(self._record_cancellation(recording=recording, user_id=user_id))
             raise
         except Exception as exc:
-            await self._record_failure(recording=recording, error=_error_text(exc), user_id=user_id)
+            await self._record_failure(recording=recording, error=error_text(exc), user_id=user_id)
             raise
 
     async def _execute(
@@ -145,7 +157,7 @@ class SchemaChangeApplicationRunner:
         origin_schema: SchemaBranch,
         candidate: SchemaCandidate,
         at: Timestamp,
-        context: InfrahubContext,
+        migrations_run: MigrationsRun,
         user_id: str,
         application_id: str | None,
         final_step: SchemaUpdateFinalStep | None,
@@ -156,7 +168,8 @@ class SchemaChangeApplicationRunner:
             rollback_schema=origin_schema,
             candidate_schema=candidate.schema,
             at=at,
-            context=context,
+            context=migrations_run.context,
+            migration_executor=migrations_run.migration_executor,
             diff=candidate.validation.diff,
             migrations=candidate.validation.migrations,
             limit=candidate.validation.diff.all,

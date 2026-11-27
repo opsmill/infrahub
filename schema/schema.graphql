@@ -9398,6 +9398,7 @@ type InfrahubSchemaChangeNode {
   The applied schema change that this one follows. Null for the first schema change of main, for a branch's first schema change when main has none, and for a schema change without a version.
   """
   parent: InfrahubSchemaChangeParent
+  source: SchemaChangeSource!
   status: SchemaChangeStatus!
   summary: String!
   """Time of the last change of the record."""
@@ -28321,6 +28322,14 @@ enum SchemaChangeMigrationStatus {
   ROLLED_BACK
   RUNNING
   WAITING
+}
+
+"""
+What made a schema change: a user's schema load or dropdown or enum change, or the core schema update of an upgrade.
+"""
+enum SchemaChangeSource {
+  CORE_SCHEMA_UPDATE
+  USER
 }
 
 """Status of a schema change of a branch."""

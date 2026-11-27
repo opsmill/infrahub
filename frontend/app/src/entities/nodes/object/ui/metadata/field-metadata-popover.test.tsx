@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, onTestFinished } from "vitest";
+import { userEvent } from "vitest/browser";
 
 import { store } from "@/shared/stores";
 
@@ -15,7 +16,7 @@ import {
   generateProfileSchema,
   generateTemplateSchema,
 } from "../../../../../../tests/fake/schema";
-import { FieldMetadataPopover } from "./field-metadata-popover";
+import { FieldMetadataPopover, METADATA_HOVER_AREA } from "./field-metadata-popover";
 
 describe("FieldMetadataPopover", () => {
   const emptyMetadata: NodeRelationshipMetadata = {
@@ -125,4 +126,84 @@ describe("FieldMetadataPopover", () => {
     // THEN
     await expect.element(component.getByText("True")).toBeVisible();
   });
+
+  describe("revealOnHover", () => {
+    const renderInHoverArea = () =>
+      render(
+        <>
+          <button type="button">Start</button>
+          <div className={METADATA_HOVER_AREA}>
+            <span>Name</span>
+            <FieldMetadataPopover metadata={emptyMetadata} revealOnHover />
+          </div>
+        </>
+      );
+
+    const iconOpacity = (button: Element) => {
+      const icon = button.querySelector("iconify-icon");
+      return icon && getComputedStyle(icon).opacity;
+    };
+
+    it("shows the icon only while the pointer is over its hover area", async () => {
+      // GIVEN
+      const component = await renderInHoverArea();
+      const button = component.getByRole("button", { name: "View metadata" }).element();
+      await userEvent.hover(document.body, { position: { x: 1200, y: 700 } });
+      await expect.poll(() => iconOpacity(button)).toBe("0");
+
+      // WHEN
+      await component.getByText("Name", { exact: true }).hover();
+
+      // THEN
+      await expect.poll(() => iconOpacity(button)).toBe("1");
+    });
+
+    it("shows the icon when it receives keyboard focus", async () => {
+      // GIVEN
+      const component = await renderInHoverArea();
+      await component.getByRole("button", { name: "Start" }).click();
+
+      // WHEN
+      await userEvent.tab();
+
+      // THEN
+      const button = component.getByRole("button", { name: "View metadata" });
+      await expect.element(button).toHaveFocus();
+      await expect.poll(() => iconOpacity(button.element())).toBe("1");
+    });
+
+    it("keeps the icon visible on devices without hover", async () => {
+      // GIVEN
+      onTestFinished(emulateDeviceWithoutHover());
+
+      // WHEN
+      const component = await renderInHoverArea();
+
+      // THEN
+      const button = component.getByRole("button", { name: "View metadata" }).element();
+      await expect.poll(() => iconOpacity(button)).toBe("1");
+    });
+  });
 });
+
+function emulateDeviceWithoutHover() {
+  const changedMedia: Array<[MediaList, string]> = [];
+
+  const visit = (rules: CSSRuleList) => {
+    for (const rule of Array.from(rules)) {
+      if (rule instanceof CSSMediaRule) {
+        const hoverValue = rule.media.mediaText.match(/^\(\s*hover\s*:\s*(none|hover)\s*\)$/)?.[1];
+        if (hoverValue) {
+          changedMedia.push([rule.media, rule.media.mediaText]);
+          rule.media.mediaText = hoverValue === "none" ? "all" : "not all";
+        }
+      }
+      if ("cssRules" in rule) visit((rule as CSSGroupingRule).cssRules);
+    }
+  };
+  for (const sheet of Array.from(document.styleSheets)) visit(sheet.cssRules);
+
+  return () => {
+    for (const [media, mediaText] of changedMedia) media.mediaText = mediaText;
+  };
+}

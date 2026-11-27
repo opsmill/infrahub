@@ -1,0 +1,1 @@
+Changed the Profile refresh after a merge or a rebase to skip the objects and object templates that already take the new value from this Profile and use no other Profile. A change to the priority of a Profile or to a relationship value still refreshes every linked object and template.

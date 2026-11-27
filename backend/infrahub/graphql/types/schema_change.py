@@ -14,6 +14,7 @@ from infrahub.core.schema_change.constants import (
 )
 from infrahub.core.schema_change.enums import SchemaChangeApplicationStatus as SchemaChangeApplicationStatusEnum
 from infrahub.core.schema_change.enums import SchemaChangeMigrationStatus as SchemaChangeMigrationStatusEnum
+from infrahub.core.schema_change.enums import SchemaChangeSource as SchemaChangeSourceEnum
 from infrahub.core.schema_change.enums import SchemaChangeStatus as SchemaChangeStatusEnum
 from infrahub.core.schema_change.enums import SchemaOperationNodeType as SchemaOperationNodeTypeEnum
 from infrahub.core.schema_change.enums import SchemaOperationSection as SchemaOperationSectionEnum
@@ -29,6 +30,11 @@ from infrahub.graphql.resolvers.schema_change import (
 SchemaChangeStatus = Enum.from_enum(
     SchemaChangeStatusEnum,
     description="Status of a schema change of a branch.",
+)
+
+SchemaChangeSource = Enum.from_enum(
+    SchemaChangeSourceEnum,
+    description="What made a schema change: a user's schema load or dropdown or enum change, or the core schema update of an upgrade.",
 )
 
 SchemaChangeApplicationStatus = Enum.from_enum(
@@ -187,6 +193,7 @@ class InfrahubSchemaChangeNode(ObjectType):
     summary = String(required=True)
     version = Int(required=False, description="Null unless the status is APPLIED.")
     status = Field(SchemaChangeStatus, required=True)
+    source = Field(SchemaChangeSource, required=True)
     branch = String(required=True)
     created_at = DateTime(required=True)
     updated_at = DateTime(required=True, description="Time of the last change of the record.")

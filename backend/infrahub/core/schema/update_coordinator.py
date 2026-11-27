@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, NoReturn, Protocol
+from typing import TYPE_CHECKING, ClassVar, NoReturn, Protocol
 
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
@@ -33,6 +34,25 @@ class MigrationExecutor(Enum):
 
     DIRECT = "direct"  # Call schema_apply_migrations directly
     WORKFLOW = "workflow"  # Execute via workflow service
+
+
+@dataclass(frozen=True)
+class WorkflowMigrations:
+    """Run the migrations of a schema update as a workflow, under the context of the request that started it."""
+
+    context: InfrahubContext
+    migration_executor: ClassVar[MigrationExecutor] = MigrationExecutor.WORKFLOW
+
+
+@dataclass(frozen=True)
+class DirectMigrations:
+    """Run the migrations of a schema update in the process that applies it, with no request context."""
+
+    context: ClassVar[None] = None
+    migration_executor: ClassVar[MigrationExecutor] = MigrationExecutor.DIRECT
+
+
+MigrationsRun = WorkflowMigrations | DirectMigrations
 
 
 class SchemaUpdateFinalStep(Protocol):

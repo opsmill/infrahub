@@ -55,16 +55,25 @@ class SchemaCandidateBuilder:
         self.comparer = comparer
 
     def from_schema_root(
-        self, *, branch_schema: SchemaBranch, schema_root: SchemaRoot, default_branch_schema: SchemaBranch
+        self,
+        *,
+        branch_schema: SchemaBranch,
+        schema_root: SchemaRoot,
+        default_branch_schema: SchemaBranch,
+        enforce_update_support: bool = True,
     ) -> SchemaCandidate:
         """Build the candidate of a schema file from the operations it makes; `branch_schema` is unchanged.
 
         The candidate schema is the operations applied to the branch schema, and it must equal the schema file laid
-        over the branch schema, kind by kind.
+        over the branch schema, kind by kind. A schema file that changes nothing gives no operation, so its candidate
+        is the schema file laid over the branch schema, with nothing applied or compared. With `enforce_update_support`
+        off, a change to a property that has no migration is not an error, and it gets no migration and no constraint
+        check.
 
         Raises:
             ValueError: When the schema file cannot be laid over the branch schema, or when the candidate removes a
                 kind that another kind still references.
+            ValidationError: When processing the schema file laid over the branch schema refuses it.
             SchemaNotFoundError: When the schema file gives a kind of the branch schema an ID that the branch schema
                 does not hold.
             SchemaNameReusedError: When the schema file frees a kind and gives it to another kind, including a new
@@ -80,6 +89,14 @@ class SchemaCandidateBuilder:
         build_result = self.operation_builder.build(
             branch_schema=branch_schema, schema_root=schema_root, default_branch_schema=default_branch_schema
         )
+        if not build_result.diff.all and not build_result.operations:
+            # Applying no operation rebuilds the branch schema, which the direct load equals when the diff is empty.
+            return self._validate(
+                branch_schema=branch_schema,
+                operations=[],
+                schema=build_result.direct_load_schema,
+                enforce_update_support=enforce_update_support,
+            )
         self._refuse_a_reused_name(branch_schema=branch_schema, operations=build_result.operations)
         try:
             schema = self.applier.apply(
@@ -100,7 +117,12 @@ class SchemaCandidateBuilder:
         )
         if differing_kinds:
             raise SchemaOperationsRebuildError(kinds=differing_kinds)
-        return self._validate(branch_schema=branch_schema, operations=build_result.operations, schema=schema)
+        return self._validate(
+            branch_schema=branch_schema,
+            operations=build_result.operations,
+            schema=schema,
+            enforce_update_support=enforce_update_support,
+        )
 
     def from_operations(
         self,
@@ -122,7 +144,9 @@ class SchemaCandidateBuilder:
         schema = self.applier.apply(
             target_schema=branch_schema, operations=operations, default_branch_schema=default_branch_schema
         )
-        return self._validate(branch_schema=branch_schema, operations=operations, schema=schema)
+        return self._validate(
+            branch_schema=branch_schema, operations=operations, schema=schema, enforce_update_support=True
+        )
 
     def _refuse_an_unknown_id_for_an_existing_kind(
         self, *, branch_schema: SchemaBranch, schema_root: SchemaRoot
@@ -205,9 +229,16 @@ class SchemaCandidateBuilder:
         return [kind]
 
     def _validate(
-        self, *, branch_schema: SchemaBranch, operations: Sequence[SchemaOperation], schema: SchemaBranch
+        self,
+        *,
+        branch_schema: SchemaBranch,
+        operations: Sequence[SchemaOperation],
+        schema: SchemaBranch,
+        enforce_update_support: bool,
     ) -> SchemaCandidate:
         diff = branch_schema.diff(other=schema)
         schema.validate_node_deletions(diff=diff)
-        validation = branch_schema.validate_update(other=schema, diff=diff)
+        validation = branch_schema.validate_update(
+            other=schema, diff=diff, enforce_update_support=enforce_update_support
+        )
         return SchemaCandidate(operations=list(operations), schema=schema, validation=validation)

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from pydantic_core import to_jsonable_python
 
 from infrahub.core.constants import HashableModelState
-from infrahub.core.models import HashableModel, HashableModelDiff
+from infrahub.core.models import HashableModel, HashableModelDiff, SchemaDiff
 from infrahub.core.schema import GenericSchema, NodeSchema
 from infrahub.core.schema.basenode_schema import SCHEMA_PATH_PROPERTIES
 from infrahub.core.schema_change.constants import (
@@ -53,6 +53,9 @@ class SchemaOperationBuildResult:
     operations: list[SchemaOperation]
     direct_load_schema: SchemaBranch
     """The schema file laid over a copy of the branch schema, then processed, as a direct load builds it."""
+
+    diff: SchemaDiff
+    """The diff from the branch schema to `direct_load_schema`, which the operations are built from."""
 
 
 @dataclass
@@ -147,7 +150,7 @@ class SchemaOperationBuilder:
             for kind in sorted(added_kinds, key=lambda kind: (not isinstance(unprocessed[kind], GenericSchema), kind))
         )
 
-        return SchemaOperationBuildResult(operations=operations, direct_load_schema=direct_load_schema)
+        return SchemaOperationBuildResult(operations=operations, direct_load_schema=direct_load_schema, diff=diff)
 
     def _stated_kinds(self, schema_root: SchemaRoot) -> dict[str, _StatedKind]:
         stated_kinds: dict[str, _StatedKind] = {}

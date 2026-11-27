@@ -60,8 +60,10 @@ under-recomputes, and defers any source-branch redundancy skip.
 
 ### Neutral
 
-- Profile refresh stays on its own automations, outside this pass. Python-transform computed
-  attributes did too until they joined as a fourth family
+- Profile refresh stays outside this pass. A live profile change starts its own automation, and a
+  merge or a rebase submits the refresh of the profiles it replays after this pass
+  ([ADR 0024](0024-merge-and-rebase-refresh-replayed-profiles.md)). Python-transform computed
+  attributes also stayed outside this pass until they joined as a fourth family
   ([ADR 0020](0020-python-transform-recompute-targets.md)); its two trigger types carry the same
   `live` filter (ADR 0016), and `dev/knowledge/backend/merge-recompute.md` records that design.
 - Readers of a recompute write are handled by a schema-derived, depth-bounded chain submitter.

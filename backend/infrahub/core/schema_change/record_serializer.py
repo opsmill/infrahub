@@ -7,6 +7,7 @@ from infrahub.core.constants import SchemaPathType
 from infrahub.core.schema_change.enums import (
     SchemaChangeApplicationStatus,
     SchemaChangeMigrationStatus,
+    SchemaChangeSource,
     SchemaChangeStatus,
     SchemaOperationNodeType,
     SchemaOperationSection,
@@ -45,6 +46,7 @@ class SchemaChangeRecordSerializer:
                 "uuid": record.uuid,
                 "branch": record.branch,
                 "status": record.status.value,
+                "source": record.source.value,
                 "version": record.version,
                 "summary": record.summary,
                 "format_version": record.format_version,
@@ -68,6 +70,7 @@ class SchemaChangeRecordSerializer:
             uuid=reader.text("uuid"),
             branch=reader.text("branch"),
             status=SchemaChangeStatus(reader.text("status")),
+            source=_read_source(reader.optional_text("source")),
             version=reader.optional_integer("version"),
             summary=reader.text("summary"),
             format_version=reader.integer("format_version"),
@@ -235,6 +238,13 @@ class SchemaChangeRecordSerializer:
 
 def _without_unset(properties: Mapping[str, RecordProperty | None]) -> RecordProperties:
     return {key: value for key, value in properties.items() if value is not None}
+
+
+def _read_source(value: str | None) -> SchemaChangeSource:
+    # Schema changes stored before the source was recorded all came from a user's load or mutation.
+    if value is None:
+        return SchemaChangeSource.USER
+    return SchemaChangeSource(value)
 
 
 class _PropertyReader:

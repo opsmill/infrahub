@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Badge } from "@/shared/components/ui/badge";
-import { ComboboxEmpty, ComboboxItem } from "@/shared/components/ui/combobox";
+import { ComboboxEmpty, ComboboxItem, ComboboxLoadMoreItem } from "@/shared/components/ui/combobox";
 import { Command, CommandInput, CommandList } from "@/shared/components/ui/command";
 import { debounce } from "@/shared/utils/common";
 
@@ -174,16 +174,11 @@ const HierarchicalExplorer = ({
           </>
         )}
 
-        {hasNextPage && (
-          <ComboboxItem
-            value="Load more"
-            onSelect={() => fetchNextPage()}
-            disabled={!hasNextPage || isFetchingNextPage}
-            className="justify-center text-custom-blue-700"
-          >
-            {isFetchingNextPage ? "Loading more..." : "Load more"}
-          </ComboboxItem>
-        )}
+        <ComboboxLoadMoreItem
+          hasNextPage={hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          onLoadMore={fetchNextPage}
+        />
       </CommandList>
     </Command>
   );

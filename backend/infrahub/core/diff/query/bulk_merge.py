@@ -210,8 +210,8 @@ CALL (n, tgt_n, src) {
 // phase 2 still runs when phase 1 produced zero matches
 // ==============================
 WITH count(*) AS _phase_separator
-// A HAS_ATTRIBUTE edge always starts at a Node vertex; naming the label makes the planner scan every Node to check it
-MATCH (n)-[src:HAS_ATTRIBUTE]->(a:Attribute)
+// A HAS_ATTRIBUTE edge always links a Node to an Attribute; naming either label can make the planner scan all its vertices
+MATCH (n)-[src:HAS_ATTRIBUTE]->(a)
 USING INDEX SEEK src:HAS_ATTRIBUTE(branch)
 WHERE src.branch = $source_branch
 AND src.to IS NULL

@@ -200,7 +200,7 @@ The `EventMeta` class provides rich context:
 - **account_id**: Initiating account
 - **request_id**: Correlation ID
 - **context**: Full `InfrahubContext` for the operation
-- **origin**: For node mutation events, how the mutation was produced (`live`, `merge`, `rebase`, `recompute`), defaulting to `live`. The recompute triggers for the four coalesced families (Jinja2 computed attributes, display labels, human-friendly ids and Python transform computed attributes) match only `live`, so a merge, rebase, or recompute write does not re-trigger their per-node flows. See [merge-recompute.md](merge-recompute.md).
+- **origin**: For node mutation events, how the mutation was produced (`live`, `merge`, `rebase`, `recompute`), defaulting to `live`. The recompute triggers for the four coalesced families (Jinja2 computed attributes, display labels, human-friendly ids and Python transform computed attributes) match only `live`, so a merge, rebase, or recompute write does not re-trigger their per-node flows. The profile refresh automation also matches only `live`: a merge or a rebase submits the refresh of the profiles it replays itself. See [merge-recompute.md](merge-recompute.md).
 
 Use `EventMeta.from_parent()` to create child events that maintain hierarchy.
 

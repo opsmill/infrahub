@@ -88,6 +88,9 @@ Never loads `data_sites`; quietest stack, home for flake-sensitive UI tests.
 - objects/test_object_update.py (17.2)
 - triggers/test_triggers.py (20.4)
 - test_search.py (8.5)
+- proposed-changes/test_proposed_changes_ordering.py (~76 in CI, leaf-tier; hosted here for balance)
+- branches/test_merge_branch.py (13.9, leaf-tier; hosted here for balance)
+- role-management/test_group_management.py (29.0, leaf-tier; hosted here for balance)
 
 ### Job 5 `tutorial` — the tutorial suite (~225s wall, self-contained)
 
@@ -152,10 +155,8 @@ repo-import failure kills one shard, not the suite):
 - proposed-changes/test_proposed_changes_checks.py (5.8)
 - proposed-changes/test_proposed_changes_diff.py (14.5)
 
-Leaf-tier ballast moved here for balance (full load hosts them for free):
-
-- role-management/test_group_management.py (29.0)
-- branches/test_merge_branch.py (13.9)
+The leaf-tier ballast this shard hosted for balance (test_group_management,
+test_merge_branch) moved to sites_a on 2026-11-25, see below.
 
 Rebalanced 2026-06-11 against the first sharded CI run (run 27358443140:
 foundation 8.6m / sites_a 5.8m / sites_b 10.0m / branches_repo 9.7m /
@@ -165,6 +166,15 @@ file_upload leaf ballast moved over from branches_repo. Expected walls ~8.5m
 per data shard. Rebalancing dial: move leaf files anywhere, sites files
 between sites_a/sites_b, topology files between sites_b/branches_repo —
 re-measure with each shard's CI junit before moving.
+
+Rebalanced 2026-11-25 against three CI runs without the response delay
+(45600959818, 45596783602, 45509380876; median minutes from the start of the
+pytest session to its last test: foundation 9.4 / sites_a 9.0 / sites_b 11.2 /
+branches_repo 14.1). Over 2026-11-11 to 2026-11-25, branches_repo was the
+slowest shard in 303 of 322 CI runs. The three leaf-tier files that create
+their own data moved to sites_a: test_proposed_changes_ordering (1.3m),
+test_merge_branch (0.3m) and test_group_management (0.2m), measured from the
+log timestamps of the same runs. Expected: branches_repo ~12.4m, sites_a ~10.7m.
 
 ## Implementation notes
 

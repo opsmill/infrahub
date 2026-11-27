@@ -18747,6 +18747,7 @@ export type InfrahubSchemaChangeNode = {
   operations: InfrahubSchemaChangeOperations;
   /** The applied schema change that this one follows. Null for the first schema change of main, for a branch's first schema change when main has none, and for a schema change without a version. */
   parent: Maybe<InfrahubSchemaChangeParent>;
+  source: SchemaChangeSource;
   status: SchemaChangeStatus;
   summary: Scalars['String']['output'];
   /** Time of the last change of the record. */
@@ -40301,6 +40302,13 @@ export const SchemaChangeMigrationStatus = {
 } as const;
 
 export type SchemaChangeMigrationStatus = typeof SchemaChangeMigrationStatus[keyof typeof SchemaChangeMigrationStatus];
+/** What made a schema change: a user's schema load or dropdown or enum change, or the core schema update of an upgrade. */
+export const SchemaChangeSource = {
+  CORE_SCHEMA_UPDATE: 'CORE_SCHEMA_UPDATE',
+  USER: 'USER'
+} as const;
+
+export type SchemaChangeSource = typeof SchemaChangeSource[keyof typeof SchemaChangeSource];
 /** Status of a schema change of a branch. */
 export const SchemaChangeStatus = {
   APPLIED: 'APPLIED',

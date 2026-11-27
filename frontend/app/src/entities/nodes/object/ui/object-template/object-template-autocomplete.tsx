@@ -7,6 +7,7 @@ import {
   ComboboxItem,
   ComboboxList,
   type ComboboxListProps,
+  ComboboxLoadMoreItem,
 } from "@/shared/components/ui/combobox";
 import { debounce } from "@/shared/utils/common";
 
@@ -63,16 +64,11 @@ export function ObjectTemplateAutocomplete({
         </>
       )}
 
-      {hasNextPage && (
-        <ComboboxItem
-          value="Load more"
-          onSelect={() => fetchNextPage()}
-          disabled={!hasNextPage || isFetchingNextPage}
-          className="justify-center text-accent"
-        >
-          {isFetchingNextPage ? "Loading more..." : "Load more"}
-        </ComboboxItem>
-      )}
+      <ComboboxLoadMoreItem
+        hasNextPage={hasNextPage}
+        isFetchingNextPage={isFetchingNextPage}
+        onLoadMore={fetchNextPage}
+      />
     </ComboboxList>
   );
 }
