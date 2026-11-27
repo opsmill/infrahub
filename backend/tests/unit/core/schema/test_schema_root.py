@@ -27,7 +27,7 @@ def test_validate_reserved_names_extension_in_restricted_namespace(kind: str, na
     assert errors == [f"Restricted namespace '{namespace}' used on extension of '{kind}'"]
 
 
-@pytest.mark.parametrize("kind", ["TestTestNode", "CoreinfraDevice", "Builtin2Tag"])
+@pytest.mark.parametrize("kind", ["TestTestNode", "CoreinfraDevice", "Builtin2Tag", "coreAccount"])
 def test_validate_reserved_names_extension_in_allowed_namespace(kind: str) -> None:
     schema_root = SchemaRoot(
         extensions=SchemaExtension(
