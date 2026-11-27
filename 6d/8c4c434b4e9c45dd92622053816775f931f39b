@@ -1,0 +1,23 @@
+docs/docs/release-notes/infrahub/release-1_10_12.mdx
+  s_6cf9025f3dcfd8::t_129aee0fe0b853 1-26
+CHANGELOG.md
+  s_6cf9025f3dcfd8::t_a20b30a94da84d 14-19
+docker-compose.yml
+  s_6cf9025f3dcfd8::t_7a5637160ff081 252,285,331
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6d8c4c434b4e9c45dd92622053816775f931f39b",
+  "prompts": {},
+  "sessions": {
+    "s_6cf9025f3dcfd8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3af1dfcc-e45f-4a6e-8b9a-ae53989039d0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
