@@ -82,6 +82,27 @@ export {
   type SortableListProps,
 } from "./components/sortable-list/sortable-list";
 export { Spinner, type SpinnerProps } from "./components/spinner/spinner";
+export {
+  Table,
+  TableBody,
+  type TableBodyProps,
+  TableCell,
+  type TableCellProps,
+  TableColumn,
+  type TableColumnProps,
+  TableEmptyMessage,
+  type TableEmptyMessageProps,
+  TableHeader,
+  type TableHeaderProps,
+  TableLink,
+  type TableLinkProps,
+  TableLoadMoreItem,
+  type TableLoadMoreItemProps,
+  type TableProps,
+  TableRow,
+  type TableRowProps,
+  TableSkeleton,
+} from "./components/table/table";
 export { Tooltip, type TooltipProps } from "./components/tooltip/tooltip";
 export {
   Tree,

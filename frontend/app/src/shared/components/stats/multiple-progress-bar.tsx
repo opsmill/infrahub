@@ -9,7 +9,7 @@ interface ProgressBarItemProps extends ProgressPrimitive.ProgressIndicatorProps 
   tooltip?: TooltipProps["message"];
 }
 
-export interface MultipleProgressBarProps extends ProgressPrimitive.ProgressProps {
+interface MultipleProgressBarProps extends ProgressPrimitive.ProgressProps {
   elements: Array<ProgressBarItemProps>;
 }
 

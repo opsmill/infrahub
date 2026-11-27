@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Self
 
 from infrahub.core.registry import registry
 from infrahub.events import NodeUpdatedEvent
+from infrahub.events.constants import NODE_ORIGIN_LABEL, NodeMutationOrigin
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import EventTrigger, ExecuteWorkflow, TriggerBranchDefinition, TriggerType, jinja_parameter
 
@@ -29,7 +30,8 @@ class ProfileRefreshTriggerDefinition(TriggerBranchDefinition):
         """Create a trigger definition for profile refresh when profile attributes/relationships change."""
         event_trigger = EventTrigger()
         event_trigger.events.add(NodeUpdatedEvent.event_name)
-        event_trigger.match = {"infrahub.node.kind": profile_kind}
+        # A merge or a rebase refreshes the nodes of the profiles it replays itself, narrowed to what it did not carry.
+        event_trigger.match = {"infrahub.node.kind": profile_kind, NODE_ORIGIN_LABEL: NodeMutationOrigin.LIVE.value}
 
         if branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch

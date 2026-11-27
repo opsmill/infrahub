@@ -1,30 +1,23 @@
 import { useParams } from "react-router";
 
+import { IpPoolDetailsPage } from "@/pages/resource-manager/ip-pool-details";
 import { NumberPoolDetailsPage } from "@/pages/resource-manager/number-pool-details";
-import { ResourcePoolDetailsBody } from "@/pages/resource-manager/resource-pool-details-body";
 
-import { queryClient } from "@/shared/api/rest/client";
-import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
-import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
-import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
-import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
-import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
-import type { Permission } from "@/entities/permission/domain/model/permission";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import {
+  IP_ADDRESS_POOL,
+  IP_PREFIX_POOL,
   NUMBER_POOL_KIND,
   RESOURCE_GENERIC_KIND,
 } from "@/entities/resource-manager/domain/model/pool";
-import { resourceManagerQueryKeys } from "@/entities/resource-manager/ui/queries/resource-manager.query-keys";
-import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-const ResourcePoolDetailsPage = () => {
+export function Component() {
   const { resourcePoolId } = useParams();
   const { schema: genericPoolSchema } = useSchema(RESOURCE_GENERIC_KIND);
 
@@ -37,106 +30,52 @@ const ResourcePoolDetailsPage = () => {
 
   if (isPending) return <LoadingIndicator className="h-full" />;
 
-  if (error) return <ErrorScreen message={error.message} />;
+  if (error && !data) return <ErrorScreen message={error.message} />;
 
-  const objectKind = data.__typename;
   return (
-    <ResourcePoolContentWithPermissions
-      resourcePoolId={resourcePoolId!}
-      resourcePoolKind={objectKind}
-    />
+    <ResourcePoolDetailsPage resourcePoolId={resourcePoolId!} resourcePoolKind={data.__typename} />
   );
-};
+}
 
-type ResourcePoolContentWithPermissionsProps = {
+interface ResourcePoolDetailsPageProps {
   resourcePoolId: string;
   resourcePoolKind: string;
-};
+}
 
-const ResourcePoolContentWithPermissions = ({
+function ResourcePoolDetailsPage({
   resourcePoolId,
   resourcePoolKind,
-}: ResourcePoolContentWithPermissionsProps) => {
+}: ResourcePoolDetailsPageProps) {
   const { schema } = useSchema(resourcePoolKind);
 
   if (!schema) return <NoDataFound />;
 
   return (
-    <RequireObjectPermissions objectKind={schema.kind!}>
-      {({ permission }) =>
-        schema.kind === NUMBER_POOL_KIND ? (
-          <NumberPoolDetailsPage poolId={resourcePoolId} schema={schema} permission={permission} />
-        ) : (
-          <ResourcePoolContent
-            resourcePoolId={resourcePoolId}
-            schema={schema}
-            permission={permission}
-          />
-        )
-      }
+    <RequireObjectPermissions objectKind={schema.kind}>
+      {({ permission }) => {
+        switch (schema.kind) {
+          case NUMBER_POOL_KIND:
+            return (
+              <NumberPoolDetailsPage
+                poolId={resourcePoolId}
+                schema={schema}
+                permission={permission}
+              />
+            );
+          case IP_PREFIX_POOL:
+          case IP_ADDRESS_POOL:
+            return (
+              <IpPoolDetailsPage
+                poolId={resourcePoolId}
+                poolKind={schema.kind}
+                schema={schema}
+                permission={permission}
+              />
+            );
+          default:
+            return <NoDataFound />;
+        }
+      }}
     </RequireObjectPermissions>
   );
-};
-
-type ResourcePoolContentProps = {
-  resourcePoolId: string;
-  schema: ModelSchema;
-  permission: Permission;
-};
-
-const ResourcePoolContent = ({ resourcePoolId, schema, permission }: ResourcePoolContentProps) => {
-  const resourcePoolKind = schema.kind as string;
-  const {
-    isPending,
-    isRefetching,
-    error,
-    data: resourcePool,
-    refetch,
-  } = useGetObject({
-    objectSchema: schema,
-    objectId: resourcePoolId,
-  });
-
-  const handleRefetchAll = async () => {
-    await Promise.all([
-      refetch(),
-      queryClient.invalidateQueries({
-        queryKey: resourceManagerQueryKeys.all,
-      }),
-    ]);
-  };
-
-  if (isPending) {
-    return <LoadingIndicator className="h-full" />;
-  }
-
-  if (error) {
-    return <ErrorScreen message={`Error fetching resource pool: ${error.message}`} />;
-  }
-
-  return (
-    <Content.Card>
-      <Content.CardTitle
-        title={
-          <Row>
-            <span>{getNodeLabel(resourcePool)}</span>
-            <NodeMetadataPopover objectId={resourcePoolId} objectKind={resourcePoolKind} />
-          </Row>
-        }
-        isReloadLoading={isRefetching}
-        reload={handleRefetchAll}
-        end={
-          <ObjectHelpButton
-            className="ml-auto"
-            documentationUrl={schema.documentation}
-            kind={schema.kind}
-          />
-        }
-      />
-
-      <ResourcePoolDetailsBody poolId={resourcePoolId} schema={schema} permission={permission} />
-    </Content.Card>
-  );
-};
-
-export const Component = ResourcePoolDetailsPage;
+}

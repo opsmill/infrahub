@@ -1,7 +1,7 @@
 import { Button, Popover, PopoverTrigger } from "@infrahub/ui";
 import { ArrowUpDownIcon } from "lucide-react";
 
-import { CountBadge } from "@/shared/components/buttons/count-badge";
+import { CountBadge } from "@/shared/components/display/count-badge";
 
 import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
 import { SortEditor } from "@/entities/nodes/sort/ui/sort-editor";

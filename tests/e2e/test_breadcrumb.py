@@ -171,7 +171,7 @@ class TestResourceManagerBreadcrumb:
         await expect(page.get_by_role("link", name="IP Prefix Pool")).to_be_visible()
         await expect(page.get_by_role("link", name="External prefixes pool")).to_be_visible()
 
-        await page.get_by_role("link", name="View", exact=True).click()
+        await page.get_by_role("option", name="203.111.0.0/16").click()
         await expect(
             page.get_by_test_id("breadcrumb-resource-manager").get_by_role("link", name="203.111.0.0/16")
         ).to_be_visible()

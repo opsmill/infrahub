@@ -193,14 +193,6 @@ module = "infrahub_sdk.*"
 follow_imports = "skip" # Added to ignore typing issues from the SDK when introducing a py.typed file
 
 [[tool.mypy.overrides]]
-module = "tests.conftest"
-disallow_untyped_defs = false
-
-[[tool.mypy.overrides]]
-module = "tests.fixtures.*"
-disallow_untyped_defs = false
-
-[[tool.mypy.overrides]]
 module = "tests.integration.*"
 disallow_untyped_defs = false
 
@@ -225,7 +217,6 @@ module = "infrahub.core.attribute"
 disable_error_code = [
     "arg-type",
     "assignment",
-    "attr-defined",
     "misc",
     "operator",
     "union-attr",
@@ -236,7 +227,6 @@ module = "infrahub.core.manager"
 disable_error_code = [
     "assignment",
     "attr-defined",
-    "return-value",
     "union-attr",
 ]
 
@@ -245,7 +235,6 @@ module = "infrahub.core.node"
 disable_error_code = [
     "arg-type",
     "assignment",
-    "attr-defined",
     "override",
     "union-attr",
     "var-annotated",
@@ -338,7 +327,6 @@ disable_error_code = [
 module = "infrahub.graphql.mutations.ipam"
 disable_error_code = [
     "attr-defined",
-    "list-item",
     "union-attr",
     "return-value",
 ]
@@ -346,17 +334,14 @@ disable_error_code = [
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.main"
 disable_error_code = [
-    "arg-type",
     "assignment",
     "call-arg",
     "return-value",
-    "union-attr",
 ]
 
 [[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.proposed_change"
 disable_error_code = [
-    "assignment",
     "attr-defined",
     "union-attr",
 ]
@@ -373,7 +358,6 @@ disable_error_code = [
 module = "infrahub.graphql.mutations.schema"
 disable_error_code = [
     "arg-type",
-    "operator",
     "union-attr",
 ]
 
@@ -391,7 +375,6 @@ disable_error_code = [
     "arg-type",
     "attr-defined",
     "union-attr",
-    "var-annotated",
 ]
 
 [[tool.mypy.overrides]]
@@ -1093,7 +1076,6 @@ invalid-type-form = "ignore"
 no-matching-overload = "ignore"
 not-subscriptable = "ignore"
 unresolved-attribute = "ignore"
-unresolved-reference = "ignore"
 unsupported-operator = "ignore"
 
 [[tool.ty.overrides]]
@@ -1430,15 +1412,6 @@ no-matching-overload = "ignore"
 
 [[tool.ty.overrides]]
 include = [
-    "backend/infrahub/graphql/mutations/action.py",
-    "backend/infrahub/graphql/queries/resource_manager.py",
-]
-
-[tool.ty.overrides.rules]
-redundant-cast = "ignore"
-
-[[tool.ty.overrides]]
-include = [
     "backend/infrahub/graphql/manager.py",
     "backend/infrahub/graphql/mutations/schema.py",
     "backend/infrahub/graphql/utils.py",
@@ -1623,17 +1596,6 @@ include = ["backend/infrahub/transformations/**"]
 no-matching-overload = "ignore"
 
 [[tool.ty.overrides]]
-include = ["backend/infrahub/profiles/**"]
-
-[tool.ty.overrides.rules]
-##################################################################################################
-# The ignored rules below should be removed once the code has been updated, they are included    #
-# like this so that we can reactivate them one by one.                                           #
-##################################################################################################
-invalid-assignment = "ignore"
-unresolved-attribute = "ignore"
-
-[[tool.ty.overrides]]
 include = ["backend/infrahub/api/**"]
 
 [tool.ty.overrides.rules]
@@ -1671,7 +1633,6 @@ include = ["backend/infrahub/*.py"]
 # The ignored rules below should be removed once the code has been updated, they are included    #
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
-invalid-argument-type = "ignore"
 invalid-assignment = "ignore"
 invalid-method-override = "ignore"
 unresolved-attribute = "ignore"
@@ -1695,26 +1656,6 @@ include = ["backend/infrahub/menu/**"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 invalid-argument-type = "ignore"
-
-[[tool.ty.overrides]]
-include = ["backend/infrahub/pools/**"]
-
-[tool.ty.overrides.rules]
-##################################################################################################
-# The ignored rules below should be removed once the code has been updated, they are included    #
-# like this so that we can reactivate them one by one.                                           #
-##################################################################################################
-unresolved-attribute = "ignore"
-
-[[tool.ty.overrides]]
-include = ["backend/infrahub/templates/**"]
-
-[tool.ty.overrides.rules]
-##################################################################################################
-# The ignored rules below should be removed once the code has been updated, they are included    #
-# like this so that we can reactivate them one by one.                                           #
-##################################################################################################
-unresolved-attribute = "ignore"
 
 [[tool.ty.overrides]]
 include = ["backend/tests/component/**"]
@@ -1757,7 +1698,6 @@ include = ["backend/tests/integration/**"]
 invalid-argument-type = "ignore"
 invalid-assignment = "ignore"
 invalid-await = "ignore"
-invalid-return-type = "ignore"
 no-matching-overload = "ignore"
 not-subscriptable = "ignore"
 unresolved-attribute = "ignore"
@@ -1787,9 +1727,7 @@ include = ["backend/tests/integration_docker/**"]
 # The ignored rules below should be removed once the code has been updated, they are included    #
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
-invalid-argument-type = "ignore"
 invalid-assignment = "ignore"
-invalid-return-type = "ignore"
 unresolved-attribute = "ignore"
 
 [[tool.ty.overrides]]

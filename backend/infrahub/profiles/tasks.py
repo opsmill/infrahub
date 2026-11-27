@@ -14,10 +14,10 @@ from infrahub.workers.dependencies import get_client, get_component, get_databas
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_profile_refresh
-from .graphql_queries import ProfileNodeIDQuery
 from .node_applier import NodeProfilesApplier
+from .processor import ProfileRefreshProcessor
 from .refresh import NodeProfilesRefresher
-from .submission import submit_profile_refresh
+from .replay import DatabaseProfileValueReader, NodeRefreshFilter, ProfileValueSelector, RefreshAllNodes
 
 REFRESH_PROFILES_MUTATION = """
 mutation RefreshProfiles(
@@ -117,11 +117,13 @@ async def profile_refresh_process(
     profile_kind: str,
     profile_id: str,
     context: EventContext,
+    attribute_names: list[str] | None = None,
 ) -> None:
     """Process profile refresh when a profile's attributes or relationships change.
 
     This flow reads the ids of the nodes and templates linked to the profile in pages, and submits
-    one profile refresh flow for each chunk of ids of a page.
+    one profile refresh flow for each chunk of ids of a page. With ``attribute_names``, a node
+    that already holds the value of the profile for each of these attributes, from the profile, is left out.
     """
     log = get_run_logger()
     client = get_client()
@@ -134,15 +136,19 @@ async def profile_refresh_process(
     if related_templates := profile_schema.get_relationship_or_none(name="related_templates"):
         peer_kinds.append(related_templates.peer)
 
+    database = await get_database()
     workflow = get_workflow()
-    for peer_kind in peer_kinds:
-        node_query = ProfileNodeIDQuery(kind=peer_kind, profile_id=profile_id)
-        submitted = 0
-        async for node_ids in node_query.fetch_all_paginated(
-            client=client, branch_name=branch_name, page_size=node_query.page_size
-        ):
-            await submit_profile_refresh(
-                workflow=workflow, branch_name=branch_name, node_ids=node_ids, context=context, profile_id=profile_id
+    # A read-only session can go to a replica without the merge, where a stale node and profile would look held.
+    async with database.start_session() as db:
+        node_filter: NodeRefreshFilter = RefreshAllNodes()
+        if attribute_names:
+            value_filter = await ProfileValueSelector(reader=DatabaseProfileValueReader(db=db)).prepare(
+                branch_name=branch_name, profile_id=profile_id, attribute_names=attribute_names
             )
-            submitted += len(node_ids)
-        log.info(f"Submitted the profile refresh of {submitted} {peer_kind} node(s) for profile {profile_id}")
+            if value_filter is None:
+                log.info(f"Profile {profile_id} does not exist, so no linked node needs its refresh")
+                return
+            node_filter = value_filter
+
+        processor = ProfileRefreshProcessor(client=client, workflow=workflow, node_filter=node_filter, logger=log)
+        await processor.run(branch_name=branch_name, profile_id=profile_id, peer_kinds=peer_kinds, context=context)

@@ -224,9 +224,79 @@ describe("NumberPoolAllocationsTable", () => {
     const component = await renderTable();
 
     // THEN
+    await expect.element(component.getByRole("status", { name: "Loading" })).toBeVisible();
+  });
+
+  it("keeps the loaded rows and offers a retry when loading the next page fails", async () => {
+    // GIVEN
+    const fetchNextPage = vi.fn();
+    mockAllocations({ allocations: [generateNumberPoolAllocation({ value: 7 })] });
+    vi.mocked(useGetNumberPoolAllocations).mockReturnValue({
+      data: { pages: [[generateNumberPoolAllocation({ value: 7 })]], pageParams: [0] },
+      error: new Error("Network error"),
+      isPending: false,
+      hasNextPage: true,
+      isFetchingNextPage: false,
+      isFetchNextPageError: true,
+      fetchNextPage,
+    } as unknown as ReturnType<typeof useGetNumberPoolAllocations>);
+
+    // WHEN
+    const component = await renderTable();
+    await component.getByRole("button", { name: "Retry" }).click();
+
+    // THEN
+    await expect.element(component.getByRole("row", { name: /^7/ })).toBeVisible();
     await expect
-      .element(component.getByRole("status", { name: "Loading allocations" }))
-      .toBeVisible();
+      .element(component.getByRole("alert"))
+      .toHaveTextContent("More allocations could not be loaded.Retry");
+    expect(fetchNextPage).toHaveBeenCalledExactlyOnceWith({ cancelRefetch: false });
+  });
+
+  it("keeps the loaded rows and offers a retry when a refresh fails", async () => {
+    // GIVEN
+    const refetch = vi.fn();
+    mockAllocations({ allocations: [generateNumberPoolAllocation({ value: 7 })] });
+    vi.mocked(useGetNumberPoolAllocations).mockReturnValue({
+      data: { pages: [[generateNumberPoolAllocation({ value: 7 })]], pageParams: [0] },
+      error: new Error("Network error"),
+      isPending: false,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      isFetchNextPageError: false,
+      isRefetchError: true,
+      isRefetching: false,
+      refetch,
+    } as unknown as ReturnType<typeof useGetNumberPoolAllocations>);
+
+    // WHEN
+    const component = await renderTable();
+    await component.getByRole("button", { name: "Retry" }).click();
+
+    // THEN
+    await expect.element(component.getByRole("row", { name: /^7/ })).toBeVisible();
+    await expect
+      .element(component.getByRole("alert"))
+      .toHaveTextContent("The allocations could not be refreshed.Retry");
+    expect(refetch).toHaveBeenCalledOnce();
+  });
+
+  it("moves to the allocation whose number the user types", async () => {
+    // GIVEN
+    mockAllocations({
+      allocations: [
+        generateNumberPoolAllocation({ value: 7 }),
+        generateNumberPoolAllocation({ value: 42 }),
+      ],
+    });
+    const component = await renderTable();
+    await component.getByRole("rowheader", { name: "7" }).click();
+
+    // WHEN
+    await userEvent.keyboard("4");
+
+    // THEN
+    await expect.element(component.getByRole("rowheader", { name: "42" })).toHaveFocus();
   });
 
   it("marks a number a user provided", async () => {

@@ -1,13 +1,11 @@
 import { Tooltip } from "@infrahub/ui";
 import { FileCodeIcon } from "lucide-react";
 import React from "react";
-import { Button as AriaButton, DialogTrigger } from "react-aria-components";
 
-import { CopyToClipboardButton } from "@/shared/components/buttons/copy-to-clipboard-button";
 import { RefreshButton } from "@/shared/components/buttons/refresh-button";
 import { Col, Row } from "@/shared/components/container";
+import { NodeId } from "@/shared/components/display/node-id";
 import { Skeleton } from "@/shared/components/loading/skeleton";
-import { classNames } from "@/shared/utils/common";
 
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
 import type { Permission } from "@/entities/permission/domain/model/permission";
@@ -18,17 +16,18 @@ import {
 } from "@/entities/resource-manager/domain/model/pool";
 import { useAllocationScopeFields } from "@/entities/resource-manager/ui/hooks/use-allocation-scope-fields";
 import { NumberPoolActionsMenu } from "@/entities/resource-manager/ui/number-pool/details/number-pool-actions-menu";
+import {
+  SchemaReference,
+  schemaLinkStyle,
+} from "@/entities/resource-manager/ui/pool/schema-reference";
 import { resourceManagerQueryKeys } from "@/entities/resource-manager/ui/queries/resource-manager.query-keys";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { SchemaViewerModal } from "@/entities/schema/ui/schema-viewer-modal";
 
 const REFRESHED_QUERY_KEYS = [resourceManagerQueryKeys.all];
 
 const managedByTagStyle =
   "inline-flex h-6 shrink-0 items-center gap-1 rounded-lg border border-border-strong px-2 font-medium text-foreground text-xs data-hovered:bg-highlight";
-
-const schemaLinkStyle = "font-medium underline decoration-dotted data-hovered:decoration-solid";
 
 interface ManagedBySchemaTagProps {
   pool: NumberPoolData;
@@ -51,50 +50,6 @@ function ManagedBySchemaTag({ pool }: ManagedBySchemaTagProps) {
         Managed by schema
       </SchemaReference>
     </Tooltip>
-  );
-}
-
-interface PoolIdProps {
-  id: string;
-  className?: string;
-}
-
-function PoolId({ id, className }: PoolIdProps) {
-  return (
-    <Row className={classNames("min-w-0 gap-1 text-sm", className)}>
-      <span className="shrink-0">ID</span>
-      <span className="min-w-0 truncate font-mono text-foreground-muted text-xs">{id}</span>
-      <CopyToClipboardButton data={id} aria-label="Copy ID" />
-    </Row>
-  );
-}
-
-interface SchemaReferenceProps {
-  schema: ModelSchema | null;
-  targetField?: string;
-  className?: string;
-  children: React.ReactNode;
-}
-
-function SchemaReference({ schema, targetField, className, children }: SchemaReferenceProps) {
-  if (!schema) return <span className={classNames(className, "no-underline")}>{children}</span>;
-
-  const isRelationship = schema.relationships?.some((field) => field.name === targetField);
-  const fieldTab = isRelationship ? "relationships" : "attributes";
-  const defaultTab = targetField ? fieldTab : undefined;
-
-  return (
-    <DialogTrigger>
-      <AriaButton
-        className={classNames(
-          "cursor-pointer rounded-md outline-none data-focus-visible:ring-2 data-focus-visible:ring-ring-halo",
-          className
-        )}
-      >
-        {children}
-      </AriaButton>
-      <SchemaViewerModal schema={schema} defaultTab={defaultTab} targetField={targetField} />
-    </DialogTrigger>
   );
 }
 
@@ -146,8 +101,8 @@ export function NumberPoolHeader({ pool, schema, permission }: NumberPoolHeaderP
     <header className="px-3 py-2 text-sm">
       <Row className="mb-4 items-start">
         <Col className="min-w-0 grow gap-0">
-          <Row className="min-w-0 gap-1">
-            <h1 className="min-w-0 truncate font-bold text-xl" title={pool.name.value}>
+          <Row className="gap-1">
+            <h1 className="truncate font-bold text-xl" title={pool.name.value}>
               {pool.name.value}
             </h1>
             <NodeMetadataPopover objectKind={NUMBER_POOL_KIND} objectId={pool.id} />
@@ -158,7 +113,7 @@ export function NumberPoolHeader({ pool, schema, permission }: NumberPoolHeaderP
           )}
         </Col>
 
-        <PoolId id={pool.id} className="h-8" />
+        <NodeId id={pool.id} className="h-8" />
         <RefreshButton queryKeys={REFRESHED_QUERY_KEYS} />
         <NumberPoolActionsMenu pool={pool} schema={schema} permission={permission} />
       </Row>

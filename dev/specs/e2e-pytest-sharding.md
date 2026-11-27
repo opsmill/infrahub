@@ -80,6 +80,7 @@ Never loads `data_sites`; quietest stack, home for flake-sensitive UI tests.
 
 - ipam/test_ip_namespace.py (47.0)
 - ipam/test_ipam_tree.py (6.9)
+- resource-manager/test_ip_pool_details.py (not measured yet)
 - role-management/test_global_permissions.py (21.9, leaf-tier; hosted here for balance)
 - objects/file-upload/test_file_upload.py (19.8, leaf-tier; hosted here for balance)
 - objects/list/test_object_list_select_range.py (55.6)

@@ -1,16 +1,19 @@
-import type { PaginationParams } from "@/shared/api/types";
-
 import type {
   NumberPoolAllocationFilters,
   NumberPoolDivisionSelector,
 } from "@/entities/resource-manager/domain/model/number-pool";
 
-export interface ResourceUtilizationKeysParams {
+export interface IpPoolKeysParams {
   poolId: string;
+  branchName: string;
+  atDate?: Date | null;
 }
 
-export interface ResourceAllocatedKeysParams extends PaginationParams {
-  poolId: string;
+export interface IpPoolUtilizationKeysParams extends IpPoolKeysParams {
+  weightedKinds: string[];
+}
+
+export interface IpPoolAllocationsKeysParams extends IpPoolKeysParams {
   resourceId: string;
 }
 
@@ -49,17 +52,12 @@ export interface NumberPoolsKeysParams {
 
 export const resourceManagerQueryKeys = {
   all: ["resource-manager"] as const,
-  utilization: (params: ResourceUtilizationKeysParams) =>
-    [...resourceManagerQueryKeys.all, "utilization", params.poolId] as const,
-  allocated: (params: ResourceAllocatedKeysParams) =>
-    [
-      ...resourceManagerQueryKeys.all,
-      "allocated",
-      params.poolId,
-      params.resourceId,
-      params.limit,
-      params.offset,
-    ] as const,
+  ipPool: (params: IpPoolKeysParams) =>
+    [...resourceManagerQueryKeys.all, "ip-pool", params] as const,
+  ipPoolUtilization: (params: IpPoolUtilizationKeysParams) =>
+    [...resourceManagerQueryKeys.all, "ip-pool-utilization", params] as const,
+  ipPoolAllocations: (params: IpPoolAllocationsKeysParams) =>
+    [...resourceManagerQueryKeys.all, "ip-pool-allocations", params] as const,
   numberPool: (params: NumberPoolKeysParams) =>
     [
       ...resourceManagerQueryKeys.all,

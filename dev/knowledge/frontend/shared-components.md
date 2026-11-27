@@ -2,9 +2,12 @@
 
 > Part of: `dev/knowledge/frontend/`
 
-A discovery map of reusable building blocks. **Look here before building a new picker, combobox, kind selector, or form input.** Most "new" UI in this codebase already has a shared primitive — before this map existed, a 200+ line custom object picker and a hand-rolled `gql` UUID resolver were built for UI that already had one.
+A discovery map of reusable primitives and entity components. **Look here before adding UI or changing the same behavior in several components.** Reuse includes composed controls, metadata displays, actions, and layouts as well as pickers and form inputs.
 
 The dependency rule still applies: `app → pages → entities → shared`. Cross-entity reuse goes through another entity's `domain/` or `ui/` — never `api/`.
+
+The [component extraction guidelines](../../guidelines/frontend/component-patterns.md#extract-repeated-ui-behavior-during-implementation)
+define when repeated behavior needs a component and when similar markup should stay separate.
 
 ## When to use what
 
@@ -35,6 +38,7 @@ The dependency rule still applies: `app → pages → entities → shared`. Cros
 | Need | Use | Location |
 |------|-----|----------|
 | Combobox (single value) | `Combobox` | `shared/components/ui/combobox.tsx` |
+| "Load more" option that fetches the next page at the end of a paginated `Combobox` or `Command` list | `ComboboxLoadMoreItem` — pass the infinite query's state as `hasNextPage={hasNextPage}`, `isFetchingNextPage={isFetchingNextPage}` and `onLoadMore={fetchNextPage}`. A react-aria `ListBox` uses `ListBoxLoadMoreItem` from `@infrahub/ui` instead | `shared/components/ui/combobox.tsx` |
 | Command palette pattern | `Command` | `shared/components/ui/command.tsx` |
 | Dropdown menu | `Menu`, `MenuTrigger` | `@infrahub/ui` |
 | Date picker | `DatePicker` | `shared/components/inputs/date-picker.tsx` |
@@ -106,6 +110,16 @@ Each hook throws if used outside its parent route's `<Outlet>`, so misuse fails 
 
 The `tab` argument on each helper is a string-literal union (e.g. `BranchDetailsTab = "data" | "files" | …`) so callers can't pass an unknown tab.
 
+### Object field metadata
+
+`FieldMetadataPopover` in `entities/nodes/object/ui/metadata/` shows the source, owner, update
+time and protected status of an attribute or relationship. Pass the metadata object, and a `title`
+and an `action` such as `EditMetadataButton` for field-specific editing controls. With
+`revealOnHover`, the icon appears while the pointer is over an enclosing element with the
+`METADATA_HOVER_AREA` class: field rows set it on the row, and relationship list items set it on
+each item so hovering one item reveals only its icon. Keyboard focus and an open popover also
+reveal the icon. On devices without hover, the icon stays visible.
+
 ### Layout
 
 | Need | Use | Location |
@@ -119,10 +133,12 @@ The `tab` argument on each helper is a string-literal union (e.g. `BranchDetails
 | Popover | `Popover` | `shared/components/ui/popover.tsx` |
 | Accordion | `Accordion` | `shared/components/ui/accordion.tsx` |
 | Badge | `Badge` | `shared/components/ui/badge.tsx` |
+| Count in a rounded badge | `CountBadge` — `variant="raised"` (default) inside a control, such as the filter, sort or columns trigger; `variant="pill"`, smaller and flat, next to a card title or section heading. `hasMore` appends `+`. Place it next to text that names what is counted, because the badge shows only the number | `shared/components/display/count-badge.tsx` |
 | Alert | `Alert` | `shared/components/ui/alert.tsx` |
 | Pagination (one list per page) | `Pagination` — bound to the page-global `pagination` query-string parameter (`usePagination`), so only one list per page can use it | `shared/components/ui/pagination.tsx` |
 | Paginated table footer, one per table | `TablePagination` — controlled (`page`, `onPageChange`); give each pager an `aria-label`. Pair with `useTablePagination({ urlKey })` (`shared/hooks/use-table-pagination.ts`, page in `${urlKey}_page`, one key per table) and `shared/utils/table-pagination.ts` (`PAGE_SIZE`, `getOffset`) | `shared/components/table/table-pagination.tsx` |
 | Card with a server-paged table | `PagedTableCard` — region labelled by its title, count badge, fixed-height body, `TablePagination`, and the loading, denied (`UnauthorizedScreen`), failed (`ErrorScreen` with "Go to first page" or "Try again"), empty (`NoDataFound`) and page-past-the-end states. Pair with `keepPreviousDataWithin(listKey, hasRows)` (`shared/api/keep-previous-data-within.ts`) as the query's `placeholderData` | `shared/components/table/paged-table-card.tsx` |
+| Read-only table that loads more rows as the user scrolls | `Table` with `TableLoadMoreItem` — virtualized, single-line rows; see the table note in `design-system.md` for when to pick it over `DataTable` | `@infrahub/ui` |
 | Page header row (title, actions) | `HeaderContainer` | `shared/components/layout/header-container.tsx` |
 | Refresh button with "Last data refresh" tooltip | `RefreshButton` — pass the `queryKeys` it invalidates | `shared/components/buttons/refresh-button.tsx` |
 | Value on a schema colour, with an optional tooltip | `ColorDisplay` — `className` adjusts its size | `shared/components/display/color-display.tsx` |
@@ -165,13 +181,13 @@ Import another entity's `domain/` types and async functions, or its `ui/` hooks/
 
 ## Discovery checklist before writing new code
 
-Before adding a new component, run this:
+Before adding a component or changing repeated UI behavior:
 
-1. `rg -i "<name>" frontend/app/src/shared/components/`
-2. `rg -i "<name>" frontend/packages/ui/src/components/`
-3. Check the table above for the closest match.
-4. If nothing fits, ask: can I extend an existing component, or am I duplicating it with a different name?
-5. If you really need something new, justify it in the PR description and update this file.
+1. Search the owning entity and all callers, including `pages/` and `app/`: `rg -i "<name-or-behavior>" frontend/app/src/`.
+2. Search `frontend/app/src/shared/components/` and `frontend/packages/ui/src/components/` for an existing primitive.
+3. Check the inventory above for the closest match, including entity components.
+4. Apply the extraction guidelines when several callers implement the same responsibility.
+5. Add new reusable components to this inventory with their location and intended callers.
 
 ## Anti-patterns observed in past PRs
 
@@ -183,5 +199,6 @@ Before adding a new component, run this:
 | `<div className="flex items-center gap-2">` | `<Row>` from `shared/components/container` |
 | Hardcoding system namespace lists on the client | Backend is authoritative; surface via schema if needed |
 | Duplicating `useState` between page and selector | Single source of truth — see `dev/guidelines/frontend/page-architecture.md` |
+| Repeating metadata mapping and reveal styles in each field renderer | `FieldMetadataPopover` with a caller-specific `title` and `action`, inside a `METADATA_HOVER_AREA` element |
 | Hand-rolled tab bar with manual active-state CSS | `LinkTab` + `<nav aria-label="Tabs">` — see `dev/guidelines/frontend/route-architecture.md` |
 | `useParams() as { foo: string }` for guaranteed params | `useRequiredParams("foo")` — runtime-checked, no type lie |

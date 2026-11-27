@@ -34,7 +34,8 @@ The bulk writer stamps `recompute` on its own writes so a chained recompute does
 re-enter the per-node path either.
 
 Families that are not coalesced in this pass keep receiving every event whatever the origin:
-profile refresh, user action rules, and webhooks.
+user action rules and webhooks. Profile refresh did too until it took the same `live` match
+([ADR 0024](0024-merge-and-rebase-refresh-replayed-profiles.md)).
 
 ## Consequences
 

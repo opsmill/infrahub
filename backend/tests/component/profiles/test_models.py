@@ -27,7 +27,7 @@ async def test_profile_refresh_trigger_definition_from_profile_schema(
     assert trigger.generate_name() == "profile::main::ProfileTestDevice::refresh"
 
     assert trigger.trigger.events == {NodeUpdatedEvent.event_name}
-    assert trigger.trigger.match == {"infrahub.node.kind": "ProfileTestDevice"}
+    assert trigger.trigger.match == {"infrahub.node.kind": "ProfileTestDevice", "infrahub.node.origin": "live"}
 
     assert "prefect.resource.role" in trigger.trigger.match_related
     assert trigger.trigger.match_related["prefect.resource.role"] == [
