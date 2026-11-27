@@ -17,6 +17,7 @@ compatibility: Requires the project to use Towncrier for changelog management â€
 - You fixed a bug or added a feature and are about to commit or open a PR.
 - You're asked to "add a changelog entry", "create a news fragment", or "run towncrier".
 - A PR checklist or CI flags a missing changelog entry.
+- A change makes the product refuse an input that released versions accept, also when the refusal is a side effect of a feature: add a `changed` fragment that names the refused input and what the user does instead.
 
 When NOT to use: the project doesn't use Towncrier; pure internal refactors with no user-facing or maintenance impact; and changes the team has explicitly decided don't warrant an entry. (The boundary for internal maintenance is below â€” don't add a `housekeeping` fragment by default.)
 

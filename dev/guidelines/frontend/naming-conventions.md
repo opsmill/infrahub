@@ -103,6 +103,8 @@ traverse: (sourceId, destinationId, maxDepth) =>
 
 Partial invalidation works naturally with the object form: `queryClient.invalidateQueries({ queryKey: pathTraversalKeys.all })`.
 
+A query that sends the branch or the time-machine date in its request carries `branchName` and `atDate` in its key params; without them the cache serves the rows of the previous branch. Test the key, not only the first request: render the hook, change the branch and the date, and assert a second request with the new `context` (`get-pool-utilization.query.test.ts` shows the shape).
+
 ## Mutation Invalidation
 
 **Invalidation lives in the mutation hook, not at the callsite.** Co-locating `onSuccess`/`onSettled` with the `useMutation` makes the cache contract auditable — every callsite gets it for free, and you can grep for missing invalidations in CI.
