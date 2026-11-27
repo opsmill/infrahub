@@ -89,7 +89,7 @@ which lifted this rule.
    status filter and the new `sync_with_git` filter (set to `True` for `CoreRepository`, unset for
    `CoreReadOnlyRepository`), ordered by the `MetadataOrderInput` when one is given. The call is
    unpaged, which requires widening `Branch.get_list`'s `limit` to `int | None`; the base `Query`
-   then reads every row in one query.
+   then takes its chunked read path (`query_with_size_limit`).
 3. Read the selected attributes for those branch names in one statement through the primitive
    (Decision 3). Apply the attribute-value filters, the default ordering (default branch first, then
    name ascending) when `order` is absent or expresses no ordering, then `offset` and `limit`, in
@@ -113,9 +113,9 @@ rows on an unfiltered page are a few hundred small records.
   match the branches page the user sees, which reads the database, and the registry is refreshed per
   worker so a branch created seconds ago could be missing on one worker and present on another.
 
-**Consequence**: FR-007's "independent of branch count" holds at any branch count, because the
-unpaged branch read runs as one query. Before IFC-3277, the base `Query` read it in chunks of
-`database.query_size_limit` rows, one execution per chunk.
+**Consequence**: FR-007's "independent of branch count" holds up to `database.query_size_limit`
+branches, above which the chunked branch read adds one execution per chunk. Document, do not engineer
+around.
 
 **Settled in increment B**: because `Branch.get_list` has no `at`, a request carrying an `at` query
 parameter is rejected with a `ValidationError` rather than pairing the current branch set with past
