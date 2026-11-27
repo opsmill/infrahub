@@ -8,11 +8,23 @@ falsy ``0`` (interpreted as "source succeeded with nothing to count").
 
 from __future__ import annotations
 
+import logging
+from typing import TYPE_CHECKING
+
+import httpx
+
 from infrahub.telemetry.utils import safe_metric
+
+if TYPE_CHECKING:
+    import pytest
 
 
 async def _raises() -> int:
     raise RuntimeError("metric source unavailable")
+
+
+async def _gets_no_answer() -> int:
+    raise httpx.ReadTimeout("")
 
 
 async def _returns_zero() -> int:
@@ -25,6 +37,15 @@ async def _returns_value() -> int:
 
 async def test_raising_coroutine_degrades_to_none() -> None:
     assert await safe_metric(_raises()) is None
+
+
+async def test_failure_without_a_message_is_logged_with_its_exception_type(caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level(logging.WARNING, logger="infrahub.tasks"):
+        await safe_metric(_gets_no_answer())
+
+    assert [record.getMessage() for record in caplog.records] == [
+        "Telemetry metric collection failed; reporting null for this field: ReadTimeout: "
+    ]
 
 
 async def test_zero_result_is_preserved() -> None:

@@ -1,6 +1,8 @@
-from pydantic import BaseModel, Field
+from typing import Self
 
-from .constants import InfrahubType
+from pydantic import BaseModel, Field, model_validator
+
+from .constants import InfrahubType, WorkflowRunState
 
 
 class TelemetryContainerData(BaseModel):
@@ -28,12 +30,22 @@ class TelemetryAccountData(BaseModel):
 
 
 class TelemetryWorkflowRunData(BaseModel):
-    """The runs of one workflow that ended in one state; the three figures are null when they could not be read."""
+    """The runs of one workflow that ended in one state.
+
+    ``state``, ``runs`` and ``run_seconds`` are all null when the run history of the workflow could not be read.
+    """
 
     workflow: str
-    state: str | None = None
-    runs: int | None = None
-    run_seconds: int | None = None
+    state: WorkflowRunState | None = None
+    runs: int | None = Field(default=None, ge=0)
+    run_seconds: int | None = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def validate_all_set_or_all_null(self) -> Self:
+        values = (self.state, self.runs, self.run_seconds)
+        if any(value is None for value in values) and any(value is not None for value in values):
+            raise ValueError("state, runs and run_seconds must be all set or all null")
+        return self
 
 
 class TelemetryActivity24hData(BaseModel):

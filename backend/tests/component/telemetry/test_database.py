@@ -8,6 +8,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.query.node_duplicate import NodeDuplicateQuery, SchemaNodeInfo
 from infrahub.core.node import Node
 from infrahub.core.query import QueryType
 from infrahub.core.schema import NodeSchema
@@ -235,17 +236,14 @@ async def test_gather_database_information_artifact_totals(
     await create_generated_artifact(db=db, definition=artifact_definition, target=cars["c1"], name="c1-b")
     # An artifact whose first generation has not stored content yet.
     await create_artifact(db=db, definition=artifact_definition, target=cars["c2"], name="c2-a", status="Pending")
-    # A deleted artifact.
     deleted_artifact = await create_generated_artifact(
         db=db, definition=artifact_definition, target=cars["c3"], name="c3-a"
     )
     await _delete(db=db, node=deleted_artifact)
-    # An artifact generated on another branch only.
     other_branch = await create_branch(branch_name="artifact-branch", db=db)
     await create_generated_artifact(
         db=db, definition=artifact_definition, target=cars["c4"], name="c4-a", branch=other_branch
     )
-    # A node deleted after its artifact was generated.
     deleted_car = await Node.init(db=db, schema="TestGazCar", branch=default_branch)
     await deleted_car.new(db=db, name="scrapped", nbr_seats=2, mpg=20, owner=cars["p1"])
     await deleted_car.save(db=db)
@@ -264,13 +262,25 @@ async def test_gather_database_information_artifact_totals(
         storage_id=str(uuid4()),
         checksum=str(uuid4()),
     )
+    # A generation creates the artifact without content and stores the content in a later update.
+    updated_car = await Node.init(db=db, schema="TestGazCar", branch=default_branch)
+    await updated_car.new(db=db, name="serviced", nbr_seats=2, mpg=20, owner=cars["p1"])
+    await updated_car.save(db=db)
+    pending_artifact = await create_artifact(
+        db=db, definition=artifact_definition, target=updated_car, name="serviced-a", status="Pending"
+    )
+    updated_artifact = await NodeManager.get_one(db=db, id=pending_artifact.id, raise_on_error=True)
+    updated_artifact.get_attribute(name="status").value = "Ready"
+    updated_artifact.get_attribute(name="storage_id").value = str(uuid4())
+    updated_artifact.get_attribute(name="checksum").value = str(uuid4())
+    await updated_artifact.save(db=db)
 
     data = await gather_database_information.fn(db)
 
-    assert data.node_count["artifact_target"] == 5
-    assert data.node_count["with_artifact"] == 3
-    assert data.node_count["with_generated_artifact"] == 2
-    assert data.node_count["generated_artifact"] == 3
+    assert data.node_count["artifact_target"] == 6
+    assert data.node_count["with_artifact"] == 4
+    assert data.node_count["with_generated_artifact"] == 3
+    assert data.node_count["generated_artifact"] == 4
     assert data.node_count["with_generator_instance"] == 0
 
 
@@ -287,14 +297,12 @@ async def test_gather_database_information_generator_instance_total(
     # Instances of two generator definitions for one node: one node.
     await create_generator_instance(db=db, definition=first_definition, target=cars["c1"])
     await create_generator_instance(db=db, definition=second_definition, target=cars["c1"])
-    # The instance exists from the start of the first run, so a run that failed still counts.
+    # The instance is created before the generator's code runs, so a run that failed in the generator still counts.
     await create_generator_instance(
         db=db, definition=first_definition, target=cars["c2"], status=GeneratorInstanceStatus.ERROR
     )
-    # A deleted instance.
     deleted_instance = await create_generator_instance(db=db, definition=first_definition, target=cars["c3"])
     await _delete(db=db, node=deleted_instance)
-    # An instance created on another branch only.
     other_branch = await create_branch(branch_name="generator-branch", db=db)
     await create_generator_instance(db=db, definition=first_definition, target=cars["c4"], branch=other_branch)
 
@@ -304,6 +312,70 @@ async def test_gather_database_information_generator_instance_total(
     assert data.node_count["with_artifact"] == 0
     assert data.node_count["with_generated_artifact"] == 0
     assert data.node_count["generated_artifact"] == 0
+
+
+async def _migrate_kinds(db: InfrahubDatabase, branch: Branch, kinds: list[str]) -> None:
+    """Give every node of the listed kinds a new vertex, as a change of inheritance does."""
+    schema_branch = db.schema.get_schema_branch(name=branch.name)
+    kind_updates_map: dict[str, SchemaNodeInfo] = {}
+    for kind in kinds:
+        schema = schema_branch.get_node(name=kind, duplicate=False)
+        kind_updates_map[kind] = SchemaNodeInfo(
+            name=schema.name,
+            namespace=schema.namespace,
+            branch_support=schema.branch.value,
+            labels=[*schema.get_labels(), "TestMigratedGeneric"],
+            kind=schema.kind,
+        )
+    migration = await NodeDuplicateQuery.init(db=db, branch=branch, kind_updates_map=kind_updates_map)
+    await migration.execute(db=db)
+
+
+async def test_gather_database_information_output_totals_after_a_kind_migration(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
+    artifact_definition: Node,
+    generator_definitions: list[Node],
+) -> None:
+    """A kind migration leaves a deleted vertex with the same UUID; the node and its outputs are still counted once."""
+    car = car_person_data_generic["c3"]
+    await create_generated_artifact(db=db, definition=artifact_definition, target=car, name="c3-a")
+    await create_generator_instance(db=db, definition=generator_definitions[0], target=car)
+    counted_once = dict.fromkeys(_OUTPUT_TOTALS, 1)
+
+    before = await gather_database_information.fn(db)
+    assert {key: before.node_count[key] for key in _OUTPUT_TOTALS} == counted_once
+
+    await _migrate_kinds(db=db, branch=default_branch, kinds=[car.get_kind()])
+    after_target_migration = await gather_database_information.fn(db)
+    assert {key: after_target_migration.node_count[key] for key in _OUTPUT_TOTALS} == counted_once
+
+    # Migrated later than the target, so the deleted edge of the old output vertex is the newest edge of the relationship.
+    await _migrate_kinds(db=db, branch=default_branch, kinds=[InfrahubKind.ARTIFACT, InfrahubKind.GENERATORINSTANCE])
+    after_output_migration = await gather_database_information.fn(db)
+    assert {key: after_output_migration.node_count[key] for key in _OUTPUT_TOTALS} == counted_once
+
+
+async def test_gather_database_information_failed_node_count_keeps_the_output_totals(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
+    generator_definitions: list[Node],
+) -> None:
+    await create_generator_instance(db=db, definition=generator_definitions[0], target=car_person_data_generic["c1"])
+    failing_db = FailingQueryInfrahubDatabase.from_db(db=db, failing_query_names={"node_get_list_count"})
+
+    data = await gather_database_information.fn(failing_db)
+
+    assert data.node_count["artifact_target"] is None
+    assert data.node_count["corenode"] is None
+    assert {key: data.node_count[key] for key in _OUTPUT_TOTALS} == {
+        "with_artifact": 0,
+        "with_generated_artifact": 0,
+        "generated_artifact": 0,
+        "with_generator_instance": 1,
+    }
 
 
 async def test_gather_database_information_survives_output_count_failure(

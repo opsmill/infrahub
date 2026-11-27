@@ -28,7 +28,9 @@ async def safe_metric[T](coro: Awaitable[T]) -> T | None:
         return await coro
     # Degradation boundary: any collection failure must null out one field, never fail the whole telemetry run
     except Exception as exc:  # noqa: BLE001
-        log.warning("Telemetry metric collection failed; reporting null for this field: %s", exc)
+        log.warning(
+            "Telemetry metric collection failed; reporting null for this field: %s: %s", type(exc).__name__, exc
+        )
         return None
 
 

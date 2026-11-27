@@ -156,7 +156,13 @@ async def count_artifact_targets(db: InfrahubDatabase) -> int:
 async def count_nodes_with_output(
     db: InfrahubDatabase, output_kind: str, content_attribute: str | None = None
 ) -> NodesWithOutputCount:
-    """Count the nodes on the default branch that have at least one node of ``output_kind``."""
+    """Count the nodes on the default branch that have at least one node of ``output_kind``.
+
+    Args:
+        content_attribute: An attribute of the output kind. When given, also count the outputs where it has a
+            value and the nodes that have at least one of them.
+
+    """
     default_branch = registry.get_branch_from_registry()
     schema_branch = db.schema.get_schema_branch(name=default_branch.name)
     target_relationship = schema_branch.get_node(name=output_kind, duplicate=False).get_relationship(
@@ -208,7 +214,7 @@ async def gather_database_information(db: InfrahubDatabase) -> TelemetryDatabase
         for name in GRAPH_SCHEMA["nodes"]:
             data.node_count[name] = await utils.count_nodes(db=dbs, label=name)
 
-        # corenode/user each degrade to None independently through the shared metric helper.
+        # Each count below degrades to None on its own through the shared metric helper.
         data.node_count["corenode"] = await safe_metric(count_corenode(db=dbs))
         data.node_count["user"] = await safe_metric(count_user_nodes(db=dbs))
         data.node_count["artifact_target"] = await safe_metric(count_artifact_targets(db=dbs))

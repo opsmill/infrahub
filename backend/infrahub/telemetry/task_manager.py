@@ -37,6 +37,7 @@ from infrahub.workflows.catalogue import (
     WEBHOOK_PROCESS,
 )
 
+from .constants import WorkflowRunState
 from .models import (
     TelemetryActivity24hData,
     TelemetryPrefectData,
@@ -61,7 +62,14 @@ REPORTED_WORKFLOW_NAMES = [
     TRANSFORM_JINJA2_RENDER.name,
     REQUEST_PROPOSED_CHANGE_PIPELINE.name,
 ]
-REPORTED_RUN_STATES = [StateType.COMPLETED, StateType.FAILED, StateType.CRASHED, StateType.CANCELLED]
+REPORTED_RUN_STATES = {
+    StateType.COMPLETED: WorkflowRunState.COMPLETED,
+    StateType.FAILED: WorkflowRunState.FAILED,
+    StateType.CRASHED: WorkflowRunState.CRASHED,
+    StateType.CANCELLED: WorkflowRunState.CANCELLED,
+}
+
+type ValidatorKindReader = Callable[[], list[str]]
 
 
 class RunHistoryState(BaseModel):
@@ -193,7 +201,7 @@ async def count_webhook_runs(client: PrefectClient, window_start: datetime, wind
 
 
 async def count_started_validators(
-    client: PrefectClient, read_kinds: Callable[[], list[str]], window_start: datetime, window_end: datetime
+    client: PrefectClient, read_kinds: ValidatorKindReader, window_start: datetime, window_end: datetime
 ) -> dict[str, int | None]:
     """Count the validators of each kind that started within ``[window_start, window_end)``.
 
@@ -227,11 +235,11 @@ def build_workflow_run_rows(workflow: str, states: list[RunHistoryState]) -> lis
     return [
         TelemetryWorkflowRunData(
             workflow=workflow,
-            state=state_type.value,
+            state=state,
             runs=runs[state_type],
             run_seconds=round(run_time[state_type].total_seconds()),
         )
-        for state_type in REPORTED_RUN_STATES
+        for state_type, state in REPORTED_RUN_STATES.items()
         if state_type in runs
     ]
 
@@ -243,6 +251,8 @@ async def read_workflow_run_history(
 
     Raises:
         httpx.HTTPStatusError: If the task manager answers with an error status.
+        httpx.TransportError: If the task manager cannot be reached or does not answer in time.
+        json.JSONDecodeError: If the response is not JSON.
         pydantic.ValidationError: If the response does not contain the run count and run time per state.
 
     """
@@ -264,7 +274,8 @@ async def gather_workflow_runs(
 ) -> list[TelemetryWorkflowRunData]:
     """Return the run rows of every reported workflow for ``[window_start, window_end)``.
 
-    A workflow whose history cannot be read gets one row with null figures and the other workflows keep their rows.
+    A workflow whose history cannot be read gets one row with a null state and null counts, and the other
+    workflows keep their rows.
     """
     rows: list[TelemetryWorkflowRunData] = []
     for workflow in REPORTED_WORKFLOW_NAMES:
@@ -282,7 +293,7 @@ async def gather_workflow_runs(
 
 @task(name="telemetry-gather-activity-24h", task_run_name="Gather 24h Activity", cache_policy=NONE)
 async def gather_activity_24h(
-    client: PrefectClient, read_validator_kinds: Callable[[], list[str]]
+    client: PrefectClient, read_validator_kinds: ValidatorKindReader
 ) -> TelemetryActivity24hData:
     """Assemble the 24h activity metrics over the previous full UTC calendar day.
 

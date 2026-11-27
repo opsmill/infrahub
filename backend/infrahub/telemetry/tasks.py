@@ -39,7 +39,12 @@ from .models import (
 from .repository import TelemetrySnapshotRepository
 from .resources import WorkerResourceReading
 from .snapshot import TelemetrySnapshot
-from .task_manager import gather_activity_24h, gather_prefect_information, gather_task_manager_database
+from .task_manager import (
+    ValidatorKindReader,
+    gather_activity_24h,
+    gather_prefect_information,
+    gather_task_manager_database,
+)
 from .utils import determine_infrahub_type, safe_metric
 
 
@@ -128,14 +133,12 @@ def list_validator_kinds(db: InfrahubDatabase) -> list[str]:
 
 
 class DefaultActivityGatherer:
-    def __init__(self, db: InfrahubDatabase) -> None:
-        self.db = db
+    def __init__(self, read_validator_kinds: ValidatorKindReader) -> None:
+        self.read_validator_kinds = read_validator_kinds
 
     async def gather(self) -> TelemetryActivity24hData:
         async with get_prefect_client(sync_client=False) as prefect_client:
-            return await gather_activity_24h(
-                client=prefect_client, read_validator_kinds=partial(list_validator_kinds, db=self.db)
-            )
+            return await gather_activity_24h(client=prefect_client, read_validator_kinds=self.read_validator_kinds)
 
 
 class DefaultTaskManagerDatabaseGatherer:
@@ -258,7 +261,7 @@ async def build_anonymous_telemetry_gatherer() -> AnonymousTelemetryGatherer:
         database=database,
         component=component,
         account_gatherer=DefaultAccountGatherer(db=database),
-        activity_gatherer=DefaultActivityGatherer(db=database),
+        activity_gatherer=DefaultActivityGatherer(read_validator_kinds=partial(list_validator_kinds, db=database)),
         active_branch_counter=DefaultActiveBranchCounter(db=database),
         task_manager_database_gatherer=DefaultTaskManagerDatabaseGatherer(),
     )

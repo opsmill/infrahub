@@ -1,7 +1,7 @@
 import asyncio
 import sqlite3
 import uuid
-from collections.abc import AsyncGenerator, Callable, Generator
+from collections.abc import AsyncGenerator, Generator
 from datetime import UTC, datetime, timedelta
 from typing import cast
 
@@ -19,6 +19,7 @@ from infrahub.events.validator_action import ValidatorFailedEvent, ValidatorPass
 from infrahub.telemetry.models import TelemetryWorkflowRunData
 from infrahub.telemetry.task_manager import (
     NODE_KIND_LABEL,
+    ValidatorKindReader,
     count_started_validators,
     count_webhook_runs,
     count_windowed_event,
@@ -30,7 +31,12 @@ from infrahub.telemetry.task_manager import (
     gather_workflow_runs,
 )
 from infrahub.telemetry.utils import floor_to_midnight_utc, get_activity_window
-from infrahub.workflows.catalogue import REQUEST_ARTIFACT_GENERATE, REQUEST_GENERATOR_RUN, WEBHOOK_PROCESS
+from infrahub.workflows.catalogue import (
+    REQUEST_ARTIFACT_GENERATE,
+    REQUEST_GENERATOR_RUN,
+    TRANSFORM_JINJA2_RENDER,
+    WEBHOOK_PROCESS,
+)
 
 LOGIN_EVENT_NAME = AccountLoggedInEvent.event_name
 WEBHOOK_FLOW_NAME = WEBHOOK_PROCESS.name
@@ -98,7 +104,7 @@ class UnreadableKindsError(Exception):
     """Raised by the reader double that cannot read the validator kinds."""
 
 
-def _kinds(*names: str) -> Callable[[], list[str]]:
+def _kinds(*names: str) -> ValidatorKindReader:
     """Return a reader of validator kinds that gives the listed names."""
 
     def read_kinds() -> list[str]:
@@ -209,12 +215,13 @@ async def seeded_logins(prefect_client: PrefectClient) -> str:
     return suffix
 
 
-# Each check/artifact/branch metric gets a distinct in-window count so a mis-wired field (one
-# reading another's event name) would not coincidentally pass. Every event name also gets one
-# event placed just before window_start to prove out-of-window records are excluded.
 # The started validators per kind; their sum is the in-window count of the validator-started event below.
 _STARTED_VALIDATOR_KIND_COUNTS: dict[str, int] = {"TestAlphaValidator": 2, "TestBetaValidator": 1}
 
+# Each check/artifact/branch metric gets a distinct in-window count so a mis-wired field (one
+# reading another's event name) would not coincidentally pass. Every event name also gets one
+# event placed just before window_start, one per kind for the validator-started event, to prove
+# out-of-window records are excluded.
 _ACTIVITY_IN_WINDOW_COUNTS: dict[str, int] = {
     ValidatorStartedEvent.event_name: 3,
     ValidatorPassedEvent.event_name: 2,
@@ -231,9 +238,10 @@ _ACTIVITY_IN_WINDOW_COUNTS: dict[str, int] = {
 async def seeded_activity(prefect_client: PrefectClient) -> dict[str, int]:
     """Seed validator/artifact/branch events around the previous-UTC-day window.
 
-    For each event name, places its mapped number of events inside the window and exactly one a
-    minute before window_start (which must be excluded). Returns the in-window count per event
-    name so the assertions read the expected totals from the same source that seeded them.
+    For each event name, places its mapped number of events inside the window and one a minute
+    before window_start (which must be excluded). The validator-started events are split by kind,
+    with one event before window_start for each kind. Returns the in-window count per event name
+    so the assertions read the expected totals from the same source that seeded them.
     """
     window_start, _ = get_activity_window()
     suffix = uuid.uuid4().hex[:8]
@@ -253,6 +261,25 @@ async def seeded_activity(prefect_client: PrefectClient) -> dict[str, int]:
         events.append(_named_event(event_name, out_of_window, f"{event_name}.{suffix}.out"))
     await _post_events(prefect_client, events)
     return dict(_ACTIVITY_IN_WINDOW_COUNTS)
+
+
+@pytest.fixture(scope="module")
+async def seeded_previous_day_runs(prefect_client: PrefectClient) -> None:
+    """Seed crashed runs of one reported workflow around the previous-UTC-day window.
+
+    Three runs are expected to start inside the window, one of them at exactly window_start. One run
+    at exactly window_end and one a minute before window_start are outside it.
+    """
+    window_start, window_end = get_activity_window()
+    flow_id = await prefect_client.create_flow_from_name(TRANSFORM_JINJA2_RENDER.name)
+    for expected_start in (
+        window_start + timedelta(hours=12),
+        window_start + timedelta(hours=12),
+        window_start,
+        window_end,
+        window_start - timedelta(minutes=1),
+    ):
+        await _seed_run(prefect_client, flow_id, expected_start, StateType.CRASHED)
 
 
 async def test_window_is_previous_full_utc_day() -> None:
@@ -369,8 +396,8 @@ async def test_gather_activity_24h_logins(prefect_client: PrefectClient, seeded_
 async def test_gather_activity_24h_checks_artifacts_branches(
     prefect_client: PrefectClient, seeded_activity: dict[str, int]
 ) -> None:
-    # Each field equals exactly the in-window seeded count for its mapped event; the single
-    # out-of-window event per name is excluded, so the count never inflates past the in-window
+    # Each field equals exactly the in-window seeded count for its mapped event; the events
+    # placed before the window are excluded, so the count never inflates past the in-window
     # total. One gather covers every field: the flow computes them all in a single pass.
     data = await gather_activity_24h.fn(client=prefect_client, read_validator_kinds=_kinds())
     assert data.checks_started == seeded_activity[ValidatorStartedEvent.event_name]
@@ -441,6 +468,21 @@ async def test_gather_activity_24h_unreadable_validator_kinds_nulls_only_the_cou
     assert data.workflow_runs is not None
 
 
+async def test_gather_activity_24h_workflow_runs_cover_the_previous_utc_day(
+    prefect_client: PrefectClient, seeded_previous_day_runs: None
+) -> None:
+    data = await gather_activity_24h.fn(client=prefect_client, read_validator_kinds=_kinds())
+
+    assert data.workflow_runs is not None
+    assert [row.workflow for row in data.workflow_runs if row.state is None] == []
+    # Only the rows of the seeded workflow are compared: other tests can leave runs of other workflows on this day.
+    assert [
+        (row.workflow, row.state, row.runs)
+        for row in data.workflow_runs
+        if row.workflow == "transform_render_jinja2_template"
+    ] == [("transform_render_jinja2_template", "CRASHED", 3)]
+
+
 async def test_gather_workflow_runs_rows_per_workflow_and_end_state(prefect_client: PrefectClient) -> None:
     generator_flow = await prefect_client.create_flow_from_name(REQUEST_GENERATOR_RUN.name)
     artifact_flow = await prefect_client.create_flow_from_name(REQUEST_ARTIFACT_GENERATE.name)
@@ -470,12 +512,10 @@ async def test_gather_workflow_runs_rows_per_workflow_and_end_state(prefect_clie
         ("generator-run", "CRASHED", 1),
         ("artifact-generate", "CANCELLED", 1),
     ]
-    # The run time is a whole number; its value depends on how long the seeding took.
-    assert [type(row.run_seconds) for row in rows] == [int, int, int, int]
 
 
 async def test_gather_workflow_runs_reports_each_failed_read(prefect_client: PrefectClient) -> None:
-    # The task manager rejects a window that ends before it starts, so every read fails.
+    # A window that ends before it starts gives a negative interval, which the task manager rejects, so every read fails.
     rows = await gather_workflow_runs(client=prefect_client, window_start=_RUN_DAY_END, window_end=_RUN_DAY_START)
 
     assert rows == [TelemetryWorkflowRunData(workflow=name) for name in _REPORTED_WORKFLOW_NAMES]

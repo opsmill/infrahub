@@ -8,6 +8,7 @@ import pytest
 from prefect.client.orchestration import PrefectClient
 from prefect.client.schemas.objects import StateType
 
+from infrahub.telemetry.constants import WorkflowRunState
 from infrahub.telemetry.models import TelemetryWorkflowRunData
 from infrahub.telemetry.task_manager import (
     RunHistoryState,
@@ -26,7 +27,9 @@ def _state(state_type: StateType, runs: int, seconds: float) -> RunHistoryState:
 
 
 def _row(state: str, runs: int, run_seconds: int) -> TelemetryWorkflowRunData:
-    return TelemetryWorkflowRunData(workflow=WORKFLOW, state=state, runs=runs, run_seconds=run_seconds)
+    return TelemetryWorkflowRunData(
+        workflow=WORKFLOW, state=WorkflowRunState(state), runs=runs, run_seconds=run_seconds
+    )
 
 
 @dataclass
@@ -36,7 +39,7 @@ class RunRowsCase:
     expected: list[TelemetryWorkflowRunData]
 
 
-RUN_ROWS_CASES = [
+RUN_ROWS_CASES: list[RunRowsCase] = [
     RunRowsCase(name="no_run_gives_no_row", states=[], expected=[]),
     RunRowsCase(
         # Rounding each entry first would give 2 seconds.
@@ -74,7 +77,7 @@ RUN_ROWS_CASES = [
 ]
 
 
-@pytest.mark.parametrize("case", RUN_ROWS_CASES, ids=[case.name for case in RUN_ROWS_CASES])
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in RUN_ROWS_CASES])
 def test_build_workflow_run_rows(case: RunRowsCase) -> None:
     assert build_workflow_run_rows(workflow=WORKFLOW, states=case.states) == case.expected
 
@@ -94,13 +97,13 @@ def _task_manager_client(answer: Callable[[httpx.Request], httpx.Response]) -> P
 
 
 def _answer_run_history(request: httpx.Request) -> httpx.Response:
-    """Fail the history of ``artifact-generate``, return two completed runs for ``generator-run`` and none for the rest."""
+    """Fail the history of ``generator-run``, return two completed runs for ``artifact-generate`` and none for the rest."""
     workflow = json.loads(request.content)["flows"]["name"]["any_"][0]
-    if workflow == "artifact-generate":
+    if workflow == "generator-run":
         # The client tries again after 408, 429, 502 and 503, so the failure is a status it gives up on.
         return httpx.Response(status_code=500)
     states = []
-    if workflow == "generator-run":
+    if workflow == "artifact-generate":
         states = [
             {"state_type": "COMPLETED", "state_name": "Completed", "count_runs": 2, "sum_estimated_run_time": 3.2}
         ]
@@ -120,18 +123,18 @@ async def test_gather_workflow_runs_keeps_the_other_rows_when_one_read_fails() -
         rows = await gather_workflow_runs(client=client, window_start=WINDOW_START, window_end=WINDOW_END)
 
     assert rows == [
-        TelemetryWorkflowRunData(workflow="generator-run", state="COMPLETED", runs=2, run_seconds=3),
-        TelemetryWorkflowRunData(workflow="artifact-generate"),
+        TelemetryWorkflowRunData(workflow="generator-run"),
+        TelemetryWorkflowRunData(workflow="artifact-generate", state=WorkflowRunState.COMPLETED, runs=2, run_seconds=3),
     ]
 
 
 async def test_count_started_validators_keeps_the_other_kinds_when_one_count_fails() -> None:
     def read_kinds() -> list[str]:
-        return ["CoreDataValidator", "CoreUserValidator"]
+        return ["CoreUserValidator", "CoreDataValidator"]
 
     async with _task_manager_client(answer=_answer_validator_count) as client:
         counts = await count_started_validators(
             client=client, read_kinds=read_kinds, window_start=WINDOW_START, window_end=WINDOW_END
         )
 
-    assert counts == {"CoreDataValidator": 3, "CoreUserValidator": None}
+    assert counts == {"CoreUserValidator": None, "CoreDataValidator": 3}

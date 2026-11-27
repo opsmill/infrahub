@@ -4,6 +4,7 @@ import hashlib
 import json
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
+from functools import partial
 from typing import Generator
 
 import pytest
@@ -227,14 +228,15 @@ async def _build_gatherer(
         database=database,
         component=component,
         account_gatherer=account_gatherer or DefaultAccountGatherer(db=database),
-        activity_gatherer=activity_gatherer or DefaultActivityGatherer(db=database),
+        activity_gatherer=activity_gatherer
+        or DefaultActivityGatherer(read_validator_kinds=partial(list_validator_kinds, db=database)),
         active_branch_counter=active_branch_counter or DefaultActiveBranchCounter(db=database),
         task_manager_database_gatherer=task_manager_database_gatherer or DefaultTaskManagerDatabaseGatherer(),
     )
 
 
 async def test_gather_full_payload_fields_present(telemetry_environment: InfrahubDatabase) -> None:
-    """A healthy gather populates every new field on the payload (presence, not exact values)."""
+    """A healthy gather populates every field that a failed read would leave null, and reports 0 where there is nothing to count."""
     gatherer = await build_anonymous_telemetry_gatherer()
     data = await gatherer.gather()
 
@@ -308,7 +310,6 @@ async def test_gather_feature_information_counts_definitions_on_the_default_bran
     assert data[InfrahubKind.CHECKDEFINITION] == 1
     assert data[InfrahubKind.ARTIFACTDEFINITION] == 0
     assert data[InfrahubKind.GENERATORDEFINITION] == 0
-    # The other keys count the vertices with the label, on every branch and deleted ones included.
     assert data[InfrahubKind.REPOSITORY] == 1
 
 
@@ -349,6 +350,8 @@ async def test_gather_full_report_contains_no_customer_defined_name(
     assert data.database.node_count["artifact_target"] == 4
     assert data.database.node_count["with_generated_artifact"] == 1
     assert data.database.node_count["with_generator_instance"] == 1
+    assert data.features[InfrahubKind.ARTIFACTDEFINITION] == 1
+    assert data.features[InfrahubKind.GENERATORDEFINITION] == 2
     report = data.model_dump_json()
     assert [name for name in _CUSTOMER_DEFINED_NAMES if name in report] == []
 

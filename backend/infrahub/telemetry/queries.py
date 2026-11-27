@@ -103,9 +103,9 @@ class NodesWithOutputCount:
 class CountNodesWithOutputQuery(Query):
     """Count the nodes that have at least one active node of an output kind, on the query's branch at the query's time.
 
-    An output kind holds one node per definition and target, linked to its target by one
-    relationship. With a content attribute, the query also counts the outputs whose attribute
-    has a value and the nodes that have at least one of them.
+    A target can have several nodes of the output kind, each linked to it by one relationship.
+    With a content attribute, the query also counts the outputs whose attribute has a value and
+    the nodes that have at least one of them.
     """
 
     name = "count-nodes-with-output"
