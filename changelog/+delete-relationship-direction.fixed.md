@@ -1,0 +1,1 @@
+Fixed deletes ignoring the direction of a relationship when a kind declares an inbound and an outbound relationship with the same identifier, which could delete the wrong peers in a cascade or refuse a delete because of the optional relationship.

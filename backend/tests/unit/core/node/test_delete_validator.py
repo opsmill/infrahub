@@ -3,9 +3,15 @@ from dataclasses import dataclass
 
 import pytest
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import (
+    BranchSupportType,
+    InfrahubKind,
+    RelationshipCardinality,
+    RelationshipDeleteBehavior,
+    RelationshipDirection,
+)
 from infrahub.core.node.delete_validator import DeleteRelationshipType, NodeDeleteIndex
-from infrahub.core.schema import NodeSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.definitions.core import core_models
 from infrahub.core.schema.schema_branch import SchemaBranch
 
@@ -17,12 +23,8 @@ def _cascade_closure(index: NodeDeleteIndex, root_kind: str) -> set[str]:
     resolve cascades), rather than reaching into the index's internal graph.
     """
     cascade_edges: dict[str, set[str]] = defaultdict(set)
-    for full_identifier in index.get_relationship_identifiers():
-        relationship_types = index.get_relationship_types(
-            src_kind=full_identifier.source_kind, relationship_identifier=full_identifier.identifier
-        )
-        if DeleteRelationshipType.CASCADE_DELETE in relationship_types:
-            cascade_edges[full_identifier.source_kind].add(full_identifier.destination_kind)
+    for pattern in index.get_link_patterns(relationship_type=DeleteRelationshipType.CASCADE_DELETE):
+        cascade_edges[pattern.kind].add(pattern.peer_kind)
 
     reachable: set[str] = set()
     stack = [root_kind]
@@ -68,7 +70,6 @@ def test_repository_cascade_reaches_exactly_expected_kinds(case: RepositoryCase)
         InfrahubKind.ARTIFACTCHECK,
         InfrahubKind.ARTIFACTDEFINITION,
         InfrahubKind.ARTIFACTVALIDATOR,
-        InfrahubKind.CHECK,
         InfrahubKind.CHECKDEFINITION,
         InfrahubKind.DATACHECK,
         InfrahubKind.FILECHECK,
@@ -81,7 +82,6 @@ def test_repository_cascade_reaches_exactly_expected_kinds(case: RepositoryCase)
         InfrahubKind.REPOSITORYGROUP,
         InfrahubKind.SCHEMACHECK,
         InfrahubKind.STANDARDCHECK,
-        InfrahubKind.TRANSFORM,
         InfrahubKind.TRANSFORMJINJA2,
         InfrahubKind.TRANSFORMPYTHON,
         InfrahubKind.USERVALIDATOR,
@@ -108,11 +108,109 @@ def test_account_cascade_uses_the_paired_relationships() -> None:
     index = _index_for(InfrahubKind.ACCOUNT)
 
     assert {
-        (full_id.source_kind, full_id.identifier, full_id.destination_kind)
-        for full_id in index.get_relationship_identifiers()
-        if full_id.destination_kind.startswith("Internal")
+        pattern
+        for relationship_type in DeleteRelationshipType
+        for pattern in index.get_link_patterns(relationship_type=relationship_type)
+        if pattern.peer_kind.startswith("Internal")
     } == {
-        (InfrahubKind.ACCOUNT, "account__external_identity", InfrahubKind.EXTERNALIDENTITY),
-        (InfrahubKind.ACCOUNT, "account__token", InfrahubKind.ACCOUNTTOKEN),
-        (InfrahubKind.ACCOUNT, "account__refreshtoken", InfrahubKind.REFRESHTOKEN),
+        (
+            InfrahubKind.ACCOUNT,
+            "account__external_identity",
+            RelationshipDirection.BIDIR,
+            InfrahubKind.EXTERNALIDENTITY,
+        ),
+        (InfrahubKind.ACCOUNT, "account__token", RelationshipDirection.BIDIR, InfrahubKind.ACCOUNTTOKEN),
+        (InfrahubKind.ACCOUNT, "account__refreshtoken", RelationshipDirection.BIDIR, InfrahubKind.REFRESHTOKEN),
     }
+
+
+REPOSITORY_IMPORT_IDENTIFIERS = {
+    "check_definition__repository",
+    "generator_definition__repository",
+    "repository__transformation",
+}
+
+
+def _dependent_patterns_of_repositories(skip_cascading: bool) -> set[tuple[str, str]]:
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**core_models))
+    schema_branch.process()
+    index = NodeDeleteIndex(all_schemas_map=schema_branch.get_all(duplicate=False))
+
+    index.index_dependent_links(
+        deleted_kinds={InfrahubKind.REPOSITORY, InfrahubKind.READONLYREPOSITORY}, skip_cascading=skip_cascading
+    )
+
+    return {
+        (pattern.kind, pattern.identifier)
+        for pattern in index.get_link_patterns(relationship_type=DeleteRelationshipType.DEPENDENT_NODE)
+        if pattern.identifier in REPOSITORY_IMPORT_IDENTIFIERS
+    }
+
+
+def test_repository_imported_nodes_require_their_repository() -> None:
+    assert _dependent_patterns_of_repositories(skip_cascading=False) == {
+        (kind, identifier)
+        for kind in (InfrahubKind.REPOSITORY, InfrahubKind.READONLYREPOSITORY)
+        for identifier in REPOSITORY_IMPORT_IDENTIFIERS
+    }
+
+
+def test_dependent_links_skip_the_relationships_a_repository_cascades_on() -> None:
+    assert _dependent_patterns_of_repositories(skip_cascading=True) == set()
+
+
+def test_dependent_links_keep_another_kind_that_reuses_the_identifier_of_a_cascade() -> None:
+    identifier = "testreuse_link"
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**core_models))
+    schema_branch.load_schema(
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    name="Team",
+                    namespace="Testreuse",
+                    branch=BranchSupportType.AGNOSTIC,
+                    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+                    relationships=[
+                        RelationshipSchema(
+                            name="certificates",
+                            peer="TestreuseCertificate",
+                            identifier=identifier,
+                            cardinality=RelationshipCardinality.MANY,
+                            optional=True,
+                            on_delete=RelationshipDeleteBehavior.CASCADE,
+                        )
+                    ],
+                ),
+                *(
+                    NodeSchema(
+                        name=name,
+                        namespace="Testreuse",
+                        branch=BranchSupportType.AWARE,
+                        attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+                        relationships=[
+                            RelationshipSchema(
+                                name="team",
+                                peer="TestreuseTeam",
+                                identifier=identifier,
+                                cardinality=RelationshipCardinality.ONE,
+                                optional=False,
+                            )
+                        ],
+                    )
+                    for name in ("Certificate", "Badge")
+                ),
+            ]
+        )
+    )
+    schema_branch.process()
+    index = NodeDeleteIndex(all_schemas_map=schema_branch.get_all(duplicate=False))
+
+    index.index_dependent_links(deleted_kinds={"TestreuseTeam"}, skip_cascading=True)
+
+    assert {
+        pattern.peer_kind
+        for pattern in index.get_link_patterns(relationship_type=DeleteRelationshipType.DEPENDENT_NODE)
+        if pattern.identifier == identifier
+    } == {"TestreuseBadge"}

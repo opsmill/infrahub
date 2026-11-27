@@ -118,23 +118,6 @@ class RelationshipPeersData:
     destination_id: UUID
     destination_kind: str
 
-    def reversed(self) -> RelationshipPeersData:
-        return RelationshipPeersData(
-            id=self.id,
-            identifier=self.identifier,
-            source_id=self.destination_id,
-            source_kind=self.destination_kind,
-            destination_id=self.source_id,
-            destination_kind=self.source_kind,
-        )
-
-
-@dataclass
-class FullRelationshipIdentifier:
-    identifier: str
-    source_kind: str
-    destination_kind: str
-
 
 class RelationshipQuery(Query):
     def __init__(
@@ -1123,29 +1106,20 @@ class RelationshipGetByIdentifierQuery(Query):
 
     def __init__(
         self,
-        identifiers: list[str] | None = None,
-        full_identifiers: list[FullRelationshipIdentifier] | None = None,
+        identifiers: list[str],
         excluded_namespaces: list[str] | None = None,
         **kwargs: Any,
     ) -> None:
-        if (not identifiers and not full_identifiers) or (identifiers and full_identifiers):
-            raise ValueError("one and only one of identifiers or full_identifiers is required")
+        if not identifiers:
+            raise ValueError("identifiers is required")
 
-        if full_identifiers:
-            self.identifiers = list({i.identifier for i in full_identifiers})
-            self.full_identifiers = full_identifiers
-        else:
-            self.identifiers = identifiers
-            self.full_identifiers = []
+        self.identifiers = identifiers
         self.excluded_namespaces = excluded_namespaces or []
 
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["identifiers"] = self.identifiers
-        self.params["full_identifiers"] = [
-            [full_id.source_kind, full_id.identifier, full_id.destination_kind] for full_id in self.full_identifiers
-        ]
         self.params["excluded_namespaces"] = self.excluded_namespaces
         self.params["branch"] = self.branch.name
         self.params["at"] = self.at.to_string()
@@ -1160,8 +1134,7 @@ class RelationshipGetByIdentifierQuery(Query):
         WHERE rl.name IN $identifiers
         CALL (rl) {
             MATCH (src:Node)-[r1:IS_RELATED]-(rl:Relationship)-[r2:IS_RELATED]-(dst:Node)
-            WHERE (size($full_identifiers) = 0 OR [src.kind, rl.name, dst.kind] in $full_identifiers)
-            AND NOT src.namespace IN $excluded_namespaces
+            WHERE NOT src.namespace IN $excluded_namespaces
             AND NOT dst.namespace IN $excluded_namespaces
             AND %s
             RETURN src, dst, r1, r2, rl as rl1
