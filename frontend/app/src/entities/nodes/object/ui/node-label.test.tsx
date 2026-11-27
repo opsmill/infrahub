@@ -45,12 +45,13 @@ const branchEdge = (name: string, isDefault: boolean) => ({
   node_metadata: null,
 });
 
-const mockBranches = () =>
-  vi.mocked(getBranchesFromApi).mockResolvedValue({
-    data: {
-      InfrahubBranch: { edges: [branchEdge("main", true), branchEdge(EXISTING_BRANCH, false)] },
-    },
-  } as unknown as BranchesApiResult);
+const branchesResult = {
+  data: {
+    InfrahubBranch: { edges: [branchEdge("main", true), branchEdge(EXISTING_BRANCH, false)] },
+  },
+} as unknown as BranchesApiResult;
+
+const mockBranches = () => vi.mocked(getBranchesFromApi).mockResolvedValue(branchesResult);
 
 // Renders with a stale branch list already cached, so a label reads it before the list is fetched again.
 const renderWithCachedBranches = (ui: React.ReactElement, cachedBranchNames: string[]) => {
@@ -97,9 +98,14 @@ describe("NodeLabel", () => {
     expect(getNodeLabelFromApi).not.toHaveBeenCalled();
   });
 
-  test("queries an existing branch as given", async () => {
+  test("queries an existing branch as given, once the branch list is loaded", async () => {
     // GIVEN
-    mockBranches();
+    let resolveBranches: (result: BranchesApiResult) => void = () => {};
+    vi.mocked(getBranchesFromApi).mockReturnValue(
+      new Promise<BranchesApiResult>((resolve) => {
+        resolveBranches = resolve;
+      })
+    );
     vi.mocked(getNodeLabelFromApi).mockResolvedValue({
       data: { CoreAccount: { edges: [] } },
     } as unknown as NodeLabelApiResult);
@@ -108,11 +114,17 @@ describe("NodeLabel", () => {
     await render(<NodeLabel id={NODE_ID} kind="CoreAccount" branch={EXISTING_BRANCH} />);
 
     // THEN
+    await vi.waitFor(() => expect(getBranchesFromApi).toHaveBeenCalled());
+    expect(getNodeLabelFromApi).not.toHaveBeenCalled();
+
+    resolveBranches(branchesResult);
+
     await vi.waitFor(() =>
       expect(getNodeLabelFromApi).toHaveBeenCalledWith(
         expect.objectContaining({ objectId: NODE_ID, branchName: EXISTING_BRANCH })
       )
     );
+    expect(getNodeLabelFromApi).toHaveBeenCalledTimes(1);
   });
 
   test("requests the label once its branch is in the branch list", async () => {
