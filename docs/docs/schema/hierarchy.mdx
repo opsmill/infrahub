@@ -66,7 +66,7 @@ When `parent` or `children` is not set, any node inheriting from the main `Gener
 
 You can add a hierarchy to node kinds that already have objects, for example by setting `hierarchical: true` on a `Generic` they already inherit from. Infrahub checks the change against the stored objects and refuses it when:
 
-- A node kind defines its own `parent` or `children` relationship, because the hierarchy defines these two relationships itself.
+- A node kind, or the `Generic` that becomes hierarchical, defines its own `parent` or `children` relationship, because the hierarchy defines these two relationships itself.
 - A node kind, or the `Generic` that becomes hierarchical, defines its own attribute or relationship named `ancestors` or `descendants`, because the hierarchy reserves these names.
 
 When you change `parent` or `children` on a node of a hierarchy, Infrahub refuses the change if a stored object has a parent or a child of a kind that the new value does not allow.

@@ -193,24 +193,33 @@ def get_hierarchy_field_conflicts(current: NodeSchema | None, candidate: NodeSch
     """
     if current is None or current.hierarchy or not candidate.hierarchy:
         return []
-    conflicts = [
-        HierarchyFieldConflict(field_name=relationship.name, value=relationship.peer)
-        for relationship in current.relationships
-        if relationship.name in HierarchySide and not relationship.inherited
-    ]
-    return conflicts + _get_reserved_name_conflicts(schema=candidate)
+    return _get_own_hierarchy_relationship_conflicts(schema=current) + _get_reserved_name_conflicts(schema=candidate)
 
 
 def get_generic_hierarchy_conflicts(
     current: GenericSchema, candidate: GenericSchema, schema_branch: SchemaBranch
 ) -> list[HierarchyFieldConflict]:
-    """Return what prevents an existing generic from becoming hierarchical, or from no longer being hierarchical."""
+    """Return what prevents an existing generic from becoming hierarchical, or from no longer being hierarchical.
+
+    The current schema is read for the parent and children relationships because the candidate already carries the
+    hierarchy's own.
+    """
     if not current.hierarchical and candidate.hierarchical:
-        return _get_reserved_name_conflicts(schema=candidate)
+        return _get_own_hierarchy_relationship_conflicts(schema=current) + _get_reserved_name_conflicts(
+            schema=candidate
+        )
     kinds_in_hierarchy = get_kinds_left_in_hierarchy(current=current, candidate=candidate, schema_branch=schema_branch)
     if kinds_in_hierarchy:
         return [HierarchyFieldConflict(field_name="hierarchical", value=kinds_in_hierarchy)]
     return []
+
+
+def _get_own_hierarchy_relationship_conflicts(schema: NodeSchema | GenericSchema) -> list[HierarchyFieldConflict]:
+    return [
+        HierarchyFieldConflict(field_name=relationship.name, value=relationship.peer)
+        for relationship in schema.relationships
+        if relationship.name in HierarchySide and not relationship.inherited
+    ]
 
 
 def _get_reserved_name_conflicts(schema: NodeSchema | GenericSchema) -> list[HierarchyFieldConflict]:

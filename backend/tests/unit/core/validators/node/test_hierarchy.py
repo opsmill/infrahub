@@ -376,6 +376,27 @@ GENERIC_CONFLICT_CASES = [
         expected=[HierarchyFieldConflict(field_name="descendants", value="OrganizationTenant")],
     ),
     GenericConflictCase(
+        name="becoming-hierarchical-with-its-own-parent-relationship",
+        current=_generic(hierarchical=False, relationships=[_relationship(name="parent", peer="OrganizationTenant")]),
+        candidate=_generic(hierarchical=True, relationships=[_relationship(name="parent", peer="OrganizationTenant")]),
+        kinds_in_hierarchy=[],
+        expected=[HierarchyFieldConflict(field_name="parent", value="OrganizationTenant")],
+    ),
+    GenericConflictCase(
+        name="becoming-hierarchical-with-its-own-children-relationship",
+        current=_generic(hierarchical=False, relationships=[_relationship(name="children", peer="OrganizationSite")]),
+        candidate=_generic(hierarchical=True, relationships=[_relationship(name="children", peer="OrganizationSite")]),
+        kinds_in_hierarchy=[],
+        expected=[HierarchyFieldConflict(field_name="children", value="OrganizationSite")],
+    ),
+    GenericConflictCase(
+        name="becoming-hierarchical-with-the-hierarchy-parent-relationship",
+        current=_generic(hierarchical=False),
+        candidate=_generic(hierarchical=True, relationships=[_relationship(name="parent", peer=HIERARCHY)]),
+        kinds_in_hierarchy=[],
+        expected=[],
+    ),
+    GenericConflictCase(
         name="becoming-hierarchical-without-a-reserved-name",
         current=_generic(hierarchical=False, attributes=[AttributeSchema(name="name", kind="Text")]),
         candidate=_generic(hierarchical=True, attributes=[AttributeSchema(name="name", kind="Text")]),
