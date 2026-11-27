@@ -24,6 +24,7 @@ from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
 from infrahub import config, lock
+from infrahub.auth.cache_registry import reset_account_token_cache
 from infrahub.config import load_and_exit
 from infrahub.constants.database import Neo4jRuntime
 from infrahub.core import registry
@@ -62,6 +63,7 @@ from infrahub.menu.models import MenuItemDefinition, MenuSection
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 from infrahub.message_bus.types import MessageTTL
 from infrahub.permissions import LocalPermissionBackend
+from infrahub.permissions.cache_registry import reset_account_permission_cache
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.workers.dependencies import build_database, get_database
@@ -599,6 +601,10 @@ def reload_settings_before_each_module(tmpdir_factory: pytest.TempdirFactory) ->
 
     config.SETTINGS.miscellaneous.start_background_runner = False
     config.SETTINGS.security.secret_key = "4e26b3d9-b84f-42c9-a03f-fee3ada3b2fa"
+    # Tests that change tokens or permissions expect the next request to see it; the cache tests pin a TTL.
+    config.SETTINGS.security.auth_cache_ttl_seconds = 0
+    reset_account_token_cache()
+    reset_account_permission_cache()
     config.SETTINGS.main.internal_address = "http://mock"
     config.OVERRIDE.message_bus = BusRecorder()
 
