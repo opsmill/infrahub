@@ -1,0 +1,21 @@
+docs/docs/release-notes/infrahub/release-1_12_4.mdx
+  s_6cf9025f3dcfd8::t_89b76dce6ae909 1-38
+CHANGELOG.md
+  s_6cf9025f3dcfd8::t_f65c82ddac01d3 14-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2515a49bbf9bd03e0c4a0df05ec1ef68ef5afc89",
+  "prompts": {},
+  "sessions": {
+    "s_6cf9025f3dcfd8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3af1dfcc-e45f-4a6e-8b9a-ae53989039d0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
