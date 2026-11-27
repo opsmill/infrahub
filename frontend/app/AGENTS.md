@@ -45,7 +45,7 @@ cd frontend/app && pnpm test              # vitest (browser mode)
 
 ### Knowledge (How the system works)
 
-- `dev/knowledge/frontend/react.md` - React 19, React Compiler, and effect/retry patterns — load before writing a `useEffect` that drives a fetch or redirect
+- `dev/knowledge/frontend/react.md` - React 19, React Compiler, query retry and error states, effect-driven retries — load before writing a `useEffect` that drives a fetch or redirect, or the options or error handling of a query hook
 - `dev/knowledge/frontend/architecture.md` - Project organization
 - `dev/knowledge/frontend/entities-structure.md` - Entity layer pattern (api/domain/ui), GraphQL fetching, variables-not-inlined-values rule, backend authority
 - `dev/knowledge/frontend/shared-components.md` - **Reuse-first inventory** — look here before building anything generic
