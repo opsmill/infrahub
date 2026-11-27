@@ -29,24 +29,36 @@ const tag = (index: number): ObjectResult => ({ id: `tag-${index}`, kind: "Built
 
 const tags = (count: number) => Array.from({ length: count }, (_, index) => tag(index + 1));
 
-const respondWith = (result: Partial<SearchAnywhereResult>) => {
+const respondWith = (
+  result: Partial<SearchAnywhereResult>,
+  { isPlaceholderData = false }: { isPlaceholderData?: boolean } = {}
+) => {
   vi.mocked(useGetSearchResultsPage).mockReturnValue({
     data: { matchingObjects: [], hasMore: false, parentPrefixes: null, ...result },
     error: null,
     isPending: false,
-    isPlaceholderData: false,
+    isPlaceholderData,
     refetch: vi.fn(),
   } as unknown as ReturnType<typeof useGetSearchResultsPage>);
 };
 
-const renderAt = (url: string) => {
+const renderAt = (url: string, { failingIds = [] }: { failingIds?: string[] } = {}) => {
   window.history.replaceState(null, "", url);
-  vi.mocked(useGetSearchResultObject).mockImplementation((node) => ({
-    schema: generateNodeSchema({ kind: node.kind }),
-    object: { id: node.id, __typename: node.kind },
-    isPending: false,
-    error: null,
-  }));
+  vi.mocked(useGetSearchResultObject).mockImplementation((node) =>
+    failingIds.includes(node.id)
+      ? {
+          schema: generateNodeSchema({ kind: node.kind }),
+          object: undefined,
+          isPending: false,
+          error: new Error(`Cannot find Tag with id ${node.id}`),
+        }
+      : {
+          schema: generateNodeSchema({ kind: node.kind }),
+          object: { id: node.id, __typename: node.kind },
+          isPending: false,
+          error: null,
+        }
+  );
 
   return render(<SearchResults />);
 };
@@ -103,6 +115,75 @@ describe("SearchResults", () => {
     // THEN
     await expect.element(component.getByText("Showing results 21 to 40")).toBeVisible();
     await expect.element(component.getByRole("button", { name: "Next" })).toBeDisabled();
+  });
+
+  test("disables the pager while the next page loads", async () => {
+    // GIVEN
+    respondWith({ matchingObjects: tags(20), hasMore: true }, { isPlaceholderData: true });
+
+    // WHEN
+    const component = await renderAt("/search?q=atl&page=2");
+
+    // THEN
+    await expect.element(component.getByText("Loading page 2…")).toBeVisible();
+    await expect.element(component.getByRole("button", { name: "Previous" })).toBeDisabled();
+    await expect.element(component.getByRole("button", { name: "Next" })).toBeDisabled();
+  });
+
+  test("keeps the pager while the first page loads after a later page", async () => {
+    // GIVEN
+    respondWith({ matchingObjects: tags(5), hasMore: false }, { isPlaceholderData: true });
+
+    // WHEN
+    const component = await renderAt("/search?q=atl");
+
+    // THEN
+    await expect.element(component.getByText("Loading page 1…")).toBeVisible();
+  });
+
+  test("says which matching object could not be loaded", async () => {
+    // GIVEN
+    respondWith({ matchingObjects: [tag(1), tag(2)] });
+
+    // WHEN
+    const component = await renderAt("/search?q=atl", { failingIds: ["tag-2"] });
+
+    // THEN
+    await expect.element(component.getByText("Could not load Tag tag-2.")).toBeVisible();
+    await expect.element(component.getByRole("link", { name: /^tag-1 / })).toBeVisible();
+  });
+
+  test("lists the parent prefixes on the first page only", async () => {
+    // GIVEN
+    respondWith({
+      matchingObjects: tags(1),
+      parentPrefixes: [{ id: "prefix-1", kind: "IpamIPPrefix" }],
+    });
+
+    // WHEN
+    const component = await renderAt("/search?q=10.0.0.1&page=2");
+
+    // THEN
+    await expect.element(component.getByRole("region", { name: "Objects" })).toBeVisible();
+    await expect
+      .element(component.getByRole("region", { name: "Parent prefixes" }))
+      .not.toBeInTheDocument();
+  });
+
+  test("treats a search of only spaces as no search text", async () => {
+    // GIVEN
+    respondWith({});
+
+    // WHEN
+    const component = await renderAt("/search?q=%20%20");
+
+    // THEN
+    await expect.element(component.getByText("No search text")).toBeVisible();
+    expect(useGetSearchResultsPage).toHaveBeenCalledWith({
+      search: "",
+      caseSensitive: false,
+      page: 1,
+    });
   });
 
   test("starts again from the first page when the user searches for another text", async () => {

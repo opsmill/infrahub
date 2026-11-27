@@ -11,7 +11,9 @@ import { SearchCaseSensitiveToggle } from "@/entities/navigation/ui/search-case-
 import { SearchResultsList } from "@/entities/navigation/ui/search-results/search-results-list";
 
 export function SearchResults() {
-  const [{ search, caseSensitive, page }, setParams] = useSearchResultsParams();
+  const [params, setParams] = useSearchResultsParams();
+  const search = params.search.trim();
+  const { caseSensitive, page } = params;
   const topRef = useRef<HTMLDivElement>(null);
 
   useTitle(search ? `Search results for ${search}` : "Search results");
@@ -30,6 +32,8 @@ export function SearchResults() {
         end={
           <Row className="gap-2">
             <SearchResultsInput
+              // Back and Forward change the search in the URL, which replaces the text being typed.
+              key={search}
               search={search}
               onSubmit={(nextSearch) => setParams({ search: nextSearch, page: null })}
             />
@@ -60,13 +64,6 @@ interface SearchResultsInputProps {
 
 function SearchResultsInput({ search, onSubmit }: SearchResultsInputProps) {
   const [text, setText] = useState(search);
-  const [shownSearch, setShownSearch] = useState(search);
-
-  // Back and Forward change the search in the URL, which replaces the text being typed.
-  if (search !== shownSearch) {
-    setShownSearch(search);
-    setText(search);
-  }
 
   return (
     <SearchInput

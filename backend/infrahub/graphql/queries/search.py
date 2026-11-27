@@ -11,8 +11,8 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.ipam import IPParentPrefixLookupQuery
 from infrahub.core.query.node import NodeGetListByAttributeValueQuery
-from infrahub.exceptions import ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.resolvers.resolver import validate_offset_and_limit
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -131,11 +131,10 @@ async def search_resolver(
     """Find the objects and groups whose attribute values match `q`, best match first.
 
     Raises:
-        ValidationError: When `offset` is negative.
+        GraphQLError: When `offset` or `limit` is negative.
 
     """
-    if offset is not None and offset < 0:
-        raise ValidationError("offset must be >= 0")
+    validate_offset_and_limit(offset=offset, limit=limit)
 
     graphql_context: GraphqlContext = info.context
     response: dict[str, Any] = {}

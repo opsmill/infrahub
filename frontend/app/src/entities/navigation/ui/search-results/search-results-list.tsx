@@ -80,7 +80,7 @@ export function SearchResultsList({
 
   return (
     <Col className="items-stretch gap-4 p-4">
-      {parentPrefixes && (
+      {page === 1 && parentPrefixes && (
         <SearchResultsSection
           title="Parent prefixes"
           nodes={parentPrefixes}
@@ -99,6 +99,7 @@ export function SearchResultsList({
           offset={getOffset(page, SEARCH_RESULTS_PAGE_SIZE)}
           rowCount={matchingObjects.length}
           hasMore={hasMore}
+          isLoading={isPlaceholderData}
           onPageChange={onPageChange}
         />
       </SearchResultsSection>

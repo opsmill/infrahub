@@ -9,6 +9,7 @@ interface SearchResultsPagerProps {
   offset: number;
   rowCount: number;
   hasMore: boolean;
+  isLoading: boolean;
   onPageChange: (page: number) => void;
 }
 
@@ -17,9 +18,10 @@ export function SearchResultsPager({
   offset,
   rowCount,
   hasMore,
+  isLoading,
   onPageChange,
 }: SearchResultsPagerProps) {
-  if (page === 1 && !hasMore) return null;
+  if (!isLoading && page === 1 && !hasMore) return null;
 
   return (
     <nav
@@ -27,14 +29,14 @@ export function SearchResultsPager({
       className="flex flex-wrap items-center justify-between gap-2 border-t pt-2 pr-4 pl-2 text-sm"
     >
       <p className="text-foreground-muted tabular-nums" role="status">
-        {formatSearchResultsWindow({ offset, rowCount })}
+        {isLoading ? `Loading page ${page}…` : formatSearchResultsWindow({ offset, rowCount })}
       </p>
 
       <div className="flex items-center gap-1">
         <Button
           variant="outline"
           size="sm"
-          isDisabled={page <= 1}
+          isDisabled={isLoading || page <= 1}
           onPress={() => onPageChange(page - 1)}
         >
           <Icon icon="mdi:chevron-left" className="text-base" />
@@ -43,7 +45,7 @@ export function SearchResultsPager({
         <Button
           variant="outline"
           size="sm"
-          isDisabled={!hasMore}
+          isDisabled={isLoading || !hasMore}
           onPress={() => onPageChange(page + 1)}
         >
           Next

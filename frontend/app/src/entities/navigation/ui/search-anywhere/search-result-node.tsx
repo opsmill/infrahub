@@ -186,6 +186,7 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
           <div
             className="truncate rounded-sm border border-transparent px-1.5 text-center font-medium text-foreground"
             style={{ background: `${color}40` }}
+            title={value.label}
           >
             {value.label}
           </div>
@@ -204,7 +205,9 @@ const NodeAttribute = ({ title, kind, value }: NodeAttributeProps) => {
 
   return (
     <div className="flex flex-col overflow-hidden whitespace-nowrap text-xxs leading-3">
-      <span className="truncate">{title}</span>
+      <span title={title} className="truncate">
+        {title}
+      </span>
       <span
         title={valueText}
         className="max-w-full self-start truncate font-medium text-foreground"

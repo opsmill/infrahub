@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 
+import { Icon } from "@/shared/components/display/icon";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
@@ -16,7 +17,7 @@ const rowStyle = "flex items-center gap-2 rounded-md px-2 py-1.5";
 export function SearchResultLink({ node }: { node: ObjectResult }) {
   const { schema, object, isPending, error } = useGetSearchResultObject(node);
 
-  if (!schema || error) return null;
+  if (!schema) return null;
 
   if (isPending) {
     return (
@@ -26,7 +27,14 @@ export function SearchResultLink({ node }: { node: ObjectResult }) {
     );
   }
 
-  if (!object) return null;
+  if (error || !object) {
+    return (
+      <li className={classNames(rowStyle, "text-foreground-muted text-sm")}>
+        <Icon icon="mdi:alert-circle-outline" className="px-2 text-lg" />
+        Could not load {schema.label ?? schema.kind} {node.id}.
+      </li>
+    );
+  }
 
   return (
     <li>

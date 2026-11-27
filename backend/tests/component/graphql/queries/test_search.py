@@ -886,7 +886,13 @@ class TestSearchRanking:
         result = await _execute_search(db=db, dataset=dataset, search="volt", offset=-1)
 
         assert result.errors
-        assert [error.message for error in result.errors] == ["offset must be >= 0"]
+        assert [error.message for error in result.errors] == ["offset must be a non-negative integer"]
+
+    async def test_rejects_a_negative_limit(self, db: InfrahubDatabase, dataset: SearchDataset) -> None:
+        result = await _execute_search(db=db, dataset=dataset, search="volt", limit=-1)
+
+        assert result.errors
+        assert [error.message for error in result.errors] == ["limit must be a non-negative integer"]
 
     async def test_searches_a_partial_uuid_as_text(self, db: InfrahubDatabase, dataset: SearchDataset) -> None:
         result = await _search(db=db, dataset=dataset, search=_uuid_fragment(dataset.ids["Volt"]))
