@@ -79,7 +79,7 @@ async def _count_vertices_with_uuid(db: InfrahubDatabase, uuid: str) -> int:
 
 
 async def _count_no_owner_edges(db: InfrahubDatabase) -> int:
-    result = await db.execute_query(query="MATCH ()-[r:HAS_NO_OWNER]->(:NoOwner) RETURN count(r) AS c")
+    result = await db.execute_query(query="MATCH ()-[r:HAS_OWNER]->(:NoOwner) RETURN count(r) AS c")
     return result[0].get("c")
 
 

@@ -82,7 +82,7 @@ async def _active_edges(db: InfrahubDatabase, branch: Branch, node_ids: list[str
 MATCH (n:Node)-[:HAS_ATTRIBUTE|HAS_OWNER_SET|HAS_TARGET_OWNER_SET*0..1]->(h)
 WHERE n.uuid IN $node_ids
 WITH DISTINCT h
-MATCH (h)-[e:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SET|HAS_TARGET_OWNER_SET|HAS_OWNER_SOURCE|HAS_SOURCE]-(peer)
+MATCH (h)-[e:HAS_OWNER|HAS_OWNER_SET|HAS_TARGET_OWNER_SET|HAS_OWNER_SOURCE|HAS_SOURCE]-(peer)
 WITH DISTINCT startNode(e) AS start_vertex, type(e) AS edge_type, endNode(e) AS end_vertex
 CALL (start_vertex, edge_type, end_vertex) {
     MATCH (start_vertex)-[r:$(edge_type)]->(end_vertex)
@@ -175,13 +175,13 @@ async def test_removal_of_a_kind_closes_the_owner_edges_and_the_source_edges_of_
     await _remove_car_kind(db=db, branch=branch)
 
     assert car_edges == [
-        ("Attribute", "HAS_NO_OWNER", "NoOwner"),
         ("Attribute", "HAS_OWNER", InfrahubKind.ACCOUNTGROUP),
-        ("OwnerSet", "HAS_NO_OWNER", "NoOwner"),
+        ("Attribute", "HAS_OWNER", "NoOwner"),
         ("OwnerSet", "HAS_OWNER", InfrahubKind.ACCOUNTGROUP),
+        ("OwnerSet", "HAS_OWNER", "NoOwner"),
         ("OwnerSet", "HAS_OWNER_SOURCE", PERSON_KIND),
-        (CAR_KIND, "HAS_NO_OWNER", "NoOwner"),
         (CAR_KIND, "HAS_OWNER", InfrahubKind.ACCOUNTGROUP),
+        (CAR_KIND, "HAS_OWNER", "NoOwner"),
         (CAR_KIND, "HAS_OWNER_SET", "OwnerSet"),
         (CAR_KIND, "HAS_OWNER_SOURCE", PERSON_KIND),
         (CAR_KIND, "HAS_SOURCE", InfrahubKind.ACCOUNTGROUP),

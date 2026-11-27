@@ -867,7 +867,7 @@ WITH *,
         # object template is not an own owner.
         owner_query = """
 CALL (a) {
-    MATCH (a)-[rel_owner:HAS_OWNER]->(owner)
+    MATCH (a)-[rel_owner:HAS_OWNER]->(owner:Node)
     WHERE all(r IN [rel_owner] WHERE ( %(branch_filter)s ))
     WITH owner, rel_owner
     ORDER BY rel_owner.branch_level DESC, rel_owner.from DESC, rel_owner.status ASC

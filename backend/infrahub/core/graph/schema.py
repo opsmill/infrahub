@@ -66,12 +66,11 @@ class GraphNodeRelationships(BaseModel):
         description="Outbound: a source of the node. Inbound: the node is the source of the object on the other side",
     )
     HAS_OWNER: GraphRelationship = Field(
-        GraphRelationship(peer="Attribute|Relationship|Node|OwnerSet", direction=GraphRelDirection.EITHER),
-        description="Outbound: an owner of the node. Inbound: the node is the owner of the object on the other side",
-    )
-    HAS_NO_OWNER: GraphRelationship = Field(
-        GraphRelationship(peer="NoOwner", direction=GraphRelDirection.OUTBOUND),
-        description="The node has no owner, and does not inherit owners",
+        GraphRelationship(peer="Attribute|Relationship|Node|OwnerSet|NoOwner", direction=GraphRelDirection.EITHER),
+        description=(
+            "Outbound: an owner of the node, or NoOwner when the node has no owner and does not inherit owners. "
+            "Inbound: the node is the owner of the object on the other side"
+        ),
     )
     HAS_OWNER_SET: GraphRelationship = Field(
         GraphRelationship(peer="OwnerSet", direction=GraphRelDirection.OUTBOUND),
@@ -149,14 +148,11 @@ class GraphAttributeRelationships(BaseModel):
         GraphRelationship(peer="Node", direction=GraphRelDirection.OUTBOUND), description=""
     )
     HAS_OWNER: GraphRelationship = Field(
-        GraphRelationship(peer="Node", direction=GraphRelDirection.OUTBOUND), description=""
+        GraphRelationship(peer="Node|NoOwner", direction=GraphRelDirection.OUTBOUND),
+        description="An owner of the attribute, or NoOwner when the attribute has no owner and does not inherit owners",
     )
     IS_PROTECTED: GraphRelationship = Field(
         GraphRelationship(peer="Boolean", direction=GraphRelDirection.OUTBOUND), description=""
-    )
-    HAS_NO_OWNER: GraphRelationship = Field(
-        GraphRelationship(peer="NoOwner", direction=GraphRelDirection.OUTBOUND),
-        description="The attribute has no owner, and does not inherit owners",
     )
     HAS_OWNER_SOURCE: GraphRelationship = Field(
         GraphRelationship(peer="Node", direction=GraphRelDirection.OUTBOUND),
@@ -278,12 +274,8 @@ class GraphOwnerSetRelationships(BaseModel):
         description="Identify the profile or the object template that gives these owners",
     )
     HAS_OWNER: GraphRelationship = Field(
-        GraphRelationship(peer="Node", direction=GraphRelDirection.OUTBOUND),
-        description="Attach an owner to the set",
-    )
-    HAS_NO_OWNER: GraphRelationship = Field(
-        GraphRelationship(peer="NoOwner", direction=GraphRelDirection.OUTBOUND),
-        description="The set has no owner, and does not inherit owners",
+        GraphRelationship(peer="Node|NoOwner", direction=GraphRelDirection.OUTBOUND),
+        description="Attach an owner to the set, or NoOwner when the set has no owner and does not inherit owners",
     )
     HAS_OWNER_SOURCE: GraphRelationship = Field(
         GraphRelationship(peer="Node", direction=GraphRelDirection.OUTBOUND),
@@ -302,7 +294,7 @@ class GraphNoOwnerProperties(BaseModel):
 
 
 class GraphNoOwnerRelationships(BaseModel):
-    HAS_NO_OWNER: GraphRelationship = Field(
+    HAS_OWNER: GraphRelationship = Field(
         GraphRelationship(peer="Node|Attribute|OwnerSet", direction=GraphRelDirection.INBOUND),
         description="Identify an object that has no owner, and does not inherit owners",
     )
@@ -360,7 +352,6 @@ def get_graph_schema() -> dict[str, dict[str, type[Any]]]:
             "HAS_SOURCE": GraphRelationshipDefault,
             "HAS_OWNER": GraphRelationshipDefault,
             "IS_PROTECTED": GraphRelationshipDefault,
-            "HAS_NO_OWNER": GraphRelationshipDefault,
             "HAS_OWNER_SET": GraphRelationshipDefault,
             "HAS_TARGET_OWNER_SET": GraphRelationshipDefault,
             "HAS_OWNER_SOURCE": GraphRelationshipDefault,

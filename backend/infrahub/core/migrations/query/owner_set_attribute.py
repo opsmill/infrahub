@@ -167,7 +167,7 @@ WHERE attached.status = "active"
         query = """
 %(selection)s
 CALL (s) {
-    MATCH (s)-[r:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE]->(peer)
+    MATCH (s)-[r:HAS_OWNER|HAS_OWNER_SOURCE]->(peer)
     WHERE %(branch_filter)s
     WITH peer, type(r) AS edge_type, r
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
@@ -223,7 +223,7 @@ CALL (edge) {
     WITH edge, startNode(edge) AS holder, endNode(edge) AS peer
     WHERE edge.branch <> $branch
     OR EXISTS {
-        MATCH (holder)-[inherited:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE|HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(peer)
+        MATCH (holder)-[inherited:HAS_OWNER|HAS_OWNER_SOURCE|HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(peer)
         WHERE type(inherited) = type(edge) AND inherited.branch <> $branch
         AND inherited.status = "active" AND %(inherited_filter)s
     }

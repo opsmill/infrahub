@@ -83,8 +83,8 @@ class ActiveEdgeFilter:
 
     def _holds_owner_edges(self, node: str) -> str:
         return f"""EXISTS {{
-        MATCH ({node})-[own:HAS_OWNER|HAS_NO_OWNER]->(own_peer)
-        WHERE {self._active("own", f"({node})-[%s:HAS_OWNER|HAS_NO_OWNER]->(own_peer)")}
+        MATCH ({node})-[own:HAS_OWNER]->(own_peer)
+        WHERE {self._active("own", f"({node})-[%s:HAS_OWNER]->(own_peer)")}
     }}"""
 
     def _is_template_copy(self, node: str) -> str:
@@ -236,7 +236,7 @@ CALL (node_id) {
 WITH node_id, n, part_of
 WHERE part_of.status = "active"
 CALL (n) {
-    MATCH (n)-[r:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE|HAS_SOURCE]->(peer)
+    MATCH (n)-[r:HAS_OWNER|HAS_OWNER_SOURCE|HAS_SOURCE]->(peer)
     WHERE %(branch_filter)s
     WITH peer, type(r) AS edge_type, r
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
@@ -267,7 +267,7 @@ CALL (n) {
     ORDER BY attached.branch_level DESC, attached.from DESC, attached.status ASC
     WITH s, set_type, head(collect(attached)) AS latest_attached
     WHERE latest_attached.status = "active"
-    MATCH (s)-[r:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE]->(peer)
+    MATCH (s)-[r:HAS_OWNER|HAS_OWNER_SOURCE]->(peer)
     WHERE %(branch_filter)s
     WITH s, set_type, peer, type(r) AS edge_type, r
     ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
@@ -281,7 +281,7 @@ CALL (n) {
 CALL (n) {
     WITH n
     WHERE $with_attributes AND n.uuid IN $node_ids
-    MATCH (n)-[r1:HAS_ATTRIBUTE]->(a:Attribute)-[r2:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE]->(peer)
+    MATCH (n)-[r1:HAS_ATTRIBUTE]->(a:Attribute)-[r2:HAS_OWNER|HAS_OWNER_SOURCE]->(peer)
     WHERE all(r IN [r1, r2] WHERE %(branch_filter)s)
     WITH a, peer, type(r2) AS edge_type, r1, r2
     ORDER BY r1.branch_level DESC, r1.from DESC, r1.status ASC, r2.branch_level DESC, r2.from DESC, r2.status ASC
@@ -402,7 +402,7 @@ class OwnerStateWriteQuery(Query):
     name = "ownership_owner_state_write"
     type = QueryType.WRITE
     raise_error_if_empty = True
-    closed_edge_types = "HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE"
+    closed_edge_types = "HAS_OWNER|HAS_OWNER_SOURCE"
     listed_edge_type = "HAS_OWNER"
     """The type of the edges to the nodes of `owner_ids`."""
 
@@ -614,7 +614,7 @@ CALL (h, current) {
     UNWIND current AS item
     WITH item.peer AS peer, item.edge_type AS edge_type, item.latest AS latest, %(close_branch)s AS w
     WHERE NOT (edge_type = "%(listed_edge)s" AND peer.uuid IN $owner_ids)
-    AND NOT (edge_type = "HAS_NO_OWNER" AND $no_owner)
+    AND NOT (peer:NoOwner AND $no_owner)
     CALL (latest, w) {
         WITH latest, w
         // A branch reads a global edge at its start, so the edge can be closed already
@@ -654,7 +654,7 @@ CALL (h, current) {
 }
 CALL (h, current) {
     WITH h
-    WHERE $no_owner AND NOT any(item IN current WHERE item.edge_type = "HAS_NO_OWNER")
+    WHERE $no_owner AND NOT any(item IN current WHERE "NoOwner" IN labels(item.peer))
     // the vertex exists before the first write, so this MERGE creates it only in a database that was built without it
     MERGE (no_owner:NoOwner {uuid: $no_owner_uuid})
     %(no_owner_edge)s
@@ -685,7 +685,7 @@ CALL (h) {
                 edge_type=self.listed_edge_type, peer="owner", inherited_filter=inherited_filter
             ),
             "no_owner_edge": _active_edge_query(
-                edge_type="HAS_NO_OWNER", peer="no_owner", inherited_filter=inherited_filter
+                edge_type="HAS_OWNER", peer="no_owner", inherited_filter=inherited_filter
             ),
         }
         self.add_to_query(query)
@@ -740,8 +740,8 @@ class NodeOwnerEdgesCloseQuery(OwnerStateWriteQuery):
         # Most nodes have no owner, so this check skips their holders; it comes after the lock to read committed edges.
         return """
 WITH n
-WHERE EXISTS { (n)-[:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE|HAS_SOURCE|HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->() }
-OR EXISTS { (n)-[:HAS_ATTRIBUTE]->(:Attribute)-[:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE]->() }
+WHERE EXISTS { (n)-[:HAS_OWNER|HAS_OWNER_SOURCE|HAS_SOURCE|HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->() }
+OR EXISTS { (n)-[:HAS_ATTRIBUTE]->(:Attribute)-[:HAS_OWNER|HAS_OWNER_SOURCE]->() }
 OR EXISTS { ()-[:HAS_OWNER_SOURCE]->(n) }
 CALL (n) {
     RETURN n AS h

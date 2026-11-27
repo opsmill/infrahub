@@ -122,7 +122,7 @@ OWNER_RE_ADD_TEST_CASES: list[OwnerReAddTestCase] = [
     OwnerReAddTestCase(
         name="node_no_owner",
         holder=NODE_HOLDER,
-        edge_type=DatabaseEdgeType.HAS_NO_OWNER,
+        edge_type=DatabaseEdgeType.HAS_OWNER,
         states=[(), ("dc-emea",), ()],
         peer_name=NO_OWNER_VERTEX_UUID,
     ),

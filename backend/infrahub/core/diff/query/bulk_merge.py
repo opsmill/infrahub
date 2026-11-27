@@ -202,14 +202,14 @@ CALL (n, tgt_n, src) {
     // ------------------------------
     WITH DISTINCT tgt_n, src
     CALL (tgt_n, src) {
-        MATCH (tgt_n)-[own_rel:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE|HAS_OWNER_SET|HAS_TARGET_OWNER_SET|HAS_SOURCE]->()
+        MATCH (tgt_n)-[own_rel:HAS_OWNER|HAS_OWNER_SOURCE|HAS_OWNER_SET|HAS_TARGET_OWNER_SET|HAS_SOURCE]->()
         WHERE own_rel.branch = $target_branch
         AND own_rel.status = "active"
         AND own_rel.to IS NULL
         SET own_rel.to = $at, own_rel.to_user_id = src.from_user_id
     }
     CALL (tgt_n, src) {
-        MATCH (tgt_n)-[:HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(:OwnerSet)-[set_rel:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE]->()
+        MATCH (tgt_n)-[:HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(:OwnerSet)-[set_rel:HAS_OWNER|HAS_OWNER_SOURCE]->()
         WHERE set_rel.branch = $target_branch
         AND set_rel.status = "active"
         AND set_rel.to IS NULL
@@ -289,7 +289,7 @@ CALL (a, src) {
         MATCH ()-[kept:HAS_ATTRIBUTE {branch: $source_branch, status: "active"}]->(a)
         WHERE kept.to IS NULL
     }
-    MATCH (a)-[own_rel:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE]->()
+    MATCH (a)-[own_rel:HAS_OWNER|HAS_OWNER_SOURCE]->()
     WHERE own_rel.branch = $target_branch
     AND own_rel.status = "active"
     AND own_rel.to IS NULL
@@ -1078,7 +1078,7 @@ OWNER_SET_EDGE_TYPES: dict[HolderKind, DatabaseEdgeType] = {
 class BulkMergeOwnershipEdgesQuery(Query):
     """Bulk merge the owner edges that start at a node, at its attributes and at its sets of owners.
 
-    The edges of each holder are HAS_OWNER, HAS_NO_OWNER and the HAS_OWNER_SOURCE mark of a copy from an object
+    The edges of each holder are HAS_OWNER, to an owner or to NoOwner, and the HAS_OWNER_SOURCE mark of a copy from an object
     template. The edges of a node are also the HAS_OWNER_SET and HAS_TARGET_OWNER_SET edges to its sets, and the
     HAS_SOURCE edges to its sources.
 
@@ -1197,7 +1197,7 @@ CALL (child, src, prop_from_user_id) {
         MATCH ()-[kept:HAS_OWNER_SET|HAS_TARGET_OWNER_SET {branch: $source_branch, status: "active"}]->(child)
         WHERE kept.to IS NULL
     }
-    MATCH (child)-[set_edge:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE]->()
+    MATCH (child)-[set_edge:HAS_OWNER|HAS_OWNER_SOURCE]->()
     WHERE set_edge.branch = $target_branch
     AND set_edge.status = "active"
     AND set_edge.to IS NULL

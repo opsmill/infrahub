@@ -182,7 +182,7 @@ async def _owner_edges(db: InfrahubDatabase, node_id: str) -> list[tuple[str, st
     """Return the peer ID, the branch, the status and the open state of each owner edge that starts at the node."""
     rows = await db.execute_query(
         query="""
-        MATCH (:Node {uuid: $node_id})-[r:HAS_OWNER|HAS_NO_OWNER]->(peer)
+        MATCH (:Node {uuid: $node_id})-[r:HAS_OWNER]->(peer)
         RETURN peer.uuid AS peer_id, r.branch AS branch, r.status AS status, r.to IS NULL AS is_open
         """,
         params={"node_id": node_id},
@@ -372,7 +372,7 @@ async def _attribute_edges(db: InfrahubDatabase, node_id: str, attribute: str) -
     rows = await db.execute_query(
         query="""
         MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(:Attribute {name: $attribute})
-            -[r:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE|HAS_SOURCE]->(peer)
+            -[r:HAS_OWNER|HAS_OWNER_SOURCE|HAS_SOURCE]->(peer)
         WITH DISTINCT r, peer
         RETURN type(r) AS edge_type, peer.uuid AS peer_id, r.branch AS branch, r.status AS status,
             r.to IS NULL AS is_open
@@ -413,7 +413,7 @@ async def test_node_delete_closes_the_attribute_edges_on_the_branch_of_the_attri
 
     closed = "active", False
     expected = {("HAS_OWNER", owner_id, test_case.edge_branch, *closed) for owner_id in owner_ids}
-    expected |= {("HAS_NO_OWNER", NO_OWNER_VERTEX_UUID, test_case.edge_branch, *closed)} if not owner_ids else set()
+    expected |= {("HAS_OWNER", NO_OWNER_VERTEX_UUID, test_case.edge_branch, *closed)} if not owner_ids else set()
     expected |= {("HAS_OWNER_SOURCE", template_id, test_case.edge_branch, *closed)} if template_id else set()
     expected |= {
         ("HAS_SOURCE", group_ids["network-emea"], test_case.edge_branch, *closed),
@@ -463,7 +463,7 @@ async def test_owner_edges_win_over_no_owner_edge(
         query="""
         MATCH (n:Node {uuid: $node_id})
         MERGE (no_owner:NoOwner {uuid: $no_owner_uuid})
-        CREATE (n)-[:HAS_NO_OWNER {branch: $branch, branch_level: 1, status: "active", from: $at}]->(no_owner)
+        CREATE (n)-[:HAS_OWNER {branch: $branch, branch_level: 1, status: "active", from: $at}]->(no_owner)
         """,
         params={
             "node_id": person.id,

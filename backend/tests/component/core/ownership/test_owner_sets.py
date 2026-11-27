@@ -302,7 +302,7 @@ async def test_owner_write_and_node_delete_in_open_transactions_leave_no_open_ow
     records = await db.execute_query(
         query="""
 MATCH (n:Node {uuid: $node_id})
-MATCH (h)-[r:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SET]->()
+MATCH (h)-[r:HAS_OWNER|HAS_OWNER_SET]->()
 WHERE (h = n OR EXISTS { (n)-[:HAS_ATTRIBUTE|HAS_OWNER_SET]->(h) })
 AND r.branch = $branch AND r.status = "active" AND r.to IS NULL
 RETURN count(r) AS open_edges
@@ -364,7 +364,7 @@ async def _open_owner_edges(db: InfrahubDatabase, node_id: str) -> int:
     records = await db.execute_query(
         query="""
 MATCH (n:Node {uuid: $node_id})
-MATCH (h)-[r:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SET]->()
+MATCH (h)-[r:HAS_OWNER|HAS_OWNER_SET]->()
 WHERE (h = n OR EXISTS { (n)-[:HAS_ATTRIBUTE|HAS_OWNER_SET]->(h) })
 AND r.status = "active" AND r.to IS NULL
 RETURN count(r) AS open_edges
@@ -648,7 +648,7 @@ async def test_attribute_rename_gives_no_set_to_a_node_whose_delete_commits_whil
     records = await db.execute_query(
         query="""
 MATCH (n:Node {uuid: $node_id})
-MATCH (h)-[r:HAS_OWNER|HAS_NO_OWNER|HAS_TARGET_OWNER_SET]->()
+MATCH (h)-[r:HAS_OWNER|HAS_TARGET_OWNER_SET]->()
 WHERE (h = n OR EXISTS { (n)-[:HAS_TARGET_OWNER_SET]->(h) })
 AND r.status = "active" AND r.to IS NULL
 RETURN count(r) AS open_edges

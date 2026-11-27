@@ -224,13 +224,12 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
       - HAS_ATTRIBUTE (Node -> Attribute)
       - IS_PART_OF    (Node -> Root)
       - IS_RELATED    (Node <-> Relationship, either dir)
-      - HAS_OWNER, HAS_SOURCE, HAS_OWNER_SOURCE (Node -> Node)
-      - HAS_NO_OWNER  (Node -> NoOwner)
+      - HAS_OWNER, HAS_SOURCE, HAS_OWNER_SOURCE (Node -> Node, or HAS_OWNER Node -> NoOwner)
       - HAS_OWNER_SET, HAS_TARGET_OWNER_SET (Node -> OwnerSet)
 
     After closing the parent HAS_ATTRIBUTE/IS_RELATED/HAS_OWNER_SET/HAS_TARGET_OWNER_SET edge, the
     Attribute/Relationship/OwnerSet vertex is orphaned from active_node's perspective. We must also
-    close any active sub-edges hanging off that vertex (HAS_VALUE, HAS_SOURCE, HAS_OWNER, HAS_NO_OWNER,
+    close any active sub-edges hanging off that vertex (HAS_VALUE, HAS_SOURCE, HAS_OWNER,
     HAS_OWNER_SOURCE, IS_PROTECTED, far-side IS_RELATED) on the same branch
     """
 
@@ -269,7 +268,7 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     WITH active_node
     MATCH (active_node)-[
         e:HAS_ATTRIBUTE|IS_RELATED|IS_PART_OF
-        |HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SET|HAS_TARGET_OWNER_SET|HAS_OWNER_SOURCE|HAS_SOURCE
+        |HAS_OWNER|HAS_OWNER_SET|HAS_TARGET_OWNER_SET|HAS_OWNER_SOURCE|HAS_SOURCE
     ]->(peer:Attribute|Relationship|Root|Node|NoOwner|OwnerSet)
     WITH DISTINCT active_node, type(e) AS edge_type, peer
     CALL (active_node, edge_type, peer) {

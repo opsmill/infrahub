@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from infrahub.core.diff.model.path import EnrichedDiffProperty, EnrichedDiffRoot
     from infrahub.database import InfrahubDatabase
 
-OWNER_EDGE_TYPES = ("HAS_OWNER", "HAS_NO_OWNER", "HAS_SOURCE", "HAS_OWNER_SOURCE")
+OWNER_EDGE_TYPES = ("HAS_OWNER", "HAS_SOURCE", "HAS_OWNER_SOURCE")
 SET_EDGE_TYPES = ("HAS_OWNER_SET", "HAS_TARGET_OWNER_SET")
 PROFILE_DEVICE_NAME = "device-with-profile"
 
@@ -137,13 +137,13 @@ async def holder_edges(
     query = """
     MATCH (n:Node {uuid: $node_id})
     CALL (n) {
-        MATCH (n)-[r:HAS_OWNER|HAS_NO_OWNER|HAS_SOURCE|HAS_OWNER_SOURCE|HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(peer)
+        MATCH (n)-[r:HAS_OWNER|HAS_SOURCE|HAS_OWNER_SOURCE|HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(peer)
         RETURN r, peer
         UNION ALL
-        MATCH (n)-[:HAS_ATTRIBUTE]->(:Attribute)-[r:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE]->(peer)
+        MATCH (n)-[:HAS_ATTRIBUTE]->(:Attribute)-[r:HAS_OWNER|HAS_OWNER_SOURCE]->(peer)
         RETURN r, peer
         UNION ALL
-        MATCH (n)-[:HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(:OwnerSet)-[r:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE]->(peer)
+        MATCH (n)-[:HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(:OwnerSet)-[r:HAS_OWNER|HAS_OWNER_SOURCE]->(peer)
         RETURN DISTINCT r, peer
         UNION ALL
         MATCH (n)-[:IS_RELATED]-(:Relationship)-[r:HAS_OWNER]->(peer)

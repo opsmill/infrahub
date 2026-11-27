@@ -90,7 +90,7 @@ WHERE hae.to IS NULL
 WITH hae, a LIMIT 1
 MATCH (no_owner:NoOwner)
 MATCH (template:Node {uuid: $template_id})
-CREATE (a)-[:HAS_NO_OWNER {branch: hae.branch, branch_level: hae.branch_level, status: "active", from: hae.from}]->(no_owner)
+CREATE (a)-[:HAS_OWNER {branch: hae.branch, branch_level: hae.branch_level, status: "active", from: hae.from}]->(no_owner)
 CREATE (a)-[:HAS_OWNER_SOURCE {branch: hae.branch, branch_level: hae.branch_level, status: "active", from: hae.from}]->(template)
 SET hae.status = "deleted"
     """

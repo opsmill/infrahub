@@ -86,7 +86,7 @@ async def _given_owner_edges(db: InfrahubDatabase, profile_id: str) -> list[tupl
     rows = await db.execute_query(
         query="""
         MATCH (:Node {uuid: $profile_id})-[attached:HAS_TARGET_OWNER_SET]->(s:OwnerSet)
-        OPTIONAL MATCH (s)-[r:HAS_OWNER|HAS_NO_OWNER]->(peer)
+        OPTIONAL MATCH (s)-[r:HAS_OWNER]->(peer)
         UNWIND [[attached, "set"], [r, peer.uuid]] AS item
         WITH DISTINCT item[0] AS edge, item[1] AS peer
         WHERE edge IS NOT NULL

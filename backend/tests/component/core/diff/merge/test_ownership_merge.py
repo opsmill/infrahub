@@ -311,7 +311,7 @@ async def test_node_deleted_on_a_branch_loses_its_owners_at_the_merge(
 @pytest.mark.parametrize(
     ("holder", "edge_types"),
     [
-        pytest.param(NODE_HOLDER, (DatabaseEdgeType.HAS_OWNER.value, DatabaseEdgeType.HAS_NO_OWNER.value), id="owners"),
+        pytest.param(NODE_HOLDER, (DatabaseEdgeType.HAS_OWNER.value,), id="owners"),
         pytest.param(NODE_SOURCES_HOLDER, (DatabaseEdgeType.HAS_SOURCE.value,), id="sources"),
     ],
 )
@@ -880,7 +880,7 @@ async def _count_field_owner_sets(db: InfrahubDatabase, branch: Branch, node_id:
     """Count the sets of owners of the fields of a node, and the open owner edges of these sets on one branch."""
     query = """
     MATCH (n:Node {uuid: $node_id})-[:HAS_OWNER_SET]->(s:OwnerSet)
-    OPTIONAL MATCH (s)-[r:HAS_OWNER|HAS_NO_OWNER]->()
+    OPTIONAL MATCH (s)-[r:HAS_OWNER]->()
     WHERE r.branch = $branch_name AND r.status = "active" AND r.to IS NULL
     RETURN count(DISTINCT s) AS sets, count(DISTINCT r) AS edges
     """

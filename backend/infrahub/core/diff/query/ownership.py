@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
     from infrahub.database import InfrahubDatabase
 
-OWNER_STATE_EDGE_TYPES = (DatabaseEdgeType.HAS_OWNER, DatabaseEdgeType.HAS_NO_OWNER)
+OWNER_STATE_EDGE_TYPES = (DatabaseEdgeType.HAS_OWNER,)
 
 # The path from the node `n` to the vertex that holds the owner edges, for each kind of holder.
 ATTRIBUTE_PATTERN = '(n:Node)-[:HAS_ATTRIBUTE]->(holder:Attribute {branch_support: "aware"})'

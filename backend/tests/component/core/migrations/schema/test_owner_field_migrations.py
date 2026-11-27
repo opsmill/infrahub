@@ -124,7 +124,7 @@ async def _open_edges_of_removed_attributes(db: InfrahubDatabase) -> int:
     ORDER BY held.from DESC
     WITH a, head(collect(held.status)) AS latest_status
     WHERE latest_status = "deleted"
-    MATCH (a)-[r:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE]->()
+    MATCH (a)-[r:HAS_OWNER|HAS_OWNER_SOURCE]->()
     WHERE r.status = "active" AND r.to IS NULL
     RETURN count(r) AS total
     """
@@ -135,7 +135,7 @@ async def _open_edges_of_removed_attributes(db: InfrahubDatabase) -> int:
 async def _open_edges_of_detached_sets(db: InfrahubDatabase) -> int:
     """Count the open owner edges and template marks of the sets of owners that no node holds."""
     query = """
-    MATCH (s:OwnerSet)-[r:HAS_OWNER|HAS_NO_OWNER|HAS_OWNER_SOURCE]->()
+    MATCH (s:OwnerSet)-[r:HAS_OWNER|HAS_OWNER_SOURCE]->()
     WHERE r.status = "active" AND r.to IS NULL
     AND NOT EXISTS {
         MATCH (:Node)-[held:HAS_OWNER_SET|HAS_TARGET_OWNER_SET]->(s)

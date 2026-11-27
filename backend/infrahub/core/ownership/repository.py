@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query.node import NodeUpdateMetadataQuery
 
+from .constants import NO_OWNER_VERTEX_UUID
 from .models import NODE_HOLDER, NODE_SOURCES_HOLDER, HolderKey, StoredNodeOwnership, StoredOwnerState
 from .queries import (
     NodeLabelsReadQuery,
@@ -30,7 +31,11 @@ def _stored_state(held: tuple[tuple[str, str], ...], known: StoredOwnerState | N
 
     """
     # Owner edges win over a "no owner" edge that a merge leaves active.
-    owner_ids = {peer_id for edge_type, peer_id in held if edge_type == DatabaseEdgeType.HAS_OWNER.value}
+    owner_ids = {
+        peer_id
+        for edge_type, peer_id in held
+        if edge_type == DatabaseEdgeType.HAS_OWNER.value and peer_id != NO_OWNER_VERTEX_UUID
+    }
     template_ids = [peer_id for edge_type, peer_id in held if edge_type == DatabaseEdgeType.HAS_OWNER_SOURCE.value]
     if known is not None:
         owner_ids.update(known.owner_ids or ())
