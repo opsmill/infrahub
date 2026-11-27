@@ -60,8 +60,11 @@ On top of that, both modes remove:
   kind Infrahub adds later in an unrestricted namespace is left out too. A change or an extension the
   schema owner made to one of these kinds is not exported, with no warning.
 - Attributes and relationships with `inherited: true` on a node. They are written on the generic only.
-- Relationships of kind `Group`, `Profile`, `Hierarchy` and `Template`, which processing adds:
-  `exporter.py::GENERATED_RELATIONSHIP_KINDS`.
+- The six relationships processing adds, identified by kind, name and identifier:
+  `exporter.py::GENERATED_RELATIONSHIPS`. A relationship the schema owner defined with kind `Group`,
+  `Profile`, `Hierarchy` or `Template` but another name or identifier is exported. A unit test fails when
+  processing adds a relationship of these kinds that the set does not hold. The schema does not record
+  whether processing added a relationship, so the set is kept by hand.
 
 Deprecated forms are converted, not removed, by `exporter.py::convert_deprecated_attribute_fields`: top-level
 `regex`, `min_length` and `max_length` move under `parameters` when the parameters model of the kind has the

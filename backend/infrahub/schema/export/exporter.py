@@ -10,7 +10,14 @@ from infrahub_sdk.schema.generated.contract import KEEP_IN_EXPORT_FIELDS
 from infrahub_sdk.schema.generated.write import GenericSchemaWrite, NodeSchemaWrite
 
 from infrahub import __version__
-from infrahub.core.constants import RESTRICTED_NAMESPACES, RelationshipKind
+from infrahub.core.constants import (
+    OBJECT_TEMPLATE_RELATIONSHIP_NAME,
+    PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
+    PROFILES_RELATIONSHIP_NAME,
+    RESTRICTED_NAMESPACES,
+    RelationshipKind,
+)
+from infrahub.core.constants.schema import PARENT_CHILD_IDENTIFIER
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.attribute_parameters import get_attribute_parameters_class_for_kind
 from infrahub.core.schema.basenode_schema import AttributePathParsingError
@@ -41,10 +48,27 @@ PARAMETERS_FIELD = "parameters"
 ID_FIELD = "id"
 ELEMENT_COLLECTIONS = (ATTRIBUTES_FIELD, RELATIONSHIPS_FIELD)
 
-GENERATED_RELATIONSHIP_KINDS = frozenset(
-    {RelationshipKind.GROUP, RelationshipKind.PROFILE, RelationshipKind.HIERARCHY, RelationshipKind.TEMPLATE}
+GENERATED_RELATIONSHIPS: frozenset[tuple[str, str, str]] = frozenset(
+    {
+        (RelationshipKind.GROUP.value, "member_of_groups", "group_member"),
+        (RelationshipKind.GROUP.value, "subscriber_of_groups", "group_subscriber"),
+        (RelationshipKind.HIERARCHY.value, "parent", PARENT_CHILD_IDENTIFIER),
+        (RelationshipKind.HIERARCHY.value, "children", PARENT_CHILD_IDENTIFIER),
+        (RelationshipKind.PROFILE.value, PROFILES_RELATIONSHIP_NAME, PROFILE_NODE_RELATIONSHIP_IDENTIFIER),
+        (RelationshipKind.TEMPLATE.value, OBJECT_TEMPLATE_RELATIONSHIP_NAME, "node__objecttemplate"),
+    }
 )
-"""Kinds of the relationships that processing adds to nodes and generics."""
+"""Kind, name and identifier of each relationship that processing adds to nodes and generics.
+
+A relationship the schema owner defined with one of these kinds, but another name or identifier, is exported.
+"""
+
+
+def is_generated_relationship(relationship: Mapping[str, Any]) -> bool:
+    """Return whether a dumped relationship is one that processing adds, so a schema file does not hold it."""
+    key = (RelationshipKind(relationship["kind"]).value, relationship["name"], relationship["identifier"])
+    return key in GENERATED_RELATIONSHIPS
+
 
 CORE_SCHEMA_DEFINITIONS = (internal_schema, core_models, deprecated_models)
 CORE_SCHEMA_BASELINE_NAME = "core-schema-baseline"
@@ -342,8 +366,7 @@ class SchemaExporter:
             (
                 relationship
                 for relationship in dump[RELATIONSHIPS_FIELD]
-                if not (is_node and relationship["inherited"])
-                and relationship["kind"] not in GENERATED_RELATIONSHIP_KINDS
+                if not (is_node and relationship["inherited"]) and not is_generated_relationship(relationship)
             ),
             key=_display_order,
         )

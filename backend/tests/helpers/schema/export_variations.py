@@ -381,6 +381,31 @@ PROFILE_AND_TEMPLATE = VariationSchema(
 )
 """A node that gets a generated profile and a generated object template."""
 
+USER_RELATIONSHIP_OF_A_GENERATED_KIND = VariationSchema(
+    name="user_relationship_of_a_generated_kind",
+    schema={
+        "version": SCHEMA_FILE_VERSION,
+        "nodes": [
+            {
+                "name": "Switch",
+                "namespace": "Grouped",
+                "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+                "relationships": [
+                    {
+                        "name": "switch_groups",
+                        "peer": "CoreStandardGroup",
+                        "kind": "Group",
+                        "identifier": "grouped_switch__groups",
+                        "cardinality": "many",
+                        "optional": True,
+                    }
+                ],
+            }
+        ],
+    },
+)
+"""A node with a relationship of kind Group that the schema owner defined, next to the ones processing adds."""
+
 ATTRIBUTE_SETTINGS = VariationSchema(
     name="attribute_settings",
     schema={
@@ -573,6 +598,7 @@ VARIATION_SCHEMAS: tuple[VariationSchema, ...] = (
     DEPRECATED_DISPLAY_FIELDS,
     HIERARCHY,
     PROFILE_AND_TEMPLATE,
+    USER_RELATIONSHIP_OF_A_GENERATED_KIND,
     ATTRIBUTE_SETTINGS,
     RELATIONSHIP_SETTINGS,
 )

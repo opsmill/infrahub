@@ -7,10 +7,12 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from infrahub_sdk.schema.generated.write import NodeSchemaWrite
 
+from infrahub.core.constants import RelationshipKind
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.exceptions import SchemaNamespaceNotFoundError
 from infrahub.schema.export.exporter import (
+    GENERATED_RELATIONSHIPS,
     SchemaExporter,
     build_core_schema_baseline,
     convert_deprecated_attribute_fields,
@@ -18,6 +20,12 @@ from infrahub.schema.export.exporter import (
     normalize_element_for_comparison,
 )
 from infrahub.schema.export.models import SchemaExportMode
+from tests.helpers.schema.export_variations import (
+    HIERARCHY,
+    PROFILE_AND_TEMPLATE,
+    USER_RELATIONSHIP_OF_A_GENERATED_KIND,
+    merge_variation_schemas,
+)
 
 from .conftest import SELECTED_NAMESPACE, TWO_NAMESPACE_SCHEMA, load_on_new_baseline
 
@@ -58,6 +66,55 @@ def test_exports_through_copies_of_one_core_schema_match_and_leave_it_unchanged(
         with_new_baselines.model_dump(exclude_unset=True)
     ] * 2
     assert _schema_contents(copy_core_schema_baseline("after")) == core_before
+
+
+GENERATED_KINDS = {
+    RelationshipKind.GROUP.value,
+    RelationshipKind.PROFILE.value,
+    RelationshipKind.HIERARCHY.value,
+    RelationshipKind.TEMPLATE.value,
+}
+
+
+def test_generated_relationships_list_every_relationship_processing_adds() -> None:
+    source = load_on_new_baseline(merge_variation_schemas([HIERARCHY, PROFILE_AND_TEMPLATE]))
+    user_kinds = sorted(
+        f"{element['namespace']}{element['name']}"
+        for variation in (HIERARCHY, PROFILE_AND_TEMPLATE)
+        for element in variation.schema.get("nodes", []) + variation.schema.get("generics", [])
+    )
+
+    added = {
+        (RelationshipKind(relationship.kind).value, relationship.name, relationship.identifier)
+        for kind in user_kinds
+        for relationship in source.get(name=kind, duplicate=False).relationships
+        if RelationshipKind(relationship.kind).value in GENERATED_KINDS
+    }
+
+    assert added == {
+        ("Group", "member_of_groups", "group_member"),
+        ("Group", "subscriber_of_groups", "group_subscriber"),
+        ("Hierarchy", "parent", "parent__child"),
+        ("Hierarchy", "children", "parent__child"),
+        ("Profile", "profiles", "node__profile"),
+        ("Template", "object_template", "node__objecttemplate"),
+    }
+    assert added == GENERATED_RELATIONSHIPS
+
+
+@pytest.mark.parametrize("mode", [SchemaExportMode.BRIEF, SchemaExportMode.FULL])
+def test_export_writes_a_user_relationship_of_a_kind_processing_also_adds(
+    schema_exporter: SchemaExporter, mode: SchemaExportMode
+) -> None:
+    source = load_on_new_baseline(USER_RELATIONSHIP_OF_A_GENERATED_KIND.schema)
+
+    document = schema_exporter.export(schema_branch=source, mode=mode, namespaces=None)
+
+    switch = document.model_dump(exclude_unset=True)["nodes"][0]
+    assert [
+        (relationship["name"], relationship["kind"], relationship["identifier"])
+        for relationship in switch["relationships"]
+    ] == [("switch_groups", "Group", "grouped_switch__groups")]
 
 
 def test_baseline_holds_the_processed_core_schema() -> None:

@@ -7,7 +7,7 @@ import pytest
 from structlog.testing import capture_logs
 
 from infrahub import __version__
-from infrahub.core.constants import RESTRICTED_NAMESPACES, InfrahubKind, RelationshipKind
+from infrahub.core.constants import RESTRICTED_NAMESPACES, InfrahubKind
 from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.basenode_schema import AttributePathParsingError
@@ -16,7 +16,7 @@ from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.node_inheritance_handler import PROPERTIES_INHERITED_FROM_GENERIC
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.exceptions import SchemaNotFoundError
-from infrahub.schema.export.exporter import SchemaExporter, build_core_schema_baseline
+from infrahub.schema.export.exporter import SchemaExporter, build_core_schema_baseline, is_generated_relationship
 from infrahub.schema.export.models import SchemaExportMode
 from tests.helpers.schema.export_variations import (
     ATTRIBUTE_SETTINGS,
@@ -43,12 +43,6 @@ if TYPE_CHECKING:
 WARNING_LOG_LEVEL = "warning"
 REPEATED_EXPORTS = 3
 EXPECTED_FILE_FORMAT_VERSION = "1.0"
-GENERATED_RELATIONSHIP_KINDS = {
-    RelationshipKind.GROUP,
-    RelationshipKind.PROFILE,
-    RelationshipKind.HIERARCHY,
-    RelationshipKind.TEMPLATE,
-}
 EXPORTER_WARNING_KEYS = {"error", "differences"}
 """Keys of the warnings the export logs when it reaches the fallback or when differences remain."""
 
@@ -309,7 +303,7 @@ def test_brief_export_loads_to_the_same_schema_without_the_fallback(
         assert [
             relationship.name
             for relationship in stored_relationships
-            if relationship.kind in GENERATED_RELATIONSHIP_KINDS
+            if is_generated_relationship(relationship.model_dump())
         ] == []
 
 

@@ -11,9 +11,8 @@ from infrahub_sdk.schema.generated.write import (
 )
 from pydantic import BaseModel, TypeAdapter
 
-from infrahub.core.constants import RelationshipKind
 from infrahub.core.schema import GenericSchema, NodeSchema
-from infrahub.schema.export.exporter import SchemaExporter, build_core_schema_baseline
+from infrahub.schema.export.exporter import SchemaExporter, build_core_schema_baseline, is_generated_relationship
 from infrahub.schema.export.models import SchemaExportMode
 from tests.helpers.schema.export_variations import (
     DEPRECATED_VALIDATION_FIELDS,
@@ -34,12 +33,6 @@ from .conftest import (
 if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
 
-GENERATED_RELATIONSHIP_KINDS = {
-    RelationshipKind.GROUP,
-    RelationshipKind.PROFILE,
-    RelationshipKind.HIERARCHY,
-    RelationshipKind.TEMPLATE,
-}
 NOT_EXPORTED_FIELDS = {"id", "attributes", "relationships", "parameters"}
 DEPRECATED_ATTRIBUTE_FIELDS = {"regex", "min_length", "max_length"}
 """Top-level attribute fields that a schema file holds in `parameters` instead."""
@@ -116,7 +109,7 @@ def _values_missing_from_export(stored_element: NodeSchema | GenericSchema, expo
 
     exported_relationships = {relationship["name"]: relationship for relationship in exported.get("relationships", [])}
     for relationship in stored["relationships"]:
-        if (is_node and relationship["inherited"]) or relationship["kind"] in GENERATED_RELATIONSHIP_KINDS:
+        if (is_node and relationship["inherited"]) or is_generated_relationship(relationship):
             continue
         expected = _valued_fields(RelationshipSchemaWrite, relationship, skipped=NOT_EXPORTED_FIELDS)
         missing.update(
