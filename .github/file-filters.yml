@@ -141,6 +141,9 @@ grafana_mcp_service_account_all:
   - "development/grafana-mcp/**"
   - "development/docker-compose-observability.yml"
   - "backend/tests/observability/**"
+  - "backend/tests/helpers/**"
+  - *ci_config
+  - *infrahub_uv_files
 
 e2e_all:
   - *backend_files

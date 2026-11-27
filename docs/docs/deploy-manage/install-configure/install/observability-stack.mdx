@@ -433,7 +433,7 @@ kubectl rollout restart deployment/<release>-grafana-mcp -n infrahub
 </TabItem>
 </Tabs>
 
-Then send the new token to each person who connects. The token of the Grafana service account is separate: the service account step replaces it on its own when Grafana refuses it.
+Then send the new token to each person who connects. The token of the Grafana service account is separate. When Grafana refuses it, the calls of the server to Grafana fail with HTTP 401 until the service account step runs again and replaces the token: at the next start of the stack in Docker Compose, or at the next `helm install` or `helm upgrade` in Kubernetes.
 
 ### When the server does not start
 

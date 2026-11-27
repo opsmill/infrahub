@@ -303,8 +303,8 @@ jobs:
             exit 1
           fi
 
-  # Starts two Grafana containers, so it runs only when the script, the Grafana version of the
-  # Compose stack or the test changes.
+  # Starts two Grafana containers, so it runs only when the files listed in
+  # grafana_mcp_service_account_all of file-filters.yml change.
   backend-tests-grafana-mcp:
     if: |
       needs.files-changed.outputs.grafana_mcp_service_account == 'true'
