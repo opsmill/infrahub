@@ -209,7 +209,7 @@ A `TLS` failure reaches this layer wrapped by httpx as a generic transport error
 
 ## Delivery operability
 
-A delivery run exposes recovery actions through the GraphQL `Task` type. `TaskActionGenerator` derives the actions from the run's workflow name and current state. The task types that expose actions are listed in [Recovery actions](async-tasks.md#recovery-actions).
+A delivery run exposes recovery actions through the GraphQL `Task` type. `TaskActionGenerator` derives the actions from the run's workflow name and current state. The task types that expose actions are listed in [Task Recovery Actions](task-recovery-actions.md).
 
 | Action | Available when | Effect |
 |--------|----------------|--------|

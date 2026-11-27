@@ -103,10 +103,20 @@ class ArtifactChecks:
     """Reports on the artifact `PASSED_ARTIFACT_ID` and is named `configuration: device-passed`."""
 
     passed_definition_id: str
-    """Its validator completed with a success and its only check passed."""
+    passed_validator_id: str
+    """The validator of `passed_definition_id`, which completed with a success."""
 
-    checkless_definition_id: str
-    """Its validator completed with a failure and has no check."""
+    leftover_failed_check_id: str
+    """A failed check that the validator of `passed_definition_id` still has."""
+
+    resolved_definition_id: str
+    """Its validator completed with a failure and its only check passed."""
+
+    running_definition_id: str
+    running_validator_id: str
+    """The validator of `running_definition_id`, which is in progress."""
+
+    running_failed_check_id: str
 
     closed_proposed_change_id: str
     closed_validator_id: str
@@ -263,7 +273,9 @@ REFUSAL_CASES: list[RefusalCase] = [
         build_parameters=lambda checks: target_parameters(
             checks=checks, validator_id=str(uuid4()), check_id=checks.failed_check_id, target_name="device-failed"
         ),
-        expected_error="The artifact validator of this task no longer exists.",
+        expected_error=(
+            "The artifact validator of this task was not found. Run the artifact checks of the proposed change again."
+        ),
     ),
     RefusalCase(
         name="target_check_named_by_the_run_no_longer_exists",
@@ -275,7 +287,9 @@ REFUSAL_CASES: list[RefusalCase] = [
             artifact_id=FAILED_ARTIFACT_ID,
             target_name="device-failed",
         ),
-        expected_error="The artifact check of this task no longer exists.",
+        expected_error=(
+            "The artifact check of this task was not found. Run the artifact checks of the proposed change again."
+        ),
     ),
     RefusalCase(
         name="target_check_named_by_the_run_belongs_to_another_validator",
@@ -286,7 +300,9 @@ REFUSAL_CASES: list[RefusalCase] = [
             check_id=checks.closed_failed_check_id,
             target_name="device-failed",
         ),
-        expected_error="The artifact check of this task no longer exists.",
+        expected_error=(
+            "The artifact check of this task was not found. Run the artifact checks of the proposed change again."
+        ),
     ),
     RefusalCase(
         name="target_no_check_of_the_same_artifact_or_name",
@@ -294,7 +310,35 @@ REFUSAL_CASES: list[RefusalCase] = [
         build_parameters=lambda checks: target_parameters(
             checks=checks, validator_id=checks.validator_id, artifact_id=str(uuid4()), target_name="device-removed"
         ),
-        expected_error="The artifact check of this task no longer exists.",
+        expected_error=(
+            "The artifact check of this task was not found. Run the artifact checks of the proposed change again."
+        ),
+    ),
+    RefusalCase(
+        name="target_checks_of_the_validator_not_complete",
+        task=ArtifactTask.TARGET,
+        build_parameters=lambda checks: target_parameters(
+            checks=checks,
+            validator_id=checks.running_validator_id,
+            check_id=checks.running_failed_check_id,
+            target_name="device-failed",
+        ),
+        expected_error=(
+            "The artifact checks of this task's validator are not complete (state: in_progress). "
+            "If they are still running, retry after they finish. "
+            "Otherwise, run the artifact checks of the proposed change again."
+        ),
+    ),
+    RefusalCase(
+        name="target_check_failed_but_the_validator_passed",
+        task=ArtifactTask.TARGET,
+        build_parameters=lambda checks: target_parameters(
+            checks=checks,
+            validator_id=checks.passed_validator_id,
+            check_id=checks.leftover_failed_check_id,
+            target_name="device-leftover",
+        ),
+        expected_error="The artifact checks of this task's validator passed, so there is nothing to retry.",
     ),
     RefusalCase(
         name="target_proposed_change_closed",
@@ -311,7 +355,10 @@ REFUSAL_CASES: list[RefusalCase] = [
         name="target_parameters_name_no_validator",
         task=ArtifactTask.TARGET,
         build_parameters=lambda checks: {"model": {"target_name": "device-failed"}},  # noqa: ARG005
-        expected_error="The parameters stored for this task do not identify its artifact validator.",
+        expected_error=(
+            "The parameters stored for this task do not identify its artifact validator. "
+            "Run the artifact checks of the proposed change again."
+        ),
     ),
     RefusalCase(
         name="definition_task_still_running",
@@ -328,7 +375,9 @@ REFUSAL_CASES: list[RefusalCase] = [
         build_parameters=lambda checks: definition_parameters(
             checks=checks, proposed_change_id=checks.proposed_change_id, definition_id=str(uuid4())
         ),
-        expected_error="The artifact validator of this task no longer exists.",
+        expected_error=(
+            "The artifact validator of this task was not found. Run the artifact checks of the proposed change again."
+        ),
     ),
     RefusalCase(
         name="definition_proposed_change_no_longer_exists",
@@ -336,7 +385,21 @@ REFUSAL_CASES: list[RefusalCase] = [
         build_parameters=lambda checks: definition_parameters(
             checks=checks, proposed_change_id=str(uuid4()), definition_id=checks.definition_id
         ),
-        expected_error="The artifact validator of this task no longer exists.",
+        expected_error=(
+            "The artifact validator of this task was not found. Run the artifact checks of the proposed change again."
+        ),
+    ),
+    RefusalCase(
+        name="definition_checks_of_the_validator_not_complete",
+        task=ArtifactTask.DEFINITION,
+        build_parameters=lambda checks: definition_parameters(
+            checks=checks, proposed_change_id=checks.proposed_change_id, definition_id=checks.running_definition_id
+        ),
+        expected_error=(
+            "The artifact checks of this task's validator are not complete (state: in_progress). "
+            "If they are still running, retry after they finish. "
+            "Otherwise, run the artifact checks of the proposed change again."
+        ),
     ),
     RefusalCase(
         name="definition_checks_passed",
@@ -350,7 +413,7 @@ REFUSAL_CASES: list[RefusalCase] = [
         name="definition_validator_has_no_failed_or_unfinished_check",
         task=ArtifactTask.DEFINITION,
         build_parameters=lambda checks: definition_parameters(
-            checks=checks, proposed_change_id=checks.proposed_change_id, definition_id=checks.checkless_definition_id
+            checks=checks, proposed_change_id=checks.proposed_change_id, definition_id=checks.resolved_definition_id
         ),
         expected_error=(
             "No failed or unfinished artifact check was found for this task's validator. "
@@ -456,13 +519,18 @@ class TestTaskRetry:
             await definition.save(db=db)
             return definition
 
-        async def create_validator(proposed_change: Node, definition: Node, conclusion: ValidatorConclusion) -> Node:
+        async def create_validator(
+            proposed_change: Node,
+            definition: Node,
+            conclusion: ValidatorConclusion,
+            state: ValidatorState = ValidatorState.COMPLETED,
+        ) -> Node:
             validator = await Node.init(db=db, schema=InfrahubKind.ARTIFACTVALIDATOR)
             await validator.new(
                 db=db,
                 proposed_change=proposed_change,
                 definition=definition,
-                state=ValidatorState.COMPLETED.value,
+                state=state.value,
                 conclusion=conclusion.value,
             )
             await validator.save(db=db)
@@ -512,10 +580,27 @@ class TestTaskRetry:
         await create_check(
             validator=passed_validator, target_name="device-passed", conclusion=ValidatorConclusion.SUCCESS
         )
+        leftover_failed_check = await create_check(
+            validator=passed_validator, target_name="device-leftover", conclusion=ValidatorConclusion.FAILURE
+        )
 
-        checkless_definition = await create_definition(name="checkless-definition")
-        await create_validator(
-            proposed_change=proposed_change, definition=checkless_definition, conclusion=ValidatorConclusion.FAILURE
+        resolved_definition = await create_definition(name="resolved-definition")
+        resolved_validator = await create_validator(
+            proposed_change=proposed_change, definition=resolved_definition, conclusion=ValidatorConclusion.FAILURE
+        )
+        await create_check(
+            validator=resolved_validator, target_name="device-passed", conclusion=ValidatorConclusion.SUCCESS
+        )
+
+        running_definition = await create_definition(name="running-definition")
+        running_validator = await create_validator(
+            proposed_change=proposed_change,
+            definition=running_definition,
+            conclusion=ValidatorConclusion.UNKNOWN,
+            state=ValidatorState.IN_PROGRESS,
+        )
+        running_failed_check = await create_check(
+            validator=running_validator, target_name="device-failed", conclusion=ValidatorConclusion.FAILURE
         )
 
         closed_proposed_change = await create_proposed_change(
@@ -538,7 +623,12 @@ class TestTaskRetry:
             unfinished_check_id=unfinished_check.id,
             passed_check_id=passed_check.id,
             passed_definition_id=passed_definition.id,
-            checkless_definition_id=checkless_definition.id,
+            passed_validator_id=passed_validator.id,
+            leftover_failed_check_id=leftover_failed_check.id,
+            resolved_definition_id=resolved_definition.id,
+            running_definition_id=running_definition.id,
+            running_validator_id=running_validator.id,
+            running_failed_check_id=running_failed_check.id,
             closed_proposed_change_id=closed_proposed_change.id,
             closed_validator_id=closed_validator.id,
             closed_failed_check_id=closed_failed_check.id,
@@ -578,11 +668,10 @@ class TestTaskRetry:
             query=mutation, db=db, variables={"id": task_id}, service=service, account_session=account_session
         )
 
-    def assert_retried(self, result: ExecutionResult) -> None:
+    def assert_checks_requested(self, result: ExecutionResult) -> None:
+        """The task history lists no run for the request, so the retry of an artifact check task returns none."""
         assert result.errors is None
-        assert result.data
-        assert result.data["InfrahubTaskRetry"]["ok"] is True
-        assert UUID(result.data["InfrahubTaskRetry"]["task"]["id"])
+        assert result.data == {"InfrahubTaskRetry": {"ok": True, "task": None}}
 
     def expected_pipeline_request(
         self,
@@ -618,7 +707,7 @@ class TestTaskRetry:
 
         result = await self.run_mutation(db=db, recorder=recorder, account_session=requester, task_id=str(run.id))
 
-        self.assert_retried(result=result)
+        self.assert_checks_requested(result=result)
         assert len(recorder.submit_calls) == 1
         submitted = recorder.submit_calls[0]["parameters"]["model"]
         assert recorder.submit_calls == [
@@ -654,7 +743,7 @@ class TestTaskRetry:
 
         result = await self.run_mutation(db=db, recorder=recorder, account_session=requester, task_id=str(run.id))
 
-        self.assert_retried(result=result)
+        self.assert_checks_requested(result=result)
         assert len(recorder.submit_calls) == 1
         submitted = recorder.submit_calls[0]["parameters"]["model"]
         assert recorder.submit_calls == [
@@ -739,7 +828,10 @@ class TestTaskRetry:
             db=db, recorder=recorder, account_session=webhook_operator, task_id=str(run.id)
         )
 
-        self.assert_retried(result=result)
+        assert result.errors is None
+        assert result.data
+        assert result.data["InfrahubTaskRetry"]["ok"] is True
+        assert UUID(result.data["InfrahubTaskRetry"]["task"]["id"])
         assert recorder.calls == [
             {
                 "kind": "submit",

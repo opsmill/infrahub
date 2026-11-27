@@ -397,31 +397,9 @@ The same holds for a single side effect inline in a request handler — a teleme
 
 A Prefect task retry re-runs the failed task and by default waits no time between attempts. When a batch of concurrent tasks contend for the same nodes, each deadlocking task retries at the same moment and deadlocks again. Transient database errors therefore belong to the transaction-layer retry (`retry_db_transaction`), which reopens a fresh transaction after an exponential backoff with jitter so contending writers separate; the task-level retry remains the outer fallback. A transaction-owning write path invoked from a task must carry `retry_db_transaction` and let retriable errors reach that owner. See [Database Schema — Transaction Retry](database-schema.md#transaction-retry).
 
-## Recovery actions
-
-A task run can expose recovery actions through the GraphQL `Task` type's `available_actions` field. `TaskActionGenerator` derives the action set from the run's workflow name and current state, with one rule per task type, and `InfrahubTaskRetry` and `InfrahubTaskCancel` carry the actions out.
-
-| Task type | Workflows | Retry | Cancel |
-|-----------|-----------|-------|--------|
-| Webhook delivery | `WEBHOOK_SEND` | Once the delivery has settled, or is being cancelled | While the delivery is in flight |
-| Artifact check | `GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE`, `REQUEST_ARTIFACT_DEFINITION_CHECK` | Once the run has finished | Not offered |
-
-Any other task type exposes no action. See [Webhooks](webhooks.md) for the delivery-specific behavior.
-
-`InfrahubTaskRetry` checks that retry applies to the run, then hands the run to the first `TaskRetryHandler` whose `supports()` accepts it (`graphql/mutations/task.py::TaskRetryDispatcher`). The handler owns the authorization and the resubmission of its task type. To make a task type retryable, add its availability rule to `TaskActionGenerator` and its handler to `build_task_retry_dispatcher`.
-
-### Artifact check retry
-
-Do not retry an artifact check task by replaying the parameters stored with its run. They hold the repository commit of the earlier run, a run of one target does not update the conclusion of the validator, and a replay skips the lock of the artifact definition and the check that the proposed change is open. The handler submits the request that `CoreProposedChangeRunCheck` submits for a failed-only retry. Both build it with `proposed_change/check_run.py::CheckRunRequestBuilder`, which validates the selection of checks, the state of the proposed change, and that the validator and the checks belong to it. The retry requires the permissions that `CoreProposedChangeRunCheck` requires.
-
-- A `git-repository-check-artifact-create` task retries the check of its target. That is the check the run names in `check_id`. When the run names none, it is the validator's check of the same artifact, else the validator's checks named like the target.
-- An `artifacts-generation-validation` task retries every failed or unfinished check of the validator of its artifact definition.
-
-Retry is offered on every finished artifact check task, not only on a failed one. The task history reads the result of a task from the state of its run, and the flow that checks a target records a failed render in the check and ends in a completed state. The mutation therefore reads the check and its validator, and returns an error without submitting anything when the check passed, when the validator or the check no longer exists, and when the proposed change is no longer open.
-
 ## Task typing (polymorphic)
 
-A task result is polymorphic by the run's workflow name, mirroring the events type hierarchy. `TaskNodeInterface` carries every field common to all tasks, including `available_actions` and the classified `error`, and each concrete type declares `interfaces = (TaskNodeInterface,)`. `TaskNodeInterface.resolve_type` returns `TASK_TYPES.get(instance["workflow"], TaskNode)`, so the discriminant is the run's workflow name (already serialized as the `workflow` field). `TASK_TYPES` maps a catalogue workflow name to its concrete type (`{WEBHOOK_SEND.name: WebhookDeliveryTask}`); anything unmapped resolves to `TaskNode`. A task type needs an entry only when it adds fields of its own: an artifact check task exposes recovery actions and resolves to `TaskNode`. Concrete types are registered in the GraphQL manager, mirroring `_load_event_types`.
+A task result is polymorphic by the run's workflow name, mirroring the events type hierarchy. `TaskNodeInterface` carries every field common to all tasks, including `available_actions` and the classified `error`, and each concrete type declares `interfaces = (TaskNodeInterface,)`. `TaskNodeInterface.resolve_type` returns `TASK_TYPES.get(instance["workflow"], TaskNode)`, so the discriminant is the run's workflow name (already serialized as the `workflow` field). `TASK_TYPES` maps a catalogue workflow name to its concrete type (`{WEBHOOK_SEND.name: WebhookDeliveryTask}`); anything unmapped resolves to `TaskNode`. A task type needs an entry only when it adds fields of its own: an artifact check task exposes recovery actions and resolves to `TaskNode`. Concrete types are registered in the GraphQL manager, mirroring `_load_event_types`. The recovery actions themselves are described in [Task Recovery Actions](task-recovery-actions.md).
 
 Because the discriminant is intrinsic to every run, historical runs type correctly with no backfill and no stored `task_type` field. A concrete type adds only its own fields (`WebhookDeliveryTask` adds `http_request` / `http_response`; see [Webhooks](webhooks.md)); shared capabilities stay on the interface.
 

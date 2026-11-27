@@ -17,6 +17,8 @@ if TYPE_CHECKING:
     from infrahub.core.manager import NodeManager
     from infrahub.database import InfrahubDatabase
 
+RUN_CHECKS_AGAIN = "Run the artifact checks of the proposed change again."
+
 
 class ArtifactTargetRun(pydantic.BaseModel):
     """The parameters of a run that checks one artifact target, as far as they identify its validator and check."""
@@ -59,8 +61,8 @@ class ArtifactTaskRetryResolver(ABC):
             parameters: The parameters stored with the task's run.
 
         Raises:
-            ValidationError: When the validator or the check of the task no longer exists, or has nothing left to
-                retry.
+            ValidationError: When the validator or the check of the task is not found, when the checks of the
+                validator are not complete, or when nothing is left to retry.
 
         """
 
@@ -69,8 +71,19 @@ class ArtifactTaskRetryResolver(ABC):
             return run_type.model_validate(parameters.get("model"))
         except pydantic.ValidationError:
             raise ValidationError(
-                "The parameters stored for this task do not identify its artifact validator."
+                f"The parameters stored for this task do not identify its artifact validator. {RUN_CHECKS_AGAIN}"
             ) from None
+
+    def _require_failed_validator(self, validator: CoreArtifactValidator) -> None:
+        state = validator.state.value.value
+        if state != ValidatorState.COMPLETED.value:
+            raise ValidationError(
+                f"The artifact checks of this task's validator are not complete (state: {state}). "
+                "If they are still running, retry after they finish. "
+                "Otherwise, run the artifact checks of the proposed change again."
+            )
+        if validator.conclusion.value.value == ValidatorConclusion.SUCCESS.value:
+            raise ValidationError("The artifact checks of this task's validator passed, so there is nothing to retry.")
 
 
 class ArtifactTargetTaskRetryResolver(ArtifactTaskRetryResolver):
@@ -90,22 +103,23 @@ class ArtifactTargetTaskRetryResolver(ArtifactTaskRetryResolver):
             db=self.db, schema=CoreArtifactValidator, filters={"ids": [run.validator_id]}
         )
         if not validators:
-            raise ValidationError("The artifact validator of this task no longer exists.")
+            raise ValidationError(f"The artifact validator of this task was not found. {RUN_CHECKS_AGAIN}")
         validator = validators[0]
 
         checks = await self._find_checks(validator_id=validator.id, run=run)
         if not checks:
-            raise ValidationError("The artifact check of this task no longer exists.")
+            raise ValidationError(f"The artifact check of this task was not found. {RUN_CHECKS_AGAIN}")
         unresolved_check_ids = [
             check.id for check in checks if check.conclusion.value.value in UNRESOLVED_CHECK_CONCLUSIONS
         ]
         if not unresolved_check_ids:
             check_name = artifact_check_name(artifact_name=run.artifact_name, target_name=run.target_name)
             raise ValidationError(f"The artifact check '{check_name}' passed, so there is nothing to retry.")
+        self._require_failed_validator(validator=validator)
 
         proposed_change = await validator.proposed_change.get_peer(db=self.db)
         if proposed_change is None:
-            raise ValidationError("The proposed change of this task no longer exists.")
+            raise ValidationError("The proposed change of this task was not found.")
         return CheckRunRequest(
             proposed_change=proposed_change.id,
             check_type=CheckType.ARTIFACT,
@@ -152,14 +166,10 @@ class ArtifactDefinitionTaskRetryResolver(ArtifactTaskRetryResolver):
             },
         )
         if not validators:
-            raise ValidationError("The artifact validator of this task no longer exists.")
+            raise ValidationError(f"The artifact validator of this task was not found. {RUN_CHECKS_AGAIN}")
         validator = validators[0]
+        self._require_failed_validator(validator=validator)
 
-        if (
-            validator.state.value.value == ValidatorState.COMPLETED.value
-            and validator.conclusion.value.value == ValidatorConclusion.SUCCESS.value
-        ):
-            raise ValidationError("The artifact checks of this task's validator passed, so there is nothing to retry.")
         unresolved_checks = await self.node_manager.count(
             db=self.db,
             schema=CoreArtifactCheck,
@@ -167,8 +177,7 @@ class ArtifactDefinitionTaskRetryResolver(ArtifactTaskRetryResolver):
         )
         if unresolved_checks == 0:
             raise ValidationError(
-                "No failed or unfinished artifact check was found for this task's validator. "
-                "Run the artifact checks of the proposed change again."
+                f"No failed or unfinished artifact check was found for this task's validator. {RUN_CHECKS_AGAIN}"
             )
         return CheckRunRequest(
             proposed_change=run.proposed_change,

@@ -156,8 +156,11 @@ class TaskRetryHandler(ABC):
     def supports(self, run: DeliveryRun) -> bool: ...
 
     @abstractmethod
-    async def retry(self, run: DeliveryRun) -> WorkflowInfo:
-        """Submit the retry of the run and return the run that was submitted.
+    async def retry(self, run: DeliveryRun) -> WorkflowInfo | None:
+        """Submit the retry of the run.
+
+        Returns:
+            The run that the task history lists for the retry, or None when it lists none.
 
         Raises:
             ValidationError: When the run has nothing left to retry, or what it ran can no longer run.
@@ -179,7 +182,7 @@ class DeliveryRetryHandler(TaskRetryHandler):
     def supports(self, run: DeliveryRun) -> bool:
         return run.workflow_name == WEBHOOK_SEND.name
 
-    async def retry(self, run: DeliveryRun) -> WorkflowInfo:
+    async def retry(self, run: DeliveryRun) -> WorkflowInfo | None:
         self.authorizer.authorize(delivery=run, action=TaskActionType.RETRY)
 
         webhook_id = run.parameters["webhook_id"]
@@ -201,7 +204,8 @@ class ArtifactCheckRetryHandler(TaskRetryHandler):
     """Retries what a finished artifact check task left failed or unfinished, as a new run of the checks.
 
     The retry never replays the parameters stored with the run: it requests the artifact checks of the proposed
-    change again, so it reads the current repository commit and updates the conclusion of the validator.
+    change again, so it reads the current repository commit and updates the conclusion of the validator. The
+    task history does not list the run that takes the request, so the retry returns no run.
     """
 
     def __init__(
@@ -219,14 +223,15 @@ class ArtifactCheckRetryHandler(TaskRetryHandler):
     def supports(self, run: DeliveryRun) -> bool:
         return run.workflow_name == self.resolver.workflow_name
 
-    async def retry(self, run: DeliveryRun) -> WorkflowInfo:
+    async def retry(self, run: DeliveryRun) -> WorkflowInfo | None:
         request = await self.resolver.resolve(parameters=run.parameters)
         pipeline_request = await self.request_builder.build(request=request)
-        return await self.workflow.submit_workflow(
+        await self.workflow.submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_PIPELINE,
             parameters={"model": pipeline_request},
             context=self.context,
         )
+        return None
 
 
 class TaskRetryDispatcher:
@@ -236,8 +241,11 @@ class TaskRetryDispatcher:
         self.action_generator = action_generator
         self.handlers = handlers
 
-    async def retry(self, run: DeliveryRun) -> WorkflowInfo:
-        """Submit the retry of the run and return the run that was submitted.
+    async def retry(self, run: DeliveryRun) -> WorkflowInfo | None:
+        """Submit the retry of the run.
+
+        Returns:
+            The run that the task history lists for the retry, or None when it lists none.
 
         Raises:
             ValidationError: When retry does not apply to the type or the current state of the run, or the
@@ -300,7 +308,7 @@ class InfrahubTaskRetry(Mutation):
 
         dispatcher = build_task_retry_dispatcher(graphql_context=graphql_context, run=run)
         workflow = await dispatcher.retry(run=run)
-        return cls(ok=True, task={"id": workflow.id})
+        return cls(ok=True, task={"id": workflow.id} if workflow is not None else None)
 
 
 class InfrahubTaskCancel(Mutation):
