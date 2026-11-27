@@ -9,11 +9,13 @@ from prefect.client.orchestration import PrefectClient, get_client
 from prefect.flows import FlowRun
 from prefect.states import State
 
+from infrahub.artifacts.tasks import create as check_artifact_target
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.proposed_change.tasks import validate_artifacts_generation
 from infrahub.tasks.dummy import dummy_flow, dummy_flow_broken
 from infrahub.webhook.tasks.process import webhook_send
 from infrahub.workers.dependencies import clear_singletons
@@ -973,6 +975,50 @@ async def test_task_query_polymorphic_typing(
     # The classified error is a common field carried by every task, null when the task has none.
     assert dummy_node["error"] is None
     assert "http_request" not in dummy_node
+
+
+async def test_task_query_artifact_check_tasks_expose_retry_once_finished(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    prefect_client: PrefectClient,
+    delete_flow_runs: None,
+) -> None:
+    """A finished artifact check task offers retry whatever its result, and never cancel."""
+    for name, flow, state in (
+        ("artifact-target-completed", check_artifact_target, "COMPLETED"),
+        ("artifact-target-failed", check_artifact_target, "FAILED"),
+        ("artifact-target-running", check_artifact_target, "RUNNING"),
+        ("artifact-definition-completed", validate_artifacts_generation, "COMPLETED"),
+        ("artifact-definition-scheduled", validate_artifacts_generation, "SCHEDULED"),
+    ):
+        await prefect_client.create_flow_run(
+            flow=flow, name=name, parameters={"model": {}}, tags=[TAG_NAMESPACE], state=State(type=state)
+        )
+
+    result = await run_query(db=db, branch=default_branch, query=QUERY_TASK_TYPED, variables={})
+
+    assert result.errors is None
+    assert result.data
+    retry_available = [{"action": "RETRY", "available": True, "unavailability_reason": None}]
+    retry_blocked = [
+        {"action": "RETRY", "available": False, "unavailability_reason": "Artifact check still in progress"}
+    ]
+    assert len(result.data["InfrahubTask"]["edges"]) == 5
+    assert {
+        edge["node"]["title"]: (
+            edge["node"]["__typename"],
+            edge["node"]["workflow"],
+            edge["node"]["available_actions"],
+        )
+        for edge in result.data["InfrahubTask"]["edges"]
+    } == {
+        "artifact-target-completed": ("TaskNode", "git-repository-check-artifact-create", retry_available),
+        "artifact-target-failed": ("TaskNode", "git-repository-check-artifact-create", retry_available),
+        "artifact-target-running": ("TaskNode", "git-repository-check-artifact-create", retry_blocked),
+        "artifact-definition-completed": ("TaskNode", "artifacts-generation-validation", retry_available),
+        "artifact-definition-scheduled": ("TaskNode", "artifacts-generation-validation", retry_blocked),
+    }
 
 
 async def test_task_query_fragment_selecting_only_common_fields(

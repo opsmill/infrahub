@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
@@ -12,20 +13,30 @@ from prefect.client.schemas.objects import State, StateType
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.constants import PermissionAction, PermissionDecision
+from infrahub.core.manager import NodeManager
 from infrahub.exceptions import ValidationError
-from infrahub.graphql.queries.task_actions import TaskActionGenerator
+from infrahub.graphql.queries.task_actions import UNSUPPORTED_ACTION_REASON, TaskActionGenerator
 from infrahub.graphql.types.task import TaskActionType, TaskInfo
+from infrahub.proposed_change.artifact_task_retry import (
+    ArtifactDefinitionTaskRetryResolver,
+    ArtifactTargetTaskRetryResolver,
+)
+from infrahub.proposed_change.check_run import CheckRunRequestBuilder
 from infrahub.task_manager.flow_run.prefect_client import PrefectClientAdapter
 from infrahub.utils import extract_camelcase_words
-from infrahub.workflows.catalogue import WEBHOOK_SEND
+from infrahub.workflows.catalogue import REQUEST_PROPOSED_CHANGE_PIPELINE, WEBHOOK_SEND
 from infrahub.workflows.constants import WorkflowTag
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
+    from infrahub.context import InfrahubContext
     from infrahub.graphql.initialization import GraphqlContext
     from infrahub.permissions.manager import PermissionManager
+    from infrahub.proposed_change.artifact_task_retry import ArtifactTaskRetryResolver
+    from infrahub.services.adapters.workflow import InfrahubWorkflow
     from infrahub.task_manager.flow_run.prefect_client import ReaderPrefectClient
+    from infrahub.workflows.models import WorkflowInfo
 
 
 class TaskActionInput(InputObjectType):
@@ -100,11 +111,9 @@ class DeliveryActionAuthorizer:
             ValidationError: When the action does not apply to the delivery's current state.
 
         """
-        actions = self.action_generator.generate(delivery.workflow_name, delivery.state_type)
-        searched_action = next((entry for entry in actions if entry.action == action), None)
-        if searched_action is None or not searched_action.available:
-            reason = searched_action.unavailability_reason if searched_action else "it is not supported for this task"
-            raise ValidationError(input_value=f"{action.value.capitalize()} is unavailable: {reason}.")
+        self.action_generator.require_available(
+            workflow_name=delivery.workflow_name, state_type=delivery.state_type, action=action
+        )
 
         namespace, *name_parts = extract_camelcase_words(str(delivery.parameters["webhook_kind"]))
         on_default_branch = self.branch_name == self.default_branch_name
@@ -140,8 +149,141 @@ def build_delivery_action_authorizer(
     )
 
 
+class TaskRetryHandler(ABC):
+    """Authorizes and submits the retry of the task runs of one type."""
+
+    @abstractmethod
+    def supports(self, run: DeliveryRun) -> bool: ...
+
+    @abstractmethod
+    async def retry(self, run: DeliveryRun) -> WorkflowInfo:
+        """Submit the retry of the run and return the run that was submitted.
+
+        Raises:
+            ValidationError: When the run has nothing left to retry, or what it ran can no longer run.
+            PermissionDeniedError: When the account is not allowed to retry the run.
+
+        """
+
+
+class DeliveryRetryHandler(TaskRetryHandler):
+    """Replays a settled webhook delivery, with its frozen payload, as a new and independent delivery."""
+
+    def __init__(
+        self, authorizer: DeliveryActionAuthorizer, workflow: InfrahubWorkflow, context: InfrahubContext
+    ) -> None:
+        self.authorizer = authorizer
+        self.workflow = workflow
+        self.context = context
+
+    def supports(self, run: DeliveryRun) -> bool:
+        return run.workflow_name == WEBHOOK_SEND.name
+
+    async def retry(self, run: DeliveryRun) -> WorkflowInfo:
+        self.authorizer.authorize(delivery=run, action=TaskActionType.RETRY)
+
+        webhook_id = run.parameters["webhook_id"]
+        return await self.workflow.submit_workflow(
+            workflow=WEBHOOK_SEND,
+            context=self.context,
+            parameters={
+                "webhook_id": webhook_id,
+                "webhook_kind": run.parameters["webhook_kind"],
+                "webhook_name": run.parameters["webhook_name"],
+                "payload": run.parameters["payload"],
+                "branch_name": run.branch_name,
+            },
+            tags=[WorkflowTag.RELATED_NODE.render(identifier=webhook_id)],
+        )
+
+
+class ArtifactCheckRetryHandler(TaskRetryHandler):
+    """Retries what a finished artifact check task left failed or unfinished, as a new run of the checks.
+
+    The retry never replays the parameters stored with the run: it requests the artifact checks of the proposed
+    change again, so it reads the current repository commit and updates the conclusion of the validator.
+    """
+
+    def __init__(
+        self,
+        resolver: ArtifactTaskRetryResolver,
+        request_builder: CheckRunRequestBuilder,
+        workflow: InfrahubWorkflow,
+        context: InfrahubContext,
+    ) -> None:
+        self.resolver = resolver
+        self.request_builder = request_builder
+        self.workflow = workflow
+        self.context = context
+
+    def supports(self, run: DeliveryRun) -> bool:
+        return run.workflow_name == self.resolver.workflow_name
+
+    async def retry(self, run: DeliveryRun) -> WorkflowInfo:
+        request = await self.resolver.resolve(parameters=run.parameters)
+        pipeline_request = await self.request_builder.build(request=request)
+        return await self.workflow.submit_workflow(
+            workflow=REQUEST_PROPOSED_CHANGE_PIPELINE,
+            parameters={"model": pipeline_request},
+            context=self.context,
+        )
+
+
+class TaskRetryDispatcher:
+    """Retries a task run through the handler of its type."""
+
+    def __init__(self, action_generator: TaskActionGenerator, handlers: list[TaskRetryHandler]) -> None:
+        self.action_generator = action_generator
+        self.handlers = handlers
+
+    async def retry(self, run: DeliveryRun) -> WorkflowInfo:
+        """Submit the retry of the run and return the run that was submitted.
+
+        Raises:
+            ValidationError: When retry does not apply to the type or the current state of the run, or the
+                handler of its type refuses it.
+            PermissionDeniedError: When the account is not allowed to retry the run.
+
+        """
+        self.action_generator.require_available(
+            workflow_name=run.workflow_name, state_type=run.state_type, action=TaskActionType.RETRY
+        )
+        for handler in self.handlers:
+            if handler.supports(run=run):
+                return await handler.retry(run=run)
+        raise ValidationError(input_value=f"Retry is unavailable: {UNSUPPORTED_ACTION_REASON}.")
+
+
+def build_task_retry_dispatcher(graphql_context: GraphqlContext, run: DeliveryRun) -> TaskRetryDispatcher:
+    workflow = graphql_context.active_service.workflow
+    context = graphql_context.get_context()
+    request_builder = CheckRunRequestBuilder(db=graphql_context.db, node_manager=NodeManager)
+    return TaskRetryDispatcher(
+        action_generator=TaskActionGenerator(),
+        handlers=[
+            DeliveryRetryHandler(
+                authorizer=build_delivery_action_authorizer(graphql_context=graphql_context, delivery=run),
+                workflow=workflow,
+                context=context,
+            ),
+            ArtifactCheckRetryHandler(
+                resolver=ArtifactTargetTaskRetryResolver(db=graphql_context.db, node_manager=NodeManager),
+                request_builder=request_builder,
+                workflow=workflow,
+                context=context,
+            ),
+            ArtifactCheckRetryHandler(
+                resolver=ArtifactDefinitionTaskRetryResolver(db=graphql_context.db, node_manager=NodeManager),
+                request_builder=request_builder,
+                workflow=workflow,
+                context=context,
+            ),
+        ],
+    )
+
+
 class InfrahubTaskRetry(Mutation):
-    """Retry a settled delivery by replaying its frozen payload as a new, independent delivery."""
+    """Retry a settled webhook delivery, or the failed and unfinished checks of a finished artifact check task."""
 
     class Arguments:
         data = TaskActionInput(required=True)
@@ -154,23 +296,10 @@ class InfrahubTaskRetry(Mutation):
         graphql_context: GraphqlContext = info.context
 
         async with get_client(sync_client=False) as client:
-            delivery = await DeliveryReader(PrefectClientAdapter(client)).read(str(data.id))
+            run = await DeliveryReader(PrefectClientAdapter(client)).read(str(data.id))
 
-        build_delivery_action_authorizer(graphql_context, delivery).authorize(delivery, TaskActionType.RETRY)
-
-        webhook_id = delivery.parameters["webhook_id"]
-        workflow = await graphql_context.active_service.workflow.submit_workflow(
-            workflow=WEBHOOK_SEND,
-            context=graphql_context.get_context(),
-            parameters={
-                "webhook_id": webhook_id,
-                "webhook_kind": delivery.parameters["webhook_kind"],
-                "webhook_name": delivery.parameters["webhook_name"],
-                "payload": delivery.parameters["payload"],
-                "branch_name": delivery.branch_name,
-            },
-            tags=[WorkflowTag.RELATED_NODE.render(identifier=webhook_id)],
-        )
+        dispatcher = build_task_retry_dispatcher(graphql_context=graphql_context, run=run)
+        workflow = await dispatcher.retry(run=run)
         return cls(ok=True, task={"id": workflow.id})
 
 

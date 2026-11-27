@@ -9490,7 +9490,7 @@ type InfrahubTaskCancel {
 }
 
 """
-Retry a settled delivery by replaying its frozen payload as a new, independent delivery.
+Retry a settled webhook delivery, or the failed and unfinished checks of a finished artifact check task.
 """
 type InfrahubTaskRetry {
   ok: Boolean
@@ -10465,7 +10465,7 @@ type Mutation {
   """
   InfrahubTaskCancel(data: TaskActionInput!): InfrahubTaskCancel
   """
-  Retry a settled delivery by replaying its frozen payload as a new, independent delivery.
+  Retry a settled webhook delivery, or the failed and unfinished checks of a finished artifact check task.
   """
   InfrahubTaskRetry(data: TaskActionInput!): InfrahubTaskRetry
   InfrahubUpdateComputedAttribute(context: ContextInput, data: InfrahubComputedAttributeUpdateInput!): UpdateComputedAttribute

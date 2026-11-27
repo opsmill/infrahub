@@ -18849,7 +18849,7 @@ export type InfrahubTaskCancel = {
   task: Maybe<TaskInfo>;
 };
 
-/** Retry a settled delivery by replaying its frozen payload as a new, independent delivery. */
+/** Retry a settled webhook delivery, or the failed and unfinished checks of a finished artifact check task. */
 export type InfrahubTaskRetry = {
   __typename: 'InfrahubTaskRetry';
   ok: Maybe<Scalars['Boolean']['output']>;
@@ -20512,7 +20512,7 @@ export type Mutation = {
   InfrahubSetPreferences: Maybe<InfrahubSetPreferences>;
   /** Cancel an in-flight delivery, stopping any remaining retries without recalling a sent request. */
   InfrahubTaskCancel: Maybe<InfrahubTaskCancel>;
-  /** Retry a settled delivery by replaying its frozen payload as a new, independent delivery. */
+  /** Retry a settled webhook delivery, or the failed and unfinished checks of a finished artifact check task. */
   InfrahubTaskRetry: Maybe<InfrahubTaskRetry>;
   InfrahubUpdateComputedAttribute: Maybe<UpdateComputedAttribute>;
   InfrahubUpdateDisplayLabel: Maybe<UpdateDisplayLabel>;
