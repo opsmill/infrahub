@@ -247,11 +247,12 @@ def validate_component_shards(context: Context) -> None:
     )
 
 
-@task
-def test_unit(context: Context) -> Result | None:
+@task(help={"coverage": "Measure code coverage; pass --no-coverage for a faster run that reports none."})
+def test_unit(context: Context, coverage: bool = True) -> Result | None:
     """Run backend unit tests."""
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"uv run pytest --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
+        coverage_option = " --cov=infrahub" if coverage else ""
+        exec_cmd = f"uv run pytest{coverage_option} {MAIN_DIRECTORY}/tests/unit"
         print(f"{exec_cmd}")
         return execute_command(context=context, command=f"{exec_cmd}")
 
