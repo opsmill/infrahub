@@ -1,0 +1,1 @@
+Fixed unreadable text on the "+ Add new" and "+ Add option" buttons in relationship, dropdown and enum fields, and low-contrast text on several other buttons and links in light or dark mode, including warning, danger and merge buttons, the "Load more" items in relationship and permission pickers and the current page number in pagination.

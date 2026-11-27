@@ -138,7 +138,7 @@ export const RelationshipInput = ({
             <div className="pt-2">
               <Button
                 variant={"ghost"}
-                className="w-full border-custom-blue-500/10 font-normal text-custom-blue-700 not-data-disabled:data-hovered:bg-custom-blue-500/10"
+                className="w-full border-accent/10 font-normal text-accent not-data-disabled:data-hovered:bg-accent/5"
                 onPress={() => fetchNextPage()}
                 isDisabled={isFetchingNextPage}
               >

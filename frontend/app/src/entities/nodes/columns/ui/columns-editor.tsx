@@ -135,8 +135,8 @@ export function ColumnsEditor({ schema, surface }: ColumnsEditorProps) {
       </Autocomplete>
 
       {hasColumnParamsInUrl && (
-        <Row className="border-stone-300 border-t p-1">
-          <Button variant="ghost" size="xxs" className="text-stone-500" onPress={reset}>
+        <Row className="border-border border-t p-1">
+          <Button variant="ghost" size="xxs" className="text-subtle" onPress={reset}>
             <RotateCcwIcon />
             Reset columns
           </Button>

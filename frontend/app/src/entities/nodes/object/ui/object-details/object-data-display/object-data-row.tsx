@@ -37,7 +37,7 @@ export function ObjectDataRow({ value, className, objectKind, fieldSchema }: Obj
         {schema ? (
           <DialogTrigger>
             <Tooltip message={fieldName} {...tooltipProps}>
-              <Button className="group flex min-w-0 cursor-pointer items-center gap-1.5 data-hovered:text-custom-blue-700">
+              <Button className="group flex min-w-0 cursor-pointer items-center gap-1.5 data-hovered:text-accent">
                 <FieldSchemaIcon fieldSchema={fieldSchema} />
                 <span ref={labelRef} className="truncate">
                   {fieldName}
