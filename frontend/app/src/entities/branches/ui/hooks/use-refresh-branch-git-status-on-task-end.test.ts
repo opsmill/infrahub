@@ -7,6 +7,7 @@ import { queryClient } from "@/shared/api/rest/client";
 
 import { branchGitStatusQueryKeys } from "@/entities/branch-git-status/ui/queries/branch-git-status.query-keys";
 import { useRefreshBranchGitStatusOnTaskEnd } from "@/entities/branches/ui/hooks/use-refresh-branch-git-status-on-task-end";
+import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 import { isTaskFinished } from "@/entities/tasks/domain/use-cases/is-task-finished";
 
 vi.mock("@/entities/tasks/domain/use-cases/is-task-finished");
@@ -14,10 +15,12 @@ vi.mock("@/entities/tasks/domain/use-cases/is-task-finished");
 const wrapper = ({ children }: { children: React.ReactNode }) =>
   React.createElement(QueryClientProvider, { client: queryClient }, children);
 
-const gitStatusInvalidations = () =>
+const invalidationsOf = (queryKey: readonly unknown[]) =>
   vi
     .mocked(queryClient.invalidateQueries)
-    .mock.calls.filter(([filters]) => filters?.queryKey === branchGitStatusQueryKeys.all).length;
+    .mock.calls.filter(([filters]) => filters?.queryKey === queryKey).length;
+
+const gitStatusInvalidations = () => invalidationsOf(branchGitStatusQueryKeys.all);
 
 afterEach(() => {
   vi.useRealTimers();
@@ -61,5 +64,17 @@ describe("useRefreshBranchGitStatusOnTaskEnd", () => {
     // THEN the task is not checked again and the Git status is not refreshed again
     expect(isTaskFinished).toHaveBeenCalledTimes(2);
     expect(gitStatusInvalidations()).toBe(1);
+  });
+
+  test("refreshes the branch list once when the task ends, so a branch deleted by its merge drops out", async () => {
+    // GIVEN
+    vi.mocked(isTaskFinished).mockResolvedValue(true);
+    vi.spyOn(queryClient, "invalidateQueries");
+
+    // WHEN
+    await renderHook(() => useRefreshBranchGitStatusOnTaskEnd("task-1"), { wrapper });
+
+    // THEN
+    await expect.poll(() => invalidationsOf(branchesQueryKeys.all)).toBe(1);
   });
 });

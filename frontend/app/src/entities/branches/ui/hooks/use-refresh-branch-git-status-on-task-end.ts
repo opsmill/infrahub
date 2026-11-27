@@ -3,9 +3,10 @@ import React from "react";
 import { useLocation, useNavigate } from "react-router";
 
 import { branchGitStatusQueryKeys } from "@/entities/branch-git-status/ui/queries/branch-git-status.query-keys";
+import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 import { isTaskFinishedQueryOptions } from "@/entities/tasks/ui/queries/is-task-finished.query";
 
-// invalidation-at-callsite: the end of a background task, not a mutation, makes the Git status stale.
+// invalidation-at-callsite: the end of a background task, not a mutation, makes the Git status and the branch list stale (a merge can delete its branch).
 export function useRefreshBranchGitStatusOnTaskEnd(taskId: string | null) {
   const queryClient = useQueryClient();
   const { data: isFinished } = useQuery(isTaskFinishedQueryOptions({ taskId }));
@@ -13,6 +14,7 @@ export function useRefreshBranchGitStatusOnTaskEnd(taskId: string | null) {
   React.useEffect(() => {
     if (!isFinished) return;
     queryClient.invalidateQueries({ queryKey: branchGitStatusQueryKeys.all });
+    queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all });
   }, [isFinished, queryClient]);
 }
 
