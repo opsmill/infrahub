@@ -4,7 +4,7 @@ title: Remove extensions of built-in kinds
 
 # How to remove extensions of built-in kinds
 
-Infrahub rejects a schema file whose `extensions` section targets a kind in a restricted namespace, such as `Core`, `Builtin`, `Profile` or `Template`. Earlier versions accepted these extensions, so a schema could add attributes and relationships to built-in kinds such as `BuiltinTag`, `CoreNumberPool` or `CorePrefixPool`, or remove existing ones. Removing the `password` attribute from `CoreAccount` this way made login fail.
+Infrahub rejects a schema file whose `extensions` section targets a kind in a restricted namespace, such as `Core`, `Builtin`, `Profile` or `Template`. Earlier versions accepted these extensions, so a schema could add attributes and relationships to built-in kinds such as `BuiltinTag`, `CoreNumberPool` or `CoreIPPrefixPool`, or remove existing ones. Removing the `password` attribute from `CoreAccount` this way made login fail.
 
 This guide applies to you when a schema file you load, with `infrahubctl schema load` or from a Git repository, extends a built-in kind. After the upgrade, loading that file fails with an error such as:
 
