@@ -1,0 +1,26 @@
+---
+title: Release 1.10.12
+release_date: 2026-11-27
+release_type: security
+description: "Security release that closes a GraphQL permission bypass (GHSA-299f-9wgh-7jhv)."
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.10.12</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>November 27th, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.10.12](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.10.12)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Security
+
+- The GraphQL API now classifies an operation written inside a top-level inline fragment or fragment spread as the operation it is, so its permission checks run before it executes. A caller can no longer bypass authentication or object permissions by wrapping a mutation in `... on Mutation { ... }` alongside a harmless authorized operation (GHSA-299f-9wgh-7jhv).
