@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -11,6 +12,7 @@ from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.anonymous_checker import AnonymousGraphQLPermissionChecker
 from infrahub.graphql.initialization import GraphqlParams
 from infrahub.graphql.schema import QUERIES_REQUIRING_AUTHENTICATION
+from tests.component.graphql.hidden_mutation_cases import HIDDEN_MUTATION_CASES, HiddenMutationCase
 
 
 class TestAnonymousAuthChecker:
@@ -82,3 +84,54 @@ class TestAnonymousAuthChecker:
             query_parameters=self.query_parameters,
             branch=branch,
         )
+
+
+@pytest.fixture
+def anonymous_checker() -> AnonymousGraphQLPermissionChecker:
+    return AnonymousGraphQLPermissionChecker(
+        anonymous_access_allowed_func=lambda: True,
+        operations_requiring_authentication=QUERIES_REQUIRING_AUTHENTICATION,
+    )
+
+
+@pytest.mark.parametrize("case", HIDDEN_MUTATION_CASES, ids=lambda case: case.name)
+async def test_anonymous_checker_rejects_mutation_hidden_in_fragment(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    anonymous_checker: AnonymousGraphQLPermissionChecker,
+    build_analyzer: Callable[[str], InfrahubGraphQLQueryAnalyzer],
+    case: HiddenMutationCase,
+) -> None:
+    """An anonymous caller cannot slip a mutation past the checker by wrapping it in a fragment.
+
+    The checker is driven by a real analyzer here, so this exercises the whole analyzer-to-checker
+    seam rather than a mocked value.
+    """
+    account_session = AccountSession(account_id="anonymous", auth_type=AuthType.JWT, authenticated=False)
+
+    with pytest.raises(AuthorizationError, match=r"^Authentication is required to perform this operation$"):
+        await anonymous_checker.check(
+            db=db,
+            account_session=account_session,
+            analyzed_query=build_analyzer(case.query),
+            query_parameters=MagicMock(spec=GraphqlParams),
+            branch=default_branch,
+        )
+
+
+async def test_anonymous_checker_allows_genuine_read(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    anonymous_checker: AnonymousGraphQLPermissionChecker,
+    build_analyzer: Callable[[str], InfrahubGraphQLQueryAnalyzer],
+) -> None:
+    """A genuine anonymous read passes the checker, so the hidden-mutation rejection is specific to it."""
+    account_session = AccountSession(account_id="anonymous", auth_type=AuthType.JWT, authenticated=False)
+
+    await anonymous_checker.check(
+        db=db,
+        account_session=account_session,
+        analyzed_query=build_analyzer("query A { __typename }"),
+        query_parameters=MagicMock(spec=GraphqlParams),
+        branch=default_branch,
+    )

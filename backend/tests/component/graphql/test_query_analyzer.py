@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
 
@@ -12,6 +13,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.analyzer import GraphQLVariable, InfrahubGraphQLQueryAnalyzer, MutateAction
 from infrahub.graphql.initialization import prepare_graphql_params
+from tests.component.graphql.hidden_mutation_cases import HIDDEN_MUTATION_CASES, HiddenMutationCase
 from tests.helpers.schema.color import COLOR
 from tests.helpers.schema.tshirt import TSHIRT
 
@@ -1188,3 +1190,50 @@ async def test_query_report_single_target_complex_constraints(
     # Filtering by a required human-friendly id pins a single target
     assert analyze(hfid_pinned).query_report.only_has_unique_targets is True
     assert analyze(hfid_optional).query_report.only_has_unique_targets is False
+
+
+@pytest.mark.parametrize("case", HIDDEN_MUTATION_CASES, ids=lambda case: case.name)
+async def test_mutation_hidden_in_fragment_is_reported(
+    build_analyzer: Callable[[str], InfrahubGraphQLQueryAnalyzer], case: HiddenMutationCase
+) -> None:
+    """A mutation hidden in a top-level fragment is reported as a create of its kind, in single- and multi-operation documents."""
+    gqa = build_analyzer(case.query)
+
+    assert gqa.contains_mutation is True
+    assert "TestPersonCreate" in gqa.operation_names
+    assert "TestPerson" in gqa.query_report.impacted_models
+    assert gqa.query_report.kind_action_map["TestPerson"] == {MutateAction.CREATE}
+
+
+async def test_plain_query_is_not_reported_as_mutation(
+    build_analyzer: Callable[[str], InfrahubGraphQLQueryAnalyzer], query_01: str
+) -> None:
+    """Resolving fragments must not reclassify an ordinary field-only query as a mutation."""
+    gqa = build_analyzer(query_01)
+
+    assert gqa.contains_mutation is False
+    assert gqa.query_report.impacted_models == ["TestCar", "TestElectricCar", "TestGazCar", "TestPerson"]
+
+
+async def test_operations_resolution_stops_on_self_referential_fragment(
+    build_analyzer: Callable[[str], InfrahubGraphQLQueryAnalyzer],
+) -> None:
+    """A fragment spread that references itself must not loop while operations are resolved."""
+    gqa = build_analyzer("mutation Hidden { ...Cycle } fragment Cycle on Mutation { ...Cycle }")
+
+    assert gqa.operations == []
+    assert gqa.contains_mutation is False
+
+
+async def test_operations_do_not_repeat_a_diamond_fragment(
+    build_analyzer: Callable[[str], InfrahubGraphQLQueryAnalyzer],
+) -> None:
+    """A fragment reached through two spreads contributes its field once, matching what executes."""
+    gqa = build_analyzer(
+        "mutation { ...A ...B }"
+        " fragment A on Mutation { ...Shared }"
+        " fragment B on Mutation { ...Shared }"
+        ' fragment Shared on Mutation { TestPersonCreate(data: {name: {value: "x"}}) { ok } }'
+    )
+
+    assert gqa.operation_names == ["TestPersonCreate"]
