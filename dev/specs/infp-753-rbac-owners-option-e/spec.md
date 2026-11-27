@@ -458,8 +458,8 @@ This section is a constraint for the plan. It comes from the request to write on
 - Infrahub creates an `OwnerSet` vertex at the first owner or the first "no owner" of the set. A write first reuses a vertex with the same key under the same node, created by any branch. When the set goes back to inherit, its edges close and the vertex stays.
 - The active edges of the node, attribute or `OwnerSet` vertex give the state:
   - no edge: inherit
-  - only a `HAS_NO_OWNER` edge to the shared `NoOwner` vertex: no owner
-  - at least one `HAS_OWNER` edge: those owners. They win over a `HAS_NO_OWNER` edge that a merge leaves active.
+  - only a `HAS_OWNER` edge to the shared `NoOwner` vertex: no owner. Decision of 2026-11-27: this was a separate `HAS_NO_OWNER` edge type before.
+  - at least one `HAS_OWNER` edge to an owner: those owners. They win over an edge to `NoOwner` that a merge leaves active.
 - A `HAS_OWNER_SOURCE` edge, from the vertex that holds the owners to the template, marks the owners copied from an object template. A write closes the mark when a user changes those owners. The delete of the template, and the merge of a branch that deletes it, close the mark. The copied owners stay.
 - The links do not change. The owner of one link stays on its relationship vertex (D-9).
 - No edge needs a property, and no two owner edges from a node vertex end at the same vertex.
@@ -472,14 +472,14 @@ This section is a constraint for the plan. It comes from the request to write on
 
 - FR-037: an attribute that has an owner today is already in the own state, so the state needs no migration. One step is needed: today a branch can write an owner on an attribute that has another owner on the default branch, and a read of several owner edges returns both. The prototype has an upgrade step that hides the owner that the branch replaced.
 - FR-008: when a branch deletes an owner group, the merge closes the owner edges to it today. The merge must keep these owner edges, as a delete on the default branch does. It still closes the source edges.
-- FR-040: the kind migration must copy the new edge types (`HAS_OWNER_SET`, `HAS_TARGET_OWNER_SET`, `HAS_OWNER_SOURCE`, `HAS_NO_OWNER`) and the outgoing `HAS_OWNER` and `HAS_SOURCE` edges of a node. Today, the migration:
+- FR-040: the kind migration must copy the new edge types (`HAS_OWNER_SET`, `HAS_TARGET_OWNER_SET`, `HAS_OWNER_SOURCE`) and the outgoing `HAS_OWNER` and `HAS_SOURCE` edges of a node. Today, the migration:
   - copies only the latest edge between the node and each other vertex, of any type. With node sources, two edges of different types can end at the same vertex, so the migration must keep one edge for each edge type.
   - copies `HAS_OWNER` and `HAS_SOURCE` edges only when they end at the node, so it must also copy the edges that start at the node.
   - needs no copy of edge properties, because no edge of option E has one.
 - FR-041: the key of a relationship field is the identifier and the direction, and the schema does not allow an update of the identifier. So a rename of a relationship field needs no migration. The attribute rename and removal migrations must close the sets that profiles and templates give to that attribute. For a rename, a set with the new name gets the owners on the branch of the migration, because the key of a set is a vertex property that all branches share. The relationship removal migration must close the sets of the removed relationship.
 - FR-029 and FR-030: the diff and the merge do not read edges from the node vertex today. They must read the `OwnerSet` vertices, the new edge types and the owner edges of the node vertex. When a branch deletes a node, the merge must also close the outgoing owner edges of the node and the edges of its `OwnerSet` vertices.
 - FR-014 and FR-029: three readers take the latest `HAS_OWNER` edge of an attribute: the `owner` field of today, the diff labels and the changelog. Each one must handle several owners.
-- FR-030: the diff query must use one pattern for each edge type. In the form of the prototype, it reads every node and attribute vertex (1,737 ms against 33 ms in the benchmark of 2026-11-09). `HAS_NO_OWNER` has no index on the branch, so the tuned query still reads more than the query of option B (27.9 ms against 14.3 ms). An index on the branch of `HAS_NO_OWNER` was not measured.
+- FR-030: the diff query must use one pattern for each edge type. In the form of the prototype, it reads every node and attribute vertex (1,737 ms against 33 ms in the benchmark of 2026-11-09). `HAS_NO_OWNER` has no index on the branch, so the tuned query still reads more than the query of option B (27.9 ms against 14.3 ms). An index on the branch of `HAS_NO_OWNER` was not measured. Decision of 2026-11-27: "no owner" is a `HAS_OWNER` edge to `NoOwner`, so the diff query reads it through `owner_branch`, and the index on `HAS_NO_OWNER(branch)` is removed. Nobody measured the diff query after this change.
 - FR-032: two branches can create two `OwnerSet` vertices for the same key at the same moment. Decision of 2026-11-16 (PD-5): two branches reuse the same `OwnerSet` vertex, through the lock for the node of FR-032.
 
 #### What the benchmarks measured for option E
@@ -516,7 +516,7 @@ The engineering design lists these points for option E:
 - How a write stops two branches from creating two `OwnerSet` vertices for the same key at the same moment.
 - What the merge does when two branches leave two active edges between the same two vertices.
 - What the `owner` field of today returns when its owner node is deleted.
-- The form of the diff query, and whether an index on the branch of `HAS_NO_OWNER` brings the diff query to the cost of option B.
+- The form of the diff query, and whether an index on the branch of `HAS_NO_OWNER` brings the diff query to the cost of option B. Decision of 2026-11-27: "no owner" is a `HAS_OWNER` edge to `NoOwner`, so the diff query reads it through `owner_branch`, and the index on `HAS_NO_OWNER(branch)` is removed. Nobody measured the diff query after this change.
 - The names of the labels and of the edge types.
 
 ### Key Entities *(include if feature involves data)*

@@ -400,6 +400,7 @@ Measured on the first data set of option E (interface → device → location).
 2. Index on `HAS_NO_OWNER(branch)`: the index stays. Task T011 added it.
    - With the index, the diff query costs 13.1 to 13.4 ms for 1,000 changes, and the cost does not grow with the other `HAS_NO_OWNER` edges.
    - The cost of option B on this data set is not known. This run cannot measure option B. The benchmark of 2026-11-09 gave 14.3 ms for option B on other data and another machine.
+   - Decision of 2026-11-27: "no owner" is a `HAS_OWNER` edge to `NoOwner`, so the diff query reads it through `owner_branch`, and the index on `HAS_NO_OWNER(branch)` is removed. Nobody measured the diff query after this change.
 3. Lookup of an `OwnerSet` by its key: no index. The lookup costs 0.4 ms and 69 db hits for a node with 20 `OwnerSet` vertices.
 4. Task T023: the spike chose no index of the owners that apply. So no new database structure needs approval, and no task is added to [tasks.md](tasks.md).
 

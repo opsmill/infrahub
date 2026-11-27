@@ -12,7 +12,7 @@ Infrahub Community stores several owners per node, per attribute and per relatio
 
 Technical approach (see [research.md](research.md)):
 
-- Storage option E: `HAS_OWNER` edges from node and attribute vertices, `OwnerSet` vertices for relationship fields and for the owners that profiles and object templates give, a `HAS_NO_OWNER` edge to one shared `NoOwner` vertex, and a `HAS_OWNER_SOURCE` edge for the template copy (R-1). No edge has a property.
+- Storage option E: `HAS_OWNER` edges from node and attribute vertices, `OwnerSet` vertices for relationship fields and for the owners that profiles and object templates give, a `HAS_OWNER` edge to one shared `NoOwner` vertex for "no owner", and a `HAS_OWNER_SOURCE` edge for the template copy (R-1). No edge has a property.
 - One package, `backend/infrahub/core/ownership/`, holds the models, the queries, the repository, the resolution, the writer and the filter (R-2). A local prototype of this package exists (spec, "What the prototype of option E holds").
 - One batch read gives the owners that apply to all nodes and fields of a GraphQL request (R-3). A query that does not ask for owners reads none (FR-009).
 - The diff, the merge and the conflict code get a separate path for owner edges, because they do not read edges from the node vertex today (R-9).
@@ -26,7 +26,7 @@ Technical approach (see [research.md](research.md)):
 
 **Primary Dependencies**: FastAPI, graphene, Neo4j driver 6, Pydantic 2. No new dependency.
 
-**Storage**: Neo4j. New vertex labels `OwnerSet` and `NoOwner`. New edge types `HAS_NO_OWNER`, `HAS_OWNER_SET`, `HAS_TARGET_OWNER_SET` and `HAS_OWNER_SOURCE`. `HAS_OWNER` and `HAS_SOURCE` edges from the node vertex. One new attribute on `CoreObjectPermission`. Graph migrations and new indexes (see [data-model.md](data-model.md)).
+**Storage**: Neo4j. New vertex labels `OwnerSet` and `NoOwner`. New edge types `HAS_OWNER_SET`, `HAS_TARGET_OWNER_SET` and `HAS_OWNER_SOURCE`. "No owner" is a `HAS_OWNER` edge to `NoOwner` (decision of 2026-11-27; a `HAS_NO_OWNER` edge type before). `HAS_OWNER` and `HAS_SOURCE` edges from the node vertex. One new attribute on `CoreObjectPermission`. Graph migrations and new indexes (see [data-model.md](data-model.md)).
 
 **Testing**: pytest. Unit tests for pure logic, component tests with Neo4j through testcontainers, functional tests through GraphQL, query benchmarks in `backend/tests/query_benchmark/`.
 

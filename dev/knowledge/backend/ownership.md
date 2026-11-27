@@ -29,18 +29,24 @@ The active edges of a holder give its state (`StoredOwnerState`, `OwnerState`):
 | Active edges of the holder | State |
 |---|---|
 | none | `INHERIT` |
-| only `HAS_NO_OWNER` | `NO_OWNER` |
-| one or more `HAS_OWNER` | `OWNERS`. They win over a `HAS_NO_OWNER` edge that a merge leaves active |
-| `HAS_OWNER` or `HAS_NO_OWNER`, and `HAS_OWNER_SOURCE` | a copy from an object template. The state reads as `INHERIT`, the origin is `TEMPLATE` |
+| only a `HAS_OWNER` edge to `NoOwner` | `NO_OWNER` |
+| one or more `HAS_OWNER` edges to owners | `OWNERS`. They win over an edge to `NoOwner` that a merge leaves active |
+| `HAS_OWNER` edges, and `HAS_OWNER_SOURCE` | a copy from an object template. The state reads as `INHERIT`, the origin is `TEMPLATE` |
 
-- Every `HAS_NO_OWNER` edge ends at the one `NoOwner` vertex (`uuid: "no-owner"`). The creation of the `Root`
-  vertex (`create_root_node`) and the graph migration `m087` create it. The write query also has a `MERGE` for a
+- "No owner" is a `HAS_OWNER` edge to the one `NoOwner` vertex (`uuid: "no-owner"`).
+  `NoOwner` has no `Node` label. So a read of the owners of a holder skips this edge:
+  - The read of the stored states drops the ID of `NoOwner` from the owners (`_stored_state` in
+    `core/ownership/repository.py`). The diff, its labels and the changelog get their owner lists from this read.
+  - A Cypher query that reads owners from a `HAS_OWNER` edge of a `Node`, `Attribute` or `OwnerSet` vertex ends the
+    edge at `(:Node)`, as the `owner` property of an attribute does (`NodeListGetAttributeQuery`). A query that ends
+    it at any vertex returns `NoOwner` as an owner.
+- The creation of the `Root` vertex (`create_root_node`) and the graph migration `m087` create the `NoOwner` vertex. The write query also has a `MERGE` for a
   database without it. The delete of a branch, the rebase of a branch and a rollback (`GraphRollbacker`) delete each
   vertex that keeps no edge, but not this vertex.
   `verify_graph` reports a graph that has no such vertex or more than one (`GraphCheck.NO_OWNER_VERTEX`).
-- `HAS_OWNER_SOURCE` ends at the object template. Without a `HAS_OWNER` or `HAS_NO_OWNER` edge, the mark gives no
+- `HAS_OWNER_SOURCE` ends at the object template. Without a `HAS_OWNER` edge, the mark gives no
   state. The delete of the template, and the merge of a branch that deletes it, close the mark. The copied
-  `HAS_OWNER` or `HAS_NO_OWNER` edges stay, so the holder then reads as its own state: `OWNERS`, or `NO_OWNER` for a
+  `HAS_OWNER` edges stay, so the holder then reads as its own state: `OWNERS`, or `NO_OWNER` for a
   copy of "no owner", with the origin `SELF`.
 - The sources of a node are `HAS_SOURCE` edges from the `Node` vertex. Sources have no "no owner" state: an empty
   list closes all source edges.
@@ -290,8 +296,9 @@ the holders that are not attributes are in `core/ownership/fields.py` (see [Diff
   that no node holds.
 - `ConflictsEnricher._have_same_value` (`core/diff/conflicts_enricher.py`) gives no conflict for an owner list or a
   source list with the same owner IDs on both branches, or with an update that keeps the same list.
-- `core/graph/index.py` has a range index on `branch`, on `from` and on `to` of each of `HAS_NO_OWNER`,
-  `HAS_OWNER_SOURCE`, `HAS_OWNER_SET` and `HAS_TARGET_OWNER_SET`. The diff and the merge read these edges by branch,
+- `core/graph/index.py` has a range index on `branch`, on `from` and on `to` of each of `HAS_OWNER_SOURCE`,
+  `HAS_OWNER_SET` and `HAS_TARGET_OWNER_SET`. The `HAS_OWNER` edges, "no owner" included, use the existing indexes
+  `owner_branch`, `owner_from` and `owner_to`. The diff and the merge read these edges by branch,
   and the `from` and `to` indexes serve a read of the edges that changed in a time window. The server creates each
   missing index when it starts, so they need no migration.
 - `OwnerDiffResolution` (`core/diff/merger/exclusion_plan.py`) is a holder whose owner conflict the branch side won.

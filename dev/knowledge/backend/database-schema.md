@@ -109,7 +109,7 @@ Stores boolean values for Boolean attributes and `IS_PROTECTED` metadata edges. 
 ### OwnerSet / NoOwner
 
 An `OwnerSet` holds the owners that have no `Node` or `Attribute` vertex to start from. `NoOwner` holds no owner: it
-is the end vertex of every `HAS_NO_OWNER` edge. They have no `IS_PART_OF` edge and no branch data: the edges to and
+is the end vertex of every `HAS_OWNER` edge that means "no owner". They have no `IS_PART_OF` edge and no branch data: the edges to and
 from them carry the branch and the time. See [Owners and Sources](ownership.md).
 
 | Vertex | Property | Description |
@@ -147,8 +147,7 @@ Some edge types carry payload properties beyond these (`IS_RESERVED` holds the r
 | `HAS_VALUE` | `(:Attribute)-[:HAS_VALUE]->(:AttributeValue)` | Links Attribute to value (exactly one active per branch/time) |
 | `IS_PROTECTED` | `(:Attribute)-[:IS_PROTECTED]->(:Boolean)` | Protection flag for Attribute or Relationship (default: `false`) |
 | `HAS_SOURCE` | `(:Node\|Attribute\|Relationship)-[:HAS_SOURCE]->(:Node)` | Links Attribute or Relationship to its source Node (optional, for provenance). From a `Node`: one edge for each source of the node |
-| `HAS_OWNER` | `(:Node\|Attribute\|OwnerSet\|Relationship)-[:HAS_OWNER]->(:Node)` | Links an Attribute, a Relationship, a Node or an `OwnerSet` to an owner Node (optional). A Relationship has at most one; the others have one edge for each own owner |
-| `HAS_NO_OWNER` | `(:Node\|Attribute\|OwnerSet)-[:HAS_NO_OWNER]->(:NoOwner)` | The `Node`, `Attribute` or `OwnerSet` has no owner and does not inherit owners |
+| `HAS_OWNER` | `(:Node\|Attribute\|OwnerSet\|Relationship)-[:HAS_OWNER]->(:Node\|NoOwner)` | Links an Attribute, a Relationship, a Node or an `OwnerSet` to an owner Node (optional). A Relationship has at most one; the others have one edge for each own owner, or one edge to `NoOwner` when they have no owner and do not inherit owners |
 | `HAS_OWNER_SET` | `(:Node)-[:HAS_OWNER_SET]->(:OwnerSet)` | Links a Node to the owners of one of its relationships |
 | `HAS_TARGET_OWNER_SET` | `(:Node)-[:HAS_TARGET_OWNER_SET]->(:OwnerSet)` | Links a profile or an object template to the owners that it gives |
 | `HAS_OWNER_SOURCE` | `(:Node\|Attribute\|OwnerSet)-[:HAS_OWNER_SOURCE]->(:Node)` | The owners of the `Node`, `Attribute` or `OwnerSet` are a copy from this object template |
@@ -182,8 +181,8 @@ Same patterns apply to `Relationship` vertices:
 | `HAS_OWNER` | `Node` | none | Tracks ownership (who is responsible for data) |
 
 A `Relationship` vertex has at most one active `HAS_OWNER` edge. An `Attribute` vertex can have several, or one
-`HAS_NO_OWNER` edge: a query that reads "the owner" of an attribute returns it only when exactly one edge is
-active. The owner edges of nodes, attributes and `OwnerSet` vertices, and the `HAS_SOURCE` edges of nodes, are
+edge to `NoOwner` for "no owner": a query that reads "the owner" of an attribute ends the edge at `(:Node)`, and
+returns the owner only when exactly one such edge is active. The owner edges of nodes, attributes and `OwnerSet` vertices, and the `HAS_SOURCE` edges of nodes, are
 described in [Owners and Sources](ownership.md).
 
 ### Resource Pool Reservations

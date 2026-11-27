@@ -17,7 +17,7 @@ The Technical Context of the plan has no open "NEEDS CLARIFICATION" item. The op
   - `(:Node)-[:HAS_OWNER]->(owner)` for the own owners of a node. `(:Attribute)-[:HAS_OWNER]->(owner)` for the own owners of an attribute, as today.
   - `(:Node)-[:HAS_OWNER_SET]->(:OwnerSet {identifier, direction})-[:HAS_OWNER]->(owner)` for a relationship field.
   - `(:Node)-[:HAS_TARGET_OWNER_SET]->(:OwnerSet {attribute?, identifier?, direction?})-[:HAS_OWNER]->(owner)` for the owners that a profile or an object template gives.
-  - `-[:HAS_NO_OWNER]->(:NoOwner)` from a node, an attribute or an `OwnerSet` for "no owner".
+  - `-[:HAS_OWNER]->(:NoOwner)` from a node, an attribute or an `OwnerSet` for "no owner". Decision of 2026-11-27: this was a separate `HAS_NO_OWNER` edge type before.
   - `-[:HAS_OWNER_SOURCE]->(template)` marks owners copied from an object template.
 - The edge types go into `core/constants/database.py::DatabaseEdgeType`. The vertices and edges go into `core/graph/schema.py`, next to `GraphNodeRelationships` and `GraphAttributeRelationships`.
 - Rationale: the request asks for one plan for each of options B and E. The team did not choose on 2026-11-09.
@@ -135,7 +135,7 @@ The Technical Context of the plan has no open "NEEDS CLARIFICATION" item. The op
   - The engineering design expects no conflict when two branches change different owners of one node. This was not tested.
   - The differ builds one property for each holder, with the list of owners as value. So a conflict exists when both sides change the list to different values. The option E prototype has a test for this rule (`test_owner_conflict_resolved_to_base_skips_merge`).
 - Display labels (FR-029): `core/diff/enricher/labels.py::DiffLabelsEnricher` already resolves labels for `HAS_OWNER` properties (`PROPERTY_TYPES_WITH_LABELS`). It must resolve each ID of the list, and mark a deleted owner.
-- Index: `core/graph/index.py` already has `owner_branch` on `HAS_OWNER(branch)`. The diff query needs the same index on `HAS_NO_OWNER(branch)`. The benchmark did not measure it (27.9 ms without it, against 14.3 ms for option B). The spike measured it on 2026-11-12, and the index stays ([measurements.md](measurements.md)).
+- Index: `core/graph/index.py` already has `owner_branch` on `HAS_OWNER(branch)`. The diff query needs the same index on `HAS_NO_OWNER(branch)`. The benchmark did not measure it (27.9 ms without it, against 14.3 ms for option B). The spike measured it on 2026-11-12, and the index stays ([measurements.md](measurements.md)). Decision of 2026-11-27: "no owner" is a `HAS_OWNER` edge to `NoOwner`, so the diff query reads it through `owner_branch`, and the index on `HAS_NO_OWNER(branch)` is removed. Nobody measured the diff query after this change.
 - Each case of FR-030 gets one scenario test with a read on the branch, in the diff and on the default branch after the merge.
 
 ## R-10: Upgrade
@@ -160,7 +160,7 @@ The Technical Context of the plan has no open "NEEDS CLARIFICATION" item. The op
 
 ## R-11: Kind change and schema migrations
 
-- Kind change (FR-040): `core/migrations/query/node_duplicate.py::NodeDuplicateQuery`, which `core/migrations/schema/node_kind_update.py::NodeKindUpdateMigrationQuery01` uses, copies the active edges of a node for each edge type of `GraphNodeRelationships`. It must copy the outgoing `HAS_OWNER` and `HAS_SOURCE` edges of the node, and the `HAS_OWNER_SET`, `HAS_TARGET_OWNER_SET`, `HAS_OWNER_SOURCE` and `HAS_NO_OWNER` edges.
+- Kind change (FR-040): `core/migrations/query/node_duplicate.py::NodeDuplicateQuery`, which `core/migrations/schema/node_kind_update.py::NodeKindUpdateMigrationQuery01` uses, copies the active edges of a node for each edge type of `GraphNodeRelationships`. It must copy the outgoing `HAS_OWNER` and `HAS_SOURCE` edges of the node, and the `HAS_OWNER_SET`, `HAS_TARGET_OWNER_SET` and `HAS_OWNER_SOURCE` edges.
   - Finding: the query reads only the latest edge between the node and each other vertex, of any edge type. When two edges of different types end at one vertex, it copies one. Two cases exist with node sources: an account group that is an owner and a source of the node (`HAS_OWNER` and `HAS_SOURCE`), and a template that is the origin of the owners and a source of the node (`HAS_OWNER_SOURCE` and `HAS_SOURCE`). This finding comes from a read of the query. No test proves it.
   - Finding: `GraphNodeRelationships` declares `HAS_OWNER` and `HAS_SOURCE` as incoming edges only, so the query does not copy the edges that start at the node.
   - Decision: add the new edge types to `GraphNodeRelationships`, declare `HAS_OWNER` and `HAS_SOURCE` in both directions, and change the query so that it reads the latest edge for each edge type between the node and each other vertex.
