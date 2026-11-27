@@ -20,9 +20,13 @@ Expected: every test passes. The tests that cover the new values:
 - `backend/tests/unit/telemetry/test_task_manager.py`:
   - `test_build_workflow_run_rows`: the rows per end state, the sum before rounding, the states that are left out, the order of the rows
   - `test_gather_workflow_runs_keeps_the_other_rows_when_one_read_fails` and `test_count_started_validators_keeps_the_other_kinds_when_one_count_fails`: one failed read among reads that succeed, with a task manager client on a scripted HTTP transport
+- `backend/tests/unit/telemetry/test_models.py`: a run row that sets only some of `state`, `runs` and `run_seconds` is rejected, and the JSON of a row
+- `backend/tests/unit/telemetry/test_utils.py`:
+  - `test_failure_without_a_message_is_logged_with_its_exception_type`: the log line of a failed read
 - `backend/tests/component/telemetry/test_task_manager.py`:
   - `test_gather_workflow_runs_rows_per_workflow_and_end_state`: rows against a real task manager, the window, a workflow that is not reported
   - `test_gather_workflow_runs_reports_each_failed_read`: one row with null figures per workflow when every read fails
+  - `test_gather_activity_24h_workflow_runs_cover_the_previous_utc_day`: the run rows inside the activity gather are those of the previous full UTC day
   - `test_gather_activity_24h_validators_started_per_kind`: the count per kind and `0` for a kind with no event
   - `test_count_started_validators_reads_the_kind_of_the_validator_only`: an event is counted under the kind of its own resource
   - `test_gather_activity_24h_unreadable_validator_kinds_nulls_only_the_count_per_kind`: a failed read of the validator kinds leaves the other activity values
@@ -31,6 +35,8 @@ Expected: every test passes. The tests that cover the new values:
   - `test_gather_database_information_generator_instance_total`
   - `test_gather_database_information_survives_output_count_failure`
   - `test_gather_database_information_failed_artifact_read_nulls_only_the_artifact_totals`
+  - `test_gather_database_information_failed_node_count_keeps_the_output_totals`
+  - `test_gather_database_information_output_totals_after_a_kind_migration`
 - `backend/tests/component/telemetry/test_tasks.py`:
   - `test_list_validator_kinds`: the six validator kinds
   - `test_gather_feature_information_counts_definitions_on_the_default_branch`

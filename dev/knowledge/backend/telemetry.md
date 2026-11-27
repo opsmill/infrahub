@@ -40,7 +40,7 @@ distinction that matters operationally is each category's **temporal model** (be
 | Features | how many objects of adoption-signalling kinds exist (artifacts, repos, generators, …), counted in two ways (below) |
 | Database | database type, node/relationship counts, objects that have an artifact or a generator instance, server versions, the CPU and memory Neo4j can use |
 | Prefect | event tally, automation counts, work-pool state, task manager database type and version |
-| Activity (24h) | logins, checks, started validators per kind, artifacts, branch actions, webhook deliveries, runs of the workflows that execute generators, artifact generations, checks and Transformations |
+| Activity (24h) | logins, checks, started validators per kind, artifacts, branch actions, webhook deliveries, runs of the workflows that execute generators, artifact generations, checks, Transformations and the proposed change pipeline |
 
 ### Activity (24h) field semantics
 
@@ -51,7 +51,7 @@ distinction that matters operationally is each category's **temporal model** (be
 | `artifacts_created` / `_updated` | Artifact lifecycle events. |
 | `branches_created` / `_merged` / `_deleted` | Branch lifecycle events. |
 | `webhooks_fired_success` / `_failure` | Terminal `webhook-process` flow-run states. |
-| `validators_started` | The `checks_started` event split by the kind of the validator: one key per kind that inherits from `CoreValidator`, `0` for a kind with no started validator. |
+| `validators_started` | The validators that `checks_started` counts, split by kind: one key per kind that inherits from `CoreValidator`, `0` for a kind with no started validator. |
 | `workflow_runs` | One row per workflow and end state (`COMPLETED`, `FAILED`, `CRASHED`, `CANCELLED`) with the number of runs and their summed run time in whole seconds. Only the workflows in `REPORTED_WORKFLOW_NAMES` are read. A workflow with no ended run has no row. The end state is the state of the run, not the result of the work: the three workflows that run inside a proposed change (`run-generator-as-check`, `git-repository-check-artifact-create`, `git-repository-run-user-check`) record a failed generator, artifact generation or check as a failed check and end in `COMPLETED`. |
 
 Rows are keyed by workflow name, never by run name: a run name can contain a name the customer chose.
@@ -66,11 +66,13 @@ Rows are keyed by workflow name, never by run name: a run name can contain a nam
   `generated_artifact` and `with_generator_instance` also count on the default branch only.
   Artifacts and generator instances are stored per branch, so one generated on another branch is
   not counted. `with_generated_artifact` needs a `storage_id` on the artifact, because the artifact
-  exists before its first generation stores content. A generator instance exists from the start of
-  the first run, so `with_generator_instance` includes an object whose only run failed. A generator
-  definition with `execute_after_merge: false` does not run after a merge, so the instances of its
-  runs inside proposed changes stay on the source branches, and its objects are counted only when
-  the generator is run on the default branch by hand.
+  exists before its first generation stores content. A generator instance is created before the
+  generator's code runs, so `with_generator_instance` includes an object whose only run failed in
+  the generator. A run that fails earlier, while the repository is prepared, creates no instance. A
+  generator definition with `execute_after_merge: false` does not run after a merge, so the
+  instances of its runs inside proposed changes stay on the source branches. Its objects are
+  counted only after the generator has run for them on the default branch, which a user or a
+  trigger rule with a generator action can start.
 
 ## CPU and memory figures
 
@@ -221,11 +223,21 @@ failure in any of them stops the whole report.
 `workflow_runs` is the one place where a failed read is not a `null` field: a workflow whose run
 history cannot be read gets one row with `state`, `runs` and `run_seconds` set to `null`, so the rows
 of the other workflows are kept. In `features`, only the three definition counts are protected; a
-failure in one of the older counts stops the whole report.
+failure in one of the older counts stops the whole report. In `database.node_count`, the five
+artifact and generator totals are protected: `artifact_target` and `with_generator_instance` are
+`null` on their own, and `with_artifact`, `with_generated_artifact` and `generated_artifact` are
+`null` together, because one query reads them.
 
 `validators_started` is read in two steps, the validator kinds from the schema and then one count
 per kind. When the kinds cannot be read, the whole map is `null`; when one count fails, only that
 kind is `null`. Neither failure changes another activity field.
+
+A read of the task manager that gets no answer does not fail at once. With the defaults of the
+Prefect client, a request waits 60 seconds for an answer and is tried 6 times, with waits of 2, 4,
+8, 16 and 32 seconds in between, so one unanswered read takes about 7 minutes. Infrahub sets no
+shorter limit. The 8 run history reads and the counts per validator kind run one after the other,
+so a task manager that accepts connections and does not answer delays the report by about 7 minutes
+for each of them.
 
 One caveat on the check metrics: `checks_started` counts every validator that starts, but
 `checks_passed`/`checks_failed` are only emitted for validators that run through the checks

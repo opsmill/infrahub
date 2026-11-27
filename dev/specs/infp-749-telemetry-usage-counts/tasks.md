@@ -33,7 +33,7 @@ Single backend project. Source under `backend/infrahub/telemetry/`, tests under 
 
 **Purpose**: The payload models that every user story writes into.
 
-- [x] T002 Extend the payload models in `backend/infrahub/telemetry/models.py`: add `TelemetryWorkflowRunData` (`workflow: str`, `state: str | None = None`, `runs: int | None = None`, `run_seconds: int | None = None`); add `validators_started: dict[str, int | None] | None = None` and `workflow_runs: list[TelemetryWorkflowRunData] | None = None` to `TelemetryActivity24hData`; widen `TelemetryData.features` from `dict[str, int]` to `dict[str, int | None]`. Additions only: no existing field is renamed, removed or retyped, and `constants.py::TELEMETRY_VERSION` stays `20260628`
+- [x] T002 Extend the payload models in `backend/infrahub/telemetry/models.py`: add `TelemetryWorkflowRunData` (`workflow: str`, `state: WorkflowRunState | None = None`, `runs: int | None = None`, `run_seconds: int | None = None`; `state` was `str | None` until the review of 2026-11-27); add `validators_started: dict[str, int | None] | None = None` and `workflow_runs: list[TelemetryWorkflowRunData] | None = None` to `TelemetryActivity24hData`; widen `TelemetryData.features` from `dict[str, int]` to `dict[str, int | None]`. Additions only: no existing field is renamed, removed or retyped, and `constants.py::TELEMETRY_VERSION` stays `20260628`
 
 **Checkpoint**: The models accept the new values. User stories can start.
 
@@ -138,7 +138,7 @@ Single backend project. Source under `backend/infrahub/telemetry/`, tests under 
 
 ### Implementation for User Story 4
 
-- [x] T027 [US4] Make a failed read of the validator kinds null only `validators_started` ([research R8a](research.md)). In `backend/infrahub/telemetry/task_manager.py`, `count_started_validators` takes `read_kinds: Callable[[], list[str]]` and calls it before it counts, and `gather_activity_24h` takes `read_validator_kinds: Callable[[], list[str]]` and runs `count_started_validators` through `safe_metric`. In `backend/infrahub/telemetry/tasks.py`, `list_validator_kinds` takes `db` and reads the schema with `db.schema.get_schema_branch(...)` instead of `registry.schema`, `DefaultActivityGatherer` takes `db` in its constructor and passes the reader instead of its result, and the factory `build_anonymous_telemetry_gatherer` passes the database. `AnonymousTelemetryGatherer` and its constructor stay as they are. Update the calls in `backend/tests/component/telemetry/test_task_manager.py` and `backend/tests/component/telemetry/test_tasks.py` (`_build_gatherer`, `test_list_validator_kinds`)
+- [x] T027 [US4] Make a failed read of the validator kinds null only `validators_started` ([research R8a](research.md)). In `backend/infrahub/telemetry/task_manager.py`, `count_started_validators` takes `read_kinds: Callable[[], list[str]]` and calls it before it counts, and `gather_activity_24h` takes `read_validator_kinds: Callable[[], list[str]]` and runs `count_started_validators` through `safe_metric`. In `backend/infrahub/telemetry/tasks.py`, `list_validator_kinds` takes `db` and reads the schema with `db.schema.get_schema_branch(...)` instead of `registry.schema`, `DefaultActivityGatherer` takes `db` in its constructor and passes the reader instead of its result, and the factory `build_anonymous_telemetry_gatherer` passes the database. (T042 later moved the building of the reader into the factory.) `AnonymousTelemetryGatherer` and its constructor stay as they are. Update the calls in `backend/tests/component/telemetry/test_task_manager.py` and `backend/tests/component/telemetry/test_tasks.py` (`_build_gatherer`, `test_list_validator_kinds`)
 
 **Checkpoint**: Every failure case of the specification has a test, and a failed read of the validator kinds no longer removes the other values of `activity_24h`.
 
@@ -174,6 +174,23 @@ Single backend project. Source under `backend/infrahub/telemetry/`, tests under 
 - [ ] T038 Run the two reads of `database.py::count_nodes_with_output` and the read of `database.py::count_artifact_targets` with `PROFILE` on the largest dataset available, and record the time and the database hits in research R10. The owner of the telemetry code decides whether the reads get a time limit
 - [ ] T039 Before the pull request is merged, the owner of the telemetry code confirms that the telemetry endpoint accepts a report with the new values: a body with 32 run rows, a list and a map inside `activity_24h`, and `null` inside `features`
 - [ ] T040 Write the design doc text of 2026-11-26, with the correction about end states, to the design doc page, then end the `Sources` line of `dev/specs/infp-749-telemetry-usage-counts/spec.md` after the link
+
+---
+
+## Phase 10: Fixes from the speckit review of 2026-11-27
+
+**Purpose**: The findings of the five review aspects (code, comments, tests, errors, types) that were fixed. The findings that need a decision are in [research.md](research.md) under "Questions for the owner of the telemetry code".
+
+- [x] T041 Type the end state of a run row as the string enum `constants.py::WorkflowRunState`, and make `models.py::TelemetryWorkflowRunData` reject a row that sets only some of `state`, `runs` and `run_seconds`, and a negative `runs` or `run_seconds`. `task_manager.py::REPORTED_RUN_STATES` maps the state type of the task manager to the enum and keeps the order of the rows. The JSON of the report does not change
+- [x] T042 Name the type of the reader of the validator kinds (`task_manager.py::ValidatorKindReader`), build the reader in `tasks.py::build_anonymous_telemetry_gatherer`, and pass it to `tasks.py::DefaultActivityGatherer`, which no longer takes the database
+- [x] T043 Add the type of the exception to the log line of a failed read in `utils.py::safe_metric`, so that an exception with no text, such as a read that gets no answer, still says what failed
+- [x] T044 Correct the docstrings and comments that the review found wrong or stale in `models.py`, `queries.py`, `database.py`, `task_manager.py` and the telemetry tests, and remove five test comments that restate the code under them
+- [x] T045 Correct `dev/knowledge/backend/telemetry.md`, [spec.md](spec.md), [research.md](research.md), [data-model.md](data-model.md) and [contracts/telemetry-payload.md](contracts/telemetry-payload.md): a trigger rule can also start a generator on the default branch; a generator instance is created before the generator's code runs and not at the start of the run; the five node totals are protected; an unanswered read of the task manager takes about 7 minutes
+- [x] T046 Component test `test_gather_activity_24h_workflow_runs_cover_the_previous_utc_day` in `backend/tests/component/telemetry/test_task_manager.py`: the run rows that the activity gather returns are those of the previous full UTC day
+- [x] T047 Component test `test_gather_database_information_output_totals_after_a_kind_migration` in `backend/tests/component/telemetry/test_database.py`: a node and its outputs are counted once after a kind migration of the node kind and, later, of the output kinds
+- [x] T048 Component test `test_gather_database_information_failed_node_count_keeps_the_output_totals` in `backend/tests/component/telemetry/test_database.py`, and one more case in `test_gather_database_information_artifact_totals`: an artifact that is created without content and gets its content in a later update
+- [x] T049 Unit tests in `backend/tests/unit/telemetry/test_models.py` (a partly filled row is rejected; the JSON of a row) and `backend/tests/unit/telemetry/test_utils.py` (the log line of a failed read). In `backend/tests/unit/telemetry/test_task_manager.py`, the failing read comes first, so a loop that stops at the first failure fails the test
+- [x] T050 Run the telemetry tests and the new tests against code with the guarded behaviour removed. Run on 2026-11-27: the 149 telemetry unit and component tests pass. Each of the new or changed guards fails when its behaviour is removed: the window passed to the run rows (two mutations), the same-UUID filter and the status tie-breaker of `queries.py::CountNodesWithOutputQuery`, the protected count of artifact targets, the rule of the row model, the exception type in the log line, a run row loop that stops at the first failed read, and a content read that takes the first value with no time filter. The case with content stored in a later update still passes when only the order of the content read is reversed, because the time filter already removes the earlier value
 
 ---
 
@@ -226,6 +243,7 @@ Phases 1 to 6 are built in the working tree: the four groups of values, their te
 1. T027: a failed read of the validator kinds nulls only `validators_started`, and the kinds are read through `db.schema`.
 2. T010, T023 to T026, T029 and T030: tests for the acceptance scenarios that had no test of their own. Seven of the eight new or extended tests were run against code with the behaviour removed, and each failed. The case added by T010 was not run against changed code.
 3. T034: three corrections to the knowledge doc.
+4. T041 to T050: the fixes from the speckit review of 2026-11-27.
 
 ### What is open
 

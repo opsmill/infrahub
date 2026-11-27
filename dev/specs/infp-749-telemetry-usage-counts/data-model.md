@@ -13,13 +13,13 @@ The runs of one workflow that ended in one state on the previous UTC day.
 | Field | Type | Meaning |
 |-------|------|---------|
 | `workflow` | `str` | The workflow name, one of the 8 names in `task_manager.py::REPORTED_WORKFLOW_NAMES`. Never a run name. |
-| `state` | `str \| None` | The end state: `COMPLETED`, `FAILED`, `CRASHED` or `CANCELLED`. `None` when the read for the workflow failed. |
+| `state` | `WorkflowRunState \| None` | The end state, a string enum in `constants.py` with the values `COMPLETED`, `FAILED`, `CRASHED` and `CANCELLED`. `None` when the read for the workflow failed. |
 | `runs` | `int \| None` | The number of runs that ended in the state. `None` when the read failed. |
 | `run_seconds` | `int \| None` | The time those runs spent running, in whole seconds, rounded after the sum. `None` when the read failed. |
 
 Rules:
 
-- `state`, `runs` and `run_seconds` are all set or all `None`.
+- `state`, `runs` and `run_seconds` are all set or all `None`. The model rejects a row that sets only some of them, and a negative `runs` or `run_seconds`.
 - A workflow has at most one row per end state, and exactly one row when its read failed.
 - A workflow with no run in an end state has no row.
 - Rows are ordered by workflow, in the order of `REPORTED_WORKFLOW_NAMES`, then by state, in the order `COMPLETED`, `FAILED`, `CRASHED`, `CANCELLED`.

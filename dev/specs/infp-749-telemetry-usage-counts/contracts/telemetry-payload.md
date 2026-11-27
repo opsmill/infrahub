@@ -112,7 +112,7 @@ Five new keys, all for the default branch:
 - `with_artifact`: the nodes with at least one artifact node
 - `with_generated_artifact`: the nodes with at least one artifact that has stored content
 - `generated_artifact`: the artifacts that have stored content
-- `with_generator_instance`: the nodes with at least one generator instance. A node whose only generator run failed or has not finished is counted. Generator instances stay on the branch where the run created them, so a node is counted only after a generator has run for it on the default branch. A generator definition with `execute_after_merge: false` does not run after a merge, so its nodes are counted only when the generator is run on the default branch by hand.
+- `with_generator_instance`: the nodes with at least one generator instance. A node whose only generator run failed in the generator's code or has not finished is counted; a run that fails earlier, while the repository is prepared, creates no instance. Generator instances stay on the branch where the run created them, so a node is counted only after a generator has run for it on the default branch. A generator definition with `execute_after_merge: false` does not run after a merge, so its nodes are counted only after the generator has run for them on the default branch, which a user or a trigger rule with a generator action can start.
 
 Each key is `0` when there is nothing to count and `null` when its read failed. `with_artifact`, `with_generated_artifact` and `generated_artifact` are `null` together.
 

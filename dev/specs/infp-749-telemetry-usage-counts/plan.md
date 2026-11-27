@@ -94,7 +94,7 @@ backend/infrahub/telemetry/
 ├── database.py          # count_definitions, count_artifact_targets, count_nodes_with_output;
 │                        # five totals in gather_database_information
 └── tasks.py             # three definition keys in gather_feature_information;
-                         # list_validator_kinds; DefaultActivityGatherer passes the kinds
+                         # list_validator_kinds; DefaultActivityGatherer passes the reader of the kinds
 
 backend/tests/unit/telemetry/
 └── test_task_manager.py # build_workflow_run_rows
