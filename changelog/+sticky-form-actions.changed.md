@@ -1,1 +1,1 @@
-Kept the Save and Cancel buttons visible at the bottom of long forms in side panels, with a separator line while fields are scrolled out of view beneath them.
+Kept the Cancel and submit buttons in view at the bottom of side panels, the bulk edit panel and the proposed change creation page while a long form scrolls, with a separator line above them while the end of the form is out of view; the object conversion page now shows that line only in the same case.

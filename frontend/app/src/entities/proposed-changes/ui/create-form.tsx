@@ -19,7 +19,14 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
-import { Form, FormField, FormInput, FormLabel, FormMessage } from "@/shared/components/ui/form";
+import {
+  Form,
+  FormActions,
+  FormField,
+  FormInput,
+  FormLabel,
+  FormMessage,
+} from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 import { QSP } from "@/shared/config/qsp";
 
@@ -200,19 +207,19 @@ export const ProposedChangeCreateForm = () => {
         )}
       />
 
-      <div className="flex w-full items-center justify-end gap-2">
-        <LinkButton variant="outline" href={constructPath("/proposed-changes")}>
-          Cancel
-        </LinkButton>
-
-        <PcStateButton state={state} setState={setState} />
-      </div>
-
       {error && (
         <div className="rounded-md bg-danger-surface p-4 text-danger text-sm">
           {(error as Error).message}
         </div>
       )}
+
+      <FormActions>
+        <LinkButton variant="outline" href={constructPath("/proposed-changes")}>
+          Cancel
+        </LinkButton>
+
+        <PcStateButton state={state} setState={setState} />
+      </FormActions>
     </Form>
   );
 };

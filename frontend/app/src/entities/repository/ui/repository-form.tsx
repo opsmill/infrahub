@@ -49,7 +49,7 @@ const RepositoryForm = ({
 
   return (
     <Form
-      className="h-full overflow-auto bg-background p-2"
+      className="bg-background p-2"
       onSubmit={async (formData) => {
         if (onSubmit) return onSubmit({ formData, fields });
 

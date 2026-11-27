@@ -73,7 +73,7 @@ All `.field.tsx` files in `shared/components/form/fields/` wrap a primitive in t
 
 **Use `.field.tsx` only inside a `<Form>` from `shared/components/ui/form.tsx`.** Outside a form, use the underlying input from `shared/components/inputs/` or the primitive from `shared/components/ui/`.
 
-**Put a form's Cancel and submit buttons in `FormActions`** from the same file, as the form's last child: it keeps them in view at the bottom of a sheet and draws a separator while fields are scrolled out of view beneath it. Its offset assumes the sheet's 12px padding.
+**Put the Cancel and submit buttons of a form that can scroll in `FormActions`** from the same file, as the form's last child: it keeps them at the bottom edge of the box that sticky positioning uses, the nearest ancestor whose overflow is not `visible` or `clip`, whatever that box's padding, and draws a separator while the end of the form is out of view. Keep an `overflow-hidden` wrapper that grows with its content out from between the form and the area that scrolls, because the bar sticks to that wrapper and scrolls away with the form. A form in a popover that never scrolls keeps a plain `Row`.
 
 ### Tab bars
 

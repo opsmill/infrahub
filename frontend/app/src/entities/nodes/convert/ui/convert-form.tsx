@@ -5,7 +5,7 @@ import type { FormFieldValue } from "@/shared/components/form/type";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Form, FormSubmit } from "@/shared/components/ui/form";
+import { Form, FormActions, FormSubmit } from "@/shared/components/ui/form";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import type {
@@ -112,9 +112,9 @@ function ConvertForm({ mappings, sourceObject, sourceSchema, targetSchema }: Con
         );
       })}
 
-      <div className="sticky -bottom-2 border-t bg-card p-2 text-right">
+      <FormActions className="px-2">
         <FormSubmit>Convert</FormSubmit>
-      </div>
+      </FormActions>
     </Form>
   );
 }
