@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from fastapi.param_functions import Depends
-from prefect.server.database import PrefectDBInterface, provide_database_interface
+from prefect.server.database import PrefectDBInterface, aprovide_database_interface
 
 from .database import query_events
 from .models import InfrahubEventfilterInput, InfrahubEventPage
@@ -11,9 +11,9 @@ router = APIRouter(prefix="/events", tags=["Infrahub"])
 @router.post(
     "/filter",
 )
-async def read_events(
+async def read_infrahub_events(
     event_filter: InfrahubEventfilterInput,
-    db: PrefectDBInterface = Depends(provide_database_interface),  # noqa: B008
+    db: PrefectDBInterface = Depends(aprovide_database_interface),  # noqa: B008
 ) -> InfrahubEventPage:
     event_filter.filter.set_prefix()
 

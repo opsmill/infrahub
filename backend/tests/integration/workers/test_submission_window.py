@@ -103,8 +103,8 @@ class TestSubmissionWindow(TestWorkerInfrahubAsync):
 
         prefect_worker._limiter = limiter
         try:
-            # The second run already holds a limit slot, so Prefect raises after handing over the first run.
-            assert await prefect_worker.get_and_submit_flow_runs() == []
+            # The second run already holds a limit slot, so Prefect skips it and hands over only the first run.
+            assert [flow_run.id for flow_run in await prefect_worker.get_and_submit_flow_runs()] == [submitted_id]
             assert prefect_worker._submission_window.in_flight == 1
         finally:
             prefect_worker._limiter = None
