@@ -23,6 +23,7 @@ Exact versions: `pyproject.toml` (Python) and `frontend/pnpm-workspace.yaml` / `
 - `frontend/app/` – React frontend - see [frontend/app/AGENTS.md](frontend/app/AGENTS.md)
 - `docs/` – External customers documentation by Docusaurus, deployed at https://docs.infrahub.app/ - see [docs/AGENTS.md](docs/AGENTS.md)
 - `dev/` – Internal developer documentation - see [dev/README.md](dev/README.md)
+- `dev/knowledge/CONTEXT.md` – Glossary of domain concepts; agents read it before naming a domain concept
 - `python_sdk/` – Python SDK (Git submodule)
 - `tasks/` – Invoke task definitions
 - `schema/` – JSON/GraphQL schema definitions
@@ -205,6 +206,7 @@ CI validates that all generated files are committed — the `validate-generated-
 | Question | Location |
 |----------|----------|
 | How does the system work? | `dev/knowledge/` |
+| What do we call this concept? | `dev/knowledge/CONTEXT.md` |
 | How do I do X? | `dev/guides/` |
 | Why was this decided? | `dev/adr/` |
 | What are we building? | `dev/specs/` |
