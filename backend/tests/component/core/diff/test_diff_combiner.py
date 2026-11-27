@@ -779,6 +779,7 @@ class TestDiffCombiner:
                 ("abc", "xyz"),
                 (ConflictSelection.DIFF_BRANCH, ConflictSelection.DIFF_BRANCH, ConflictSelection.DIFF_BRANCH),
             ),
+            (("abc", "def"), ("xyz", "def"), (ConflictSelection.DIFF_BRANCH, None, None)),
         ],
     )
     async def test_conflict_value_and_selection_update(
