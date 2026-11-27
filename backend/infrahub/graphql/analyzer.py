@@ -36,6 +36,7 @@ from graphql.language.ast import (
     ValueNode,
     VariableNode,
 )
+from infrahub_sdk.analyzer import GraphQLOperation as SdkGraphQLOperation
 from infrahub_sdk.analyzer import GraphQLQueryAnalyzer
 from infrahub_sdk.utils import extract_fields
 
@@ -795,10 +796,54 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         return [operation.name for operation in self.operations if operation.name is not None]
 
     @cached_property
+    def operations(self) -> list[SdkGraphQLOperation]:
+        """Every top-level operation field, resolved through inline fragments and fragment spreads.
+
+        A field selected through ``... on Type { field }``, ``... { field }`` or a fragment spread
+        is executed as if it were a direct child of the operation, so it is reported here too.
+        """
+        operations: list[SdkGraphQLOperation] = []
+        for definition in self._operation_definitions:
+            for field_node in self._iter_operation_fields(selection_set=definition.selection_set):
+                operations.append(SdkGraphQLOperation(operation_type=definition.operation, name=field_node.name.value))
+        return operations
+
+    def _iter_operation_fields(
+        self, selection_set: SelectionSetNode, visited_fragments: set[str] | None = None
+    ) -> Iterator[FieldNode]:
+        """Yield the field nodes of a selection set, descending into inline fragments and fragment spreads.
+
+        A fragment is expanded once per operation, so a fragment reached through two paths -- a cycle or
+        a diamond -- neither loops nor repeats its fields.
+        """
+        if visited_fragments is None:
+            visited_fragments = set()
+        for selection in selection_set.selections:
+            if isinstance(selection, FieldNode):
+                yield selection
+            elif isinstance(selection, InlineFragmentNode):
+                yield from self._iter_operation_fields(
+                    selection_set=selection.selection_set, visited_fragments=visited_fragments
+                )
+            elif isinstance(selection, FragmentSpreadNode) and selection.name.value not in visited_fragments:
+                visited_fragments.add(selection.name.value)
+                fragment = self._fragment_definition_by_name.get(selection.name.value)
+                if fragment is not None:
+                    yield from self._iter_operation_fields(
+                        selection_set=fragment.selection_set, visited_fragments=visited_fragments
+                    )
+
+    @cached_property
     def _fragment_definitions(self) -> list[FragmentDefinitionNode]:
         return [
             definition for definition in self.document.definitions if isinstance(definition, FragmentDefinitionNode)
         ]
+
+    @cached_property
+    def _fragment_definition_by_name(self) -> dict[str, FragmentDefinitionNode]:
+        # Resolved from the raw definitions so operation classification works before the named-fragment
+        # tree (`_named_fragments`) is built, which only happens on the `query_report` path.
+        return {definition.name.value: definition for definition in self._fragment_definitions}
 
     @cached_property
     def _operation_definitions(self) -> list[OperationDefinitionNode]:
@@ -865,9 +910,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
     def _get_operations(self) -> list[GraphQLQueryNode]:
         operations: list[GraphQLQueryNode] = []
         for operation_definition in self._operation_definitions:
-            selections = self._get_selections(selection_set=operation_definition.selection_set)
-
-            for field_node in selections.field_nodes:
+            for field_node in self._iter_operation_fields(selection_set=operation_definition.selection_set):
                 schema_model: MainSchemaTypes
                 infrahub_node_models: list[MainSchemaTypes] = []
                 model_name = self._get_model_name(node=field_node, operation_definition=operation_definition)
@@ -954,8 +997,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         if len(sorted_fragments) != len(self._fragment_dependencies):
             raise ValueError("Circular fragment dependency detected.")
 
-        fragment_name_to_definition = {frag.name.value: frag for frag in self._fragment_definitions}
-        return [fragment_name_to_definition[name] for name in sorted_fragments]
+        return [self._fragment_definition_by_name[name] for name in sorted_fragments]
 
     def _populate_fragment_dependency(self, name: str, selection_set: SelectionSetNode | None) -> None:
         if selection_set:
