@@ -36,23 +36,23 @@ async def _returns_value() -> int:
 
 
 async def test_raising_coroutine_degrades_to_none() -> None:
-    assert await safe_metric(_raises()) is None
+    assert await safe_metric(_raises(), metric="accounts.active") is None
 
 
-async def test_failure_without_a_message_is_logged_with_its_exception_type(caplog: pytest.LogCaptureFixture) -> None:
+async def test_failure_is_logged_with_the_metric_and_the_exception_type(caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level(logging.WARNING, logger="infrahub.tasks"):
-        await safe_metric(_gets_no_answer())
+        await safe_metric(_gets_no_answer(), metric="accounts.active")
 
     assert [record.getMessage() for record in caplog.records] == [
-        "Telemetry metric collection failed; reporting null for this field: ReadTimeout: "
+        "Telemetry metric accounts.active could not be read; reporting null: ReadTimeout: "
     ]
 
 
 async def test_zero_result_is_preserved() -> None:
-    result = await safe_metric(_returns_zero())
+    result = await safe_metric(_returns_zero(), metric="accounts.active")
     assert result == 0
     assert result is not None
 
 
 async def test_non_zero_result_is_preserved() -> None:
-    assert await safe_metric(_returns_value()) == 42
+    assert await safe_metric(_returns_value(), metric="accounts.active") == 42

@@ -44,6 +44,8 @@ WEBHOOK_FLOW_NAME = WEBHOOK_PROCESS.name
 # A day no other test seeds a run into, so the run rows are exact whatever else the shared task manager holds.
 _RUN_DAY_START = datetime(2021, 3, 1, tzinfo=UTC)
 _RUN_DAY_END = datetime(2021, 3, 2, tzinfo=UTC)
+# Far longer than the test task manager needs to answer.
+_READ_DEADLINE_SECONDS = 30.0
 
 # The workflow names are read by name in the data warehouse, so the list is pinned here.
 _REPORTED_WORKFLOW_NAMES = [
@@ -452,6 +454,7 @@ async def test_count_started_validators_reads_the_kind_of_the_validator_only(pre
         read_kinds=_kinds(kind, other_kind),
         window_start=window_start,
         window_end=activity_start,
+        read_deadline_seconds=_READ_DEADLINE_SECONDS,
     )
 
     assert counts == {kind: 1, other_kind: 1}
@@ -504,7 +507,12 @@ async def test_gather_workflow_runs_rows_per_workflow_and_end_state(prefect_clie
     await _seed_run(prefect_client, artifact_flow, noon, StateType.CANCELLED)
     await _seed_run(prefect_client, other_flow, noon, StateType.COMPLETED)
 
-    rows = await gather_workflow_runs(client=prefect_client, window_start=_RUN_DAY_START, window_end=_RUN_DAY_END)
+    rows = await gather_workflow_runs(
+        client=prefect_client,
+        window_start=_RUN_DAY_START,
+        window_end=_RUN_DAY_END,
+        read_deadline_seconds=_READ_DEADLINE_SECONDS,
+    )
 
     assert [(row.workflow, row.state, row.runs) for row in rows] == [
         ("generator-run", "COMPLETED", 3),
@@ -516,7 +524,12 @@ async def test_gather_workflow_runs_rows_per_workflow_and_end_state(prefect_clie
 
 async def test_gather_workflow_runs_reports_each_failed_read(prefect_client: PrefectClient) -> None:
     # A window that ends before it starts gives a negative interval, which the task manager rejects, so every read fails.
-    rows = await gather_workflow_runs(client=prefect_client, window_start=_RUN_DAY_END, window_end=_RUN_DAY_START)
+    rows = await gather_workflow_runs(
+        client=prefect_client,
+        window_start=_RUN_DAY_END,
+        window_end=_RUN_DAY_START,
+        read_deadline_seconds=_READ_DEADLINE_SECONDS,
+    )
 
     assert rows == [TelemetryWorkflowRunData(workflow=name) for name in _REPORTED_WORKFLOW_NAMES]
 

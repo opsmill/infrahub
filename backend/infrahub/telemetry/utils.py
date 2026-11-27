@@ -19,18 +19,17 @@ def determine_infrahub_type() -> InfrahubType:
         return InfrahubType.COMMUNITY
 
 
-async def safe_metric[T](coro: Awaitable[T]) -> T | None:
+async def safe_metric[T](coro: Awaitable[T], metric: str) -> T | None:
     """Await ``coro`` and return its result, or ``None`` if it raises (the error is logged).
 
-    A falsy result such as ``0`` is returned as-is; only an exception maps to ``None``.
+    ``metric`` names the value in the log line. A falsy result such as ``0`` is returned as-is; only an
+    exception maps to ``None``.
     """
     try:
         return await coro
     # Degradation boundary: any collection failure must null out one field, never fail the whole telemetry run
     except Exception as exc:  # noqa: BLE001
-        log.warning(
-            "Telemetry metric collection failed; reporting null for this field: %s: %s", type(exc).__name__, exc
-        )
+        log.warning("Telemetry metric %s could not be read; reporting null: %s: %s", metric, type(exc).__name__, exc)
         return None
 
 

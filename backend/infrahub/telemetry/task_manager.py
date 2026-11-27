@@ -1,4 +1,5 @@
-from collections.abc import Callable
+import asyncio
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -69,6 +70,9 @@ REPORTED_RUN_STATES = {
     StateType.CANCELLED: WorkflowRunState.CANCELLED,
 }
 
+# One request timeout of the task manager client by default, so a read that gets no answer is not tried again.
+TASK_MANAGER_READ_DEADLINE_SECONDS = 60.0
+
 type ValidatorKindReader = Callable[[], list[str]]
 
 
@@ -87,12 +91,37 @@ class RunHistoryInterval(BaseModel):
 _RUN_HISTORY_ADAPTER = TypeAdapter(list[RunHistoryInterval])
 
 
-async def _post_count_by(client: PrefectClient, path: str, payload: dict[str, Any]) -> list[Any]:
-    """POST a Prefect count-by query and return its buckets (empty when the response has none)."""
+class EventCountBucket(BaseModel):
+    """One bucket of a count-by response of the task manager."""
+
+    count: int
+
+
+_EVENT_COUNT_ADAPTER = TypeAdapter(list[EventCountBucket])
+
+
+async def read_within_deadline[T](read: Awaitable[T], deadline_seconds: float) -> T:
+    """Await a read of the task manager and stop waiting when the deadline passes.
+
+    Raises:
+        TimeoutError: If the read has not returned after ``deadline_seconds``.
+
+    """
+    deadline = asyncio.timeout(deadline_seconds)
+    try:
+        async with deadline:
+            return await read
+    except TimeoutError as exc:
+        if not deadline.expired():
+            raise
+        raise TimeoutError(f"The task manager did not answer within {deadline_seconds} seconds") from exc
+
+
+async def _post_count_by(client: PrefectClient, path: str, payload: dict[str, Any]) -> Any:
+    """POST a Prefect count-by query and return the decoded response."""
     response = await client._client.post(path, json=payload)
     response.raise_for_status()
-    data = response.json()
-    return data if isinstance(data, list) else []
+    return response.json()
 
 
 @task(name="telemetry-gather-work-pools", task_run_name="Gather Work Pools", cache_policy=NONE)
@@ -121,7 +150,9 @@ async def gather_prefect_events(client: PrefectClient) -> dict[str, Any]:
 
     for event in infrahub_events:
         payload = {"filter": {"event": {"name": [event.event_name]}}}
-        buckets = await _post_count_by(client=client, path="/events/count-by/event", payload=payload)
+        response = await _post_count_by(client=client, path="/events/count-by/event", payload=payload)
+        # This tally has no null value, so a response that is not a list of buckets counts as no event.
+        buckets = response if isinstance(response, list) else []
         events[event.event_name] = sum(bucket.get("count", 0) for bucket in buckets)
 
     return events
@@ -154,22 +185,32 @@ async def count_windowed_event(
     window_end: datetime,
     resource_labels: dict[str, list[str]] | None = None,
 ) -> int:
-    """Count events of one name that occurred within ``[window_start, window_end)``."""
+    """Count events of one name that occurred within ``[window_start, window_end)``.
+
+    Raises:
+        pydantic.ValidationError: If the response is not a list of buckets that each have a count.
+
+    """
     payload = _windowed_event_filter(
         event_name=event_name, window_start=window_start, window_end=window_end, resource_labels=resource_labels
     )
-    buckets = await _post_count_by(client=client, path="/events/count-by/event", payload=payload)
-    return sum(bucket.get("count", 0) for bucket in buckets)
+    response = await _post_count_by(client=client, path="/events/count-by/event", payload=payload)
+    return sum(bucket.count for bucket in _EVENT_COUNT_ADAPTER.validate_python(response))
 
 
 @task(name="telemetry-gather-windowed-unique", task_run_name="Gather Windowed Unique Count", cache_policy=NONE)
 async def count_windowed_unique_resources(
     client: PrefectClient, event_name: str, window_start: datetime, window_end: datetime
 ) -> int:
-    """Count distinct resources emitting one event within ``[window_start, window_end)``."""
+    """Count distinct resources emitting one event within ``[window_start, window_end)``.
+
+    Raises:
+        pydantic.ValidationError: If the response is not a list of buckets that each have a count.
+
+    """
     payload = _windowed_event_filter(event_name=event_name, window_start=window_start, window_end=window_end)
-    buckets = await _post_count_by(client=client, path="/events/count-by/resource", payload=payload)
-    return len(buckets)
+    response = await _post_count_by(client=client, path="/events/count-by/resource", payload=payload)
+    return len(_EVENT_COUNT_ADAPTER.validate_python(response))
 
 
 @task(name="telemetry-gather-webhook-runs", task_run_name="Gather Webhook Runs", cache_policy=NONE)
@@ -201,23 +242,32 @@ async def count_webhook_runs(client: PrefectClient, window_start: datetime, wind
 
 
 async def count_started_validators(
-    client: PrefectClient, read_kinds: ValidatorKindReader, window_start: datetime, window_end: datetime
+    client: PrefectClient,
+    read_kinds: ValidatorKindReader,
+    window_start: datetime,
+    window_end: datetime,
+    read_deadline_seconds: float,
 ) -> dict[str, int | None]:
     """Count the validators of each kind that started within ``[window_start, window_end)``.
 
     ``read_kinds`` is called before any count, and an error it raises is not caught here. A kind whose
-    count fails is reported as ``None`` and the other kinds keep their count.
+    count fails, or is not answered within ``read_deadline_seconds``, is reported as ``None`` and the
+    other kinds keep their count.
     """
     counts: dict[str, int | None] = {}
     for kind in read_kinds():
         counts[kind] = await safe_metric(
-            count_windowed_event.fn(
-                client=client,
-                event_name=ValidatorStartedEvent.event_name,
-                window_start=window_start,
-                window_end=window_end,
-                resource_labels={NODE_KIND_LABEL: [kind]},
-            )
+            read_within_deadline(
+                count_windowed_event.fn(
+                    client=client,
+                    event_name=ValidatorStartedEvent.event_name,
+                    window_start=window_start,
+                    window_end=window_end,
+                    resource_labels={NODE_KIND_LABEL: [kind]},
+                ),
+                deadline_seconds=read_deadline_seconds,
+            ),
+            metric=f"activity_24h.validators_started.{kind}",
         )
     return counts
 
@@ -270,19 +320,23 @@ async def read_workflow_run_history(
 
 
 async def gather_workflow_runs(
-    client: PrefectClient, window_start: datetime, window_end: datetime
+    client: PrefectClient, window_start: datetime, window_end: datetime, read_deadline_seconds: float
 ) -> list[TelemetryWorkflowRunData]:
     """Return the run rows of every reported workflow for ``[window_start, window_end)``.
 
-    A workflow whose history cannot be read gets one row with a null state and null counts, and the other
-    workflows keep their rows.
+    A workflow whose history cannot be read, or is not answered within ``read_deadline_seconds``, gets one
+    row with a null state and null counts, and the other workflows keep their rows.
     """
     rows: list[TelemetryWorkflowRunData] = []
     for workflow in REPORTED_WORKFLOW_NAMES:
         workflow_rows = await safe_metric(
-            read_workflow_run_history(
-                client=client, workflow=workflow, window_start=window_start, window_end=window_end
-            )
+            read_within_deadline(
+                read_workflow_run_history(
+                    client=client, workflow=workflow, window_start=window_start, window_end=window_end
+                ),
+                deadline_seconds=read_deadline_seconds,
+            ),
+            metric=f"activity_24h.workflow_runs.{workflow}",
         )
         if workflow_rows is None:
             rows.append(TelemetryWorkflowRunData(workflow=workflow))
@@ -308,7 +362,8 @@ async def gather_activity_24h(
                 event_name=event_name,
                 window_start=window_start,
                 window_end=window_end,
-            )
+            ),
+            metric=f"activity_24h count of the event {event_name}",
         )
 
     logins = await windowed_count(AccountLoggedInEvent.event_name)
@@ -318,10 +373,12 @@ async def gather_activity_24h(
             event_name=AccountLoggedInEvent.event_name,
             window_start=window_start,
             window_end=window_end,
-        )
+        ),
+        metric="activity_24h.unique_logins",
     )
     webhook_counts = await safe_metric(
-        count_webhook_runs.fn(client=client, window_start=window_start, window_end=window_end)
+        count_webhook_runs.fn(client=client, window_start=window_start, window_end=window_end),
+        metric="activity_24h.webhooks_fired_success and webhooks_fired_failure",
     )
     webhooks_fired_success = webhook_counts[0] if webhook_counts is not None else None
     webhooks_fired_failure = webhook_counts[1] if webhook_counts is not None else None
@@ -341,10 +398,20 @@ async def gather_activity_24h(
         webhooks_fired_failure=webhooks_fired_failure,
         validators_started=await safe_metric(
             count_started_validators(
-                client=client, read_kinds=read_validator_kinds, window_start=window_start, window_end=window_end
-            )
+                client=client,
+                read_kinds=read_validator_kinds,
+                window_start=window_start,
+                window_end=window_end,
+                read_deadline_seconds=TASK_MANAGER_READ_DEADLINE_SECONDS,
+            ),
+            metric="activity_24h.validators_started",
         ),
-        workflow_runs=await gather_workflow_runs(client=client, window_start=window_start, window_end=window_end),
+        workflow_runs=await gather_workflow_runs(
+            client=client,
+            window_start=window_start,
+            window_end=window_end,
+            read_deadline_seconds=TASK_MANAGER_READ_DEADLINE_SECONDS,
+        ),
     )
 
 

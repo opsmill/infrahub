@@ -1,5 +1,7 @@
+import asyncio
 import json
-from collections.abc import Callable
+import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -15,11 +17,14 @@ from infrahub.telemetry.task_manager import (
     build_workflow_run_rows,
     count_started_validators,
     gather_workflow_runs,
+    read_within_deadline,
 )
 
 WORKFLOW = "generator-run"
 WINDOW_START = datetime(2021, 3, 1, tzinfo=UTC)
 WINDOW_END = datetime(2021, 3, 2, tzinfo=UTC)
+# Long enough that no scripted answer reaches it.
+READ_DEADLINE_SECONDS = 30.0
 
 
 def _state(state_type: StateType, runs: int, seconds: float) -> RunHistoryState:
@@ -82,14 +87,19 @@ def test_build_workflow_run_rows(case: RunRowsCase) -> None:
     assert build_workflow_run_rows(workflow=WORKFLOW, states=case.states) == case.expected
 
 
-def _task_manager_client(answer: Callable[[httpx.Request], httpx.Response]) -> PrefectClient:
+def _task_manager_client(
+    answer: Callable[[httpx.Request], httpx.Response | Awaitable[httpx.Response]],
+) -> PrefectClient:
     """Return a task manager client whose requests are answered by ``answer`` instead of a server."""
 
-    def handle(request: httpx.Request) -> httpx.Response:
+    async def handle(request: httpx.Request) -> httpx.Response:
         # The client asks for a CSRF token before its first write; 404 tells it the server has none.
         if request.url.path.endswith("/csrf-token"):
             return httpx.Response(status_code=404)
-        return answer(request)
+        response = answer(request)
+        if isinstance(response, httpx.Response):
+            return response
+        return await response
 
     return PrefectClient(
         api="http://task-manager.invalid/api", httpx_settings={"transport": httpx.MockTransport(handle)}
@@ -118,14 +128,59 @@ def _answer_validator_count(request: httpx.Request) -> httpx.Response:
     return httpx.Response(status_code=200, json=[{"count": 3}])
 
 
-async def test_gather_workflow_runs_keeps_the_other_rows_when_one_read_fails() -> None:
-    async with _task_manager_client(answer=_answer_run_history) as client:
-        rows = await gather_workflow_runs(client=client, window_start=WINDOW_START, window_end=WINDOW_END)
+async def test_gather_workflow_runs_keeps_the_other_rows_when_one_read_fails(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.WARNING, logger="infrahub.tasks"):
+        async with _task_manager_client(answer=_answer_run_history) as client:
+            rows = await gather_workflow_runs(
+                client=client,
+                window_start=WINDOW_START,
+                window_end=WINDOW_END,
+                read_deadline_seconds=READ_DEADLINE_SECONDS,
+            )
 
     assert rows == [
         TelemetryWorkflowRunData(workflow="generator-run"),
         TelemetryWorkflowRunData(workflow="artifact-generate", state=WorkflowRunState.COMPLETED, runs=2, run_seconds=3),
     ]
+    # The log line names the workflow whose read failed and the type of the failure.
+    assert [record.getMessage().split(" for url ")[0] for record in caplog.records] == [
+        "Telemetry metric activity_24h.workflow_runs.generator-run could not be read; reporting null: "
+        "PrefectHTTPStatusError: Server error '500 Internal Server Error'"
+    ]
+
+
+async def _never_answers_generator_run(request: httpx.Request) -> httpx.Response:
+    """Leave the history of ``generator-run`` unanswered and return no run for the other workflows."""
+    workflow = json.loads(request.content)["flows"]["name"]["any_"][0]
+    if workflow == "generator-run":
+        await asyncio.Event().wait()
+    return httpx.Response(status_code=200, json=[{"states": []}])
+
+
+async def test_gather_workflow_runs_gives_up_a_read_that_is_not_answered_within_the_deadline(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.WARNING, logger="infrahub.tasks"):
+        async with _task_manager_client(answer=_never_answers_generator_run) as client:
+            rows = await gather_workflow_runs(
+                client=client, window_start=WINDOW_START, window_end=WINDOW_END, read_deadline_seconds=0.05
+            )
+
+    assert rows == [TelemetryWorkflowRunData(workflow="generator-run")]
+    assert [record.getMessage() for record in caplog.records] == [
+        "Telemetry metric activity_24h.workflow_runs.generator-run could not be read; reporting null: "
+        "TimeoutError: The task manager did not answer within 0.05 seconds"
+    ]
+
+
+async def test_read_within_deadline_keeps_a_timeout_that_the_read_raises() -> None:
+    async def read() -> int:
+        raise TimeoutError("raised by the read")
+
+    with pytest.raises(TimeoutError, match="raised by the read"):
+        await read_within_deadline(read(), deadline_seconds=READ_DEADLINE_SECONDS)
 
 
 async def test_count_started_validators_keeps_the_other_kinds_when_one_count_fails() -> None:
@@ -134,7 +189,37 @@ async def test_count_started_validators_keeps_the_other_kinds_when_one_count_fai
 
     async with _task_manager_client(answer=_answer_validator_count) as client:
         counts = await count_started_validators(
-            client=client, read_kinds=read_kinds, window_start=WINDOW_START, window_end=WINDOW_END
+            client=client,
+            read_kinds=read_kinds,
+            window_start=WINDOW_START,
+            window_end=WINDOW_END,
+            read_deadline_seconds=READ_DEADLINE_SECONDS,
         )
 
     assert counts == {"CoreUserValidator": None, "CoreDataValidator": 3}
+
+
+def _answer_validator_count_with_unexpected_shapes(request: httpx.Request) -> httpx.Response:
+    """Answer 200 for every kind: a body that is not a list, a bucket with no count, and three events."""
+    kind = json.loads(request.content)["filter"]["resource"]["labels"]["infrahub.node.kind"][0]
+    if kind == "CoreSchemaValidator":
+        return httpx.Response(status_code=200, json={"detail": "not a list of buckets"})
+    if kind == "CoreUserValidator":
+        return httpx.Response(status_code=200, json=[{"label": "a bucket with no count"}])
+    return httpx.Response(status_code=200, json=[{"count": 3}])
+
+
+async def test_count_started_validators_reports_null_for_a_response_with_an_unexpected_shape() -> None:
+    def read_kinds() -> list[str]:
+        return ["CoreSchemaValidator", "CoreUserValidator", "CoreDataValidator"]
+
+    async with _task_manager_client(answer=_answer_validator_count_with_unexpected_shapes) as client:
+        counts = await count_started_validators(
+            client=client,
+            read_kinds=read_kinds,
+            window_start=WINDOW_START,
+            window_end=WINDOW_END,
+            read_deadline_seconds=READ_DEADLINE_SECONDS,
+        )
+
+    assert counts == {"CoreSchemaValidator": None, "CoreUserValidator": None, "CoreDataValidator": 3}

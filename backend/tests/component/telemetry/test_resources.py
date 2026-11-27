@@ -328,7 +328,9 @@ async def test_database_settings_read_failure_nulls_only_that_field(
         data = await gatherer.gather()
 
     # The read genuinely raised and was caught (not merely the unset-is-null default).
-    assert any("Telemetry metric collection failed" in record.getMessage() for record in caplog.records)
+    assert [
+        record.getMessage().split(";")[0] for record in caplog.records if "Telemetry metric" in record.getMessage()
+    ] == [f"Telemetry metric database.system_info.{case.failed_field} could not be read"]
 
     # Only the failed field is null; the other settings figures match the healthy gather.
     assert data.database.system_info is not None

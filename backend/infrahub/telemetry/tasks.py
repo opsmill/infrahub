@@ -77,7 +77,7 @@ async def gather_feature_information() -> dict[str, int | None]:
         for kind in features_to_count:
             data[kind] = await utils.count_nodes(db=db, label=kind)
 
-        definition_counts = await safe_metric(count_definitions(db=db))
+        definition_counts = await safe_metric(count_definitions(db=db), metric="features definition counts")
         for kind in DEFINITION_KINDS:
             data[kind] = definition_counts[kind] if definition_counts is not None else None
 
@@ -95,14 +95,16 @@ async def gather_account_information(db: InfrahubDatabase) -> TelemetryAccountDa
             schema=InfrahubKind.ACCOUNT,
             filters={"status__value": AccountStatus.ACTIVE.value},
             branch=default_branch,
-        )
+        ),
+        metric="accounts.active",
     )
     groups = await safe_metric(
         NodeManager.count(
             db=db,
             schema=InfrahubKind.ACCOUNTGROUP,
             branch=default_branch,
-        )
+        ),
+        metric="accounts.groups",
     )
 
     return TelemetryAccountData(active=active, groups=groups)
@@ -215,12 +217,18 @@ class AnonymousTelemetryGatherer:
 
         active_worker_ids = {worker.id for worker in workers if worker.active}
         readings_by_component = (
-            await safe_metric(self.component.read_worker_resources(worker_ids=active_worker_ids)) or {}
+            await safe_metric(
+                self.component.read_worker_resources(worker_ids=active_worker_ids),
+                metric="server and task_workers CPU and memory",
+            )
+            or {}
         )
 
-        accounts = await safe_metric(self.account_gatherer.gather())
-        activity_24h = await safe_metric(self.activity_gatherer.gather())
-        task_manager_database = await safe_metric(self.task_manager_database_gatherer.gather())
+        accounts = await safe_metric(self.account_gatherer.gather(), metric="accounts")
+        activity_24h = await safe_metric(self.activity_gatherer.gather(), metric="activity_24h")
+        task_manager_database = await safe_metric(
+            self.task_manager_database_gatherer.gather(), metric="prefect.database"
+        )
 
         data = TelemetryData(
             deployment_id=registry.id,
@@ -237,7 +245,7 @@ class AnonymousTelemetryGatherer:
             task_workers=_component_data(task_workers, readings_by_component.get(COMPONENT_GIT_AGENT, [])),
             branches=TelemetryBranchData(
                 total=len(registry.branch),
-                active=await safe_metric(self.active_branch_counter.gather()),
+                active=await safe_metric(self.active_branch_counter.gather(), metric="branches.active"),
             ),
             accounts=accounts if accounts is not None else TelemetryAccountData(),
             activity_24h=activity_24h if activity_24h is not None else TelemetryActivity24hData(),
