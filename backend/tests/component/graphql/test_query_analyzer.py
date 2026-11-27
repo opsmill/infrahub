@@ -1,5 +1,6 @@
 from copy import deepcopy
 
+import pytest
 from graphql import DocumentNode, GraphQLSchema
 
 from infrahub.core.branch import Branch
@@ -10,6 +11,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.analyzer import GraphQLArgument, GraphQLVariable, InfrahubGraphQLQueryAnalyzer, MutateAction
 from infrahub.graphql.initialization import prepare_graphql_params
+from tests.component.graphql.hidden_mutation_cases import HIDDEN_MUTATION_CASES, HiddenMutationCase
 from tests.helpers.schema.color import COLOR
 from tests.helpers.schema.tshirt import TSHIRT
 
@@ -920,3 +922,41 @@ async def test_query_report_single_target_complex_constraints(
     # Filtering by a required human-friendly id pins a single target
     assert analyze(hfid_pinned).query_report.only_has_unique_targets is True
     assert analyze(hfid_optional).query_report.only_has_unique_targets is False
+
+
+@pytest.mark.parametrize("case", HIDDEN_MUTATION_CASES, ids=lambda case: case.name)
+async def test_mutation_hidden_in_fragment_is_reported(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+    case: HiddenMutationCase,
+) -> None:
+    """A mutation hidden in a top-level fragment is reported as a create of its kind, in single- and multi-operation documents."""
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    gqa = InfrahubGraphQLQueryAnalyzer(
+        query=case.query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+
+    assert gqa.contains_mutation is True
+    assert "TestPersonCreate" in gqa.operation_names
+    assert "TestPerson" in gqa.query_report.impacted_models
+    assert gqa.query_report.kind_action_map["TestPerson"] == {MutateAction.CREATE}
+
+
+async def test_plain_query_is_not_reported_as_mutation(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+    query_01: str,
+) -> None:
+    """Resolving fragments must not reclassify an ordinary field-only query as a mutation."""
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    gqa = InfrahubGraphQLQueryAnalyzer(
+        query=query_01, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+    )
+
+    assert gqa.contains_mutation is False
