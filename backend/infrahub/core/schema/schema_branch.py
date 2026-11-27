@@ -375,6 +375,17 @@ class SchemaBranch:
             hfids=self.hfids.duplicate(),
         )
 
+    def duplicate_with_own_cache(self, name: str) -> SchemaBranch:
+        """Duplicate the current object with a cache of its own, so loading into the copy never grows this cache."""
+        return self.__class__(
+            name=name,
+            data=copy.deepcopy(self.to_dict()),
+            cache=dict(self._cache),
+            computed_attributes=self.computed_attributes.duplicate(),
+            display_labels=self.display_labels.duplicate(),
+            hfids=self.hfids.duplicate(),
+        )
+
     def set(self, name: str, schema: MainSchemaTypes) -> str:
         """Store a NodeSchema or GenericSchema associated with a specific name.
 

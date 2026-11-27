@@ -18,9 +18,11 @@ route runs it with `asyncio.to_thread`, so the API worker keeps answering other 
 `SchemaBranch.duplicate()` of the registry's branch schema, so a schema load that replaces a kind of the
 branch during the export does not change the kinds the export reads.
 
-The core baseline is built again for each pass, not built once and copied: processing changes the cached
-schema objects in place, so a baseline that several passes share is changed by the first pass. A deep copy of
-one baseline per pass is safe but saves only about 0.6 to 0.9 seconds per export.
+The processed core schema is built once per process (`exporter.py::copy_core_schema_baseline`), and each pass
+loads into `SchemaBranch.duplicate_with_own_cache()` of it, which takes about 1 ms instead of about 0.6 s for
+a new build. The copy shares the cached schema objects, because processing replaces an object it changes
+rather than changing it in place, but it has its own cache dict and kind lists, so a pass never adds to the
+shared schema. `SchemaBranch.duplicate()` would share the cache dict, and every export would grow it.
 
 ## A namespace the export cannot select returns 404
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import functools
 import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
@@ -45,6 +46,7 @@ GENERATED_RELATIONSHIP_KINDS = frozenset(
 """Kinds of the relationships that processing adds to nodes and generics."""
 
 CORE_SCHEMA_DEFINITIONS = (internal_schema, core_models, deprecated_models)
+CORE_SCHEMA_BASELINE_NAME = "core-schema-baseline"
 
 
 def _defined_kinds(definitions: Iterable[Mapping[str, Any]]) -> frozenset[str]:
@@ -70,6 +72,20 @@ def build_core_schema_baseline(name: str) -> SchemaBranch:
         baseline.load_schema(schema=SchemaRoot(**definitions))
     baseline.process()
     return baseline
+
+
+@functools.cache
+def _processed_core_schema() -> SchemaBranch:
+    return build_core_schema_baseline(name=CORE_SCHEMA_BASELINE_NAME)
+
+
+def copy_core_schema_baseline(name: str) -> SchemaBranch:
+    """Return a copy of the processed core schema, which is built once per process, that a load can change.
+
+    Processing replaces the schema objects it changes rather than changing them in place, so the copies share the
+    cached objects and only the copy's own cache and kind lists grow.
+    """
+    return _processed_core_schema().duplicate_with_own_cache(name=name)
 
 
 def convert_deprecated_attribute_fields(attribute: Mapping[str, Any]) -> dict[str, Any]:

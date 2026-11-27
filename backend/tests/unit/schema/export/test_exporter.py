@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from infrahub_sdk.schema.generated.write import NodeSchemaWrite
@@ -14,11 +14,15 @@ from infrahub.schema.export.exporter import (
     SchemaExporter,
     build_core_schema_baseline,
     convert_deprecated_attribute_fields,
+    copy_core_schema_baseline,
     normalize_element_for_comparison,
 )
 from infrahub.schema.export.models import SchemaExportMode
 
 from .conftest import SELECTED_NAMESPACE, TWO_NAMESPACE_SCHEMA, load_on_new_baseline
+
+if TYPE_CHECKING:
+    from infrahub.core.schema.schema_branch import SchemaBranch
 
 
 def _defined_kinds(element_type: str) -> set[str]:
@@ -27,6 +31,33 @@ def _defined_kinds(element_type: str) -> set[str]:
         for definitions in (internal_schema, core_models, deprecated_models)
         for element in definitions.get(element_type, [])
     }
+
+
+def _schema_contents(schema_branch: SchemaBranch) -> tuple[int, dict[str, dict[str, Any]]]:
+    kinds = [*schema_branch.nodes, *schema_branch.generics, *schema_branch.profiles, *schema_branch.templates]
+    return len(schema_branch._cache), {
+        kind: schema_branch.get(name=kind, duplicate=False).model_dump() for kind in sorted(kinds)
+    }
+
+
+def test_exports_through_copies_of_one_core_schema_match_and_leave_it_unchanged() -> None:
+    source = load_on_new_baseline(TWO_NAMESPACE_SCHEMA)
+    core_before = _schema_contents(copy_core_schema_baseline("before"))
+
+    with_copies = [
+        SchemaExporter(baseline_factory=copy_core_schema_baseline).export(
+            schema_branch=source, mode=SchemaExportMode.BRIEF, namespaces=None
+        )
+        for _ in range(2)
+    ]
+    with_new_baselines = SchemaExporter(baseline_factory=build_core_schema_baseline).export(
+        schema_branch=source, mode=SchemaExportMode.BRIEF, namespaces=None
+    )
+
+    assert [document.model_dump(exclude_unset=True) for document in with_copies] == [
+        with_new_baselines.model_dump(exclude_unset=True)
+    ] * 2
+    assert _schema_contents(copy_core_schema_baseline("after")) == core_before
 
 
 def test_baseline_holds_the_processed_core_schema() -> None:
