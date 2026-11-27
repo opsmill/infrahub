@@ -11,6 +11,12 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.11.14](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.14) - 2026-11-27
+
+### Security
+
+- The GraphQL API now classifies an operation written inside a top-level inline fragment or fragment spread as the operation it is, so its permission checks run before it executes. A caller can no longer bypass authentication or object permissions by wrapping a mutation in `... on Mutation { ... }` alongside a harmless authorized operation (GHSA-299f-9wgh-7jhv).
+
 ## [Infrahub - v1.11.13](https://github.com/opsmill/infrahub/tree/infrahub-v1.11.13) - 2026-11-20
 
 ### Security
