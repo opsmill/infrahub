@@ -2,8 +2,8 @@
 
 - Feature: export the running schema (`GET /api/schema/export` and `infrahubctl schema export`)
 - Spec directory: `dev/specs/ifc-2964-schema-export`
-- Infrahub repository, branch `po-ifc-3670-schema-export-endpoint`: base `91568a343a`, head `c2cb0e4242` (before this report)
-- SDK submodule, branch `po-ifc-3669-schema-export-cli`: base `338fbdc188` (`origin/infrahub-develop`), head `e59fd9c8`
+- Infrahub repository, branch `po-ifc-3670-schema-export-endpoint`: base `91568a343a`, head `c2cb0e4242` at the end of the run, `80c4f0001a` after the fixes made after the run (before this update of the report)
+- SDK submodule, branch `po-ifc-3669-schema-export-cli`: base `338fbdc188` (`origin/infrahub-develop`), head `e59fd9c8` at the end of the run, `58ced06a` after the fixes made after the run
 - Wall-clock time: about 3 hours
 - Status: DONE. T052, T053 and T055 were out of scope for this run and are still open.
 
@@ -139,10 +139,55 @@ The code-reviewer also noted that `infrahub.api.schema` fails to import until th
 - Four medium findings that made false statements in comments, docs and a changelog fragment were fixed with the two high findings.
 - Rule breaks by chunk agents: chunk 3 edited `exporter.py` once with an inline Python script, and chunk 8 appended tests to `test_full_mode.py` with a heredoc. Code-simplifier also used a script, but its edits were discarded. In each case the content is what the agent intended, and every later check passed.
 
+## Fixes made after the run
+
+A second review ran after the run: `/code-review` at `xhigh` with the rules in `REVIEW.md` on this repository (`git diff origin/schema-export-ifc-2964...HEAD`), and the same review on the SDK branch, because `REVIEW.md` leaves out changes inside `python_sdk`. Each fix below has a test that fails without it.
+
+| Commit | Change |
+| --- | --- |
+| `61ff4d8b5e` | The route runs the export in a thread, so the API worker answers other requests during an export. |
+| `31247b230c`, SDK `a5c82404` | A namespace that does not exist on the branch, or that is restricted, returns 404 before any work. Each error names its namespace in `extensions.namespace`, so a client can tell it from the 404 that an unknown URL returns. The CLI prints one error per namespace. |
+| `d9fb426e5f` | The processed core schema is built once per process, and each pass loads into a copy of it. A repeated BRIEF export of `models/base/` takes 1.1 to 1.4 s instead of about 2.6 s. |
+| `6132d64ba8` | The thread reads a copy of the branch schema with its own cache, so a schema change that purges the registry cache during an export cannot remove a kind the export reads. BRIEF also falls back to FULL when processing a candidate raises `SchemaNotFoundError` or `AttributePathParsingError`. |
+| `80c4f0001a` | The export leaves out only the six relationships processing adds, matched by kind, name and identifier. A relationship the schema owner defined with kind `Group`, `Profile`, `Hierarchy` or `Template` was left out before. |
+| SDK `90f49d42` | The SDK reports the errors of the export with its own exceptions: `AuthenticationError`, `BranchNotFoundError`, `VersionNotSupportedError`, `SchemaNamespaceNotFoundError`, `URLNotFoundError` and `InvalidResponseError`. The new exceptions can be pickled and copied. |
+| SDK `58ced06a` | The CLI reports a rejected login as an authentication failure, and prints paths and names that contain square brackets as written. |
+
+## Decisions made after the run
+
+- No limit on concurrent exports. The feature owner does not expect many export requests.
+- The 404 for a namespace is told apart from the 404 for an unknown URL by the `extensions.namespace` field, not by the status or the message.
+- The core schema baseline is built once per process and reused, after a test showed that processing replaces the schema objects it changes instead of changing them in place.
+- The list of relationships processing adds is kept by hand, matched by kind, name and identifier. A relationship the schema owner defined with the same kind, name and identifier as a generated one is still left out. The long-term fix is to record on each relationship, attribute and field whether processing added it.
+
+## Plan for the findings that are still open
+
+Planned as follow-up tickets:
+
+- An older SDK drops the fields a newer server adds to the export, because the CLI writes the validated SDK model, which ignores unknown fields (the deferred medium finding on `extra="ignore"`). The fix is to write the server response as received. This is not a regression: the export before this change had the same limit.
+- Record whether processing added a relationship, attribute or field, so the exporter no longer needs a list kept by hand.
+- Tell the client when a BRIEF export falls back to FULL. Today only the server log shows it.
+- Log each deprecation warning once per export. Today each pass of the BRIEF loop logs it again.
+- Optional: limit the number of exports that run at the same time.
+
+Open questions for the pull request descriptions, because `AGENTS.md` asks for agreement first or the design document says otherwise:
+
+- the new REST endpoint `GET /api/schema/export`;
+- the `keep_in_export` mark in the schema definitions;
+- the `extensions.namespace` field in REST error responses;
+- BRIEF can write a derived value next to the value it comes from, which the design document lists as left out.
+
+Other findings that are still open:
+
+- The CLI leaves the files of an earlier export in a directory it writes to again.
+- `split_by_namespace` drops `extensions`.
+- Loading an export that holds `infrahub_version` into a server without this change.
+- No SDK integration test against a running server.
+- The deferred rows of the first review table above.
+
 ## Suggested next steps
 
 1. Decide the T014 question: with the `unique` mark, BRIEF leaves out a derived `human_friendly_id` and `uniqueness_constraints`, while research R3 and T013 expected them written.
 2. Confirm the SDK release constant `1.13.0` with the release owner.
-3. Correct the spec documents that still say the marked fields are "not derived by processing" or "never removed": `data-model.md:60`, `research.md:45`, `research.md:53`, `research.md:81`, `plan.md:14`, `plan.md:109`, `spec.md:182`.
-4. Decide on the deferred medium findings, first the event-loop blocking in the export route.
-5. Run `/pre-ci`, then open the SDK pull request (T052), bump the pointer (T053) and run the quickstart (T055).
+3. Create the follow-up tickets listed above.
+4. Run `/pre-ci`, then open the SDK pull request (T052). Open the Infrahub pull request as a draft: its CI fails until the SDK pull request merges and the pointer moves (T053). Then run the quickstart (T055).

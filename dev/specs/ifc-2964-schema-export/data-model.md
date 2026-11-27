@@ -57,7 +57,7 @@ On a node with `inherit_from`, each property in the inheritance constant of `bac
 
 ### Kept in `BRIEF` mode by the field definition
 
-Fields whose definition has the `keep_in_export` mark (working name) in `ExtraField` are never removed by the reduction loop, because processing does not derive them and removing them makes the candidate fail validation. `inherit_from` is one. The exporter reads them from the constant that `uv run invoke backend.generate` writes into `infrahub_sdk/schema/generated/contract.py` (research R3).
+Fields whose definition has the `keep_in_export` mark (working name) in `ExtraField` are removed by the reduction loop only when they hold the write-model default, because a candidate without them fails validation. Processing never sets some of them, such as `inherit_from`, and derives others, such as a relationship `identifier`, but the candidate fails validation before processing can derive them. The exporter reads them from the constant that `uv run invoke backend.generate` writes into `infrahub_sdk/schema/generated/contract.py` (research R3).
 
 ### All other fields in `BRIEF` mode
 

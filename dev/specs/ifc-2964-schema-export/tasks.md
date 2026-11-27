@@ -44,7 +44,7 @@ description: "Task list for exporting the running schema (IFC-2964)"
 - [X] T006 Run `uv run invoke backend.generate` and check that the only changes in `python_sdk/infrahub_sdk/schema/generated/` are the new `infrahub_version` field on `InfrahubSchemaWrite` in `write.py` and the new constant in `contract.py` (depends on T003, T005). Do not edit the generated files by hand. Run it again after T028 changes a mark
 - [X] T007 In `backend/infrahub/api/schema.py::SchemaLoadAPI.build_internal_schema`, leave `infrahub_version` out of the data used to build `SchemaRoot`. `SchemaRoot` keeps `extra="forbid"` and gains no field (research R5). This change and the `python_sdk` submodule bump must land in the same commit (plan, delivery order), see T053
 - [X] T008 [P] Add a test to `python_sdk/tests/unit/sdk/test_schema.py` that `infrahub_sdk/schema/validate.py::validate_schema` accepts a document with `infrahub_version` and reports no error for it (FR-012)
-- [X] T009 [P] Add a test class to `backend/tests/functional/api/test_load_schema.py` that sends a schema with `infrahub_version: "1.0.0"` to `POST /api/schema/load` and to `POST /api/schema/check`. Assert status 200, no warning about the field, and the same schema hash as the same schema loaded without the field (FR-012, contracts/schema-load-contract.md)
+- [X] T009 [P] Add a test class to `backend/tests/functional/api/test_load_schema.py` that sends a schema with `infrahub_version: "1.0.0"` to `POST /api/schema/load` and to `POST /api/schema/check`. For `/load`, assert status 200, no warning about the field, and the same schema hash as the same schema loaded without the field. For `/check`, which returns 202 with a diff and warnings but no hash, assert status 202, no warning, and the same diff as the same schema checked without the field (FR-012, contracts/schema-load-contract.md)
 - [X] T010 [P] In `backend/infrahub/schema/export/models.py`, define `SchemaExportMode` as a string enum with the values `BRIEF` and `FULL` (no `IDS` value, D6), and `SchemaExportDocument` as a subclass of the SDK `InfrahubSchemaWrite` with the field rules from data-model.md, section SchemaExportDocument:
   - `version`: `str`, always `"1.0"`;
   - `infrahub_version`: `str`, required on the response, set from `infrahub.__version__`;
@@ -234,7 +234,7 @@ All tasks in this phase change the SDK repository and use `httpx_mock` for the H
 
 **Purpose**: generated contracts, documentation, changelog and the cross-repository commit.
 
-- [X] T046 [P] Regenerate `schema/openapi.json` with `uv run invoke schema.generate-jsonschema`, then `frontend/app/src/shared/api/rest/types.generated.ts` with `cd frontend/app && pnpm codegen` (FR-017). Do not edit either file by hand
+- [X] T046 [P] Regenerate `schema/openapi.json` with `uv run invoke schema.generate-jsonschema`, then `frontend/app/src/shared/api/rest/types.generated.ts` with `cd frontend/app && pnpm codegen:openapi` (FR-017). Do not edit either file by hand
 - [X] T047 [P] Regenerate the schema-file JSON schema built from `SchemaLoadAPI` (`backend/infrahub/cli/dev.py::export_node_schema`) with `uv run invoke schema.generate-infrahubnodeschema`, and the reference docs with `uv run invoke docs.generate`
 - [X] T048 [P] Write `docs/docs/schema/export.mdx` and add it to the schema section of `docs/sidebars.ts` next to `schema/create-and-load` (FR-018). Use the `writing-infrahub-docs` skill. The page covers:
   - the `BRIEF` and `FULL` modes, and the `branch` and `namespaces` parameters;

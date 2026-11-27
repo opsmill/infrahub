@@ -101,7 +101,7 @@ A correct export can still fail to load on the target in the cases below. They b
 
 - The target runs an older release: it rejects the Infrahub version field, or a schema setting it does not know.
 - The export references kinds the target does not have, for example kinds left out by a namespace filter.
-- The same kind is a node on one instance and a generic on the other ([check](https://github.com/opsmill/infrahub/blob/develop/backend/infrahub/core/schema/schema_branch.py#L722-L728)).
+- The same kind is a node on one instance and a generic on the other (the check is in `backend/infrahub/core/schema/schema_branch.py::SchemaBranch.load_schema`).
 - A setting Infrahub cannot update, such as `branch` on an attribute or relationship, differs. It is not known whether the load refuses such a change or ignores it (D6).
 - The target's data does not meet a constraint in the export, for example a new required or unique attribute.
 - The user does not have the permission to manage the schema on the target.
@@ -114,7 +114,7 @@ Cases the export handles in a defined way:
 - A value the schema owner wrote that equals the derived value is left out in `BRIEF` mode. After the load, the value follows the field it is derived from, so renaming an attribute later changes a label that was set explicitly (D3).
 - A derived value can be written in `BRIEF` mode next to the value it is derived from. Example: a node with no generic and a `unique: true` attribute gets `human_friendly_id` and `uniqueness_constraints` written, although processing would derive them from that attribute. The export loads to the same schema; it is longer than the design document example (FR-006).
 - A property a node took from its generic, and whose value still equals the generic's, is written on the node. On the target, as on the source, a later change to the generic does not reach that node (D4).
-- A node or generic that has the deprecated `display_labels` or `default_filter` set gives a deprecation warning when the export is loaded ([warnings](https://github.com/opsmill/infrahub/blob/develop/backend/infrahub/core/schema/__init__.py#L138-L153)). Because of FR-005, the export writes these properties on each node that took them from a generic, so the load gives the warning for each of those nodes as well as for the generic. Loading the source files gave it only where the schema owner wrote the property. Processing does not set either property on the exported schemas, so the warning appears only when the schema owner set the property on a node or a generic.
+- A node or generic that has the deprecated `display_labels` or `default_filter` set gives a deprecation warning when the export is loaded (the warnings come from `backend/infrahub/core/schema/__init__.py::SchemaRoot.gather_warnings`). Because of FR-005, the export writes these properties on each node that took them from a generic, so the load gives the warning for each of those nodes as well as for the generic when the generic is in the export. Loading the source files gave it only where the schema owner wrote the property. This includes generics Infrahub defines: `BuiltinIPPrefix` and `BuiltinIPAddress` set `default_filter`, so a load of the export of `models/base/` warns for `IpamIPPrefix` and `IpamIPAddress`, although the schema owner never wrote the property.
 - Loaded into an instance that already has some of the same nodes, the export is merged into the existing schema and removes nothing, in both modes. Nodes, generics, attributes and relationships that the target has and the source does not stay on the target. A value the source does not set, such as a `description` removed on the source, is not written in the export, so the target keeps its own value.
 - Loaded into an instance that holds an earlier version of the same schema, the export can give a different result than the schema changes on the source would have given, and the load reports no error. Example: on the source, `name` was renamed to `hostname` and a new `name` was added. The target matches attributes by name, so its existing `name` keeps its values and `hostname` is created empty (D13).
 
@@ -179,7 +179,7 @@ Confirmed by test on 2026-11-20 (in memory, through `POST /api/schema/load`, and
 - **FR-019**: `dev/knowledge/backend/` MUST have a file on how the export is built from the stored schema. It covers:
   - which fields the export writes, and that a field's visibility decides it;
   - how `BRIEF` mode decides which values to leave out, and how to find out why a value was left out of an export;
-  - which field definitions are marked so that `BRIEF` mode never removes them, and how CI shows a missing mark;
+  - which field definitions are marked so that `BRIEF` mode keeps them unless they hold their default value, and how CI shows a missing mark;
   - that `BRIEF` output can change between releases when schema processing changes, while the export still loads to the same schema;
   - which properties a node keeps from its generic, and where that list is kept.
 

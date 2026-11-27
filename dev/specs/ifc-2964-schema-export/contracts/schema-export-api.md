@@ -71,4 +71,4 @@ The route is declared before `GET /api/schema/{schema_kind}` in `backend/infrahu
 ## Generated artifacts
 
 - `schema/openapi.json`: `uv run invoke schema.generate-jsonschema`
-- `frontend/app/src/shared/api/rest/types.generated.ts`: `cd frontend/app && pnpm codegen`
+- `frontend/app/src/shared/api/rest/types.generated.ts`: `cd frontend/app && pnpm codegen:openapi`
