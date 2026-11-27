@@ -89,6 +89,8 @@ When you touch one of these and notice it could be a generic primitive, consider
 
 Each migrated component ships with a `*.stories.tsx`. Run Storybook from `frontend/packages/ui/` to preview variants before consuming. Stories double as the contract documentation: if a variant isn't in the story, treat it as not-yet-supported.
 
+The toolbar's Theme switch (`@storybook/addon-themes`) toggles the `dark` class on the root element, the same switch the app uses, so preview each story in both themes.
+
 ## Anti-patterns
 
 | Anti-pattern | Why it's wrong |

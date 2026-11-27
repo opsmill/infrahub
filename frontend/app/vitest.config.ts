@@ -43,6 +43,11 @@ export default mergeConfig(
         "sha1",
         "unidiff",
       ],
+      // react-aria's virtualizer reads `process.env.VIRT_ON` once NODE_ENV is "test", and the
+      // browser has no `process`; enabling it keeps the real-browser sizing the app uses.
+      rolldownOptions: {
+        transform: { define: { "process.env.VIRT_ON": JSON.stringify("true") } },
+      },
     },
     test: {
       browser: {
