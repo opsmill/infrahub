@@ -1,0 +1,38 @@
+---
+title: Release 1.12.4
+release_date: 2026-11-27
+release_type: security
+description: "Security release that closes a GraphQL permission bypass (GHSA-299f-9wgh-7jhv). It also adds a configurable instance label and color, and fixes schema-extension, IP pool, and Git repository import behavior."
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.12.4</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>November 27th, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.12.4](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.12.4)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Security
+
+- The GraphQL API now classifies an operation written inside a top-level inline fragment or fragment spread as the operation it is, so its permission checks run before it executes. A caller can no longer bypass authentication or object permissions by wrapping a mutation in `... on Mutation { ... }` alongside a harmless authorized operation (GHSA-299f-9wgh-7jhv).
+
+### Added
+
+- Added an instance label and an instance color that an administrator sets on the Global preferences page without restarting Infrahub: the label is shown in a badge in the top header and above the logo on the login page and starts the browser tab title, the color is shown as a thin bar at the top of the application pages and the login page and as the color of the browser tab icon, and the `INFRAHUB_INSTANCE_LABEL` and `INFRAHUB_INSTANCE_COLOR` environment variables set deployment defaults that a saved value overrides.
+
+### Fixed
+
+- Loading a schema now fails when an extension targets a kind in a restricted namespace, such as `Core`, `Builtin`, `Profile` or `Template`, in the same way as defining a node in one of those namespaces fails. Before this fix, an extension could add attributes and relationships to built-in kinds such as `BuiltinTag` or `CoreNumberPool`, and could remove existing ones: removing the `password` attribute from `CoreAccount` made login fail. After the upgrade, a schema file or Git repository that extends a built-in kind fails to load until you remove that extension. See the [guide to removing extensions of built-in kinds](https://docs.infrahub.app/release-notes/deprecation-guides/restricted-namespace-extensions). ([#10418](https://github.com/opsmill/infrahub/issues/10418))
+- Fixed the IP prefix pool and IP address pool details pages not showing the prefixes and addresses allocated on the selected branch. ([#11614](https://github.com/opsmill/infrahub/issues/11614))
+- Fixed a Git repository branch staying in the syncing state when its import failed before the objects were applied, for example when the repository lock could not be taken; the branch now shows an import error.
+- Fixed the default branch of a Git repository staying in the syncing state, with no import running, after its import stopped partway, for example when a task worker restarted.
+- Fixed the whole web interface being replaced by an error screen when the configuration fails to reload after it loaded once, for example after saving the instance label or color, or when a browser tab regains focus: the pages now keep the values already loaded.
