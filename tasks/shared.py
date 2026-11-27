@@ -40,7 +40,7 @@ INFRAHUB_DEBUG_TRACE: bool = str_to_bool(value=os.getenv("INFRAHUB_DEBUG_TRACE",
 
 DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
 MEMGRAPH_DOCKER_IMAGE = os.getenv("MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-mage:1.19-memgraph-2.19-no-ml")
-NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:2026.05.0-enterprise")
+NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:2026.05.0-community")
 MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv("MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:4.2.1-management")
 CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:8.4.0")
 
@@ -100,6 +100,7 @@ DEV_COMPOSE_FILES_NEO4J = [
     Path("development/docker-compose-database-neo4j.yml"),
     Path("development/docker-compose-observability.yml"),
 ]
+NEO4J_ENTERPRISE_FILE = Path("development/docker-compose-database-neo4j-enterprise.yml")
 DEV_OVERRIDE_FILE = Path("development/docker-compose.dev-override.yml")
 
 TEST_METRICS_OVERRIDE_FILE = Path("development/docker-compose-test-metrics.yml")
@@ -243,6 +244,11 @@ def get_env_vars(context: Context, namespace: Namespace = Namespace.DEFAULT) -> 
     return " ".join([f"{key}={value}" for key, value in ENV_VARS_DICT.items()])
 
 
+def is_neo4j_enterprise_image() -> bool:
+    """Return whether the Neo4j image that the compose stack will run is an Enterprise image."""
+    return "enterprise" in (DATABASE_DOCKER_IMAGE or NEO4J_DOCKER_IMAGE)
+
+
 def build_compose_files_cmd(database: str, namespace: Namespace = Namespace.DEFAULT) -> str:
     if database not in SUPPORTED_DATABASES:
         sys.exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
@@ -251,6 +257,8 @@ def build_compose_files_cmd(database: str, namespace: Namespace = Namespace.DEFA
         COMPOSE_FILES = COMPOSE_FILES_MEMGRAPH.copy()
     elif database == DatabaseType.NEO4J.value:
         COMPOSE_FILES = COMPOSE_FILES_NEO4J.copy()
+        if is_neo4j_enterprise_image():
+            COMPOSE_FILES.append(NEO4J_ENTERPRISE_FILE)
 
     if OVERRIDE_FILE.exists():
         print("!! Found an override file for docker-compose !!")
@@ -276,6 +284,8 @@ def build_dev_compose_files_cmd(database: str) -> str:
         DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_MEMGRAPH.copy()
     elif database == DatabaseType.NEO4J.value:
         DEV_COMPOSE_FILES = DEV_COMPOSE_FILES_NEO4J.copy()
+        if is_neo4j_enterprise_image():
+            DEV_COMPOSE_FILES.append(NEO4J_ENTERPRISE_FILE)
 
     if DEV_OVERRIDE_FILE.exists():
         print("!! Found a dev override file for docker-compose !!")
