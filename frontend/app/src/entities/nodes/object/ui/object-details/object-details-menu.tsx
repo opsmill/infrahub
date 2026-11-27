@@ -14,7 +14,6 @@ import { useNavigate } from "react-router";
 
 import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 
-import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Icon } from "@/shared/components/display/icon";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -26,8 +25,7 @@ import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { isNodeRelationshipOne } from "@/entities/nodes/object/domain/rules/is-node-relationship-one";
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
-import ObjectEdit from "@/entities/nodes/object/ui/object-edit/object-item-edit-paginated";
-import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
+import { ObjectEditSheet } from "@/entities/nodes/object/ui/object-edit/object-edit-sheet";
 import {
   getDocumentationUrl,
   getObjectDetailsUrl,
@@ -186,23 +184,14 @@ export function ObjectDetailsMenu({
         <GroupsManager schema={objectSchema} objectId={objectData.id} />
       </Sheet>
 
-      <Sheet isOpen={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <SlideOverTitle
-          schema={objectSchema}
-          currentObjectLabel={nodeLabel}
-          title={`Edit ${nodeLabel}`}
-          subtitle={objectSchema.description}
-        />
-        <ObjectEdit
-          closeDrawer={() => setIsEditModalOpen(false)}
-          onUpdateComplete={async () => {
-            await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
-            setIsEditModalOpen(false);
-          }}
-          objectId={objectData.id!}
-          objectKind={objectSchema.kind!}
-        />
-      </Sheet>
+      <ObjectEditSheet
+        isOpen={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        schema={objectSchema}
+        objectId={objectData.id}
+        objectLabel={nodeLabel}
+        subtitle={objectSchema.description}
+      />
 
       <ModalDeleteObject
         label={objectSchema.label}
