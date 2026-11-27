@@ -171,18 +171,15 @@ class PoolAllocated(ObjectType):
 
                 if "identifier" in node_fields:
                     allocated_ids = [node["node"]["id"] for node in nodes]
-                    identifier_query_map = {
+                    identifier_query_map: dict[str, type[IPAddressPoolGetIdentifiers | PrefixPoolGetIdentifiers]] = {
                         InfrahubKind.IPADDRESSPOOL: IPAddressPoolGetIdentifiers,
                         InfrahubKind.IPPREFIXPOOL: PrefixPoolGetIdentifiers,
                     }
                     identifier_query_class = identifier_query_map.get(pool.get_kind())
                     if not identifier_query_class:
                         raise ValidationError(input_value=f"This query doesn't get support {pool.get_kind()}")
-                    identifier_query = cast(
-                        "IPAddressPoolGetIdentifiers | PrefixPoolGetIdentifiers",
-                        await identifier_query_class.init(
-                            db=db, at=graphql_context.at, pool_id=pool_id, allocated=allocated_ids
-                        ),
+                    identifier_query = await identifier_query_class.init(
+                        db=db, at=graphql_context.at, pool_id=pool_id, allocated=allocated_ids
                     )
                     await identifier_query.execute(db=db)
 

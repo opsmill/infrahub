@@ -1412,15 +1412,6 @@ no-matching-overload = "ignore"
 
 [[tool.ty.overrides]]
 include = [
-    "backend/infrahub/graphql/mutations/action.py",
-    "backend/infrahub/graphql/queries/resource_manager.py",
-]
-
-[tool.ty.overrides.rules]
-redundant-cast = "ignore"
-
-[[tool.ty.overrides]]
-include = [
     "backend/infrahub/graphql/manager.py",
     "backend/infrahub/graphql/mutations/schema.py",
     "backend/infrahub/graphql/utils.py",

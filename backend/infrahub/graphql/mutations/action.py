@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from infrahub.core.protocols import (
         CoreNodeTriggerAttributeMatch,
         CoreNodeTriggerRelationshipMatch,
-        CoreNodeTriggerRule,
     )
     from infrahub.core.schema import NodeSchema
     from infrahub.database import InfrahubDatabase
@@ -111,8 +110,7 @@ class InfrahubTriggerRuleMatchMutation(InfrahubMutationMixin, Mutation):
                 "CoreNodeTriggerAttributeMatch | CoreNodeTriggerRelationshipMatch", trigger_match
             )
             node_trigger_rule = await trigger_match_model.trigger.get_peer(db=dbt, raise_on_error=True)
-            node_trigger_rule_model = cast("CoreNodeTriggerRule", node_trigger_rule)
-            node_schema = dbt.schema.get_node_schema(name=node_trigger_rule_model.node_kind.value, duplicate=False)
+            node_schema = dbt.schema.get_node_schema(name=node_trigger_rule.node_kind.value, duplicate=False)
             _validate_node_kind_field(data=data, node_schema=node_schema)
 
         return trigger_match, result
@@ -133,8 +131,7 @@ class InfrahubTriggerRuleMatchMutation(InfrahubMutationMixin, Mutation):
                 "CoreNodeTriggerAttributeMatch | CoreNodeTriggerRelationshipMatch", trigger_match
             )
             node_trigger_rule = await trigger_match_model.trigger.get_peer(db=dbt, raise_on_error=True)
-            node_trigger_rule_model = cast("CoreNodeTriggerRule", node_trigger_rule)
-            node_schema = dbt.schema.get_node_schema(name=node_trigger_rule_model.node_kind.value, duplicate=False)
+            node_schema = dbt.schema.get_node_schema(name=node_trigger_rule.node_kind.value, duplicate=False)
             _validate_node_kind_field(data=data, node_schema=node_schema)
 
         return trigger_match, result
