@@ -1,4 +1,6 @@
-import { ScrollArea } from "@infrahub/ui";
+import { Button, ScrollArea } from "@infrahub/ui";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { type CSSProperties, type RefObject, useEffect, useRef, useState } from "react";
 
 import { Row } from "@/shared/components/container";
 import { LinkTab } from "@/shared/components/ui/link";
@@ -27,32 +29,158 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
   const isTaskTarget = isOfKind(TASK_TARGET, objectSchema);
   const isRepository = isOfKind(GENERIC_REPOSITORY_KIND, objectSchema);
 
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const { canScrollLeft, canScrollRight } = useHorizontalOverflow(viewportRef);
+
+  const scrollTabs = (direction: -1 | 1) => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    viewport.scrollBy({
+      left: direction * viewport.clientWidth * ARROW_SCROLL_STEP,
+      behavior: "smooth",
+    });
+  };
+
   return (
-    <ScrollArea scrollX scrollY={false} scrollBarClassName="hidden" className="shrink-0">
-      <nav aria-label="Tabs">
-        <Row className="items-end gap-4 px-4" data-testid="object-details-tabs">
-          <LinkTab to={getObjectDetailsUrl(objectKind, objectId)} scrollIntoViewOnActive>
-            Details
-          </LinkTab>
-          {relationshipsTabs.map((tab) => (
-            <RelationshipTab
-              key={tab.name}
-              objectKind={objectKind}
-              objectId={objectId}
-              relationshipSchema={tab}
-            />
-          ))}
-          {isTaskTarget && <ObjectTaskTab objectKind={objectKind} objectId={objectId} />}
-          {isRepository && <RepositoryObjectsTab objectKind={objectKind} objectId={objectId} />}
-          {isRepository && (
-            <RepositoryCommitsTab
-              objectKind={objectKind}
-              objectId={objectId}
-              internalStatus={getRepositoryInternalStatus(objectData)}
-            />
-          )}
-        </Row>
-      </nav>
-    </ScrollArea>
+    <div className="relative shrink-0">
+      <ScrollArea
+        ref={viewportRef}
+        type="auto"
+        scrollX
+        scrollY={false}
+        // Scroll padding keeps a tab scrolled into view out of the faded edges.
+        className="[&>[data-radix-scroll-area-viewport]]:scroll-px-(--edge-fade)"
+        // A mask fades the tabs into whatever surface is behind them, so the fade fits
+        // the light and dark card gradients alike.
+        style={
+          {
+            "--edge-fade": EDGE_FADE,
+            maskImage: getEdgeFadeMask(canScrollLeft, canScrollRight),
+          } as CSSProperties
+        }
+      >
+        <nav aria-label="Tabs" className="pb-1">
+          <Row className="items-end gap-4 px-4" data-testid="object-details-tabs">
+            <LinkTab to={getObjectDetailsUrl(objectKind, objectId)} scrollIntoViewOnActive>
+              Details
+            </LinkTab>
+            {relationshipsTabs.map((tab) => (
+              <RelationshipTab
+                key={tab.name}
+                objectKind={objectKind}
+                objectId={objectId}
+                relationshipSchema={tab}
+              />
+            ))}
+            {isTaskTarget && <ObjectTaskTab objectKind={objectKind} objectId={objectId} />}
+            {isRepository && <RepositoryObjectsTab objectKind={objectKind} objectId={objectId} />}
+            {isRepository && (
+              <RepositoryCommitsTab
+                objectKind={objectKind}
+                objectId={objectId}
+                internalStatus={getRepositoryInternalStatus(objectData)}
+              />
+            )}
+          </Row>
+        </nav>
+      </ScrollArea>
+      {canScrollLeft && (
+        <div className="absolute top-0 bottom-1 left-1 flex items-center">
+          <Button
+            variant="outline"
+            size="xs"
+            shape="circle"
+            // The tabs are reachable with the Tab key, and an arrow unmounts at its end, which would drop focus.
+            excludeFromTabOrder
+            aria-label="Scroll tabs left"
+            onPress={() => scrollTabs(-1)}
+          >
+            <ChevronLeftIcon />
+          </Button>
+        </div>
+      )}
+      {canScrollRight && (
+        <div className="absolute top-0 right-1 bottom-1 flex items-center">
+          <Button
+            variant="outline"
+            size="xs"
+            shape="circle"
+            excludeFromTabOrder
+            aria-label="Scroll tabs right"
+            onPress={() => scrollTabs(1)}
+          >
+            <ChevronRightIcon />
+          </Button>
+        </div>
+      )}
+    </div>
   );
+}
+
+const EDGE_FADE = "4rem";
+// Share of the visible width one arrow click scrolls, so a tab cut at the edge stays in view.
+const ARROW_SCROLL_STEP = 0.8;
+
+function getEdgeFadeMask(fadeLeft: boolean, fadeRight: boolean): string | undefined {
+  if (!(fadeLeft || fadeRight)) return undefined;
+  const start = fadeLeft ? `transparent, black ${EDGE_FADE}` : "black";
+  const end = fadeRight ? `black calc(100% - ${EDGE_FADE}), transparent` : "black";
+  return `linear-gradient(to right, ${start}, ${end})`;
+}
+
+// Tracks which sides of a horizontal scroll container hide content, and lets a vertical
+// mouse wheel scroll it sideways, since most mice cannot scroll horizontally.
+function useHorizontalOverflow(viewportRef: RefObject<HTMLDivElement | null>) {
+  const [overflow, setOverflow] = useState({ canScrollLeft: false, canScrollRight: false });
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const update = () => {
+      const maxScrollLeft = viewport.scrollWidth - viewport.clientWidth;
+      const canScrollLeft = viewport.scrollLeft > 1;
+      const canScrollRight = viewport.scrollLeft < maxScrollLeft - 1;
+      // Returning the previous state skips a re-render on scroll events that change neither side.
+      setOverflow((previous) =>
+        previous.canScrollLeft === canScrollLeft && previous.canScrollRight === canScrollRight
+          ? previous
+          : { canScrollLeft, canScrollRight }
+      );
+    };
+
+    const onWheel = (event: WheelEvent) => {
+      // Ctrl + wheel and trackpad pinch zoom the page, so they stay with the browser.
+      if (event.ctrlKey) return;
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      const maxScrollLeft = viewport.scrollWidth - viewport.clientWidth;
+      const atEdge =
+        (event.deltaY < 0 && viewport.scrollLeft <= 0) ||
+        (event.deltaY > 0 && viewport.scrollLeft >= maxScrollLeft - 1);
+      // Hand the wheel back to the page when the tabs fit or are already at that edge.
+      if (maxScrollLeft <= 0 || atEdge) return;
+      event.preventDefault();
+      // Some mice report the wheel in lines, not pixels, so a line is scaled to the text size.
+      const pixelsPerUnit =
+        event.deltaMode === WheelEvent.DOM_DELTA_LINE
+          ? Number.parseFloat(getComputedStyle(viewport).fontSize)
+          : 1;
+      viewport.scrollLeft += event.deltaY * pixelsPerUnit;
+    };
+
+    update();
+    viewport.addEventListener("scroll", update, { passive: true });
+    viewport.addEventListener("wheel", onWheel, { passive: false });
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(viewport);
+    if (viewport.firstElementChild) resizeObserver.observe(viewport.firstElementChild);
+
+    return () => {
+      viewport.removeEventListener("scroll", update);
+      viewport.removeEventListener("wheel", onWheel);
+      resizeObserver.disconnect();
+    };
+  }, [viewportRef]);
+
+  return overflow;
 }
