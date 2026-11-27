@@ -13711,13 +13711,13 @@ type ProposedChangeRequestRunCheck {
 
 input ProposedChangeRequestRunCheckInput {
   """
-  Limit artifact checks to these existing checks. Requires validator_id and completed retry history.
+  Limit artifact checks to the targets of these existing checks. Requires validator_id.
   """
   check_ids: [String!]
   check_type: CheckType
   id: String!
   """
-  Retry only failed artifact targets. Requires check_type ARTIFACT and completed retry history.
+  Retry only the artifact targets whose latest check failed or did not finish. Requires check_type ARTIFACT.
   """
   retry_failed_only: Boolean = false
   """

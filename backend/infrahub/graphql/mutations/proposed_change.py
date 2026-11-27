@@ -231,14 +231,14 @@ class ProposedChangeRequestRunCheckInput(InputObjectType):
     check_type = GraphQLCheckType(required=False)
     retry_failed_only = Boolean(
         default_value=False,
-        description="Retry only failed artifact targets. Requires check_type ARTIFACT and completed retry history.",
+        description="Retry only the artifact targets whose latest check failed or did not finish. Requires check_type ARTIFACT.",
     )
     validator_id = String(
         description="Limit artifact checks to this proposed change's artifact validator. Requires check_type ARTIFACT.",
     )
     check_ids = List(
         NonNull(String),
-        description="Limit artifact checks to these existing checks. Requires validator_id and completed retry history.",
+        description="Limit artifact checks to the targets of these existing checks. Requires validator_id.",
     )
 
 

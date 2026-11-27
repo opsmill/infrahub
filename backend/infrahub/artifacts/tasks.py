@@ -2,77 +2,39 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub_sdk.protocols import CoreArtifact, CoreArtifactCheck
 from prefect import flow, get_run_logger
 
-from infrahub.artifacts.models import ArtifactCheckResult, CheckArtifactCreate
-from infrahub.core.constants import ValidatorConclusion
-from infrahub.core.timestamp import Timestamp
+from infrahub.artifacts.checks import artifact_check_name, save_artifact_check
+from infrahub.artifacts.models import CheckArtifactCreate  # noqa: TC001  needed for prefect flow
+from infrahub.core.constants import Severity, ValidatorConclusion
 from infrahub.git.repository import get_initialized_repo
 from infrahub.tasks.artifact import define_artifact
 from infrahub.workers.dependencies import get_client
 from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
-    from infrahub_sdk import InfrahubClient
-
-
-async def _prepare_check(client: InfrahubClient, model: CheckArtifactCreate) -> CoreArtifactCheck:
-    check_name = f"{model.artifact_name}: {model.target_name}"
-    if model.check_id:
-        existing_checks = await client.filters(
-            kind=CoreArtifactCheck, ids=[model.check_id], validator__ids=[model.validator_id]
-        )
-    elif model.artifact_id:
-        existing_checks = await client.filters(
-            kind=CoreArtifactCheck, validator__ids=[model.validator_id], artifact_id__value=model.artifact_id
-        )
-    else:
-        existing_checks = []
-    if existing_checks:
-        check = existing_checks[0]
-        check.name.value = check_name
-        check.created_at.value = Timestamp().to_string()
-        check.conclusion.value = ValidatorConclusion.UNKNOWN.value
-        check.severity.value = "info"
-        check.message.value = "Rendering artifact"
-        check.changed.value = None
-        check.checksum.value = None
-        check.artifact_id.value = model.artifact_id
-        check.storage_id.value = None
-    else:
-        check = await client.create(
-            kind=CoreArtifactCheck,
-            data={
-                "id": model.check_id,
-                "name": check_name,
-                "origin": model.repository_id,
-                "kind": "ArtifactDefinition",
-                "validator": model.validator_id,
-                "created_at": Timestamp().to_string(),
-                "message": "Rendering artifact",
-                "conclusion": ValidatorConclusion.UNKNOWN.value,
-                "severity": "info",
-                "artifact_id": model.artifact_id,
-            },
-        )
-    if existing_checks:
-        await check.save()
-    else:
-        await check.create()
-
-    return check
+    from infrahub_sdk.protocols import CoreArtifact
 
 
 @flow(name="git-repository-check-artifact-create", flow_run_name="Check artifact creation")
-async def create(model: CheckArtifactCreate) -> ArtifactCheckResult:
+async def create(model: CheckArtifactCreate) -> ValidatorConclusion:
     await add_tags(branches=[model.branch_name], nodes=[model.target_id])
 
     client = get_client()
     client.request_context = model.context.to_request_context()
     log = get_run_logger()
 
-    check = await _prepare_check(client=client, model=model)
+    check = await save_artifact_check(
+        client=client,
+        validator_id=model.validator_id,
+        check_id=model.check_id,
+        artifact_id=model.artifact_id,
+        name=artifact_check_name(artifact_name=model.artifact_name, target_name=model.target_name),
+        origin=model.repository_id,
+        conclusion=ValidatorConclusion.UNKNOWN,
+        severity=Severity.INFO,
+        message="Rendering artifact",
+    )
 
     artifact: CoreArtifact | None = None
     try:
@@ -97,7 +59,7 @@ async def create(model: CheckArtifactCreate) -> ArtifactCheckResult:
     # Preparation and user transformation failures must remain visible as retryable check failures.
     except Exception as exc:  # noqa: BLE001
         conclusion = ValidatorConclusion.FAILURE
-        check.severity.value = "critical"
+        check.severity.value = Severity.CRITICAL.value
         check.message.value = f"Failed to render artifact: {exc}"
         if artifact is not None:
             artifact.status.value = "Error"
@@ -110,4 +72,4 @@ async def create(model: CheckArtifactCreate) -> ArtifactCheckResult:
     check.conclusion.value = conclusion.value
     await check.save()
 
-    return ArtifactCheckResult(conclusion=conclusion, check_id=check.id)
+    return conclusion

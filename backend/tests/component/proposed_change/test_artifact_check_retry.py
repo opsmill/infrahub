@@ -10,7 +10,7 @@ from uuid import uuid4
 import pytest
 from infrahub_sdk.protocols import CoreArtifact, CoreArtifactCheck, CoreArtifactDefinition, CoreArtifactValidator
 
-from infrahub.artifacts.models import ArtifactCheckResult, CheckArtifactCreate
+from infrahub.artifacts.models import CheckArtifactCreate
 from infrahub.artifacts.tasks import create
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.initialization import create_branch
@@ -209,27 +209,27 @@ class TestArtifactCheckRetry(ArtifactRegenTestBase):
         with patch("infrahub.artifacts.tasks.get_initialized_repo", new=unavailable_repository):
             failed = await create(model=check_model)
 
-        assert failed.conclusion == ValidatorConclusion.FAILURE
-        assert failed.check_id is not None
-        check = await client.get(kind=CoreArtifactCheck, id=failed.check_id)
-        assert check.conclusion.value == ValidatorConclusion.FAILURE.value
-        assert check.message.value == "Failed to render artifact: Repository setup failed"
-        assert check.artifact_id.value is None
+        assert failed == ValidatorConclusion.FAILURE
+        checks = await client.filters(kind=CoreArtifactCheck, validator__ids=[check_model.validator_id])
+        assert len(checks) == 1
+        failed_check = checks[0]
+        assert failed_check.conclusion.value == ValidatorConclusion.FAILURE.value
+        assert failed_check.message.value == "Failed to render artifact: Repository setup failed"
+        assert failed_check.artifact_id.value is None
         assert await client.filters(kind=CoreArtifact, branch=SOURCE_BRANCH, object__ids=[check_model.target_id]) == []
 
         target = await client.get(kind=TestKind.PERSON, id=check_model.target_id, branch=SOURCE_BRANCH)
         target.name.value = "after-rename"
         await target.save()
-        retry = check_model.model_copy(update={"check_id": failed.check_id, "target_name": "after-rename"})
+        retry = check_model.model_copy(update={"check_id": failed_check.id, "target_name": "after-rename"})
         with patch("infrahub.artifacts.tasks.get_initialized_repo", new=successful_repository):
             succeeded = await create(model=retry)
 
-        assert succeeded.conclusion == ValidatorConclusion.SUCCESS
-        assert succeeded.check_id == failed.check_id
+        assert succeeded == ValidatorConclusion.SUCCESS
         checks = await client.filters(kind=CoreArtifactCheck, validator__ids=[check_model.validator_id])
         assert len(checks) == 1
         check = checks[0]
-        assert check.id == failed.check_id
+        assert check.id == failed_check.id
         assert check.name.value == "startup-config: after-rename"
         assert check.message.value == "Artifact rendered successfully"
         assert check.conclusion.value == ValidatorConclusion.SUCCESS.value
@@ -261,15 +261,14 @@ class TestArtifactCheckRetry(ArtifactRegenTestBase):
         with patch("infrahub.artifacts.tasks.get_initialized_repo", new=successful_repository):
             succeeded = await create(model=check_model)
 
-        assert succeeded.check_id == reserved_id
-        assert succeeded.conclusion == ValidatorConclusion.SUCCESS
+        assert succeeded == ValidatorConclusion.SUCCESS
         checks = await client.filters(kind=CoreArtifactCheck, validator__ids=[check_model.validator_id])
         assert len(checks) == 1
         assert checks[0].id == reserved_id
         assert checks[0].conclusion.value == ValidatorConclusion.SUCCESS.value
         assert checks[0].message.value == "Artifact rendered successfully"
 
-    async def test_parent_keeps_reserved_check_identity_when_a_child_terminates_without_result(
+    async def test_parent_records_the_failure_on_the_reserved_check_when_a_child_terminates_without_result(
         self,
         check_model: CheckArtifactCreate,
         client: InfrahubClient,
@@ -312,15 +311,16 @@ class TestArtifactCheckRetry(ArtifactRegenTestBase):
             destination_branch=default_branch.name,
         )
 
-        async def run_target(previous_outcome: ArtifactCheckResult | None) -> ArtifactCheckResult:
+        async def run_target(check_id: str | None) -> ValidatorConclusion:
             return await _run_artifact_target(
+                client=client,
                 model=request,
                 context=check_model.context,
                 artifact_definition=definition,
                 member=target,
                 artifact_id=None,
                 validator_id=validator.id,
-                previous_outcome=previous_outcome,
+                check_id=check_id,
             )
 
         with (
@@ -328,22 +328,23 @@ class TestArtifactCheckRetry(ArtifactRegenTestBase):
             patch("infrahub.proposed_change.tasks.get_run_logger", return_value=logging.getLogger(__name__)),
         ):
             with patch("infrahub.artifacts.tasks.get_initialized_repo", new=cancelled_repository):
-                failed = await run_target(previous_outcome=None)
-            assert failed.conclusion == ValidatorConclusion.FAILURE
-            assert failed.check_id is not None
+                failed = await run_target(check_id=None)
+            assert failed == ValidatorConclusion.FAILURE
             checks = await client.filters(kind=CoreArtifactCheck, validator__ids=[validator.id])
             assert len(checks) == 1
-            assert checks[0].id == failed.check_id
-            assert checks[0].conclusion.value == ValidatorConclusion.UNKNOWN.value
+            failed_check = checks[0]
+            assert failed_check.conclusion.value == ValidatorConclusion.FAILURE.value
+            assert (
+                failed_check.message.value == "Failed to render artifact: Artifact worker terminated without a result"
+            )
 
             with patch("infrahub.artifacts.tasks.get_initialized_repo", new=successful_repository):
-                succeeded = await run_target(previous_outcome=failed)
+                succeeded = await run_target(check_id=failed_check.id)
 
-        assert succeeded.conclusion == ValidatorConclusion.SUCCESS
-        assert succeeded.check_id == failed.check_id
+        assert succeeded == ValidatorConclusion.SUCCESS
         checks = await client.filters(kind=CoreArtifactCheck, validator__ids=[validator.id])
         assert len(checks) == 1
-        assert checks[0].id == failed.check_id
+        assert checks[0].id == failed_check.id
         assert checks[0].conclusion.value == ValidatorConclusion.SUCCESS.value
         assert checks[0].message.value == "Artifact rendered successfully"
 
@@ -359,9 +360,8 @@ class TestArtifactCheckRetry(ArtifactRegenTestBase):
             first = await create(model=check_model)
             second = await create(model=other_model)
 
+        assert [first, second] == [ValidatorConclusion.FAILURE, ValidatorConclusion.FAILURE]
         checks = await client.filters(kind=CoreArtifactCheck, validator__ids=[check_model.validator_id])
-        assert len(checks) == 2
-        assert first.check_id != second.check_id
-        assert {check.id for check in checks} == {first.check_id, second.check_id}
+        assert len({check.id for check in checks}) == 2
         assert [check.name.value for check in checks] == ["startup-config: before-rename"] * 2
         assert [check.conclusion.value for check in checks] == [ValidatorConclusion.FAILURE.value] * 2

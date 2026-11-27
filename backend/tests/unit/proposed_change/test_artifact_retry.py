@@ -1,164 +1,184 @@
+from collections.abc import Callable
+from dataclasses import dataclass
+
 import pytest
 
-from infrahub.artifacts.models import ArtifactCheckResult
-from infrahub.core.constants import ValidatorConclusion, ValidatorState
+from infrahub.core.constants import ValidatorConclusion
+from infrahub.exceptions import ValidationError
 from infrahub.proposed_change.artifact_retry import (
-    ArtifactRetryRecord,
-    ArtifactRetryRecords,
-    merge_artifact_outcomes,
+    ArtifactCheckState,
+    ArtifactRunPlan,
+    ArtifactRunPlanner,
+    ArtifactTarget,
 )
-from tests.adapters.cache import MemoryCache
 
-COMPLETED_AT = "2026-11-24T10:00:00.000000Z"
-
-
-def test_partial_retry_keeps_untouched_outcomes_and_replaces_repaired_failure() -> None:
-    previous = {
-        "repaired": ArtifactCheckResult(conclusion=ValidatorConclusion.FAILURE, check_id="check-1"),
-        "still-failed": ArtifactCheckResult(conclusion=ValidatorConclusion.FAILURE, check_id="check-2"),
-        "succeeded": ArtifactCheckResult(conclusion=ValidatorConclusion.SUCCESS, check_id="check-3"),
-        "removed": ArtifactCheckResult(conclusion=ValidatorConclusion.SUCCESS, check_id="check-4"),
-    }
-
-    outcomes = merge_artifact_outcomes(
-        previous=previous,
-        updates={
-            "repaired": ArtifactCheckResult(conclusion=ValidatorConclusion.SUCCESS, check_id="check-1"),
-            "new": ArtifactCheckResult(conclusion=ValidatorConclusion.FAILURE),
-        },
-        eligible_target_ids={"repaired", "still-failed", "succeeded", "new"},
-    )
-    record = ArtifactRetryRecord(validator_id="validator", outcomes=outcomes)
-
-    assert outcomes == {
-        "repaired": ArtifactCheckResult(conclusion=ValidatorConclusion.SUCCESS, check_id="check-1"),
-        "still-failed": ArtifactCheckResult(conclusion=ValidatorConclusion.FAILURE, check_id="check-2"),
-        "succeeded": ArtifactCheckResult(conclusion=ValidatorConclusion.SUCCESS, check_id="check-3"),
-        "new": ArtifactCheckResult(conclusion=ValidatorConclusion.FAILURE),
-    }
-    assert record.failed_target_ids == {"still-failed", "new"}
-    assert record.conclusion == ValidatorConclusion.FAILURE
-    assert previous["repaired"].conclusion == ValidatorConclusion.FAILURE
-
-
-@pytest.mark.parametrize(
-    ("validator_id", "completed_at", "conclusion", "state", "matches"),
-    [
-        ("validator", COMPLETED_AT, "failure", "completed", True),
-        ("another-validator", COMPLETED_AT, "failure", "completed", False),
-        ("validator", "2026-11-24T11:00:00.000000Z", "failure", "completed", False),
-        ("validator", None, "failure", "completed", False),
-        ("validator", COMPLETED_AT, "success", "completed", False),
-        ("validator", COMPLETED_AT, "failure", "in_progress", False),
-        ("validator", COMPLETED_AT, "failure", "queued", False),
-    ],
+ARTIFACT_NAME = "config"
+TARGETS = [
+    ArtifactTarget(target_id="router-1", label="router-1", artifact_id="artifact-1"),
+    ArtifactTarget(target_id="router-2", label="router-2", artifact_id="artifact-2"),
+    ArtifactTarget(target_id="router-3", label="router-3", artifact_id=None),
+    ArtifactTarget(target_id="switch-a", label="switch", artifact_id="artifact-a"),
+    ArtifactTarget(target_id="switch-b", label="switch", artifact_id="artifact-b"),
+]
+FAILED_BY_ARTIFACT = ArtifactCheckState(
+    check_id="failed-1", artifact_id="artifact-1", name="config: router-1", conclusion=ValidatorConclusion.FAILURE.value
 )
-def test_retry_record_requires_the_same_completed_validator(
-    validator_id: str, completed_at: str | None, conclusion: str, state: str, matches: bool
-) -> None:
-    record = ArtifactRetryRecord(
-        validator_id="validator",
-        completed=True,
-        completed_at=COMPLETED_AT,
-        outcomes={"target": ArtifactCheckResult(conclusion=ValidatorConclusion.FAILURE, check_id="check")},
+UNFINISHED_BY_ARTIFACT = ArtifactCheckState(
+    check_id="unfinished-2",
+    artifact_id="artifact-2",
+    name="config: router-2",
+    conclusion=ValidatorConclusion.UNKNOWN.value,
+)
+FAILED_BY_NAME = ArtifactCheckState(
+    check_id="failed-3", artifact_id=None, name="config: router-3", conclusion=ValidatorConclusion.FAILURE.value
+)
+FAILED_OF_REMOVED_TARGET = ArtifactCheckState(
+    check_id="failed-removed",
+    artifact_id="artifact-removed",
+    name="config: router-1",
+    conclusion=ValidatorConclusion.FAILURE.value,
+)
+PASSED_SWITCH = ArtifactCheckState(
+    check_id="passed-a", artifact_id="artifact-a", name="config: switch", conclusion=ValidatorConclusion.SUCCESS.value
+)
+
+
+def make_planner(*unresolved_checks: ArtifactCheckState) -> ArtifactRunPlanner:
+    return ArtifactRunPlanner(artifact_name=ARTIFACT_NAME, targets=TARGETS, unresolved_checks=unresolved_checks)
+
+
+def test_failed_retry_renders_the_targets_of_unresolved_checks() -> None:
+    planner = make_planner(FAILED_BY_ARTIFACT, UNFINISHED_BY_ARTIFACT, FAILED_BY_NAME, FAILED_OF_REMOVED_TARGET)
+
+    assert planner.plan_failed_retry(requested_checks=None) == ArtifactRunPlan(
+        target_ids=["router-1", "router-2", "router-3"],
+        check_ids={"router-1": "failed-1", "router-2": "unfinished-2", "router-3": "failed-3"},
+        obsolete_check_ids=["failed-removed"],
+        keeps_failure=False,
     )
 
-    assert (
-        record.matches_validator(
-            validator_id=validator_id, completed_at=completed_at, conclusion=conclusion, state=state
-        )
-        is matches
+
+def test_a_check_with_an_artifact_never_matches_a_target_by_name() -> None:
+    plan = make_planner(FAILED_OF_REMOVED_TARGET).plan_failed_retry(requested_checks=None)
+
+    assert plan.target_ids == []
+    assert plan.obsolete_check_ids == ["failed-removed"]
+
+
+def test_a_check_matched_by_a_shared_name_is_updated_by_one_target() -> None:
+    shared = ArtifactCheckState(
+        check_id="failed-switch", artifact_id=None, name="config: switch", conclusion=ValidatorConclusion.FAILURE.value
+    )
+
+    assert make_planner(shared).plan_failed_retry(requested_checks=None) == ArtifactRunPlan(
+        target_ids=["switch-a", "switch-b"],
+        check_ids={"switch-a": "failed-switch"},
+        obsolete_check_ids=[],
+        keeps_failure=False,
     )
 
 
-def test_unknown_outcome_cannot_authorize_a_retry() -> None:
-    record = ArtifactRetryRecord(
-        validator_id="validator",
-        completed=True,
-        completed_at=COMPLETED_AT,
-        outcomes={
-            "failed": ArtifactCheckResult(conclusion=ValidatorConclusion.FAILURE),
-            "unfinished": ArtifactCheckResult(conclusion=ValidatorConclusion.UNKNOWN),
-        },
+@dataclass
+class ChangeRunCase:
+    name: str
+    unresolved_checks: list[ArtifactCheckState]
+    changed_target_ids: set[str]
+    expected: ArtifactRunPlan
+
+
+CHANGE_RUN_CASES: list[ChangeRunCase] = [
+    ChangeRunCase(
+        name="unresolved_target_outside_the_changes_keeps_the_failure",
+        unresolved_checks=[FAILED_BY_ARTIFACT, UNFINISHED_BY_ARTIFACT],
+        changed_target_ids={"router-2", "switch-a"},
+        expected=ArtifactRunPlan(
+            target_ids=["router-2", "switch-a"],
+            check_ids={"router-2": "unfinished-2"},
+            obsolete_check_ids=[],
+            keeps_failure=True,
+        ),
+    ),
+    ChangeRunCase(
+        name="every_unresolved_target_rendered_keeps_no_failure",
+        unresolved_checks=[FAILED_BY_ARTIFACT, FAILED_BY_NAME],
+        changed_target_ids={"router-1", "router-3"},
+        expected=ArtifactRunPlan(
+            target_ids=["router-1", "router-3"],
+            check_ids={"router-1": "failed-1", "router-3": "failed-3"},
+            obsolete_check_ids=[],
+            keeps_failure=False,
+        ),
+    ),
+    ChangeRunCase(
+        name="check_of_a_removed_target_is_deleted_and_keeps_no_failure",
+        unresolved_checks=[FAILED_OF_REMOVED_TARGET],
+        changed_target_ids=set(),
+        expected=ArtifactRunPlan(
+            target_ids=[], check_ids={}, obsolete_check_ids=["failed-removed"], keeps_failure=False
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in CHANGE_RUN_CASES])
+def test_change_run_renders_changed_targets(test_case: ChangeRunCase) -> None:
+    planner = make_planner(*test_case.unresolved_checks)
+
+    assert planner.plan_changes(changed_target_ids=test_case.changed_target_ids, requested_checks=None) == (
+        test_case.expected
     )
 
-    assert not record.matches_validator(
-        validator_id="validator",
-        completed_at=COMPLETED_AT,
-        conclusion=ValidatorConclusion.FAILURE.value,
-        state=ValidatorState.COMPLETED.value,
-    )
-    assert record.failed_target_ids == {"failed"}
 
+def test_scoped_failed_retry_renders_only_requested_unresolved_checks() -> None:
+    planner = make_planner(FAILED_BY_ARTIFACT, UNFINISHED_BY_ARTIFACT, FAILED_OF_REMOVED_TARGET)
 
-async def test_start_invalidates_previous_completion_until_new_outcomes_are_saved() -> None:
-    cache = MemoryCache()
-    records = ArtifactRetryRecords(cache=cache)
-    previous = ArtifactRetryRecord(
-        validator_id="validator",
-        completed=True,
-        completed_at=COMPLETED_AT,
-        outcomes={"target": ArtifactCheckResult(conclusion=ValidatorConclusion.FAILURE, check_id="stable-check")},
+    assert planner.plan_failed_retry(requested_checks=[FAILED_BY_ARTIFACT, PASSED_SWITCH]) == ArtifactRunPlan(
+        target_ids=["router-1"],
+        check_ids={"router-1": "failed-1"},
+        obsolete_check_ids=[],
+        keeps_failure=True,
     )
 
-    await records.start(proposed_change_id="pc", definition_id="definition", record=previous)
-    started = await records.get(proposed_change_id="pc", definition_id="definition")
 
-    assert started is not None
-    assert started.outcomes == previous.outcomes
-    assert not started.matches_validator(
-        validator_id="validator",
-        completed_at=COMPLETED_AT,
-        conclusion=ValidatorConclusion.FAILURE.value,
-        state=ValidatorState.COMPLETED.value,
-    )
-    assert started.completed_at is None
-    assert previous.completed is True
+def test_scoped_change_run_renders_requested_targets_that_changed() -> None:
+    planner = make_planner(FAILED_BY_ARTIFACT)
 
-    await records.complete(
-        proposed_change_id="pc",
-        definition_id="definition",
-        record=started,
-        completed_at="2026-11-24T11:00:00.000000Z",
-        outcomes={"target": ArtifactCheckResult(conclusion=ValidatorConclusion.SUCCESS, check_id="stable-check")},
-    )
-    completed = await records.get(proposed_change_id="pc", definition_id="definition")
-
-    assert completed is not None
-    assert completed.failed_target_ids == frozenset()
-    assert completed.outcomes["target"].check_id == "stable-check"
-    assert completed.matches_validator(
-        validator_id="validator",
-        completed_at="2026-11-24T11:00:00.000000Z",
-        conclusion=ValidatorConclusion.SUCCESS.value,
-        state=ValidatorState.COMPLETED.value,
-    )
-    assert list(cache.expiries.values()) == [2592000]
-
-
-async def test_records_are_isolated_by_proposed_change_and_definition() -> None:
-    records = ArtifactRetryRecords(cache=MemoryCache())
-    record = ArtifactRetryRecord(
-        validator_id="validator", outcomes={"target": ArtifactCheckResult(conclusion=ValidatorConclusion.FAILURE)}
-    )
-    await records.complete(
-        proposed_change_id="pc-1",
-        definition_id="definition-1",
-        record=record,
-        completed_at=COMPLETED_AT,
-        outcomes=record.outcomes,
+    plan = planner.plan_changes(
+        changed_target_ids={"router-2", "switch-a"}, requested_checks=[FAILED_BY_ARTIFACT, PASSED_SWITCH]
     )
 
-    assert await records.get(proposed_change_id="pc-2", definition_id="definition-1") is None
-    assert await records.get(proposed_change_id="pc-1", definition_id="definition-2") is None
-    stored = await records.get(proposed_change_id="pc-1", definition_id="definition-1")
-    assert stored is not None
-    assert stored.failed_target_ids == {"target"}
+    assert plan == ArtifactRunPlan(
+        target_ids=["switch-a"], check_ids={"switch-a": "passed-a"}, obsolete_check_ids=[], keeps_failure=True
+    )
 
 
-@pytest.mark.parametrize("payload", ["", "not-json", '{"validator_id": null}', '{"outcomes": {}}'])
-async def test_missing_or_unreadable_record_does_not_supply_retry_targets(payload: str) -> None:
-    cache = MemoryCache()
-    await cache.set(key="proposed_change:pc:artifact_definition:definition:retry", value=payload)
+@dataclass
+class RejectedRequestCase:
+    name: str
+    plan: Callable[[ArtifactRunPlanner, list[ArtifactCheckState]], ArtifactRunPlan]
 
-    assert await ArtifactRetryRecords(cache=cache).get(proposed_change_id="pc", definition_id="definition") is None
+
+REJECTED_REQUEST_CASES: list[RejectedRequestCase] = [
+    RejectedRequestCase(
+        name="failed_retry",
+        plan=lambda planner, requested: planner.plan_failed_retry(requested_checks=requested),
+    ),
+    RejectedRequestCase(
+        name="change_run",
+        plan=lambda planner, requested: planner.plan_changes(
+            changed_target_ids={"router-1"}, requested_checks=requested
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in REJECTED_REQUEST_CASES])
+def test_requested_check_without_a_current_target_is_rejected(test_case: RejectedRequestCase) -> None:
+    planner = make_planner(FAILED_OF_REMOVED_TARGET)
+
+    with pytest.raises(
+        ValidationError,
+        match=r"^The artifact check failed-removed matches no current target of the artifact definition\. "
+        r"Refresh the checks view\.$",
+    ):
+        test_case.plan(planner, [FAILED_OF_REMOVED_TARGET])

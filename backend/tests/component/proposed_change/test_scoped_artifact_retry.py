@@ -1,18 +1,16 @@
 from __future__ import annotations
 
+import re
 from dataclasses import replace
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
-from infrahub_sdk.protocols import CoreArtifactCheck
 
-from infrahub.artifacts.models import ArtifactCheckResult, CheckArtifactCreate
 from infrahub.core.constants import CheckType, InfrahubKind, ValidatorConclusion, ValidatorState
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.exceptions import ValidationError
-from infrahub.proposed_change.artifact_retry import ArtifactRetryRecord, ArtifactRetryRecords
 from infrahub.proposed_change.models import RequestProposedChangePipeline, RequestProposedChangeRefreshArtifacts
 from infrahub.proposed_change.tasks import (
     refresh_artifacts,
@@ -24,60 +22,28 @@ from infrahub.workflows.catalogue import (
     REQUEST_ARTIFACT_DEFINITION_CHECK,
     REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS,
 )
-from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.workflow_override import override_workflow
 
-from .test_failed_artifact_retry import COMPLETED_AT, SOURCE_BRANCH, ArtifactRetryTestBase, RetryDataset
+from .test_failed_artifact_retry import (
+    COMPLETED_AT,
+    SOURCE_BRANCH,
+    ArtifactCheckWorkflow,
+    ArtifactRetryTestBase,
+    RetryDataset,
+)
 
 if TYPE_CHECKING:
     from fast_depends import Provider
     from infrahub_sdk import InfrahubClient
 
-    from infrahub.context import InfrahubContext
     from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreAccount
     from infrahub.database import InfrahubDatabase
-    from infrahub.events.models import EventContext
     from infrahub.proposed_change.models import RequestArtifactDefinitionCheck
-    from infrahub.workflows.constants import WorkflowPriority
-    from infrahub.workflows.models import WorkflowDefinition
     from tests.adapters.cache import MemoryCache
+    from tests.adapters.workflow import WorkflowRecorder
 
-
-class SuccessfulArtifactWorkflow(WorkflowRecorder):
-    def __init__(self, client: InfrahubClient) -> None:
-        super().__init__()
-        self.client = client
-
-    async def execute_workflow(
-        self,
-        workflow: WorkflowDefinition,
-        expected_return: type | None = None,
-        context: InfrahubContext | EventContext | None = None,
-        parameters: dict[str, Any] | None = None,
-        tags: list[str] | None = None,
-        priority: WorkflowPriority | None = None,
-    ) -> Any:
-        result = await super().execute_workflow(
-            workflow=workflow,
-            expected_return=expected_return,
-            context=context,
-            parameters=parameters,
-            tags=tags,
-            priority=priority,
-        )
-        if workflow != GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE:
-            return result
-        assert parameters is not None
-        model = parameters["model"]
-        assert isinstance(model, CheckArtifactCreate)
-        assert model.check_id is not None
-        check = await self.client.get(kind=CoreArtifactCheck, id=model.check_id)
-        check.conclusion.value = ValidatorConclusion.SUCCESS.value
-        check.message.value = "Artifact rendered successfully"
-        check.severity.value = "info"
-        await check.save()
-        return ArtifactCheckResult(conclusion=ValidatorConclusion.SUCCESS, check_id=check.id)
+FOREIGN_CHECKS_MESSAGE = "The selected artifact checks no longer belong to this validator. Refresh the checks view."
 
 
 class TestScopedArtifactRetry(ArtifactRetryTestBase):
@@ -131,17 +97,15 @@ class TestScopedArtifactRetry(ArtifactRetryTestBase):
         self,
         db: InfrahubDatabase,
         dataset: RetryDataset,
-        memory_cache: MemoryCache,
         workflow_recorder: WorkflowRecorder,
         default_branch: Branch,
         admin_account: CoreAccount,
     ) -> None:
-        history = await self._history(db=db, dataset=dataset, memory_cache=memory_cache)
+        history = await self._history(db=db, dataset=dataset)
         other_validator = await self._additional_validator(
             db=db, dataset=dataset, proposed_change_id=history.proposed_change_id
         )
-        check_id = history.outcomes[dataset.devices[0].id].check_id
-        assert check_id is not None
+        check_id = history.check_ids[dataset.devices[0].id]
         context = self._make_context(admin_account, default_branch)
         await run_proposed_change_pipeline(
             model=RequestProposedChangePipeline(
@@ -177,81 +141,63 @@ class TestScopedArtifactRetry(ArtifactRetryTestBase):
         assert untouched.completed_at.value == COMPLETED_AT
         await self._assert_history_unchanged(db=db, history=history)
 
-    async def test_one_failed_check_preserves_other_failures_for_the_next_bulk_retry(
+    async def test_one_failed_check_keeps_other_failures_for_the_next_bulk_retry(
         self,
         db: InfrahubDatabase,
         dataset: RetryDataset,
-        memory_cache: MemoryCache,
         client: InfrahubClient,
         dependency_provider: Provider,
         default_branch: Branch,
         admin_account: CoreAccount,
     ) -> None:
-        history = await self._history(db=db, dataset=dataset, memory_cache=memory_cache)
+        history = await self._history(db=db, dataset=dataset)
         selected_target = dataset.devices[0].id
-        selected_check = history.outcomes[selected_target].check_id
-        assert selected_check is not None
+        selected_check = history.check_ids[selected_target]
         model = self._request(dataset=dataset, proposed_change_id=history.proposed_change_id).model_copy(
             update={"validator_id": history.validator_id, "check_ids": [selected_check]}
         )
         context = self._make_context(admin_account, default_branch)
-        records = ArtifactRetryRecords(memory_cache)
-        workflow = SuccessfulArtifactWorkflow(client=client)
+        workflow = ArtifactCheckWorkflow(client=client)
         with override_workflow(workflow=workflow, dependency_provider=dependency_provider):
             await validate_artifacts_generation(model=model, context=context)
 
             calls = workflow.get_execute_calls_for(GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE)
-            assert [call["parameters"]["model"].target_id for call in calls] == [selected_target]
-            assert calls[0]["parameters"]["model"].check_id == selected_check
-            record = await records.get(
-                proposed_change_id=history.proposed_change_id, definition_id=dataset.definition.definition_id
-            )
-            assert record is not None
-            remaining_failures = {device.id for device in dataset.devices[1:3]}
-            assert record.failed_target_ids == remaining_failures
-            assert {target: outcome for target, outcome in record.outcomes.items() if target != selected_target} == {
-                target: outcome for target, outcome in history.outcomes.items() if target != selected_target
+            assert [
+                (call["parameters"]["model"].target_id, call["parameters"]["model"].check_id) for call in calls
+            ] == [(selected_target, selected_check)]
+            assert await self._check_conclusions(db=db, validator_id=history.validator_id) == history.conclusions | {
+                selected_check: ValidatorConclusion.SUCCESS.value
             }
-            validator = await NodeManager.get_one(db=db, id=history.validator_id, kind=InfrahubKind.ARTIFACTVALIDATOR)
-            assert validator is not None
-            assert validator.conclusion.value.value == ValidatorConclusion.FAILURE.value
-            checks = await NodeManager.query(
-                db=db, schema=InfrahubKind.ARTIFACTCHECK, filters={"validator__ids": [history.validator_id]}
+            await self._assert_validator(
+                db=db,
+                validator_id=history.validator_id,
+                state=ValidatorState.COMPLETED,
+                conclusion=ValidatorConclusion.FAILURE,
             )
-            assert {check.id: check.conclusion.value.value for check in checks} == {
-                outcome.check_id: ValidatorConclusion.SUCCESS.value
-                if target_id == selected_target
-                else outcome.conclusion.value
-                for target_id, outcome in history.outcomes.items()
-            }
 
             workflow.reset()
             await validate_artifacts_generation(
                 model=self._request(dataset=dataset, proposed_change_id=history.proposed_change_id), context=context
             )
+            calls = workflow.get_execute_calls_for(GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE)
 
-        calls = workflow.get_execute_calls_for(GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE)
-        assert {call["parameters"]["model"].target_id for call in calls} == remaining_failures
-        assert len(calls) == 2
-        record = await records.get(
-            proposed_change_id=history.proposed_change_id, definition_id=dataset.definition.definition_id
+        assert sorted(call["parameters"]["model"].target_id for call in calls) == sorted(
+            device.id for device in dataset.devices[1:3]
         )
-        assert record is not None
-        assert record.failed_target_ids == frozenset()
-        validator = await NodeManager.get_one(db=db, id=history.validator_id, kind=InfrahubKind.ARTIFACTVALIDATOR)
-        assert validator is not None
-        assert validator.conclusion.value.value == ValidatorConclusion.SUCCESS.value
-        checks = await NodeManager.query(
-            db=db, schema=InfrahubKind.ARTIFACTCHECK, filters={"validator__ids": [history.validator_id]}
+        assert await self._check_conclusions(db=db, validator_id=history.validator_id) == dict.fromkeys(
+            history.check_ids.values(), ValidatorConclusion.SUCCESS.value
         )
-        assert {check.id for check in checks} == {outcome.check_id for outcome in history.outcomes.values()}
-        assert all(check.conclusion.value.value == ValidatorConclusion.SUCCESS.value for check in checks)
+        await self._assert_validator(
+            db=db,
+            validator_id=history.validator_id,
+            state=ValidatorState.COMPLETED,
+            conclusion=ValidatorConclusion.SUCCESS,
+        )
 
     async def test_check_identity_selects_a_target_without_an_artifact(
         self,
         db: InfrahubDatabase,
         dataset: RetryDataset,
-        memory_cache: MemoryCache,
         client: InfrahubClient,
         dependency_provider: Provider,
         default_branch: Branch,
@@ -267,14 +213,16 @@ class TestScopedArtifactRetry(ArtifactRetryTestBase):
         await group.members.save(db=db)
         try:
             history = await self._history(
-                db=db, dataset=replace(dataset, devices=(target, *dataset.devices)), memory_cache=memory_cache
+                db=db,
+                dataset=replace(
+                    dataset, devices=(target, *dataset.devices), artifact_ids=(None, *dataset.artifact_ids)
+                ),
             )
-            check_id = history.outcomes[target.id].check_id
-            assert check_id is not None
+            check_id = history.check_ids[target.id]
             model = self._request(dataset=dataset, proposed_change_id=history.proposed_change_id).model_copy(
                 update={"validator_id": history.validator_id, "check_ids": [check_id]}
             )
-            workflow = SuccessfulArtifactWorkflow(client=client)
+            workflow = ArtifactCheckWorkflow(client=client)
             with override_workflow(workflow=workflow, dependency_provider=dependency_provider):
                 await validate_artifacts_generation(
                     model=model, context=self._make_context(admin_account, default_branch)
@@ -286,13 +234,9 @@ class TestScopedArtifactRetry(ArtifactRetryTestBase):
             assert request.target_id == target.id
             assert request.artifact_id is None
             assert request.check_id == check_id
-            record = await ArtifactRetryRecords(memory_cache).get(
-                proposed_change_id=history.proposed_change_id, definition_id=dataset.definition.definition_id
-            )
-            assert record is not None
-            assert record.outcomes[target.id] == ArtifactCheckResult(
-                conclusion=ValidatorConclusion.SUCCESS, check_id=check_id
-            )
+            assert await self._check_conclusions(db=db, validator_id=history.validator_id) == history.conclusions | {
+                check_id: ValidatorConclusion.SUCCESS.value
+            }
         finally:
             restored_group = await NodeManager.get_one(
                 db=db, id=dataset.group_id, kind=InfrahubKind.STANDARDGROUP, branch=SOURCE_BRANCH, raise_on_error=True
@@ -305,25 +249,25 @@ class TestScopedArtifactRetry(ArtifactRetryTestBase):
         self,
         db: InfrahubDatabase,
         dataset: RetryDataset,
-        memory_cache: MemoryCache,
         workflow_recorder: WorkflowRecorder,
         default_branch: Branch,
         admin_account: CoreAccount,
     ) -> None:
-        history = await self._history(db=db, dataset=dataset, memory_cache=memory_cache)
-        other = await self._history(db=db, dataset=dataset, memory_cache=memory_cache)
+        history = await self._history(db=db, dataset=dataset)
+        other = await self._history(db=db, dataset=dataset)
         context = self._make_context(admin_account, default_branch)
         model = self._request(dataset=dataset, proposed_change_id=history.proposed_change_id)
-        with pytest.raises(ValidationError):
+        with pytest.raises(
+            ValidationError, match=r"^The artifact validator does not belong to this proposed change\.$"
+        ):
             await refresh_artifacts(
                 model=self._refresh_request(model.model_copy(update={"validator_id": other.validator_id})),
                 context=context,
             )
         assert workflow_recorder.submit_calls == []
 
-        foreign_check = other.outcomes[dataset.devices[0].id].check_id
-        assert foreign_check is not None
-        with pytest.raises(ValidationError):
+        foreign_check = other.check_ids[dataset.devices[0].id]
+        with pytest.raises(ValidationError, match=rf"^{re.escape(FOREIGN_CHECKS_MESSAGE)}$"):
             await validate_artifacts_generation(
                 model=model.model_copy(update={"validator_id": history.validator_id, "check_ids": [foreign_check]}),
                 context=context,
@@ -332,12 +276,7 @@ class TestScopedArtifactRetry(ArtifactRetryTestBase):
         await self._assert_history_unchanged(db=db, history=history)
         await self._assert_history_unchanged(db=db, history=other)
 
-        moved_check_id = history.outcomes[dataset.devices[0].id].check_id
-        assert moved_check_id is not None
-        records = ArtifactRetryRecords(memory_cache)
-        previous_record = await records.get(
-            proposed_change_id=history.proposed_change_id, definition_id=dataset.definition.definition_id
-        )
+        moved_check_id = history.check_ids[dataset.devices[0].id]
         moved_check = await NodeManager.get_one(
             db=db, id=moved_check_id, kind=InfrahubKind.ARTIFACTCHECK, raise_on_error=True
         )
@@ -345,7 +284,7 @@ class TestScopedArtifactRetry(ArtifactRetryTestBase):
         await moved_check.validator.save(db=db)
         try:
             for retry_failed_only in (True, False):
-                with pytest.raises(ValidationError):
+                with pytest.raises(ValidationError, match=rf"^{re.escape(FOREIGN_CHECKS_MESSAGE)}$"):
                     await validate_artifacts_generation(
                         model=model.model_copy(
                             update={
@@ -357,12 +296,6 @@ class TestScopedArtifactRetry(ArtifactRetryTestBase):
                         context=context,
                     )
                 assert workflow_recorder.execute_calls == []
-                assert (
-                    await records.get(
-                        proposed_change_id=history.proposed_change_id, definition_id=dataset.definition.definition_id
-                    )
-                    == previous_record
-                )
                 validator = await NodeManager.get_one(
                     db=db, id=history.validator_id, kind=InfrahubKind.ARTIFACTVALIDATOR, raise_on_error=True
                 )
@@ -378,42 +311,7 @@ class TestScopedArtifactRetry(ArtifactRetryTestBase):
         await self._assert_history_unchanged(db=db, history=history)
         await self._assert_history_unchanged(db=db, history=other)
 
-    async def test_missing_or_stale_check_history_never_broadens_an_explicit_scope(
-        self,
-        db: InfrahubDatabase,
-        dataset: RetryDataset,
-        memory_cache: MemoryCache,
-        workflow_recorder: WorkflowRecorder,
-        default_branch: Branch,
-        admin_account: CoreAccount,
-    ) -> None:
-        history = await self._history(db=db, dataset=dataset, memory_cache=memory_cache, save_history=False)
-        check_id = history.outcomes[dataset.devices[0].id].check_id
-        assert check_id is not None
-        model = self._request(dataset=dataset, proposed_change_id=history.proposed_change_id).model_copy(
-            update={"validator_id": history.validator_id, "check_ids": [check_id]}
-        )
-        await self._set_changed_successes(dataset=dataset, model=model, memory_cache=memory_cache)
-        records = ArtifactRetryRecords(memory_cache)
-        for stale in (False, True):
-            if stale:
-                await records.complete(
-                    proposed_change_id=history.proposed_change_id,
-                    definition_id=dataset.definition.definition_id,
-                    record=ArtifactRetryRecord(validator_id=history.validator_id),
-                    completed_at="2025-01-01T11:00:00Z",
-                    outcomes=history.outcomes,
-                )
-            for retry_failed_only in (True, False):
-                with pytest.raises(ValidationError):
-                    await validate_artifacts_generation(
-                        model=model.model_copy(update={"retry_failed_only": retry_failed_only}),
-                        context=self._make_context(admin_account, default_branch),
-                    )
-                assert workflow_recorder.execute_calls == []
-                await self._assert_history_unchanged(db=db, history=history)
-
-    async def test_ordinary_check_scope_intersects_incremental_selection(
+    async def test_change_run_check_scope_renders_requested_targets_that_changed(
         self,
         db: InfrahubDatabase,
         dataset: RetryDataset,
@@ -423,90 +321,69 @@ class TestScopedArtifactRetry(ArtifactRetryTestBase):
         default_branch: Branch,
         admin_account: CoreAccount,
     ) -> None:
-        history = await self._history(db=db, dataset=dataset, memory_cache=memory_cache)
+        history = await self._history(db=db, dataset=dataset)
         requested_targets = (dataset.devices[0].id, dataset.devices[3].id)
-        check_ids = [history.outcomes[target_id].check_id for target_id in requested_targets]
-        assert all(check_ids)
         model = self._request(
             dataset=dataset, proposed_change_id=history.proposed_change_id, retry_failed_only=False
-        ).model_copy(update={"validator_id": history.validator_id, "check_ids": check_ids})
+        ).model_copy(
+            update={
+                "validator_id": history.validator_id,
+                "check_ids": [history.check_ids[target_id] for target_id in requested_targets],
+            }
+        )
         await self._set_changed_successes(dataset=dataset, model=model, memory_cache=memory_cache)
-        workflow = SuccessfulArtifactWorkflow(client=client)
+        workflow = ArtifactCheckWorkflow(client=client)
         with override_workflow(workflow=workflow, dependency_provider=dependency_provider):
             await validate_artifacts_generation(model=model, context=self._make_context(admin_account, default_branch))
 
         calls = workflow.get_execute_calls_for(GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE)
         assert [call["parameters"]["model"].target_id for call in calls] == [dataset.devices[3].id]
-        record = await ArtifactRetryRecords(memory_cache).get(
-            proposed_change_id=history.proposed_change_id, definition_id=dataset.definition.definition_id
+        assert await self._check_conclusions(db=db, validator_id=history.validator_id) == history.conclusions
+        await self._assert_validator(
+            db=db,
+            validator_id=history.validator_id,
+            state=ValidatorState.COMPLETED,
+            conclusion=ValidatorConclusion.FAILURE,
         )
-        assert record is not None
-        assert record.failed_target_ids == {device.id for device in dataset.devices[:3]}
-        assert record.outcomes == history.outcomes
-        validator = await NodeManager.get_one(db=db, id=history.validator_id, kind=InfrahubKind.ARTIFACTVALIDATOR)
-        assert validator is not None
-        assert validator.conclusion.value.value == ValidatorConclusion.FAILURE.value
 
-    async def test_strict_check_scope_does_not_rerun_a_successful_check(
+    async def test_failed_retry_check_scope_does_not_render_a_successful_check(
         self,
         db: InfrahubDatabase,
         dataset: RetryDataset,
-        memory_cache: MemoryCache,
         workflow_recorder: WorkflowRecorder,
         default_branch: Branch,
         admin_account: CoreAccount,
     ) -> None:
-        history = await self._history(db=db, dataset=dataset, memory_cache=memory_cache)
-        check_id = history.outcomes[dataset.devices[-1].id].check_id
-        assert check_id is not None
+        history = await self._history(db=db, dataset=dataset)
         model = self._request(dataset=dataset, proposed_change_id=history.proposed_change_id).model_copy(
-            update={"validator_id": history.validator_id, "check_ids": [check_id]}
+            update={"validator_id": history.validator_id, "check_ids": [history.check_ids[dataset.devices[-1].id]]}
         )
+
         await validate_artifacts_generation(model=model, context=self._make_context(admin_account, default_branch))
 
         assert workflow_recorder.execute_calls == []
-        record = await ArtifactRetryRecords(memory_cache).get(
-            proposed_change_id=history.proposed_change_id, definition_id=dataset.definition.definition_id
+        assert await self._check_conclusions(db=db, validator_id=history.validator_id) == history.conclusions
+        await self._assert_validator(
+            db=db,
+            validator_id=history.validator_id,
+            state=ValidatorState.COMPLETED,
+            conclusion=ValidatorConclusion.FAILURE,
         )
-        assert record is not None
-        assert record.outcomes == history.outcomes
-        validator = await NodeManager.get_one(db=db, id=history.validator_id, kind=InfrahubKind.ARTIFACTVALIDATOR)
-        assert validator is not None
-        assert validator.conclusion.value.value == ValidatorConclusion.FAILURE.value
 
-    async def test_successful_validator_still_validates_explicit_check_scope(
+    async def test_passed_validator_still_validates_the_check_scope(
         self,
         db: InfrahubDatabase,
         dataset: RetryDataset,
-        memory_cache: MemoryCache,
         workflow_recorder: WorkflowRecorder,
         default_branch: Branch,
         admin_account: CoreAccount,
     ) -> None:
-        history = await self._history(
-            db=db, dataset=dataset, memory_cache=memory_cache, failed=False, save_history=False
-        )
-        check_id = history.outcomes[dataset.devices[0].id].check_id
-        assert check_id is not None
+        history = await self._history(db=db, dataset=dataset, failed=False)
         model = self._request(dataset=dataset, proposed_change_id=history.proposed_change_id).model_copy(
-            update={"validator_id": history.validator_id, "check_ids": [check_id]}
+            update={"validator_id": history.validator_id, "check_ids": [history.check_ids[dataset.devices[0].id]]}
         )
         context = self._make_context(admin_account, default_branch)
-        with pytest.raises(ValidationError):
-            await validate_artifacts_generation(model=model, context=context)
-
-        records = ArtifactRetryRecords(memory_cache)
-        await records.complete(
-            proposed_change_id=history.proposed_change_id,
-            definition_id=dataset.definition.definition_id,
-            record=ArtifactRetryRecord(validator_id=history.validator_id),
-            completed_at=COMPLETED_AT,
-            outcomes=history.outcomes,
-        )
-        before = await records.get(
-            proposed_change_id=history.proposed_change_id, definition_id=dataset.definition.definition_id
-        )
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError, match=rf"^{re.escape(FOREIGN_CHECKS_MESSAGE)}$"):
             await validate_artifacts_generation(
                 model=model.model_copy(update={"check_ids": [str(uuid4())]}), context=context
             )
@@ -514,33 +391,21 @@ class TestScopedArtifactRetry(ArtifactRetryTestBase):
         await validate_artifacts_generation(model=model, context=context)
 
         assert workflow_recorder.execute_calls == []
-        assert (
-            await records.get(
-                proposed_change_id=history.proposed_change_id, definition_id=dataset.definition.definition_id
-            )
-            == before
-        )
-        validator = await NodeManager.get_one(db=db, id=history.validator_id, kind=InfrahubKind.ARTIFACTVALIDATOR)
-        assert validator is not None
-        assert validator.state.value.value == ValidatorState.COMPLETED.value
-        assert validator.conclusion.value.value == ValidatorConclusion.SUCCESS.value
-        assert validator.completed_at.value == COMPLETED_AT
+        await self._assert_history_unchanged(db=db, history=history)
 
-    async def test_scoped_retry_preserves_an_unselected_failed_target_that_left_the_group(
+    async def test_scoped_retry_keeps_the_failure_of_an_unselected_target_that_left_the_group(
         self,
         db: InfrahubDatabase,
         dataset: RetryDataset,
-        memory_cache: MemoryCache,
         client: InfrahubClient,
         dependency_provider: Provider,
         default_branch: Branch,
         admin_account: CoreAccount,
     ) -> None:
-        history = await self._history(db=db, dataset=dataset, memory_cache=memory_cache)
+        history = await self._history(db=db, dataset=dataset)
         selected_target = dataset.devices[0].id
         removed_target = dataset.devices[1].id
-        check_id = history.outcomes[selected_target].check_id
-        assert check_id is not None
+        check_id = history.check_ids[selected_target]
         group = await NodeManager.get_one(
             db=db, id=dataset.group_id, kind=InfrahubKind.STANDARDGROUP, branch=SOURCE_BRANCH, raise_on_error=True
         )
@@ -550,7 +415,7 @@ class TestScopedArtifactRetry(ArtifactRetryTestBase):
             model = self._request(dataset=dataset, proposed_change_id=history.proposed_change_id).model_copy(
                 update={"validator_id": history.validator_id, "check_ids": [check_id]}
             )
-            workflow = SuccessfulArtifactWorkflow(client=client)
+            workflow = ArtifactCheckWorkflow(client=client)
             with override_workflow(workflow=workflow, dependency_provider=dependency_provider):
                 await validate_artifacts_generation(
                     model=model, context=self._make_context(admin_account, default_branch)
@@ -558,17 +423,15 @@ class TestScopedArtifactRetry(ArtifactRetryTestBase):
 
             calls = workflow.get_execute_calls_for(GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE)
             assert [call["parameters"]["model"].target_id for call in calls] == [selected_target]
-            record = await ArtifactRetryRecords(memory_cache).get(
-                proposed_change_id=history.proposed_change_id, definition_id=dataset.definition.definition_id
+            assert await self._check_conclusions(db=db, validator_id=history.validator_id) == history.conclusions | {
+                check_id: ValidatorConclusion.SUCCESS.value
+            }
+            await self._assert_validator(
+                db=db,
+                validator_id=history.validator_id,
+                state=ValidatorState.COMPLETED,
+                conclusion=ValidatorConclusion.FAILURE,
             )
-            assert record is not None
-            assert record.outcomes[removed_target] == history.outcomes[removed_target]
-            assert record.failed_target_ids == {device.id for device in dataset.devices[1:3]}
-            removed_check = await NodeManager.get_one(
-                db=db, id=history.outcomes[removed_target].check_id, kind=InfrahubKind.ARTIFACTCHECK
-            )
-            assert removed_check is not None
-            assert removed_check.conclusion.value.value == ValidatorConclusion.FAILURE.value
         finally:
             restored_group = await NodeManager.get_one(
                 db=db, id=dataset.group_id, kind=InfrahubKind.STANDARDGROUP, branch=SOURCE_BRANCH, raise_on_error=True

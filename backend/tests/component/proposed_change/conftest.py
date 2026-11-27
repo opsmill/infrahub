@@ -8,11 +8,10 @@ import pytest
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.diff import NodeDiff, NodeDiffElement, NodeDiffSummary
 
-from infrahub.artifacts.models import ArtifactCheckResult
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
-from infrahub.core.constants import RepositoryInternalStatus, ValidatorConclusion
+from infrahub.core.constants import RepositoryInternalStatus
 from infrahub.core.diff.model.diff import DiffElementType
 from infrahub.message_bus.types import ProposedChangeBranchDiff, ProposedChangeRepository
 from infrahub.proposed_change.branch_diff import set_diff_summary_cache
@@ -20,7 +19,7 @@ from infrahub.proposed_change.models import RequestProposedChangeRefreshArtifact
 from infrahub.proposed_change.tasks import refresh_artifacts
 from infrahub.server import app
 from infrahub.workers.dependencies import build_client
-from infrahub.workflows.catalogue import GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE, REQUEST_ARTIFACT_DEFINITION_CHECK
+from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_CHECK
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
@@ -126,9 +125,6 @@ class ArtifactRegenTestBase(TestInfrahubAppWithoutLocalWorkflow):
         dependency_provider: Provider,
     ) -> AsyncGenerator[WorkflowRecorder, None]:
         with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:
-            recorder.execute_results[GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE.name] = ArtifactCheckResult(
-                conclusion=ValidatorConclusion.SUCCESS
-            )
             yield recorder
 
     @pytest.fixture(scope="class", autouse=True)

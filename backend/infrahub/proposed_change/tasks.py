@@ -32,7 +32,8 @@ from prefect.states import Completed, Failed
 from pydantic import BaseModel
 
 from infrahub import config, lock
-from infrahub.artifacts.models import ArtifactCheckResult, CheckArtifactCreate
+from infrahub.artifacts.checks import artifact_check_name, save_artifact_check
+from infrahub.artifacts.models import CheckArtifactCreate
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -42,6 +43,7 @@ from infrahub.core.constants import (
     GeneratorInstanceStatus,
     InfrahubKind,
     RepositoryInternalStatus,
+    Severity,
     ValidatorConclusion,
     ValidatorState,
 )
@@ -101,7 +103,12 @@ from infrahub.message_bus.types import (
     ProposedChangeBranchDiff,
     ProposedChangeRepository,
 )
-from infrahub.proposed_change.artifact_retry import ArtifactRetryRecord, ArtifactRetryRecords, merge_artifact_outcomes
+from infrahub.proposed_change.artifact_retry import (
+    UNRESOLVED_CHECK_CONCLUSIONS,
+    ArtifactCheckState,
+    ArtifactRunPlanner,
+    ArtifactTarget,
+)
 from infrahub.proposed_change.branch_diff import (
     GitRepositoryFileDiffer,
     RepositoryFileDiffPopulator,
@@ -790,25 +797,16 @@ async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests) 
             log.info(msg=f"repository_tests_completed return_code={return_code}")
 
 
-async def _remove_obsolete_artifact_checks(
-    client: InfrahubClient, validator_id: str, current_check_ids: set[str]
-) -> None:
-    previous_checks = await client.filters(kind=CoreArtifactCheck, validator__ids=[validator_id])
-    for check in previous_checks:
-        if check.id not in current_check_ids:
-            await check.delete()
-
-
 async def _run_artifact_target(
+    client: InfrahubClient,
     model: RequestArtifactDefinitionCheck,
     context: InfrahubContext,
     artifact_definition: CoreArtifactDefinition,
     member: InfrahubNode,
     artifact_id: str | None,
     validator_id: str,
-    previous_outcome: ArtifactCheckResult | None,
-) -> ArtifactCheckResult:
-    check_id = previous_outcome.check_id if previous_outcome else None
+    check_id: str | None,
+) -> ValidatorConclusion:
     if check_id is None and artifact_id is None:
         check_id = str(uuid.uuid4())
     try:
@@ -838,19 +836,37 @@ async def _run_artifact_target(
             validator_id=validator_id,
             check_id=check_id,
         )
-        outcome = await get_workflow().execute_workflow(
+        return await get_workflow().execute_workflow(
             workflow=GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
             context=context,
             parameters={"model": check_model},
-            expected_return=ArtifactCheckResult,
+            expected_return=ValidatorConclusion,
         )
     except WorkflowOrchestrationError:
         raise
-    # Preparation and terminal worker failures must retain the target identity for the next retry.
-    except Exception:  # noqa: BLE001
-        get_run_logger().exception("Artifact target check failed", extra={"target_id": member.id})
-        outcome = ArtifactCheckResult(conclusion=ValidatorConclusion.FAILURE, check_id=check_id)
-    return outcome
+    # Preparation and terminal worker failures must stay visible as a failed check of the target.
+    except Exception as exc:
+        log = get_run_logger()
+        log.exception("Artifact target check failed", extra={"target_id": member.id})
+        try:
+            await save_artifact_check(
+                client=client,
+                validator_id=validator_id,
+                check_id=check_id,
+                artifact_id=artifact_id,
+                name=artifact_check_name(
+                    artifact_name=model.artifact_definition.artifact_name,
+                    target_name=member.display_label or member.id,
+                ),
+                origin=model.artifact_definition.repository_id,
+                conclusion=ValidatorConclusion.FAILURE,
+                severity=Severity.CRITICAL,
+                message=f"Failed to render artifact: {exc}",
+            )
+        # Recording the failure must not replace the failed conclusion of the target.
+        except Exception:
+            log.exception("Unable to record the artifact check failure", extra={"target_id": member.id})
+        return ValidatorConclusion.FAILURE
 
 
 async def _select_artifact_targets(
@@ -968,50 +984,84 @@ def _validate_artifact_scope(*, validator_id: str | None, check_ids: list[str] |
             raise ValidationError("check_ids must not be empty or contain blank IDs")
 
 
-def _artifact_targets_for_checks(record: ArtifactRetryRecord | None, check_ids: list[str] | None) -> set[str] | None:
-    if check_ids is None:
-        return None
-    if record is None:
-        raise ValidationError(
-            "Scoped artifact retry is unavailable: completed target history is missing or stale. "
-            "Run ordinary artifact checks for the definition to refresh it."
-        )
-    requested_checks = set(check_ids)
-    matched_checks = {outcome.check_id for outcome in record.outcomes.values()} & requested_checks
-    if matched_checks != requested_checks:
-        raise ValidationError(
-            "The selected artifact checks are not in the latest completed target history. Refresh the checks view."
-        )
-    return {target_id for target_id, outcome in record.outcomes.items() if outcome.check_id in requested_checks}
+def _validator_passed(validator: CoreArtifactValidator) -> bool:
+    return (
+        validator.state.value == ValidatorState.COMPLETED.value
+        and validator.conclusion.value == ValidatorConclusion.SUCCESS.value
+    )
 
 
-async def _validate_artifact_check_ownership(client: InfrahubClient, model: RequestArtifactDefinitionCheck) -> None:
+def _check_state(check: CoreArtifactCheck) -> ArtifactCheckState:
+    return ArtifactCheckState(
+        check_id=check.id,
+        artifact_id=check.artifact_id.value,
+        name=check.name.value,
+        conclusion=check.conclusion.value,
+    )
+
+
+async def _fetch_requested_checks(
+    client: InfrahubClient, model: RequestArtifactDefinitionCheck
+) -> list[CoreArtifactCheck] | None:
     if model.check_ids is None:
-        return
+        return None
     checks = await client.filters(kind=CoreArtifactCheck, ids=model.check_ids, validator__ids=[model.validator_id])
     if {check.id for check in checks} != set(model.check_ids):
         raise ValidationError(
             "The selected artifact checks no longer belong to this validator. Refresh the checks view."
         )
+    return checks
+
+
+async def _fetch_unresolved_checks(
+    client: InfrahubClient, validator: CoreArtifactValidator | None
+) -> list[CoreArtifactCheck]:
+    if validator is None:
+        return []
+    return await client.filters(
+        kind=CoreArtifactCheck,
+        validator__ids=[validator.id],
+        conclusion__values=list(UNRESOLVED_CHECK_CONCLUSIONS),
+    )
+
+
+def _ensure_failed_retry_is_possible(
+    model: RequestArtifactDefinitionCheck,
+    previous_validator: CoreArtifactValidator,
+    unresolved_checks: list[CoreArtifactCheck],
+) -> None:
+    if previous_validator.state.value != ValidatorState.COMPLETED.value:
+        raise ValidationError(
+            f"The previous artifact checks of {model.artifact_definition.definition_name} did not complete. "
+            "Run the artifact checks again."
+        )
+    if not unresolved_checks:
+        raise ValidationError(
+            f"No failed artifact check was found for {model.artifact_definition.definition_name}. "
+            "Run the artifact checks again."
+        )
+
+
+async def _delete_checks(client: InfrahubClient, checks: list[CoreArtifactCheck]) -> None:
+    if not checks:
+        return
+    batch = await client.create_batch()
+    for check in checks:
+        batch.add(task=check.delete)
+    async for _, _ in batch.execute():
+        pass
 
 
 @dataclass(frozen=True)
-class ArtifactTargetSelection:
+class ArtifactDefinitionTargets:
     members: list[InfrahubNode]
     artifacts_by_member: dict[str, str]
-    retained_target_ids: set[str]
-    rebuild_history: bool
 
 
-async def _prepare_artifact_target_selection(
-    client: InfrahubClient,
-    model: RequestArtifactDefinitionCheck,
-    artifact_definition: CoreArtifactDefinition,
-    record: ArtifactRetryRecord | None,
-    previous_validator: CoreArtifactValidator | None,
-    requested_target_ids: set[str] | None,
-) -> ArtifactTargetSelection:
-    # Read artifacts before group members: #521 otherwise drops object names from the client store.
+async def _load_artifact_targets(
+    client: InfrahubClient, model: RequestArtifactDefinitionCheck, artifact_definition: CoreArtifactDefinition
+) -> ArtifactDefinitionTargets:
+    # Artifacts are read before the group members, so the members in the client store keep their names.
     existing_artifacts = await client.filters(
         kind=InfrahubKind.ARTIFACT,
         definition__ids=[model.artifact_definition.definition_id],
@@ -1021,53 +1071,23 @@ async def _prepare_artifact_target_selection(
     group = await fetch_artifact_definition_targets(
         client=client, branch=model.source_branch, definition=artifact_definition
     )
-    members = [relationship.peer for relationship in group.members.peers]
-    eligible_target_ids = {member.id for member in members}
-    failed_target_ids = record.failed_target_ids if record is not None else frozenset()
-    required_target_ids = requested_target_ids if requested_target_ids is not None else failed_target_ids
-    if (model.retry_failed_only or requested_target_ids is not None) and required_target_ids - eligible_target_ids:
-        target_description = "a selected target" if requested_target_ids is not None else "a failed target"
-        raise ValidationError(
-            f"Artifact retry is unavailable for {model.artifact_definition.definition_name}: "
-            f"{target_description} no longer belongs to the artifact definition. Run ordinary artifact checks to refresh it."
-        )
-    artifacts_by_member = map_subscriber_ids_by_member(
-        existing_subscribers=existing_artifacts,
-        definition_name=model.artifact_definition.definition_name,
-        log=get_run_logger(),
-    )
-    rebuild_history = requested_target_ids is None and (
-        bool(record and failed_target_ids - eligible_target_ids) or (record is None and previous_validator is not None)
-    )
-    if model.retry_failed_only:
-        selected_members = [member for member in members if member.id in failed_target_ids]
-    elif rebuild_history:
-        selected_members = members
-    else:
-        selected_members = await _select_artifact_targets(
-            model=model, client=client, artifacts_by_member=artifacts_by_member, members=members
-        )
-    if requested_target_ids is not None:
-        selected_members = [member for member in selected_members if member.id in requested_target_ids]
-        if record is not None:
-            eligible_target_ids.update(record.outcomes)
-    return ArtifactTargetSelection(
-        members=selected_members,
-        artifacts_by_member=artifacts_by_member,
-        retained_target_ids=eligible_target_ids,
-        rebuild_history=rebuild_history,
+    return ArtifactDefinitionTargets(
+        members=[relationship.peer for relationship in group.members.peers],
+        artifacts_by_member=map_subscriber_ids_by_member(
+            existing_subscribers=existing_artifacts,
+            definition_name=model.artifact_definition.definition_name,
+            log=get_run_logger(),
+        ),
     )
 
 
-async def _start_artifact_validation(
+async def _start_artifact_validator(
     client: InfrahubClient,
-    records: ArtifactRetryRecords,
     model: RequestArtifactDefinitionCheck,
     context: InfrahubContext,
     previous_validator: CoreArtifactValidator | None,
-    previous_outcomes: dict[str, ArtifactCheckResult],
-) -> tuple[CoreArtifactValidator, ArtifactRetryRecord]:
-    validator = await start_validator(
+) -> CoreArtifactValidator:
+    return await start_validator(
         client=client,
         validator=previous_validator,
         validator_type=CoreArtifactValidator,
@@ -1078,13 +1098,6 @@ async def _start_artifact_validation(
         },
         context=context,
     )
-    active_record = ArtifactRetryRecord(validator_id=validator.id, outcomes=previous_outcomes)
-    await records.start(
-        proposed_change_id=model.proposed_change,
-        definition_id=model.artifact_definition.definition_id,
-        record=active_record,
-    )
-    return validator, active_record
 
 
 async def _validate_artifacts_generation(model: RequestArtifactDefinitionCheck, context: InfrahubContext) -> None:
@@ -1116,119 +1129,75 @@ async def _validate_artifacts_generation(model: RequestArtifactDefinitionCheck, 
     if model.validator_id is not None and previous_validator is None:
         raise ValidationError("The artifact validator does not belong to this proposed change and definition.")
 
-    records = ArtifactRetryRecords(cache=await get_cache())
-    record = await records.get(
-        proposed_change_id=model.proposed_change, definition_id=model.artifact_definition.definition_id
-    )
-    if (
-        previous_validator is None
-        or record is None
-        or not record.matches_validator(
-            validator_id=previous_validator.id,
-            completed_at=previous_validator.completed_at.value,
-            conclusion=previous_validator.conclusion.value,
-            state=previous_validator.state.value,
+    requested_checks = await _fetch_requested_checks(client=client, model=model)
+    if model.retry_failed_only and (previous_validator is None or _validator_passed(validator=previous_validator)):
+        return
+    unresolved_checks = await _fetch_unresolved_checks(client=client, validator=previous_validator)
+    if model.retry_failed_only and previous_validator is not None:
+        _ensure_failed_retry_is_possible(
+            model=model, previous_validator=previous_validator, unresolved_checks=unresolved_checks
         )
-    ):
-        record = None
 
-    await _validate_artifact_check_ownership(client=client, model=model)
-    requested_target_ids = _artifact_targets_for_checks(record=record, check_ids=model.check_ids)
-    if model.retry_failed_only:
-        if previous_validator is None:
-            return
-        if (
-            previous_validator.state.value == ValidatorState.COMPLETED.value
-            and previous_validator.conclusion.value == ValidatorConclusion.SUCCESS.value
-        ):
-            return
-        if record is None:
-            raise ValidationError(
-                f"Failed-only retry is unavailable for {model.artifact_definition.definition_name}: "
-                "completed target history is missing or stale. Run ordinary artifact checks to refresh it."
+    # An unscoped ordinary run resets its validator first, so a failed preparation never leaves an earlier success.
+    validator = (
+        await _start_artifact_validator(
+            client=client, model=model, context=context, previous_validator=previous_validator
+        )
+        if not model.retry_failed_only and model.check_ids is None
+        else None
+    )
+
+    targets = await _load_artifact_targets(client=client, model=model, artifact_definition=artifact_definition)
+    planner = ArtifactRunPlanner(
+        artifact_name=model.artifact_definition.artifact_name,
+        targets=[
+            ArtifactTarget(
+                target_id=member.id,
+                label=member.display_label,
+                artifact_id=targets.artifacts_by_member.get(member.id),
             )
-
-    previous_outcomes = record.outcomes if record is not None else {}
-    # Ordinary results must be invalidated before preparation can fail; strict retries preserve rejected history.
-    started_validation = (
-        None
-        if model.retry_failed_only
-        else await _start_artifact_validation(
-            client=client,
-            records=records,
-            model=model,
-            context=context,
-            previous_validator=previous_validator,
-            previous_outcomes=previous_outcomes,
-        )
+            for member in targets.members
+        ],
+        unresolved_checks=[_check_state(check=check) for check in unresolved_checks],
     )
-
-    selection = await _prepare_artifact_target_selection(
-        client=client,
-        model=model,
-        artifact_definition=artifact_definition,
-        record=record,
-        previous_validator=previous_validator,
-        requested_target_ids=requested_target_ids,
-    )
-    validator, active_record = (
-        started_validation
-        if started_validation is not None
-        else await _start_artifact_validation(
-            client=client,
-            records=records,
-            model=model,
-            context=context,
-            previous_validator=previous_validator,
-            previous_outcomes=previous_outcomes,
+    requested_states = None if requested_checks is None else [_check_state(check=check) for check in requested_checks]
+    if model.retry_failed_only:
+        plan = planner.plan_failed_retry(requested_checks=requested_states)
+    else:
+        changed_members = await _select_artifact_targets(
+            model=model, client=client, artifacts_by_member=targets.artifacts_by_member, members=targets.members
         )
-    )
-    outcomes: dict[str, ArtifactCheckResult] = {}
-
-    async def run_target(member: InfrahubNode) -> ValidatorConclusion:
-        outcome = await _run_artifact_target(
-            model=model,
-            context=context,
-            artifact_definition=artifact_definition,
-            member=member,
-            artifact_id=selection.artifacts_by_member.get(member.id),
-            validator_id=validator.id,
-            previous_outcome=previous_outcomes.get(member.id),
+        plan = planner.plan_changes(
+            changed_target_ids={member.id for member in changed_members}, requested_checks=requested_states
         )
-        outcomes[member.id] = outcome
-        return outcome.conclusion
 
-    selected_ids = {member.id for member in selection.members}
-    if any(
-        outcome.conclusion == ValidatorConclusion.FAILURE and target_id not in selected_ids
-        for target_id, outcome in previous_outcomes.items()
-        if target_id in selection.retained_target_ids
-    ):
+    if validator is None:
+        validator = await _start_artifact_validator(
+            client=client, model=model, context=context, previous_validator=previous_validator
+        )
+    obsolete_check_ids = set(plan.obsolete_check_ids)
+    await _delete_checks(client=client, checks=[check for check in unresolved_checks if check.id in obsolete_check_ids])
+    if plan.keeps_failure:
         validator.conclusion.value = ValidatorConclusion.FAILURE.value
 
+    members_by_id = {member.id: member for member in targets.members}
     await _run_artifact_checks(
-        checks=[run_target(member) for member in selection.members],
+        checks=[
+            _run_artifact_target(
+                client=client,
+                model=model,
+                context=context,
+                artifact_definition=artifact_definition,
+                member=members_by_id[target_id],
+                artifact_id=targets.artifacts_by_member.get(target_id),
+                validator_id=validator.id,
+                check_id=plan.check_ids.get(target_id),
+            )
+            for target_id in plan.target_ids
+        ],
         validator=validator,
         proposed_change_id=model.proposed_change,
         context=context,
-    )
-    if outcomes.keys() != selected_ids:
-        raise WorkflowOrchestrationError(
-            "Some artifact checks could not be followed to completion. Retry history remains incomplete."
-        )
-    if selection.rebuild_history:
-        current_check_ids = {outcome.check_id for outcome in outcomes.values() if outcome.check_id}
-        await _remove_obsolete_artifact_checks(
-            client=client, validator_id=validator.id, current_check_ids=current_check_ids
-        )
-    await records.complete(
-        proposed_change_id=model.proposed_change,
-        definition_id=model.artifact_definition.definition_id,
-        record=active_record,
-        completed_at=validator.completed_at.value,
-        outcomes=merge_artifact_outcomes(
-            previous=previous_outcomes, updates=outcomes, eligible_target_ids=selection.retained_target_ids
-        ),
     )
 
 
@@ -1712,7 +1681,9 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
     artifact_definitions = parse_artifact_definitions(
         definitions=definition_information[InfrahubKind.ARTIFACTDEFINITION]["edges"]
     )
-    validators = await client.filters(kind=CoreArtifactValidator, proposed_change__ids=[model.proposed_change])
+    validators: list[CoreArtifactValidator] = []
+    if model.validator_id is not None or model.retry_failed_only:
+        validators = await client.filters(kind=CoreArtifactValidator, proposed_change__ids=[model.proposed_change])
     if model.validator_id is not None:
         validators = [validator for validator in validators if validator.id == model.validator_id]
         if not validators:
@@ -1729,10 +1700,7 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
         proposed_change = await client.get(kind=CoreProposedChange, id=model.proposed_change)
         ProposedChangeState(proposed_change.state.value).validate_state_check_run()
         failed_definitions = {
-            validator.definition.id
-            for validator in validators
-            if validator.conclusion.value != ValidatorConclusion.SUCCESS.value
-            or validator.state.value != ValidatorState.COMPLETED.value
+            validator.definition.id for validator in validators if not _validator_passed(validator=validator)
         }
         definitions_by_id = {definition.definition_id: definition for definition in artifact_definitions}
         if failed_definitions - definitions_by_id.keys():
@@ -1761,12 +1729,6 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
         modified_kinds=get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch),
         branch=model.source_branch,
     )
-
-    unfinished_definitions = {
-        validator.definition.id
-        for validator in validators
-        if validator.conclusion.value != ValidatorConclusion.SUCCESS.value
-    }
 
     for artifact_definition in artifact_definitions:
         select = DefinitionSelect.NONE
@@ -1804,7 +1766,7 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
             condition=any(changed_model in read_kinds for changed_model in modified_kinds),
         )
 
-        if select or artifact_definition.definition_id in unfinished_definitions:
+        if select:
             log.info(f"Trigger processing of {artifact_definition.definition_name}")
             request_artifacts_definitions_model = RequestArtifactDefinitionCheck(
                 artifact_definition=artifact_definition,

@@ -1,14 +1,6 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from infrahub.context import InfrahubContext
-from infrahub.core.constants import ValidatorConclusion
-
-
-class ArtifactCheckResult(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    conclusion: ValidatorConclusion
-    check_id: str | None = None
 
 
 class CheckArtifactCreate(BaseModel):

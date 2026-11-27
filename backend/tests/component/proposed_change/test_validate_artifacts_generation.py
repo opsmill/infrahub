@@ -6,11 +6,10 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from infrahub_sdk import Config, InfrahubClient
 
-from infrahub.artifacts.models import ArtifactCheckResult
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, ValidatorConclusion
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
@@ -24,7 +23,6 @@ from infrahub.proposed_change.models import RequestArtifactDefinitionCheck
 from infrahub.proposed_change.tasks import validate_artifacts_generation
 from infrahub.server import app
 from infrahub.workers.dependencies import build_client
-from infrahub.workflows.catalogue import GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.schema import load_schema
@@ -76,9 +74,6 @@ class TestValidateArtifactsGeneration(TestInfrahubAppWithoutLocalWorkflow):
         dependency_provider: Provider,
     ) -> AsyncGenerator[WorkflowRecorder, None]:
         with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:
-            recorder.execute_results[GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE.name] = ArtifactCheckResult(
-                conclusion=ValidatorConclusion.SUCCESS
-            )
             yield recorder
 
     @pytest.fixture(scope="class", autouse=True)

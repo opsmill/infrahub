@@ -8,9 +8,8 @@ import pytest
 from infrahub_sdk.protocols import CoreArtifactValidator
 
 from infrahub import lock
-from infrahub.artifacts.models import ArtifactCheckResult, CheckArtifactCreate
-from infrahub.core.constants import ValidatorConclusion
-from infrahub.proposed_change.artifact_retry import ArtifactRetryRecord, ArtifactRetryRecords
+from infrahub.artifacts.models import CheckArtifactCreate
+from infrahub.core.constants import ValidatorConclusion, ValidatorState
 from infrahub.proposed_change.tasks import validate_artifacts_generation
 from infrahub.workflows.catalogue import GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE
 from tests.adapters.workflow import WorkflowRecorder
@@ -29,7 +28,6 @@ if TYPE_CHECKING:
     from infrahub.events.models import EventContext
     from infrahub.workflows.constants import WorkflowPriority
     from infrahub.workflows.models import WorkflowDefinition
-    from tests.adapters.cache import MemoryCache
 
 WAIT_TIMEOUT_SECONDS = 30
 
@@ -72,14 +70,10 @@ class BlockedArtifactWorkflow(WorkflowRecorder):
                 self.first_target_cancelled = True
                 raise
         assert parameters is not None
-        model = parameters["model"]
-        assert isinstance(model, CheckArtifactCreate)
-        return ArtifactCheckResult(
-            conclusion=ValidatorConclusion.FAILURE
-            if call_number <= self.first_run_target_count
-            else ValidatorConclusion.SUCCESS,
-            check_id=model.check_id,
-        )
+        assert isinstance(parameters["model"], CheckArtifactCreate)
+        if call_number <= self.first_run_target_count:
+            return ValidatorConclusion.FAILURE
+        return ValidatorConclusion.SUCCESS
 
 
 class TestArtifactRetryConcurrency(ArtifactRetryTestBase):
@@ -87,19 +81,14 @@ class TestArtifactRetryConcurrency(ArtifactRetryTestBase):
         self,
         db: InfrahubDatabase,
         dataset: RetryDataset,
-        memory_cache: MemoryCache,
         dependency_provider: Provider,
         client: InfrahubClient,
         default_branch: Branch,
         admin_account: CoreAccount,
     ) -> None:
-        history = await self._history(db=db, dataset=dataset, memory_cache=memory_cache)
-        first_model = self._request(dataset=dataset, proposed_change_id=history.proposed_change_id)
-        second_model = self._request(
-            dataset=dataset, proposed_change_id=history.proposed_change_id, retry_failed_only=False
-        )
+        history = await self._history(db=db, dataset=dataset)
+        model = self._request(dataset=dataset, proposed_change_id=history.proposed_change_id)
         context = self._make_context(admin_account, default_branch)
-        records = ArtifactRetryRecords(cache=memory_cache)
         workflow = BlockedArtifactWorkflow(first_run_target_count=3)
         validation_lock = lock.registry.get(
             name=f"{history.proposed_change_id}:{dataset.definition.definition_id}", namespace="artifact-validation"
@@ -108,7 +97,7 @@ class TestArtifactRetryConcurrency(ArtifactRetryTestBase):
         acquisition_count = 0
         second_attempted = asyncio.Event()
         second_acquired = asyncio.Event()
-        records_before_second_run: list[ArtifactRetryRecord | None] = []
+        validator_states_before_second_run: list[tuple[str | None, str | None]] = []
 
         async def observed_acquire() -> None:
             nonlocal acquisition_count
@@ -118,23 +107,20 @@ class TestArtifactRetryConcurrency(ArtifactRetryTestBase):
                 second_attempted.set()
             await acquire()
             if second_run:
-                records_before_second_run.append(
-                    await records.get(
-                        proposed_change_id=history.proposed_change_id, definition_id=dataset.definition.definition_id
-                    )
-                )
+                validator = await client.get(kind=CoreArtifactValidator, id=history.validator_id)
+                validator_states_before_second_run.append((validator.state.value, validator.conclusion.value))
                 second_acquired.set()
 
         with (
             override_workflow(workflow=workflow, dependency_provider=dependency_provider),
             patch.object(validation_lock, "acquire", new=observed_acquire),
         ):
-            first = asyncio.create_task(validate_artifacts_generation(model=first_model, context=context))
+            first = asyncio.create_task(validate_artifacts_generation(model=model, context=context))
             second: asyncio.Task[None] | None = None
             try:
                 await asyncio.wait_for(workflow.first_run_started.wait(), timeout=WAIT_TIMEOUT_SECONDS)
                 first.cancel()
-                second = asyncio.create_task(validate_artifacts_generation(model=second_model, context=context))
+                second = asyncio.create_task(validate_artifacts_generation(model=model, context=context))
                 await asyncio.wait_for(second_attempted.wait(), timeout=WAIT_TIMEOUT_SECONDS)
 
                 assert not first.done()
@@ -162,27 +148,18 @@ class TestArtifactRetryConcurrency(ArtifactRetryTestBase):
                         task.cancel()
                 await asyncio.wait_for(asyncio.gather(*running, return_exceptions=True), timeout=WAIT_TIMEOUT_SECONDS)
 
-        assert len(records_before_second_run) == 1
-        interrupted = records_before_second_run[0]
-        assert interrupted is not None
-        assert interrupted.completed is False
-        assert interrupted.completed_at is None
+        assert validator_states_before_second_run == [
+            (ValidatorState.COMPLETED.value, ValidatorConclusion.FAILURE.value)
+        ]
         assert not workflow.first_target_cancelled
         calls = workflow.get_execute_calls_for(GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE)
-        assert len(calls) == 9
-        assert {call["parameters"]["model"].target_id for call in calls[3:]} == {
-            device.id for device in dataset.devices
-        }
-        completed = await records.get(
-            proposed_change_id=history.proposed_change_id, definition_id=dataset.definition.definition_id
+        assert len(calls) == 6
+        assert sorted(call["parameters"]["model"].target_id for call in calls[3:]) == sorted(
+            device.id for device in dataset.devices[:3]
         )
-        assert completed is not None
-        assert completed.failed_target_ids == frozenset()
-        assert set(completed.outcomes) == {device.id for device in dataset.devices}
-        validator = await client.get(kind=CoreArtifactValidator, id=history.validator_id)
-        assert completed.matches_validator(
-            validator_id=validator.id,
-            completed_at=validator.completed_at.value,
-            conclusion=validator.conclusion.value,
-            state=validator.state.value,
+        await self._assert_validator(
+            db=db,
+            validator_id=history.validator_id,
+            state=ValidatorState.COMPLETED,
+            conclusion=ValidatorConclusion.SUCCESS,
         )
