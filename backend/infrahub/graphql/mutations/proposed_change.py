@@ -34,6 +34,7 @@ from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
 from infrahub.graphql.types.task import TaskInfo
 from infrahub.proposed_change.approval_revoker import do_revoke_approvals_on_updated_pcs
+from infrahub.proposed_change.check_run import CheckRunRequest, CheckRunRequestBuilder, get_source_branch
 from infrahub.proposed_change.constants import ProposedChangeApprovalDecision, ProposedChangeState
 from infrahub.proposed_change.models import RequestProposedChangePipeline
 from infrahub.workers.dependencies import get_event_service
@@ -119,7 +120,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                 info=info, data=data, branch=branch, database=dbt, override_data=override_data
             )
             destination_branch = proposed_change.destination_branch.value
-            source_branch = await _get_source_branch(db=dbt, name=proposed_change.source_branch.value)
+            source_branch = await get_source_branch(db=dbt, name=proposed_change.source_branch.value)
             if destination_branch == source_branch.name:
                 raise ValidationError(input_value="The source and destination branch can't be the same")
             if destination_branch != "main":
@@ -257,61 +258,15 @@ class ProposedChangeRequestRunCheck(Mutation):
     ) -> dict[str, bool]:
         graphql_context: GraphqlContext = info.context
 
-        check_type = data.get("check_type") or CheckType.ALL
-        retry_failed_only = bool(data.get("retry_failed_only"))
-        if retry_failed_only and check_type != CheckType.ARTIFACT:
-            raise ValidationError("retry_failed_only requires check_type ARTIFACT")
-        validator_id: str | None = data.get("validator_id")
-        check_ids: list[str] | None = data.get("check_ids")
-        if (validator_id is not None or check_ids is not None) and check_type != CheckType.ARTIFACT:
-            raise ValidationError("validator_id and check_ids require check_type ARTIFACT")
-        if validator_id is not None and not validator_id.strip():
-            raise ValidationError("validator_id must not be blank")
-        if check_ids is not None:
-            if validator_id is None:
-                raise ValidationError("check_ids requires validator_id")
-            if not check_ids or any(not check_id.strip() for check_id in check_ids):
-                raise ValidationError("check_ids must not be empty or contain blank IDs")
-            check_ids = list(dict.fromkeys(check_ids))
-
-        identifier = data.get("id", "")
-        proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            id=identifier, kind=InfrahubKind.PROPOSEDCHANGE, db=graphql_context.db
-        )
-        state = ProposedChangeState(proposed_change.state.value.value)
-        state.validate_state_check_run()
-
-        if validator_id is not None:
-            validators = await NodeManager.query(
-                db=graphql_context.db,
-                schema=InfrahubKind.ARTIFACTVALIDATOR,
-                filters={"ids": [validator_id], "proposed_change__ids": [proposed_change.id]},
+        request_builder = CheckRunRequestBuilder(db=graphql_context.db, node_manager=NodeManager)
+        request_proposed_change_model = await request_builder.build(
+            request=CheckRunRequest(
+                proposed_change=data.get("id", ""),
+                check_type=data.get("check_type") or CheckType.ALL,
+                retry_failed_only=bool(data.get("retry_failed_only")),
+                validator_id=data.get("validator_id"),
+                check_ids=data.get("check_ids"),
             )
-            if not validators:
-                raise ValidationError(
-                    "validator_id must identify an artifact validator belonging to this proposed change"
-                )
-            if check_ids is not None:
-                checks = await NodeManager.query(
-                    db=graphql_context.db,
-                    schema=InfrahubKind.ARTIFACTCHECK,
-                    filters={"ids": check_ids, "validator__ids": [validator_id]},
-                )
-                if {check.id for check in checks} != set(check_ids):
-                    raise ValidationError("check_ids must identify artifact checks belonging to the selected validator")
-
-        destination_branch = proposed_change.destination_branch.value
-        source_branch = await _get_source_branch(db=graphql_context.db, name=proposed_change.source_branch.value)
-
-        request_proposed_change_model = RequestProposedChangePipeline(
-            proposed_change=proposed_change.id,
-            source_branch=source_branch.name,
-            source_branch_sync_with_git=source_branch.sync_with_git,
-            destination_branch=destination_branch,
-            check_type=check_type,
-            retry_failed_only=retry_failed_only,
-            validator_id=validator_id,
-            check_ids=check_ids,
         )
         if graphql_context.service:
             await graphql_context.service.workflow.submit_workflow(
@@ -584,12 +539,3 @@ class ProposedChangeCheckForApprovalRevoke(Mutation):
 
         await do_revoke_approvals_on_updated_pcs(db=db, proposed_changes_ids=ids)
         return cls(ok=True)
-
-
-async def _get_source_branch(db: InfrahubDatabase, name: str) -> Branch:
-    try:
-        return await Branch.get_by_name(name=name, db=db)
-    except BranchNotFoundError:
-        raise ValidationError(
-            input_value="The specified source branch for this proposed change was not found."
-        ) from None

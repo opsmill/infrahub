@@ -209,7 +209,7 @@ A `TLS` failure reaches this layer wrapped by httpx as a generic transport error
 
 ## Delivery operability
 
-A delivery run exposes recovery actions through the GraphQL `Task` type. `TaskActionGenerator` derives the actions from the run's workflow name and current state. Only `WEBHOOK_SEND` runs expose actions today; any other task type exposes none.
+A delivery run exposes recovery actions through the GraphQL `Task` type. `TaskActionGenerator` derives the actions from the run's workflow name and current state. The task types that expose actions are listed in [Task Recovery Actions](task-recovery-actions.md).
 
 | Action | Available when | Effect |
 |--------|----------------|--------|
@@ -218,7 +218,7 @@ A delivery run exposes recovery actions through the GraphQL `Task` type. `TaskAc
 
 The `available_actions` field on the task query reports each action with whether it currently applies and, when it does not, the reason. Selecting `available_actions` forces resolution of the run's workflow name, since the field is derived from it.
 
-`InfrahubTaskRetry` and `InfrahubTaskCancel` carry out the actions. Each loads the delivery through a query-only Prefect client (`DeliveryReader`), then authorizes it (`DeliveryActionAuthorizer`): the action must apply to the run's current state, and the caller must hold the `UPDATE` permission on the webhook's node kind. Loading is kept separate from authorization so the read uses the narrowest client capability it needs.
+`InfrahubTaskRetry` and `InfrahubTaskCancel` carry out the actions. Each loads the delivery through a query-only Prefect client (`DeliveryReader`), then authorizes it (`DeliveryActionAuthorizer`): the action must apply to the run's current state, and the caller must hold the `UPDATE` permission on the webhook's node kind. Loading is kept separate from authorization so the read uses the narrowest client capability it needs. `InfrahubTaskRetry` reaches the authorizer through the retry handler of deliveries (`DeliveryRetryHandler`), which then submits `WEBHOOK_SEND`.
 
 ### Delivery capture
 

@@ -1,0 +1,1 @@
+Added the Retry action to the details page of a finished artifact check task, which runs the failed or unfinished artifact check of the target of the task again, or every failed or unfinished artifact check of the artifact definition of the task.
