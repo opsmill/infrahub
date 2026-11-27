@@ -1612,7 +1612,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
     def get_relationships(
         self, kind: RelationshipKind, exclude: Sequence[str] | None = None
     ) -> list[RelationshipSchema]:
-        """Return relationships of a given kind with the possiblity to exclude some of them by name."""
+        """Return relationships of a given kind with the possibility to exclude some of them by name."""
         if exclude is None:
             exclude = []
 

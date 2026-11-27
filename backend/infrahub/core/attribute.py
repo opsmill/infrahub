@@ -1154,7 +1154,7 @@ class IPHost(BaseAttribute):
 
     @property
     def obj(self) -> ipaddress.IPv4Interface | ipaddress.IPv6Interface:
-        """Return the ip adress without a prefix or subnet mask.
+        """Return the ip address without a prefix or subnet mask.
 
         Raises:
             ValueError: When the IP host value has not been defined.
@@ -1166,7 +1166,7 @@ class IPHost(BaseAttribute):
 
     @property
     def ip(self) -> str | None:
-        """Return the ip adress without a prefix or subnet mask."""
+        """Return the ip address without a prefix or subnet mask."""
         if not self.value:
             return None
         return str(self.obj.ip)
@@ -1365,7 +1365,7 @@ class MacAddress(BaseAttribute):
 
     @property
     def obj(self) -> netaddr.EUI:
-        """Return the MAC adress.
+        """Return the MAC address.
 
         Raises:
             ValueError: When the MAC address value has not been defined.
