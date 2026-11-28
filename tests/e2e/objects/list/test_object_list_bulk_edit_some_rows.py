@@ -83,7 +83,8 @@ class TestBulkEditSomeRows:
         await admin_page.get_by_test_id("identifier-cell").nth(0).locator("label").click()
         await admin_page.get_by_test_id("object-table-toolbar").get_by_role("button", name="Edit").click()
 
-        await admin_page.get_by_label("Platform").click()
+        platform_field = admin_page.get_by_role("combobox", name="Platform")
+        await platform_field.click()
         await admin_page.get_by_role("button", name="+ Add new Platform").click()
 
         # click, unlike fill, fails when another layer covers the field, so it proves the create sheet is on top.
@@ -92,4 +93,4 @@ class TestBulkEditSomeRows:
         await new_object_form.get_by_label("Name").fill("bulk-edit-platform")
         await new_object_form.get_by_role("button", name="Save").click()
 
-        await expect(admin_page.get_by_label("Platform")).to_contain_text("bulk-edit-platform")
+        await expect(platform_field).to_contain_text("bulk-edit-platform")
