@@ -1,4 +1,3 @@
-import inspect
 from pathlib import Path
 
 import pytest
@@ -114,7 +113,7 @@ async def test_multiple_constraints(
         car_person_schema_root=car_person_schema_root,
         benchmark_config=benchmark_config,
         test_params_label=str(query_request),
-        test_name=inspect.currentframe().f_code.co_name,
+        test_name=test_multiple_constraints.__name__,
         graph_generator=graph_generator,
     )
 
@@ -150,6 +149,6 @@ async def test_single_constraint_multiple_runtimes(
         car_person_schema_root=car_person_schema_root,
         benchmark_config=benchmark_config,
         test_params_label=str(benchmark_config),
-        test_name=inspect.currentframe().f_code.co_name,
+        test_name=test_single_constraint_multiple_runtimes.__name__,
         graph_generator=graph_generator,
     )

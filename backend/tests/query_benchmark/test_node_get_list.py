@@ -1,4 +1,3 @@
-import inspect
 from pathlib import Path
 
 import pytest
@@ -66,7 +65,7 @@ async def test_node_get_list_ordering(
 
     nb_cars = 10_000
     cars_generator = CarGenerator(db=db_profiling_queries)
-    test_name = inspect.currentframe().f_code.co_name
+    test_name = test_node_get_list_ordering.__name__
     module_name = Path(__file__).stem
     graph_output_location = RESULTS_FOLDER / module_name / test_name
 

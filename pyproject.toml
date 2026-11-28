@@ -1773,17 +1773,6 @@ include = ["backend/tests/test_data/**"]
 ##################################################################################################
 unresolved-attribute = "ignore"
 
-[[tool.ty.overrides]]
-include = ["backend/tests/query_benchmark/**"]
-
-[tool.ty.overrides.rules]
-##################################################################################################
-# The ignored rules below should be removed once the code has been updated, they are included    #
-# like this so that we can reactivate them one by one.                                           #
-##################################################################################################
-invalid-return-type = "ignore"
-unresolved-attribute = "ignore"
-
 [tool.hatch.build.targets.sdist]
 include = [
     "backend/infrahub",

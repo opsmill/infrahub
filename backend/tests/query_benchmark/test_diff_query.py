@@ -1,4 +1,3 @@
-import inspect
 from pathlib import Path
 
 import pytest
@@ -70,7 +69,7 @@ async def test_diff(
         diff_branch=diff_branch,
     )
 
-    test_name = inspect.currentframe().f_code.co_name
+    test_name = test_diff.__name__
     module_name = Path(__file__).stem
     graph_output_location = RESULTS_FOLDER / module_name / test_name
 

@@ -1,4 +1,3 @@
-import inspect
 import uuid
 from pathlib import Path
 
@@ -101,7 +100,7 @@ async def test_repository_branch_attributes(
         await query.execute(db=db_profiling_queries)
         assert len(query.results) == len(node_ids) * len(branch_generator.branch_names) * len(ATTRIBUTE_NAMES)
 
-    test_name = inspect.currentframe().f_code.co_name
+    test_name = test_repository_branch_attributes.__name__
     module_name = Path(__file__).stem
     graph_output_location = RESULTS_FOLDER / module_name / test_name
 
