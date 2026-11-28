@@ -1,0 +1,364 @@
+<title>Schema Migration Views</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column; app pages drawn as small framed screens, new parts outlined in the accent. */
+:root {
+  --bg: #f4f4f2;
+  --surface: #ffffff;
+  --sunken: #f0efec;
+  --ink: #1d1c1a;
+  --muted: #66625d;
+  --line: #dddad5;
+  --accent: #0f6f86;
+  --accent-soft: #e3f1f4;
+  --danger: #b4233a;
+  --ok: #2f7a43;
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141312; --surface: #1d1c1a; --sunken: #252321; --ink: #ecebe8; --muted: #a39e98;
+    --line: #36332f; --accent: #5cc3d9; --accent-soft: #15333a; --danger: #f07a8c; --ok: #6cc684;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141312; --surface: #1d1c1a; --sunken: #252321; --ink: #ecebe8; --muted: #a39e98;
+  --line: #36332f; --accent: #5cc3d9; --accent-soft: #15333a; --danger: #f07a8c; --ok: #6cc684;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.55;
+  padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+main { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 48px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; line-height: 1.25; }
+h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 20px; font-weight: 650; }
+h3 { font-size: 15px; font-weight: 600; }
+p { margin: 0; }
+code, .mono { font-family: var(--mono); font-size: 0.88em; }
+a { color: var(--accent); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lede { color: var(--muted); max-width: 68ch; margin-top: 8px; }
+.section { display: flex; flex-direction: column; gap: 16px; }
+.new {
+  display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--accent); background: var(--accent-soft); border-radius: 4px; padding: 1px 5px; vertical-align: middle;
+}
+.key { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--muted); }
+.key span { display: inline-flex; align-items: center; gap: 6px; }
+.swatch-new { width: 22px; height: 12px; border: 2px solid var(--accent); border-radius: 3px; background: var(--accent-soft); }
+.swatch-old { width: 22px; height: 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--sunken); }
+
+.views { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.view { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.view .step { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.view .what { color: var(--muted); font-size: 14px; }
+.view blockquote { margin: 0; padding-left: 10px; border-left: 2px solid var(--line); font-size: 13px; color: var(--muted); }
+.view .where { margin-top: auto; font-size: 13px; font-weight: 600; color: var(--accent); }
+
+.screens { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; align-items: start; }
+.screen { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; min-width: 0; margin: 0; }
+.screen .bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--sunken); border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+.screen .bar .dots { display: flex; gap: 4px; }
+.screen .bar .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); display: block; }
+.screen .bar .path { font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.screen .body { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.screen .title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; min-width: 0; }
+.screen .title span.t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.screen .count { font-size: 11px; font-weight: 600; background: var(--sunken); border-radius: 4px; padding: 1px 6px; color: var(--muted); }
+.screen .menu { font-size: 12px; color: var(--muted); }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); }
+.tab { font-size: 12px; padding: 5px 8px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tab.on { color: var(--ink); border-bottom-color: var(--ink); font-weight: 600; }
+.tab.added { color: var(--accent); border: 2px solid var(--accent); border-radius: 6px 6px 0 0; background: var(--accent-soft); font-weight: 600; }
+.toggles { display: flex; flex-wrap: wrap; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; width: fit-content; }
+.toggles span { font-size: 12px; padding: 3px 8px; border-radius: 5px; color: var(--muted); }
+.toggles .added { color: var(--accent); background: var(--accent-soft); outline: 2px solid var(--accent); outline-offset: -2px; font-weight: 600; }
+.box { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--sunken); font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
+.box.added { border: 2px solid var(--accent); background: var(--accent-soft); }
+.box .label { font-weight: 600; font-size: 13px; }
+.box ul { margin: 0; padding-left: 18px; color: var(--muted); }
+.row { display: grid; grid-template-columns: 9.5em 1fr; gap: 8px; font-size: 12.5px; padding: 4px 6px; border-radius: 6px; }
+.row .k { color: var(--muted); }
+.row.added { border: 2px solid var(--accent); background: var(--accent-soft); }
+.row .go { color: var(--accent); font-weight: 600; }
+.plan { display: flex; align-items: baseline; gap: 10px; font-family: var(--mono); font-weight: 600; font-size: 18px; flex-wrap: wrap; }
+.plan small { font-family: var(--font); font-weight: 400; font-size: 12px; color: var(--muted); }
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+.steps li { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.steps .v { font-family: var(--mono); color: var(--muted); white-space: nowrap; }
+.steps .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.skip { margin-left: auto; color: var(--muted); white-space: nowrap; }
+.pass { margin-left: auto; color: var(--ok); font-weight: 600; white-space: nowrap; }
+.fail { margin-left: auto; color: var(--danger); font-weight: 600; white-space: nowrap; }
+.strike { text-decoration: line-through; color: var(--muted); }
+.note { font-size: 12.5px; color: var(--muted); }
+.note strong { color: var(--ink); font-weight: 600; }
+
+.paths { display: flex; flex-direction: column; gap: 14px; }
+.path { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.path ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.path li { font-size: 13px; background: var(--sunken); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; }
+.path li.in { background: var(--accent-soft); border-color: var(--accent); }
+.path .arrow { color: var(--muted); border: 0; background: none; padding: 0 2px; }
+
+.decided { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 560px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+th { font-weight: 600; color: var(--muted); font-size: 12px; }
+.not { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.not div { background: var(--surface); border: 1px dashed var(--line); border-radius: 12px; padding: 12px 14px; font-size: 13.5px; color: var(--muted); }
+.not strong { color: var(--ink); display: block; margin-bottom: 2px; }
+footer { font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+.steps .v.planned { border: 1px dashed var(--muted); border-radius: 4px; padding: 0 4px; }
+.steps .v.none { color: var(--danger); font-weight: 600; }
+.steps .tag { margin-left: auto; color: var(--muted); white-space: nowrap; }
+.group { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.02em; margin-top: 4px; }
+</style>
+
+<main>
+  <header>
+    <h1>Where the schema migration views live</h1>
+    <p class="lede">
+      Six views from INFP-719 and the user journey, placed in pages that already exist in Infrahub.
+      The branch, main and the proposed change share one Schema changes list and details panel. Nothing new in the menu, no side panel.
+    </p>
+  </header>
+
+  <section class="section" aria-labelledby="views">
+    <h2 id="views">The six views, and the spec behind each</h2>
+    <div class="views">
+      <article class="view">
+        <span class="step">Journey 1.1 to 1.5</span>
+        <h3>Staged schema change</h3>
+        <p class="what">What a staged file would do to the data on the branch, with Apply, Discard and Recalculate. While it is staged, Infrahub refuses to merge the branch or load a schema on it.</p>
+        <blockquote>“View the staged schema and its impact from the API, the CLI and the UI.” INFP-719</blockquote>
+        <span class="where">→ Branch · Schema tab · Schema changes, first row</span>
+      </article>
+      <article class="view">
+        <span class="step">Journey 1.1</span>
+        <h3>Schema difference</h3>
+        <p class="what">Each changed kind, its operations, and the nodes each one touches or deletes. The schema viewer also shows the staged schema in full detail.</p>
+        <blockquote>“View the difference between the branch's current schema and the staged file.” INFP-719</blockquote>
+        <span class="where">→ The details of every schema change, linked to the schema viewer · Staged</span>
+      </article>
+      <article class="view">
+        <span class="step">Journey 1.4, 2.4, 2.5</span>
+        <h3>Schema changes and revision</h3>
+        <p class="what">Every schema change of the branch, in order, with its runs. INFP-719 calls them stored migrations; the engineering investigation calls them schema changes.</p>
+        <blockquote>“View the stored migrations and the revision with a new CLI command, <code>infrahubctl schema view</code>, and on a new page in the UI.” INFP-719</blockquote>
+        <span class="where">→ Branch and main · Schema tab · Schema changes</span>
+      </article>
+      <article class="view">
+        <span class="step">Journey 2.2</span>
+        <h3>Progress of a run</h3>
+        <p class="what">How many migrations have ended, and how many nodes are done, during an apply, a direct load or a merge.</p>
+        <blockquote>“View the progress per migration: which migration runs, with its name, as step N of M.” INFP-719</blockquote>
+        <span class="where">→ The details of the change that runs, the proposed change during a merge, and the task pages</span>
+      </article>
+      <article class="view">
+        <span class="step">Journey 4.1</span>
+        <h3>What the merge applies on main</h3>
+        <p class="what">The branch's schema changes, each with the version it gets on main and whether it would fail against the current main.</p>
+        <blockquote>“Before approving, view in the proposed change the migrations the merge will replay on main, in order.” INFP-719</blockquote>
+        <span class="where">→ Proposed change · Schema tab · Schema changes</span>
+      </article>
+      <article class="view">
+        <span class="step">Journey phase 5</span>
+        <h3>Failed or stopped merge</h3>
+        <p class="what">Which step failed and why; the merge rolled back, so main did not change. A merge whose task stopped is rolled back with one button, without OpsMill.</p>
+        <blockquote>A failed merge rolls back completely. Engineering investigation, followed by decision on 16 Nov 2026.</blockquote>
+        <span class="where">→ Proposed change · Schema tab · Schema changes</span>
+      </article>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="map">
+    <h2 id="map">What changes in each page</h2>
+    <div class="key">
+      <span><i class="swatch-new"></i> Added for schema migrations</span>
+      <span><i class="swatch-old"></i> Exists today</span>
+    </div>
+    <div class="screens">
+      <figure class="screen">
+        <div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="path">/branches/feature-dc2…/schema</span></div>
+        <div class="body">
+          <span class="menu">Menu: Branches → a branch</span>
+          <div class="title"><span class="t">feature/dc2-paris-edge-routers…</span></div>
+          <div class="tabs"><span class="tab">Details</span><span class="tab">Data</span><span class="tab">Files</span><span class="tab">Artifacts</span><span class="tab on">Schema</span></div>
+          <div class="tabs"><span class="tab added">Schema changes 6</span><span class="tab">Diff</span></div>
+          <div class="box added">
+            <span class="label">Schema changes list <span class="new">New</span></span>
+            <div class="plan">Revision 00030 <small>branched from main at 00024</small></div>
+            <ol class="steps">
+              <li class="group">Staged</li>
+              <li><span class="v planned">00031</span><span class="name">infradevice_role_add_and_22_more</span><span class="fail">48 would fail</span></li>
+              <li class="group">Failed loads</li>
+              <li><span class="v none">✕</span><span class="name">infradevice_asset_tag_kind_update</span><span class="tag">no version</span></li>
+              <li class="group">Applied</li>
+              <li><span class="v">00030</span><span class="name">infrabgpsession_add_bfd_profile</span></li>
+              <li><span class="v">…</span></li>
+            </ol>
+            <ul>
+              <li>A staged change shows the version it gets when applied</li>
+              <li>A direct load that runs is listed first, under Running</li>
+            </ul>
+          </div>
+          <div class="box added">
+            <span class="label">Details panel <span class="new">New</span></span>
+            <ul>
+              <li>Header: the change and its status, Discard and Apply to branch, when it was staged, “Impact calculated … ago” with Recalculate, and a link to each section</li>
+              <li>Sections that open and close, with their titles always on screen: Impact on data, Schema difference, Would fail, Runs on this branch</li>
+              <li>Would fail counts the checks that ran and lists the ones that pass on request</li>
+              <li>While a change applies or loads: migrations ended and nodes done</li>
+              <li>A failed apply keeps the change staged, with the error</li>
+            </ul>
+          </div>
+          <div class="box"><span class="label">Diff</span><span class="note">What the Schema tab shows today.</span></div>
+          <p class="note"><strong>For the schema owner.</strong> Main gets the same Schema tab with the list; it shows no tabs today. Main's list also shows schema changes that a merge skipped.</p>
+        </div>
+      </figure>
+
+      <figure class="screen">
+        <div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="path">/proposed-changes/142/schema</span></div>
+        <div class="body">
+          <span class="menu">Menu: Proposed Changes → #142</span>
+          <div class="tabs"><span class="tab">Overview</span><span class="tab">Data</span><span class="tab">Files</span><span class="tab on">Schema</span><span class="tab">Checks</span><span class="tab">Tasks</span></div>
+          <div class="tabs"><span class="tab added">Schema changes 6</span><span class="tab">Diff</span></div>
+          <div class="box added">
+            <span class="label">Schema changes <span class="new">New</span></span>
+            <div class="plan">00027 → 00033 <small>main now → after the merge</small></div>
+            <ol class="steps">
+              <li><span class="v">00030 → 00033</span><span class="name">infrabgpsession_add_bfd…</span><span class="skip">Not checked</span></li>
+              <li><span class="v">00029 → 00032</span><span class="name">locationrack_height…</span><span class="fail">Would fail</span></li>
+              <li><span class="v">00028 → 00031</span><span class="name">infracircuit_add_commit…</span><span class="pass">Passes</span></li>
+              <li><span class="v">…</span></li>
+            </ol>
+            <ul>
+              <li>The same list and details panel as the branch, with each change's version on main and its result</li>
+              <li>The details panel adds “Merge into main”, with the nodes that would fail</li>
+              <li>The list and the details header stay at the top while the tab scrolls</li>
+            </ul>
+          </div>
+          <div class="box added">
+            <span class="label">States of the merge <span class="new">New</span></span>
+            <ul>
+              <li>Blocked while the branch has a staged change</li>
+              <li>Running: schema changes applied on main out of the total</li>
+              <li>Stopped: Roll back the merge</li>
+              <li>Failed and rolled back: each change Rolled back, Failed or Not run</li>
+            </ul>
+          </div>
+          <p class="note"><strong>For the reviewer.</strong> Same sub-tabs as the branch. The staged change is listed as “Staged, blocks the merge”.</p>
+        </div>
+      </figure>
+
+      <figure class="screen">
+        <div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="path">/schema</span></div>
+        <div class="body">
+          <span class="menu">Menu: Object Management → Schemas</span>
+          <div class="title"><span class="t">Schema</span> <span class="count">214</span></div>
+          <div class="toggles" role="img" aria-label="Schema views: List, Graph, Staged (new)"><span>List</span><span>Graph</span><span class="added">Staged 1</span></div>
+          <div class="box added">
+            <span class="label">Staged <span class="new">New</span></span>
+            <ul>
+              <li>The List layout, showing the schema after the staged change</li>
+              <li>Changed kinds only, by default; removed kinds marked</li>
+              <li>Old value struck through, new value next to it</li>
+              <li>Link to the impact on data in the branch Schema tab</li>
+            </ul>
+          </div>
+          <div class="row"><span class="k">shortname · optional</span><span><span class="strike">yes</span> no</span></div>
+          <div class="row"><span class="k">InfraLegacyPatchPanel</span><span><span class="strike">kind</span> removed</span></div>
+          <p class="note"><strong>For checking the result.</strong> Read from the same schema API with <code>staged=true</code>, as the engineering investigation plans.</p>
+        </div>
+      </figure>
+    </div>
+    <div class="screens">
+      <figure class="screen">
+        <div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="path">/branches/feature-dc2…</span></div>
+        <div class="body">
+          <div class="tabs"><span class="tab on">Details</span><span class="tab">Data</span><span class="tab">Files</span><span class="tab">Artifacts</span><span class="tab">Schema</span></div>
+          <div class="row"><span class="k">Branched from</span><span>main at <span class="mono">00024</span></span></div>
+          <div class="row added"><span class="k">Schema revision</span><span><span class="mono">00030</span> infrabgpsession_add_bfd_profile · <span class="go">View in Schema changes →</span></span></div>
+          <div class="row added"><span class="k">Staged schema change</span><span>infradevice_role_add_and_22_more · Staged · <span class="go">View in Schema changes →</span></span></div>
+          <p class="note"><strong>Branch Details tab.</strong> Two rows that point to the Schema tab.</p>
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="paths">
+    <h2 id="paths">The two paths people take</h2>
+    <div class="paths">
+      <div class="path">
+        <h3>Schema owner</h3>
+        <ol>
+          <li>Runs <code>infrahubctl schema load --stage</code></li><li class="arrow" aria-hidden="true">→</li>
+          <li class="in">Branch · Schema · Schema changes, staged row</li><li class="arrow" aria-hidden="true">→</li>
+          <li class="in">Schema viewer · Staged, to check a kind</li><li class="arrow" aria-hidden="true">→</li>
+          <li>Fixes the file and stages again, or presses Apply</li><li class="arrow" aria-hidden="true">→</li>
+          <li class="in">Same list: the change becomes 00031</li>
+        </ol>
+      </div>
+      <div class="path">
+        <h3>Reviewer</h3>
+        <ol>
+          <li>Opens the proposed change</li><li class="arrow" aria-hidden="true">→</li>
+          <li class="in">Schema · Schema changes</li><li class="arrow" aria-hidden="true">→</li>
+          <li>Checks which schema change would fail, and whether a staged change blocks the merge</li><li class="arrow" aria-hidden="true">→</li>
+          <li>Merges, or asks the owner to fix main or the branch</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="decided">
+    <h2 id="decided">Decided from 16 to 19 November 2026</h2>
+    <div class="decided">
+      <table>
+        <thead><tr><th>Question</th><th>Decision</th><th>Reason</th></tr></thead>
+        <tbody>
+          <tr><td>Where the views live (revised 18 Nov)</td><td>The branch Schema tab gets “Schema changes” and “Diff”. The proposed change Schema tab gets the same. Main gets a Schema tab.</td><td>The diff and the steps that produced it sit together, and the branch and the proposed change share one structure.</td></tr>
+          <tr><td>Where the staged change goes (18 Nov)</td><td>The first row of the Schema changes list, rather than its own “Staged” sub-tab.</td><td>People see where the change sits in their workflow without opening another view.</td></tr>
+          <tr><td>Versions in the list (18 Nov)</td><td>An applied change shows its version. A staged change shows the version it gets, in a dashed chip. A failed load shows a red cross: it never gets one.</td><td>Every row starts with the same chip, so the order reads at a glance.</td></tr>
+          <tr><td>Details panel (18 and 19 Nov)</td><td>A header with the actions, the facts and a link to each section. Sections open and close, and their titles stay on screen.</td><td>The panel has long sections, and people must know each one exists.</td></tr>
+          <tr><td>Impact calculation (19 Nov)</td><td>“Impact calculated … ago” and Recalculate in the header, next to Apply. Problems stay as messages in the panel.</td><td>Apply relies on that calculation.</td></tr>
+          <tr><td>Role of the schema viewer (17 Nov)</td><td>One “List | Graph | Staged” toggle. Staged uses the List layout for the schema after the staged change.</td><td>The schema viewer has the detail of each kind, and the backend plans <code>staged=true</code> for it.</td></tr>
+          <tr><td>Name of the list</td><td>“Schema changes”</td><td>The backend's name. In the backend, a migration is one step inside a schema change, so “stored migrations” would name two levels.</td></tr>
+          <tr><td>Progress</td><td>In the details of the change that runs, in the proposed change during a merge, and in the task pages. No new button in the header.</td><td>Runs are tasks. One activity button for tasks, Git sync and schema is a separate design run.</td></tr>
+          <tr><td>Merge rules (19 Nov)</td><td>A staged change blocks the merge. A stopped merge has Roll back the merge.</td><td>The engineering investigation refuses a merge while a change is staged, and lets a user with the Merge branch permission roll back a stopped merge.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="not">
+    <h2 id="not">Not part of the design</h2>
+    <div class="not">
+      <div><strong>No side panel</strong>Rejected in rounds 1 and 2: unclear, and too narrow for the impact.</div>
+      <div><strong>No new branch tab or menu entry</strong>The views extend pages people already use.</div>
+      <div><strong>No Staged sub-tab</strong>Replaced in round 15 by the first row of the list.</div>
+      <div><strong>No separate list of merge steps</strong>Rejected in round 4: the same schema changes had two layouts.</div>
+      <div><strong>No resume after a failed merge</strong>The merge rolls back completely, as the engineering investigation decides.</div>
+      <div><strong>No view of what a rebase would do</strong>It belongs to project E, which the engineering investigation marks optional.</div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Sources:
+      <a href="https://opsmill.atlassian.net/browse/INFP-719">INFP-719</a> ·
+      <a href="https://app.notion.com/p/402228b830258193b43ed097d965f633">Engineering investigation</a> (last edited 19 Nov 2026)</span>
+    <span>Design-jam run <code>schema-migrations</code>, 16 Nov 2026, updated 19 Nov 2026 (prototype rev 9).</span>
+  </footer>
+</main>
