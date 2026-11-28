@@ -26248,8 +26248,14 @@ export type ProposedChangeRequestRunCheck = {
 };
 
 export type ProposedChangeRequestRunCheckInput = {
+  /** Limit artifact checks to the targets of these existing checks. Requires validator_id. */
+  check_ids?: InputMaybe<Array<Scalars['String']['input']>>;
   check_type?: InputMaybe<CheckType>;
   id: Scalars['String']['input'];
+  /** Retry only the artifact targets whose latest check failed or did not finish. Requires check_type ARTIFACT. The scheduled run of a definition is refused when its previous run did not complete. */
+  retry_failed_only?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Limit artifact checks to this proposed change's artifact validator. Requires check_type ARTIFACT. */
+  validator_id?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type ProposedChangeReview = {

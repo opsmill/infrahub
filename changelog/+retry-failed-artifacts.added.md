@@ -1,0 +1,1 @@
+Added options to the `CoreProposedChangeRunCheck` mutation to run the artifact checks of a proposed change again for only the targets whose latest check failed or did not finish, for one artifact definition, or for selected checks.

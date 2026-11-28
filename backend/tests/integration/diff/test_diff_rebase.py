@@ -75,7 +75,7 @@ class TestDiffRebase(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     def main_schema_root(self) -> SchemaRoot:
-        main_schema_root = CAR_SCHEMA.model_copy()
+        main_schema_root = CAR_SCHEMA.model_copy(deep=True)
         # add a Node and relationship to delete later
         main_schema_root.generics.append(LOCATION)
         continent_schema = CONTINENT.model_copy()

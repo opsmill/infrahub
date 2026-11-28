@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Self
 
-from graphene import Boolean, Enum, Field, InputObjectType, List, Mutation, String
+from graphene import Boolean, Enum, Field, InputObjectType, List, Mutation, NonNull, String
 
 from infrahub import lock
 from infrahub.core import registry
@@ -229,6 +229,20 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
 class ProposedChangeRequestRunCheckInput(InputObjectType):
     id = String(required=True)
     check_type = GraphQLCheckType(required=False)
+    retry_failed_only = Boolean(
+        default_value=False,
+        description=(
+            "Retry only the artifact targets whose latest check failed or did not finish. Requires check_type ARTIFACT. "
+            "The scheduled run of a definition is refused when its previous run did not complete."
+        ),
+    )
+    validator_id = String(
+        description="Limit artifact checks to this proposed change's artifact validator. Requires check_type ARTIFACT.",
+    )
+    check_ids = List(
+        NonNull(String),
+        description="Limit artifact checks to the targets of these existing checks. Requires validator_id.",
+    )
 
 
 class ProposedChangeRequestRunCheck(Mutation):
@@ -247,6 +261,21 @@ class ProposedChangeRequestRunCheck(Mutation):
         graphql_context: GraphqlContext = info.context
 
         check_type = data.get("check_type") or CheckType.ALL
+        retry_failed_only = bool(data.get("retry_failed_only"))
+        if retry_failed_only and check_type != CheckType.ARTIFACT:
+            raise ValidationError("retry_failed_only requires check_type ARTIFACT")
+        validator_id: str | None = data.get("validator_id")
+        check_ids: list[str] | None = data.get("check_ids")
+        if (validator_id is not None or check_ids is not None) and check_type != CheckType.ARTIFACT:
+            raise ValidationError("validator_id and check_ids require check_type ARTIFACT")
+        if validator_id is not None and not validator_id.strip():
+            raise ValidationError("validator_id must not be blank")
+        if check_ids is not None:
+            if validator_id is None:
+                raise ValidationError("check_ids requires validator_id")
+            if not check_ids or any(not check_id.strip() for check_id in check_ids):
+                raise ValidationError("check_ids must not be empty or contain blank IDs")
+            check_ids = list(dict.fromkeys(check_ids))
 
         identifier = data.get("id", "")
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
@@ -254,6 +283,25 @@ class ProposedChangeRequestRunCheck(Mutation):
         )
         state = ProposedChangeState(proposed_change.state.value.value)
         state.validate_state_check_run()
+
+        if validator_id is not None:
+            validators = await NodeManager.query(
+                db=graphql_context.db,
+                schema=InfrahubKind.ARTIFACTVALIDATOR,
+                filters={"ids": [validator_id], "proposed_change__ids": [proposed_change.id]},
+            )
+            if not validators:
+                raise ValidationError(
+                    "validator_id must identify an artifact validator belonging to this proposed change"
+                )
+            if check_ids is not None:
+                checks = await NodeManager.query(
+                    db=graphql_context.db,
+                    schema=InfrahubKind.ARTIFACTCHECK,
+                    filters={"ids": check_ids, "validator__ids": [validator_id]},
+                )
+                if {check.id for check in checks} != set(check_ids):
+                    raise ValidationError("check_ids must identify artifact checks belonging to the selected validator")
 
         destination_branch = proposed_change.destination_branch.value
         source_branch = await _get_source_branch(db=graphql_context.db, name=proposed_change.source_branch.value)
@@ -264,6 +312,9 @@ class ProposedChangeRequestRunCheck(Mutation):
             source_branch_sync_with_git=source_branch.sync_with_git,
             destination_branch=destination_branch,
             check_type=check_type,
+            retry_failed_only=retry_failed_only,
+            validator_id=validator_id,
+            check_ids=check_ids,
         )
         if graphql_context.service:
             await graphql_context.service.workflow.submit_workflow(

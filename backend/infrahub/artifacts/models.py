@@ -30,6 +30,7 @@ class CheckArtifactCreate(BaseModel):
     timeout: int = Field(..., description="Timeout for requests used to generate this artifact")
     variables: dict = Field(..., description="Input variables when generating the artifact")
     validator_id: str = Field(..., description="The ID of the validator")
+    check_id: str | None = Field(default=None, description="The ID to reuse or create for this target's check")
     context: InfrahubContext = Field(..., description="The context of the task")
     check_stored_file: bool = Field(
         default=False,
