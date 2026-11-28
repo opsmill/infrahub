@@ -11,6 +11,10 @@ x-ci-labels: &ci-labels
 
 services:
   message-queue:
+    # TEMPORARY (Redis message bus evaluation): the stack's broker defaults to Redis, so RabbitMQ
+    # only starts when COMPOSE_PROFILES includes rabbitmq. Revert before merge.
+    profiles:
+      - rabbitmq
     image: ${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:4.2.1-management}
     restart: unless-stopped
     environment:
@@ -216,6 +220,8 @@ services:
       INFRAHUB_PRODUCTION: ${INFRAHUB_TESTING_PRODUCTION}
       INFRAHUB_LOG_LEVEL: ${INFRAHUB_TESTING_LOG_LEVEL:-INFO}
       INFRAHUB_BROKER_ADDRESS: ${INFRAHUB_TESTING_BROKER_ADDRESS}
+      # TEMPORARY (Redis message bus evaluation): Revert before merge.
+      INFRAHUB_BROKER_DRIVER: ${INFRAHUB_BROKER_DRIVER:-redis}
       INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_TESTING_CACHE_ADDRESS}
       INFRAHUB_DB_ADDRESS: ${INFRAHUB_TESTING_DB_ADDRESS}
       INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_TESTING_WORKFLOW_ADDRESS}
@@ -239,6 +245,8 @@ services:
         condition: service_healthy
       message-queue:
         condition: service_healthy
+        # TEMPORARY (Redis message bus evaluation): message-queue only exists with the rabbitmq profile.
+        required: false
       cache:
         condition: service_healthy
       task-manager:
@@ -275,6 +283,8 @@ services:
       INFRAHUB_ADDRESS: ${INFRAHUB_TESTING_ADDRESS}
       INFRAHUB_INTERNAL_ADDRESS: ${INFRAHUB_TESTING_INTERNAL_ADDRESS}
       INFRAHUB_BROKER_ADDRESS: ${INFRAHUB_TESTING_BROKER_ADDRESS}
+      # TEMPORARY (Redis message bus evaluation): Revert before merge.
+      INFRAHUB_BROKER_DRIVER: ${INFRAHUB_BROKER_DRIVER:-redis}
       INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_TESTING_CACHE_ADDRESS}
       INFRAHUB_DB_ADDRESS: ${INFRAHUB_TESTING_DB_ADDRESS:-database}
       INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_TESTING_WORKFLOW_ADDRESS}

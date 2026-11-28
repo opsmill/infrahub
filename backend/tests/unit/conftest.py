@@ -25,6 +25,13 @@ def without_cache_environment(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
+def without_broker_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Unset every INFRAHUB_BROKER_* variable, so the shell running the tests cannot change what is loaded."""
+    for name in [name for name in os.environ if name.startswith("INFRAHUB_BROKER_")]:
+        monkeypatch.delenv(name)
+
+
+@pytest.fixture
 def car_person_schema_root() -> SchemaRoot:
     car = NodeSchema(
         name="Car",

@@ -4,6 +4,7 @@ from typing import Any
 class FakeLogger:
     def __init__(self) -> None:
         self.info_logs: list[str | None] = []
+        self.warning_logs: list[str | None] = []
         self.error_logs: list[str | None] = []
         self.exception_logs: list[str | None] = []
 
@@ -15,6 +16,7 @@ class FakeLogger:
 
     def warning(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
         """Send a warning event."""
+        self.warning_logs.append(event)
 
     def error(self, event: str | None = None, *args: Any, **kw: Any) -> Any:
         """Send an error event."""

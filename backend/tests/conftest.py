@@ -79,6 +79,7 @@ from tests.helpers.constants import (
     PORT_MEMGRAPH,
     PORT_PREFECT,
     PORT_REDIS,
+    REDIS_IMAGE,
 )
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.diagnostics import install_redis_loop_diagnostics, register_known_loop
@@ -481,7 +482,7 @@ def redis_container(load_settings_before_session: None) -> Generator[dict[int, i
         yield None
         return
 
-    container = DockerContainer(image="redis:8.4.0").with_exposed_ports(PORT_REDIS)
+    container = DockerContainer(image=REDIS_IMAGE).with_exposed_ports(PORT_REDIS)
 
     container.start()
     wait_for_logs(container, "Ready to accept connections tcp")  # wait_container_is_ready does not seem to be enough
