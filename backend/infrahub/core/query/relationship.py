@@ -850,6 +850,24 @@ RETURN updated_at, updated_by
         if self.requested_order and self.requested_order.disable:
             return
 
+        if self.requested_order and self.requested_order.priority:
+            priority = self.requested_order.priority
+            subquery, subquery_params, subquery_result_name = await build_subquery_order(
+                db=db,
+                field=peer_schema.get_attribute(priority.attribute),
+                name=priority.attribute,
+                order_by="value",
+                branch_filter=branch_filter,
+                branch=self.branch,
+                node_alias="peer",
+                result_prefix="priority_order",
+            )
+            self.params.update(subquery_params)
+            self.params["priority_value"] = priority.value
+            self.add_subquery(subquery=subquery, node_alias="peer")
+            self.order_by.append(f"CASE WHEN {subquery_result_name} = $priority_value THEN 0 ELSE 1 END ASC")
+            return
+
         if self.requested_order and self.requested_order.by:
             await self._emit_peer_order_entries(
                 db=db,

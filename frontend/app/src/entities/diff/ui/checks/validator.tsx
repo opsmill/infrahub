@@ -75,9 +75,8 @@ const getValidatorState = (state?: string, conclusion?: string) => {
 
 export const Validator = ({ validator }: tValidatorProps) => {
   const { id, display_label, started_at, completed_at, conclusion, state } = validator;
-
-  const artifactDefinition =
-    validator.__typename === ARTIFACT_VALIDATOR_KIND ? validator.definition?.node : null;
+  const isArtifactValidator = validator.__typename === ARTIFACT_VALIDATOR_KIND;
+  const artifactDefinition = isArtifactValidator ? validator.definition?.node : null;
 
   const columns = [
     {

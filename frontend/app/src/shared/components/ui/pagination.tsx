@@ -9,12 +9,13 @@ import { Command, CommandList } from "./command";
 type tPaginationType = {
   count?: number;
   className?: string;
+  urlKey?: string;
 };
 
 export const Pagination = (props: tPaginationType) => {
-  const { count = 0, className } = props;
+  const { count = 0, className, urlKey } = props;
 
-  const [pagination, setPagination] = usePagination();
+  const [pagination, setPagination] = usePagination({ urlKey });
 
   const { offset, limit } = pagination;
 

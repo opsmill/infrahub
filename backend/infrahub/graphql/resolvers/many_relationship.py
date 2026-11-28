@@ -6,16 +6,18 @@ from infrahub.core.branch.models import Branch
 from infrahub.core.constants import (
     BranchSupportType,
     RelationshipHierarchyDirection,
+    ValidatorConclusion,
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.metadata.model import MetadataQueryOptions
-from infrahub.core.order import OrderModel
+from infrahub.core.order import AttributeValuePriority, OrderModel
 from infrahub.core.query.node import NodeGetHierarchyQuery
 from infrahub.core.relationship import Relationship
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.metadata import build_metadata_query_options, get_metadata_options_from_fields
 
@@ -95,6 +97,22 @@ class ManyRelationshipResolver:
                 data["updated_by"] = {"id": account_id} if account_id else None
         return data
 
+    def _get_order_model(self, order: dict[str, Any] | None, failed_first: bool) -> OrderModel | None:
+        """Resolve explicit ordering or failure priority.
+
+        Raises:
+            ValidationError: When failure priority and explicit ordering are both requested.
+
+        """
+        order_model = deserialize_order_input(input_data=order)
+        if not failed_first:
+            return order_model
+        if order_model:
+            raise ValidationError("failed_first cannot be combined with an explicit order")
+        return OrderModel(
+            priority=AttributeValuePriority(attribute="conclusion", value=ValidatorConclusion.FAILURE.value)
+        )
+
     async def resolve(
         self,
         parent: dict,
@@ -103,6 +121,7 @@ class ManyRelationshipResolver:
         offset: int | None = None,
         limit: int | None = None,
         order: dict[str, Any] | None = None,
+        failed_first: bool = False,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Resolver for relationships of cardinality=one for Edged responses.
@@ -137,6 +156,7 @@ class ManyRelationshipResolver:
         node_rel = node_schema.get_relationship(info.field_name)
         source_kind = node_schema.kind
         ids = [parent["id"]]
+        order_model = self._get_order_model(order=order, failed_first=failed_first)
         if isinstance(node_schema, NodeSchema):
             if node_schema.hierarchy:
                 source_kind = node_schema.hierarchy
@@ -176,8 +196,6 @@ class ManyRelationshipResolver:
         )
         # Add relationship properties metadata to relationship_level
         include_metadata |= MetadataQueryOptions(relationship_level=get_metadata_options_from_fields(property_fields))
-
-        order_model = deserialize_order_input(input_data=order)
 
         if offset or limit:
             relationships = await self._get_entities_simple(

@@ -13,7 +13,8 @@ type tValidatorDetails = {
 };
 
 export const ValidatorDetails = ({ id }: tValidatorDetails) => {
-  const [pagination] = usePagination();
+  const paginationKey = `validator-checks-${id}`;
+  const [pagination] = usePagination({ urlKey: paginationKey });
 
   const {
     isLoading,
@@ -36,13 +37,15 @@ export const ValidatorDetails = ({ id }: tValidatorDetails) => {
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       <div className="grid min-w-0 grid-cols-1 gap-4 p-2 2xl:grid-cols-2">
-        {validator?.checks?.edges?.map((check: any) => (
-          <Check key={check?.node?.id} id={check?.node?.id} />
-        ))}
+        {validator?.checks?.edges?.map(({ node }) =>
+          node?.id ? <Check key={node.id} id={node.id} /> : null
+        )}
 
         {!validator?.checks?.edges?.length && <NoDataFound message="No checks found." />}
       </div>
-      {!!validator?.checks?.edges?.length && <Pagination count={validator?.checks?.count} />}
+      {!!validator?.checks?.edges?.length && (
+        <Pagination count={validator?.checks?.count} urlKey={paginationKey} />
+      )}
     </div>
   );
 };
