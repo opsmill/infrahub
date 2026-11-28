@@ -105,10 +105,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 def pytest_configure(config: pytest.Config) -> None:
     markexpr = getattr(config.option, "markexpr", "")
 
-    if not markexpr:
-        markexpr = "not neo4j"
-    else:
-        markexpr = f"not neo4j and ({markexpr})"
+    markexpr = "not neo4j" if not markexpr else f"not neo4j and ({markexpr})"
 
     if not config.option.neo4j:
         config.option.markexpr = markexpr

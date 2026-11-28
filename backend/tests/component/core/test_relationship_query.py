@@ -81,10 +81,7 @@ async def get_relationship_properties(
         neo4j_edge = record.get("edge")
         property_node = record.get("p")
         end_at_raw = neo4j_edge.get("to")
-        if end_at_raw:
-            end_at = Timestamp(end_at_raw)
-        else:
-            end_at = None
+        end_at = Timestamp(end_at_raw) if end_at_raw else None
         relationship_properties.append(
             DatabaseRelationshipProperty(
                 property_type=neo4j_edge.type,

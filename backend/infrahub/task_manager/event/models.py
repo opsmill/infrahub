@@ -181,10 +181,7 @@ class InfrahubEventFilter(EventFilter):
         if until:
             occurred_filter["until"] = Timestamp(until.isoformat()).to_datetime()
 
-        if occurred_filter:
-            filters = cls(occurred=EventOccurredFilter(**occurred_filter))
-        else:
-            filters = cls()
+        filters = cls(occurred=EventOccurredFilter(**occurred_filter)) if occurred_filter else cls()
 
         match order:
             case EventSortOrder.ASC:

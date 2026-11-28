@@ -78,10 +78,11 @@ class ChangelogRelationshipMapper:
                 previous_property = old_data.properties.get(property_to_update)
                 previous_value: str | bool | None = None
                 if previous_property:
-                    if isinstance(previous_property.value, UUID):
-                        previous_value = str(previous_property.value)
-                    else:
-                        previous_value = previous_property.value
+                    previous_value = (
+                        str(previous_property.value)
+                        if isinstance(previous_property.value, UUID)
+                        else previous_property.value
+                    )
                 property_name = (
                     property_to_update if property_to_update not in {"source", "owner"} else f"{property_to_update}_id"
                 )

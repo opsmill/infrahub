@@ -145,10 +145,7 @@ class SchemaManager(NodeManager):
         branch = registry.get_branch_from_registry(branch=branch)
 
         branch_name = None
-        if branch.name in self._branches:
-            branch_name = branch.name
-        else:
-            branch_name = registry.default_branch
+        branch_name = branch.name if branch.name in self._branches else registry.default_branch
 
         return self._branches[branch_name].get_all(duplicate=duplicate)
 

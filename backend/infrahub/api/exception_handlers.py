@@ -57,10 +57,9 @@ async def generic_api_exception_handler(request: Request, exc: Exception, http_c
     if isinstance(exc, Error):
         if exc.HTTP_CODE:
             http_code = exc.HTTP_CODE
-        if isinstance(exc.errors, list):
-            messages = exc.errors
-        else:
-            messages = [str(exc.message) if exc.message else exc.DESCRIPTION]
+        messages = (
+            exc.errors if isinstance(exc.errors, list) else [str(exc.message) if exc.message else exc.DESCRIPTION]
+        )
     elif isinstance(exc, ValidationError):
         messages = [ed["msg"] for ed in exc.errors()]
     else:

@@ -820,10 +820,7 @@ class DiffQueryParser:
 
     def _finalize(self, include_unchanged: bool) -> None:
         for branch, diff_root_intermediate in self._diff_root_by_branch.items():
-            if branch == self.base_branch_name:
-                from_time = self.diff_branched_from_time
-            else:
-                from_time = self.from_time
+            from_time = self.diff_branched_from_time if branch == self.base_branch_name else self.from_time
             self._final_diff_root_by_branch[branch] = diff_root_intermediate.to_diff_root(
                 from_time=from_time,
                 to_time=self.to_time,

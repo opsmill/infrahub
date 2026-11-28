@@ -382,10 +382,11 @@ async def get_json_schema_by_kind(
         field_info = Field(default=default_value, description=attr.description)
         if attr.enum or attr.kind == "Dropdown":
             extras: dict[str, Any]
-            if attr.kind == "Dropdown" and attr.choices:
-                extras = {"enum": [choice.name for choice in attr.choices]}
-            else:
-                extras = {"enum": attr.enum}
+            extras = (
+                {"enum": [choice.name for choice in attr.choices]}
+                if attr.kind == "Dropdown" and attr.choices
+                else {"enum": attr.enum}
+            )
             field_info = Field(default=default_value, description=attr.description, json_schema_extra=extras)
         fields[attr.name] = (field_type, field_info)
 

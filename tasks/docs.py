@@ -423,10 +423,11 @@ def _extract_nested_parameters(
                 env = " | ".join(sorted(set(env_names)))
 
         # Determine default value for this field
-        if parent_default and nested_name in parent_default:
-            default_value = parent_default[nested_name]
-        else:
-            default_value = nested_schema.get("default")
+        default_value = (
+            parent_default[nested_name]
+            if parent_default and nested_name in parent_default
+            else nested_schema.get("default")
+        )
         if default_value is None and nested_name in object_fields:
             default_value = _factory_default(object_fields[nested_name])
 
@@ -511,10 +512,7 @@ def _process_section_parameters(
         definition = None
 
         if "properties" in param_schema or ref:
-            if ref:
-                definition = defs.get(ref.split("/")[-1])
-            else:
-                definition = param_schema
+            definition = defs.get(ref.split("/")[-1]) if ref else param_schema
             if definition and definition.get("type") == "object":
                 param_type = "object"
                 default = "Check nested parameters"
@@ -535,10 +533,7 @@ def _process_section_parameters(
         if param_type and param_type.startswith("array[object]") and not nested_parameters:
             items = param_schema.get("items", {})
             items_ref = items.get("$ref")
-            if items_ref:
-                items_def = defs.get(items_ref.split("/")[-1], {})
-            else:
-                items_def = items
+            items_def = defs.get(items_ref.split("/")[-1], {}) if items_ref else items
             if "properties" in items_def:
                 default = "Check nested parameters"
                 nested_parameters = _process_section_parameters(

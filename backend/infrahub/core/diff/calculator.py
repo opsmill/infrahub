@@ -195,10 +195,9 @@ class DiffCalculator:
             node_uuids: Calculate the changes of the diff branch for the nodes with these uuids only.
 
         """
-        if diff_branch.name == registry.default_branch:
-            diff_branch_from_time = from_time
-        else:
-            diff_branch_from_time = Timestamp(diff_branch.get_branched_from())
+        diff_branch_from_time = (
+            from_time if diff_branch.name == registry.default_branch else Timestamp(diff_branch.get_branched_from())
+        )
         diff_parser = DiffQueryParser(
             base_branch=base_branch,
             diff_branch=diff_branch,

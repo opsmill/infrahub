@@ -94,11 +94,10 @@ async def execute_graphql_query(
     except GraphQLError as error:
         return ExecutionResult(data=None, errors=[error])
 
-    if _has_expand_directive(_query_text(source)):
-        # The document of an @expand query is parsed again and changed on every run, so it would never match a cached one.
-        validation_errors = validate(schema, document)
-    else:
-        validation_errors = cached_validate(schema, document)
+    # An @expand query skips the validation cache: its document is parsed again and changed on every run.
+    validation_errors = (
+        validate(schema, document) if _has_expand_directive(_query_text(source)) else cached_validate(schema, document)
+    )
     if validation_errors:
         return ExecutionResult(data=None, errors=validation_errors)
 

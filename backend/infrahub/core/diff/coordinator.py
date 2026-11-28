@@ -112,14 +112,8 @@ class DiffCoordinator:
             await self.update_branch_diff(base_branch=base_branch, diff_branch=diff_branch)
             return
 
-        if from_time:
-            from_timestamp = Timestamp(from_time)
-        else:
-            from_timestamp = Timestamp(diff_branch.get_branched_from())
-        if to_time:
-            to_timestamp = Timestamp(to_time)
-        else:
-            to_timestamp = Timestamp()
+        from_timestamp = Timestamp(from_time) if from_time else Timestamp(diff_branch.get_branched_from())
+        to_timestamp = Timestamp(to_time) if to_time else Timestamp()
         if not name:
             raise ValidationError("diff with specified time range requires a name")
         await self.create_or_update_arbitrary_timeframe_diff(
@@ -666,10 +660,7 @@ class DiffCoordinator:
                     current_time = current_diff.diff_branch_diff.to_time
                     continue
                 # set the end time to the start of the next calculated diff or the end of the time range
-                if ordered_diffs:
-                    end_time = ordered_diffs[0].diff_branch_diff.from_time
-                else:
-                    end_time = diff_request.to_time
+                end_time = ordered_diffs[0].diff_branch_diff.from_time if ordered_diffs else diff_request.to_time
                 # if there are no changes on either branch in this time range, then there cannot be a diff
                 self.logger.info(
                     f"Checking number of changes on branches for {diff_request!r}, from_time={current_time}, to_time={end_time}"

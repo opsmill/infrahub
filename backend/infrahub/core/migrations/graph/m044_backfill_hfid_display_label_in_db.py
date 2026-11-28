@@ -426,10 +426,11 @@ class Migration044(MigrationRequiringRebase):
             for k, v in schema_path_values_map.items():
                 if not v:
                     continue
-                if destination_attribute_schema.kind == "List":
-                    formatted_v = ujson.dumps(v)
-                else:
-                    formatted_v = " ".join(item for item in v if item is not None)
+                formatted_v = (
+                    ujson.dumps(v)
+                    if destination_attribute_schema.kind == "List"
+                    else " ".join(item for item in v if item is not None)
+                )
                 formatted_schema_path_values_map[k] = formatted_v
 
             update_attr_values_query = await UpdateAttributeValuesQuery.init(

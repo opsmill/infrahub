@@ -140,10 +140,7 @@ class DiffConflictsExtractor:
         is_cardinality_one: bool,
     ) -> list[DataConflict]:
         conflicts: list[DataConflict] = []
-        if is_cardinality_one:
-            path_type = PathType.RELATIONSHIP_ONE
-        else:
-            path_type = PathType.RELATIONSHIP_MANY
+        path_type = PathType.RELATIONSHIP_ONE if is_cardinality_one else PathType.RELATIONSHIP_MANY
         peer_conflict = self._get_peer_conflict(
             diff_node=diff_node,
             diff_element=diff_element,
