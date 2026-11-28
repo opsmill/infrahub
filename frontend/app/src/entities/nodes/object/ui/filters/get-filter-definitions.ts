@@ -14,27 +14,19 @@ import {
   ACCOUNT_OBJECT,
   ACCOUNT_ROLE_OBJECT,
 } from "@/entities/role-manager/domain/model/account";
-import { getDecisionOptions } from "@/entities/role-manager/domain/use-cases/get-decision-options";
 import {
   ACCOUNT_TABLE_ATTRIBUTES,
   ACCOUNT_TABLE_RELATIONSHIPS,
-} from "@/entities/role-manager/ui/get-account-table-columns";
-import {
   GLOBAL_PERMISSIONS_TABLE_ATTRIBUTES,
   GLOBAL_PERMISSIONS_TABLE_RELATIONSHIPS,
-} from "@/entities/role-manager/ui/get-global-permissions-table-columns";
-import {
   GROUP_TABLE_ATTRIBUTES,
   GROUP_TABLE_RELATIONSHIPS,
-} from "@/entities/role-manager/ui/get-group-table-columns";
-import {
   OBJECT_PERMISSION_TABLE_ATTRIBUTES,
   OBJECT_PERMISSION_TABLE_RELATIONSHIPS,
-} from "@/entities/role-manager/ui/get-object-permission-table-columns";
-import {
   ROLE_TABLE_ATTRIBUTES,
   ROLE_TABLE_RELATIONSHIPS,
-} from "@/entities/role-manager/ui/get-role-table-columns";
+} from "@/entities/role-manager/domain/model/role-manager-table-fields";
+import { getDecisionOptions } from "@/entities/role-manager/domain/use-cases/get-decision-options";
 import type {
   AttributeSchema,
   ModelSchema,

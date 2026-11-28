@@ -1,5 +1,10 @@
 """Port of frontend/app/tests/e2e/role-management/global-permissions.spec.ts.
 
+Sorting the list from the Action column header: descending order, the header
+indicator, and toggle-clear back to the schema default (action ascending, so
+the bootstrap permissions start at edit_default_branch and, descending, at
+super_admin). Sorting is URL state only, so it runs against main.
+
 Global permission CRUD: create (Deny for Anonymous User), verify, edit decision
 to Allow, delete. Operates on bootstrap RBAC objects on a throwaway branch.
 """
@@ -7,6 +12,7 @@ to Allow, delete. Operates on bootstrap RBAC objects on a throwaway branch.
 from __future__ import annotations
 
 import contextlib
+import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -20,6 +26,32 @@ if TYPE_CHECKING:
 
     from helpers import BranchAPI
     from playwright.async_api import Page
+
+
+class TestGlobalPermissionsSort:
+    async def test_sort_by_action_from_header_and_toggle_clear(self, admin_page: Page) -> None:
+        first_row_link = admin_page.get_by_test_id("data-table-row").first.get_by_role("link").first
+        action_header = admin_page.get_by_role("button", name="Action", exact=True)
+
+        # navigate and verify the schema default order
+        await admin_page.goto("/role-management/global-permissions")
+        await expect(first_row_link).to_have_text("global:edit_default_branch:allow_all")
+
+        # sort descending from the Action header
+        await action_header.click()
+        await admin_page.get_by_role("menuitem", name="Sort descending").click()
+
+        await expect(admin_page).to_have_url(re.compile(r"sort=action__value__desc"))
+        await expect(first_row_link).to_have_text("global:super_admin:allow_all")
+        await expect(admin_page.get_by_role("button", name="Action sorted descending")).to_be_visible()
+
+        # toggle-clear restores the default order
+        await admin_page.get_by_role("button", name="Action sorted descending").click()
+        await admin_page.get_by_role("menuitem", name="Sort descending").click()
+
+        await expect(admin_page).not_to_have_url(re.compile(r"sort="))
+        await expect(first_row_link).to_have_text("global:edit_default_branch:allow_all")
+        await expect(admin_page.get_by_role("button", name="Action sorted descending")).not_to_be_visible()
 
 
 class TestGlobalPermissionsCrud:
