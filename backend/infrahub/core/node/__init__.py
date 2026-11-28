@@ -555,8 +555,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         ):
             return set(), set()
 
-        mandatory_attrs_to_check = [a for a in self._schema.mandatory_attribute_names if a not in fields.keys()]
-        mandatory_rels_to_check = [r for r in self._schema.mandatory_relationship_names if r not in fields.keys()]
+        mandatory_attrs_to_check = [a for a in self._schema.mandatory_attribute_names if a not in fields]
+        mandatory_rels_to_check = [r for r in self._schema.mandatory_relationship_names if r not in fields]
         if not mandatory_attrs_to_check and not mandatory_rels_to_check:
             return set(), set()
 
@@ -581,9 +581,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         process_pools: bool = True,
         user_id: str = SYSTEM_USER_ID,
     ) -> None:
-        if "_source" in fields.keys():
+        if "_source" in fields:
             self._source = fields["_source"]
-        if "_owner" in fields.keys():
+        if "_owner" in fields:
             self._owner = fields["_owner"]
 
         # -------------------------------------------
@@ -593,7 +593,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         if "updated_at" in fields and "updated_at" not in valid_input_names:
             # FIXME: Allow users to use "updated_at" named attributes until we have proper metadata handling
             fields.pop("updated_at")
-        for field_name in fields.keys():
+        for field_name in fields:
             if field_name not in valid_input_names:
                 log.error(f"{field_name} is not a valid input for {self.get_kind()}")
 
@@ -668,7 +668,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         errors: list[ValidationError] = []
         for mandatory_attr in self._schema.mandatory_attribute_names:
             if (
-                mandatory_attr not in fields.keys()
+                mandatory_attr not in fields
                 and mandatory_attr not in self._profile_provided_attrs
                 and mandatory_attr not in pool_pending_fields
             ):
@@ -691,7 +691,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         errors: list[ValidationError] = [
             ValidationError({mandatory_rel: f"{mandatory_rel} is mandatory for {self.get_kind()}"})
             for mandatory_rel in self._schema.mandatory_relationship_names
-            if mandatory_rel not in fields.keys()
+            if mandatory_rel not in fields
             and mandatory_rel not in self._profile_provided_rels
             and mandatory_rel not in pool_pending_fields
         ]
@@ -1449,7 +1449,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         FIELD_NAME_TO_EXCLUDE = ["id"] + self._schema.relationship_names
 
         field_names = (
-            [field_name for field_name in fields.keys() if field_name not in FIELD_NAME_TO_EXCLUDE]
+            [field_name for field_name in fields if field_name not in FIELD_NAME_TO_EXCLUDE]
             if fields and isinstance(fields, dict)
             else self._schema.attribute_names + ["__typename", "display_label"]
         )
@@ -1518,7 +1518,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     async def _build_meta_response(self, field_name: str, fields: dict) -> dict:
         data = {}
-        for meta_field in fields.get(field_name, {}).keys():
+        for meta_field in fields.get(field_name, {}):
             if meta_field == "created_at":
                 created_at = self._get_created_at()
                 data["created_at"] = created_at.to_datetime() if created_at else None

@@ -668,7 +668,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         peer = await self.get_peer(db=db)
         response = await peer.to_graphql(fields=peer_fields, db=db, related_node_ids=related_node_ids)
 
-        for field_name in rel_fields.keys():
+        for field_name in rel_fields:
             if field_name in self._node_properties:
                 node_prop_getter = getattr(self, f"get_{field_name}")
                 node_prop = await node_prop_getter(db=db)

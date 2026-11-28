@@ -126,7 +126,7 @@ class SchemaDiff(BaseModel):
                         )
                         if element_children and isinstance(element_children, dict):
                             for sub_action, sub_info in element_children.items():
-                                for sub_name in sub_info.keys():
+                                for sub_name in sub_info:
                                     print(
                                         f"{indent_str * 2}{str(sub_name).ljust(column_size - indentation * 2)} | {str(sub_action).title()}"
                                     )
@@ -185,7 +185,7 @@ class SchemaUpdateValidationResult(BaseModel):
         return obj
 
     def process_diff(self, schema: SchemaBranch) -> None:
-        for schema_name in self.diff.removed.keys():
+        for schema_name in self.diff.removed:
             self.migrations.append(
                 SchemaUpdateMigrationInfo(
                     path=SchemaPath(schema_kind=schema_name, path_type=SchemaPathType.NODE),
@@ -226,7 +226,7 @@ class SchemaUpdateValidationResult(BaseModel):
         node_field_diff: HashableModelDiff,
     ) -> None:
         path_type = SchemaPathType.ATTRIBUTE if node_field_name == "attributes" else SchemaPathType.RELATIONSHIP
-        for field_name in node_field_diff.added.keys():
+        for field_name in node_field_diff.added:
             if path_type == SchemaPathType.ATTRIBUTE:
                 self.migrations.append(
                     SchemaUpdateMigrationInfo(
@@ -242,7 +242,7 @@ class SchemaUpdateValidationResult(BaseModel):
                     )
                 )
 
-        for field_name in node_field_diff.removed.keys():
+        for field_name in node_field_diff.removed:
             self.migrations.append(
                 SchemaUpdateMigrationInfo(
                     path=SchemaPath(schema_kind=schema.kind, path_type=path_type, field_name=field_name),
@@ -575,7 +575,7 @@ class HashableModel(BaseModel):
 
         TODO Implement other fields type like dict
         """
-        for field_name in other.__class__.model_fields.keys():
+        for field_name in other.__class__.model_fields:
             if not hasattr(self, field_name):
                 with contextlib.suppress(ValueError):
                     # handles the case where self and other are different types and other has fields that self does not

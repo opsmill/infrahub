@@ -262,7 +262,7 @@ class SchemaManager(NodeManager):
         added_generics: list[str] = []
         changed_nodes: list[str] = []
         changed_generics: list[str] = []
-        for schema_kind in diff.added.keys():
+        for schema_kind in diff.added:
             one_schema = schema.get(name=schema_kind, duplicate=False)
             db_node, info = schema_summary_map.get(one_schema.kind, (None, None))
             node = await self._upsert_node_to_db(
@@ -311,7 +311,7 @@ class SchemaManager(NodeManager):
 
         removed_nodes = []
         removed_generics = []
-        for schema_kind in diff.removed.keys():
+        for schema_kind in diff.removed:
             one_schema = schema.get(name=schema_kind, duplicate=False)
             node = await self.delete_node_in_db(node=one_schema, branch=branch, db=db, at=at, user_id=user_id)
             schema.delete(name=schema_kind)

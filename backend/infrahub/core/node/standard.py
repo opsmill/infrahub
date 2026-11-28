@@ -110,7 +110,7 @@ class StandardNode(BaseModel):
         """
         response: dict[str, Any] = {"id": self.uuid}
 
-        for field_name in fields.keys():
+        for field_name in fields:
             if field_name == "id":
                 continue
             if field_name == "__typename":
@@ -122,7 +122,7 @@ class StandardNode(BaseModel):
                 continue
             if isinstance(fields.get(field_name), dict):
                 result = {}
-                for nested_field in fields.get(field_name, {}).keys():
+                for nested_field in fields.get(field_name, {}):
                     if nested_field == "value":
                         result[nested_field] = field
                         continue
@@ -137,7 +137,7 @@ class StandardNode(BaseModel):
         node_response: dict[str, Any] = {}
         meta_response: dict[str, Any] = {}
 
-        for field_name in fields.node.keys():
+        for field_name in fields.node:
             if field_name == "id":
                 node_response["id"] = self.uuid
                 continue
@@ -150,7 +150,7 @@ class StandardNode(BaseModel):
                 continue
             if isinstance(fields.node.get(field_name), dict):
                 result = {}
-                for nested_field in fields.node.get(field_name, {}).keys():
+                for nested_field in fields.node.get(field_name, {}):
                     if nested_field == "value":
                         result[nested_field] = field
                         continue
@@ -159,7 +159,7 @@ class StandardNode(BaseModel):
 
             node_response[field_name] = field
 
-        for field_name in fields.node_metadata.keys():
+        for field_name in fields.node_metadata:
             match field_name:
                 case "created_at":
                     meta_response["created_at"] = Timestamp(self.created_at).to_datetime() if self.created_at else None

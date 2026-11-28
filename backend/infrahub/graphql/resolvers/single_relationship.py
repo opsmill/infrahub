@@ -70,7 +70,7 @@ class SingleRelationshipResolver:
         self, relationship: Relationship, metadata_fields: dict[str, Any]
     ) -> dict[str, Any]:
         data: dict[str, Any] = {}
-        for meta_field in metadata_fields.keys():
+        for meta_field in metadata_fields:
             if meta_field == "created_at":
                 created_at = relationship._get_created_at()
                 data["created_at"] = created_at.to_datetime() if created_at else None

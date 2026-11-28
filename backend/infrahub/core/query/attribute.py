@@ -62,7 +62,7 @@ class AttributeUpdateValueQuery(AttributeQuery):
         content = self.attr.to_db()
         self.params.update(self.attr.to_db())
 
-        prop_list = [f"{key}: ${key}" for key in content.keys()]
+        prop_list = [f"{key}: ${key}" for key in content]
 
         labels = [GraphAttributeValueNode.get_default_label()]
         node_type = self.attr.get_db_node_type()

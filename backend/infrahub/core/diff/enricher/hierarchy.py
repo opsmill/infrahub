@@ -163,7 +163,7 @@ class DiffHierarchyEnricher(DiffEnricherInterface):
         # If parent is already in the list of node we need to add a relationship
         # If parent is not in the list of node, we need to add it
         diff_node_map = enriched_diff_root.get_node_map(
-            node_uuids={source_identifier.uuid for source_identifier in parent_peers.keys()}
+            node_uuids={source_identifier.uuid for source_identifier in parent_peers}
         )
         for node_identifier, peer_parent in parent_peers.items():
             # TODO check if we can optimize this part to avoid querying this multiple times

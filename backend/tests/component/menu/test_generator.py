@@ -56,9 +56,9 @@ async def test_generate_menu_placement(
     menu = await generate_menu(db=db, branch=default_branch, menu_items=menu_items)
 
     assert menu
-    assert "TestMenu0" in menu.data.keys()
-    assert "BuiltinObjectManagement" in menu.data.keys()
-    assert "TestCar" in menu.data["BuiltinObjectManagement"].children.keys()
+    assert "TestMenu0" in menu.data
+    assert "BuiltinObjectManagement" in menu.data
+    assert "TestCar" in menu.data["BuiltinObjectManagement"].children
 
 
 async def test_generate_menu_top_level(
@@ -77,9 +77,9 @@ async def test_generate_menu_top_level(
     menu = await generate_menu(db=db, branch=default_branch, menu_items=menu_items)
 
     assert menu
-    assert "TestMenu0" in menu.data.keys()
-    assert "TestCar" in menu.data.keys()
-    assert "TestCarSub" in menu.data["TestCar"].children.keys()
+    assert "TestMenu0" in menu.data
+    assert "TestCar" in menu.data
+    assert "TestCarSub" in menu.data["TestCar"].children
 
 
 async def test_generate_menu_default(
@@ -103,8 +103,8 @@ async def test_generate_menu_default(
     menu = await generate_menu(db=db, branch=default_branch, menu_items=menu_items)
 
     assert menu
-    assert "TestMenu0" in menu.data.keys()
-    assert "TestCar" in menu.data[FULL_DEFAULT_MENU].children.keys()
+    assert "TestMenu0" in menu.data
+    assert "TestCar" in menu.data[FULL_DEFAULT_MENU].children
 
 
 async def test_generate_ipam_menu(

@@ -381,8 +381,8 @@ async def test_branch_purge(
     graphql_registry._add_branch_hash(branch_name=active_branch, schema_hash=default_branch.active_schema_hash.main)
     graphql_registry._add_branch_hash(branch_name=purged_branch, schema_hash=default_branch.active_schema_hash.main)
 
-    assert default_branch.active_schema_hash.main in graphql_registry._branch_details_by_hash.keys()
-    assert default_branch.active_schema_hash.main in graphql_registry._branch_name_by_hash.keys()
+    assert default_branch.active_schema_hash.main in graphql_registry._branch_details_by_hash
+    assert default_branch.active_schema_hash.main in graphql_registry._branch_name_by_hash
 
     assert active_branch in graphql_registry._branch_name_by_hash[default_branch.active_schema_hash.main]
     assert purged_branch in graphql_registry._branch_name_by_hash[default_branch.active_schema_hash.main]
