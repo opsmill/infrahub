@@ -36,6 +36,7 @@ from infrahub.events.models import EventMeta
 from infrahub.exceptions import AuthorizationError, GatewayError, NodeNotFoundError, ProcessingError
 from infrahub.external_protocols import ExternalAuthProtocol  # noqa: TC001
 from infrahub.log import get_logger
+from infrahub.masking import url_without_secrets
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -602,9 +603,11 @@ async def get_groups_from_provider(
 ) -> list[str]:
     # Poor man's workaround to fetch user groups from Google
     if isinstance(provider, (SecurityOAuth2Google, SecurityOIDCGoogle)) and provider.fetch_groups:
+        # The email address is a request parameter, not part of the URL, so no log line or error message repeats it.
         groups_response = await service.http.get(
-            f"{provider.cloudidentity_url}?query=member_key_id == '{user_info['email']}'",
+            provider.cloudidentity_url,
             headers={"Authorization": f"{payload.get('token_type')} {payload.get('access_token')}"},
+            params={"query": f"member_key_id == '{user_info['email']}'"},
         )
         group_memberships = groups_response.json()
         if "memberships" in group_memberships:
@@ -685,7 +688,7 @@ def safe_get_response_body(response: httpx.Response, raise_error_on_empty_body: 
             if not text_body.strip() and raise_error_on_empty_body:  # Check for empty or whitespace-only response
                 log.error(
                     "Empty response body from authentication provider",
-                    url=str(response.url),
+                    url=url_without_secrets(str(response.url)),
                     status_code=response.status_code,
                 )
                 raise GatewayError(message="Authentication provider returned an empty response") from json_error
@@ -693,7 +696,7 @@ def safe_get_response_body(response: httpx.Response, raise_error_on_empty_body: 
         except Exception:  # noqa: BLE001
             log.error(
                 "Unable to read response body from authentication provider",
-                url=str(response.url),
+                url=url_without_secrets(str(response.url)),
                 status_code=response.status_code,
             )
             raise GatewayError(message="Unable to read response from authentication provider") from json_error
@@ -783,6 +786,14 @@ def validate_auth_response(response: httpx.Response, provider_type: str = "authe
             base_msg = "Authentication provider is experiencing server issues. Please try again later or contact your administrator."
 
     # Print proper log and raise gateway error
-    log.error(log_message, url=str(response.url), status_code=response.status_code, body=response_body)
+    # The body is not logged: a provider can put a client ID or a user name in `error_description`.
+    # The `error` field of RFC 6749 is a short code, such as `invalid_grant`, so it is logged.
+    error_code = response_body.get("error") if isinstance(response_body, dict) else None
+    log.error(
+        log_message,
+        url=url_without_secrets(str(response.url)),
+        status_code=response.status_code,
+        error=error_code if isinstance(error_code, str) else None,
+    )
     error_msg = extract_auth_error_message(response_body, base_msg)
     raise GatewayError(message=error_msg)

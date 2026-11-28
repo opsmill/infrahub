@@ -187,6 +187,10 @@ If you need assistance with Infrahub, you can reach out to the community and the
 - Discord: Join the Infrahub [Discord](https://discord.gg/opsmill) server to ask questions, get support, and engage with other users.
 - GitHub Issues: Submit issues or questions on [GitHub](https://github.com/opsmill/infrahub/issues).
 
+### How do I find why my Infrahub instance is slow?
+
+Deploy the [observability stack](../deploy-manage/install-configure/install/observability-stack.mdx) and open its Grafana dashboards. To let an AI assistant search the metrics, traces and logs for you, turn on the [Grafana MCP server](../deploy-manage/install-configure/install/observability-stack.mdx#connect-an-ai-assistant) and install the `infrahub-diagnosing-performance` skill.
+
 ### Is Infrahub free? Is there a paid support option or an Enterprise version of Infrahub?
 
 Infrahub is built on an open source foundation to allow for broad community access and code transparency. However, many customers want and need higher performance and software QA validation, as well as enterprise support. That's why we offer Infrahub in two distinct versions.

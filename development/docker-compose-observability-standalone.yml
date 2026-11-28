@@ -155,8 +155,9 @@ services:
     - grafana_data:/var/lib/grafana
     - grafana_logs:/var/log/grafana
     environment:
-    - GF_SECURITY_ADMIN_USER=admin
-    - GF_SECURITY_ADMIN_PASSWORD=admin
+      # The Grafana MCP init step logs in with the same two settings.
+    - GF_SECURITY_ADMIN_USER=${INFRAHUB_GRAFANA_ADMIN_USER:-admin}
+    - GF_SECURITY_ADMIN_PASSWORD=${INFRAHUB_GRAFANA_ADMIN_PASSWORD:-admin}
     - GF_USERS_ALLOW_SIGN_UP=false
     - GF_LOG_LEVEL=warn
     - GF_LOG_MODE=console,file
@@ -191,6 +192,74 @@ services:
       target: /etc/grafana/provisioning/dashboards/rabbitmq_instance_monitoring.json
     - source: grafana_provisioning_datasources_datasource_yml
       target: /etc/grafana/provisioning/datasources/datasource.yml
+  infrahub-grafana-mcp-init:
+    # Grafana MCP server: gives an AI assistant read access to Grafana. Off by default.
+    # Turn it on with COMPOSE_PROFILES=grafana-mcp (or --profile grafana-mcp) and set
+    # INFRAHUB_GRAFANA_MCP_TOKEN, the token that AI assistants send.
+    # This service runs once: it creates the Grafana service account of the server and stores its token.
+    profiles: [grafana-mcp]
+    image: grafana/grafana:11.4.0
+    # A new volume belongs to root, so root writes the token file and gives it to the user of the server.
+    user: root
+    entrypoint: ["/bin/sh", "/usr/local/bin/create-service-account.sh"]
+    volumes:
+    - grafana_mcp_token:/var/run/grafana-mcp
+    environment:
+      GRAFANA_URL: http://infrahub-grafana:3000
+      GRAFANA_ADMIN_USER: ${INFRAHUB_GRAFANA_ADMIN_USER:-admin}
+      GRAFANA_ADMIN_PASSWORD: ${INFRAHUB_GRAFANA_ADMIN_PASSWORD:-admin}
+      GRAFANA_MCP_TOKEN_FILE: /var/run/grafana-mcp/token
+      GRAFANA_MCP_TOKEN_FILE_OWNER: "1000:999"
+    depends_on:
+      # Not required, so that the file loads when the profile of the Grafana service is off.
+      infrahub-grafana:
+        condition: service_started
+        required: false
+
+    configs:
+    - source: grafana_mcp_create_service_account_sh
+      target: /usr/local/bin/create-service-account.sh
+  infrahub-grafana-mcp:
+    # No restart policy: the server must stay stopped when its entrypoint refuses to start it.
+    profiles: [grafana-mcp]
+    image: grafana/mcp-grafana:2.0.2@sha256:78d208116ec52b09b44f0eca66892073b39aefcb64483c54d43255c8eab7e97a
+    # The user of the image, written here because the init step gives the token file to it.
+    user: "1000:999"
+    entrypoint: ["/bin/sh", "/usr/local/bin/grafana-mcp-entrypoint.sh"]
+    volumes:
+    - grafana_mcp_token:/var/run/grafana-mcp:ro
+    - type: bind
+      source: ${INFRAHUB_GRAFANA_MCP_TLS_CERT_FILE:-/dev/null}
+      target: /etc/grafana-mcp/tls/tls.crt
+      read_only: true
+    - type: bind
+      source: ${INFRAHUB_GRAFANA_MCP_TLS_KEY_FILE:-/dev/null}
+      target: /etc/grafana-mcp/tls/tls.key
+      read_only: true
+    environment:
+      INFRAHUB_GRAFANA_MCP_TOKEN: ${INFRAHUB_GRAFANA_MCP_TOKEN:-}
+      INFRAHUB_GRAFANA_MCP_ALLOWED_HOSTS: ${INFRAHUB_GRAFANA_MCP_ALLOWED_HOSTS:-localhost:8100,127.0.0.1:8100}
+      # The same value as the port below: the entrypoint refuses an address open to a network without TLS.
+      INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS: ${INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS:-127.0.0.1}
+      INFRAHUB_GRAFANA_MCP_TLS_CERT_FILE: ${INFRAHUB_GRAFANA_MCP_TLS_CERT_FILE:-}
+      INFRAHUB_GRAFANA_MCP_TLS_KEY_FILE: ${INFRAHUB_GRAFANA_MCP_TLS_KEY_FILE:-}
+      GRAFANA_URL: http://infrahub-grafana:3000
+      GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE: /var/run/grafana-mcp/token
+      DO_NOT_TRACK: "1"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    ports:
+    - "${INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS:-127.0.0.1}:8100:8000"
+    depends_on:
+      infrahub-grafana-mcp-init:
+        condition: service_completed_successfully
+
+    configs:
+    - source: grafana_mcp_entrypoint_sh
+      target: /usr/local/bin/grafana-mcp-entrypoint.sh
   infrahub-server:
     environment:
       INFRAHUB_TRACE_ENABLE: ${INFRAHUB_TRACE_ENABLE:-true}
@@ -207,6 +276,7 @@ services:
       INFRAHUB_TRACE_EXPORTER_ENDPOINT: http://infrahub-tempo:4317
       INFRAHUB_TRACE_SAMPLE_RATIO: ${INFRAHUB_TRACE_SAMPLE_RATIO:-0.1}
 volumes:
+  grafana_mcp_token:
   grafana_data:
   grafana_logs:
   prometheus_data:
@@ -35763,3 +35833,264 @@ configs:
               timeShiftEnabled: true
               spanStartTimeShift: '-1h'
               spanEndTimeShift: '1h'
+  grafana_mcp_create_service_account_sh:
+    content: |
+      #!/bin/sh
+      # Create the Grafana service account that the Grafana MCP server uses, and store its token.
+      #
+      # Grafana cannot create a service account from a provisioning file, so this script
+      # calls the Grafana API once at each start. It can run again at any time: it keeps a
+      # stored token that still works, and replaces one that is lost or refused. It never
+      # prints a token or a password.
+      #
+      # The observability Helm chart of opsmill/infrahub-helm ships a copy of this file.
+      # The two copies must stay the same: change both in step.
+      #
+      # Needs curl, sed and grep, which the Grafana image has.
+      #
+      # Settings (environment variables):
+      #   GRAFANA_URL                    Address of Grafana, for example http://infrahub-grafana:3000
+      #   GRAFANA_ADMIN_USER             Grafana admin user
+      #   GRAFANA_ADMIN_PASSWORD         Its password
+      #   GRAFANA_MCP_TOKEN_FILE         File that receives the token
+      #   GRAFANA_MCP_TOKEN_FILE_OWNER   Optional "uid:gid" that must own the token file
+      #   GRAFANA_MCP_ROLE               Role of the service account (default: Viewer)
+      #   GRAFANA_WAIT_SECONDS           How long to wait for Grafana (default: 300)
+      set -eu
+
+      account_name="infrahub-grafana-mcp"
+      token_name="infrahub-grafana-mcp"
+      grafana_url="$${GRAFANA_URL%/}"
+      admin_user="$${GRAFANA_ADMIN_USER}"
+      admin_password="$${GRAFANA_ADMIN_PASSWORD}"
+      token_file="$${GRAFANA_MCP_TOKEN_FILE}"
+      token_file_owner="$${GRAFANA_MCP_TOKEN_FILE_OWNER:-}"
+      role="$${GRAFANA_MCP_ROLE:-Viewer}"
+      wait_seconds="$${GRAFANA_WAIT_SECONDS:-300}"
+      poll_seconds=2
+      request_seconds=30
+
+      # No file created here is readable by another user.
+      umask 077
+
+      work_dir="$$(mktemp -d)"
+      trap 'rm -rf "$$work_dir"' EXIT
+      body_file="$$work_dir/body"
+
+      fail() {
+          echo "$$1" >&2
+          exit 1
+      }
+
+      # curl reads the admin credentials from this file, so the password is not in the process arguments.
+      escape_for_curl_config() {
+          printf '%s' "$$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
+      }
+      admin_config="$$work_dir/admin.curlrc"
+      printf 'user = "%s:%s"\n' "$$(escape_for_curl_config "$$admin_user")" "$$(escape_for_curl_config "$$admin_password")" > "$$admin_config"
+
+      # Call the Grafana API as the admin user. Writes the answer to $$body_file and prints the HTTP status.
+      # A request that gets no answer prints 000.
+      admin_request() {
+          method="$$1"
+          path="$$2"
+          data="$${3:-}"
+          if [ -n "$$data" ]; then
+              set -- --header "Content-Type: application/json" --data "$$data"
+          else
+              set --
+          fi
+          curl --silent --show-error --max-time "$$request_seconds" --config "$$admin_config" \
+              --request "$$method" --output "$$body_file" --write-out '%{http_code}' "$$@" "$$grafana_url$$path" 2>/dev/null || true
+      }
+
+      # Stop with the message of the refused login, or with the failed call and its status.
+      check_status() {
+          status="$$1"
+          action="$$2"
+          case "$$status" in
+              2??) return 0 ;;
+              401) fail "Grafana refused the admin login: set INFRAHUB_GRAFANA_ADMIN_USER and INFRAHUB_GRAFANA_ADMIN_PASSWORD" ;;
+              *) fail "Grafana answered HTTP $$status when asked to $$action" ;;
+          esac
+      }
+
+      # Print the JSON objects of $$body_file whose "name" is exactly $$1, one per line.
+      # The objects that this script reads have no nested object.
+      objects_named() {
+          { grep -o '{[^{}]*}' "$$body_file" || true; } | { grep -F "\"name\":\"$$1\"" || true; }
+      }
+
+      # Print the value of the numeric field $$1 of the JSON object read on standard input.
+      number_field() {
+          sed -n "s/.*\"$$1\":\([0-9][0-9]*\).*/\1/p" | head -n 1
+      }
+
+      # Print the value of the text field $$1 of the JSON object read on standard input.
+      text_field() {
+          sed -n "s/.*\"$$1\":\"\([^\"]*\)\".*/\1/p" | head -n 1
+      }
+
+      wait_for_grafana() {
+          case "$$wait_seconds" in
+              "" | *[!0-9]*) fail "GRAFANA_WAIT_SECONDS must be a number of seconds, not $$wait_seconds" ;;
+          esac
+          # The limit counts the time of the requests too, not only the pauses between them.
+          deadline=$$(($$(date +%s) + wait_seconds))
+          while true; do
+              status="$$(curl --silent --max-time "$$poll_seconds" --output /dev/null --write-out '%{http_code}' "$$grafana_url/api/health" 2>/dev/null || true)"
+              if [ "$$status" = 200 ]; then
+                  return 0
+              fi
+              if [ "$$(date +%s)" -ge "$$deadline" ]; then
+                  if [ "$$wait_seconds" -eq 300 ]; then
+                      fail "Grafana did not answer at $$grafana_url within 5 minutes"
+                  fi
+                  fail "Grafana did not answer at $$grafana_url within $$wait_seconds seconds"
+              fi
+              sleep "$$poll_seconds"
+          done
+      }
+
+      # True when the stored token exists and Grafana accepts it. False when there is none, or Grafana refuses it.
+      # Any other answer stops the script: a token that may still be valid is not replaced because of a temporary error.
+      stored_token_works() {
+          [ -s "$$token_file" ] || return 1
+          token_config="$$work_dir/token.curlrc"
+          printf 'header = "Authorization: Bearer %s"\n' "$$(escape_for_curl_config "$$(cat "$$token_file")")" > "$$token_config"
+          status="$$(curl --silent --max-time "$$request_seconds" --config "$$token_config" --output /dev/null --write-out '%{http_code}' "$$grafana_url/api/user" 2>/dev/null || true)"
+          rm -f "$$token_config"
+          case "$$status" in
+              200) return 0 ;;
+              401 | 403) return 1 ;;
+              *) fail "Grafana answered HTTP $$status when asked to check the stored token of the service account $$account_name" ;;
+          esac
+      }
+
+      wait_for_grafana
+
+      # Find the service account, or create it.
+      status="$$(admin_request GET "/api/serviceaccounts/search?query=$$account_name&perpage=1000")"
+      check_status "$$status" "list the service accounts"
+      account="$$(objects_named "$$account_name" | head -n 1)"
+      if [ -z "$$account" ]; then
+          status="$$(admin_request POST "/api/serviceaccounts" "{\"name\":\"$$account_name\",\"role\":\"$$role\"}")"
+          check_status "$$status" "create the service account $$account_name"
+          account="$$(cat "$$body_file")"
+          echo "Created the Grafana service account $$account_name with the $$role role"
+      fi
+      account_id="$$(printf '%s' "$$account" | number_field id)"
+      [ -n "$$account_id" ] || fail "Grafana gave no ID for the service account $$account_name"
+
+      # An account that had another role gets the expected one, also when its token still works.
+      current_role="$$(printf '%s' "$$account" | text_field role)"
+      if [ "$$current_role" != "$$role" ]; then
+          status="$$(admin_request PATCH "/api/serviceaccounts/$$account_id" "{\"role\":\"$$role\"}")"
+          check_status "$$status" "give the $$role role to the service account $$account_name"
+          echo "Changed the role of the Grafana service account $$account_name from $$current_role to $$role"
+      fi
+
+      if stored_token_works; then
+          echo "The stored token of the Grafana service account $$account_name still works: nothing to do"
+          exit 0
+      fi
+
+      # Grafana shows a token only when it creates it, so a lost token is replaced.
+      status="$$(admin_request GET "/api/serviceaccounts/$$account_id/tokens")"
+      check_status "$$status" "list the tokens of the service account $$account_name"
+      for token_id in $$(objects_named "$$token_name" | sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p'); do
+          status="$$(admin_request DELETE "/api/serviceaccounts/$$account_id/tokens/$$token_id")"
+          check_status "$$status" "delete the old token of the service account $$account_name"
+      done
+
+      status="$$(admin_request POST "/api/serviceaccounts/$$account_id/tokens" "{\"name\":\"$$token_name\"}")"
+      check_status "$$status" "create a token for the service account $$account_name"
+      grep -q '"key":"[^"]' "$$body_file" || fail "Grafana gave no token for the service account $$account_name"
+
+      # The token goes from Grafana's answer to its file without passing through a variable or the output.
+      mkdir -p "$$(dirname "$$token_file")"
+      new_token_file="$$token_file.new"
+      rm -f "$$new_token_file"
+      sed -n 's/.*"key":"\([^"]*\)".*/\1/p' "$$body_file" | tr -d '\n' > "$$new_token_file"
+      chmod 400 "$$new_token_file"
+      if [ -n "$$token_file_owner" ]; then
+          chown "$$token_file_owner" "$$new_token_file"
+      fi
+      mv -f "$$new_token_file" "$$token_file"
+
+      echo "Stored a new token for the Grafana service account $$account_name"
+  grafana_mcp_entrypoint_sh:
+    content: |
+      #!/bin/sh
+      # Entrypoint of the Grafana MCP server in the observability Compose stack.
+      #
+      # mcp-grafana 2.0.2 starts without authentication when no caller token is set, and
+      # serves plain HTTP unless it gets a certificate. This check refuses both cases
+      # before the server starts, so the token is required and never crosses a network
+      # unencrypted. The server only reads Grafana: every write tool and the tool that
+      # calls any Grafana API route are off. The documentation and plugin tools are off
+      # too, because they send the search text to grafana.com. The instructions that the
+      # server sends to its clients say what it cannot do in this setup, because its own
+      # text says that it can create dashboards and incidents.
+      set -eu
+
+      refuse() {
+          echo "$$1" >&2
+          exit 1
+      }
+
+      token="$${INFRAHUB_GRAFANA_MCP_TOKEN:-}"
+      allowed_hosts="$${INFRAHUB_GRAFANA_MCP_ALLOWED_HOSTS:-localhost:8100,127.0.0.1:8100}"
+      listen_address="$${INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS:-127.0.0.1}"
+      tls_cert_file="$${INFRAHUB_GRAFANA_MCP_TLS_CERT_FILE:-}"
+      tls_key_file="$${INFRAHUB_GRAFANA_MCP_TLS_KEY_FILE:-}"
+
+      if [ -z "$$token" ]; then
+          refuse "INFRAHUB_GRAFANA_MCP_TOKEN is not set: set it to the token that AI assistants send"
+      fi
+
+      tls=off
+      if [ -n "$$tls_cert_file" ] && [ -n "$$tls_key_file" ]; then
+          tls=on
+      elif [ -n "$$tls_cert_file" ] || [ -n "$$tls_key_file" ]; then
+          refuse "Set both INFRAHUB_GRAFANA_MCP_TLS_CERT_FILE and INFRAHUB_GRAFANA_MCP_TLS_KEY_FILE, or neither"
+      fi
+
+      is_loopback() {
+          case "$$1" in
+              ::1 | "[::1]") return 0 ;;
+          esac
+          # An IPv4 address in 127.0.0.0/8: "127" and three more groups of digits.
+          echo "$$1" | grep -Eq '^127(\.[0-9]{1,3}){3}$$'
+      }
+
+      if [ "$$tls" = off ] && ! is_loopback "$$listen_address"; then
+          refuse "INFRAHUB_GRAFANA_MCP_LISTEN_ADDRESS is $$listen_address, which is open to a network: set INFRAHUB_GRAFANA_MCP_TLS_CERT_FILE and INFRAHUB_GRAFANA_MCP_TLS_KEY_FILE"
+      fi
+
+      set -- \
+          --transport streamable-http \
+          --address 0.0.0.0:8000 \
+          --allowed-hosts "$$allowed_hosts" \
+          --usage-stats=disabled \
+          --disable-write \
+          --disable-api \
+          --disable-docs \
+          --disable-plugin \
+          --instructions-append "In this stack the Grafana MCP server only reads: it has no tool that creates or changes dashboards, folders, annotations, incidents, alert rules or data sources."
+
+      if [ "$$tls" = on ]; then
+          # The two settings are paths on the Docker host; Compose mounts the files at these paths.
+          set -- "$$@" \
+              --server.tls-cert-file /etc/grafana-mcp/tls/tls.crt \
+              --server.tls-key-file /etc/grafana-mcp/tls/tls.key
+      fi
+
+      # The server reads the caller token from its environment, so the value is not in the process arguments.
+      export MCP_GRAFANA_SERVER_TOKEN="$$token"
+      export DO_NOT_TRACK=1
+      # The image keeps the server binary in /app, which is not in its PATH.
+      PATH="$$PATH:/app"
+      export PATH
+
+      exec mcp-grafana "$$@"

@@ -58,6 +58,15 @@ Multi-component tests running in a single thread/process. Async tasks execute in
 
 **When to use:** Features that span multiple components, including async workflows, event-driven behavior, or end-to-end flows that cross service boundaries.
 
+### Observability Tests (`backend/tests/observability/`)
+
+Tests that run a script of the observability stack against real Grafana containers, started with
+TestContainers. They need a Docker daemon, and neither Neo4j nor Infrahub.
+
+No test job that runs on every pull request collects this directory. The CI job
+`backend-tests-grafana-mcp` runs it when a file of the `grafana_mcp_service_account_all` filter in
+`.github/file-filters.yml` changes. Run it locally with `uv run pytest backend/tests/observability/`.
+
 ### Integration Tests (`backend/tests/integration/`)
 
 > **Note:** Currently contains tests that should be migrated to `functional/`. The directory is being transitioned to hold only true distributed integration tests.

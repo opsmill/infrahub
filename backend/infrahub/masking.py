@@ -1,4 +1,4 @@
-"""Rules that mask personal data and secrets in span attributes."""
+"""Rules that mask personal data and secrets in span attributes, and helpers that keep them out of a log line."""
 
 from __future__ import annotations
 
@@ -9,8 +9,11 @@ from typing import Any
 
 MASKED_VALUE = "[MASKED]"
 
-# A URL with a scheme, followed by its query string; both end at a space, a quote or an angle bracket.
-_URL_WITH_QUERY = re.compile(r"(?P<base>\b[a-zA-Z][a-zA-Z0-9+.-]*://[^\s?'\"<>`]*)\?[^\s'\"<>`]*")
+# A URL with a scheme, followed by its query string or its fragment; both end at a space, a quote or an angle bracket.
+_URL_WITH_QUERY = re.compile(r"(?P<base>\b[a-zA-Z][a-zA-Z0-9+.-]*://[^\s?#'\"<>`]*)(?P<separator>[?#])[^\s'\"<>`]*")
+
+# A URL with a scheme, followed by a user and a password up to the last "@" before the host.
+_URL_WITH_USER_INFO = re.compile(r"(?P<scheme>\b[a-zA-Z][a-zA-Z0-9+.-]*://)[^\s/?#'\"<>`]*@")
 
 
 def replace_value(value: Any) -> str:  # noqa: ARG001
@@ -26,9 +29,52 @@ def replace_url_query(value: Any) -> Any:
     return f"{base}?{MASKED_VALUE}"
 
 
+def url_without_secrets(url: str) -> str:
+    """Return `url` without its user, password, query string and fragment, the parts that can hold a secret.
+
+    The scheme, the host, the port and the path stay readable, so a secret in the path is not removed.
+    """
+    base = url.partition("#")[0].partition("?")[0]
+    scheme, separator, rest = base.partition("//")
+    # A "//" after anything other than a scheme is part of the path, which has no user or password.
+    if not separator or (scheme and not scheme.endswith(":")):
+        return base
+    authority, slash, path = rest.partition("/")
+    return f"{scheme}//{authority.rpartition('@')[2]}{slash}{path}"
+
+
 def replace_url_queries_in_text(text: str) -> str:
-    """Return `text` with the query string of every URL in it replaced, keeping the scheme, host, path and other text."""
-    return _URL_WITH_QUERY.sub(lambda match: f"{match.group('base')}?{MASKED_VALUE}", text)
+    """Return `text` with the query string and the fragment of every URL in it replaced.
+
+    The scheme, the host, the path and the other text stay readable. A fragment can hold a secret, such as an
+    `access_token` in an OAuth callback URL.
+    """
+    return _URL_WITH_QUERY.sub(lambda match: f"{match.group('base')}{match.group('separator')}{MASKED_VALUE}", text)
+
+
+def replace_url_secrets_in_text(text: str) -> str:
+    """Return `text` with the user and password removed, and the query string and fragment replaced, in every URL in it.
+
+    The scheme, the host, the path and the other text stay readable.
+    """
+    return replace_url_queries_in_text(_URL_WITH_USER_INFO.sub(lambda match: match.group("scheme"), text))
+
+
+def replace_url_secrets_in_nested(value: Any) -> Any:
+    """Return a copy of `value` with `replace_url_secrets_in_text` applied to every string in it, keys included.
+
+    A copy is returned, because the caller may still use the value it passed in.
+    """
+    if isinstance(value, str):
+        return replace_url_secrets_in_text(text=value)
+    if isinstance(value, Mapping):
+        return {
+            replace_url_secrets_in_nested(value=key): replace_url_secrets_in_nested(value=item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list | tuple):
+        return type(value)(replace_url_secrets_in_nested(value=item) for item in value)
+    return value
 
 
 @dataclass(frozen=True)

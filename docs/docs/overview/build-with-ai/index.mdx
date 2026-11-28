@@ -76,6 +76,8 @@ With the [Repo Auditor](https://docs.infrahub.app/skills/skills-reference/auditi
 
 When a deployment is misbehaving, your assistant reads the [Diagnostics Collector](https://docs.infrahub.app/skills/skills-reference/collecting-diagnostics) and runs `infrahub-collect` to gather the support bundle OpsMill needs. With the Diagnostics Analyzer, it triages a bundle you have already collected — tracebacks across the service logs, the incidents they correlate into, and any match against known issues in `opsmill/infrahub`.
 
+When a deployment is slow, connect your assistant to the [Grafana MCP server of the observability stack](../../deploy-manage/install-configure/install/observability-stack.mdx#connect-an-ai-assistant). With the `infrahub-diagnosing-performance` skill, your assistant reads the metrics, traces and logs of the stack and names the component that takes the time, with the query, trace or log line behind each finding.
+
 To report a bug or request a feature, your assistant uses the [Issue Reporter](https://docs.infrahub.app/skills/skills-reference/reporting-issues) to work out which `opsmill/infrahub-*` repository it belongs in, search for existing duplicates, and draft the issue for your review — see [How do I get help with Infrahub?](../../faq/faq.mdx#how-do-i-get-help-with-infrahub). Where a skill's own guidance was missing or unclear enough to cost you repeated retries, it can use the [Skill Gap Reporter](https://docs.infrahub.app/skills/skills-reference/reporting-skill-gaps) to report that friction against the skill itself.
 
 ### Where to start
@@ -88,6 +90,7 @@ To report a bug or request a feature, your assistant uses the [Issue Reporter](h
 | Ask questions about live infrastructure | [Analyze your data](../../schema/analyze-your-data.mdx) | [Data Analyzer](https://docs.infrahub.app/skills/skills-reference/analyzing-data) |
 | Organize the web interface | [Menu customization](../../menu/overview.mdx) | [Menu Manager](https://docs.infrahub.app/skills/skills-reference/managing-menus) |
 | Check a repository against Infrahub conventions | [infrahub.yml configuration](../../git-integration/infrahub-yml.mdx) | [Repo Auditor](https://docs.infrahub.app/skills/skills-reference/auditing-repo) |
+| Find which component makes a deployment slow | [Connect an AI assistant](../../deploy-manage/install-configure/install/observability-stack.mdx#connect-an-ai-assistant) | `infrahub-diagnosing-performance` |
 | Get help with a deployment that is misbehaving, or file an issue | [Getting help](../../faq/faq.mdx#how-do-i-get-help-with-infrahub) | [Diagnostics Collector](https://docs.infrahub.app/skills/skills-reference/collecting-diagnostics), [Issue Reporter](https://docs.infrahub.app/skills/skills-reference/reporting-issues) |
 
 ## How Infrahub Skills and MCP work together
