@@ -50,6 +50,8 @@ export interface PcActionsContextType {
   };
 }
 
+export type PcActionAvailability = PcActionsContextType[keyof PcActionsContextType];
+
 export const PcActionsContext = createContext<PcActionsContextType>({
   approve: { action: "", available: false, unavailability_reason: null },
   cancelApprove: { action: "", available: false, unavailability_reason: null },

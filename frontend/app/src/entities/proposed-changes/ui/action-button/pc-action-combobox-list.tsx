@@ -1,66 +1,40 @@
 import { Tooltip } from "@infrahub/ui";
-import type React from "react";
 
 import { ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
 
-import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";
-import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
+import type { PcActionAvailability } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 
-interface ActionItem {
-  value: string;
+export interface PcActionComboboxItem<TValue extends string> {
+  value: TValue;
   name: string;
-  isDisabled?: boolean;
-  message: string | null;
+  /** Without it the item is always selectable. */
+  availability?: PcActionAvailability;
 }
 
-export interface ActionComboboxListProps {
-  ref?: React.Ref<HTMLDivElement>;
-  onSelect: (value: string) => void;
-  value?: string | null;
+interface PcActionComboboxListProps<TValue extends string> {
+  items: PcActionComboboxItem<TValue>[];
+  value?: TValue | null;
+  onSelect: (value: TValue) => void;
 }
 
-export const ActionComboboxList = ({ ref, value, onSelect }: ActionComboboxListProps) => {
-  const { setDraft, unsetDraft, close, merge } = usePcActionsContext();
-  const proposedChangesDetails = useProposedChange();
-
-  const actionsList: Record<string, ActionItem> = {
-    merge: {
-      value: "merge",
-      name: "Merge",
-      isDisabled: !merge.available,
-      message: merge.unavailability_reason,
-    },
-    close: {
-      value: "close",
-      name: "Close",
-      isDisabled: !close.available,
-      message: close.unavailability_reason,
-    },
-    draft: {
-      value: "draft",
-      name: proposedChangesDetails.is_draft?.value ? "Open" : "Move to draft",
-      isDisabled: proposedChangesDetails.is_draft?.value
-        ? !unsetDraft.available
-        : !setDraft.available,
-      message: proposedChangesDetails.is_draft?.value
-        ? unsetDraft.unavailability_reason
-        : setDraft.unavailability_reason,
-    },
-  };
-
+export function PcActionComboboxList<TValue extends string>({
+  items,
+  value,
+  onSelect,
+}: PcActionComboboxListProps<TValue>) {
   return (
-    <ComboboxList ref={ref}>
-      {Object.entries(actionsList).map(([, action]) => {
-        if (action.isDisabled) {
+    <ComboboxList>
+      {items.map((item) => {
+        if (item.availability && !item.availability.available) {
           return (
             <Tooltip
-              message={action.message}
+              message={item.availability.unavailability_reason}
               className="whitespace-pre"
-              key={action.value}
+              key={item.value}
               nonInteractiveTrigger
             >
               <span className="ml-5 flex cursor-default select-none items-center gap-2 truncate rounded-md px-2 py-1.5 text-sm opacity-50 outline-hidden">
-                {action.name}
+                {item.name}
               </span>
             </Tooltip>
           );
@@ -68,16 +42,16 @@ export const ActionComboboxList = ({ ref, value, onSelect }: ActionComboboxListP
 
         return (
           <ComboboxItem
-            key={action.value}
-            value={action.value}
+            key={item.value}
+            value={item.value}
             selectedValue={value}
-            onSelect={() => onSelect(action.value)}
+            onSelect={() => onSelect(item.value)}
             className="cursor-pointer"
           >
-            <span className="truncate">{action.name}</span>
+            <span className="truncate">{item.name}</span>
           </ComboboxItem>
         );
       })}
     </ComboboxList>
   );
-};
+}
