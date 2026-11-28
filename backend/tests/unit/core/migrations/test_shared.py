@@ -10,9 +10,15 @@ from typing_extensions import Self
 from infrahub import config
 from infrahub.core.constants import SchemaPathType
 from infrahub.core.migrations.query import MigrationQuery
-from infrahub.core.migrations.shared import GraphMigration, MigrationInput, SchemaMigration
+from infrahub.core.migrations.shared import (
+    GraphMigration,
+    MigrationInput,
+    SchemaMigration,
+    find_previous_attribute_schema,
+)
 from infrahub.core.path import SchemaPath
 from infrahub.core.query import Query, QueryType
+from infrahub.core.schema import AttributeSchema, NodeSchema
 from tests.unit.core.migrations.schema.helpers import (
     AUTO_KINDS,
     CAR_KINDS,
@@ -273,3 +279,68 @@ def test_changed_kinds_are_the_dependent_kinds_in_both_schemas(case: ChangedKind
     )
 
     assert changed_kinds == case.expected
+
+
+def _attribute(name: str, attribute_id: str | None = None, source_attribute_id: str | None = None) -> AttributeSchema:
+    attribute = AttributeSchema(id=attribute_id, name=name, kind="Text")
+    attribute.source_attribute_id = source_attribute_id
+    return attribute
+
+
+@dataclass(frozen=True, kw_only=True)
+class PreviousAttributeCase:
+    name: str
+    previous_attributes: list[AttributeSchema]
+    attribute: AttributeSchema
+    expected_previous_name: str | None
+
+
+PREVIOUS_ATTRIBUTE_CASES: list[PreviousAttributeCase] = [
+    PreviousAttributeCase(
+        name="renamed_attribute_found_by_its_id",
+        previous_attributes=[
+            _attribute(name="paint", attribute_id="attr-2"),
+            _attribute(name="color", attribute_id="attr-1"),
+        ],
+        attribute=_attribute(name="paint_code", attribute_id="attr-1"),
+        expected_previous_name="color",
+    ),
+    PreviousAttributeCase(
+        name="renamed_inherited_attribute_found_by_its_source_attribute_id",
+        previous_attributes=[
+            _attribute(name="serial_number", source_attribute_id="generic-attr-2"),
+            _attribute(name="serial", source_attribute_id="generic-attr-1"),
+        ],
+        attribute=_attribute(name="serial_number_v2", source_attribute_id="generic-attr-1"),
+        expected_previous_name="serial",
+    ),
+    PreviousAttributeCase(
+        name="attribute_with_an_unknown_id_found_by_its_name",
+        previous_attributes=[_attribute(name="color", attribute_id="attr-1")],
+        attribute=_attribute(name="color", attribute_id="attr-9"),
+        expected_previous_name="color",
+    ),
+    PreviousAttributeCase(
+        name="attribute_without_an_id_found_by_its_name",
+        previous_attributes=[_attribute(name="color", attribute_id="attr-1")],
+        attribute=_attribute(name="color"),
+        expected_previous_name="color",
+    ),
+    PreviousAttributeCase(
+        name="new_attribute_has_no_previous_version",
+        previous_attributes=[_attribute(name="color", attribute_id="attr-1")],
+        attribute=_attribute(name="paint", attribute_id="attr-9"),
+        expected_previous_name=None,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in PREVIOUS_ATTRIBUTE_CASES])
+def test_previous_attribute_schema_is_found_by_id_then_by_name(case: PreviousAttributeCase) -> None:
+    previous_schema = NodeSchema(name="Car", namespace="Testing")
+    # Assigned after construction, because validation copies the attributes and drops their source attribute ID
+    previous_schema.attributes = case.previous_attributes
+
+    previous_attribute = find_previous_attribute_schema(previous_schema=previous_schema, attribute=case.attribute)
+
+    assert (None if previous_attribute is None else previous_attribute.name) == case.expected_previous_name

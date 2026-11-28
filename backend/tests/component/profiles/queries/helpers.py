@@ -1,16 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
-from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.profiles.queries.get_profile_data import RelationshipFilter
 
 if TYPE_CHECKING:
-    from infrahub.core.branch import Branch
-    from infrahub.database import InfrahubDatabase
+    from infrahub.core.node import Node
 
 SITE = NodeSchema(name="Site", namespace="Test", attributes=[AttributeSchema(name="name", kind="Text", unique=True)])
 RACK = NodeSchema(name="Rack", namespace="Test", attributes=[AttributeSchema(name="name", kind="Text", unique=True)])
@@ -65,10 +63,3 @@ class Peers:
     sites: list[Node]
     racks: list[Node]
     labels: list[Node]
-
-
-async def create_node(db: InfrahubDatabase, branch: Branch, kind: str, **data: Any) -> Node:
-    node = await Node.init(db=db, schema=kind, branch=branch)
-    await node.new(db=db, **data)
-    await node.save(db=db)
-    return node

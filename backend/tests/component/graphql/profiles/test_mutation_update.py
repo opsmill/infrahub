@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 from structlog.testing import capture_logs
@@ -9,7 +9,6 @@ from structlog.testing import capture_logs
 from infrahub.core.changelog.models import RelationshipCardinalityOneChangelog
 from infrahub.core.constants import MetadataOptions, RelationshipCardinality, RelationshipKind
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.events.node_action import NodeUpdatedEvent
@@ -21,6 +20,7 @@ from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.workflow import ContextRecordingWorkflow, WorkflowRecorder
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.graphql import graphql
+from tests.helpers.nodes import create_node
 from tests.helpers.schema import load_schema
 
 if TYPE_CHECKING:
@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 
     from infrahub.auth.session import AccountSession
     from infrahub.core.branch import Branch
+    from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
 
 ROOM = NodeSchema(name="Room", namespace="Test", attributes=[AttributeSchema(name="name", kind="Text", unique=True)])
@@ -92,13 +93,6 @@ async def device_schema(db: InfrahubDatabase, default_branch: Branch, register_c
 @pytest.fixture
 async def rack_schema(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None) -> None:
     await load_schema(db=db, schema=SchemaRoot(nodes=[ROOM, RACK, PANEL]), branch_name=default_branch.name)
-
-
-async def _create_node(db: InfrahubDatabase, branch: Branch, kind: str, **data: Any) -> Node:
-    node = await Node.init(db=db, schema=kind, branch=branch)
-    await node.new(db=db, **data)
-    await node.save(db=db)
-    return node
 
 
 async def _create_with_profiles(
@@ -190,12 +184,12 @@ async def test_profile_update_refreshes_the_added_and_removed_peers(
     session_admin: AccountSession,
     test_case: PeerChangeTestCase,
 ) -> None:
-    profile = await _create_node(
+    profile = await create_node(
         db=db, branch=default_branch, kind="ProfileTestDevice", profile_name="profile-1", profile_priority=10
     )
     name_field = "template_name" if test_case.peer_kind.startswith("Template") else "name"
     peers = [
-        await _create_node(
+        await create_node(
             db=db, branch=default_branch, kind=test_case.peer_kind, profiles=profiles, **{name_field: f"peer-{idx}"}
         )
         for idx, profiles in enumerate([[profile], [profile], []])
@@ -249,10 +243,10 @@ async def test_profile_update_refreshes_the_added_and_removed_peers(
 async def test_profile_update_succeeds_when_the_refresh_submission_fails(
     db: InfrahubDatabase, default_branch: Branch, device_schema: None, session_admin: AccountSession
 ) -> None:
-    profile = await _create_node(
+    profile = await create_node(
         db=db, branch=default_branch, kind="ProfileTestDevice", profile_name="profile-1", profile_priority=10
     )
-    device = await _create_node(db=db, branch=default_branch, kind="TestDevice", name="device-1")
+    device = await create_node(db=db, branch=default_branch, kind="TestDevice", name="device-1")
     events = MemoryInfrahubEvent()
     workflow = ContextRecordingWorkflow()
     workflow.failures.append(RuntimeError(f"{PROFILE_REFRESH_MULTIPLE.name} submission rejected"))
@@ -297,11 +291,11 @@ async def test_profile_update_succeeds_when_the_refresh_submission_fails(
 async def test_node_update_records_the_relationship_that_a_profile_sets(
     db: InfrahubDatabase, default_branch: Branch, device_schema: None, session_admin: AccountSession
 ) -> None:
-    room = await _create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
-    profile = await _create_node(
+    room = await create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
+    profile = await create_node(
         db=db, branch=default_branch, kind="ProfileTestDevice", profile_name="profile-1", profile_priority=10, room=room
     )
-    device = await _create_node(db=db, branch=default_branch, kind="TestDevice", name="device-1")
+    device = await create_node(db=db, branch=default_branch, kind="TestDevice", name="device-1")
     events = MemoryInfrahubEvent()
     gql_params = await prepare_graphql_params(
         db=db,
@@ -344,8 +338,8 @@ async def test_node_update_records_the_relationship_that_a_profile_sets(
 async def test_node_update_records_the_relationship_that_the_removed_profile_set(
     db: InfrahubDatabase, default_branch: Branch, device_schema: None, session_admin: AccountSession
 ) -> None:
-    room = await _create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
-    profile = await _create_node(
+    room = await create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
+    profile = await create_node(
         db=db, branch=default_branch, kind="ProfileTestDevice", profile_name="profile-1", profile_priority=10, room=room
     )
     device_id = await _create_with_profiles(
@@ -428,7 +422,7 @@ async def test_profile_update_without_peers_in_payload_does_not_read_them(
 ) -> None:
     profiles: dict[int, Node] = {}
     for linked_nodes in (2, 6):
-        profile = await _create_node(
+        profile = await create_node(
             db=db,
             branch=default_branch,
             kind="ProfileTestDevice",
@@ -436,7 +430,7 @@ async def test_profile_update_without_peers_in_payload_does_not_read_them(
             profile_priority=10,
         )
         for idx in range(linked_nodes):
-            await _create_node(
+            await create_node(
                 db=db, branch=default_branch, kind="TestDevice", name=f"device-{linked_nodes}-{idx}", profiles=[profile]
             )
         profiles[linked_nodes] = profile
@@ -460,8 +454,8 @@ async def test_profile_update_refuses_to_clear_a_required_relationship_that_a_no
     db: InfrahubDatabase, default_branch: Branch, rack_schema: None, session_admin: AccountSession
 ) -> None:
     """The refresh flow could not clear the relationship, so the request refuses the change before it commits."""
-    room = await _create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
-    profile = await _create_node(
+    room = await create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
+    profile = await create_node(
         db=db, branch=default_branch, kind="ProfileTestRack", profile_name="profile-1", profile_priority=10, room=room
     )
     rack_id = await _create_with_profiles(
@@ -500,8 +494,8 @@ async def test_profile_update_refuses_to_clear_a_required_relationship_that_a_no
 async def test_profile_update_refuses_to_clear_a_required_cardinality_many_relationship_that_a_node_inherits(
     db: InfrahubDatabase, default_branch: Branch, rack_schema: None, session_admin: AccountSession
 ) -> None:
-    rooms = [await _create_node(db=db, branch=default_branch, kind="TestRoom", name=f"room-{idx}") for idx in (1, 2)]
-    profile = await _create_node(
+    rooms = [await create_node(db=db, branch=default_branch, kind="TestRoom", name=f"room-{idx}") for idx in (1, 2)]
+    profile = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestPanel",
@@ -542,8 +536,8 @@ async def test_profile_update_clears_a_required_relationship_that_no_node_inheri
     db: InfrahubDatabase, default_branch: Branch, rack_schema: None, session_admin: AccountSession
 ) -> None:
     """One rack sets its room itself, and the other takes its room from a profile of higher priority."""
-    rooms = [await _create_node(db=db, branch=default_branch, kind="TestRoom", name=f"room-{idx}") for idx in (1, 2, 3)]
-    profile = await _create_node(
+    rooms = [await create_node(db=db, branch=default_branch, kind="TestRoom", name=f"room-{idx}") for idx in (1, 2, 3)]
+    profile = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestRack",
@@ -551,7 +545,7 @@ async def test_profile_update_clears_a_required_relationship_that_no_node_inheri
         profile_priority=10,
         room=rooms[0],
     )
-    preferred_profile = await _create_node(
+    preferred_profile = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestRack",
@@ -593,8 +587,8 @@ async def test_profile_update_clears_a_required_relationship_that_no_node_inheri
 async def test_profile_update_replaces_a_required_relationship_that_a_node_inherits(
     db: InfrahubDatabase, default_branch: Branch, rack_schema: None, session_admin: AccountSession
 ) -> None:
-    rooms = [await _create_node(db=db, branch=default_branch, kind="TestRoom", name=f"room-{idx}") for idx in (1, 2)]
-    profile = await _create_node(
+    rooms = [await create_node(db=db, branch=default_branch, kind="TestRoom", name=f"room-{idx}") for idx in (1, 2)]
+    profile = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestRack",

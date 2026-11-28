@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core.schema import SchemaRoot
-from tests.component.profiles.queries.helpers import DEVICE, LABEL, RACK, SITE, Peers, create_node
+from tests.component.profiles.queries.helpers import DEVICE, LABEL, RACK, SITE, Peers
+from tests.helpers.nodes import create_node
 from tests.helpers.schema import load_schema
 
 if TYPE_CHECKING:

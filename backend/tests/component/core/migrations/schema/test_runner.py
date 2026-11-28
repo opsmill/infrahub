@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-import logging
+from copy import deepcopy
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
@@ -9,16 +10,15 @@ from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, RelationshipStatus, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations import MIGRATION_MAP
 from infrahub.core.migrations.schema.models import SchemaApplyMigrationData, SchemaMigrationPathResponseData
-from infrahub.core.migrations.schema.runner import SchemaMigrationRunner
-from infrahub.core.migrations.schema.scheduler import MigrationScheduler
-from infrahub.core.migrations.schema.tasks import MAX_CONCURRENT_MIGRATION_GROUPS, TaskSchemaPathMigrator
 from infrahub.core.models import SchemaUpdateMigrationInfo
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
+from infrahub.core.query.rollback import RollbackScope
+from infrahub.core.rollback import GraphRollbacker
+from infrahub.core.schema import NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.attribute_schema import AttributeSchema
-from infrahub.core.schema_change.migration_recorder import NoRecordMigrationRecorder
+from infrahub.core.schema.definitions.core.template import core_object_template
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import verify_graph
 from tests.adapters.migration_recorder import (
@@ -28,59 +28,42 @@ from tests.adapters.migration_recorder import (
     MigrationRecorderCall,
     RecordingMigrationRecorder,
 )
-from tests.component.core.migrations.schema.second_run_helpers import register_candidate
-from tests.helpers.db_validation import assert_attribute_path_status
+from tests.component.core.migrations.schema.schema_load_helpers import (
+    build_migration_runner,
+    load_schema_change,
+    store_schema_ids,
+)
+from tests.component.core.migrations.schema.second_run_helpers import BranchKind, get_migration_branch
+from tests.conftest import do_car_person_schema_unregistered, do_empty_database, do_reset_registry
+from tests.helpers.db_validation import (
+    active_value_labels,
+    count_branch_edges_at,
+    open_attribute_edge_statuses,
+    open_relationship_edge_statuses,
+)
+from tests.helpers.nodes import create_node
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from infrahub.core.branch import Branch
-    from infrahub.core.schema.node_schema import NodeSchema
     from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.core.schema_change.migration_recorder import MigrationRecorder
     from infrahub.database import InfrahubDatabase
-
-
-def _runner(db: InfrahubDatabase, recorder: MigrationRecorder) -> SchemaMigrationRunner:
-    return SchemaMigrationRunner(
-        scheduler=MigrationScheduler(migration_classes=MIGRATION_MAP),
-        migrator=TaskSchemaPathMigrator(database=db),
-        recorder=recorder,
-        max_concurrent_groups=MAX_CONCURRENT_MIGRATION_GROUPS,
-        log=logging.getLogger(__name__),
-    )
-
-
-async def _store_schema_ids(db: InfrahubDatabase, default_branch: Branch) -> None:
-    """Store the registered schema, so that its elements get the IDs that let the diff see a rename."""
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
-    await registry.schema.load_schema_to_db(schema=schema, branch=default_branch, db=db, at=Timestamp())
 
 
 async def _load_car_change(
     db: InfrahubDatabase, branch: Branch, change_car: Callable[[NodeSchema], None], expected_migration_names: list[str]
-) -> None:
+) -> Timestamp:
     """Change the `TestCar` schema of the branch as a schema load does, and run the migrations the change gives."""
-    previous_schema = registry.schema.get_schema_branch(name=branch.name).duplicate()
-    candidate = previous_schema.duplicate()
-    car_schema = candidate.get_node(name="TestCar")
-    change_car(car_schema)
-    candidate.set(name="TestCar", schema=car_schema)
-    await register_candidate(db=db, branch=branch, candidate=candidate)
-    validation = previous_schema.validate_update(other=candidate, diff=previous_schema.diff(other=candidate))
-    assert sorted(migration.migration_name for migration in validation.migrations) == expected_migration_names
 
-    errors = await _runner(db=db, recorder=NoRecordMigrationRecorder()).run(
-        data=SchemaApplyMigrationData(
-            branch=branch,
-            previous_schema=previous_schema,
-            new_schema=candidate,
-            migrations=validation.migrations,
-            at=Timestamp(),
-        )
+    def change_schema(candidate: SchemaBranch) -> None:
+        car_schema = candidate.get_node(name="TestCar")
+        change_car(car_schema)
+        candidate.set(name="TestCar", schema=car_schema)
+
+    return await load_schema_change(
+        db=db, branch=branch, change_schema=change_schema, expected_migration_names=expected_migration_names
     )
-
-    assert errors == []
 
 
 def _rename_color_and_add_a_new_color(car_schema: NodeSchema) -> None:
@@ -108,7 +91,7 @@ async def test_a_migration_reports_that_it_started_before_it_reports_its_result(
     )
     recorder = RecordingMigrationRecorder()
 
-    errors = await _runner(db=db, recorder=recorder).run(
+    errors = await build_migration_runner(db=db, recorder=recorder).run(
         data=SchemaApplyMigrationData(
             branch=default_branch,
             previous_schema=previous_schema,
@@ -145,7 +128,7 @@ async def test_an_attribute_renamed_while_a_new_attribute_takes_its_name(
     car_accord_main: Node,
 ) -> None:
     assert await _car_ids(db=db, branch=default_branch, filters={"color__value": "#444444"}) == [car_accord_main.id]
-    await _store_schema_ids(db=db, default_branch=default_branch)
+    await store_schema_ids(db=db, default_branch=default_branch)
 
     await _load_car_change(
         db=db,
@@ -166,7 +149,7 @@ async def test_an_attribute_renamed_while_a_new_attribute_takes_its_name_on_a_br
     car_person_schema: SchemaBranch,
     car_accord_main: Node,
 ) -> None:
-    await _store_schema_ids(db=db, default_branch=default_branch)
+    await store_schema_ids(db=db, default_branch=default_branch)
     branch = await create_branch(db=db, branch_name="rename-and-reuse")
 
     await _load_car_change(
@@ -192,7 +175,7 @@ async def test_an_attribute_removed_while_another_attribute_is_renamed_onto_its_
     car = await Node.init(db=db, schema="TestCar", branch=default_branch)
     await car.new(db=db, name="civic", nbr_seats=4, is_electric=False, transmission="manual", owner=person_john_main.id)
     await car.save(db=db)
-    await _store_schema_ids(db=db, default_branch=default_branch)
+    await store_schema_ids(db=db, default_branch=default_branch)
 
     def remove_color_and_rename_transmission(car_schema: NodeSchema) -> None:
         car_schema.attributes = [attribute for attribute in car_schema.attributes if attribute.name != "color"]
@@ -209,56 +192,507 @@ async def test_an_attribute_removed_while_another_attribute_is_renamed_onto_its_
     await verify_graph(db=db, kinds=["TestCar"])
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=ValueError,
-    reason="the profile and template attribute migration finds the previous attribute by its new name, so a rename in the same load raises",
-)
-async def test_an_attribute_renamed_and_made_unique_leaves_the_profiles(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    register_core_schema_db: None,
-    car_person_schema: SchemaBranch,
-    car_accord_main: Node,
-    car_profile1_main: Node,
-) -> None:
-    await assert_attribute_path_status(
-        db=db,
-        node_label="ProfileTestCar",
-        attr_name="transmission",
-        branch_name=default_branch.name,
-        expected_status=RelationshipStatus.ACTIVE.value,
-    )
-    await _store_schema_ids(db=db, default_branch=default_branch)
+@dataclass(frozen=True)
+class RenameData:
+    car: str
+    car_profile: str
+    car_template: str
+    truck: str
+    truck_profile: str
+    truck_template: str
+    trailer: str
+    person: str
+    mechanic: str
+    garage: str
 
-    def rename_transmission_and_make_it_unique(car_schema: NodeSchema) -> None:
-        transmission = car_schema.get_attribute(name="transmission")
-        transmission.name = "gearbox"
-        transmission.unique = True
 
-    await _load_car_change(
+def _rename_and_change_schema() -> SchemaRoot:
+    schema = deepcopy(do_car_person_schema_unregistered())
+    car = next(node for node in schema.nodes if node.name == "Car")
+    car.attributes.extend(
+        [
+            AttributeSchema(name="nickname", kind="Text", optional=True),
+            AttributeSchema(name="vin", kind="Text", optional=True),
+            AttributeSchema(name="plate", kind="Text", optional=True),
+            AttributeSchema(name="trim", kind="Text", optional=True),
+            AttributeSchema(name="badge", kind="Text", optional=True),
+            AttributeSchema(name="engine", kind="Text", optional=True),
+        ]
+    )
+    car.uniqueness_constraints = [["name__value"], ["plate__value", "name__value"]]
+    person = next(node for node in schema.nodes if node.name == "Person")
+    person.relationships.append(
+        RelationshipSchema(
+            name="trailers", peer="TestTrailer", cardinality="many", identifier="testtrailer__towed_by", optional=True
+        )
+    )
+    schema.nodes.extend(
+        [
+            NodeSchema(
+                name="Truck",
+                namespace="Test",
+                attributes=[
+                    AttributeSchema(name="name", kind="Text", unique=True),
+                    AttributeSchema(name="cargo", kind="Text", optional=True),
+                    AttributeSchema(name="axles", kind="Text", optional=True),
+                ],
+            ),
+            NodeSchema(
+                name="Trailer",
+                namespace="Test",
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+                relationships=[
+                    RelationshipSchema(
+                        name="towed_by",
+                        peer="TestPerson",
+                        cardinality="one",
+                        optional=True,
+                        identifier="testtrailer__towed_by",
+                    )
+                ],
+            ),
+            NodeSchema(
+                name="Mechanic",
+                namespace="Test",
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+                relationships=[
+                    RelationshipSchema(
+                        name="garages",
+                        peer="TestGarage",
+                        cardinality="many",
+                        optional=True,
+                        identifier="testgarage__mechanic",
+                    )
+                ],
+            ),
+            NodeSchema(
+                name="Garage",
+                namespace="Test",
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+                relationships=[
+                    RelationshipSchema(
+                        name="mechanic",
+                        peer="TestMechanic",
+                        cardinality="one",
+                        optional=True,
+                        identifier="testgarage__mechanic",
+                    )
+                ],
+            ),
+        ]
+    )
+    for node in schema.nodes:
+        node.generate_template = True
+    return schema
+
+
+@pytest.fixture(scope="class")
+async def rename_schema(
+    db: InfrahubDatabase, default_branch_scope_class: Branch, register_core_models_schema_scope_class: SchemaBranch
+) -> SchemaBranch:
+    branch_name = default_branch_scope_class.name
+    registry.schema.register_schema(schema=SchemaRoot(generics=[core_object_template]), branch=branch_name)
+    registry.schema.register_schema(schema=_rename_and_change_schema(), branch=branch_name)
+    await store_schema_ids(db=db, default_branch=default_branch_scope_class)
+    schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch_scope_class)
+    registry.schema.set_schema_branch(name=branch_name, schema=schema)
+    return schema
+
+
+@pytest.fixture(scope="class")
+async def rename_data(
+    db: InfrahubDatabase, default_branch_scope_class: Branch, rename_schema: SchemaBranch
+) -> RenameData:
+    branch = default_branch_scope_class
+    john = await create_node(db=db, branch=branch, kind="TestPerson", name="john")
+    template_person = await create_node(
+        db=db, branch=branch, kind="TemplateTestPerson", template_name="person-template"
+    )
+    car_values = {
+        "nickname": "speedy",
+        "transmission": "manual",
+        "vin": "vin-1",
+        "trim": "sport",
+        "badge": "chrome",
+        "engine": "v6",
+    }
+    car = await create_node(
+        db=db, branch=branch, kind="TestCar", name="civic", plate="plate-1", owner=john.id, **car_values
+    )
+    car_profile = await create_node(
+        db=db, branch=branch, kind="ProfileTestCar", profile_name="car-profile", **car_values
+    )
+    car_template = await create_node(
         db=db,
-        branch=default_branch,
-        change_car=rename_transmission_and_make_it_unique,
-        expected_migration_names=[
-            "attribute.name.update",
-            "attribute.unique.update",
-            "node.uniqueness_constraints.update",
-        ],
+        branch=branch,
+        kind="TemplateTestCar",
+        template_name="car-template",
+        plate="plate-1",
+        owner=template_person.id,
+        **car_values,
+    )
+    truck_values = {"cargo": "gravel", "axles": "six"}
+    truck = await create_node(db=db, branch=branch, kind="TestTruck", name="hauler", **truck_values)
+    truck_profile = await create_node(
+        db=db, branch=branch, kind="ProfileTestTruck", profile_name="truck-profile", **truck_values
+    )
+    truck_template = await create_node(
+        db=db, branch=branch, kind="TemplateTestTruck", template_name="truck-template", **truck_values
+    )
+    trailer = await create_node(db=db, branch=branch, kind="TestTrailer", name="trailer-1", towed_by=john.id)
+    mechanic = await create_node(db=db, branch=branch, kind="TestMechanic", name="mike")
+    garage = await create_node(db=db, branch=branch, kind="TestGarage", name="garage-1", mechanic=mechanic.id)
+    return RenameData(
+        car=car.id,
+        car_profile=car_profile.id,
+        car_template=car_template.id,
+        truck=truck.id,
+        truck_profile=truck_profile.id,
+        truck_template=truck_template.id,
+        trailer=trailer.id,
+        person=john.id,
+        mechanic=mechanic.id,
+        garage=garage.id,
     )
 
-    await assert_attribute_path_status(
-        db=db,
-        node_label="ProfileTestCar",
-        attr_name="gearbox",
-        branch_name=default_branch.name,
-        expected_status=RelationshipStatus.DELETED.value,
-    )
-    await assert_attribute_path_status(
-        db=db,
-        node_label="TestCar",
-        attr_name="gearbox",
-        branch_name=default_branch.name,
-        expected_status=RelationshipStatus.ACTIVE.value,
-    )
-    await verify_graph(db=db, kinds=["TestCar", "ProfileTestCar"])
+
+class TestSchemaLoadsThatRenameAndChange:
+    @pytest.fixture(scope="class", params=[BranchKind.DEFAULT, BranchKind.USER], ids=["default", "user"])
+    def branch_kind(self, request: pytest.FixtureRequest) -> BranchKind:
+        """The branch the loads run on; the empty database and the registry depend on it, so each kind starts from a fresh load."""
+        return request.param
+
+    @pytest.fixture(scope="class")
+    async def empty_database_scope_class(self, db: InfrahubDatabase, branch_kind: BranchKind) -> None:
+        await do_empty_database(db=db)
+
+    @pytest.fixture(scope="class")
+    async def reset_registry_scope_class(self, db: InfrahubDatabase, branch_kind: BranchKind) -> None:
+        await do_reset_registry(db=db)
+
+    @pytest.fixture(scope="class")
+    async def target_branch(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, rename_data: RenameData, branch_kind: BranchKind
+    ) -> Branch:
+        return await get_migration_branch(db=db, default_branch=default_branch_scope_class, branch_kind=branch_kind)
+
+    async def test_an_attribute_renamed_with_a_new_kind_keeps_its_values(
+        self, db: InfrahubDatabase, target_branch: Branch, rename_data: RenameData
+    ) -> None:
+        def rename_nickname_and_make_it_long_text(car_schema: NodeSchema) -> None:
+            nickname = car_schema.get_attribute(name="nickname")
+            nickname.name = "alias"
+            nickname.kind = "TextArea"
+
+        await _load_car_change(
+            db=db,
+            branch=target_branch,
+            change_car=rename_nickname_and_make_it_long_text,
+            expected_migration_names=["attribute.kind.update", "attribute.name.update"],
+        )
+
+        cars = await NodeManager.query(
+            db=db, branch=target_branch, schema="TestCar", filters={"alias__value": "speedy"}
+        )
+        assert [car.id for car in cars] == [rename_data.car]
+        for node_id in (rename_data.car, rename_data.car_profile, rename_data.car_template):
+            assert await active_value_labels(
+                db=db, node_id=node_id, attribute_name="alias", branch_name=target_branch.name
+            ) == [["AttributeValue"]]
+
+    async def test_an_attribute_renamed_out_of_a_uniqueness_constraint_is_added_to_the_profiles(
+        self, db: InfrahubDatabase, target_branch: Branch, rename_data: RenameData
+    ) -> None:
+        def rename_plate_out_of_the_constraint(car_schema: NodeSchema) -> None:
+            car_schema.get_attribute(name="plate").name = "registration"
+            car_schema.uniqueness_constraints.remove(["plate__value", "name__value"])
+
+        await _load_car_change(
+            db=db,
+            branch=target_branch,
+            change_car=rename_plate_out_of_the_constraint,
+            expected_migration_names=["attribute.name.update", "node.uniqueness_constraints.update"],
+        )
+
+        active = RelationshipStatus.ACTIVE.value
+        for node_label, node_id in (
+            ("ProfileTestCar", rename_data.car_profile),
+            ("TemplateTestCar", rename_data.car_template),
+            ("TestCar", rename_data.car),
+        ):
+            assert await open_attribute_edge_statuses(
+                db=db, node_label=node_label, attribute_name="registration", branch_name=target_branch.name
+            ) == {node_id: ([active], [active])}
+
+    async def test_attributes_renamed_with_a_new_kind_or_removed_while_their_node_kind_is_renamed(
+        self, db: InfrahubDatabase, target_branch: Branch, rename_data: RenameData
+    ) -> None:
+        def rename_truck_kind_and_cargo_and_remove_axles(candidate: SchemaBranch) -> None:
+            truck_schema = candidate.get_node(name="TestTruck")
+            candidate.delete(name="TestTruck")
+            truck_schema.name = "Lorry"
+            cargo = truck_schema.get_attribute(name="cargo")
+            cargo.name = "load"
+            cargo.kind = "TextArea"
+            truck_schema.attributes = [attribute for attribute in truck_schema.attributes if attribute.name != "axles"]
+            candidate.set(name="TestLorry", schema=truck_schema)
+
+        await load_schema_change(
+            db=db,
+            branch=target_branch,
+            change_schema=rename_truck_kind_and_cargo_and_remove_axles,
+            expected_migration_names=[
+                "attribute.kind.update",
+                "attribute.name.update",
+                "node.attribute.remove",
+                "node.name.update",
+            ],
+        )
+
+        lorries = await NodeManager.query(
+            db=db, branch=target_branch, schema="TestLorry", filters={"load__value": "gravel"}
+        )
+        assert [lorry.id for lorry in lorries] == [rename_data.truck]
+        for node_id in (rename_data.truck, rename_data.truck_profile, rename_data.truck_template):
+            assert await active_value_labels(
+                db=db, node_id=node_id, attribute_name="load", branch_name=target_branch.name
+            ) == [["AttributeValue"]]
+        for node_label in ("TestLorry", "ProfileTestLorry", "TemplateTestLorry"):
+            assert (
+                await open_attribute_edge_statuses(
+                    db=db, node_label=node_label, attribute_name="axles", branch_name=target_branch.name
+                )
+                == {}
+            )
+
+    async def test_a_relationship_removed_while_its_node_kind_is_renamed_leaves_the_node(
+        self, db: InfrahubDatabase, target_branch: Branch, rename_data: RenameData
+    ) -> None:
+        identifier = "testtrailer__towed_by"
+
+        def rename_trailer_kind_and_remove_towed_by(candidate: SchemaBranch) -> None:
+            trailer_schema = candidate.get_node(name="TestTrailer")
+            candidate.delete(name="TestTrailer")
+            trailer_schema.name = "Caravan"
+            trailer_schema.relationships = [rel for rel in trailer_schema.relationships if rel.name != "towed_by"]
+            candidate.set(name="TestCaravan", schema=trailer_schema)
+            person_schema = candidate.get_node(name="TestPerson")
+            person_schema.relationships = [rel for rel in person_schema.relationships if rel.name != "trailers"]
+            candidate.set(name="TestPerson", schema=person_schema)
+
+        await load_schema_change(
+            db=db,
+            branch=target_branch,
+            change_schema=rename_trailer_kind_and_remove_towed_by,
+            expected_migration_names=["node.name.update", "node.relationship.remove", "node.relationship.remove"],
+        )
+
+        assert await open_relationship_edge_statuses(
+            db=db, node_id=rename_data.trailer, identifier=identifier, branch_name=target_branch.name
+        ) == [RelationshipStatus.DELETED.value]
+        assert (
+            await open_relationship_edge_statuses(
+                db=db,
+                node_id=rename_data.trailer,
+                identifier=identifier,
+                branch_name=target_branch.name,
+                node_label="TestCaravan",
+            )
+            == []
+        )
+
+    async def test_an_attribute_renamed_and_made_unique_leaves_the_profiles_and_templates(
+        self, db: InfrahubDatabase, target_branch: Branch, rename_data: RenameData
+    ) -> None:
+        def rename_transmission_and_make_it_unique(car_schema: NodeSchema) -> None:
+            transmission = car_schema.get_attribute(name="transmission")
+            transmission.name = "gearbox"
+            transmission.unique = True
+
+        await _load_car_change(
+            db=db,
+            branch=target_branch,
+            change_car=rename_transmission_and_make_it_unique,
+            expected_migration_names=[
+                "attribute.name.update",
+                "attribute.unique.update",
+                "node.uniqueness_constraints.update",
+            ],
+        )
+
+        active = RelationshipStatus.ACTIVE.value
+        for node_label in ("ProfileTestCar", "TemplateTestCar"):
+            assert (
+                await open_attribute_edge_statuses(
+                    db=db, node_label=node_label, attribute_name="gearbox", branch_name=target_branch.name
+                )
+                == {}
+            )
+        assert await open_attribute_edge_statuses(
+            db=db, node_label="TestCar", attribute_name="gearbox", branch_name=target_branch.name
+        ) == {rename_data.car: ([active], [active])}
+
+    async def test_an_attribute_renamed_into_a_uniqueness_constraint_leaves_the_profiles(
+        self, db: InfrahubDatabase, target_branch: Branch, rename_data: RenameData
+    ) -> None:
+        def rename_vin_into_a_constraint(car_schema: NodeSchema) -> None:
+            car_schema.get_attribute(name="vin").name = "serial"
+            car_schema.uniqueness_constraints.append(["serial__value", "name__value"])
+
+        await _load_car_change(
+            db=db,
+            branch=target_branch,
+            change_car=rename_vin_into_a_constraint,
+            expected_migration_names=["attribute.name.update", "node.uniqueness_constraints.update"],
+        )
+
+        active = RelationshipStatus.ACTIVE.value
+        assert (
+            await open_attribute_edge_statuses(
+                db=db, node_label="ProfileTestCar", attribute_name="serial", branch_name=target_branch.name
+            )
+            == {}
+        )
+        for node_label, node_id in (
+            ("TemplateTestCar", rename_data.car_template),
+            ("TestCar", rename_data.car),
+        ):
+            assert await open_attribute_edge_statuses(
+                db=db, node_label=node_label, attribute_name="serial", branch_name=target_branch.name
+            ) == {node_id: ([active], [active])}
+
+    async def test_a_kind_removed_while_the_kind_of_its_peer_is_renamed_leaves_the_peer(
+        self, db: InfrahubDatabase, target_branch: Branch, rename_data: RenameData
+    ) -> None:
+        def rename_mechanic_kind_and_remove_garage(candidate: SchemaBranch) -> None:
+            mechanic_schema = candidate.get_node(name="TestMechanic")
+            candidate.delete(name="TestMechanic")
+            candidate.delete(name="TestGarage")
+            mechanic_schema.name = "Technician"
+            mechanic_schema.relationships = [rel for rel in mechanic_schema.relationships if rel.name != "garages"]
+            candidate.set(name="TestTechnician", schema=mechanic_schema)
+
+        await load_schema_change(
+            db=db,
+            branch=target_branch,
+            change_schema=rename_mechanic_kind_and_remove_garage,
+            expected_migration_names=["node.name.update", "node.relationship.remove", "node.remove"],
+        )
+
+        technicians = await NodeManager.query(db=db, branch=target_branch, schema="TestTechnician")
+        assert [technician.id for technician in technicians] == [rename_data.mechanic]
+        await verify_graph(db=db, kinds=["TestTechnician", "TestGarage"])
+
+    async def test_attributes_renamed_and_made_read_only_or_required_keep_the_values_they_support(
+        self, db: InfrahubDatabase, target_branch: Branch, rename_data: RenameData
+    ) -> None:
+        def rename_badge_read_only_and_engine_required(car_schema: NodeSchema) -> None:
+            badge = car_schema.get_attribute(name="badge")
+            badge.name = "emblem"
+            badge.read_only = True
+            engine = car_schema.get_attribute(name="engine")
+            engine.name = "motor"
+            engine.optional = False
+
+        await _load_car_change(
+            db=db,
+            branch=target_branch,
+            change_car=rename_badge_read_only_and_engine_required,
+            expected_migration_names=[
+                "attribute.name.update",
+                "attribute.name.update",
+                "attribute.optional.update",
+                "attribute.read_only.update",
+            ],
+        )
+
+        active = RelationshipStatus.ACTIVE.value
+        for node_label in ("ProfileTestCar", "TemplateTestCar"):
+            assert (
+                await open_attribute_edge_statuses(
+                    db=db, node_label=node_label, attribute_name="emblem", branch_name=target_branch.name
+                )
+                == {}
+            )
+        assert await open_attribute_edge_statuses(
+            db=db, node_label="TestCar", attribute_name="emblem", branch_name=target_branch.name
+        ) == {rename_data.car: ([active], [active])}
+        for node_label, node_id in (
+            ("ProfileTestCar", rename_data.car_profile),
+            ("TemplateTestCar", rename_data.car_template),
+            ("TestCar", rename_data.car),
+        ):
+            assert await open_attribute_edge_statuses(
+                db=db, node_label=node_label, attribute_name="motor", branch_name=target_branch.name
+            ) == {node_id: ([active], [active])}
+
+    async def test_an_attribute_renamed_and_made_unique_is_restored_by_the_rollback(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, target_branch: Branch, rename_data: RenameData
+    ) -> None:
+        def rename_trim_and_make_it_unique(car_schema: NodeSchema) -> None:
+            trim = car_schema.get_attribute(name="trim")
+            trim.name = "trim_level"
+            trim.unique = True
+
+        at = await _load_car_change(
+            db=db,
+            branch=target_branch,
+            change_car=rename_trim_and_make_it_unique,
+            expected_migration_names=[
+                "attribute.name.update",
+                "attribute.unique.update",
+                "node.uniqueness_constraints.update",
+            ],
+        )
+
+        await GraphRollbacker(db=db).rollback(target_branch=target_branch, ats=[at], scope=RollbackScope.AT_TIMESTAMP)
+
+        active = RelationshipStatus.ACTIVE.value
+        for node_label, node_id in (
+            ("TestCar", rename_data.car),
+            ("ProfileTestCar", rename_data.car_profile),
+            ("TemplateTestCar", rename_data.car_template),
+        ):
+            # The values were created on the default branch before the user branch was created
+            assert await open_attribute_edge_statuses(
+                db=db, node_label=node_label, attribute_name="trim", branch_name=default_branch_scope_class.name
+            ) == {node_id: ([active], [active])}
+            assert (
+                await open_attribute_edge_statuses(
+                    db=db, node_label=node_label, attribute_name="trim_level", branch_name=target_branch.name
+                )
+                == {}
+            )
+        assert await count_branch_edges_at(db=db, branch_name=target_branch.name, at=at.to_string()) == 0
+        await verify_graph(
+            db=db,
+            kinds=[
+                "TestCar",
+                "ProfileTestCar",
+                "TemplateTestCar",
+                "TestPerson",
+                "ProfileTestPerson",
+                "TemplateTestPerson",
+                "TestTruck",
+                "ProfileTestTruck",
+                "TemplateTestTruck",
+                "TestLorry",
+                "ProfileTestLorry",
+                "TemplateTestLorry",
+                "TestTrailer",
+                "ProfileTestTrailer",
+                "TemplateTestTrailer",
+                "TestCaravan",
+                "ProfileTestCaravan",
+                "TemplateTestCaravan",
+                "TestMechanic",
+                "ProfileTestMechanic",
+                "TemplateTestMechanic",
+                "TestTechnician",
+                "ProfileTestTechnician",
+                "TemplateTestTechnician",
+                "TestGarage",
+                "ProfileTestGarage",
+                "TemplateTestGarage",
+            ],
+        )

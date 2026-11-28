@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 from structlog.testing import capture_logs
@@ -18,7 +18,6 @@ from infrahub.core.constants import (
     RelationshipKind,
 )
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.events.node_action import NodeUpdatedEvent
@@ -32,6 +31,7 @@ from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.workflow import ContextRecordingWorkflow, WorkflowRecorder
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.graphql import graphql
+from tests.helpers.nodes import create_node
 from tests.helpers.permissions import define_permissions
 from tests.helpers.schema import load_schema
 
@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from graphql import ExecutionResult
 
     from infrahub.core.branch import Branch
+    from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
 
 ROOM = NodeSchema(name="Room", namespace="Test", attributes=[AttributeSchema(name="name", kind="Text", unique=True)])
@@ -153,13 +154,6 @@ async def editor_session(
     return AccountSession(authenticated=True, auth_type=AuthType.API, account_id=create_test_admin.id)
 
 
-async def _create_node(db: InfrahubDatabase, branch: Branch, kind: str, **data: Any) -> Node:
-    node = await Node.init(db=db, schema=kind, branch=branch)
-    await node.new(db=db, **data)
-    await node.save(db=db)
-    return node
-
-
 async def _apply_profile_values(db: InfrahubDatabase, branch: Branch, node_id: str) -> None:
     node = await NodeManager.get_one(db=db, id=node_id, branch=branch, raise_on_error=True)
     applier = NodeProfilesApplier(db=db, branch=branch, profile_data_reader=ProfileDataReader(db=db, branch=branch))
@@ -256,11 +250,11 @@ async def test_profile_peer_change_submits_the_refresh_of_the_changed_peers(
     """The request only links or unlinks the peers; the refresh flows apply or remove the profile values."""
     name_field = "template_name" if test_case.peer_kind.startswith("Template") else "name"
     peers = [
-        await _create_node(db=db, branch=default_branch, kind=test_case.peer_kind, **{name_field: f"peer-{idx}"})
+        await create_node(db=db, branch=default_branch, kind=test_case.peer_kind, **{name_field: f"peer-{idx}"})
         for idx in range(3)
     ]
     # The first peer is linked already, so an add leaves it alone and a remove takes it with the second one.
-    profile = await _create_node(
+    profile = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestDevice",
@@ -320,10 +314,10 @@ async def _count_relationship_add(
     db: InfrahubDatabase, branch: Branch, account_session: AccountSession, peer_count: int
 ) -> Counter[str]:
     peers = [
-        await _create_node(db=db, branch=branch, kind="TestDevice", name=f"device-{peer_count}-{idx}")
+        await create_node(db=db, branch=branch, kind="TestDevice", name=f"device-{peer_count}-{idx}")
         for idx in range(peer_count)
     ]
-    profile = await _create_node(
+    profile = await create_node(
         db=db,
         branch=branch,
         kind="ProfileTestDevice",
@@ -366,9 +360,9 @@ async def test_profile_peer_change_succeeds_when_the_refresh_submission_fails(
     test_case: PeerChangeTestCase,
 ) -> None:
     name_field = "template_name" if test_case.peer_kind.startswith("Template") else "name"
-    peer = await _create_node(db=db, branch=default_branch, kind=test_case.peer_kind, **{name_field: "peer-0"})
+    peer = await create_node(db=db, branch=default_branch, kind=test_case.peer_kind, **{name_field: "peer-0"})
     linked = [peer] if test_case.mutation == "RelationshipRemove" else []
-    profile = await _create_node(
+    profile = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestDevice",
@@ -415,7 +409,7 @@ async def test_relationship_remove_refuses_a_node_that_inherits_a_required_value
     db: InfrahubDatabase, default_branch: Branch, server_schema: None, editor_session: AccountSession
 ) -> None:
     """The refresh flow could not clear the value, so the request refuses the removal before it commits."""
-    profile = await _create_node(
+    profile = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestServer",
@@ -423,7 +417,7 @@ async def test_relationship_remove_refuses_a_node_that_inherits_a_required_value
         profile_priority=10,
         role="from-profile",
     )
-    server = await _create_node(db=db, branch=default_branch, kind="TestServer", name="server-1", profiles=[profile])
+    server = await create_node(db=db, branch=default_branch, kind="TestServer", name="server-1", profiles=[profile])
     await _apply_profile_values(db=db, branch=default_branch, node_id=server.id)
 
     result, workflow = await _run_relationship_mutation(
@@ -489,8 +483,8 @@ async def test_node_profiles_change_records_the_profile_values_as_the_requesting
     editor_session: AccountSession,
     test_case: NodeProfilesChangeTestCase,
 ) -> None:
-    room = await _create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
-    profile = await _create_node(
+    room = await create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
+    profile = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestDevice",
@@ -499,7 +493,7 @@ async def test_node_profiles_change_records_the_profile_values_as_the_requesting
         description="from-profile",
         room=room,
     )
-    device = await _create_node(
+    device = await create_node(
         db=db, branch=default_branch, kind="TestDevice", name="device-1", profiles=[profile] if test_case.linked else []
     )
     if test_case.linked:
@@ -555,8 +549,8 @@ async def test_node_profiles_change_records_the_profile_values_as_the_requesting
 async def test_relationship_remove_refuses_the_profile_that_gives_a_node_a_required_relationship(
     db: InfrahubDatabase, default_branch: Branch, rack_schema: None, editor_session: AccountSession
 ) -> None:
-    room = await _create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
-    profile = await _create_node(
+    room = await create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
+    profile = await create_node(
         db=db, branch=default_branch, kind="ProfileTestRack", profile_name="profile-1", profile_priority=10, room=room
     )
     rack_id = await _create_with_profile(
@@ -600,7 +594,7 @@ async def test_relationship_remove_refuses_the_profile_that_gives_a_node_a_requi
 async def test_relationship_remove_refuses_the_profile_that_gives_a_node_a_required_attribute(
     db: InfrahubDatabase, default_branch: Branch, server_schema: None, editor_session: AccountSession
 ) -> None:
-    profile = await _create_node(
+    profile = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestServer",
@@ -608,7 +602,7 @@ async def test_relationship_remove_refuses_the_profile_that_gives_a_node_a_requi
         profile_priority=10,
         role="from-profile",
     )
-    server = await _create_node(db=db, branch=default_branch, kind="TestServer", name="server-1", profiles=[profile])
+    server = await create_node(db=db, branch=default_branch, kind="TestServer", name="server-1", profiles=[profile])
     await _apply_profile_values(db=db, branch=default_branch, node_id=server.id)
 
     result, workflow = await _run_relationship_mutation(
@@ -641,8 +635,8 @@ async def test_relationship_remove_refuses_to_clear_a_profile_relationship_that_
     db: InfrahubDatabase, default_branch: Branch, rack_schema: None, editor_session: AccountSession
 ) -> None:
     """The refresh flow could not clear the relationship, so the request refuses the removal before it commits."""
-    room = await _create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
-    profile = await _create_node(
+    room = await create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
+    profile = await create_node(
         db=db, branch=default_branch, kind="ProfileTestRack", profile_name="profile-1", profile_priority=10, room=room
     )
     rack_id = await _create_with_profile(
@@ -672,8 +666,8 @@ async def test_relationship_remove_refuses_to_clear_a_profile_relationship_that_
 async def test_relationship_remove_refuses_a_node_that_inherits_a_required_relationship_from_a_generic_profile(
     db: InfrahubDatabase, default_branch: Branch, equipment_schema: None, editor_session: AccountSession
 ) -> None:
-    room = await _create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
-    profile = await _create_node(
+    room = await create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
+    profile = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestEquipment",
@@ -710,8 +704,8 @@ async def test_relationship_remove_refuses_a_node_that_inherits_a_required_relat
 async def test_relationship_remove_refuses_to_clear_a_relationship_of_a_generic_profile_that_a_node_requires(
     db: InfrahubDatabase, default_branch: Branch, equipment_schema: None, editor_session: AccountSession
 ) -> None:
-    room = await _create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
-    profile = await _create_node(
+    room = await create_node(db=db, branch=default_branch, kind="TestRoom", name="room-1")
+    profile = await create_node(
         db=db,
         branch=default_branch,
         kind="ProfileTestEquipment",

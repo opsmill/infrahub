@@ -370,10 +370,37 @@ Same-kind relationships between two distinct nodes are the supported case (the u
 
 ### Soft Deletes
 
-- **Same branch**: Set `to` property to deletion time
-- **User branch deleting default branch data**: Add `status="deleted"` edge with `from` = deletion time
+A writer ends an edge in one or both of two ways:
 
-These two mechanisms are exclusive. A `status="deleted"` edge is terminal: it always keeps `to: NULL`, never receives a `to` timestamp, and is never re-opened. `to` is only ever set to close a `status="active"` edge.
+- **Close**: set `to` on a `status="active"` edge that belongs to the writer's own branch
+- **Shadow**: add a `status="deleted"` edge with `from` = deletion time, so the branch no longer sees an edge that another branch owns
+
+The two are not exclusive. Which a writer does depends on the writer:
+
+- **Close and add a `deleted` edge, on every branch**: the data delete queries and the migrations that remove data. The `deleted` edge exists even when the closed edge is on the same branch, except for node and attribute removal over an edge that starts at the migration's timestamp (see below).
+  - `NodeDeleteQuery` for the node's `IS_PART_OF` edge
+  - `AttributeDeleteQuery` for the `HAS_ATTRIBUTE`, `HAS_VALUE`, `IS_PROTECTED`, `HAS_SOURCE` and `HAS_OWNER` edges of an attribute
+  - `RelationshipDeleteAllQuery` for the `IS_RELATED`, `IS_PROTECTED`, `HAS_SOURCE` and `HAS_OWNER` edges of a relationship
+  - the node removal migration (`node_remove.py`)
+  - the attribute removal migrations: the node attribute removal and the profile and template attribute removal, which share `AttributeRemoveQuery`
+  - the node kind update, for the edges of the old node vertex (`NodeDuplicateQuery`)
+- **Close the edge of the writer's own branch, and add a `deleted` edge only over an edge of another branch**:
+  - the attribute rename migration, except for `IS_RESERVED` edges, which stay global
+  - the attribute kind update migration, for the `HAS_VALUE` edge
+  - the relationship removal migration
+  - `AttributeClearNodePropertyQuery`, which removes the source or owner of an attribute
+
+Some queries read the `deleted` `IS_PART_OF` edge to skip or find a deleted node:
+
+- `NodeDeleteQuery` and `NodeUpdateMetadataQuery` skip a node that has one on their branch
+- the relationship queries that match a source node or a node property peer skip a node that has one
+- `BulkMergeNodeExistenceQuery` skips a node that has both an active and a `deleted` `IS_PART_OF` edge on the source branch
+- the node count in `path_details.py` skips a node that has one
+- `NodesToCheckForGlobalEdgesQuery` selects the nodes that have one on the branch within a time window, to check their branch-agnostic edges
+
+Node removal and attribute removal only close an edge on the migrating branch that starts at the migration's timestamp, and add no `deleted` edge over it, because a `deleted` edge from the same time as the closed edge would give two paths with the same start time between the same vertices. Two writers create such an edge before these migrations run: an earlier migration of the same schema load, since all the migrations of a load run at one timestamp, and the graph merge of a branch merge, which writes the destination branch's edges at the merge timestamp and then runs the schema migrations at that same timestamp. A rebase moves the start of the branch's edges to the rebase timestamp and runs its schema migrations one microsecond later, so those edges do not match. Attribute removal, including its profile and template variants, applies this rule only to the five attribute edge types and leaves every other edge of the attribute vertex untouched. Node removal gives every other edge a `deleted` edge. The node kind update has no such exception.
+
+A `status="deleted"` edge is terminal: it always keeps `to: NULL`, never receives a `to` timestamp, and is never re-opened. `to` is only ever set to close a `status="active"` edge.
 
 ### Branch Deletion
 

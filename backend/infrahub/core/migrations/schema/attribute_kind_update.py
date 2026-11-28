@@ -176,7 +176,8 @@ class AttributeKindUpdateMigrationQuery(AttributeMigrationQuery):
 
     def render_selection(self) -> str:
         branch_filter, _ = self.branch.get_query_filter_path(at=self.at)
-        schema_kinds = _get_node_kinds(self.migration.previous_schema.kind)
+        # The kind rename runs in an earlier phase, so the nodes already carry the new kind
+        schema_kinds = _get_node_kinds(self.migration.new_schema.kind)
         # The index hint of the node scope applies only to a MATCH that holds the node alone.
         node_match = self.render_node_match("n", schema_kinds)
         node_attribute_match = f"{node_match}\nMATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute)"
@@ -221,7 +222,8 @@ CALL (n, attr) {
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["at"] = self.at.to_string()
-        self.params["attr_name"] = self.migration.previous_attribute_schema.name
+        # The attribute rename runs in an earlier phase, so the attribute already carries its new name
+        self.params["attr_name"] = self.migration.new_attribute_schema.name
         self.params["user_id"] = self.user_id
 
         # Set metadata for vertex properties on default/global branch
@@ -272,8 +274,8 @@ class AttributeKindUpdateMigration(AttributeSchemaMigration):
             values_query = await IndexedAttributeValuesQuery.init(
                 db=migration_input.db,
                 branch=branch,
-                node_kinds=_get_node_kinds(self.previous_schema.kind),
-                attribute_name=self.previous_attribute_schema.name,
+                node_kinds=_get_node_kinds(self.new_schema.kind),
+                attribute_name=self.new_attribute_schema.name,
             )
             await values_query.execute(db=migration_input.db)
             value_keys = values_query.get_value_keys()
@@ -295,7 +297,10 @@ class AttributeKindUpdateMigration(AttributeSchemaMigration):
         branch: Branch,
         queries: Sequence[type[MigrationBaseQuery]] | None = None,
     ) -> MigrationResult:
-        is_indexed_previous = is_large_attribute_type(self.previous_attribute_schema.kind)
+        previous_attribute_schema = self.previous_version_of_new_attribute_schema
+        if previous_attribute_schema is None:
+            raise ValueError(f"Unable to find the previous version of the attribute {self.new_attribute_schema.name}")
+        is_indexed_previous = is_large_attribute_type(previous_attribute_schema.kind)
         is_indexed_new = is_large_attribute_type(self.new_attribute_schema.kind)
         if is_indexed_previous is is_indexed_new:
             return MigrationResult()

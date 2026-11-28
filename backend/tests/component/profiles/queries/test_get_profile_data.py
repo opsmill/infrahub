@@ -13,8 +13,8 @@ from tests.component.profiles.queries.helpers import (
     RACK_FILTER,
     SITE_FILTER,
     Peers,
-    create_node,
 )
+from tests.helpers.nodes import create_node
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch

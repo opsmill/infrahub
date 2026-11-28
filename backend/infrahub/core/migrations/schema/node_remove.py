@@ -142,8 +142,12 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
 
     // ----------------------------------------------------------
     // Create a "deleted" edge of the same type and direction
+    // An edge that starts at this migration's timestamp on this branch is only closed, because a deleted edge
+    // from the same timestamp would duplicate its path.
     // ----------------------------------------------------------
     CALL (peer_node, active_node, rel_inbound, new_branch, new_branch_level) {
+        WITH peer_node, active_node, rel_inbound, new_branch, new_branch_level
+        WHERE NOT (rel_inbound.branch = $branch AND rel_inbound.from = $current_time)
         CREATE (peer_node)-[new_edge:$(type(rel_inbound))]->(active_node)
         SET new_edge = $rel_props, new_edge.branch = new_branch, new_edge.branch_level = new_branch_level
     }
@@ -185,8 +189,12 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
 
     // ----------------------------------------------------------
     // Create a deleted sub-edge of the same type and direction
+    // An edge that starts at this migration's timestamp on this branch is only closed, because a deleted edge
+    // from the same timestamp would duplicate its path.
     // ----------------------------------------------------------
     CALL (sub_start, sub_end, sub_edge, new_branch, new_branch_level) {
+        WITH sub_start, sub_end, sub_edge, new_branch, new_branch_level
+        WHERE NOT (sub_edge.branch = $branch AND sub_edge.from = $current_time)
         CREATE (sub_start)-[new_edge:$(type(sub_edge))]->(sub_end)
         SET new_edge = $rel_props, new_edge.branch = new_branch, new_edge.branch_level = new_branch_level
     }
@@ -286,8 +294,12 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
 
     // ----------------------------------------------------------
     // Create a "deleted" edge of the same type and direction
+    // An edge that starts at this migration's timestamp on this branch is only closed, because a deleted edge
+    // from the same timestamp would duplicate its path.
     // ----------------------------------------------------------
     CALL (active_node, peer_node, rel_outbound, new_branch, new_branch_level) {
+        WITH active_node, peer_node, rel_outbound, new_branch, new_branch_level
+        WHERE NOT (rel_outbound.branch = $branch AND rel_outbound.from = $current_time)
         CREATE (active_node)-[new_edge:$(type(rel_outbound))]->(peer_node)
         SET new_edge = $rel_props, new_edge.branch = new_branch, new_edge.branch_level = new_branch_level
     }
@@ -324,8 +336,12 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
 
     // ----------------------------------------------------------
     // Create a deleted sub-edge of the same type and direction.
+    // An edge that starts at this migration's timestamp on this branch is only closed, because a deleted edge
+    // from the same timestamp would duplicate its path.
     // ----------------------------------------------------------
     CALL (sub_start, sub_end, sub_edge, new_branch, new_branch_level) {
+        WITH sub_start, sub_end, sub_edge, new_branch, new_branch_level
+        WHERE NOT (sub_edge.branch = $branch AND sub_edge.from = $current_time)
         CREATE (sub_start)-[new_edge:$(type(sub_edge))]->(sub_end)
         SET new_edge = $rel_props, new_edge.branch = new_branch, new_edge.branch_level = new_branch_level
     }
