@@ -1,0 +1,1 @@
+Fixed creating an IP address pool from the "+ Add new" button of a relationship that pre-fills the pool's parent, a parent that only a schema extension can add: the form sent an update instead, so no pool was created.

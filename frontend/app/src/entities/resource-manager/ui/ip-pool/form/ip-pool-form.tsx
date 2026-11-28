@@ -10,24 +10,53 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
+import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import { IP_ADDRESS_POOL } from "@/entities/resource-manager/domain/model/pool";
+import {
+  IP_ADDRESS_POOL,
+  IP_PREFIX_POOL,
+  type IpPoolKind,
+} from "@/entities/resource-manager/domain/model/pool";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-const ADDRESS_DEFAULT_TYPE_FIELD_NAME = "default_address_type";
+interface IpPoolKindConfig {
+  ipGenericKind: typeof IP_PREFIX_GENERIC | typeof IP_ADDRESS_GENERIC;
+  defaultTypeFieldName: "default_prefix_type" | "default_address_type";
+  label: "IP prefix pool" | "IP address pool";
+  toastId: "ip-prefix-pool" | "ip-address-pool";
+}
 
-interface IpAddressPoolFormProps extends NodeFormProps {}
+const IP_POOL_KIND_CONFIG: Record<IpPoolKind, IpPoolKindConfig> = {
+  [IP_PREFIX_POOL]: {
+    ipGenericKind: IP_PREFIX_GENERIC,
+    defaultTypeFieldName: "default_prefix_type",
+    label: "IP prefix pool",
+    toastId: "ip-prefix-pool",
+  },
+  [IP_ADDRESS_POOL]: {
+    ipGenericKind: IP_ADDRESS_GENERIC,
+    defaultTypeFieldName: "default_address_type",
+    label: "IP address pool",
+    toastId: "ip-address-pool",
+  },
+};
 
-export const IpAddressPoolForm = ({
+interface IpPoolFormProps extends NodeFormProps {
+  poolKind: IpPoolKind;
+}
+
+export function IpPoolForm({
+  poolKind,
   currentObject,
   isUpdate,
-  onSubmit,
   onSuccess,
+  onSubmit,
   ...props
-}: IpAddressPoolFormProps) => {
-  const { schema: genericAddressSchema, isGeneric } = useSchema(IP_ADDRESS_GENERIC);
+}: IpPoolFormProps) {
+  const { ipGenericKind, defaultTypeFieldName, label, toastId } = IP_POOL_KIND_CONFIG[poolKind];
+  const { schema: ipGenericSchema, isGeneric } = useSchema(ipGenericKind);
   const { currentBranch } = useCurrentBranch();
   const { parentSchema, parentData } = useCurrentFormContext();
   const createObject = useCreateObjectMutation();
@@ -43,13 +72,13 @@ export const IpAddressPoolForm = ({
       parentData,
     });
 
-    if (!genericAddressSchema || !isGeneric) return schemaFields;
+    if (!ipGenericSchema || !isGeneric) return schemaFields;
 
-    // Replace default_address_type (text) field with a select
+    // The attribute is free text, so restrict it to the kinds that inherit from the generic.
     return schemaFields.map((field) => {
-      if (field.name === ADDRESS_DEFAULT_TYPE_FIELD_NAME) {
+      if (field.name === defaultTypeFieldName) {
         const items =
-          genericAddressSchema.used_by?.map((kind) => {
+          ipGenericSchema.used_by?.map((kind) => {
             const { schema } = getSchema(kind);
 
             if (!schema) {
@@ -95,10 +124,10 @@ export const IpAddressPoolForm = ({
       return;
     }
 
-    if (currentObject) {
+    if (isUpdate && currentObject) {
       await updateObject.mutateAsync(
         {
-          objectKind: IP_ADDRESS_POOL,
+          objectKind: poolKind,
           data: {
             id: currentObject.id,
             ...newObject,
@@ -106,34 +135,33 @@ export const IpAddressPoolForm = ({
         },
         {
           onSuccess: async (updatedNode) => {
-            toast(<Alert type={ALERT_TYPES.SUCCESS} message="IP address pool updated" />, {
-              toastId: "alert-success-ip-prefix-pool-update",
+            toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${label} updated`} />, {
+              toastId: `alert-success-${toastId}-update`,
             });
             if (onSuccess) await onSuccess(updatedNode);
           },
           onError: (error) => {
-            console.error("An error occurred while updating the IP address pool:", error);
+            console.error(`An error occurred while updating the ${label}:`, error);
           },
         }
       );
     } else {
       await createObject.mutateAsync(
         {
-          objectKind: IP_ADDRESS_POOL,
+          objectKind: poolKind,
           data: newObject,
         },
         {
           onSuccess: async (newNode) => {
-            toast(<Alert type={ALERT_TYPES.SUCCESS} message="IP address pool created" />, {
-              toastId: "alert-success-ip-prefix-pool-create",
+            toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${label} created`} />, {
+              toastId: `alert-success-${toastId}-create`,
             });
-
             if (onSuccess) {
               await onSuccess(newNode);
             }
           },
           onError: (error) => {
-            console.error("An error occurred while updating the IP address pool:", error);
+            console.error(`An error occurred while creating the ${label}:`, error);
           },
         }
       );
@@ -148,4 +176,4 @@ export const IpAddressPoolForm = ({
       }
     />
   );
-};
+}
