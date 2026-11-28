@@ -1,0 +1,1 @@
+Added an accessible name to the button that adds a comment on a line of a file or artifact diff in a proposed change, so screen readers announce it as "Add a comment on line" followed by the line number.
