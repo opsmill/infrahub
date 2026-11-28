@@ -178,6 +178,7 @@ Import another entity's `domain/` types and async functions, or its `ui/` hooks/
 | `entities/branches` | `useGetBranches`, `BranchListItem` |
 | `entities/nodes/object` | `useGetObject` from `ui/queries/get-object.query.ts` |
 | `entities/nodes/relationships` | `RelationshipComboboxList`, `AddRelationshipAction` |
+| `entities/navigation` | One search match as the search dialog and the search results page show it: `useGetSearchResultObject` with `SearchResultNodeSummary` and its skeleton (`ui/search-anywhere/search-result-node.tsx`); the case-sensitive search button `SearchCaseSensitiveToggle` (`ui/search-case-sensitive-toggle.tsx`) |
 
 ## Discovery checklist before writing new code
 

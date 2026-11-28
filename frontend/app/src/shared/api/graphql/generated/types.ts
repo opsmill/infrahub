@@ -39098,6 +39098,7 @@ export type QueryInfrahubSchemaChangeArgs = {
 export type QueryInfrahubSearchAnywhereArgs = {
   case_sensitive?: InputMaybe<Scalars['Boolean']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   q: Scalars['String']['input'];
 };

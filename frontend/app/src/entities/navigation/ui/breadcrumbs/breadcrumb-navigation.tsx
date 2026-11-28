@@ -12,7 +12,9 @@ import { BreadcrumbProposedChanges } from "@/entities/navigation/ui/breadcrumbs/
 import { BreadcrumbResourceManager } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-resource-manager";
 import { BreadcrumbRoleManagement } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-role-management";
 import { BreadcrumbSchemaViewer } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-schema-viewer";
+import { BreadcrumbSearchResults } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-search-results";
 import { BreadcrumbTasks } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-tasks";
+import { SEARCH_RESULTS_PATH } from "@/entities/navigation/ui/routing/search-results-urls";
 
 export function BreadcrumbNavigation() {
   const { pathname } = useLocation();
@@ -63,6 +65,10 @@ export function BreadcrumbNavigation() {
 
   if (matchPath({ path: "/global-preferences" }, pathname)) {
     return <BreadcrumbGlobalPreferences />;
+  }
+
+  if (matchPath({ path: SEARCH_RESULTS_PATH }, pathname)) {
+    return <BreadcrumbSearchResults />;
   }
 
   return <BreadcrumbObjects />;

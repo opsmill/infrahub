@@ -30,6 +30,19 @@ describe("searchAnywhere", () => {
     expect(result.hasMore).toBe(true);
   });
 
+  test("reads one row more than the limit from the same offset", async () => {
+    // GIVEN
+    respondWith(21);
+
+    // WHEN
+    await searchAnywhere({ branchName: "main", search: "atl", limit: 20, offset: 40 });
+
+    // THEN
+    expect(searchAnywhereFromApi).toHaveBeenLastCalledWith(
+      expect.objectContaining({ limit: 21, offset: 40 })
+    );
+  });
+
   test("reports no more results when the API returns up to the limit", async () => {
     // GIVEN
     respondWith(2);

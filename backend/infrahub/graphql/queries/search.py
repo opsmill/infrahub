@@ -12,6 +12,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.query.ipam import IPParentPrefixLookupQuery
 from infrahub.core.query.node import NodeGetListByAttributeValueQuery
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.resolvers.resolver import validate_offset_and_limit
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -123,9 +124,18 @@ async def search_resolver(
     info: GraphQLResolveInfo,
     q: str,
     limit: int = 10,
+    offset: int | None = None,
     partial_match: bool = True,
     case_sensitive: bool = False,
 ) -> dict[str, Any]:
+    """Find the objects and groups whose attribute values match `q`, best match first.
+
+    Raises:
+        GraphQLError: When `offset` or `limit` is negative.
+
+    """
+    validate_offset_and_limit(offset=offset, limit=limit)
+
     graphql_context: GraphqlContext = info.context
     response: dict[str, Any] = {}
     results: list[dict[str, str]] = []
@@ -135,7 +145,8 @@ async def search_resolver(
     async with graphql_context.db.start_session(read_only=True) as db:
         if is_valid_uuid(q):
             matching = await NodeManager.get_one(db=db, branch=graphql_context.branch, at=graphql_context.at, id=q)
-            if matching:
+            # A UUID matches one object at most, so any offset skips it.
+            if matching and not offset:
                 results.append({"id": matching.id, "kind": matching.get_kind()})
         else:
             with contextlib.suppress(ValueError, ipaddress.AddressValueError):
@@ -161,6 +172,7 @@ async def search_resolver(
                 search_value=q,
                 kinds=[InfrahubKind.NODE, InfrahubKind.GENERICGROUP],
                 limit=limit,
+                offset=offset,
                 partial_match=partial_match,
                 case_sensitive=case_sensitive,
             )
@@ -181,6 +193,7 @@ InfrahubSearchAnywhere = Field(
     NodeEdges,
     q=String(required=True),
     limit=Int(required=False),
+    offset=Int(required=False, description="Number of matches to skip, best match first."),
     partial_match=Boolean(required=False),
     case_sensitive=Boolean(required=False),
     resolver=search_resolver,

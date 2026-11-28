@@ -8,6 +8,7 @@ import { ErrorBoundaryRouter } from "@/shared/components/errors/error-boundary-r
 import { ARTIFACT_OBJECT } from "@/entities/artifacts/domain/model/artifact";
 import { RequireAuth } from "@/entities/authentication/ui/require-auth";
 import { BranchesProvider } from "@/entities/branches/ui/branches-provider";
+import { SEARCH_RESULTS_PATH } from "@/entities/navigation/ui/routing/search-results-urls";
 import { SchemaProvider } from "@/entities/schema/ui/providers/schema-provider";
 
 export const router = createBrowserRouter([
@@ -195,6 +196,10 @@ export const router = createBrowserRouter([
               {
                 path: "/global-preferences",
                 lazy: () => import("@/pages/global-preferences"),
+              },
+              {
+                path: SEARCH_RESULTS_PATH,
+                lazy: () => import("@/pages/search"),
               },
               {
                 path: "/proposed-changes",

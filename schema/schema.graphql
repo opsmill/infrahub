@@ -27073,7 +27073,14 @@ type Query {
     """
     status: [SchemaChangeStatus!]
   ): InfrahubSchemaChanges!
-  InfrahubSearchAnywhere(case_sensitive: Boolean, limit: Int, partial_match: Boolean, q: String!): NodeEdges!
+  InfrahubSearchAnywhere(
+    case_sensitive: Boolean
+    limit: Int
+    """Number of matches to skip, best match first."""
+    offset: Int
+    partial_match: Boolean
+    q: String!
+  ): NodeEdges!
   """Retrieve the status of all infrahub workers."""
   InfrahubStatus: Status!
   InfrahubTask(branch: String, ids: [String], limit: Int, log_limit: Int, log_offset: Int, offset: Int, q: String, related_node__ids: [String], state: [StateType], workflow: [String]): Tasks!

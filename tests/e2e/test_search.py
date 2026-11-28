@@ -1,11 +1,13 @@
 """Port of frontend/app/tests/e2e/search.spec.ts.
 
 Search-anywhere modal: open/close (click, Esc, Ctrl/Cmd+K), the Device menu
-link, the no-results message, node + IPAM results, lookup by UUID, and loading
-more results on scroll, including after a failed request. Runs anonymously; the
-result tests rely on data_sites (the atl1 site, the 10.x prefix/loopback tree,
-and AS174 transitively via org_registry) and the menu, except the scroll tests,
-which create their own tags on a throwaway branch.
+link, the no-results message, node + IPAM results, lookup by UUID, loading
+more results on scroll, including after a failed request, and the search
+results page it opens, with its pages and the return to it from a result. Runs
+anonymously; the result tests rely on data_sites (the atl1 site, the 10.x
+prefix/loopback tree, and AS174 transitively via org_registry) and the menu,
+except the scroll and results page tests, which create their own tags on a
+throwaway branch.
 """
 
 from __future__ import annotations
@@ -29,6 +31,7 @@ if TYPE_CHECKING:
     from playwright.async_api import Page, Route
 
 SEARCH_FIRST_BATCH = 20
+SEARCH_RESULTS_PAGE_SIZE = 20
 MATCHING_TAGS = SEARCH_FIRST_BATCH + 5
 # An IP address, so the dialog also lists the Parent Prefixes group for this search.
 TAG_SEARCH = "198.51.100.7"
@@ -200,6 +203,63 @@ class TestSearchAnywhere:
 
         # THEN
         await expect(objects).to_have_count(0)
+
+    async def test_show_all_results_lists_each_match_as_a_link(
+        self, page: Page, branch_with_matching_tags: tuple[str, str]
+    ) -> None:
+        branch, search = branch_with_matching_tags
+        # GIVEN
+        await page.goto(f"/?branch={branch}")
+        await page.get_by_test_id("search-anywhere-trigger").click()
+        await page.get_by_test_id("search-anywhere-input").fill(search)
+
+        # WHEN
+        await page.get_by_role("option", name=f"Show all results for {search}").click()
+
+        # THEN
+        await expect(page.get_by_test_id("search-anywhere")).not_to_be_visible()
+        await expect(page).to_have_url(re.compile(rf"/search\?q={re.escape(search)}&branch={re.escape(branch)}$"))
+        results = page.get_by_role("region", name="Objects").get_by_role("link", name=re.compile(re.escape(search)))
+        await expect(results).to_have_count(SEARCH_RESULTS_PAGE_SIZE)
+        await expect(results.first).to_have_attribute(
+            "href", re.compile(rf"^/objects/BuiltinTag/[0-9a-f-]+\?branch={re.escape(branch)}$")
+        )
+
+    async def test_the_next_page_lists_the_remaining_matches(
+        self, page: Page, branch_with_matching_tags: tuple[str, str]
+    ) -> None:
+        branch, search = branch_with_matching_tags
+        # GIVEN
+        await page.goto(f"/search?q={search}&branch={branch}")
+        results = page.get_by_role("region", name="Objects").get_by_role("link", name=re.compile(re.escape(search)))
+        await expect(results).to_have_count(SEARCH_RESULTS_PAGE_SIZE)
+
+        # WHEN
+        await page.get_by_role("button", name="Next").click()
+
+        # THEN
+        await expect(results).to_have_count(MATCHING_TAGS - SEARCH_RESULTS_PAGE_SIZE)
+        await expect(page.get_by_text(f"Showing results 21 to {MATCHING_TAGS}")).to_be_visible()
+        await expect(page.get_by_role("button", name="Next")).to_be_disabled()
+
+    async def test_going_back_from_a_result_returns_to_its_page_of_results(
+        self, page: Page, branch_with_matching_tags: tuple[str, str]
+    ) -> None:
+        branch, search = branch_with_matching_tags
+        # GIVEN
+        await page.goto(f"/search?q={search}&branch={branch}&page=2")
+        results = page.get_by_role("region", name="Objects").get_by_role("link", name=re.compile(re.escape(search)))
+        await results.first.click()
+        await expect(page).to_have_url(re.compile(r"/objects/BuiltinTag/"))
+
+        # WHEN
+        await page.go_back()
+
+        # THEN
+        await expect(page).to_have_url(
+            re.compile(rf"/search\?q={re.escape(search)}&branch={re.escape(branch)}&page=2$")
+        )
+        await expect(results).to_have_count(MATCHING_TAGS - SEARCH_RESULTS_PAGE_SIZE)
 
     async def test_a_repeated_search_starts_from_the_first_batch(
         self, page: Page, branch_with_matching_tags: tuple[str, str]

@@ -75,10 +75,11 @@ class TestDiffRebase(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     def main_schema_root(self) -> SchemaRoot:
-        main_schema_root = CAR_SCHEMA.model_copy()
+        # Deep copies: the schema registry keeps the objects it is given, and other test classes reuse these.
+        main_schema_root = CAR_SCHEMA.duplicate()
         # add a Node and relationship to delete later
-        main_schema_root.generics.append(LOCATION)
-        continent_schema = CONTINENT.model_copy()
+        main_schema_root.generics.append(LOCATION.duplicate())
+        continent_schema = CONTINENT.duplicate()
         continent_schema.children = None
         continent_schema.parent = None
         main_schema_root.nodes.append(continent_schema)
