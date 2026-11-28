@@ -340,11 +340,13 @@ A queue at `action-required` gets no automatic run.
 
 - The fetch of a delivery has 120 s, its push and its deletion of a remote branch 300 s, and each
   local Git command 120 s.
-- GitPython's `kill_after_timeout` does not stop a hung `Remote.fetch` or `Remote.push`. For an
-  HTTP(S) remote, `git/base.py::stalled_transfer_limit` sets `GIT_HTTP_LOW_SPEED_LIMIT=1` and
-  `GIT_HTTP_LOW_SPEED_TIME` to the limit for that one command, so Git ends a transfer that sends no
-  data for that long. Git reports "Operation too slow", which raises `RepositoryConnectionError`, so
-  the cause is `remote-unreachable`.
+- The fetch runs through `git/bounded_command.py::run_git_with_deadline`, which stops Git and every
+  process it started at the limit, over any transport. Git reports "git did not finish within".
+- GitPython's `kill_after_timeout` does not stop a hung `Remote.push`. For an HTTP(S) remote,
+  `git/base.py::stalled_transfer_limit` sets `GIT_HTTP_LOW_SPEED_LIMIT=1` and
+  `GIT_HTTP_LOW_SPEED_TIME` to the limit for the push and for the deletion of a remote branch, so
+  Git ends a transfer that sends no data for that long. Git reports "Operation too slow".
+- Both errors raise `RepositoryConnectionError`, so the cause is `remote-unreachable`.
 - GitPython stops a local Git command at its limit with `ps --ppid`, so the backend image installs
   `procps`.
 
@@ -370,10 +372,10 @@ repository shows the nine attributes only when the user selects **Extra**.
 
 ## Known limitations
 
-- **An SSH remote has no stall limit.** A fetch or a push over SSH that hangs keeps the repository
+- **A push to an SSH remote has no stall limit.** A push over SSH that hangs keeps the repository
   lock until the connection ends, so the recovery check submits nothing, and a manual retry and an
   abandonment wait too.
-- **A transfer that sends data and then stalls** can take up to about twice its limit.
+- **A push that sends data and then stalls** can take up to about twice its limit.
 - **A repository lock that a dead worker held** has no time to live, so the recovery check and a
   manual retry wait for `locks/tasks.py::clean_up_deadlocks`. It runs every minute and deletes a lock
   whose holder left the active-worker set, once the lock is older than
