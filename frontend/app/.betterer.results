@@ -40,12 +40,6 @@ exports[`fix ts error`] = {
       [143, 22, 13, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "1656119487"],
       [147, 22, 8, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "288015442"]
     ],
-    "src/entities/events/ui/filters/global-filter.tsx:1888441879": [
-      [53, 45, 5, "tsc: Type \'ReactNode\' is not assignable to type \'string\'.\\n  Type \'undefined\' is not assignable to type \'string\'.", "173467459"]
-    ],
-    "src/entities/events/ui/filters/global-kind-filter.tsx:2796836867": [
-      [38, 45, 5, "tsc: Type \'ReactNode\' is not assignable to type \'string\'.\\n  Type \'undefined\' is not assignable to type \'string\'.", "173467459"]
-    ],
     "src/entities/ipam/ip-addresses/ui/ip-address-table.tsx:799162721": [
       [51, 8, 7, "tsc: No overload matches this call.\\n  Overload 1 of 2, \'(props: NodeDataTableProps<NodeObject | IpAddressAvailableNode>): ReactNode\', gave the following error.\\n    Type \'ColumnDef<NodeObject>[]\' is not assignable to type \'ColumnDef<NodeObject | IpAddressAvailableNode>[]\'.\\n      Type \'ColumnDef<NodeObject>\' is not assignable to type \'ColumnDef<NodeObject | IpAddressAvailableNode>\'.\\n        Type \'ColumnDefBase<NodeObject, unknown> & StringHeaderIdentifier\' is not assignable to type \'ColumnDef<NodeObject | IpAddressAvailableNode>\'.\\n          Type \'ColumnDefBase<NodeObject, unknown> & StringHeaderIdentifier\' is not assignable to type \'AccessorFnColumnDefBase<NodeObject | IpAddressAvailableNode, unknown> | IpAddressAvailableNode, unknown> & IdIdentifier<NodeObject\'.\\n            Property \'accessorFn\' is missing in type \'ColumnDefBase<NodeObject, unknown> & StringHeaderIdentifier\' but required in type \'AccessorFnColumnDefBase<NodeObject | IpAddressAvailableNode, unknown>\'.", "3718923584"]
     ],
