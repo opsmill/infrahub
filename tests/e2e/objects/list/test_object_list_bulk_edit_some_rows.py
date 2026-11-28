@@ -77,3 +77,19 @@ class TestBulkEditSomeRows:
         await expect(admin_page.get_by_text("Drained").nth(0)).to_be_visible()
         await expect(admin_page.get_by_text("Drained").nth(1)).to_be_visible()
         await expect(admin_page.get_by_text("Drained").nth(2)).to_be_visible()
+
+    async def test_should_create_a_platform_from_the_bulk_edit_form(self, admin_page: Page, branch: str) -> None:
+        await admin_page.goto(f"/objects/InfraDevice?branch={branch}")
+        await admin_page.get_by_test_id("identifier-cell").nth(0).locator("label").click()
+        await admin_page.get_by_test_id("object-table-toolbar").get_by_role("button", name="Edit").click()
+
+        await admin_page.get_by_label("Platform").click()
+        await admin_page.get_by_role("button", name="+ Add new Platform").click()
+
+        # click, unlike fill, fails when another layer covers the field, so it proves the create sheet is on top.
+        new_object_form = admin_page.get_by_test_id("new-object-form")
+        await new_object_form.get_by_label("Name").click()
+        await new_object_form.get_by_label("Name").fill("bulk-edit-platform")
+        await new_object_form.get_by_role("button", name="Save").click()
+
+        await expect(admin_page.get_by_label("Platform")).to_contain_text("bulk-edit-platform")

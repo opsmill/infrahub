@@ -4,6 +4,7 @@ import {
   DialogTrigger as AriaDialogTrigger,
   Popover as AriaPopover,
   type PopoverProps as AriaPopoverProps,
+  composeRenderProps,
 } from "react-aria-components";
 import { tv, type VariantProps } from "tailwind-variants";
 
@@ -39,13 +40,18 @@ export interface PopoverProps
   extends AriaPopoverProps,
     Pick<VariantProps<typeof popoverStyles>, "width"> {}
 
-export function Popover({ className, width = "content", ...props }: PopoverProps) {
+export function Popover({ className, style, width = "content", ...props }: PopoverProps) {
   return (
     <AriaPopover
       offset={4}
       className={composeAriaClassName(className, (renderProps) =>
         popoverStyles({ ...renderProps, width })
       )}
+      // React Aria positions every popover with an inline z-index of 100000, which would cover sheets and modals opened from inside it.
+      style={composeRenderProps(style, (resolvedStyle) => ({
+        zIndex: undefined,
+        ...resolvedStyle,
+      }))}
       {...props}
     />
   );
