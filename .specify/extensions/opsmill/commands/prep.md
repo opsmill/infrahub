@@ -1,5 +1,5 @@
 ---
-description: Run the speckit preparation phases end-to-end — specify, plan, critique, tasks — making all decisions autonomously. Stops before implementation.
+description: Prepare a feature for implementation — specify, plan, critique, tasks, alignment check — by running the opsmill-prep workflow. Stops before implementation.
 ---
 
 ## User Input
@@ -12,167 +12,100 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ## Outline
 
-You are running the **preparation phases of the speckit pipeline** end-to-end. The user's input (above) is the feature description that will seed the specification phase.
+The `opsmill-prep` workflow holds the preparation logic: its phases, their order, and when a phase is repeated and how often. Read it in `.specify/workflows/opsmill-prep/workflow.yml`.
 
-This skill is the prefix of `speckit-opsmill-auto`: it covers Specify → Plan → Critique → Tasks → Spec/Ask Alignment Check and **stops before implementation**. Use it when you want a feature fully designed and broken down into a `tasks.md` ready for review, but you do not want the agent to execute the tasks autonomously.
+This command only **starts that workflow, follows it, and reports its result**. Do not run the phases yourself, and do not write or correct the spec artifacts: each phase runs as its own agent process, started by Spec Kit.
 
-Execute every phase below **in order**, making all decisions autonomously. Do not stop to ask the user for input between phases — if a phase requires choices (e.g., clarification questions in specify, research decisions in plan), use your best judgment and proceed. The user expects a hands-off, one-shot execution up through `tasks.md`.
+### 1. Check that the workflow can run
 
-After **each phase**, invoke the `speckit-checkpoint-commit` skill to commit the artifacts produced by that phase before moving on.
-
-> Each phase below is executed by invoking the named skill (e.g. via the agent's Skill tool). Skills are agent-agnostic, so this workflow runs identically across any harness that supports skill discovery — not only those exposing speckit slash commands.
-
-### Phase 1 — Specify
-
-Invoke the `speckit-specify` skill with the user's feature description (`$ARGUMENTS`).
-
-- Complete the full specify workflow: generate a short name, create the spec directory, write `spec.md`, run quality checks.
-- If clarification questions arise, answer them yourself based on context and best judgment — do **not** pause for user input.
-- Commit the spec artifacts.
-
-### Phase 2 — Plan
-
-Invoke the `speckit-plan` skill.
-
-- Complete the full plan workflow: research unknowns, generate `plan.md`, `research.md`, `data-model.md`, API contracts, `quickstart.md`.
-- Make all design decisions autonomously.
-- Commit the plan artifacts.
-
-### Phase 3 — Critique
-
-Run the dual-lens (Product + Engineering) critique against `spec.md` and `plan.md` before any tasks are generated.
-
-**Resolve the critique provider first.** Record the answer as `CRITIQUE_MODE`. Run this check from the repository root and read `CRITIQUE_MODE` off its output — do not decide from memory:
+Run from the repository root:
 
 ```bash
-if [ -d .specify/extensions/critique ] || grep -q '"critique"' .specify/extensions/.registry 2>/dev/null; then
-  echo "critique extension: installed"
-else
-  echo "critique extension: missing"
-fi
+specify workflow info opsmill-prep
 ```
 
-| Check output | `CRITIQUE_MODE` |
-|--------------|-----------------|
-| `installed` | `extension` |
-| `missing`, and you can dispatch clean-context subagents | `fallback` |
-| `missing`, and no subagent dispatch is available | `none` |
+If it fails, stop and tell the user to install the bundle: `specify bundle install opsmill-sdd`.
 
-Both signals are written by `specify extension add` itself, and neither is harness-specific — do not key the decision off `.claude/skills/speckit-critique-run/`, which only exists under Claude Code. Resolve this by **checking the filesystem**, not by asking yourself whether you "have" the skill. A missing critique provider never blocks the run; it selects the branch below and it is reported on the status line.
+### 2. Start the workflow
 
-**3a — `CRITIQUE_MODE: extension`.** Invoke the `speckit-critique-run` skill. If that invocation fails — the skill is not found, or it errors out without returning findings — the extension is present on disk but not usable. Downgrade to `CRITIQUE_MODE: fallback` and run 3b, or to `none` if no subagent dispatch is available, and report the mode that actually ran.
+The workflow takes the user input as its `spec` input, verbatim.
 
-**3b — `CRITIQUE_MODE: fallback`.** Dispatch **one** clean-context subagent to run the same dual-lens critique. Brief it self-contained: absolute paths to `spec.md`, `plan.md`, and the resolved project context files, plus the required return shape — findings tagged 🎯 Must-Address, 💡 Recommendation, or 🤔 Question, and a verdict of `PROCEED` or `RETHINK`. Findings only; the subagent must not edit the spec or plan. Reduced depth compared with the extension, so flag it in Completion rather than presenting it as an equivalent pass.
+1. Write the user input, verbatim, to a file **outside the repository**: in your scratchpad directory when you have one, otherwise in the system temporary directory. The workflow commits after each phase, and a file inside the repository would end up in those commits.
+2. Start the workflow from the repository root, with the path of that file:
 
-**3c — `CRITIQUE_MODE: none`.** Skip the critique and proceed to Phase 4 with no findings. Never describe the run as critiqued, and do not substitute an unstructured reread of `spec.md` for the critique.
+   ```bash
+   specify workflow run opsmill-prep -i "spec=$(cat <path of the request file>)"
+   ```
 
-**Finding handling is identical in 3a and 3b:**
+   Start it as a **background** shell command: a run takes several minutes, more than a foreground command may take.
 
-- For any 🎯 **Must-Address** findings, apply the suggested fixes to `spec.md` / `plan.md` autonomously and commit them — do not pause for user approval.
-- For 💡 Recommendations, apply them when the fix is clear and low-risk; otherwise note and move on.
-- 🤔 Questions: resolve with your best judgment based on context (same rule as the Specify phase).
-- If the verdict is 🛑 **RETHINK**, loop back to `speckit-plan` (or `speckit-specify` if the spec itself is the problem), re-run the critique, then continue.
-- Commit the critique report and any spec/plan updates before moving on.
+Each phase is a separate agent process, which does not inherit the approvals of this session. It can use the tools listed in `permissions.allow` of `.claude/settings.json`, or passed in `SPECKIT_INTEGRATION_CLAUDE_EXTRA_ARGS`. A phase that is refused a tool reports it and the run fails.
 
-### Phase 4 — Tasks
+### 3. Follow the run
 
-Invoke the `speckit-tasks` skill.
+The command prints one line when a step starts, such as `▸ [plan] speckit.plan …`, and a `Status:` line when the run ends. Between them, it prints the text that each phase wrote.
 
-- Generate the full `tasks.md` with dependency-ordered, actionable tasks.
-- Skip the optional `speckit-analyze` skill unless something looks inconsistent — use your judgment.
-- Commit the tasks artifact.
+Watch the output of the command for the lines that match this pattern, and for nothing else:
 
-### Phase 5 — Spec/Ask Alignment Check
+```text
+▸ \[([a-z-]+:)*(specify|realign|plan|replan|critique|tasks|align)(:[0-9]+)?\]|^Status: 
+```
 
-The earlier phases can drift from a detailed PRD: clarifications get over-applied, scope creeps in from research, or requirements get rephrased away. This phase catches that before the user sees `tasks.md`.
+In Claude Code, that is the `Monitor` tool on the output file of the background command, with `grep -E --line-buffered` and this pattern. Do not add words such as `error` or `failed` to the pattern: the phases write them in their own text, and each match would interrupt you for nothing.
 
-#### 5a. Decide whether to run the check
+In Claude Code, give the `Monitor` the longest duration it accepts, 30 minutes (`timeout_ms: 1800000`): in a session in the default permission mode, the user approves each watch that you start. The watch can still end before the run does. Start it again from the lines that you have not reported yet, and do not tell the user: it is not a phase of the run.
 
-Inspect `$ARGUMENTS`. The check is **only meaningful when the user provided a substantive PRD** — either inline or by reference. Decide based on the following, in order:
+Each line that the pattern lets through, except the `Status:` line, is the start of a phase. Tell the user which phase started, in one short line:
 
-1. **`$ARGUMENTS` contains one or more URLs** (links to a Notion / Confluence / Google Doc / GitHub issue / Linear ticket / shared Markdown / PDF). Treat each URL as a likely PRD location. **Run the check.**
-2. **`$ARGUMENTS` itself looks like a detailed PRD** — multiple paragraphs with structure such as headings, bullet lists of requirements, explicit goals/non-goals, acceptance criteria, or > ~400 characters of substantive description. **Run the check.**
-3. **`$ARGUMENTS` is a one-line description, vague brief, or empty.** **Skip the check** — there is no source-of-truth document to align against. Write a short note in your final summary stating you skipped this phase and why, and proceed to Completion. If the input is short (under ~400 characters) but still carries substantive, requirement-bearing detail, use your judgment and treat it as a PRD under rule 2 rather than skipping.
+| Step in the output | Phase |
+|---|---|
+| `specify` | Writing the spec |
+| `realign` | Correcting the spec after the alignment check found drift (a remediation pass) |
+| `plan` | Planning |
+| `replan` | Reworking the plan after a `RETHINK` critique |
+| `critique` | Critique of the spec and the plan |
+| `tasks` | Generating the tasks |
+| `align` | Checking the spec against the request |
 
-#### 5b. Resolve the source-of-truth PRD
+A step of a repeated pass carries the pass number, for example `design:critique:1` for the second critique.
 
-If you decided to run the check:
+**When the `Status:` line arrives, stop the watch first**, so that it sends you nothing after the report. Then go to step 4, and write the report once.
 
-- For each URL in `$ARGUMENTS`, fetch its content using the harness's web fetch tool (in Claude Code: the `WebFetch` tool). Extract the requirement-bearing sections.
-- **If the harness has no web-fetch capability at all** (the tool is absent, not merely failing): you cannot resolve URL-only PRDs. Fall back to any inline PRD content in `$ARGUMENTS`. If the only source was a URL and there is no inline content, you cannot run a meaningful check — skip the rest of Phase 5, record `verdict: ⚠️ SKIPPED — source PRD unreachable (no web-fetch tool)` in the alignment report, and note it prominently in the Completion summary so the user knows alignment was not verified.
-- If a URL is gated (auth required, 404, network error), record that and fall back to whatever PRD content is in `$ARGUMENTS` itself. If neither is usable, skip the rest of Phase 5 with a note.
-- Concatenate the fetched / inline PRD content into a single "source PRD" view that you will compare against `spec.md`.
+### 4. Report the result
 
-#### 5c. Compare source PRD to `spec.md`
+Read the result of the run:
 
-Read the current `spec.md` end-to-end and judge it against the source PRD. You are looking for **significant** drift, not stylistic differences. Significant means:
+```bash
+python3 .specify/extensions/opsmill/scripts/python/workflow_result.py
+```
 
-- A requirement, goal, or explicit non-goal in the PRD is **missing** from the spec.
-- The spec **adds** a requirement, scope item, or constraint that does **not** appear in the PRD and was not a necessary clarification.
-- A requirement's semantics have been **changed** (e.g., "users can opt out" became "admins can opt users out"; "must support 10k req/s" became "should scale").
-- Acceptance criteria in the PRD are **dropped** or **softened** in the spec.
-- The spec contradicts a stated PRD constraint (compatibility, deadline, dependency, etc.).
+It prints the status of the run, how many times each phase started, the verdict line of each critique and alignment check, and the reason of a run that stopped.
 
-Cosmetic, structural, or expansion-of-detail differences are **not** drift. The spec is allowed to be longer, more precise, and to flesh out implicit requirements.
+It also prints one `coverage:` line for each quality gate that ran. A line that does not say `full` reports a critique or a review of reduced coverage, with the command that installs the full one: copy that line as it is, as the first line of your summary.
 
-#### 5d. Write the alignment report
+- **`completed`**: the spec is ready to implement.
+- **`failed`, with a `BLOCKED:` line**: the workflow reached one of its limits. Quote that line.
+- **`failed`, without a `BLOCKED:` line**: a phase could not complete. Quote the error, and name the step.
 
-Write `<spec-dir>/alignment-check.md` with:
+The last `CRITIQUE_VERDICT` line and the last `ALIGNMENT` line are the final verdicts.
 
-1. **Source** — which URL(s) and / or inline ask were used as the source PRD.
-2. **Verdict** — one of `✅ ALIGNED`, `⚠️ MINOR DRIFT (proceeding)`, or `🛑 SIGNIFICANT DRIFT (re-running prep)`.
-3. **Findings** — table of `Severity | Category (missing / added / changed / dropped / contradicted) | PRD reference | Spec reference | Description`.
-4. **Action** — what you decided to do (proceed, or re-run which phases).
-
-Commit the report via `speckit-checkpoint-commit`.
-
-#### 5e. Remediate significant drift (with retry budget)
-
-This step is the **loop body**. Initialize a remediation counter to `0` before the first entry. Enter this step whenever the most recent 5d verdict is `🛑 SIGNIFICANT DRIFT`.
-
-While the latest verdict is `🛑 SIGNIFICANT DRIFT`:
-
-1. **Check the budget first.** If the counter is already `2`, do **not** start another pass — go to "budget exhausted" below.
-2. **Increment the counter** (this pass now counts against the budget of 2).
-3. **Update `spec.md`** by re-invoking the `speckit-specify` skill with an augmented input that includes:
-   - The original `$ARGUMENTS` content (and fetched PRD body if from URL).
-   - An explicit list of the drift findings the spec must fix (missing requirements to add, off-scope items to remove, semantic changes to revert).
-   The skill will update the existing `spec.md` in place.
-4. **Re-run Phase 2 (Plan)** to refresh `plan.md` against the corrected spec.
-5. **Re-run Phase 3 (Critique)** to validate the corrected spec/plan.
-6. **Re-run Phase 4 (Tasks)** to regenerate `tasks.md` against the corrected plan.
-7. **Re-run Phase 5c–5d** (do **not** re-resolve the source PRD — keep the same source) to produce a fresh verdict, then return to the top of this loop and re-evaluate it.
-
-**Loop exits:**
-
-- **Aligned/minor** — a pass produces `✅ ALIGNED` or `⚠️ MINOR DRIFT`: accept it and proceed to Completion.
-- **Budget exhausted** — the counter reached `2` and the verdict is still `🛑 SIGNIFICANT DRIFT`: stop. Update `alignment-check.md` with verdict `🛑 UNRESOLVED — manual review required`, list the remaining findings, and surface this prominently in the Completion summary. Do **not** silently proceed.
-
-**Retry budget**: at most **2 remediation passes**, tracked by the counter above.
-
-Commit each remediation pass's artifacts as it runs (the inner skills handle their own commits; you only need to commit the updated `alignment-check.md` at the end of each pass).
-
-## Completion
-
-After all five phases are complete, provide a brief summary:
+Then give a brief summary, from the files of the feature directory recorded in `.specify/feature.json`:
 
 - Feature name and spec directory
-- Number of tasks generated in `tasks.md`
-- Any critique findings that were addressed inline, and the `CRITIQUE_MODE` used. State a `fallback` or `none` mode plainly, with the install hint `specify extension add critique`
-- **Alignment check status** — verdict, source PRD reference, number of remediation passes used (if any), and any unresolved drift
-- Any notable decisions you made autonomously
+- Number of tasks in `tasks.md`
+- The `coverage: critique` line of the result, and the findings that were addressed
+- The alignment verdict, its source, and the number of remediation passes
+- The number of plan and critique passes
 
 **Machine-readable status line (REQUIRED).** The **final line** of your output MUST be exactly:
 
 `STATUS: <READY|BLOCKED> | SPEC_DIR: <absolute spec-dir path> | CRITIQUE: <extension|fallback|none|n/a> | REASON: <short reason or n/a>`
 
-- `STATUS: READY` — `tasks.md` was generated **and** the alignment outcome is `✅ ALIGNED`, `⚠️ MINOR DRIFT`, or `⚠️ SKIPPED`. Only in this state is the spec safe to implement.
-- `STATUS: BLOCKED` — alignment is `🛑 UNRESOLVED` after the retry budget, or any phase could not complete. This is the explicit failure signal the parent `speckit-opsmill-auto` checks before deciding whether to start implementation; do not dress an unresolved run up as a success.
-- `SPEC_DIR` MUST be the absolute path to the spec directory, so the parent can hand it to the implement phase without parsing prose.
-- `CRITIQUE` mirrors the `CRITIQUE_MODE` resolved in Phase 3, so the parent never has to infer critique coverage from prose. A degraded mode does **not** make the run `BLOCKED` — the spec is still implementable — but it MUST be reported. Use `CRITIQUE: n/a` only when the run aborted before Phase 3.
-
-**Why `CRITIQUE: none` reports but does not block, while `REVIEW: none` forces `INCOMPLETE` in `speckit-opsmill-implement`.** The two gates fail differently. A missing critique leaves the spec un-pressure-tested, but `spec.md` and `tasks.md` are read by a human before any code is written, so the gap is visible at the next step and closing it costs a re-run of prep. A missing review leaves already-written code unexamined, and the implement report is the only thing that speaks to whether that code is sound — nothing downstream re-checks it, so a `DONE` there would assert an assurance that was never produced. Prep therefore degrades and reports; `implement` degrades and marks the run `INCOMPLETE`.
+- `STATUS: READY` — the workflow completed: the critique accepted the design, and the alignment check found no significant drift. Only in this state is the spec safe to implement.
+- `STATUS: BLOCKED` — the workflow stopped on one of its limits, or a phase could not complete. This is the failure signal for a script or an agent that reads this output.
+- `SPEC_DIR` MUST be the absolute path to the spec directory.
+- `CRITIQUE` is the mode on the last `CRITIQUE_VERDICT` line. Use `n/a` only when the run stopped before the critique.
 
 Keep this as the literal last line, unwrapped.
 
-Do **not** proceed to implementation, review, or extraction. The user will run those phases (or `speckit-opsmill-auto` from scratch) when ready.
+Do **not** proceed to implementation, review, or extraction. The user runs those when ready.

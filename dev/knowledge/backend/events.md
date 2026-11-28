@@ -154,6 +154,13 @@ the part that changed. A branch that edits the `CoreGraphQLQuery` text through t
 neither, so it keeps the default-branch automations and its reads are answered with the default
 branch's read set.
 
+For Jinja2 computed attributes, display labels and human-friendly ids, these automations exist only
+for templates that read a peer node. A template that reads only its own node gets no automation on
+any branch: the mutation applies it inline, and the setup flows decide the whole-kind recompute
+from the schema and from the recorded template fingerprints (see
+[display-labels-and-hfid.md](display-labels-and-hfid.md) and
+[computed-attributes.md](computed-attributes.md)).
+
 The default-branch automation has to exclude the branches that own their own automation.
 **Prefect ORs the patterns of a single label**, so `match["infrahub.branch.name"] = ["!b1", "!b2"]`
 excludes nothing: `b1` fails the first pattern and passes the second, and `ResourceSpecification.matches`

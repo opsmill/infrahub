@@ -8,6 +8,10 @@ from prefect_redis import RedisDatabase
 from pydantic import SecretStr
 
 from infrahub import config
+from infrahub.core.template_fingerprint.collector import collect_schema_fingerprints
+from infrahub.core.template_fingerprint.models import TemplateFamily
+from infrahub.core.template_fingerprint.repository import TemplateFingerprintRepository
+from infrahub.database import InfrahubDatabase
 from infrahub.display_labels.gather import gather_trigger_display_labels_jinja2
 from infrahub.hfid.gather import gather_trigger_hfid
 from infrahub.redis_connection import build_cache_connection_string
@@ -104,3 +108,15 @@ async def setup_task_manager_identifiers() -> None:
             trigger_type=TriggerType.HUMAN_FRIENDLY_ID,
             force_update=True,
         )
+
+
+async def seed_template_fingerprints(db: InfrahubDatabase) -> int:
+    """Record the current template fingerprints without submitting a recompute, and return how many were created.
+
+    A fresh instance holds no stored value computed from an older template, so the first schema update
+    only recomputes the kinds it changes.
+    """
+    records = [
+        record for family in TemplateFamily for record in collect_schema_fingerprints(family=family).as_records()
+    ]
+    return await TemplateFingerprintRepository(db=db).insert_missing(records=records)

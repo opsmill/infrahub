@@ -1,5 +1,5 @@
 ---
-description: Run the speckit implementation phase chunk-by-chunk in clean-context subagents, then review, then produce a final report. Picks up from an existing tasks.md.
+description: Implement the tasks of a spec directory — chunk by chunk, then a review and a final report — by running the opsmill-implement workflow. Picks up from an existing tasks.md.
 ---
 
 ## User Input
@@ -8,171 +8,88 @@ description: Run the speckit implementation phase chunk-by-chunk in clean-contex
 $ARGUMENTS
 ```
 
-You **MUST** consider the user input before proceeding (if not empty). `$ARGUMENTS` is optional and may name the spec directory to operate on (e.g. `specs/008-foo`). If empty, operate on the most recently modified spec directory under `specs/` that has a `tasks.md`.
+You **MUST** consider the user input before proceeding (if not empty). The user input is optional and may name the spec directory to implement (for example `specs/008-foo`).
 
 ## Outline
 
-You are running the **implementation + review tail** of the speckit pipeline. This command picks up where `speckit-opsmill-prep` leaves off: it expects a feature directory under `specs/` containing `spec.md`, `plan.md`, and `tasks.md`. It does **not** generate or modify those documents — it executes them.
+The `opsmill-implement` workflow holds the implementation logic: its phases, their order, and when the chunk phase is repeated and how often. Read it in `.specify/workflows/opsmill-implement/workflow.yml`.
 
-The implementation phase runs as a **loop** over chunks of `tasks.md`, with each chunk implemented inside a **clean-context subagent**. The orchestrator (you) never edits feature code directly — it dispatches, integrates, and reports.
+This command only **starts that workflow, follows it, and reports its result**. Do not run the phases yourself, and do not write or correct the code: each phase runs as its own agent process, started by Spec Kit.
 
-After all chunks are complete, you run a single review pass across the whole change set, fix any high-severity findings, and emit a final report.
+### 1. Check that the workflow can run
 
-> Each phase below is executed by invoking the named skill (e.g. via the agent's Skill tool). Skills are agent-agnostic, so this workflow runs identically across any harness that supports skill discovery — not only those exposing speckit slash commands.
+Run from the repository root:
 
-### Phase 0 — Preflight
+```bash
+specify workflow info opsmill-implement
+```
 
-**Invocation context.** This command runs in one of two modes, and the stop-conditions below behave differently in each:
+If it fails, stop and tell the user to install the bundle: `specify bundle install opsmill-sdd`.
 
-- **Interactive** (a user invoked it directly). On a stop-condition you may pause and ask the user, as written.
-- **Autonomous parent** (invoked as Phase B of `speckit-opsmill-auto`). There is no user to resume a pause, so you **MUST NOT** pause or wait. Treat every stop-condition below as a hard abort: do **not** start the implement loop, and end your run with the `STATUS: BLOCKED` status line defined in **Completion** so the parent orchestrator can detect it and stop cleanly. Never proceed on a dirty tree or missing docs — doing so contaminates the `HEAD@start..HEAD@now` review diff. You can tell you are running under an autonomous parent because you were dispatched with a resolved spec-dir path and no interactive session.
+### 2. Start the workflow
 
-Before any work begins:
+Resolve the spec directory: the one that the user input names, otherwise the most recently modified directory under `specs/` that has a `tasks.md`. If there is none, stop and tell the user to run `speckit.opsmill.prep` first.
 
-1. Resolve the target spec directory (from `$ARGUMENTS` or the most recently modified `specs/<feature>/` with a `tasks.md`). Record the absolute path; you will pass this to every subagent.
-2. Verify `spec.md`, `plan.md`, and `tasks.md` all exist. If any are missing: interactive → abort with a clear error directing the user to run `speckit.opsmill.prep` first; autonomous parent → abort with `STATUS: BLOCKED` (reason: missing prep artifacts).
-3. Read `tasks.md` end-to-end and identify the chunking boundaries (see "Chunking strategy" below). Build a numbered list of chunks with their task IDs.
-4. Verify the working tree is clean (or only contains expected prep artifacts). If it is dirty in unrelated ways: interactive → surface that and pause; autonomous parent → abort with `STATUS: BLOCKED` (reason: unexpectedly dirty working tree). Do not attempt to stash or clean it yourself.
-5. Note the current `HEAD` commit — you will diff against it for the review and report.
-6. **Resolve the review provider.** Decide how Phase 6 will review the change set and record the answer as `REVIEW_MODE`. Take the first row that applies, deciding from the subagent types and commands your harness actually lists, not from memory:
+Start the workflow from the repository root, with that directory:
 
-   | Reviewer available | `REVIEW_MODE` |
-   |--------------------|---------------|
-   | The `pr-review-toolkit` plugin: its agents (`pr-review-toolkit:code-reviewer`, `pr-review-toolkit:pr-test-analyzer`, …) are among the subagent types you can dispatch | `plugin` |
-   | The `code-review` skill of Claude Code (`/code-review`) | `command` |
-   | Neither, and you can dispatch clean-context subagents | `fallback` |
-   | Neither, and no subagent dispatch is available | `none` |
+```bash
+specify workflow run opsmill-implement -i "spec_dir=<spec directory>"
+```
 
-   This is a starting point: if Phase 6 cannot use the provider, it moves to the next row and reports the mode that actually ran. The spec-kit `review` extension is not used: it does not install on spec-kit 1.x.
+Start it as a **background** shell command: a run takes several minutes, more than a foreground command may take.
 
-   A missing reviewer is **not** a stop-condition, in either invocation mode. The Phase 0 aborts above exist because a dirty tree or missing prep artifacts contaminate the `HEAD@start..HEAD@now` diff; a missing reviewer does not corrupt anything, it only lowers assurance, and Phase 6 has a defined fallback for it. Carry `REVIEW_MODE` forward to Phase 6, Phase 7 §5, and the status line.
+Each phase is a separate agent process, which does not inherit the approvals of this session. It can use the tools listed in `permissions.allow` of `.claude/settings.json`, or passed in `SPECKIT_INTEGRATION_CLAUDE_EXTRA_ARGS`. A phase that is refused the commands that run the tests cannot prove that they pass, and the run ends `INCOMPLETE`.
 
-### Phase 5 — Implement (looped, clean-context subagents)
+### 3. Follow the run
 
-> **Phase numbering.** This file is the implementation tail; phases jump 0 → 5 → 6 → 7 on purpose. Phases 1–4 (Specify → Plan → Critique → Tasks) run in `speckit-opsmill-prep`. They are not missing or skipped here.
+The command prints one line when a step starts, such as `▸ [chunk] speckit.opsmill.implement-chunk …`, and a `Status:` line when the run ends. Between them, it prints the text that each phase wrote.
 
-Loop over the chunks identified in Phase 0. For **each chunk**:
+Watch the output of the command for the lines that match this pattern, and for nothing else:
 
-1. **Dispatch a subagent with a clean context.** Use your harness's subagent / Task tool (in Claude Code: the `Agent` tool with `subagent_type=general-purpose`). The subagent **must not** inherit the orchestrator's conversation history — every chunk starts fresh.
+```text
+▸ \[([a-z-]+:)*(chunk|review|report)(:[0-9]+)?\]|^Status: 
+```
 
-2. **Brief the subagent self-contained.** The orchestrator has read context the subagent does not. The prompt to the subagent must include:
-   - Absolute path to the spec directory.
-   - Absolute path to the repository root.
-   - Pointers to project context files the subagent should read first, when present at the repo root or in their conventional locations: `AGENTS.md`, `CLAUDE.md`, `CONTEXT.md`, and the project constitution (commonly `.specify/memory/constitution.md`, `dev/constitution.md`, or `constitution.md`). The orchestrator should resolve which of these actually exist before dispatch and pass the resolved absolute paths — do not ask the subagent to guess. If none exist, say so explicitly so the subagent does not waste a turn searching.
-   - The **exact chunk** of tasks to implement, copied verbatim from `tasks.md` (task IDs, descriptions, and any `[P]` parallel markers).
-   - An explicit instruction to invoke the `speckit-implement` skill scoped to **only those task IDs** — not the full `tasks.md`.
-   - The commit policy: the subagent should run formatters/linters and commit its own work via the `speckit-checkpoint-commit` skill before returning.
-   - **The local-pass policy.** Every test the chunk adds or modifies — unit, integration, **and E2E when the project supports running them locally** — MUST be observed to PASS locally at least once before the chunk is reported as done. Marker-clean / lint-clean / type-clean is NOT a substitute. If a test class cannot be executed locally in this project (e.g. an E2E suite that requires infrastructure the developer machine cannot provide), the subagent MUST state that explicitly and explain why, rather than silently skipping. For every test that was run, the subagent MUST return the evidence specified in the response contract below; if it cannot produce the evidence for a test it claims to have written, the chunk's outcome line for that task MUST be `⚠️ partial` or `❌ blocked` (not ✅ done) with the reason.
-   - **Discovering how tests run.** Before executing tests, the subagent should determine the project's test conventions by reading `AGENTS.md` / `CLAUDE.md`, then the repo's standard locations (`Makefile`, `package.json` scripts, `pyproject.toml`, `Cargo.toml`, `go.mod`, CI config, `tasks.md` itself). Use whatever runner the project actually uses — `pytest`, `go test`, `cargo test`, `npm test`, `vitest`, `make test`, etc. Do not assume a specific framework.
-   - A short response contract: return (a) a one-line outcome per task ID (✅ done / ⚠️ partial / ❌ blocked + reason), (b) the commit SHA(s) it produced, (c) any decisions worth flagging upward, (d) overall lint/format status, (e) **for every new or modified test: the test identifier (node ID, function name, or file::test as the runner reports it), the exact command used to run it, an ISO 8601 wall-clock timestamp of the passing run, any environment context that matters for reproducibility (e.g. cluster id + kubeconfig path, container/compose service, browser version, DB fixture name) — or `n/a` if the runner needs none — and the verbatim pass line from the runner's output (e.g. `PASSED ...`, `ok`, `--- PASS:`, `✓ ...`)**. If the chunk added or modified no tests, the subagent MUST say so explicitly so the orchestrator can record "n/a" rather than an omission. If an E2E test was added but not run locally because the project does not support local E2E execution, the subagent MUST state that as a separate line and include any CI-side runbook / command that will exercise it instead.
-   - Length cap on the report (e.g. "under 250 words", excluding the test evidence block which has no cap) so the orchestrator's context does not balloon.
+In Claude Code, that is the `Monitor` tool on the output file of the background command, with `grep -E --line-buffered` and this pattern. Do not add words such as `error` or `failed` to the pattern: the phases write them in their own text, and each match would interrupt you for nothing.
 
-3. **Wait for the subagent to return**, then:
-   - Pull its outcome lines into your running ledger of chunk results.
-   - Verify `tasks.md` checkboxes for that chunk are now `[X]` (re-read the file). If the subagent forgot to tick them, do it yourself and add a **fresh fixup commit** — do **not** `--amend` the subagent's commit. Its SHA is already recorded in the Phase 7 chunk ledger (§2) and may be referenced elsewhere; amending would rewrite it and make the final report cite a commit that no longer exists.
-   - If the subagent reports ❌ blocked: do not auto-retry blindly. Decide between (i) re-dispatching with sharper instructions, (ii) splitting the chunk smaller and retrying, or (iii) recording the block and moving on. State which you chose and why.
-   - Do **not** invoke `speckit-checkpoint-commit` again here — the subagent already committed. Only commit yourself if you applied a fixup (e.g. ticking missed checkboxes).
+In Claude Code, give the `Monitor` the longest duration it accepts, 30 minutes (`timeout_ms: 1800000`): in a session in the default permission mode, the user approves each watch that you start. The watch can still end before the run does. Start it again from the lines that you have not reported yet, and do not tell the user: it is not a phase of the run.
 
-4. Move to the next chunk. **Never run two implementation subagents in parallel** — chunks may share files and conflicting writes are far more expensive than the wall-clock savings.
+Each line that the pattern lets through, except the `Status:` line, is the start of a phase. Tell the user which phase started, in one short line:
 
-#### Chunking strategy
+| Step in the output | Phase |
+|---|---|
+| `chunk` | Implementing the next chunk of `tasks.md`. A later pass, such as `chunks:chunk:1`, is the next chunk |
+| `review` | Reviewing everything that the chunks changed |
+| `report` | Writing the report |
 
-Prefer the natural phase headings already present in `tasks.md` (`### Phase 3.1: Setup`, `### Phase 3.2: Tests First (TDD)`, `### Phase 3.3: Core Implementation`, etc.). Each phase becomes one chunk.
+**When the `Status:` line arrives, stop the watch first**, so that it sends you nothing after the report. Then go to step 4, and write the report once.
 
-If a phase contains more than ~10 tasks or touches > ~15 files, split it further along cohesive seams (e.g. one chunk per module, one chunk per contract test). If two adjacent small phases together total < ~5 tasks, do **not** merge them — keep the boundary; small chunks help review and reduce blast radius if a subagent goes off the rails.
+### 4. Report the result
 
-Respect explicit dependencies in `tasks.md`. Sequential `[P]`-free tasks must stay in their original order across chunks; `[P]` markers within a chunk are fine for the subagent to parallelise internally.
+Read the result of the run:
 
-### Phase 6 — Review
+```bash
+python3 .specify/extensions/opsmill/scripts/python/workflow_result.py
+```
 
-Once **all** chunks have completed (including any retries), review the full diff (`HEAD`-at-start..`HEAD`-now). How you *produce* the findings depends on the `REVIEW_MODE` resolved in Phase 0. What you *do* with them does not.
+It prints the status of the run, how many chunks started, the `STATUS:` line of the report phase, and the reason of a run that stopped.
 
-**6a — `REVIEW_MODE: plugin`.** Dispatch five `pr-review-toolkit` agents in parallel, each in a clean context: `code-reviewer`, `pr-test-analyzer`, `silent-failure-hunter`, `type-design-analyzer` and `comment-analyzer`. Brief each one with the repository root, the diff range (`HEAD`-at-start..`HEAD`-now), `spec.md` and `tasks.md` as the statement of intent, and the project context files resolved by the same rule as Phase 5. Ask each for **findings only**, without editing any file: a severity (`high` / `medium` / `low`), the file, the line where known, and a one-line summary.
+It also prints one `coverage:` line for each quality gate that ran. A line that does not say `full` reports a critique or a review of reduced coverage, with the command that installs the full one: copy that line as it is, as the first line of your summary.
 
-Once all five have returned, run `code-simplifier` alone, with the same briefing. It is built to edit code rather than report, so its edits are never kept:
+- **`completed`**: every task is done, every new or modified test passed locally, and a review took place.
+- **`failed`, with an `INCOMPLETE:` line**: the report phase ended with `STATUS: INCOMPLETE`. Tasks are left, a test has no proof of a passing run, or no review took place.
+- **`failed`, with a `BLOCKED:` line**: the run stopped before the first chunk. The spec directory lacks `spec.md`, `plan.md` or `tasks.md`, or the working tree has uncommitted changes. Tell the user what to do, for example to commit or remove the changes, then to run this command again.
+- **`failed`, without one of these lines**: a phase could not complete. Quote the error, and name the step.
 
-- Before it runs, check that the working tree is clean (`git status --porcelain` prints nothing). If it is not, skip `code-simplifier` and say so in the report.
-- After it ends, turn every change it made into a `low` finding: read them with `git diff` and `git status --porcelain`, one finding per simplification, with the file and line.
-- Then discard its changes: `git restore .` for edited files, and delete the files it created (listed as `??`). The working tree must be clean again before the finding handling below.
-
-**6b — `REVIEW_MODE: command`.** Run the `code-review` skill (`/code-review`) on the change set, given as a Git revision range (`<HEAD-at-start>..HEAD`). The command reviews in the background: wait for its findings before you go on, and collect them in the same shape as 6a.
-
-If 6a or 6b cannot run — the agents or the command are not found, or they fail before they finish — move to the next mode and run it. A review that finishes with no findings has run: keep its mode and go on with nothing to fix. Record the change and its cause in Phase 7 §5 and §6: the mode you report is the mode that actually ran.
-
-**6c — `REVIEW_MODE: fallback`.** No reviewer is available, so run the review yourself. Dispatch **one** clean-context review subagent using the same briefing protocol as Phase 5 (self-contained prompt, no inherited history, resolved absolute paths). Brief it with:
-
-- Absolute paths to the repository root and the spec directory.
-- The diff range (`HEAD`-at-start..`HEAD`-now), and the project context files resolved by the same rule as Phase 5 (`AGENTS.md`, `CLAUDE.md`, `CONTEXT.md`, the constitution). Pass the paths that actually exist; say so explicitly if none do.
-- `spec.md` and `tasks.md`, as the statement of intent the diff is reviewed against.
-- Instructions to cover these six aspects and nothing else: **code quality** (project guideline compliance, bugs, security), **comments** (accuracy, documentation completeness, comment rot), **tests** (behavioural coverage, critical gaps, test resilience), **error handling** (silent failures, catch blocks, error logging), **type design** (encapsulation, invariants, enforcement), **simplification** (clarity, unnecessary complexity, redundant abstractions).
-- The required return shape: a severity-rated finding list (`high` / `medium` / `low`), each finding carrying file, line where known, and a one-line summary. **Findings only** — the subagent must not fix anything, so that the fix decisions below stay with the orchestrator.
-
-This is a safety net, not a replacement. It does not match the depth of the plugin or the review command, and the report must say so rather than present it as an equivalent pass.
-
-**6d — `REVIEW_MODE: none`.** No review is possible. Proceed to Phase 7 with an empty finding list and carry `REVIEW_MODE: none` forward. Do **not** continue as though the change set had been reviewed, and do **not** substitute a quick unstructured read of the diff for a review and report it as one.
-
-**Finding handling is identical in 6a, 6b and 6c:**
-
-- For findings rated **high severity or above**, fix them inline. Prefer fixing them yourself if the change is small and localised; dispatch a fresh clean-context subagent (same protocol as Phase 5) if the fix spans multiple files or needs significant code understanding.
-- For lower-severity findings, record them in the report (do not block).
-- Commit any review-driven fixes via `speckit-checkpoint-commit`.
-
-### Phase 7 — Final Report
-
-Write a markdown report to `<spec-dir>/opsmill-implement-report.md` and also print it to the user. The report **must** contain:
-
-1. **Header** — feature name, spec dir, base commit, head commit, total wall-clock time if known.
-2. **Chunk-by-chunk ledger** — for each chunk dispatched, in order:
-   - Chunk name (phase heading from `tasks.md`).
-   - Number of tasks in the chunk.
-   - Outcome counts (✅ / ⚠️ / ❌).
-   - Commit SHA(s) produced by the subagent.
-   - Any decisions or surprises the subagent flagged upward.
-3. **Tasks not completed** — task IDs still `[ ]` in `tasks.md`, with the reason from the relevant subagent's report. Empty section if everything is `[X]`.
-4. **Local-pass evidence (REQUIRED).** A table of every test added or modified by this run — unit, integration, and E2E — with one row per test:
-
-   | Test id | Type (unit/integration/e2e) | Run command | Passed at (ISO 8601) | Environment context | Verbatim pass line |
-   |---------|-----------------------------|-------------|----------------------|---------------------|--------------------|
-
-   Aggregate the rows from each chunk subagent's response. If a chunk added/modified a test but did not return evidence, the row's "Passed at" cell MUST be `MISSING — see chunk <N>` and the test MUST also appear in §3 "Tasks not completed" as a blocker — never silently elide it.
-
-   If an E2E test was added but not executable locally in this project, record it as a separate row with `Passed at` = `deferred — local E2E not supported` and put the CI-side command in `Run command`. Call this out in §6 "Autonomous decisions" so the user can confirm the call.
-
-   If no tests were added or modified by the whole run, write `n/a — no new or modified tests in this implementation` instead of the table and state it explicitly so reviewers can verify the claim against the diff.
-5. **Review findings** — MUST open with a `Review mode:` line, before the table, stating how the findings were produced:
-
-   - `Review mode: plugin (pr-review-toolkit)`
-   - `Review mode: command (/code-review)`
-   - `Review mode: fallback (built-in reviewer, reduced depth — install the pr-review-toolkit plugin for a full pass)`
-   - `Review mode: none — NO REVIEW WAS PERFORMED`
-
-   In `fallback` and `none` mode, follow that line with the install hint: `/plugin install pr-review-toolkit@claude-plugins-official` in Claude Code.
-
-   Then the table of severity / file / one-line summary, marking which findings were fixed inline and which were deferred. In `none` mode write `n/a — no review performed` in place of the table.
-6. **Autonomous decisions** — any judgment calls the orchestrator made that the user might want to revisit (chunk splits, blocked-task handling, review-finding triage choices). A `REVIEW_MODE` other than `plugin` or `command` MUST appear here, with the reason no reviewer was available.
-7. **Suggested next steps** — e.g. "open a PR", "rerun `speckit.opsmill.implement` to retry the 2 blocked tasks", "address the deferred review findings".
-
-**Blocking rule.** If §4 contains any `MISSING` row, the report header MUST mark the run `INCOMPLETE` and §7 MUST list "produce local-pass evidence for the listed tests" as the first next step. Do not declare the spec done while local-pass evidence is missing. (`deferred — local E2E not supported` rows do NOT trigger this rule, but they MUST be flagged in §6.)
-
-**Review blocking rule.** If `REVIEW_MODE` is `none`, the report header MUST mark the run `INCOMPLETE` and §7 MUST list "install the pr-review-toolkit plugin and re-run the review over this diff" as the first next step. `REVIEW_MODE: fallback` does **not** trigger this rule, because a review did happen, but it MUST be flagged in §5 and §6.
-
-`REVIEW: none` blocks where `CRITIQUE: none` in `speckit-opsmill-prep` does not, on purpose: an un-critiqued spec is still read by a human before any code exists, so the gap is visible and cheap to close, whereas an unreviewed diff is already-written code that nothing downstream re-checks. See the Completion section of `speckit-opsmill-prep` for the full rationale.
-
-Commit the report via `speckit-checkpoint-commit` as the final action.
-
-## Completion
-
-Print a 4-6 line summary mirroring the report header + outcome counts so the user does not need to open the file to know the result.
+Then print a summary of 4 to 6 lines from `<spec-dir>/opsmill-implement-report.md`: its header, the outcome counts, the `coverage: review` line of the result, and the first suggested next step. A run that stopped before the first chunk has no report.
 
 **Machine-readable status line (REQUIRED).** The **final line** of your output MUST be exactly:
 
 `STATUS: <DONE|INCOMPLETE|BLOCKED> | SPEC_DIR: <absolute spec-dir path> | REVIEW: <plugin|command|fallback|none|n/a> | REASON: <short reason or n/a>`
 
-- `STATUS: DONE` — all chunks completed and §4 local-pass evidence has no `MISSING` rows.
-- `STATUS: INCOMPLETE` — the run finished but the report is marked `INCOMPLETE` (e.g. missing local-pass evidence, blocked tasks recorded, or `REVIEW: none`).
-- `STATUS: BLOCKED` — a Phase 0 stop-condition aborted the run before the implement loop (missing prep artifacts, unexpectedly dirty tree). In this case no report is written; emit only the summary explaining why, then this line.
-- `REVIEW` mirrors the `REVIEW_MODE` resolved in Phase 0, so the parent never has to infer review coverage from prose. `REVIEW: fallback` is compatible with `STATUS: DONE`. `REVIEW: none` forces `STATUS: INCOMPLETE` per the review blocking rule. Use `REVIEW: n/a` only when the run aborted before Phase 0 resolved a provider.
+- When the result holds a `report -> STATUS: …` line, that line is your final line, unchanged.
+- `STATUS: BLOCKED` — the run stopped before the report phase. `REVIEW` is `n/a`, and `REASON` quotes the `BLOCKED:` line or the error.
 
-The parent `speckit-opsmill-auto` parses this line; keep it as the literal last line, unwrapped.
+Keep this as the literal last line, unwrapped.
 
-Then stop — do **not** open a PR, do **not** push, do **not** start a new feature. The user will take it from there.
+Do **not** open a pull request, push, or start a new feature. The user takes it from there.

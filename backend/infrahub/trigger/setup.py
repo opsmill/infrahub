@@ -1,4 +1,5 @@
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
+from contextlib import AsyncExitStack, asynccontextmanager
 from typing import TYPE_CHECKING
 
 from prefect import get_run_logger, task
@@ -10,6 +11,7 @@ from prefect.events.schemas.automations import Automation
 from prefect.exceptions import PrefectHTTPStatusError
 
 from infrahub import lock
+from infrahub.core.template_fingerprint.models import TemplateFamily
 from infrahub.database import InfrahubDatabase
 from infrahub.trigger.models import TriggerDefinition
 
@@ -46,15 +48,28 @@ def compare_automations(
     return TriggerComparison.UPDATE
 
 
+def trigger_configuration_lock(trigger_type: TriggerType) -> lock.InfrahubLock:
+    return lock.registry.get(
+        name=f"configure-action-rules-{trigger_type.value}", namespace="trigger-rules", local=False
+    )
+
+
+@asynccontextmanager
+async def template_fingerprint_locks() -> AsyncIterator[None]:
+    """Hold the configuration lock of every fingerprinted family, always taken in the same order."""
+    async with AsyncExitStack() as stack:
+        for family in TemplateFamily:
+            await stack.enter_async_context(trigger_configuration_lock(trigger_type=TriggerType(family.value)))
+        yield
+
+
 @task(name="trigger-setup-specific", task_run_name="Setup triggers of a specific kind", cache_policy=NONE)
 async def setup_triggers_specific(
     gatherer: Callable[[InfrahubDatabase | None], Awaitable[Sequence[TriggerDefinition]]],
     trigger_type: TriggerType,
     db: InfrahubDatabase | None = None,
 ) -> TriggerSetupReport:
-    async with lock.registry.get(
-        name=f"configure-action-rules-{trigger_type.value}", namespace="trigger-rules", local=False
-    ):
+    async with trigger_configuration_lock(trigger_type=trigger_type):
         triggers = await gatherer(db)
         async with get_client(sync_client=False) as prefect_client:
             return await setup_triggers(

@@ -1,0 +1,28 @@
+schema_version: "1.0"
+
+preset:
+  id: "reconcile-opsmill"
+  name: "Reconcile (OpsMill)"
+  version: "1.5.0"
+  description: "Override speckit.reconcile.run (stn1slv/spec-kit-reconcile extension) with the OpsMill-maintained command body."
+  author: "opsmill"
+  repository: "https://github.com/opsmill/opsmill-speckit"
+  license: "MIT"
+
+requires:
+  speckit_version: ">=1.2.4"
+
+provides:
+  templates:
+    - type: "command"
+      name: "speckit.reconcile.run"
+      file: "commands/speckit.reconcile.run.md"
+      description: "Reconcile implementation drift from a gap report by surgically updating the feature's spec, plan, and tasks."
+      replaces: "speckit.reconcile.run"
+
+tags:
+  - "reconcile"
+  - "drift"
+  - "remediation"
+  - "workflow"
+  - "opsmill"

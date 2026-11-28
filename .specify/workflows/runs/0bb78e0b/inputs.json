@@ -1,0 +1,6 @@
+{
+  "inputs": {
+    "spec_dir": "dev/specs/ifc-2167-placeholder-automations",
+    "integration": "claude"
+  }
+}

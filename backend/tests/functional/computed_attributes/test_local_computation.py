@@ -13,7 +13,6 @@ from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.core.schema.relationship_schema import RelationshipSchema
-from infrahub.trigger.constants import TRIGGER_PLACEHOLDER_FIELD
 from tests.helpers.schema import COLOR, TSHIRT, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -38,29 +37,21 @@ class TestJinja2ComputedAttributeWithRelationship(TestInfrahubApp):
     ) -> None:
         await load_schema(db, schema=SchemaRoot(nodes=[COLOR, TSHIRT]), update_db=True)
 
-    async def test_self_targeting_trigger_has_placeholder_fields(
+    async def test_self_targeting_trigger_is_not_gathered(
         self,
         db: InfrahubDatabase,
         schema_loaded: None,
         default_branch: Branch,
     ) -> None:
-        """The TSHIRT schema has a Jinja2 computed 'description' that references both.
+        """The TSHIRT 'description' template reads its own 'name' and the 'color' peer.
 
-        local attribute 'name' and peer attribute 'color__name'. The self-targeting trigger
-        (TestingTShirt) should use _trigger_placeholder fields.
+        Only the peer (TestingColor) gets an automation; the setup flow recomputes the
+        TestingTShirt side from the schema.
 
         """
         triggers = await gather_trigger_computed_attribute_jinja2(db=db)
 
-        self_triggers = [t for t in triggers if t.targets_self]
-        assert len(self_triggers) == 1, "Expected exactly one self-targeting trigger"
-
-        trigger_def = self_triggers[0]
-        assert isinstance(trigger_def.trigger.match_related, dict)
-        assert trigger_def.trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER_FIELD], (
-            f"Self-targeting trigger for {trigger_def.trigger_kind} should use placeholder fields, "
-            f"got {trigger_def.trigger.match_related['infrahub.field.name']}"
-        )
+        assert [trigger.trigger_kind for trigger in triggers] == ["TestingColor"]
 
     async def test_remote_trigger_preserves_real_fields(
         self,
@@ -68,10 +59,9 @@ class TestJinja2ComputedAttributeWithRelationship(TestInfrahubApp):
         schema_loaded: None,
         default_branch: Branch,
     ) -> None:
-        """The remote trigger (TestingColor) should preserve real field names ('name' and.
+        """The remote trigger (TestingColor) matches the field names the template reads.
 
-        'description') since the Jinja2 template references color__name__value and
-        color__description__value. It should NOT use placeholder fields.
+        The Jinja2 template references color__name__value and color__description__value.
 
         """
         triggers = await gather_trigger_computed_attribute_jinja2(db=db)
@@ -82,9 +72,6 @@ class TestJinja2ComputedAttributeWithRelationship(TestInfrahubApp):
         trigger_def = remote_triggers[0]
         assert isinstance(trigger_def.trigger.match_related, dict)
         fields = trigger_def.trigger.match_related["infrahub.field.name"]
-        assert TRIGGER_PLACEHOLDER_FIELD not in fields, (
-            f"Remote trigger for {trigger_def.trigger_kind} should NOT use placeholder fields, got {fields}"
-        )
         assert sorted(fields) == ["color", "description", "name"], (
             f"Remote trigger should match 'color', 'name' and 'description' fields, got {fields}"
         )

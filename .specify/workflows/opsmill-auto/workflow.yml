@@ -1,0 +1,50 @@
+schema_version: "1.0"
+workflow:
+  id: "opsmill-auto"
+  name: "OpsMill end to end"
+  version: "1.0.0"
+  author: "opsmill"
+  description: "Runs the opsmill-prep workflow, then the opsmill-implement workflow when prep reports that the spec is ready."
+
+requires:
+  speckit_version: ">=1.2.4"
+  integrations:
+    any:
+      - "claude"
+
+inputs:
+  spec:
+    type: string
+    required: true
+    prompt: "Describe the feature, or give the URL of the ticket or PRD"
+  integration:
+    type: string
+    default: "auto"
+    prompt: "Integration to use ('auto' uses the project's integration)"
+
+steps:
+  - id: prep
+    type: workflow
+    workflow: opsmill-prep
+    input:
+      spec: "{{ inputs.spec }}"
+      integration: "{{ inputs.integration }}"
+
+  - id: ready
+    type: if
+    condition: "{{ steps.prep.output.ready }}"
+    then:
+      # The feature directory that specify recorded for the new spec.
+      - id: spec_dir
+        type: shell
+        run: "python3 -c \"import json; print(json.load(open('.specify/feature.json'))['feature_directory'], end='')\""
+      - id: implement
+        type: workflow
+        workflow: opsmill-implement
+        input:
+          spec_dir: "{{ steps.spec_dir.output.stdout }}"
+          integration: "{{ inputs.integration }}"
+    else:
+      - id: blocked
+        type: shell
+        run: "echo 'opsmill-prep did not report that the spec is ready; see the prep step in the run state' >&2; exit 1"
