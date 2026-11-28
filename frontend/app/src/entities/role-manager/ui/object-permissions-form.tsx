@@ -2,7 +2,6 @@ import { Button } from "@infrahub/ui";
 import { type FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
-import { Row } from "@/shared/components/container";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
 import { NameSelect } from "@/shared/components/form/name-select";
@@ -13,7 +12,7 @@ import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getR
 import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Form, FormSubmit } from "@/shared/components/ui/form";
+import { Form, FormActions, FormSubmit } from "@/shared/components/ui/form";
 
 import type { NodeFieldsWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
@@ -159,7 +158,7 @@ export const ObjectPermissionForm = ({
         defaultValue={roles}
       />
 
-      <Row className="justify-end">
+      <FormActions>
         {onCancel && (
           <Button variant="outline" onPress={onCancel}>
             Cancel
@@ -167,7 +166,7 @@ export const ObjectPermissionForm = ({
         )}
 
         <FormSubmit>Save</FormSubmit>
-      </Row>
+      </FormActions>
     </Form>
   );
 };

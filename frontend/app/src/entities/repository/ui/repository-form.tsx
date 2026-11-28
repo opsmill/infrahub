@@ -1,13 +1,12 @@
 import { Button, Card, CardContent, type CardProps } from "@infrahub/ui";
 
-import { Row } from "@/shared/components/container";
 import { DynamicField } from "@/shared/components/form/dynamic-form";
 import RelationshipField from "@/shared/components/form/fields/relationships/relationship.field";
 import type { NodeFormProps } from "@/shared/components/form/node-form";
 import { useCurrentFormContext } from "@/shared/components/form/utils/form-context";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { getCreateMutationFromFormData } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
-import { Form, FormSubmit } from "@/shared/components/ui/form";
+import { Form, FormActions, FormSubmit } from "@/shared/components/ui/form";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
@@ -50,7 +49,7 @@ const RepositoryForm = ({
 
   return (
     <Form
-      className="h-full overflow-auto bg-background p-2"
+      className="bg-background p-2"
       onSubmit={async (formData) => {
         if (onSubmit) return onSubmit({ formData, fields });
 
@@ -103,7 +102,7 @@ const RepositoryForm = ({
         </FormGroup>
       )}
 
-      <Row className="justify-end">
+      <FormActions>
         {onCancel && (
           <Button variant="outline" onPress={onCancel}>
             Cancel
@@ -111,7 +110,7 @@ const RepositoryForm = ({
         )}
 
         <FormSubmit>Save</FormSubmit>
-      </Row>
+      </FormActions>
     </Form>
   );
 };

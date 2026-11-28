@@ -14,6 +14,7 @@ import {
   useFormState,
 } from "react-hook-form";
 
+import { Row } from "@/shared/components/container";
 import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
 import Label, { type LabelProps } from "@/shared/components/ui/label";
 import { inputErrorStyle } from "@/shared/components/ui/style";
@@ -78,7 +79,11 @@ export const Form = <TValues extends FieldValues = FieldValues>({
               .catch((error: unknown) => console.error(error));
           }
         }}
-        className={classNames("space-y-6", className)}
+        className={classNames(
+          // A control scrolled into view at the bottom edge must land above the pinned buttons; list options keep their own scrolling.
+          "space-y-6 has-[>[data-form-actions]]:[&_:is(input,textarea,select,button,[contenteditable])]:scroll-mb-16",
+          className
+        )}
         {...props}
       >
         {children}
@@ -182,6 +187,94 @@ export const FormMessage = ({
     >
       {message}
     </p>
+  );
+};
+
+interface FormActionsProps extends Omit<React.ComponentProps<"div">, "ref"> {}
+
+// Sub-pixel layout under zoom or a scaled sheet must not read as pinned.
+const PINNED_TOLERANCE_PX = 1;
+
+// Sticky positioning treats every one of these as the area it sticks to.
+const SCROLL_CONTAINER_OVERFLOW = new Set(["auto", "scroll", "overlay", "hidden"]);
+
+const getScrollContainer = (element: HTMLElement): HTMLElement | null => {
+  for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+    if (SCROLL_CONTAINER_OVERFLOW.has(getComputedStyle(parent).overflowY)) return parent;
+  }
+  return null;
+};
+
+const getVisibleBottom = (scrollContainer: HTMLElement | null) =>
+  scrollContainer
+    ? scrollContainer.getBoundingClientRect().top +
+      scrollContainer.clientTop +
+      scrollContainer.clientHeight
+    : window.innerHeight;
+
+/**
+ * Keeps the form's buttons in view at the bottom of the area that scrolls the form, and draws a
+ * separator while fields are scrolled out of view beneath them; render it as the form's last child.
+ */
+export const FormActions = ({ className, ...props }: FormActionsProps) => {
+  const actionsRef = React.useRef<HTMLDivElement>(null);
+  const restingBottomRef = React.useRef<HTMLDivElement>(null);
+  const [isPinned, setIsPinned] = React.useState(false);
+
+  React.useLayoutEffect(() => {
+    const actions = actionsRef.current;
+    const restingBottom = restingBottomRef.current;
+    if (!actions || !restingBottom) return;
+
+    const scrollContainer = getScrollContainer(actions);
+    const applyScrollPadding = () =>
+      actions.style.setProperty(
+        "--form-actions-scroll-padding",
+        scrollContainer ? getComputedStyle(scrollContainer).paddingBottom : "0px"
+      );
+    applyScrollPadding();
+
+    // The marker stays where the bar rests, so the bar is pinned exactly while the marker is below the visible area.
+    setIsPinned(
+      restingBottom.getBoundingClientRect().top - getVisibleBottom(scrollContainer) >
+        PINNED_TOLERANCE_PX
+    );
+    const intersectionObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const visibleBottom = entry.rootBounds?.bottom ?? getVisibleBottom(scrollContainer);
+          setIsPinned(!entry.isIntersecting && entry.boundingClientRect.top > visibleBottom);
+        }
+      },
+      { root: scrollContainer, rootMargin: `0px 0px ${PINNED_TOLERANCE_PX}px 0px` }
+    );
+    intersectionObserver.observe(restingBottom);
+
+    const resizeObserver = new ResizeObserver(applyScrollPadding);
+    if (scrollContainer) resizeObserver.observe(scrollContainer);
+
+    return () => {
+      intersectionObserver.disconnect();
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  return (
+    <>
+      <Row
+        ref={actionsRef}
+        data-form-actions
+        data-pinned={isPinned || undefined}
+        className={classNames(
+          "sticky -bottom-(--form-actions-scroll-padding)",
+          "-mt-3.25 mb-0 justify-end border-transparent border-t border-b-0 py-3",
+          "data-pinned:border-border-strong data-pinned:bg-table-cell-pinned",
+          className
+        )}
+        {...props}
+      />
+      <div ref={restingBottomRef} aria-hidden />
+    </>
   );
 };
 

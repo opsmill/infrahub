@@ -4,7 +4,14 @@ import { type UseFormReturn, useFormState } from "react-hook-form";
 
 import { Col, Row } from "@/shared/components/container";
 import { LabelFormField } from "@/shared/components/form/fields/common";
-import { Form, FormField, FormInput, FormMessage, FormSubmit } from "@/shared/components/ui/form";
+import {
+  Form,
+  FormActions,
+  FormField,
+  FormInput,
+  FormMessage,
+  FormSubmit,
+} from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
 
 import type { NumberPoolData } from "@/entities/resource-manager/domain/model/number-pool";
@@ -66,14 +73,14 @@ export function NumberPoolForm({ form, onSubmit, onCancel, isUpdate }: NumberPoo
         </Row>
       )}
 
-      <Row className="justify-end">
+      <FormActions>
         {onCancel && (
           <Button variant="outline" onPress={onCancel}>
             Cancel
           </Button>
         )}
         <FormSubmit>Save</FormSubmit>
-      </Row>
+      </FormActions>
     </Form>
   );
 }

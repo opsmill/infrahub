@@ -2,7 +2,6 @@ import { Button } from "@infrahub/ui";
 import { type FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
-import { Row } from "@/shared/components/container";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import InputField from "@/shared/components/form/fields/input.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
@@ -14,7 +13,7 @@ import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/util
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Form, FormField, FormInput, FormSubmit } from "@/shared/components/ui/form";
+import { Form, FormActions, FormField, FormInput, FormSubmit } from "@/shared/components/ui/form";
 
 import type { NodeFieldsWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
@@ -155,7 +154,7 @@ export const AccountRoleForm = ({ currentObject, onCancel, onSuccess }: AccountR
         }}
       />
 
-      <Row className="justify-end">
+      <FormActions>
         {onCancel && (
           <Button variant="outline" onPress={onCancel}>
             Cancel
@@ -163,7 +162,7 @@ export const AccountRoleForm = ({ currentObject, onCancel, onSuccess }: AccountR
         )}
 
         <FormSubmit>Save</FormSubmit>
-      </Row>
+      </FormActions>
     </Form>
   );
 };

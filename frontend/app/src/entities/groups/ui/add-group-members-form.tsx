@@ -1,13 +1,12 @@
 import { Button } from "@infrahub/ui";
 import { toast } from "react-toastify";
 
-import { Row } from "@/shared/components/container";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { GenericRelationshipField } from "@/shared/components/form/fields/relationships/generic-relationship.field";
 import type { FormRelationshipValue } from "@/shared/components/form/type";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Form, FormSubmit } from "@/shared/components/ui/form";
+import { Form, FormActions, FormSubmit } from "@/shared/components/ui/form";
 
 import { GROUP_MEMBERS_RELATIONSHIP } from "@/entities/groups/domain/model/group";
 import { useAddRelationships } from "@/entities/nodes/relationships/ui/queries/add-relationships.mutation";
@@ -62,13 +61,13 @@ export function AddGroupMembersForm({
         rules={{ validate: isRequired }}
       />
 
-      <Row className="justify-end">
+      <FormActions>
         <Button variant="outline" onPress={onCancel}>
           Cancel
         </Button>
 
         <FormSubmit>Save</FormSubmit>
-      </Row>
+      </FormActions>
     </Form>
   );
 }

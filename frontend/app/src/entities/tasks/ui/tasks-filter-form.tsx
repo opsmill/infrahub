@@ -2,9 +2,14 @@ import { Button } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import type React from "react";
 
-import { Row } from "@/shared/components/container";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
-import { Form, type FormProps, type FormRef, FormSubmit } from "@/shared/components/ui/form";
+import {
+  Form,
+  FormActions,
+  type FormProps,
+  type FormRef,
+  FormSubmit,
+} from "@/shared/components/ui/form";
 
 import { branchesState } from "@/entities/branches/stores";
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
@@ -54,7 +59,7 @@ export const TasksFilterForm = ({
 
       <DropdownField name="state" label="State" items={statesOptions} />
 
-      <Row className="justify-end">
+      <FormActions>
         {onCancel && (
           <Button variant="outline" onPress={onCancel}>
             Cancel
@@ -62,7 +67,7 @@ export const TasksFilterForm = ({
         )}
 
         <FormSubmit>Apply filters</FormSubmit>
-      </Row>
+      </FormActions>
     </Form>
   );
 };
