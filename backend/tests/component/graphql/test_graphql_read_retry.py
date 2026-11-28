@@ -14,6 +14,7 @@ import asyncio
 from typing import TYPE_CHECKING, AsyncGenerator, Generator
 
 import pytest
+from graphql.execution import ExecutionResult
 from neo4j.exceptions import TransientError
 
 from infrahub import config
@@ -36,8 +37,6 @@ from tests.helpers.graphql import graphql
 from tests.helpers.utils import get_exposed_port, start_neo4j_container
 
 if TYPE_CHECKING:
-    from graphql.execution import ExecutionResult
-
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
 
@@ -237,7 +236,7 @@ async def test_concurrent_queries_fail_without_retries(
     for r in results:
         if isinstance(r, TransientError):
             transient_failures.append(r)
-        elif hasattr(r, "errors") and r.errors:
+        elif isinstance(r, ExecutionResult) and r.errors:
             transient_failures.extend(
                 err.original_error
                 for err in r.errors

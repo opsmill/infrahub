@@ -133,7 +133,7 @@ RETURN v1, v2, v3, v4, v5, v6, e1, e2, e3, e4
         }
 
     @pytest.fixture
-    def testing_patch(self, db: InfrahubDatabase, initial_data: dict[str]) -> TestingPatch:
+    def testing_patch(self, db: InfrahubDatabase, initial_data: dict[str, str]) -> TestingPatch:
         # create the testing patch
         testing_patch = TestingPatch(db=db)
         testing_patch.set_vertex_to_update(
