@@ -245,8 +245,9 @@ async def gather_trigger_computed_attribute_python(
     for branches in by_transform.values():
         for branch_scope, branches_out_of_scope in _branch_scopes(branches, divergent_branches):
             computed_attribute = branches[branch_scope]
-            for kind, access in computed_attribute.query_analyzer.query_report.requested_read.items():
-                if not access.fields:
+            query_report = computed_attribute.query_analyzer.query_report
+            for kind, fields in query_report.selected_or_filtered_fields_by_kind.items():
+                if not fields:
                     # A kind reached through a generic relationship is reported for every member,
                     # even the ones the query reads no field from. Such a trigger would get no
                     # field filter and fire on every update to that kind.

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import UTC, datetime
 from functools import partial
 from typing import TYPE_CHECKING
@@ -13,6 +14,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema
+from infrahub.core.schema.computed_attribute import ComputedAttribute, ComputedAttributeKind
 from infrahub.events.schema_action import ChangedElementsPayload
 from infrahub.git.writeback.models import HeldPythonAttribute, HeldRegeneration, PendingMerge
 from infrahub.git.writeback.store import WritebackIntentStore
@@ -40,6 +42,21 @@ if TYPE_CHECKING:
 # that label cannot be named, so any change to TestCar recomputes it, while a change to a kind
 # its query never reaches does not. That holds because TestCar's label is built from its own
 # attributes; a label crossing a relationship recomputes on any schema change instead.
+# ``computed_desc_python_filtered`` selects no field of TestCar and filters on the name of its
+# owner via transform_filtered, so it reads TestPerson.name too.
+CAR_PERSON_FILTERED_PYTHON_SCHEMA = deepcopy(CAR_PERSON_PYTHON_SCHEMA)
+CAR_PERSON_FILTERED_PYTHON_SCHEMA.nodes[0].attributes.append(
+    AttributeSchema(
+        name="computed_desc_python_filtered",
+        kind="Text",
+        read_only=True,
+        optional=True,
+        computed_attribute=ComputedAttribute(
+            kind=ComputedAttributeKind.TRANSFORM_PYTHON, transform="transform_filtered"
+        ),
+    )
+)
+
 PYTHON_CASES = [
     ScopedRecomputeCase(
         name="unrelated_field_skips_scoped_keeps_opaque",
@@ -52,9 +69,14 @@ PYTHON_CASES = [
         expected_submitted={"computed_desc_python", "computed_desc_python_opaque"},
     ),
     ScopedRecomputeCase(
-        name="unread_kind_skips_scoped_and_opaque",
+        name="peer_filter_field_recomputes_filtered_only",
         changed_elements=ChangedElementsPayload(changed_fields={"TestPerson": ["name"]}),
-        expected_submitted=set(),
+        expected_submitted={"computed_desc_python_filtered"},
+    ),
+    ScopedRecomputeCase(
+        name="filtered_field_recomputes_filtered_and_opaque",
+        changed_elements=ChangedElementsPayload(changed_fields={"TestCar": ["owner"]}),
+        expected_submitted={"computed_desc_python_filtered", "computed_desc_python_opaque"},
     ),
 ]
 
@@ -94,7 +116,27 @@ class TestScopedRecomputePython(ScopedRecomputeTestBase):
         )
         await transform_opaque.save(db=db)
 
-        await load_schema(db=db, schema=CAR_PERSON_PYTHON_SCHEMA, update_db=True)
+        query_filtered = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
+        await query_filtered.new(
+            db=db,
+            name="query_filtered",
+            query='query ($id: ID!) { TestCar(ids: [$id], owner__name__value: "John") { edges { node { id } } } }',
+            models=["TestCar"],
+        )
+        await query_filtered.save(db=db)
+
+        transform_filtered = await Node.init(db=db, schema=InfrahubKind.TRANSFORMPYTHON)
+        await transform_filtered.new(
+            db=db,
+            name="transform_filtered",
+            file_path="transform.py",
+            class_name="Transform",
+            query=query_filtered,
+            repository=repo,
+        )
+        await transform_filtered.save(db=db)
+
+        await load_schema(db=db, schema=CAR_PERSON_FILTERED_PYTHON_SCHEMA, update_db=True)
 
     @pytest.mark.parametrize("case", PYTHON_CASES, ids=[c.name for c in PYTHON_CASES])
     async def test_scoped_recompute(
