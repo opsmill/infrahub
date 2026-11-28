@@ -12,6 +12,7 @@ from infrahub.exceptions import NodeNotFoundError
 
 if TYPE_CHECKING:
     from infrahub.config import StorageSettings
+    from infrahub.storage_encryption.codec import StoredContent, StoredContentCodec
 
 
 class InfrahubS3ObjectStorage(fastapi_storages.S3Storage):
@@ -73,9 +74,16 @@ fastapi_storages.InfrahubS3ObjectStorage = InfrahubS3ObjectStorage
 class InfrahubObjectStorage:
     _settings: StorageSettings
     _storage: fastapi_storages.base.BaseStorage
+    _codec: StoredContentCodec
 
-    def __init__(self, settings: StorageSettings) -> None:
+    def __init__(self, settings: StorageSettings, codec: StoredContentCodec) -> None:
+        """Access the configured storage driver.
+
+        The `codec` decides what is written for the content stored and what a stored object stands for, so the
+        encryption of the objects is not handled here.
+        """
         self._settings = settings
+        self._codec = codec
 
         driver = getattr(fastapi_storages, self._settings.driver.name)
 
@@ -83,25 +91,36 @@ class InfrahubObjectStorage:
         self._storage = driver(**driver_settings.model_dump(by_alias=True))
 
     @classmethod
-    async def init(cls, settings: StorageSettings) -> Self:
-        return cls(settings)
+    async def init(cls, settings: StorageSettings, codec: StoredContentCodec) -> Self:
+        return cls(settings, codec=codec)
 
     def store(self, identifier: str, content: BinaryIO) -> None:
-        self._storage.write(content, identifier)
+        self._storage.write(self._codec.encode(identifier=identifier, content=content), identifier)
 
     def retrieve(self, identifier: str) -> str:
-        try:
-            with self._storage.open(identifier) as f:
-                return f.read().decode()
-        except (FileNotFoundError, botocore.exceptions.ClientError) as err:
-            raise NodeNotFoundError(node_type="StorageObject", identifier=identifier) from err
+        return self.retrieve_binary(identifier=identifier).decode()
 
     def retrieve_binary(self, identifier: str) -> bytes:
+        return self.read(identifier=identifier).content
+
+    def read(self, identifier: str) -> StoredContent:
+        """Return the content of a stored object, decrypted when it is encrypted.
+
+        An encrypted object is decrypted whether or not encryption is still enabled, so turning it off leaves
+        earlier files readable. An object that was never encrypted is returned as it is, not authenticated.
+
+        Raises:
+            NodeNotFoundError: If no object is stored under `identifier`.
+            StorageIntegrityError: If an encrypted object is truncated, uses another key or fails authentication.
+            StorageEncryptionError: If the object is encrypted and this process has no key to decrypt it.
+
+        """
         try:
             with self._storage.open(identifier) as f:
-                return f.read()
+                stored = f.read()
         except (FileNotFoundError, botocore.exceptions.ClientError) as err:
             raise NodeNotFoundError(node_type="StorageObject", identifier=identifier) from err
+        return self._codec.decode(identifier=identifier, stored=stored)
 
     def delete(self, identifier: str) -> None:
         """Delete a file from storage.

@@ -8,10 +8,9 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, 
 from infrahub_sdk.uuidt import UUIDT
 from pydantic import BaseModel
 
-from infrahub import config
-from infrahub.api.dependencies import get_current_user, get_db
+from infrahub.api.dependencies import get_artifact_content_reader, get_current_user, get_db
 from infrahub.api.storage import file_object
-from infrahub.artifacts.content import ArtifactContentReader
+from infrahub.artifacts.content import ArtifactContentReader  # noqa: TC001
 from infrahub.core import registry
 from infrahub.core.protocols import CoreFileObject
 from infrahub.database import InfrahubDatabase  # noqa: TC001
@@ -38,15 +37,14 @@ async def get_file(
     identifier: str,
     request: Request,
     db: InfrahubDatabase = Depends(get_db),
+    reader: ArtifactContentReader = Depends(get_artifact_content_reader),
     _: AccountSession = Depends(get_current_user),
 ) -> Response:
     if await registry.manager.query(db=db, schema=CoreFileObject, filters={"storage_id__value": identifier}, limit=1):
         file_url = request.url_for("download_file_object_by_storage_id", storage_id=identifier)
         raise HTTPException(status_code=403, detail=f"Use {file_url.path} instead.")
 
-    content = await ArtifactContentReader(
-        db=db, storage=registry.storage, verify_checksum=config.SETTINGS.storage.verify_artifact_checksum
-    ).read_stored_object(storage_id=identifier)
+    content = await reader.read_stored_object(storage_id=identifier)
     return Response(content=content)
 
 

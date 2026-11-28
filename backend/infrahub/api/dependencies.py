@@ -7,6 +7,7 @@ from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBea
 from pydantic import BaseModel, ConfigDict
 
 from infrahub import config
+from infrahub.artifacts.content import ArtifactContentReader, build_artifact_content_reader
 from infrahub.auth.auth import authentication_token, validate_jwt_access_token, validate_jwt_refresh_token
 from infrahub.auth.session import AccountSession  # noqa: TC001
 from infrahub.branch.query_time_validator import BranchQueryTimeValidator
@@ -41,6 +42,10 @@ class BranchParams(BaseModel):
 async def get_db(request: Request) -> AsyncGenerator[InfrahubDatabase, None]:
     async with request.app.state.db.start_session() as db:
         yield db
+
+
+def get_artifact_content_reader(db: InfrahubDatabase = Depends(get_db)) -> ArtifactContentReader:
+    return build_artifact_content_reader(db=db, storage=registry.storage, settings=config.SETTINGS.storage)
 
 
 async def get_access_token(

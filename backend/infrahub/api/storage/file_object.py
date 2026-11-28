@@ -8,11 +8,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from infrahub.api.dependencies import (
     BranchParams,
+    get_artifact_content_reader,
     get_branch_params,
     get_current_user,
     get_db,
     get_permission_manager,
 )
+from infrahub.artifacts.content import ArtifactContentReader  # noqa: TC001
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, PermissionAction
 from infrahub.core.protocols import CoreFileObject
@@ -74,10 +76,15 @@ def build_content_disposition(filename: str, preview: bool = False) -> str:
     return f"{disposition}; filename=\"{ascii_filename}\"; filename*=UTF-8''{encoded_filename}"
 
 
-def _build_file_response(file_object: CoreFileObject, *, preview: bool = False) -> Response:
+async def _build_file_response(
+    reader: ArtifactContentReader, file_object: CoreFileObject, *, preview: bool = False
+) -> Response:
     """Build a `Response` for downloading a FileObject's content."""
+    content = await reader.read_file_object(
+        storage_id=file_object.storage_id.value, checksum=file_object.checksum.value
+    )
     return Response(
-        content=registry.storage.retrieve_binary(identifier=file_object.storage_id.value),
+        content=content,
         media_type=file_object.file_type.value,
         headers={
             "Content-Disposition": build_content_disposition(filename=file_object.file_name.value, preview=preview)
@@ -100,6 +107,7 @@ async def download_file_object_by_hfid(
     hfid: list[str] = Query(..., description="HFID component values in order"),
     preview: bool = Query(False, description="Return file for inline display rather than as an attachment"),
     db: InfrahubDatabase = Depends(get_db),
+    reader: ArtifactContentReader = Depends(get_artifact_content_reader),
     branch_params: BranchParams = Depends(get_branch_params),
     permission_manager: PermissionManager = Depends(get_permission_manager),
     _: AccountSession = Depends(get_current_user),
@@ -128,7 +136,7 @@ async def download_file_object_by_hfid(
         db=db, hfid=hfid, kind=kind, branch=branch_params.branch, at=branch_params.at, raise_on_error=True
     )
 
-    return _build_file_response(file_object=cast("CoreFileObject", node), preview=preview)
+    return await _build_file_response(reader=reader, file_object=cast("CoreFileObject", node), preview=preview)
 
 
 @router.get(
@@ -145,6 +153,7 @@ async def download_file_object_by_storage_id(
     storage_id: str,
     preview: bool = Query(False, description="Return file for inline display rather than as an attachment"),
     db: InfrahubDatabase = Depends(get_db),
+    reader: ArtifactContentReader = Depends(get_artifact_content_reader),
     branch_params: BranchParams = Depends(get_branch_params),
     permission_manager: PermissionManager = Depends(get_permission_manager),
     _: AccountSession = Depends(get_current_user),
@@ -178,7 +187,7 @@ async def download_file_object_by_storage_id(
     )
     permission_manager.raise_for_permission(permission=permission)
 
-    return _build_file_response(file_object=node, preview=preview)
+    return await _build_file_response(reader=reader, file_object=node, preview=preview)
 
 
 @router.get(
@@ -195,6 +204,7 @@ async def download_file_object(
     node_id: str,
     preview: bool = Query(False, description="Return file for inline display rather than as an attachment"),
     db: InfrahubDatabase = Depends(get_db),
+    reader: ArtifactContentReader = Depends(get_artifact_content_reader),
     branch_params: BranchParams = Depends(get_branch_params),
     permission_manager: PermissionManager = Depends(get_permission_manager),
     _: AccountSession = Depends(get_current_user),
@@ -214,4 +224,4 @@ async def download_file_object(
     )
     permission_manager.raise_for_permission(permission=permission)
 
-    return _build_file_response(file_object=node, preview=preview)
+    return await _build_file_response(reader=reader, file_object=node, preview=preview)
